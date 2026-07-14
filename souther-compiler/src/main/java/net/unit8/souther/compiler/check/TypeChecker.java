@@ -244,6 +244,11 @@ public final class TypeChecker {
                 forbidInvariantConstruct(m.scrutinee(), symbols);
                 m.cases().forEach(c -> forbidInvariantConstruct(c.body(), symbols));
             }
+            case Ast.If iff -> {
+                forbidInvariantConstruct(iff.cond(), symbols);
+                forbidInvariantConstruct(iff.then(), symbols);
+                forbidInvariantConstruct(iff.els(), symbols);
+            }
             default -> { }
         }
     }
@@ -268,6 +273,11 @@ public final class TypeChecker {
                 for (Ast.Case c : m.cases()) {
                     collectConstructs(c.body(), out);
                 }
+            }
+            case Ast.If iff -> {
+                collectConstructs(iff.cond(), out);
+                collectConstructs(iff.then(), out);
+                collectConstructs(iff.els(), out);
             }
             case Ast.IntLit ignored -> { }
             case Ast.StringLit ignored -> { }
@@ -512,6 +522,15 @@ public final class TypeChecker {
                 yield Type.ref(nd.typeName());
             }
             case Ast.Match m -> typeOfMatch(m, env, data, symbols);
+            case Ast.If iff -> {
+                requireType(iff.cond(), Type.BOOL, env, data, symbols, "if condition");
+                Type tt = typeOf(iff.then(), env, data, symbols);
+                Type et = typeOf(iff.els(), env, data, symbols);
+                if (!tt.equals(et)) {
+                    throw new CompileException(iff.pos(), "if branches disagree: " + tt + " vs " + et);
+                }
+                yield tt;
+            }
         };
     }
 
