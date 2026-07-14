@@ -61,9 +61,13 @@ public final class Parser {
             return new Ast.PipeBehavior(name, stages, kw.pos());
         }
         expect(TokenType.LPAREN);
-        Token pn = expect(TokenType.IDENT);
-        expect(TokenType.COLON);
-        Token pt = expect(TokenType.IDENT);
+        List<Ast.Param> params = new ArrayList<>();
+        if (!check(TokenType.RPAREN)) {
+            params.add(parseParam());
+            while (match(TokenType.COMMA)) {
+                params.add(parseParam());
+            }
+        }
         expect(TokenType.RPAREN);
         expect(TokenType.ARROW);
         Ast.RetType ret = parseRetType();
@@ -81,8 +85,14 @@ public final class Parser {
         }
         Ast.Expr result = parseExpr();
         expect(TokenType.RBRACE);
-        return new Ast.BodyBehavior(name, pn.text(), new Ast.TypeRef(pt.text(), pt.pos()),
-                ret, constructs, stmts, result, kw.pos());
+        return new Ast.BodyBehavior(name, params, ret, constructs, stmts, result, kw.pos());
+    }
+
+    private Ast.Param parseParam() {
+        Token n = expect(TokenType.IDENT);
+        expect(TokenType.COLON);
+        Token t = expect(TokenType.IDENT);
+        return new Ast.Param(n.text(), new Ast.TypeRef(t.text(), t.pos()), n.pos());
     }
 
     private Ast.RetType parseRetType() {

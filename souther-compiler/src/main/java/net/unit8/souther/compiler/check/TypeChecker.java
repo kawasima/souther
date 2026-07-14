@@ -45,8 +45,8 @@ public final class TypeChecker {
     public static Map<String, Sig> signatures(Ast.Module module, Map<String, Ast.Def> symbols) {
         Map<String, Sig> sigs = new HashMap<>();
         for (Ast.BehaviorDef b : module.behaviors()) {
-            if (b instanceof Ast.BodyBehavior body) {
-                sigs.put(body.name(), new Sig(resolveType(body.paramType(), symbols),
+            if (b instanceof Ast.BodyBehavior body && body.params().size() == 1) {
+                sigs.put(body.name(), new Sig(resolveType(body.params().get(0).type(), symbols),
                         resolveType(body.ret().success(), symbols)));
             }
         }
@@ -85,13 +85,14 @@ public final class TypeChecker {
     }
 
     private static void checkBodyBehavior(Ast.BodyBehavior b, Map<String, Ast.Def> symbols) {
-        Type paramType = resolveType(b.paramType(), symbols);
         Type successType = resolveType(b.ret().success(), symbols);
         boolean isResult = b.ret().error().isPresent();
         Type errorType = isResult ? resolveType(b.ret().error().get(), symbols) : null;
 
         Map<String, Type> env = new HashMap<>();
-        env.put(b.paramName(), paramType);
+        for (Ast.Param p : b.params()) {
+            env.put(p.name(), resolveType(p.type(), symbols));
+        }
         for (Ast.BStmt stmt : b.stmts()) {
             switch (stmt) {
                 case Ast.Let let -> env.put(let.name(), typeOf(let.value(), env, null, symbols));
