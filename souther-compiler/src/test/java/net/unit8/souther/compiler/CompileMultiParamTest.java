@@ -16,13 +16,12 @@ class CompileMultiParamTest {
     private static final String MODULE = """
             module demo
 
-            data A { value: Int  decoder from Int as n { A { value: n } } }
-            data B { value: Int  decoder from Int as n { B { value: n } } }
+            data A { value: Int }
+            data B { value: Int }
 
             data Pair {
                 left: Int
                 right: Int
-                encoder self { Object { "left": Int(self.left), "right": Int(self.right) } }
             }
 
             behavior mkPair(a: A, b: B) -> Pair constructs Pair {

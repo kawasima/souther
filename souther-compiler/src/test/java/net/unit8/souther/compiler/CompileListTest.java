@@ -22,19 +22,14 @@ class CompileListTest {
     private static final String MODULE = """
             module demo
 
-            data Reason { code: String  decoder from Text as c { Reason { code: c } } }
+            data Reason { code: String }
 
             data Request {
                 nums: List<Int>
                 reasons: List<Reason>
-                decoder from Object {
-                    nums    <- field("nums", list(int))
-                    reasons <- field("reasons", list(Reason.decoder))
-                    Request { nums, reasons }
-                }
             }
 
-            data Count { value: Int  encoder self { Int(self.value) } }
+            data Count { value: Int }
 
             behavior countReasons(r: Request) -> Count constructs Count {
                 Count { value: size(r.reasons) }

@@ -31,20 +31,6 @@ class CompileObjectTest {
                 owner: String
 
                 invariant length(id) > 0
-
-                decoder from Object {
-                    id      <- field("id", string)
-                    balance <- field("balance", int)
-                    owner   <- field("owner", string)
-                    Account { id, balance, owner }
-                }
-                encoder self {
-                    Object {
-                        "id": Text(self.id),
-                        "balance": Int(self.balance),
-                        "owner": Text(self.owner)
-                    }
-                }
             }
             """;
 

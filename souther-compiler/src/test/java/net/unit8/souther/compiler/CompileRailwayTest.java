@@ -20,7 +20,7 @@ class CompileRailwayTest {
     private static final String MODULE = """
             module demo
 
-            data Amount { value: Int  decoder from Int as n { Amount { value: n } } }
+            data Amount { value: Int }
             data TooLarge { limit: Int }
             data Doubled { value: Int }
 

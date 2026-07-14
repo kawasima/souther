@@ -1,16 +1,11 @@
-// List<T> のデコード（要素エラーを [index] で集積）と size / 算術 / 多分岐成功の例。
+// List<T> ／ size ／ 算術 ／ 多分岐成功。decoder/encoder は導出される。
 module example.expense
 
-data 理由 { コード: String  decoder from Text as c { 理由 { コード: c } } }
+data 理由 { コード: String }
 
 data 申請 {
     予定費用: Int
     理由リスト: List<理由>
-    decoder from Object {
-        予定費用   <- field("estimatedCost", int)
-        理由リスト <- field("reasons", list(理由.decoder))
-        申請 { 予定費用, 理由リスト }
-    }
 }
 
 data 通常 { 件数: Int }

@@ -17,8 +17,8 @@ class CompileArithmeticTest {
     private static final String MODULE = """
             module demo
 
-            data In  { value: Int  decoder from Int as n { In { value: n } } }
-            data Out { value: Int  encoder self { Int(self.value) } }
+            data In  { value: Int }
+            data Out { value: Int }
 
             // * binds tighter than +, so this is (value * 2) + 10
             behavior compute(x: In) -> Out constructs Out {
