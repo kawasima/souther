@@ -1,0 +1,30 @@
+// 直和 data(sealed) + discriminate デコーダ + match 分岐の例。
+module example.contact
+
+data EmailContact {
+    email: String
+    decoder from Object { email <- field("email", string)  EmailContact { email } }
+}
+
+data PhoneContact {
+    phone: String
+    decoder from Object { phone <- field("phone", string)  PhoneContact { phone } }
+}
+
+// status で状態デコーダを振り分ける
+data Contact = EmailContact | PhoneContact {
+    decoder from Object discriminate on "kind" {
+        "email" => EmailContact.decoder
+        "phone" => PhoneContact.decoder
+    }
+}
+
+data Label { value: String  encoder self { Text(self.value) } }
+
+// match でアームごとに値を取り出す
+behavior 連絡先の値(c: Contact) -> Label constructs Label {
+    match c {
+        case EmailContact as e => Label { value: e.email }
+        case PhoneContact as p => Label { value: p.phone }
+    }
+}
