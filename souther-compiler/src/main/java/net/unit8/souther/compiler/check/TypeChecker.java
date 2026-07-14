@@ -30,12 +30,45 @@ public final class TypeChecker {
                 case Ast.UnitData ignored -> { }
             }
         }
+        Set<String> allBehaviors = new HashSet<>();
+        for (Ast.BehaviorDef b : module.behaviors()) {
+            allBehaviors.add(b.name());
+        }
+        Map<String, ReqSig> reqSigs = new HashMap<>();
+        for (Ast.RequiredBehavior r : module.requireds()) {
+            allBehaviors.add(r.name());
+            reqSigs.put(r.name(), new ReqSig(resolveType(r.paramType(), symbols),
+                    resolveType(r.ret().success(), symbols)));
+        }
+        Set<String> bodiesWithDeps = new HashSet<>();
         for (Ast.BehaviorDef b : module.behaviors()) {
             if (b instanceof Ast.BodyBehavior body) {
-                checkBodyBehavior(body, symbols);
+                checkBodyBehavior(body, symbols, allBehaviors, reqSigs);
+                if (!requiredCalls(body, reqSigs).isEmpty()) {
+                    bodiesWithDeps.add(body.name());
+                }
             }
         }
-        checkPipelines(module, symbols);
+        checkPipelines(module, symbols, bodiesWithDeps);
+    }
+
+    /** A required behavior's input and success types (for typing calls). */
+    private record ReqSig(Type param, Type success) {}
+
+    /** The distinct required behaviors a body calls, in first-seen order. */
+    public static List<String> requiredCalls(Ast.BodyBehavior body, java.util.Set<String> requiredNames) {
+        List<String> calls = new java.util.ArrayList<>();
+        for (Ast.BStmt stmt : body.stmts()) {
+            if (stmt instanceof Ast.Let let && let.value() instanceof Ast.Call call
+                    && requiredNames.contains(call.fn()) && !calls.contains(call.fn())) {
+                calls.add(call.fn());
+            }
+        }
+        return calls;
+    }
+
+    private static List<String> requiredCalls(Ast.BodyBehavior body, Map<String, ReqSig> reqSigs) {
+        return requiredCalls(body, reqSigs.keySet());
     }
 
     /** A behavior's input and output types. */
@@ -62,8 +95,24 @@ public final class TypeChecker {
         return sigs;
     }
 
-    private static void checkPipelines(Ast.Module module, Map<String, Ast.Def> symbols) {
-        signatures(module, symbols);
+    private static void checkPipelines(Ast.Module module, Map<String, Ast.Def> symbols,
+                                       Set<String> bodiesWithDeps) {
+        Map<String, Sig> sigs = signatures(module, symbols);
+        for (Ast.BehaviorDef b : module.behaviors()) {
+            if (b instanceof Ast.PipeBehavior pipe) {
+                for (String stage : pipe.stages()) {
+                    if (bodiesWithDeps.contains(stage)) {
+                        throw new CompileException(pipe.pos(),
+                                "pipeline stage `" + stage + "` has its own dependencies, which is not "
+                                        + "supported; inline it or make it a required behavior");
+                    }
+                }
+            }
+        }
+        // side effect: signatures() already validated composition types
+        if (sigs.isEmpty()) {
+            return;
+        }
     }
 
     private static Sig pipeSig(Ast.PipeBehavior pipe, Map<String, Sig> sigs) {
@@ -84,7 +133,8 @@ public final class TypeChecker {
         return new Sig(sigs.get(stages.get(0)).in(), sigs.get(stages.get(stages.size() - 1)).out());
     }
 
-    private static void checkBodyBehavior(Ast.BodyBehavior b, Map<String, Ast.Def> symbols) {
+    private static void checkBodyBehavior(Ast.BodyBehavior b, Map<String, Ast.Def> symbols,
+                                          Set<String> allBehaviors, Map<String, ReqSig> reqSigs) {
         Type successType = resolveType(b.ret().success(), symbols);
         boolean isResult = b.ret().error().isPresent();
         Type errorType = isResult ? resolveType(b.ret().error().get(), symbols) : null;
@@ -95,7 +145,27 @@ public final class TypeChecker {
         }
         for (Ast.BStmt stmt : b.stmts()) {
             switch (stmt) {
-                case Ast.Let let -> env.put(let.name(), typeOf(let.value(), env, null, symbols));
+                case Ast.Let let -> {
+                    if (let.value() instanceof Ast.Call call && allBehaviors.contains(call.fn())) {
+                        ReqSig callee = reqSigs.get(call.fn());
+                        if (callee == null) {
+                            throw new CompileException(call.pos(),
+                                    "only required behaviors can be called from a body; compose others with `>>`");
+                        }
+                        if (!isResult) {
+                            throw new CompileException(let.pos(), "calling `" + call.fn()
+                                    + "` needs a Result return type on behavior `" + b.name() + "`");
+                        }
+                        if (call.args().size() != 1) {
+                            throw new CompileException(call.pos(), call.fn() + " takes one argument");
+                        }
+                        requireType(call.args().get(0), callee.param(), env, null, symbols,
+                                "argument of " + call.fn());
+                        env.put(let.name(), callee.success());
+                    } else {
+                        env.put(let.name(), typeOf(let.value(), env, null, symbols));
+                    }
+                }
                 case Ast.Guard guard -> {
                     requireType(guard.cond(), Type.BOOL, env, null, symbols, "require condition");
                     if (!isResult) {
@@ -251,8 +321,12 @@ public final class TypeChecker {
         return switch (ref) {
             case Ast.PrimDecRef p -> p.kind() == Ast.PrimKind.STRING ? Type.STRING : Type.INT;
             case Ast.DataDecRef d -> {
-                if (!symbols.containsKey(d.typeName())) {
-                    throw new CompileException(d.pos(), "unknown data type `" + d.typeName() + "`");
+                Ast.Def def = symbols.get(d.typeName());
+                boolean hasDecoder = (def instanceof Ast.Data dd && dd.decoder().isPresent())
+                        || (def instanceof Ast.SumData s && s.decoder().isPresent());
+                if (!hasDecoder) {
+                    throw new CompileException(d.pos(),
+                            "`" + d.typeName() + "` has no decoder to call `" + d.typeName() + ".decoder`");
                 }
                 yield Type.ref(d.typeName());
             }
@@ -304,8 +378,9 @@ public final class TypeChecker {
                 }
             }
             case Ast.EncodeRaw e -> {
-                if (!symbols.containsKey(e.typeName())) {
-                    throw new CompileException(e.pos(), "unknown data type `" + e.typeName() + "`");
+                if (!(symbols.get(e.typeName()) instanceof Ast.Data enc) || enc.encoder().isEmpty()) {
+                    throw new CompileException(e.pos(),
+                            "`" + e.typeName() + "` has no encoder to call `" + e.typeName() + ".encode`");
                 }
                 requireType(e.arg(), Type.ref(e.typeName()), env, data, symbols,
                         "argument of " + e.typeName() + ".encode");

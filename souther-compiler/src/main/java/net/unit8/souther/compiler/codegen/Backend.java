@@ -101,18 +101,46 @@ public final class Backend {
             }
         }
         Set<String> requiredNames = new HashSet<>();
+        Map<String, Type> requiredSuccess = new HashMap<>();
         for (Ast.RequiredBehavior r : module.requireds()) {
             requiredNames.add(r.name());
+            requiredSuccess.put(r.name(), b.resolveType(r.ret().success()));
         }
         for (Ast.BehaviorDef bd : module.behaviors()) {
             switch (bd) {
-                case Ast.BodyBehavior body ->
-                        out.put(module.name() + "." + body.name(), b.generateBodyBehavior(body));
+                case Ast.BodyBehavior body -> out.put(module.name() + "." + body.name(),
+                        b.generateBodyBehavior(body, requiredNames, requiredSuccess));
                 case Ast.PipeBehavior pipe ->
                         out.put(module.name() + "." + pipe.name(), b.generatePipe(pipe, requiredNames));
             }
         }
         return out;
+    }
+
+    /** Emits injected required-behavior fields plus the matching constructor (or a no-arg ctor). */
+    private void emitInjection(ClassBuilder cb, ClassDesc cdX, List<String> requireds) {
+        if (requireds.isEmpty()) {
+            emitPublicCtor(cb);
+            return;
+        }
+        for (String req : requireds) {
+            cb.withField(req, CD_Behavior, ClassFile.ACC_FINAL);
+        }
+        ClassDesc[] params = new ClassDesc[requireds.size()];
+        for (int i = 0; i < requireds.size(); i++) {
+            params[i] = CD_Behavior;
+        }
+        cb.withMethodBody("<init>", MethodTypeDesc.of(ConstantDescs.CD_void, params),
+                ClassFile.ACC_PUBLIC, code -> {
+                    code.aload(0);
+                    code.invokespecial(CD_Object, "<init>", MTD_void);
+                    for (int i = 0; i < requireds.size(); i++) {
+                        code.aload(0);
+                        code.aload(i + 1);
+                        code.putfield(cdX, requireds.get(i), CD_Behavior);
+                    }
+                    code.return_();
+                });
     }
 
     private Type resolveType(Ast.TypeRef ref) {
@@ -228,9 +256,11 @@ public final class Backend {
 
     // --- behaviors ---
 
-    private byte[] generateBodyBehavior(Ast.BodyBehavior b) {
+    private byte[] generateBodyBehavior(Ast.BodyBehavior b, Set<String> requiredNames,
+                                        Map<String, Type> requiredSuccess) {
         ClassDesc cdB = cd(b.name());
         int n = b.params().size();
+        List<String> injected = TypeChecker.requiredCalls(b, requiredNames);
         ClassDesc[] applyParams = new ClassDesc[n];
         for (int i = 0; i < n; i++) {
             applyParams[i] = CD_Object;
@@ -241,7 +271,7 @@ public final class Backend {
             if (n == 1) {
                 cb.withInterfaceSymbols(CD_Behavior); // single-input behaviors compose with >>
             }
-            emitPublicCtor(cb);
+            emitInjection(cb, cdB, injected);
             cb.withMethodBody("apply", mtdApply, ClassFile.ACC_PUBLIC, code -> {
                 Gen gen = new Gen(code, null, cdB, n + 1);
                 for (int i = 0; i < n; i++) {
@@ -254,6 +284,31 @@ public final class Backend {
                 }
                 for (Ast.BStmt stmt : b.stmts()) {
                     switch (stmt) {
+                        case Ast.Let let when let.value() instanceof Ast.Call call
+                                && requiredNames.contains(call.fn()) -> {
+                            // railway-bound call to an injected required behavior
+                            code.aload(0);
+                            code.getfield(cdB, call.fn(), CD_Behavior);
+                            Type at = gen.expr(call.args().get(0));
+                            box(code, at);
+                            code.invokeinterface(CD_Behavior, "apply", MTD_apply);
+                            int rSlot = gen.slot(Type.STRING);
+                            code.astore(rSlot);
+                            code.aload(rSlot);
+                            code.instanceOf(CD_ResultErr);
+                            Label ok = code.newLabel();
+                            code.ifeq(ok);
+                            code.aload(rSlot);
+                            code.areturn();
+                            code.labelBinding(ok);
+                            code.aload(rSlot);
+                            code.checkcast(CD_ResultOk);
+                            code.invokevirtual(CD_ResultOk, "value", MTD_Object);
+                            Type letType = requiredSuccess.get(call.fn());
+                            int vSlot = gen.slot(letType);
+                            unbox(code, letType, vSlot);
+                            gen.bind(let.name(), vSlot, letType);
+                        }
                         case Ast.Let let -> {
                             Type t = gen.expr(let.value());
                             int slot = gen.slot(t);
@@ -288,26 +343,7 @@ public final class Backend {
         return ClassFile.of().build(cdP, cb -> {
             cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_Behavior);
-            for (String req : reqStages) {
-                cb.withField(req, CD_Behavior, ClassFile.ACC_FINAL);
-            }
-
-            // constructor(Behavior... injected required behaviors)
-            ClassDesc[] ctorParams = new ClassDesc[reqStages.size()];
-            for (int i = 0; i < reqStages.size(); i++) {
-                ctorParams[i] = CD_Behavior;
-            }
-            cb.withMethodBody("<init>", MethodTypeDesc.of(ConstantDescs.CD_void, ctorParams),
-                    ClassFile.ACC_PUBLIC, code -> {
-                        code.aload(0);
-                        code.invokespecial(CD_Object, "<init>", MTD_void);
-                        for (int i = 0; i < reqStages.size(); i++) {
-                            code.aload(0);
-                            code.aload(i + 1);
-                            code.putfield(cdP, reqStages.get(i), CD_Behavior);
-                        }
-                        code.return_();
-                    });
+            emitInjection(cb, cdP, reqStages);
 
             cb.withMethodBody("apply", MTD_apply, ClassFile.ACC_PUBLIC, code -> {
                 // slot 1 holds the running success value; slot 2 the last stage's Result.
