@@ -1,21 +1,27 @@
-// 直和 data(sealed) + discriminate デコーダ + match 分岐の例。
+// 直和 data(sealed) + discriminate デコーダ/エンコーダ（往復）+ match 分岐の例。
 module example.contact
 
 data EmailContact {
     email: String
     decoder from Object { email <- field("email", string)  EmailContact { email } }
+    encoder self { Object { "email": Text(self.email) } }
 }
 
 data PhoneContact {
     phone: String
     decoder from Object { phone <- field("phone", string)  PhoneContact { phone } }
+    encoder self { Object { "phone": Text(self.phone) } }
 }
 
-// status で状態デコーダを振り分ける
+// kind で状態を振り分ける（decode）／判別子を付けて出力する（encode）
 data Contact = EmailContact | PhoneContact {
     decoder from Object discriminate on "kind" {
         "email" => EmailContact.decoder
         "phone" => PhoneContact.decoder
+    }
+    encoder discriminate on "kind" {
+        EmailContact => "email"
+        PhoneContact => "phone"
     }
 }
 

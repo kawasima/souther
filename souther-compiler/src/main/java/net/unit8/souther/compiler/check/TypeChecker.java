@@ -317,6 +317,25 @@ public final class TypeChecker {
                 }
             }
         });
+        sum.encoder().ifPresent(enc -> {
+            Set<String> covered = new HashSet<>();
+            for (Ast.EncVariant v : enc.variants()) {
+                if (!sum.arms().contains(v.armType())) {
+                    throw new CompileException(v.pos(),
+                            "`" + v.armType() + "` is not an arm of `" + sum.name() + "`");
+                }
+                if (!(symbols.get(v.armType()) instanceof Ast.Data d) || d.encoder().isEmpty()) {
+                    throw new CompileException(v.pos(), "arm `" + v.armType() + "` needs an encoder");
+                }
+                covered.add(v.armType());
+            }
+            for (String arm : sum.arms()) {
+                if (!covered.contains(arm)) {
+                    throw new CompileException(enc.pos(),
+                            "encoder for `" + sum.name() + "` is missing arm `" + arm + "`");
+                }
+            }
+        });
     }
 
     /** Effective field name → type (included data flattened first, then own fields). */
