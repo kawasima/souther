@@ -7,6 +7,7 @@ import net.unit8.souther.compiler.check.TypeChecker;
 
 import java.lang.classfile.ClassBuilder;
 import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassHierarchyResolver;
 import java.lang.classfile.CodeBuilder;
 import java.lang.classfile.Label;
 import java.lang.classfile.attribute.PermittedSubclassesAttribute;
@@ -75,6 +76,18 @@ public final class Backend {
     private static final MethodTypeDesc MTD_Boolean_valueOf =
             MethodTypeDesc.of(CD_Boolean, ConstantDescs.CD_boolean);
 
+    // Generated classes aren't loadable while we compile, so stack-map merging (e.g. an
+    // `if` producing a union of two data types) can't resolve their common supertype.
+    // Treat any class we can't resolve as a plain class extending Object.
+    private static final ClassFile CF = ClassFile.of(ClassFile.ClassHierarchyResolverOption.of(
+            desc -> {
+                ClassHierarchyResolver.ClassHierarchyInfo info =
+                        ClassHierarchyResolver.defaultResolver().getClassInfo(desc);
+                return info != null
+                        ? info
+                        : ClassHierarchyResolver.ClassHierarchyInfo.ofClass(ConstantDescs.CD_Object);
+            }));
+
     private final String pkg;
     private final Map<String, Ast.Def> symbols;
     private final Map<String, List<String>> armToSums;
@@ -107,7 +120,7 @@ public final class Backend {
         Map<String, Type> requiredSuccess = new HashMap<>();
         for (Ast.RequiredBehavior r : module.requireds()) {
             requiredNames.add(r.name());
-            requiredSuccess.put(r.name(), b.resolveType(r.ret().success()));
+            requiredSuccess.put(r.name(), b.successType(r.ret()));
         }
         for (Ast.BehaviorDef bd : module.behaviors()) {
             switch (bd) {
@@ -150,6 +163,10 @@ public final class Backend {
         return TypeChecker.resolveType(ref, symbols);
     }
 
+    private Type successType(Ast.RetType ret) {
+        return TypeChecker.successType(ret, symbols);
+    }
+
     private ClassDesc[] armInterfaces(String name) {
         List<ClassDesc> ifaces = new ArrayList<>();
         for (String sum : armToSums.getOrDefault(name, List.of())) {
@@ -170,7 +187,7 @@ public final class Backend {
         ClassDesc cdName = cd(data.name());
         Map<String, Type> fields = fieldTypes(data);
 
-        out.put(pkg + "." + data.name(), ClassFile.of().build(cdName, cb -> {
+        out.put(pkg + "." + data.name(), CF.build(cdName, cb -> {
             cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             ClassDesc[] ifaces = armInterfaces(data.name());
             if (ifaces.length > 0) {
@@ -199,7 +216,7 @@ public final class Backend {
         for (String arm : sum.arms()) {
             armCds.add(cd(arm));
         }
-        out.put(pkg + "." + sum.name(), ClassFile.of().build(cdX, cb -> {
+        out.put(pkg + "." + sum.name(), CF.build(cdX, cb -> {
             cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_INTERFACE | ClassFile.ACC_ABSTRACT);
             cb.with(PermittedSubclassesAttribute.ofSymbols(armCds));
             sum.decoder().ifPresent(disc -> {
@@ -219,7 +236,7 @@ public final class Backend {
 
     private byte[] generateSumDecoder(Ast.SumData sum, Ast.Discriminate disc) {
         ClassDesc cdDec = cd(sum.name() + "$Dec");
-        return ClassFile.of().build(cdDec, cb -> {
+        return CF.build(cdDec, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_Decoder);
             emitDefaultCtor(cb);
@@ -247,7 +264,7 @@ public final class Backend {
 
     private void generateUnit(Ast.UnitData unit, Map<String, byte[]> out) {
         ClassDesc cdU = cd(unit.name());
-        out.put(pkg + "." + unit.name(), ClassFile.of().build(cdU, cb -> {
+        out.put(pkg + "." + unit.name(), CF.build(cdU, cb -> {
             cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             ClassDesc[] ifaces = armInterfaces(unit.name());
             if (ifaces.length > 0) {
@@ -269,7 +286,7 @@ public final class Backend {
             applyParams[i] = CD_Object;
         }
         MethodTypeDesc mtdApply = MethodTypeDesc.of(CD_Result, applyParams);
-        return ClassFile.of().build(cdB, cb -> {
+        return CF.build(cdB, cb -> {
             cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             if (n == 1) {
                 cb.withInterfaceSymbols(CD_Behavior); // single-input behaviors compose with >>
@@ -353,7 +370,7 @@ public final class Backend {
         List<String> reqStages = new ArrayList<>(new LinkedHashSet<>(
                 pipe.stages().stream().filter(requiredNames::contains).toList()));
 
-        return ClassFile.of().build(cdP, cb -> {
+        return CF.build(cdP, cb -> {
             cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_Behavior);
             emitInjection(cb, cdP, reqStages);
@@ -482,7 +499,7 @@ public final class Backend {
     private byte[] generateDecoderClass(ClassDesc cdName, Ast.Data data, Ast.DecoderDef dec,
                                         Map<String, Type> fields) {
         ClassDesc cdDec = cd(data.name() + "$Dec");
-        return ClassFile.of().build(cdDec, cb -> {
+        return CF.build(cdDec, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_Decoder);
             emitDefaultCtor(cb);
@@ -646,7 +663,7 @@ public final class Backend {
 
     private byte[] generateEncoderClass(ClassDesc cdName, Ast.Data data, Ast.EncoderDef enc) {
         ClassDesc cdEnc = cd(data.name() + "$Enc");
-        return ClassFile.of().build(cdEnc, cb -> {
+        return CF.build(cdEnc, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_Encoder);
             emitDefaultCtor(cb);
@@ -976,6 +993,7 @@ public final class Backend {
         if (type == Type.STRING) return CD_String;
         if (type == Type.BOOL) return ConstantDescs.CD_boolean;
         if (type instanceof Type.ListOf) return CD_List;
+        if (type instanceof Type.Union) return CD_Object;
         return cd(((Type.Ref) type).name());
     }
 
