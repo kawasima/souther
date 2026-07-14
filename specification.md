@@ -176,17 +176,18 @@ import example.employee {
 ```text
 module   import   exposing
 data     invariant include
-decoder  encoder  from     as       discriminate
 behavior required constructs
 error
-match    case     with
+match    case     as       with
 let      if       then     else
 require
 success  failure
 true     false
 ```
 
-演算子・記号: `=` `|` `>>` `<-` `?` `->` `.` `..`
+演算子・記号: `=` `|` `>>` `?` `->` `.` `..`
+
+`decoder` / `encoder` / `discriminate` は予約語ではない。外部表現との対応づけは構文ではなく、data の形状から導出する（10章・11章）。
 
 ---
 
@@ -322,7 +323,7 @@ data 提出済み {
 
 ### 8.3 直和data（OR）
 
-仕様DSLの `OR` は直和に写る。**アームは既に定義済みの名前付きdataを参照できる**。出張申請モデルのように、状態それぞれが固有のフィールド・invariant・decoder・遷移behaviorを持ち、`OR` で束ねられる構造をそのまま表す。
+仕様DSLの `OR` は直和に写る。**アームは既に定義済みの名前付きdataを参照できる**。出張申請モデルのように、状態それぞれが固有のフィールド・invariant・遷移behaviorを持ち、`OR` で束ねられる構造をそのまま表す。
 
 ```text
 // 仕様DSL: data 出張申請 = 申請準備中 OR 提出済み OR 事前承認待ち OR 事前承認済み
@@ -440,92 +441,53 @@ Decoder は Raw から内部dataを生成する外部入力境界である。仕
 Decoder<T> : Raw -> Result<T, NonEmptyList<DecodeError>>
 ```
 
-### 10.2 単一フィールドdataのDecoder
+Decoder は Souther の構文には現れない。data のフィールド名と型から既定の Decoder を導出する。dataの定義に書くのは `data` / `invariant` / `behavior` だけでよい。外部表現との対応づけ（キー名・正規化・判別子）をドメイン定義に混ぜないための分担である。既定の導出で足りないときは、境界（Java / Raoh）側でカスタム Decoder を書く（10.4）。
 
-構築は、構築する型名を書いたレコードリテラルで行う（`yield` はない）。型名がその場に出るので、どの型を作っているかが読み手にもコンパイラにも局所的に分かる。
+### 10.2 導出規則
+
+既定の Decoder は次の規約で data の形状から導出する。
+
+- JSONキーはフィールド名に一致する。Object の各フィールドを同名キーから読む。
+- 単一プリミティブフィールドの data は newtype として扱い、Object ではなく裸のプリミティブ（Text / Int）から読む。
+- ネストした名前付きdataは、そのdataの導出Decoderで再帰的に読む。
+- `List<T>` は要素ごとに `T` の導出Decoderで読む。
+- 構築時に invariant を検査し、違反は `DecodeError` になる。Decoder の外部型がそもそも Result なので、失敗チャネルは常に満たす（9.4）。
+- 独立したフィールドのエラーは集積する（Applicative、15章）。
 
 ```text
-data Email {
-    value: String
-
-    invariant contains(value, "@")
-
-    decoder from Text as input {
-        let normalized = lowercase(trim(input))
-
-        require length(normalized) > 0
-            else EmptyEmail
-
-        require contains(normalized, "@")
-            else MissingAtSign
-
-        Email { value: normalized }
-    }
+// value ひとつだけの data は裸の整数から読む（newtype）
+data 金額 {
+    value: Int
+    invariant value >= 0
 }
-```
+// 導出Decoder: Int(n) -> 金額 { value: n }（invariant 検査つき）
 
-- `from Text as input` は、受け取る Raw の種別（Text）と、その中身を束縛する名前（input）を指定する。束縛名を明示するので、`input` のような造語を覚える必要がない。
-- `require <条件> else <コード>` は、条件が偽なら `DecodeError` を集積する。`<コード>` は識別子で、`DecodeError.code` になる。`path` は現在のデコード位置から補われる。
-- 本体の最後の式（`Email { value: normalized }`）が結果である。Decoder は生成権限を持つので `constructs` は不要。構築時に invariant（`contains(value, "@")`）も検査され、違反は `DecodeError` になる。
-
-### 10.3 直積dataのDecoder
-
-```text
-data 事前承認待ち {
-    include 出張申請共通項目
-    提出日時:         DateTime
-    事前承認理由リスト: List<事前承認理由>
-
-    decoder from Object {
-        共通            <- 出張申請共通項目.decoder
-        提出日時         <- field("submittedAt", dateTime)
-        事前承認理由リスト <- field("reasons", list(事前承認理由.decoder))
-
-        事前承認待ち { ..共通, 提出日時, 事前承認理由リスト }
-    }
+// 複数フィールドの data は Object から、フィールド名＝キーで読む
+data 従業員 {
+    id:    従業員ID
+    役職:   役職
+    上長ID: 従業員ID
 }
+// 導出Decoder: { "id": ..., "役職": ..., "上長ID": ... } を各フィールドの導出Decoderで読む
 ```
 
-`<-` は Decoder のフィールド取得を束縛する。独立したフィールド取得は並列検証（Applicative）として扱い、エラーを集積する（15章）。`..共通` は、デコードした `出張申請共通項目` の同名フィールドを展開して埋める（構築の spread。8.2 と12.4）。
+構築時の invariant 検査と spread（`..`）はレコードリテラルと同じ意味論に従う（8.2、12.4）。
 
-Decoderコンビネータ（標準ライブラリ）:
+### 10.3 直和dataの判別
 
-```text
-field(name, decoder)          // 必須フィールド
-optionalField(name, decoder)  // 任意フィールド。欠落は None
-index(i, decoder)             // リスト要素
-list(decoder)                 // List<T>
-string  int  decimal  bool  date  dateTime   // プリミティブ Decoder
-```
-
-### 10.4 直和dataのDecoder（discriminate）
-
-直和dataの Decoder は、判別キーを見てアームの Decoder へ振り分ける。
+直和dataの導出Decoderは、判別子フィールド `"type"` を見てアームの導出Decoderへ振り分ける。タグはアーム名である。
 
 ```text
 data 出張申請 =
     申請準備中 | 提出済み | 事前承認待ち | 事前承認済み
-{
-    decoder from Object discriminate on "status" {
-        "draft"        => 申請準備中.decoder
-        "submitted"    => 提出済み.decoder
-        "pending"      => 事前承認待ち.decoder
-        "pre_approved" => 事前承認済み.decoder
-    }
-}
+// 導出Decoder: "type" を見て "申請準備中" => 申請準備中, "提出済み" => 提出済み, ... へ振り分ける
 ```
 
-これは仕様DSL実装のデータベース境界（`status` で状態デコーダを振り分ける `discriminate`）に対応する。永続表現のバージョン読み分けも同じ形で書く。
+判別子キーやタグを業務固有のものにしたいとき（`"status"` を見て `"draft"` / `"submitted"` に振り分ける、永続表現の `representation_version` でバージョンを読み分けるなど）は、外部表現の都合であって data の形状からは導けない。境界側のカスタム Decoder で行う（10.4）。
 
-```text
-data 出張申請レコード表現 = ... {
-    // 削除条件: representation_version=1 の行が0件になったら v1 分岐を削除
-    decoder from Object discriminate on "representation_version" {
-        1 => 旧構造からの変換decoder
-        2 => 現構造decoder
-    }
-}
-```
+### 10.4 カスタム境界コーデック
+
+既定の導出で足りないとき（別キー名、正規化、既定値補完、業務固有の判別子、永続表現のバージョン分岐）は、Java 側で Raw を組み立て、data の（invariantを検査する）構築を呼ぶ Decoder を書く。24章の `JdbcFindMember` が `Member.decoder()` を呼ぶのがこの形である。外部表現の変換は境界に閉じ、ドメイン定義には持ち込まない。
 
 ### 10.5 Decoderエラー
 
@@ -541,10 +503,10 @@ data PathElement = Field(String) | Index(Int)
 
 ### 10.6 Raoh連携
 
-Decoder は直接 Raoh API へ変換せず、Decoder IR を経由する。
+導出した Decoder は直接 Raoh API へ変換せず、Decoder IR を経由する。
 
 ```text
-Source -> Typed AST -> Decoder IR -> Raoh backend
+Source -> Typed AST -> (導出) -> Decoder IR -> Raoh backend
 ```
 
 Decoder IR のノード:
@@ -556,7 +518,7 @@ Field  OptionalField  Index
 Map  FlatMap  Zip  Alternative  Discriminate  Refine  Succeed  Fail
 ```
 
-`Discriminate` は 10.4 の判別振り分けに対応する。Raoh固有型は言語の公開APIに露出させない。
+`Discriminate` は 10.3 の判別振り分けに対応する。Raoh固有型は言語の公開APIに露出させない。
 
 ---
 
@@ -570,38 +532,32 @@ Encoder は内部dataを Raw へ変換する全域関数である。
 Encoder<T> : T -> Raw
 ```
 
-### 11.2 宣言
+Decoder と同じく、Encoder も Souther の構文には現れない。data のフィールド名と型から既定の Encoder を導出する（10.1）。
+
+### 11.2 導出規則
+
+既定の Encoder は Decoder と対称の規約で導出する。
+
+- 単一プリミティブフィールドの data は newtype として、裸のプリミティブ（Text / Int）へ書く。
+- 複数フィールドの data は Object へ書く。キーはフィールド名、値は各フィールドの導出Encoderで変換する。`include` したフィールドも平らに並ぶ。
+- ネストした名前付きdataは、そのdataの導出Encoderで変換する。
+- `List<T>` は要素ごとに `T` の導出Encoderで変換する。
+- 直和dataは判別子フィールド `"type"` にアーム名のタグを付け、アームの導出Encoderで変換する。
 
 ```text
-data Email {
-    value: String
+data 金額 { value: Int  invariant value >= 0 }
+// 導出Encoder: 金額 -> Int(self.value)（裸の整数）
 
-    encoder self {
-        Text(self.value)
-    }
-}
-```
-
-`self` はエンコード対象の値を束縛する。本体は Raw を返す式である。
-
-### 11.3 直積dataのEncoder
-
-```text
 data 提出済み {
     include 出張申請共通項目
     提出日時: DateTime
-
-    encoder self {
-        Object {
-            "applicant":   従業員.encode(self.申請者),
-            "submittedAt": DateTime.encode(self.提出日時)
-            // ... include したフィールドも self から平らに参照できる
-        }
-    }
 }
+// 導出Encoder: 提出済み -> { "申請者": ..., "予定費用": ..., ..., "提出日時": ... }
 ```
 
-### 11.4 往復則
+キー名や表現を外部仕様に合わせたいときは、境界側でカスタム Encoder を書く（10.4）。
+
+### 11.3 往復則
 
 次を推奨する（要求はしない）。
 
@@ -876,15 +832,14 @@ A -> B
 
 ## 15. Decoderのエラー集積とbehaviorの失敗伝播
 
-Decoder内部では、独立した入力項目のエラーを集積する（Applicative）。
+Decoder内部では、独立した入力項目のエラーを集積する（Applicative）。導出された Object の Decoder は、各フィールドを同名キーから読み、独立したフィールドの失敗をすべて集める。
 
 ```text
-name  <- field("name", Name.decoder)
-email <- field("email", Email.decoder)
-age   <- field("age", Age.decoder)
+{ "name": ..., "email": ..., "age": ... }
+// name / email / age を各フィールドの導出Decoderで読み、独立した失敗をすべて集積する
 ```
 
-後続の取得が先に束縛した値に依存しないかぎり、これらは並列検証として扱い、失敗をすべて集める。ある取得が先行の束縛を参照する場合、その箇所から後は逐次（monadic）になり、先行が失敗すれば後続は実行しない。
+導出Decoderのフィールド取得は互いに独立で、失敗をすべて集める。カスタム境界コーデック（10.4）で、ある取得が先行の結果に依存する場合は、その箇所から逐次（monadic）になり、先行が失敗すれば後続は実行しない。
 
 一方、behaviorの `>>` は逐次合成であり、最初の失敗で停止する。
 
@@ -1009,6 +964,8 @@ get  containsKey  keys  values
 
 ### 18.6 Decoderコンビネータ
 
+Souther の構文には現れない。導出（10章）が内部で用い、境界のカスタムコーデック（10.4）が Java 側から使うランタイムAPIである。
+
 ```text
 field  optionalField  index  list
 string  int  decimal  bool  date  dateTime
@@ -1079,10 +1036,10 @@ Source -> Lexer -> Parser -> Untyped AST -> Name Resolution -> Typed AST
   -> Invariant Compilation
   -> Domain IR
   -> Decoder IR / Encoder IR / Behavior IR
-  -> Java Source Backend -> javac -> .class
+  -> ClassFile Backend -> .class（バイトコード直接生成）
 ```
 
-プロトタイプではJavaソース生成を採用する。最終的にはClass-File APIによる直接生成へ置き換えられるよう、Domain IRをJava構文へ依存させない。
+バックエンドは Class-File API（`java.lang.classfile`）で `.class` を直接生成する。javac は経由しない。Domain IR を Java 構文へ依存させないので、将来 Java ソース生成など別のbackendへ差し替えられる。
 
 ---
 
@@ -1249,15 +1206,11 @@ data 金額 {
 }
 
 // data 従業員ID = 文字列 // 空文字列ではない
+// value ひとつの newtype。導出Decoderが裸のテキストから読み、invariant を検査する。
+// 正規化（trim など）が要るなら境界側のカスタム Decoder で行う（10.4）。
 data 従業員ID {
     value: String
     invariant length(value) > 0
-
-    decoder from Text as input {
-        let v = trim(input)
-        require length(v) > 0 else EmptyEmployeeId
-        従業員ID { value: v }
-    }
 }
 
 // --- 単位ケースを含む入れ子の直和 ---
@@ -1293,16 +1246,10 @@ data 出張申請共通項目 {
 
 // --- 状態の直和（アーム＝名前付きdata、共通項目は include で平らに取り込む）---
 // data 出張申請 = 申請準備中 OR 提出済み OR 事前承認待ち OR 事前承認済み
+// 導出Decoderは判別子 "type" を見て、タグ＝アーム名（"申請準備中" など）で振り分ける。
+// DBの "status"／英語タグ（"draft" など）で読みたいときは境界側のカスタム Decoder で行う（10.4）。
 data 出張申請 =
     申請準備中 | 提出済み | 事前承認待ち | 事前承認済み
-{
-    decoder from Object discriminate on "status" {
-        "draft"        => 申請準備中.decoder
-        "submitted"    => 提出済み.decoder
-        "pending"      => 事前承認待ち.decoder
-        "pre_approved" => 事前承認済み.decoder
-    }
-}
 
 data 申請準備中 { include 出張申請共通項目 }
 data 提出済み   { include 出張申請共通項目  提出日時: DateTime }
@@ -1425,11 +1372,11 @@ var result = handle.apply(rawInput);
 
 ### 25.1 必須
 
-`.mdl`読み込み、Lexer、Parser、AST、モジュール、import、`data`（直積・直和・単位・アーム参照・`include`）、`?`、`invariant`、`decoder`（`from ... as` / `require` / `discriminate`）、`encoder`、`behavior`、`required behavior`、`constructs`、`error` 宣言と成功位置検査、要求集合の推論、レコードリテラルと spread と `with`、素の直和出力とResult出力の区別、`>>`、`match`、`let`、`if`、`require`、`success`、`failure`、`Option`、`Result`、`NonEmptyList`、null禁止、例外禁止、網羅性検査、生成権限検査、invariant失敗チャネル検査、behavior合成型検査、Javaソース生成、Java interface生成、Javaコンパイル、Raoh Decoder生成、Unicode識別子、単体テスト。
+`.mdl`読み込み、Lexer、Parser、AST、モジュール、import、`data`（直積・直和・単位・アーム参照・`include`）、`?`、`invariant`、形状からの `decoder` / `encoder` 導出（newtype・JSONキー＝フィールド名・判別子 `"type"`／アーム名タグ）、`behavior`、`required behavior`、`constructs`、`error` 宣言と成功位置検査、要求集合の推論、レコードリテラルと spread と `with`、素の直和出力とResult出力の区別、`>>`、`match`、`let`、`if`、`require`、`success`、`failure`、`Option`、`Result`、`NonEmptyList`、null禁止、例外禁止、網羅性検査、生成権限検査、invariant失敗チャネル検査、behavior合成型検査、ClassFile バイトコード生成、Java interface生成、Raoh Decoder生成、Unicode識別子、単体テスト。
 
 ### 25.2 後回し
 
-Class-File API、増分コンパイル、IDEプラグイン、LSP、ソースマップ、ユーザー定義高階behavior、高度な型推論、静的不変条件証明、structural intersection types、Decoder自動導出、Encoder自動導出、JSON Schema生成、Wasm出力、JavaScript出力、非同期required behavior。
+Javaソース生成backend（人間可読な生成コード）、増分コンパイル、IDEプラグイン、LSP、ソースマップ、ユーザー定義高階behavior、高度な型推論、静的不変条件証明、structural intersection types、手書き decoder / encoder 構文（別キー名・正規化・業務固有の判別子は境界のカスタムコーデックで扱う）、JSON Schema生成、Wasm出力、JavaScript出力、非同期required behavior。
 
 ---
 
@@ -1442,11 +1389,11 @@ Class-File API、増分コンパイル、IDEプラグイン、LSP、ソースマ
 5. `include`・単位data・直和（アーム参照）
 6. `?`
 7. 型解決
-8. Javaソース生成
-9. Decoder（`from ... as` / `require` / レコードリテラル / spread）
-10. discriminate
+8. ClassFile バイトコード生成
+9. デフォルト decoder の導出（newtype / object、JSONキー＝フィールド名）
+10. 直和の判別子導出（`"type"` / アーム名タグ）
 11. Raoh連携
-12. Encoder
+12. デフォルト encoder の導出
 13. behavior（純粋）
 14. `constructs` と invariant失敗チャネル検査
 15. `error` 宣言と、`Result` / 素の直和出力の区別
@@ -1462,14 +1409,14 @@ Class-File API、増分コンパイル、IDEプラグイン、LSP、ソースマ
 最初の垂直スライス:
 
 ```text
-data 金額 / 従業員ID  + invariant + decoder + encoder + Raoh + Java生成
+data 金額 / 従業員ID  + invariant + 導出decoder/encoder + Raoh + ClassFile生成
 ```
 
 次のスライス:
 
 ```text
 data 出張申請（状態の直和、共通項目は include）
-  + discriminate decoder
+  + 導出decoder（判別子 "type" / アーム名タグ）
   + behavior 事前承認する（Result, require, error 承認権限なし, 現在時刻() 依存の推論）
 ```
 
@@ -1477,9 +1424,9 @@ data 出張申請（状態の直和、共通項目は include）
 
 ## 27. MVP受け入れ条件
 
-### 27.1 状態の直和と discriminate decoder がコンパイルできる
+### 27.1 状態の直和と導出decoderがコンパイルできる
 
-23章の `出張申請`（アーム＝名前付きdata、共通項目は `include`）と `discriminate on "status"` の decoder がコンパイルできる。
+23章の `出張申請`（アーム＝名前付きdata、共通項目は `include`）と、その導出decoder（判別子 `"type"`／タグ＝アーム名）がコンパイルできる。
 
 ### 27.2 生成権限不足がコンパイルエラーになる
 
@@ -1520,7 +1467,7 @@ var handle = Handle.bind(new JdbcFindMember(dataSource));
 ## 28. 非機能要件
 
 - コンパイルエラーにソース位置を含める
-- 生成Javaコードを人間が読める形式にする
+- 生成する `.class` は標準の検証を通り、Java 21+ から素直に利用できる形にする
 - コンパイラ各段階を独立してテスト可能にする
 - ASTとDomain IRを分離する
 - Raoh依存をJVM backendへ隔離する
