@@ -54,10 +54,10 @@ class CompileListTest {
 
         Object request = ((Result.Ok<?, ?>) ok).value();
         Object count = loader.loadClass("demo.countReasons").getConstructor().newInstance();
-        Result<?, ?> r = ((Behavior<Object, Object>) count).apply(request);
+        Object out = ((Behavior<Object, Object>) count).apply(request);
 
         Encoder enc = (Encoder) loader.loadClass("demo.Count").getMethod("encoder").invoke(null);
-        assertEquals(Raw.integer(2), enc.encode(((Result.Ok<?, ?>) r).value()));
+        assertEquals(Raw.integer(2), enc.encode(out));
     }
 
     @Test

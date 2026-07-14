@@ -10,14 +10,13 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Integration test: a slice of the SMDD travel-expense model written in Japanese. The domain
  * declares only data + invariant + behavior; decoders/encoders are derived (JSON key = the
  * Japanese field name, single-primitive-field data is a newtype). It exercises value types
- * with invariants, {@code include} for common fields, and a state-transition behavior that
- * guards with {@code require} and builds the next state by spreading the previous one.
+ * with invariants, {@code include} for common fields, and a state-transition behavior whose
+ * output is an unmarked sum (提出済み | 却下) guarded with {@code require}.
  */
 class CompileBusinessTripTest {
 
@@ -50,8 +49,8 @@ class CompileBusinessTripTest {
 
             data 却下 { 理由: String }
 
-            // 提出する: 予定費用が上限内なら提出済みへ遷移、超過なら却下
-            behavior 提出する(申請: 申請準備中, 提出日時: String) -> Result<提出済み, 却下>
+            // 提出する: 予定費用が上限内なら提出済みへ遷移、超過なら却下（失敗も普通の data アーム）
+            behavior 提出する(申請: 申請準備中, 提出日時: String) -> 提出済み | 却下
                 constructs 提出済み
             {
                 require 申請.予定費用.value <= 100000 else 却下 { 理由: "high_cost" }
@@ -70,9 +69,9 @@ class CompileBusinessTripTest {
         return ((Result.Ok<?, ?>) d.decode(raw)).value();
     }
 
-    private Result<?, ?> submit(BytesClassLoader loader, Object draft, String at) throws Exception {
+    private Object submit(BytesClassLoader loader, Object draft, String at) throws Exception {
         Object 提出する = loader.loadClass("example.businesstrip.提出する").getConstructor().newInstance();
-        return (Result<?, ?>) 提出する.getClass()
+        return 提出する.getClass()
                 .getMethod("apply", Object.class, Object.class)
                 .invoke(提出する, draft, at);
     }
@@ -80,12 +79,13 @@ class CompileBusinessTripTest {
     @Test
     void submittingWithinBudgetTransitionsToSubmitted() throws Exception {
         BytesClassLoader loader = loader();
-        Result<?, ?> r = submit(loader, draft(loader, 50000), "2026-07-14");
-        assertTrue(r.isOk(), "50000 is within the 100000 budget");
+        Object r = submit(loader, draft(loader, 50000), "2026-07-14");
+        assertEquals("example.businesstrip.提出済み", r.getClass().getName(),
+                "50000 is within the 100000 budget");
 
         Encoder enc = (Encoder) loader.loadClass("example.businesstrip.提出済み")
                 .getMethod("encoder").invoke(null);
-        Raw.ObjectValue out = (Raw.ObjectValue) enc.encode(((Result.Ok<?, ?>) r).value());
+        Raw.ObjectValue out = (Raw.ObjectValue) enc.encode(r);
         assertEquals(Raw.text("emp-1"), out.value().get("申請者"));       // carried via ..申請
         assertEquals(Raw.integer(50000), out.value().get("予定費用"));    // carried via ..申請
         assertEquals(Raw.text("2026-07-14"), out.value().get("提出日時"));
@@ -94,8 +94,8 @@ class CompileBusinessTripTest {
     @Test
     void submittingOverBudgetIsRejected() throws Exception {
         BytesClassLoader loader = loader();
-        Result<?, ?> r = submit(loader, draft(loader, 200000), "2026-07-14");
-        assertTrue(r.isErr(), "200000 exceeds the budget, so the request is rejected");
-        assertEquals("example.businesstrip.却下", ((Result.Err<?, ?>) r).error().getClass().getName());
+        Object r = submit(loader, draft(loader, 200000), "2026-07-14");
+        // 200000 exceeds the budget, so the request yields the 却下 arm
+        assertEquals("example.businesstrip.却下", r.getClass().getName());
     }
 }

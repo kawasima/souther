@@ -11,7 +11,6 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** End-to-end test for multi-success output {@code -> A | B} chosen by a branch (spec 12.2). */
 class CompileMultiSuccessTest {
@@ -33,9 +32,8 @@ class CompileMultiSuccessTest {
         Decoder<?> dec = (Decoder<?>) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
         Object draft = ((Result.Ok<?, ?>) dec.decode(Raw.integer(cost))).value();
         Object behavior = loader.loadClass("demo.classify").getConstructor().newInstance();
-        Result<?, ?> r = ((Behavior<Object, Object>) behavior).apply(draft);
-        assertTrue(r.isOk());
-        return ((Result.Ok<?, ?>) r).value().getClass().getName();
+        Object r = ((Behavior<Object, Object>) behavior).apply(draft);
+        return r.getClass().getName();
     }
 
     @Test

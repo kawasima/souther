@@ -8,7 +8,6 @@ import net.unit8.souther.runtime.Result;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** End-to-end test for multi-parameter behaviors (spec 12.1, AND inputs). */
 class CompileMultiParamTest {
@@ -37,13 +36,12 @@ class CompileMultiParamTest {
         Object b = decode(loader, "B", 7);
 
         Object behavior = loader.loadClass("demo.mkPair").getConstructor().newInstance();
-        Result<?, ?> r = (Result<?, ?>) behavior.getClass()
+        Object out = behavior.getClass()
                 .getMethod("apply", Object.class, Object.class)
                 .invoke(behavior, a, b);
-        assertTrue(r.isOk());
 
         Encoder enc = (Encoder) loader.loadClass("demo.Pair").getMethod("encoder").invoke(null);
-        Raw.ObjectValue pair = (Raw.ObjectValue) enc.encode(((Result.Ok<?, ?>) r).value());
+        Raw.ObjectValue pair = (Raw.ObjectValue) enc.encode(out);
         assertEquals(Raw.integer(3), pair.value().get("left"));
         assertEquals(Raw.integer(7), pair.value().get("right"));
     }

@@ -23,12 +23,11 @@ class CompileBindTest {
 
             data Id { value: String }
             data Member { id: Id }
-            data NotFound { reason: String }
             data Resp { id: Id }
 
-            required behavior findMember(Id) -> Result<Member, NotFound>
+            required behavior findMember(Id) -> Member
 
-            behavior handle(id: Id) -> Result<Resp, NotFound> constructs Resp {
+            behavior handle(id: Id) -> Resp constructs Resp {
                 let m = findMember(id)
                 Resp { id: m.id }
             }
@@ -47,10 +46,11 @@ class CompileBindTest {
         Class<?> handleClass = loader.loadClass("demo.handle");
         var bind = handleClass.getMethod("bind", findMember); // bind(findMember) -> handle
 
-        // a Java-side implementation of findMember, injected through bind
+        // a Java-side implementation of findMember, injected through bind; returns a Member value
         Decoder<?> memberDecoder = (Decoder<?>) loader.loadClass("demo.Member")
                 .getMethod("decoder").invoke(null);
-        Behavior impl = id -> memberDecoder.decode(Raw.object(Map.of("id", Raw.text("m-1"))));
+        Behavior impl = id -> ((Result.Ok<?, ?>) memberDecoder.decode(
+                Raw.object(Map.of("id", Raw.text("m-1"))))).value();
         Object findMemberImpl = Proxy.newProxyInstance(loader, new Class[]{findMember},
                 (p, m, args) -> m.getName().equals("apply") ? impl.apply(args[0]) : null);
 
@@ -58,11 +58,10 @@ class CompileBindTest {
 
         Decoder<?> idDecoder = (Decoder<?>) loader.loadClass("demo.Id").getMethod("decoder").invoke(null);
         Object id = ((Result.Ok<?, ?>) idDecoder.decode(Raw.text("q"))).value();
-        Result<?, ?> r = ((Behavior) handle).apply(id);
-        assertTrue(r.isOk());
+        Object r = ((Behavior) handle).apply(id);
 
         Encoder enc = (Encoder) loader.loadClass("demo.Resp").getMethod("encoder").invoke(null);
-        Raw.ObjectValue out = (Raw.ObjectValue) enc.encode(((Result.Ok<?, ?>) r).value());
+        Raw.ObjectValue out = (Raw.ObjectValue) enc.encode(r);
         assertEquals(Raw.text("m-1"), out.value().get("id"));
     }
 }

@@ -9,7 +9,6 @@ import net.unit8.souther.runtime.Result;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** End-to-end test for arithmetic operators with correct precedence (spec 18.2). */
 class CompileArithmeticTest {
@@ -35,11 +34,11 @@ class CompileArithmeticTest {
         Object in = ((Result.Ok<?, ?>) inDecoder.decode(Raw.integer(5))).value();
 
         Object compute = loader.loadClass("demo.compute").getConstructor().newInstance();
-        Result<?, ?> r = ((Behavior<Object, Object>) compute).apply(in);
-        assertTrue(r.isOk());
+        // apply returns the output arm value directly (no Result wrapper)
+        Object out = ((Behavior<Object, Object>) compute).apply(in);
 
         Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
         // 5 * 2 + 10 = 20
-        assertEquals(Raw.integer(20), enc.encode(((Result.Ok<?, ?>) r).value()));
+        assertEquals(Raw.integer(20), enc.encode(out));
     }
 }

@@ -123,22 +123,58 @@ public final class TypeChecker {
                 throw new CompileException(pipe.pos(), "unknown behavior `" + s + "` in pipeline");
             }
         }
-        for (int i = 0; i < stages.size() - 1; i++) {
-            Type out = sigs.get(stages.get(i)).out();
-            Type in = sigs.get(stages.get(i + 1)).in();
-            if (!out.equals(in)) {
-                throw new CompileException(pipe.pos(), "E1701",
-                        "Cannot compose behaviors. Left output: " + out + ", right input: " + in);
-            }
+        Type running = sigs.get(stages.get(0)).out();
+        for (int i = 1; i < stages.size(); i++) {
+            running = route(running, sigs.get(stages.get(i)), pipe.pos());
         }
-        return new Sig(sigs.get(stages.get(0)).in(), sigs.get(stages.get(stages.size() - 1)).out());
+        return new Sig(sigs.get(stages.get(0)).in(), running);
+    }
+
+    /**
+     * Type-routed composition (spec 14.2): the arms of {@code out} that the next stage's input
+     * accepts feed it; the rest propagate. The composed output is {@code g.out} unioned with the
+     * propagated arms. Returns which arms were consumed via {@code consumed} (may be null).
+     */
+    public static Type route(Type out, Sig g, SourcePos pos) {
+        Type in = g.in();
+        if (isDataLike(out)) {
+            Set<String> consumed = new HashSet<>();
+            Set<String> rest = new HashSet<>();
+            for (String arm : namesOf(out)) {
+                if (subtypeOf(Type.ref(arm), in)) {
+                    consumed.add(arm);
+                } else {
+                    rest.add(arm);
+                }
+            }
+            if (consumed.isEmpty()) {
+                throw new CompileException(pos, "E1701",
+                        "Cannot compose behaviors: no output arm of the left behavior is accepted by "
+                                + "the right behavior's input. Left output: " + out + ", right input: " + in);
+            }
+            Set<String> gArms = namesOf(g.out());
+            if (gArms.isEmpty()) {
+                if (!rest.isEmpty()) {
+                    throw new CompileException(pos, "E1701",
+                            "cannot merge non-data stage output " + g.out() + " with propagated arms " + rest);
+                }
+                return g.out();
+            }
+            Set<String> result = new HashSet<>(rest);
+            result.addAll(gArms);
+            return armSetType(result);
+        }
+        if (!out.equals(in)) {
+            throw new CompileException(pos, "E1701",
+                    "Cannot compose behaviors. Left output: " + out + ", right input: " + in);
+        }
+        return g.out();
     }
 
     private static void checkBodyBehavior(Ast.BodyBehavior b, Map<String, Ast.Def> symbols,
                                           Set<String> allBehaviors, Map<String, ReqSig> reqSigs) {
-        Type successType = successType(b.ret(), symbols);
-        boolean isResult = b.ret().error().isPresent();
-        Type errorType = isResult ? resolveType(b.ret().error().get(), symbols) : null;
+        Type output = successType(b.ret(), symbols);
+        Set<String> outputArms = namesOf(output);
 
         Map<String, Type> env = new HashMap<>();
         for (Ast.Param p : b.params()) {
@@ -153,10 +189,6 @@ public final class TypeChecker {
                             throw new CompileException(call.pos(),
                                     "only required behaviors can be called from a body; compose others with `>>`");
                         }
-                        if (!isResult) {
-                            throw new CompileException(let.pos(), "calling `" + call.fn()
-                                    + "` needs a Result return type on behavior `" + b.name() + "`");
-                        }
                         if (call.args().size() != 1) {
                             throw new CompileException(call.pos(), call.fn() + " takes one argument");
                         }
@@ -169,22 +201,19 @@ public final class TypeChecker {
                 }
                 case Ast.Guard guard -> {
                     requireType(guard.cond(), Type.BOOL, env, null, symbols, "require condition");
-                    if (!isResult) {
-                        throw new CompileException(guard.pos(),
-                                "`require` needs a Result return type on behavior `" + b.name() + "`");
-                    }
                     Type ft = typeOf(guard.failure(), env, null, symbols);
-                    if (!ft.equals(errorType)) {
+                    if (!subtypeOf(ft, output)) {
                         throw new CompileException(guard.failure().pos(),
-                                "failure must be " + errorType + " but is " + ft);
+                                "`require ... else` value must be one of the output arms " + output
+                                        + " but is " + ft);
                     }
                 }
             }
         }
         Type rt = typeOf(b.result(), env, null, symbols);
-        if (!subtypeOf(rt, successType)) {
+        if (!subtypeOf(rt, output)) {
             throw new CompileException(b.result().pos(),
-                    "behavior `" + b.name() + "` returns " + successType + " but its body is " + rt);
+                    "behavior `" + b.name() + "` returns " + output + " but its body is " + rt);
         }
 
         Set<String> constructed = new HashSet<>();
@@ -200,11 +229,12 @@ public final class TypeChecker {
                         "Behavior `" + b.name() + "` constructs `" + c
                                 + "` but does not declare `constructs " + c + "`.");
             }
-            // a non-Result behavior has no channel for an invariant violation
-            if (!isResult && isInvariantBearing(c, symbols)) {
+            // an invariant violation needs an output arm to go to (spec 9.4)
+            if (isInvariantBearing(c, symbols) && !outputArms.contains("制約違反")) {
                 throw new CompileException(b.pos(), "E1003",
                         "Behavior `" + b.name() + "` constructs `" + c
-                                + "`, which has an invariant, but is not a Result behavior.");
+                                + "`, which has an invariant, but its output has no place for a "
+                                + "violation. Add an arm `制約違反`.");
             }
         }
         // invariant-bearing construction is railway-bound, so it may only be the behavior's result
@@ -719,10 +749,10 @@ public final class TypeChecker {
         }
     }
 
-    /** The success type of a behavior return: a single type, or a union of two or more. */
+    /** The output type of a behavior return: a single arm, or a union of two or more arms. */
     public static Type successType(Ast.RetType ret, Map<String, Ast.Def> symbols) {
         List<Type> members = new ArrayList<>();
-        for (Ast.TypeRef t : ret.success()) {
+        for (Ast.TypeRef t : ret.arms()) {
             members.add(resolveType(t, symbols));
         }
         if (members.size() == 1) {
@@ -738,11 +768,19 @@ public final class TypeChecker {
         return Type.union(names);
     }
 
-    private static boolean isDataLike(Type t) {
+    /** Builds a Ref (one name) or Union (two or more) from a set of arm names. */
+    static Type armSetType(Set<String> names) {
+        if (names.size() == 1) {
+            return Type.ref(names.iterator().next());
+        }
+        return Type.union(names);
+    }
+
+    public static boolean isDataLike(Type t) {
         return t instanceof Type.Ref || t instanceof Type.Union;
     }
 
-    private static Set<String> namesOf(Type t) {
+    public static Set<String> namesOf(Type t) {
         if (t instanceof Type.Ref r) {
             return Set.of(r.name());
         }
@@ -753,7 +791,7 @@ public final class TypeChecker {
     }
 
     /** True when a value of {@code sub} is acceptable where {@code sup} is expected. */
-    static boolean subtypeOf(Type sub, Type sup) {
+    public static boolean subtypeOf(Type sub, Type sup) {
         if (sub.equals(sup)) {
             return true;
         }
@@ -764,6 +802,7 @@ public final class TypeChecker {
         return switch (ref.name()) {
             case "Int" -> Type.INT;
             case "String" -> Type.STRING;
+            case "制約違反" -> Type.ref("制約違反");   // built-in constraint-violation arm (spec 9.4)
             case "List" -> {
                 if (ref.arg() == null) {
                     throw new CompileException(ref.pos(), "List needs a type argument, e.g. List<Int>");

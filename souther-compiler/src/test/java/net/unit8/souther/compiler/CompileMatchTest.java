@@ -12,7 +12,6 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** End-to-end test for {@code match} over a sum type, including exhaustiveness (spec 16.3, 22.7). */
 class CompileMatchTest {
@@ -40,13 +39,11 @@ class CompileMatchTest {
 
     private Raw run(BytesClassLoader loader, Raw contactRaw) throws Exception {
         Decoder<?> cd = (Decoder<?>) loader.loadClass("demo.Contact").getMethod("decoder").invoke(null);
-        Object contact = ((Result.Ok<?, ?>) cd.decode(contactRaw)).value();
+        Object contact = ((net.unit8.souther.runtime.Result.Ok<?, ?>) cd.decode(contactRaw)).value();
 
         Object behavior = loader.loadClass("demo.contactValue").getConstructor().newInstance();
         @SuppressWarnings("unchecked")
-        Result<?, ?> r = ((Behavior<Object, Object>) behavior).apply(contact);
-        assertTrue(r.isOk());
-        Object label = ((Result.Ok<?, ?>) r).value();
+        Object label = ((Behavior<Object, Object>) behavior).apply(contact);
 
         Encoder enc = (Encoder) loader.loadClass("demo.Label").getMethod("encoder").invoke(null);
         return enc.encode(label);

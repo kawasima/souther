@@ -49,13 +49,12 @@ class CompileIncludeTest {
                 Raw.object(Map.of("applicant", Raw.text("bob"), "cost", Raw.integer(100))))).value();
 
         Object submit = loader.loadClass("demo.submit").getConstructor().newInstance();
-        Result<?, ?> r = (Result<?, ?>) submit.getClass()
+        Object submitted = submit.getClass()
                 .getMethod("apply", Object.class, Object.class)
                 .invoke(submit, draft, "2026");
-        assertTrue(r.isOk());
 
         Encoder enc = (Encoder) loader.loadClass("demo.Submitted").getMethod("encoder").invoke(null);
-        Raw.ObjectValue out = (Raw.ObjectValue) enc.encode(((Result.Ok<?, ?>) r).value());
+        Raw.ObjectValue out = (Raw.ObjectValue) enc.encode(submitted);
         assertEquals(Raw.text("bob"), out.value().get("applicant"));  // from ..d (included field)
         assertEquals(Raw.integer(100), out.value().get("cost"));      // from ..d (included field)
         assertEquals(Raw.text("2026"), out.value().get("submittedAt"));

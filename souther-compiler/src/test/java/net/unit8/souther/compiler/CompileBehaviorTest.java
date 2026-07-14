@@ -49,9 +49,7 @@ class CompileBehaviorTest {
         Object member = ((Result.Ok<?, ?>) decoded).value();
 
         Object behavior = loader.loadClass("demo.toResponse").getConstructor().newInstance();
-        Result<?, ?> applied = ((Behavior<Object, Object>) behavior).apply(member);
-        assertTrue(applied.isOk());
-        Object response = ((Result.Ok<?, ?>) applied).value();
+        Object response = ((Behavior<Object, Object>) behavior).apply(member);
 
         Encoder responseEncoder = (Encoder) loader.loadClass("demo.Response")
                 .getMethod("encoder").invoke(null);

@@ -48,6 +48,7 @@ public final class Backend {
     private static final ClassDesc CD_Decoders = ClassDesc.of("net.unit8.souther.runtime.Decoders");
     private static final ClassDesc CD_Encoders = ClassDesc.of("net.unit8.souther.runtime.Encoders");
     private static final ClassDesc CD_Behavior = ClassDesc.of("net.unit8.souther.runtime.Behavior");
+    private static final ClassDesc CD_Violation = ClassDesc.of("net.unit8.souther.runtime.Violation");
     private static final ClassDesc CD_Boolean = ClassDesc.of("java.lang.Boolean");
     private static final ClassDesc CD_IllegalStateException = ClassDesc.of("java.lang.IllegalStateException");
 
@@ -74,7 +75,8 @@ public final class Backend {
     private static final MethodTypeDesc MTD_variant =
             MethodTypeDesc.of(CD_Result, CD_Raw, CD_String, CD_String, CD_Decoder);
     private static final MethodTypeDesc MTD_noVariant = MethodTypeDesc.of(CD_Result, CD_String);
-    private static final MethodTypeDesc MTD_apply = MethodTypeDesc.of(CD_Result, CD_Object);
+    private static final MethodTypeDesc MTD_apply = MethodTypeDesc.of(CD_Object, CD_Object);
+    private static final MethodTypeDesc MTD_orValue = MethodTypeDesc.of(CD_Object, CD_Result);
     private static final MethodTypeDesc MTD_Long_valueOf = MethodTypeDesc.of(CD_Long, ConstantDescs.CD_long);
     private static final MethodTypeDesc MTD_Boolean_valueOf =
             MethodTypeDesc.of(CD_Boolean, ConstantDescs.CD_boolean);
@@ -126,12 +128,13 @@ public final class Backend {
             requiredSuccess.put(r.name(), b.successType(r.ret()));
             out.put(module.name() + "." + r.name(), b.generateRequiredInterface(r.name()));
         }
+        Map<String, TypeChecker.Sig> sigs = TypeChecker.signatures(module, b.symbols);
         for (Ast.BehaviorDef bd : module.behaviors()) {
             switch (bd) {
                 case Ast.BodyBehavior body -> out.put(module.name() + "." + body.name(),
                         b.generateBodyBehavior(body, requiredNames, requiredSuccess));
                 case Ast.PipeBehavior pipe ->
-                        out.put(module.name() + "." + pipe.name(), b.generatePipe(pipe, requiredNames));
+                        out.put(module.name() + "." + pipe.name(), b.generatePipe(pipe, requiredNames, sigs));
             }
         }
         return out;
@@ -210,6 +213,12 @@ public final class Backend {
 
     private ClassDesc cd(String typeName) {
         return ClassDesc.of(pkg + "." + typeName);
+    }
+
+    /** The JVM class for an output arm: the built-in runtime {@code Violation} for 制約違反,
+     * otherwise the generated data class in this module. */
+    private ClassDesc armClass(String typeName) {
+        return typeName.equals("制約違反") ? CD_Violation : cd(typeName);
     }
 
     private void generateData(Ast.Data data, Map<String, byte[]> out) {
@@ -356,7 +365,7 @@ public final class Backend {
         for (int i = 0; i < n; i++) {
             applyParams[i] = CD_Object;
         }
-        MethodTypeDesc mtdApply = MethodTypeDesc.of(CD_Result, applyParams);
+        MethodTypeDesc mtdApply = MethodTypeDesc.of(CD_Object, applyParams);
         return CF.build(cdB, cb -> {
             cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             if (n == 1) {
@@ -377,24 +386,12 @@ public final class Backend {
                     switch (stmt) {
                         case Ast.Let let when let.value() instanceof Ast.Call call
                                 && requiredNames.contains(call.fn()) -> {
-                            // railway-bound call to an injected required behavior
+                            // call an injected required behavior; its apply returns the value directly
                             code.aload(0);
                             code.getfield(cdB, call.fn(), CD_Behavior);
                             Type at = gen.expr(call.args().get(0));
                             box(code, at);
                             code.invokeinterface(CD_Behavior, "apply", MTD_apply);
-                            int rSlot = gen.slot(Type.STRING);
-                            code.astore(rSlot);
-                            code.aload(rSlot);
-                            code.instanceOf(CD_ResultErr);
-                            Label ok = code.newLabel();
-                            code.ifeq(ok);
-                            code.aload(rSlot);
-                            code.areturn();
-                            code.labelBinding(ok);
-                            code.aload(rSlot);
-                            code.checkcast(CD_ResultOk);
-                            code.invokevirtual(CD_ResultOk, "value", MTD_Object);
                             Type letType = requiredSuccess.get(call.fn());
                             int vSlot = gen.slot(letType);
                             unbox(code, letType, vSlot);
@@ -410,8 +407,8 @@ public final class Backend {
                             gen.expr(guard.cond());
                             Label cont = code.newLabel();
                             code.ifne(cont);
-                            gen.expr(guard.failure());
-                            code.invokestatic(CD_Result, "err", MTD_Result_Object, true);
+                            Type ft = gen.expr(guard.failure());
+                            box(code, ft);
                             code.areturn();
                             code.labelBinding(cont);
                         }
@@ -424,18 +421,19 @@ public final class Backend {
                     Map<String, Type> flds = fieldTypes((Ast.Data) symbols.get(nd.typeName()));
                     emitFieldValues(gen, flds, nd.inits(), nd.spreads());
                     code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(flds)));
+                    code.invokestatic(CD_Violation, "orValue", MTD_orValue);
                     code.areturn();
                 } else {
                     Type rt = gen.expr(b.result());
                     box(code, rt);
-                    code.invokestatic(CD_Result, "ok", MTD_Result_Object, true);
                     code.areturn();
                 }
             });
         });
     }
 
-    private byte[] generatePipe(Ast.PipeBehavior pipe, Set<String> requiredNames) {
+    private byte[] generatePipe(Ast.PipeBehavior pipe, Set<String> requiredNames,
+                                Map<String, TypeChecker.Sig> sigs) {
         ClassDesc cdP = cd(pipe.name());
         // required stages become injected fields, in first-seen order
         List<String> reqStages = new ArrayList<>(new LinkedHashSet<>(
@@ -447,41 +445,64 @@ public final class Backend {
             emitInjection(cb, cdP, reqStages);
 
             cb.withMethodBody("apply", MTD_apply, ClassFile.ACC_PUBLIC, code -> {
-                // slot 1 holds the running success value; slot 2 the last stage's Result.
+                // slot 1 always holds the running value (an output arm, as an Object).
                 List<String> stages = pipe.stages();
-                for (int i = 0; i < stages.size(); i++) {
+                // stage 0 consumes the whole input unconditionally
+                pushStage(code, cdP, stages.get(0), requiredNames);
+                code.aload(1);
+                code.invokeinterface(CD_Behavior, "apply", MTD_apply);
+                code.astore(1);
+                Type running = sigs.get(stages.get(0)).out();
+                for (int i = 1; i < stages.size(); i++) {
                     String stage = stages.get(i);
-                    if (requiredNames.contains(stage)) {
-                        code.aload(0);
-                        code.getfield(cdP, stage, CD_Behavior);
+                    TypeChecker.Sig g = sigs.get(stage);
+                    if (TypeChecker.isDataLike(running)) {
+                        // route: apply g only if the running value is one of the arms it accepts
+                        List<String> accepted = new ArrayList<>();
+                        for (String arm : TypeChecker.namesOf(running)) {
+                            if (TypeChecker.subtypeOf(Type.ref(arm), g.in())) {
+                                accepted.add(arm);
+                            }
+                        }
+                        Label doApply = code.newLabel();
+                        Label after = code.newLabel();
+                        for (String arm : accepted) {
+                            code.aload(1);
+                            code.instanceOf(armClass(arm));
+                            code.ifne(doApply);
+                        }
+                        code.goto_(after);
+                        code.labelBinding(doApply);
+                        pushStage(code, cdP, stage, requiredNames);
+                        code.aload(1);
+                        code.invokeinterface(CD_Behavior, "apply", MTD_apply);
+                        code.astore(1);
+                        code.labelBinding(after);
                     } else {
-                        ClassDesc cdStage = cd(stage);
-                        code.new_(cdStage);
-                        code.dup();
-                        code.invokespecial(cdStage, "<init>", MTD_void);
-                    }
-                    code.aload(1);
-                    code.invokeinterface(CD_Behavior, "apply", MTD_apply);
-                    code.astore(2);
-                    // short-circuit on failure
-                    code.aload(2);
-                    code.instanceOf(CD_ResultErr);
-                    Label ok = code.newLabel();
-                    code.ifeq(ok);
-                    code.aload(2);
-                    code.areturn();
-                    code.labelBinding(ok);
-                    if (i < stages.size() - 1) {
-                        code.aload(2);
-                        code.checkcast(CD_ResultOk);
-                        code.invokevirtual(CD_ResultOk, "value", MTD_Object);
+                        pushStage(code, cdP, stage, requiredNames);
+                        code.aload(1);
+                        code.invokeinterface(CD_Behavior, "apply", MTD_apply);
                         code.astore(1);
                     }
+                    running = TypeChecker.route(running, g, pipe.pos());
                 }
-                code.aload(2);
+                code.aload(1);
                 code.areturn();
             });
         });
+    }
+
+    /** Pushes the behavior object for a pipeline stage: an injected field or a fresh instance. */
+    private void pushStage(CodeBuilder code, ClassDesc cdP, String stage, Set<String> requiredNames) {
+        if (requiredNames.contains(stage)) {
+            code.aload(0);
+            code.getfield(cdP, stage, CD_Behavior);
+        } else {
+            ClassDesc cdStage = cd(stage);
+            code.new_(cdStage);
+            code.dup();
+            code.invokespecial(cdStage, "<init>", MTD_void);
+        }
     }
 
     private void box(CodeBuilder code, Type type) {
@@ -1074,7 +1095,7 @@ public final class Backend {
         if (type == Type.BOOL) return ConstantDescs.CD_boolean;
         if (type instanceof Type.ListOf) return CD_List;
         if (type instanceof Type.Union) return CD_Object;
-        return cd(((Type.Ref) type).name());
+        return armClass(((Type.Ref) type).name());
     }
 
     private ClassDesc[] fieldDescs(Map<String, Type> fields) {

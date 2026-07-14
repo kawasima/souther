@@ -11,11 +11,10 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * End-to-end test for calling an (injected) required behavior from a behavior body with a
- * railway-bound {@code let}, short-circuiting on failure (spec 12, 13.5, 14.7).
+ * {@code let}; the required behavior's apply returns its output value directly (spec 12, 13.5).
  */
 class CompileCallTest {
 
@@ -24,12 +23,11 @@ class CompileCallTest {
 
             data Id { value: String }
             data Member { id: Id }
-            data NotFound { reason: String }
             data Resp { id: Id }
 
-            required behavior findMember(Id) -> Result<Member, NotFound>
+            required behavior findMember(Id) -> Member
 
-            behavior handle(id: Id) -> Result<Resp, NotFound>
+            behavior handle(id: Id) -> Resp
                 constructs Resp
             {
                 let m = findMember(id)
@@ -53,27 +51,14 @@ class CompileCallTest {
         Decoder<?> memberDecoder = (Decoder<?>) loader.loadClass("demo.Member")
                 .getMethod("decoder").invoke(null);
 
-        Behavior findMember = id -> memberDecoder.decode(Raw.object(Map.of("id", Raw.text("m-1"))));
+        // the injected required behavior returns a Member value directly
+        Behavior findMember = id -> ((Result.Ok<?, ?>) memberDecoder.decode(
+                Raw.object(Map.of("id", Raw.text("m-1"))))).value();
         Object handle = loader.loadClass("demo.handle").getConstructor(Behavior.class).newInstance(findMember);
 
-        Result<?, ?> r = ((Behavior) handle).apply(decode(loader, "Id", Raw.text("q")));
-        assertTrue(r.isOk());
+        Object r = ((Behavior) handle).apply(decode(loader, "Id", Raw.text("q")));
         Encoder enc = (Encoder) loader.loadClass("demo.Resp").getMethod("encoder").invoke(null);
-        Raw.ObjectValue resp = (Raw.ObjectValue) enc.encode(((Result.Ok<?, ?>) r).value());
+        Raw.ObjectValue resp = (Raw.ObjectValue) enc.encode(r);
         assertEquals(Raw.text("m-1"), resp.value().get("id"));
-    }
-
-    @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    void bodyShortCircuitsWhenRequiredBehaviorFails() throws Exception {
-        BytesClassLoader loader = loader();
-        Object notFound = decode(loader, "NotFound", Raw.text("gone"));
-
-        Behavior findMember = id -> Result.err(notFound);
-        Object handle = loader.loadClass("demo.handle").getConstructor(Behavior.class).newInstance(findMember);
-
-        Result<?, ?> r = ((Behavior) handle).apply(decode(loader, "Id", Raw.text("q")));
-        assertTrue(r.isErr(), "findMember failed, so Resp is never constructed");
-        assertEquals("demo.NotFound", ((Result.Err<?, ?>) r).error().getClass().getName());
     }
 }

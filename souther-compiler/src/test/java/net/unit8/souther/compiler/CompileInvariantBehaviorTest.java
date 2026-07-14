@@ -1,24 +1,21 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
-import net.unit8.souther.runtime.DecodeError;
 import net.unit8.souther.runtime.Decoder;
 import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.NonEmptyList;
 import net.unit8.souther.runtime.Raw;
 import net.unit8.souther.runtime.Result;
+import net.unit8.souther.runtime.Violation;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 /**
- * A Result behavior may construct an invariant-bearing data as its result; the construction
- * is railway-bound, so an invariant violation short-circuits into a failure (spec 9.4, 12.2).
+ * A behavior may construct an invariant-bearing data as its result; an invariant violation
+ * yields the built-in 制約違反 arm (runtime {@link Violation}) instead of the value (spec 9.4).
  */
 class CompileInvariantBehaviorTest {
 
@@ -27,14 +24,12 @@ class CompileInvariantBehaviorTest {
 
             data Draft { cost: Int }
 
-            data Overflow
-
             data Adjusted {
                 cost: Int
                 invariant cost >= 0
             }
 
-            behavior discount(d: Draft) -> Result<Adjusted, Overflow> constructs Adjusted {
+            behavior discount(d: Draft) -> Adjusted | 制約違反 constructs Adjusted {
                 Adjusted { cost: d.cost - 2000 }
             }
             """;
@@ -53,27 +48,25 @@ class CompileInvariantBehaviorTest {
     void constructionSucceedsWhenInvariantHolds() throws Exception {
         BytesClassLoader loader = loader();
         Object discount = loader.loadClass("demo.discount").getConstructor().newInstance();
-        Result<?, ?> r = ((Behavior<Object, Object>) discount).apply(draft(loader, 3000));
-        assertTrue(r.isOk(), "3000 - 2000 = 1000 >= 0");
+        Object r = ((Behavior<Object, Object>) discount).apply(draft(loader, 3000));
+        assertEquals("demo.Adjusted", r.getClass().getName(), "3000 - 2000 = 1000 >= 0");
 
         Encoder enc = (Encoder) loader.loadClass("demo.Adjusted").getMethod("encoder").invoke(null);
-        assertEquals(Raw.integer(1000), enc.encode(((Result.Ok<?, ?>) r).value()));
+        assertEquals(Raw.integer(1000), enc.encode(r));
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void invariantViolationShortCircuitsToFailure() throws Exception {
+    void invariantViolationYieldsTheViolationArm() throws Exception {
         BytesClassLoader loader = loader();
         Object discount = loader.loadClass("demo.discount").getConstructor().newInstance();
-        Result<?, ?> r = ((Behavior<Object, Object>) discount).apply(draft(loader, 100));
-        assertTrue(r.isErr(), "100 - 2000 = -1900 violates cost >= 0");
-
-        NonEmptyList<DecodeError> errors = (NonEmptyList<DecodeError>) ((Result.Err<?, ?>) r).error();
-        assertEquals("invariant_violation", errors.head().code());
+        Object r = ((Behavior<Object, Object>) discount).apply(draft(loader, 100));
+        // 100 - 2000 = -1900 violates cost >= 0, so the output is the 制約違反 arm
+        assertInstanceOf(Violation.class, r);
     }
 
     @Test
-    void constructingInvariantDataInPureBehaviorIsStillE1003() {
+    void constructingInvariantDataWithoutViolationArmIsE1003() {
         String src = """
                 module demo
                 data Positive { value: Int  invariant value > 0 }

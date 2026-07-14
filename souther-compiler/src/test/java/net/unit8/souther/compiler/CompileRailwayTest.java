@@ -9,11 +9,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * End-to-end test for Result behaviors with {@code require ... else} and Railway Oriented
- * {@code >>} composition that short-circuits on the first failure (spec 12.2, 14.7).
+ * End-to-end test for {@code require ... else} and type-routed {@code >>} composition: an arm
+ * the next stage does not accept propagates through unchanged (spec 12.2, 14.2).
  */
 class CompileRailwayTest {
 
@@ -24,13 +23,13 @@ class CompileRailwayTest {
             data TooLarge { limit: Int }
             data Doubled { value: Int }
 
-            // fails when the amount is over 100
-            behavior guard(a: Amount) -> Result<Amount, TooLarge> {
+            // over 100 leaves the main line as a TooLarge arm
+            behavior guard(a: Amount) -> Amount | TooLarge {
                 require a.value <= 100 else TooLarge { limit: 100 }
                 a
             }
 
-            // pure stage: repackage
+            // only accepts Amount; a TooLarge flowing in would bypass this stage
             behavior toDoubled(a: Amount) -> Doubled constructs Doubled {
                 Doubled { value: a.value }
             }
@@ -49,36 +48,36 @@ class CompileRailwayTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void pipelineSucceedsWhenGuardPasses() throws Exception {
+    void amountFlowsThroughToDoubled() throws Exception {
         BytesClassLoader loader = loader();
         Object process = loader.loadClass("demo.process").getConstructor().newInstance();
-        Result<?, ?> r = ((Behavior<Object, Object>) process).apply(amount(loader, 42));
-        assertTrue(r.isOk(), "42 <= 100, so the pipeline should produce a Doubled");
-        assertEquals("demo.Doubled", ((Result.Ok<?, ?>) r).value().getClass().getName());
+        Object r = ((Behavior<Object, Object>) process).apply(amount(loader, 42));
+        // 42 <= 100, so guard yields Amount, which toDoubled consumes into a Doubled
+        assertEquals("demo.Doubled", r.getClass().getName());
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void pipelineShortCircuitsOnGuardFailure() throws Exception {
+    void tooLargeArmPropagatesPastToDoubled() throws Exception {
         BytesClassLoader loader = loader();
         Object process = loader.loadClass("demo.process").getConstructor().newInstance();
-        Result<?, ?> r = ((Behavior<Object, Object>) process).apply(amount(loader, 500));
-        assertTrue(r.isErr(), "500 > 100, so guard fails and toDoubled never runs");
-        // the failure value is a TooLarge, not a Doubled
-        assertEquals("demo.TooLarge", ((Result.Err<?, ?>) r).error().getClass().getName());
+        Object r = ((Behavior<Object, Object>) process).apply(amount(loader, 500));
+        // 500 > 100, so guard yields TooLarge, which toDoubled does not accept: it propagates
+        assertEquals("demo.TooLarge", r.getClass().getName());
     }
 
     @Test
-    void requireWithoutResultReturnIsRejected() {
+    void requireElseValueMustBeAnOutputArm() {
+        // `other` is a B, which is not one of `bad`'s output arms (just A), so this is rejected.
         String src = """
                 module demo
                 data A { value: Int }
-                behavior bad(a: A) -> A {
-                    require a.value <= 1 else A { value: 0 }
+                data B { value: Int }
+                behavior bad(a: A, other: B) -> A {
+                    require a.value <= 1 else other
                     a
                 }
                 """;
-        // `bad` returns A (not a Result), so a guard is a compile error.
         assertThrows(CompileException.class, () -> Compiler.compile(src));
     }
 }

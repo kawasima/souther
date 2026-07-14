@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** End-to-end test for {@code >>} composition and required-behavior injection (spec 14, 13, 19.5). */
 class CompilePipeTest {
@@ -44,9 +43,8 @@ class CompilePipeTest {
     void composesDependencyFreeBehaviors() throws Exception {
         BytesClassLoader loader = loader();
         Object ab = loader.loadClass("demo.ab").getConstructor().newInstance();
-        Result<?, ?> applied = ((Behavior<Object, Object>) ab).apply(decode(loader, "Wrap", "hi"));
-        assertTrue(applied.isOk());
-        Object out = ((Result.Ok<?, ?>) applied).value();
+        // apply returns the output arm value directly
+        Object out = ((Behavior<Object, Object>) ab).apply(decode(loader, "Wrap", "hi"));
 
         Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
         assertEquals(Raw.text("hi"), ((Raw.ObjectValue) rewrap(enc, out)).value().get("value"));
@@ -65,14 +63,12 @@ class CompilePipeTest {
         Decoder<?> midDecoder = (Decoder<?>) loader.loadClass("demo.Mid")
                 .getMethod("decoder").invoke(null);
 
-        // The Java-side implementation of the required behavior `fetch`: returns a Result.
-        Behavior fetch = w -> midDecoder.decode(Raw.text("hello"));
+        // The Java-side implementation of `fetch` returns the Mid arm value directly.
+        Behavior fetch = w -> ((Result.Ok<?, ?>) midDecoder.decode(Raw.text("hello"))).value();
 
         Object handle = loader.loadClass("demo.handle")
                 .getConstructor(Behavior.class).newInstance(fetch);
-        Result<?, ?> applied = ((Behavior) handle).apply(decode(loader, "Wrap", "ignored"));
-        assertTrue(applied.isOk());
-        Object out = ((Result.Ok<?, ?>) applied).value();
+        Object out = ((Behavior) handle).apply(decode(loader, "Wrap", "ignored"));
 
         Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
         assertEquals(Raw.text("hello"), enc.encode(out));
@@ -80,6 +76,7 @@ class CompilePipeTest {
 
     @Test
     void mismatchedCompositionIsE1701() {
+        // a: Wrap -> Mid; feeding Mid into a second `a` (which wants Wrap) accepts no arm.
         String src = """
                 module demo
                 data Wrap { value: String }

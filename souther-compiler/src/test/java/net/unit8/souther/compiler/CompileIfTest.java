@@ -30,9 +30,9 @@ class CompileIfTest {
         Decoder<?> inDec = (Decoder<?>) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
         Object in = ((Result.Ok<?, ?>) inDec.decode(Raw.integer(n))).value();
         Object behavior = loader.loadClass("demo.classify").getConstructor().newInstance();
-        Result<?, ?> r = ((Behavior<Object, Object>) behavior).apply(in);
+        Object out = ((Behavior<Object, Object>) behavior).apply(in);
         Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        return ((Raw.TextValue) enc.encode(((Result.Ok<?, ?>) r).value())).value();
+        return ((Raw.TextValue) enc.encode(out)).value();
     }
 
     @Test
