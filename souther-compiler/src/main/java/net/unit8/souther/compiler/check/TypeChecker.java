@@ -200,11 +200,51 @@ public final class TypeChecker {
                         "Behavior `" + b.name() + "` constructs `" + c
                                 + "` but does not declare `constructs " + c + "`.");
             }
-            if (symbols.get(c) instanceof Ast.Data d && !effectiveInvariants(d, symbols).isEmpty()) {
+            // a non-Result behavior has no channel for an invariant violation
+            if (!isResult && isInvariantBearing(c, symbols)) {
                 throw new CompileException(b.pos(), "E1003",
                         "Behavior `" + b.name() + "` constructs `" + c
-                                + "`, which has an invariant; construct it through a decoder instead.");
+                                + "`, which has an invariant, but is not a Result behavior.");
             }
+        }
+        // invariant-bearing construction is railway-bound, so it may only be the behavior's result
+        for (Ast.BStmt stmt : b.stmts()) {
+            if (stmt instanceof Ast.Let let) {
+                forbidInvariantConstruct(let.value(), symbols);
+            }
+        }
+        if (b.result() instanceof Ast.NewData nd && isInvariantBearing(nd.typeName(), symbols)) {
+            for (Ast.FieldInit init : nd.inits()) {
+                forbidInvariantConstruct(init.value(), symbols);
+            }
+        } else {
+            forbidInvariantConstruct(b.result(), symbols);
+        }
+    }
+
+    public static boolean isInvariantBearing(String typeName, Map<String, Ast.Def> symbols) {
+        return symbols.get(typeName) instanceof Ast.Data d && !effectiveInvariants(d, symbols).isEmpty();
+    }
+
+    private static void forbidInvariantConstruct(Ast.Expr e, Map<String, Ast.Def> symbols) {
+        if (e instanceof Ast.NewData nd && isInvariantBearing(nd.typeName(), symbols)) {
+            throw new CompileException(nd.pos(), "invariant-bearing `" + nd.typeName()
+                    + "` can only be constructed as the behavior's result expression");
+        }
+        switch (e) {
+            case Ast.NewData nd -> nd.inits().forEach(i -> forbidInvariantConstruct(i.value(), symbols));
+            case Ast.FieldAccess fa -> forbidInvariantConstruct(fa.target(), symbols);
+            case Ast.Call call -> call.args().forEach(a -> forbidInvariantConstruct(a, symbols));
+            case Ast.Binary bin -> {
+                forbidInvariantConstruct(bin.left(), symbols);
+                forbidInvariantConstruct(bin.right(), symbols);
+            }
+            case Ast.Not not -> forbidInvariantConstruct(not.operand(), symbols);
+            case Ast.Match m -> {
+                forbidInvariantConstruct(m.scrutinee(), symbols);
+                m.cases().forEach(c -> forbidInvariantConstruct(c.body(), symbols));
+            }
+            default -> { }
         }
     }
 

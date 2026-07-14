@@ -329,10 +329,20 @@ public final class Backend {
                         }
                     }
                 }
-                Type rt = gen.expr(b.result());
-                box(code, rt);
-                code.invokestatic(CD_Result, "ok", MTD_Result_Object, true);
-                code.areturn();
+                if (b.result() instanceof Ast.NewData nd
+                        && TypeChecker.isInvariantBearing(nd.typeName(), symbols)) {
+                    // railway construct: __construct checks invariants and returns a Result
+                    ClassDesc cdType = cd(nd.typeName());
+                    Map<String, Type> flds = fieldTypes((Ast.Data) symbols.get(nd.typeName()));
+                    emitFieldValues(gen, flds, nd.inits(), nd.spreads());
+                    code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(flds)));
+                    code.areturn();
+                } else {
+                    Type rt = gen.expr(b.result());
+                    box(code, rt);
+                    code.invokestatic(CD_Result, "ok", MTD_Result_Object, true);
+                    code.areturn();
+                }
             });
         });
     }
