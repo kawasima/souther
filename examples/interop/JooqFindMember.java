@@ -1,6 +1,10 @@
-// 配置: 生成パッケージと同じ example.member に置く（spec 19.6）。
-// 失敗アーム（会員なし / 保存データ不正 / DB不通）は package-private コンストラクタなので、
-// この境界実装だけがそれらを構築できる。ドメインの生成経路はこうして閉じられる。
+// 配置: 生成パッケージ example.member に置く。理由は「失敗アーム（会員なし 等）を構築するため」
+// だけ（値の取り出しは encoder 経由なので、フィールド直読みのための in-package ではない）。
+//
+// 注意: 失敗アームを `new` で作れているのは、コンストラクタが package-private で、この実装を
+// 同一パッケージに置いたからにすぎない。これは生成経路の封じ込め（spec 2.1）を厳密には満たさない
+// 暫定策で、in-package なら任意の data を `new` できてしまう。本来は「required behavior に、宣言した
+// 出力アームだけを構築する capability を渡す」形にして、この `new` を無くしたい（README の設計メモ参照）。
 package example.member;
 
 import net.unit8.souther.runtime.DecodeFailure;
@@ -33,14 +37,18 @@ public final class JooqFindMember implements findMember {
 
     @Override
     public Object apply(Object input) {
-        会員ID id = (会員ID) input;              // 同一パッケージなので value を直接読める
+        会員ID id = (会員ID) input;
+        // 値を data の外へ取り出すのは encoder を通す（spec 8.5）。会員ID は newtype なので
+        // encode すると裸の Raw.Text になる。フィールド直読み（id.value）はパッケージ内でしか
+        // 効かず境界も破るので使わない。
+        String idStr = ((Raw.TextValue) 会員ID.encoder().encode(id)).value();
         try {
             var row = dsl
                     .select(field(name("id"), String.class),
                             field(name("email"), String.class),
                             field(name("display_name"), String.class))
                     .from(table(name("member")))
-                    .where(field(name("id"), String.class).eq(id.value))
+                    .where(field(name("id"), String.class).eq(idStr))
                     .fetchOne();
 
             if (row == null) {
