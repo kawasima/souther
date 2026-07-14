@@ -31,7 +31,7 @@ class CompileArithmeticTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
 
         Decoder<?> inDecoder = (Decoder<?>) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Result.Ok<?, ?>) inDecoder.decode(Raw.integer(5))).value();
+        Object in = inDecoder.decode(Raw.integer(5));
 
         Object compute = loader.loadClass("demo.compute").getConstructor().newInstance();
         // apply returns the output arm value directly (no Result wrapper)

@@ -43,7 +43,7 @@ class CompileRailwayTest {
 
     private Object amount(BytesClassLoader loader, long n) throws Exception {
         Decoder<?> d = (Decoder<?>) loader.loadClass("demo.Amount").getMethod("decoder").invoke(null);
-        return ((Result.Ok<?, ?>) d.decode(Raw.integer(n))).value();
+        return d.decode(Raw.integer(n));
     }
 
     @Test

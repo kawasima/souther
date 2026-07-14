@@ -1,6 +1,7 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.DecodeError;
+import net.unit8.souther.runtime.DecodeFailure;
 import net.unit8.souther.runtime.Decoder;
 import net.unit8.souther.runtime.Encoder;
 import net.unit8.souther.runtime.NonEmptyList;
@@ -45,8 +46,8 @@ class CompileIncludeTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(FLOW), getClass().getClassLoader());
 
         Decoder<?> draftDecoder = (Decoder<?>) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
-        Object draft = ((Result.Ok<?, ?>) draftDecoder.decode(
-                Raw.object(Map.of("applicant", Raw.text("bob"), "cost", Raw.integer(100))))).value();
+        Object draft = draftDecoder.decode(
+                Raw.object(Map.of("applicant", Raw.text("bob"), "cost", Raw.integer(100))));
 
         Object submit = loader.loadClass("demo.submit").getConstructor().newInstance();
         Object submitted = submit.getClass()
@@ -70,14 +71,14 @@ class CompileIncludeTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
         Decoder<?> decoder = (Decoder<?>) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
 
-        Result<?, NonEmptyList<DecodeError>> good = decoder.decode(
+        Object good = decoder.decode(
                 Raw.object(Map.of("applicant", Raw.text("bob"), "cost", Raw.integer(5))));
-        assertTrue(good.isOk());
+        assertTrue(!(good instanceof DecodeFailure));
 
-        Result<?, NonEmptyList<DecodeError>> bad = decoder.decode(
+        Object bad = decoder.decode(
                 Raw.object(Map.of("applicant", Raw.text("bob"), "cost", Raw.integer(-5))));
-        assertTrue(bad.isErr(), "Common's invariant is inherited by Draft");
+        assertTrue(bad instanceof DecodeFailure, "Common's invariant is inherited by Draft");
         assertEquals("invariant_violation",
-                ((Result.Err<?, NonEmptyList<DecodeError>>) bad).error().head().code());
+                ((DecodeFailure) bad).errors().head().code());
     }
 }

@@ -35,7 +35,7 @@ class CompilePipeTest {
 
     private Object decode(BytesClassLoader loader, String type, String value) throws Exception {
         Decoder<?> d = (Decoder<?>) loader.loadClass("demo." + type).getMethod("decoder").invoke(null);
-        return ((Result.Ok<?, ?>) d.decode(Raw.text(value))).value();
+        return d.decode(Raw.text(value));
     }
 
     @Test
@@ -64,7 +64,7 @@ class CompilePipeTest {
                 .getMethod("decoder").invoke(null);
 
         // The Java-side implementation of `fetch` returns the Mid arm value directly.
-        Behavior fetch = w -> ((Result.Ok<?, ?>) midDecoder.decode(Raw.text("hello"))).value();
+        Behavior fetch = w -> midDecoder.decode(Raw.text("hello"));
 
         Object handle = loader.loadClass("demo.handle")
                 .getConstructor(Behavior.class).newInstance(fetch);

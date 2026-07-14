@@ -41,7 +41,7 @@ class CompileCallTest {
 
     private Object decode(BytesClassLoader loader, String type, Raw raw) throws Exception {
         Decoder<?> d = (Decoder<?>) loader.loadClass("demo." + type).getMethod("decoder").invoke(null);
-        return ((Result.Ok<?, ?>) d.decode(raw)).value();
+        return d.decode(raw);
     }
 
     @Test
@@ -52,8 +52,8 @@ class CompileCallTest {
                 .getMethod("decoder").invoke(null);
 
         // the injected required behavior returns a Member value directly
-        Behavior findMember = id -> ((Result.Ok<?, ?>) memberDecoder.decode(
-                Raw.object(Map.of("id", Raw.text("m-1"))))).value();
+        Behavior findMember = id -> memberDecoder.decode(
+                Raw.object(Map.of("id", Raw.text("m-1"))));
         Object handle = loader.loadClass("demo.handle").getConstructor(Behavior.class).newInstance(findMember);
 
         Object r = ((Behavior) handle).apply(decode(loader, "Id", Raw.text("q")));

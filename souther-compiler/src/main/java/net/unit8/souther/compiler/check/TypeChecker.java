@@ -803,6 +803,7 @@ public final class TypeChecker {
             case "Int" -> Type.INT;
             case "String" -> Type.STRING;
             case "制約違反" -> Type.ref("制約違反");   // built-in constraint-violation arm (spec 9.4)
+            case "復号失敗" -> Type.ref("復号失敗");   // built-in decode-failure arm (spec 10.5)
             case "List" -> {
                 if (ref.arg() == null) {
                     throw new CompileException(ref.pos(), "List needs a type argument, e.g. List<Int>");

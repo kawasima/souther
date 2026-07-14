@@ -39,7 +39,7 @@ class CompileMatchTest {
 
     private Raw run(BytesClassLoader loader, Raw contactRaw) throws Exception {
         Decoder<?> cd = (Decoder<?>) loader.loadClass("demo.Contact").getMethod("decoder").invoke(null);
-        Object contact = ((net.unit8.souther.runtime.Result.Ok<?, ?>) cd.decode(contactRaw)).value();
+        Object contact = cd.decode(contactRaw);
 
         Object behavior = loader.loadClass("demo.contactValue").getConstructor().newInstance();
         @SuppressWarnings("unchecked")

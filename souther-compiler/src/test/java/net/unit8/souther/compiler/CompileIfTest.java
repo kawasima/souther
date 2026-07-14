@@ -28,7 +28,7 @@ class CompileIfTest {
     @SuppressWarnings("unchecked")
     private String classify(BytesClassLoader loader, long n) throws Exception {
         Decoder<?> inDec = (Decoder<?>) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Result.Ok<?, ?>) inDec.decode(Raw.integer(n))).value();
+        Object in = inDec.decode(Raw.integer(n));
         Object behavior = loader.loadClass("demo.classify").getConstructor().newInstance();
         Object out = ((Behavior<Object, Object>) behavior).apply(in);
         Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);

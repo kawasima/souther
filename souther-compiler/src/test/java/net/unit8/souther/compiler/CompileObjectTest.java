@@ -1,6 +1,7 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.DecodeError;
+import net.unit8.souther.runtime.DecodeFailure;
 import net.unit8.souther.runtime.Decoder;
 import net.unit8.souther.runtime.Encoder;
 import net.unit8.souther.runtime.NonEmptyList;
@@ -49,10 +50,8 @@ class CompileObjectTest {
                 "balance", Raw.integer(100),
                 "owner", Raw.text("bob")));
 
-        Result<?, NonEmptyList<DecodeError>> ok = decoder.decode(input);
-        assertTrue(ok.isOk(), "expected a valid account to decode");
-
-        Object value = ((Result.Ok<?, ?>) ok).value();
+        Object value = decoder.decode(input);
+        assertTrue(!(value instanceof DecodeFailure), "expected a valid account to decode");
         Encoder enc = (Encoder) account.getMethod("encoder").invoke(null);
         Raw.ObjectValue encoded = (Raw.ObjectValue) enc.encode(value);
         assertEquals(Raw.integer(100), encoded.value().get("balance"));
@@ -68,9 +67,9 @@ class CompileObjectTest {
                 "id", Raw.integer(5),
                 "balance", Raw.text("nope")));
 
-        Result<?, NonEmptyList<DecodeError>> bad = decoder.decode(input);
-        assertTrue(bad.isErr());
-        NonEmptyList<DecodeError> errors = ((Result.Err<?, NonEmptyList<DecodeError>>) bad).error();
+        Object bad = decoder.decode(input);
+        assertTrue(bad instanceof DecodeFailure);
+        NonEmptyList<DecodeError> errors = ((DecodeFailure) bad).errors();
         assertEquals(3, errors.size(), "all three field errors should accumulate");
 
         Set<String> codes = errors.toList().stream()
@@ -88,9 +87,9 @@ class CompileObjectTest {
                 "balance", Raw.integer(0),
                 "owner", Raw.text("bob")));
 
-        Result<?, NonEmptyList<DecodeError>> bad = decoder.decode(input);
-        assertTrue(bad.isErr());
+        Object bad = decoder.decode(input);
+        assertTrue(bad instanceof DecodeFailure);
         assertEquals("invariant_violation",
-                ((Result.Err<?, NonEmptyList<DecodeError>>) bad).error().head().code());
+                ((DecodeFailure) bad).errors().head().code());
     }
 }

@@ -48,6 +48,6 @@ class CompileMultiParamTest {
 
     private Object decode(BytesClassLoader loader, String type, long n) throws Exception {
         Decoder<?> d = (Decoder<?>) loader.loadClass("demo." + type).getMethod("decoder").invoke(null);
-        return ((Result.Ok<?, ?>) d.decode(Raw.integer(n))).value();
+        return d.decode(Raw.integer(n));
     }
 }

@@ -70,17 +70,41 @@ public final class Decoders {
     /** Reads the field {@code key} from a {@code Raw.Object} with a nested decoder. */
     public static <T> Result<T, NonEmptyList<DecodeError>> objectField(
             Raw raw, String key, Decoder<T> inner) {
-        return field(raw, key, inner::decode);
+        return field(raw, key, child -> toResult(inner.decode(child)));
     }
 
     /** The primitive text decoder as a {@link Decoder} (for list elements and nesting). */
     public static Decoder<String> textDecoder() {
-        return Decoders::text;
+        return raw -> finish(text(raw));
     }
 
     /** The primitive int decoder as a {@link Decoder}. */
     public static Decoder<Long> intDecoder() {
-        return Decoders::integer;
+        return raw -> finish(integer(raw));
+    }
+
+    /** The decoder boundary value {@code T | 復号失敗}: the value on success, a
+     * {@link DecodeFailure} on failure. Called at the end of every generated {@code decode}. */
+    public static Object finish(Result<?, NonEmptyList<DecodeError>> r) {
+        return switch (r) {
+            case Result.Ok<?, NonEmptyList<DecodeError>> ok -> ok.value();
+            case Result.Err<?, NonEmptyList<DecodeError>> err -> new DecodeFailure(err.error());
+        };
+    }
+
+    /** Wraps accumulated errors as the {@code 復号失敗} arm. Called by generated object decoders. */
+    public static Object decodeFailure(NonEmptyList<DecodeError> errors) {
+        return new DecodeFailure(errors);
+    }
+
+    /** Converts a nested decoder's boundary value ({@code T | 復号失敗}) back to the internal
+     * accumulating Result so combinators can merge errors. */
+    @SuppressWarnings("unchecked")
+    private static <T> Result<T, NonEmptyList<DecodeError>> toResult(Object decoded) {
+        if (decoded instanceof DecodeFailure df) {
+            return Result.err(df.errors());
+        }
+        return Result.ok((T) decoded);
     }
 
     /** Builds a decoder for {@code List<T>} that applies {@code element} to each item,
@@ -88,13 +112,14 @@ public final class Decoders {
     public static <T> Decoder<List<T>> listOf(Decoder<T> element) {
         return raw -> {
             if (!(raw instanceof Raw.ListValue lv)) {
-                return fail("expected_list", "expected a list");
+                return new DecodeFailure(NonEmptyList.of(
+                        DecodeError.atRoot("expected_list", "expected a list")));
             }
             List<T> values = new ArrayList<>();
             List<DecodeError> errors = new ArrayList<>();
             int i = 0;
             for (Raw item : lv.value()) {
-                switch (element.decode(item)) {
+                switch (Decoders.<T>toResult(element.decode(item))) {
                     case Result.Ok<T, NonEmptyList<DecodeError>> ok -> values.add(ok.value());
                     case Result.Err<T, NonEmptyList<DecodeError>> err -> {
                         for (DecodeError e : err.error().toList()) {
@@ -108,9 +133,9 @@ public final class Decoders {
                 i++;
             }
             if (!errors.isEmpty()) {
-                return Result.err(new NonEmptyList<>(errors.get(0), errors.subList(1, errors.size())));
+                return new DecodeFailure(new NonEmptyList<>(errors.get(0), errors.subList(1, errors.size())));
             }
-            return Result.ok(List.copyOf(values));
+            return List.copyOf(values);
         };
     }
 
@@ -119,8 +144,7 @@ public final class Decoders {
      * {@code tag}, and if it matches runs {@code inner}. Returns {@code null} when the
      * tag does not match, so generated code can try the next variant (spec section 10.4).
      */
-    public static <T> Result<T, NonEmptyList<DecodeError>> variant(
-            Raw raw, String key, String tag, Decoder<T> inner) {
+    public static Object variant(Raw raw, String key, String tag, Decoder<?> inner) {
         return tag.equals(discriminant(raw, key)) ? inner.decode(raw) : null;
     }
 
@@ -138,9 +162,9 @@ public final class Decoders {
         return null;
     }
 
-    /** The failure returned when no discriminator variant matched (spec section 10.4). */
-    public static <T> Result<T, NonEmptyList<DecodeError>> noVariant(String key) {
-        return Result.err(NonEmptyList.of(
+    /** The {@code 復号失敗} arm returned when no discriminator variant matched (spec section 10.4). */
+    public static Object noVariant(String key) {
+        return new DecodeFailure(NonEmptyList.of(
                 new DecodeError(List.of(new PathElement.Field(key)), "no_variant", "no variant matched")));
     }
 

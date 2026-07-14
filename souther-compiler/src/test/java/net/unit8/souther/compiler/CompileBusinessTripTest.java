@@ -66,7 +66,7 @@ class CompileBusinessTripTest {
         Decoder<?> d = (Decoder<?>) loader.loadClass("example.businesstrip.申請準備中")
                 .getMethod("decoder").invoke(null);
         Raw raw = Raw.object(Map.of("申請者", Raw.text("emp-1"), "予定費用", Raw.integer(cost)));
-        return ((Result.Ok<?, ?>) d.decode(raw)).value();
+        return d.decode(raw);
     }
 
     private Object submit(BytesClassLoader loader, Object draft, String at) throws Exception {

@@ -49,15 +49,15 @@ class CompileBindTest {
         // a Java-side implementation of findMember, injected through bind; returns a Member value
         Decoder<?> memberDecoder = (Decoder<?>) loader.loadClass("demo.Member")
                 .getMethod("decoder").invoke(null);
-        Behavior impl = id -> ((Result.Ok<?, ?>) memberDecoder.decode(
-                Raw.object(Map.of("id", Raw.text("m-1"))))).value();
+        Behavior impl = id -> memberDecoder.decode(
+                Raw.object(Map.of("id", Raw.text("m-1"))));
         Object findMemberImpl = Proxy.newProxyInstance(loader, new Class[]{findMember},
                 (p, m, args) -> m.getName().equals("apply") ? impl.apply(args[0]) : null);
 
         Object handle = bind.invoke(null, findMemberImpl);
 
         Decoder<?> idDecoder = (Decoder<?>) loader.loadClass("demo.Id").getMethod("decoder").invoke(null);
-        Object id = ((Result.Ok<?, ?>) idDecoder.decode(Raw.text("q"))).value();
+        Object id = idDecoder.decode(Raw.text("q"));
         Object r = ((Behavior) handle).apply(id);
 
         Encoder enc = (Encoder) loader.loadClass("demo.Resp").getMethod("encoder").invoke(null);

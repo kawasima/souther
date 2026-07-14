@@ -30,7 +30,7 @@ class CompileMultiSuccessTest {
     @SuppressWarnings("unchecked")
     private String classify(BytesClassLoader loader, long cost) throws Exception {
         Decoder<?> dec = (Decoder<?>) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
-        Object draft = ((Result.Ok<?, ?>) dec.decode(Raw.integer(cost))).value();
+        Object draft = dec.decode(Raw.integer(cost));
         Object behavior = loader.loadClass("demo.classify").getConstructor().newInstance();
         Object r = ((Behavior<Object, Object>) behavior).apply(draft);
         return r.getClass().getName();

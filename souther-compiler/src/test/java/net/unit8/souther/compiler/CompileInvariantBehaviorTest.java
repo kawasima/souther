@@ -40,7 +40,7 @@ class CompileInvariantBehaviorTest {
 
     private Object draft(BytesClassLoader loader, long cost) throws Exception {
         Decoder<?> d = (Decoder<?>) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
-        return ((Result.Ok<?, ?>) d.decode(Raw.integer(cost))).value();
+        return d.decode(Raw.integer(cost));
     }
 
     @Test

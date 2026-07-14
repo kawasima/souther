@@ -2,6 +2,7 @@ package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
 import net.unit8.souther.runtime.DecodeError;
+import net.unit8.souther.runtime.DecodeFailure;
 import net.unit8.souther.runtime.Decoder;
 import net.unit8.souther.runtime.Encoder;
 import net.unit8.souther.runtime.NonEmptyList;
@@ -49,10 +50,8 @@ class CompileListTest {
         Raw input = Raw.object(Map.of(
                 "nums", Raw.list(List.of(Raw.integer(1), Raw.integer(2), Raw.integer(3))),
                 "reasons", Raw.list(List.of(Raw.text("high"), Raw.text("late")))));
-        Result<?, NonEmptyList<DecodeError>> ok = decoder.decode(input);
-        assertTrue(ok.isOk());
-
-        Object request = ((Result.Ok<?, ?>) ok).value();
+        Object request = decoder.decode(input);
+        assertTrue(!(request instanceof DecodeFailure));
         Object count = loader.loadClass("demo.countReasons").getConstructor().newInstance();
         Object out = ((Behavior<Object, Object>) count).apply(request);
 
@@ -68,9 +67,9 @@ class CompileListTest {
         Raw input = Raw.object(Map.of(
                 "nums", Raw.list(List.of(Raw.integer(1), Raw.text("bad"), Raw.integer(3))),
                 "reasons", Raw.list(List.of())));
-        Result<?, NonEmptyList<DecodeError>> bad = decoder.decode(input);
-        assertTrue(bad.isErr());
-        DecodeError e = ((Result.Err<?, NonEmptyList<DecodeError>>) bad).error().head();
+        Object bad = decoder.decode(input);
+        assertTrue(bad instanceof DecodeFailure);
+        DecodeError e = ((DecodeFailure) bad).errors().head();
         assertEquals("expected_int", e.code());
         // path is [nums, 1]
         assertEquals(new DecodeError.PathElement.Field("nums"), e.path().get(0));

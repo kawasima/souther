@@ -43,10 +43,8 @@ class CompileBehaviorTest {
 
         Decoder<?> memberDecoder = (Decoder<?>) loader.loadClass("demo.Member")
                 .getMethod("decoder").invoke(null);
-        Result<?, ?> decoded = memberDecoder.decode(
+        Object member = memberDecoder.decode(
                 Raw.object(Map.of("id", Raw.text("m-1"), "name", Raw.text("bob"))));
-        assertTrue(decoded.isOk());
-        Object member = ((Result.Ok<?, ?>) decoded).value();
 
         Object behavior = loader.loadClass("demo.toResponse").getConstructor().newInstance();
         Object response = ((Behavior<Object, Object>) behavior).apply(member);

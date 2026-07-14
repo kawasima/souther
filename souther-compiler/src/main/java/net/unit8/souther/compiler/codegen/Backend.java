@@ -49,11 +49,15 @@ public final class Backend {
     private static final ClassDesc CD_Encoders = ClassDesc.of("net.unit8.souther.runtime.Encoders");
     private static final ClassDesc CD_Behavior = ClassDesc.of("net.unit8.souther.runtime.Behavior");
     private static final ClassDesc CD_Violation = ClassDesc.of("net.unit8.souther.runtime.Violation");
+    private static final ClassDesc CD_DecodeFailure = ClassDesc.of("net.unit8.souther.runtime.DecodeFailure");
     private static final ClassDesc CD_Boolean = ClassDesc.of("java.lang.Boolean");
     private static final ClassDesc CD_IllegalStateException = ClassDesc.of("java.lang.IllegalStateException");
 
     private static final MethodTypeDesc MTD_void = MethodTypeDesc.of(ConstantDescs.CD_void);
     private static final MethodTypeDesc MTD_Result_Raw = MethodTypeDesc.of(CD_Result, CD_Raw);
+    private static final MethodTypeDesc MTD_decode = MethodTypeDesc.of(CD_Object, CD_Raw);
+    private static final MethodTypeDesc MTD_finish = MethodTypeDesc.of(CD_Object, CD_Result);
+    private static final MethodTypeDesc MTD_decodeFailure = MethodTypeDesc.of(CD_Object, CD_NonEmptyList);
     private static final MethodTypeDesc MTD_Result_Object = MethodTypeDesc.of(CD_Result, CD_Object);
     private static final MethodTypeDesc MTD_Result_String_String =
             MethodTypeDesc.of(CD_Result, CD_String, CD_String);
@@ -73,8 +77,8 @@ public final class Backend {
     private static final MethodTypeDesc MTD_Map_put = MethodTypeDesc.of(CD_Object, CD_Object, CD_Object);
     private static final MethodTypeDesc MTD_Raw_object = MethodTypeDesc.of(CD_Raw, CD_Map);
     private static final MethodTypeDesc MTD_variant =
-            MethodTypeDesc.of(CD_Result, CD_Raw, CD_String, CD_String, CD_Decoder);
-    private static final MethodTypeDesc MTD_noVariant = MethodTypeDesc.of(CD_Result, CD_String);
+            MethodTypeDesc.of(CD_Object, CD_Raw, CD_String, CD_String, CD_Decoder);
+    private static final MethodTypeDesc MTD_noVariant = MethodTypeDesc.of(CD_Object, CD_String);
     private static final MethodTypeDesc MTD_apply = MethodTypeDesc.of(CD_Object, CD_Object);
     private static final MethodTypeDesc MTD_orValue = MethodTypeDesc.of(CD_Object, CD_Result);
     private static final MethodTypeDesc MTD_Long_valueOf = MethodTypeDesc.of(CD_Long, ConstantDescs.CD_long);
@@ -218,7 +222,11 @@ public final class Backend {
     /** The JVM class for an output arm: the built-in runtime {@code Violation} for 制約違反,
      * otherwise the generated data class in this module. */
     private ClassDesc armClass(String typeName) {
-        return typeName.equals("制約違反") ? CD_Violation : cd(typeName);
+        return switch (typeName) {
+            case "制約違反" -> CD_Violation;
+            case "復号失敗" -> CD_DecodeFailure;
+            default -> cd(typeName);
+        };
     }
 
     private void generateData(Ast.Data data, Map<String, byte[]> out) {
@@ -320,7 +328,7 @@ public final class Backend {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_Decoder);
             emitDefaultCtor(cb);
-            cb.withMethodBody("decode", MTD_Result_Raw, ClassFile.ACC_PUBLIC, code -> {
+            cb.withMethodBody("decode", MTD_decode, ClassFile.ACC_PUBLIC, code -> {
                 for (Ast.Variant v : disc.variants()) {
                     code.aload(1);
                     code.loadConstant(disc.key());
@@ -595,7 +603,7 @@ public final class Backend {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_Decoder);
             emitDefaultCtor(cb);
-            cb.withMethodBody("decode", MTD_Result_Raw, ClassFile.ACC_PUBLIC, code -> {
+            cb.withMethodBody("decode", MTD_decode, ClassFile.ACC_PUBLIC, code -> {
                 Gen gen = new Gen(code, data, cdName, 2);
                 switch (dec) {
                     case Ast.PrimDecoder prim -> emitPrimDecode(code, gen, cdName, prim, fields);
@@ -619,6 +627,7 @@ public final class Backend {
         Label notErr = code.newLabel();
         code.ifeq(notErr);
         code.aload(rSlot);
+        code.invokestatic(CD_Decoders, "finish", MTD_finish);
         code.areturn();
         code.labelBinding(notErr);
         code.aload(rSlot);
@@ -672,7 +681,7 @@ public final class Backend {
         Label ok = code.newLabel();
         code.ifnull(ok);
         code.aload(errSlot);
-        code.invokestatic(CD_Result, "err", MTD_Result_Object, true);
+        code.invokestatic(CD_Decoders, "decodeFailure", MTD_decodeFailure);
         code.areturn();
         code.labelBinding(ok);
 
@@ -725,6 +734,7 @@ public final class Backend {
                                    Map<String, Type> fields) {
         emitFieldValues(gen, fields, construct.inits(), construct.spreads());
         code.invokestatic(cdName, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(fields)));
+        code.invokestatic(CD_Decoders, "finish", MTD_finish);
         code.areturn();
     }
 

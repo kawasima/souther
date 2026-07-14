@@ -1,6 +1,7 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.DecodeError;
+import net.unit8.souther.runtime.DecodeFailure;
 import net.unit8.souther.runtime.Decoder;
 import net.unit8.souther.runtime.Encoder;
 import net.unit8.souther.runtime.NonEmptyList;
@@ -54,21 +55,22 @@ class CompileDeriveTest {
         BytesClassLoader loader = loader();
         Decoder<?> d = decoder(loader, "金額");
 
-        Result<?, NonEmptyList<DecodeError>> ok = d.decode(Raw.integer(50));
-        assertTrue(ok.isOk());
-        assertEquals(Raw.integer(50), encoder(loader, "金額").encode(((Result.Ok<?, ?>) ok).value()));
+        Object ok = d.decode(Raw.integer(50));
+        assertTrue(!(ok instanceof DecodeFailure));
+        assertEquals(Raw.integer(50), encoder(loader, "金額").encode(ok));
 
-        assertTrue(d.decode(Raw.integer(-5)).isErr(), "invariant still runs on the derived construction");
+        assertTrue(d.decode(Raw.integer(-5)) instanceof DecodeFailure,
+                "invariant still runs on the derived construction");
     }
 
     @Test
     void recordDerivesAnObjectCodec() throws Exception {
         BytesClassLoader loader = loader();
-        Result<?, ?> ok = decoder(loader, "Member")
+        Object ok = decoder(loader, "Member")
                 .decode(Raw.object(Map.of("cost", Raw.integer(30), "name", Raw.text("bob"))));
-        assertTrue(ok.isOk());
+        assertTrue(!(ok instanceof DecodeFailure));
 
-        Raw.ObjectValue out = (Raw.ObjectValue) encoder(loader, "Member").encode(((Result.Ok<?, ?>) ok).value());
+        Raw.ObjectValue out = (Raw.ObjectValue) encoder(loader, "Member").encode(ok);
         assertEquals(Raw.integer(30), out.value().get("cost"));
         assertEquals(Raw.text("bob"), out.value().get("name"));
     }
@@ -76,13 +78,13 @@ class CompileDeriveTest {
     @Test
     void sumDerivesADiscriminatorOnType() throws Exception {
         BytesClassLoader loader = loader();
-        Result<?, ?> email = decoder(loader, "Contact")
+        Object email = decoder(loader, "Contact")
                 .decode(Raw.object(Map.of("type", Raw.text("EmailC"), "email", Raw.text("a@b"))));
-        assertTrue(email.isOk());
-        assertEquals("demo.EmailC", ((Result.Ok<?, ?>) email).value().getClass().getName());
+        assertTrue(!(email instanceof DecodeFailure));
+        assertEquals("demo.EmailC", email.getClass().getName());
 
         // round-trips through the derived sum encoder
-        Raw.ObjectValue out = (Raw.ObjectValue) encoder(loader, "Contact").encode(((Result.Ok<?, ?>) email).value());
+        Raw.ObjectValue out = (Raw.ObjectValue) encoder(loader, "Contact").encode(email);
         assertEquals(Raw.text("EmailC"), out.value().get("type"));
         assertEquals(Raw.text("a@b"), out.value().get("email"));
     }
