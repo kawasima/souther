@@ -1,0 +1,26 @@
+// List<T> のデコード（要素エラーを [index] で集積）と size / 算術 / 多分岐成功の例。
+module example.expense
+
+data 理由 { コード: String  decoder from Text as c { 理由 { コード: c } } }
+
+data 申請 {
+    予定費用: Int
+    理由リスト: List<理由>
+    decoder from Object {
+        予定費用   <- field("estimatedCost", int)
+        理由リスト <- field("reasons", list(理由.decoder))
+        申請 { 予定費用, 理由リスト }
+    }
+}
+
+data 通常 { 件数: Int }
+data 要審査 { 件数: Int }
+
+// 理由が1件以上、または高額なら要審査へ。そうでなければ通常。
+behavior 区分する(a: 申請) -> 通常 | 要審査
+    constructs 通常, 要審査
+{
+    if size(a.理由リスト) >= 1 || a.予定費用 >= 100000
+        then 要審査 { 件数: size(a.理由リスト) }
+        else 通常 { 件数: size(a.理由リスト) }
+}
