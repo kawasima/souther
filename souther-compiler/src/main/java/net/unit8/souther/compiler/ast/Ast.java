@@ -28,15 +28,17 @@ public interface Ast {
         String name();
     }
 
-    /** {@code behavior name(p: T) -> R constructs A, B { stmt*; result }} (single input). */
+    /** {@code behavior name(p1: T1, ...) -> R constructs A, B { stmt*; result }}. */
     record BodyBehavior(String name,
-                        String paramName,
-                        TypeRef paramType,
+                        List<Param> params,
                         RetType ret,
                         List<String> constructs,
                         List<BStmt> stmts,
                         Expr result,
                         SourcePos pos) implements BehaviorDef {}
+
+    /** A behavior parameter. */
+    record Param(String name, TypeRef type, SourcePos pos) implements Ast {}
 
     /** {@code behavior name = f >> g >> ...} */
     record PipeBehavior(String name, List<String> stages, SourcePos pos) implements BehaviorDef {}

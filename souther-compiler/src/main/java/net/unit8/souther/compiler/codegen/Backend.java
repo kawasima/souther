@@ -230,17 +230,28 @@ public final class Backend {
 
     private byte[] generateBodyBehavior(Ast.BodyBehavior b) {
         ClassDesc cdB = cd(b.name());
-        Type paramType = resolveType(b.paramType());
+        int n = b.params().size();
+        ClassDesc[] applyParams = new ClassDesc[n];
+        for (int i = 0; i < n; i++) {
+            applyParams[i] = CD_Object;
+        }
+        MethodTypeDesc mtdApply = MethodTypeDesc.of(CD_Result, applyParams);
         return ClassFile.of().build(cdB, cb -> {
             cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
-            cb.withInterfaceSymbols(CD_Behavior);
+            if (n == 1) {
+                cb.withInterfaceSymbols(CD_Behavior); // single-input behaviors compose with >>
+            }
             emitPublicCtor(cb);
-            cb.withMethodBody("apply", MTD_apply, ClassFile.ACC_PUBLIC, code -> {
-                Gen gen = new Gen(code, null, cdB, 2);
-                code.aload(1);
-                int pslot = gen.slot(paramType);
-                unbox(code, paramType, pslot);
-                gen.bind(b.paramName(), pslot, paramType);
+            cb.withMethodBody("apply", mtdApply, ClassFile.ACC_PUBLIC, code -> {
+                Gen gen = new Gen(code, null, cdB, n + 1);
+                for (int i = 0; i < n; i++) {
+                    Ast.Param p = b.params().get(i);
+                    Type pt = resolveType(p.type());
+                    code.aload(i + 1);
+                    int slot = gen.slot(pt);
+                    unbox(code, pt, slot);
+                    gen.bind(p.name(), slot, pt);
+                }
                 for (Ast.BStmt stmt : b.stmts()) {
                     switch (stmt) {
                         case Ast.Let let -> {
