@@ -151,7 +151,12 @@ public interface Ast {
     // --- expressions ---
 
     sealed interface Expr extends Ast
-            permits IntLit, StringLit, BoolLit, Var, FieldAccess, Call, Binary, Not, NewData {}
+            permits IntLit, StringLit, BoolLit, Var, FieldAccess, Call, Binary, Not, NewData, Match {}
+
+    /** {@code match scrutinee { case Arm as x => body ... }} over a sum type. */
+    record Match(Expr scrutinee, List<Case> cases, SourcePos pos) implements Expr {}
+
+    record Case(String armType, String binding, Expr body, SourcePos pos) implements Ast {}
 
     /** {@code TypeName { field: expr, ... }} used as an expression (construction in a behavior). */
     record NewData(String typeName, List<FieldInit> inits, SourcePos pos) implements Expr {}

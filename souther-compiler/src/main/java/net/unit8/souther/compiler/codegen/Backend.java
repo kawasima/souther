@@ -46,6 +46,7 @@ public final class Backend {
     private static final ClassDesc CD_Decoders = ClassDesc.of("net.unit8.souther.runtime.Decoders");
     private static final ClassDesc CD_Behavior = ClassDesc.of("net.unit8.souther.runtime.Behavior");
     private static final ClassDesc CD_Boolean = ClassDesc.of("java.lang.Boolean");
+    private static final ClassDesc CD_IllegalStateException = ClassDesc.of("java.lang.IllegalStateException");
 
     private static final MethodTypeDesc MTD_void = MethodTypeDesc.of(ConstantDescs.CD_void);
     private static final MethodTypeDesc MTD_Result_Raw = MethodTypeDesc.of(CD_Result, CD_Raw);
@@ -684,7 +685,38 @@ public final class Backend {
                 }
                 case Ast.Binary bin -> binary(bin);
                 case Ast.NewData nd -> newData(nd);
+                case Ast.Match m -> match(m);
             };
+        }
+
+        private Type match(Ast.Match m) {
+            Type st = expr(m.scrutinee());
+            int sSlot = slot(st);
+            store(code, sSlot, st);
+            Label end = code.newLabel();
+            Type branchType = null;
+            for (Ast.Case c : m.cases()) {
+                ClassDesc armCd = cd(c.armType());
+                code.aload(sSlot);
+                code.instanceOf(armCd);
+                Label nextCase = code.newLabel();
+                code.ifeq(nextCase);
+                code.aload(sSlot);
+                code.checkcast(armCd);
+                int bslot = slot(Type.ref(c.armType()));
+                code.astore(bslot);
+                bind(c.binding(), bslot, Type.ref(c.armType()));
+                branchType = expr(c.body());
+                code.goto_(end);
+                code.labelBinding(nextCase);
+            }
+            // Exhaustive by construction; this fallback is unreachable.
+            code.new_(CD_IllegalStateException);
+            code.dup();
+            code.invokespecial(CD_IllegalStateException, "<init>", MTD_void);
+            code.athrow();
+            code.labelBinding(end);
+            return branchType;
         }
 
         private Type newData(Ast.NewData nd) {

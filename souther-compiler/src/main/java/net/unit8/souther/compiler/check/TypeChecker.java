@@ -151,6 +151,12 @@ public final class TypeChecker {
                 collectConstructs(bin.right(), out);
             }
             case Ast.Not not -> collectConstructs(not.operand(), out);
+            case Ast.Match m -> {
+                collectConstructs(m.scrutinee(), out);
+                for (Ast.Case c : m.cases()) {
+                    collectConstructs(c.body(), out);
+                }
+            }
             case Ast.IntLit ignored -> { }
             case Ast.StringLit ignored -> { }
             case Ast.BoolLit ignored -> { }
@@ -335,7 +341,44 @@ public final class TypeChecker {
                 checkInits(nd.typeName(), nd.inits(), nd.pos(), fieldTypes(owner, symbols), env, data, symbols);
                 yield Type.ref(nd.typeName());
             }
+            case Ast.Match m -> typeOfMatch(m, env, data, symbols);
         };
+    }
+
+    private static Type typeOfMatch(Ast.Match m, Map<String, Type> env, Ast.Data data,
+                                    Map<String, Ast.Def> symbols) {
+        Type st = typeOf(m.scrutinee(), env, data, symbols);
+        if (!(st instanceof Type.Ref ref) || !(symbols.get(ref.name()) instanceof Ast.SumData sum)) {
+            throw new CompileException(m.pos(), "match requires a sum-typed value, got " + st);
+        }
+        Set<String> covered = new HashSet<>();
+        Type branchType = null;
+        for (Ast.Case c : m.cases()) {
+            if (!sum.arms().contains(c.armType())) {
+                throw new CompileException(c.pos(),
+                        "`" + c.armType() + "` is not an arm of `" + sum.name() + "`");
+            }
+            covered.add(c.armType());
+            Map<String, Type> benv = new HashMap<>(env);
+            benv.put(c.binding(), Type.ref(c.armType()));
+            Type bt = typeOf(c.body(), benv, data, symbols);
+            if (branchType == null) {
+                branchType = bt;
+            } else if (!branchType.equals(bt)) {
+                throw new CompileException(c.pos(),
+                        "match branches disagree: " + branchType + " vs " + bt);
+            }
+        }
+        for (String arm : sum.arms()) {
+            if (!covered.contains(arm)) {
+                throw new CompileException(m.pos(), "E1201",
+                        "Non-exhaustive match for data `" + sum.name() + "`. Missing case: " + arm);
+            }
+        }
+        if (branchType == null) {
+            throw new CompileException(m.pos(), "match has no cases");
+        }
+        return branchType;
     }
 
     private static void checkInits(String typeName, List<Ast.FieldInit> inits, SourcePos pos,

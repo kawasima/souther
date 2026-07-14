@@ -16,6 +16,8 @@ public final class Parser {
 
     private final List<Token> tokens;
     private int index = 0;
+    /** When set, a bare {@code IDENT {} } is not read as a construction (used for match scrutinees). */
+    private boolean noConstruct = false;
 
     public Parser(List<Token> tokens) {
         this.tokens = tokens;
@@ -471,6 +473,9 @@ public final class Parser {
     private Ast.Expr parsePrimary() {
         Token t = peek();
         switch (t.type()) {
+            case MATCH -> {
+                return parseMatch();
+            }
             case INT_LIT -> {
                 advance();
                 return new Ast.IntLit(Long.parseLong(t.text()), t.pos());
@@ -498,7 +503,7 @@ public final class Parser {
                 if (check(TokenType.LPAREN)) {
                     return call(t);
                 }
-                if (check(TokenType.LBRACE)) {
+                if (!noConstruct && check(TokenType.LBRACE)) {
                     return newData(t);
                 }
                 Ast.Expr base = new Ast.Var(t.text(), t.pos());
@@ -510,6 +515,27 @@ public final class Parser {
             }
             default -> throw error(t, "expected an expression");
         }
+    }
+
+    private Ast.Expr parseMatch() {
+        Token kw = expect(TokenType.MATCH);
+        boolean saved = noConstruct;
+        noConstruct = true;
+        Ast.Expr scrutinee = parseExpr();
+        noConstruct = saved;
+        expect(TokenType.LBRACE);
+        List<Ast.Case> cases = new ArrayList<>();
+        while (check(TokenType.CASE)) {
+            advance();
+            Token arm = expect(TokenType.IDENT);
+            expect(TokenType.AS);
+            Token binding = expect(TokenType.IDENT);
+            expect(TokenType.FATARROW);
+            Ast.Expr body = parseExpr();
+            cases.add(new Ast.Case(arm.text(), binding.text(), body, arm.pos()));
+        }
+        expect(TokenType.RBRACE);
+        return new Ast.Match(scrutinee, cases, kw.pos());
     }
 
     private Ast.Expr call(Token name) {

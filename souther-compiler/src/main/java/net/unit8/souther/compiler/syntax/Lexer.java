@@ -30,7 +30,9 @@ public final class Lexer {
             Map.entry("false", TokenType.FALSE),
             Map.entry("behavior", TokenType.BEHAVIOR),
             Map.entry("required", TokenType.REQUIRED),
-            Map.entry("constructs", TokenType.CONSTRUCTS));
+            Map.entry("constructs", TokenType.CONSTRUCTS),
+            Map.entry("match", TokenType.MATCH),
+            Map.entry("case", TokenType.CASE));
 
     private final String src;
     private int pos = 0;

@@ -4,7 +4,7 @@ package net.unit8.souther.compiler.syntax;
 public enum TokenType {
     // keywords
     MODULE, DATA, INVARIANT, DECODER, ENCODER, FROM, AS, LET, REQUIRE, ELSE, TRUE, FALSE,
-    BEHAVIOR, REQUIRED, CONSTRUCTS,
+    BEHAVIOR, REQUIRED, CONSTRUCTS, MATCH, CASE,
     // literals and identifiers
     IDENT, INT_LIT, STRING_LIT,
     // punctuation
