@@ -66,6 +66,7 @@ public final class Backend {
     private static final MethodTypeDesc MTD_encoder = MethodTypeDesc.of(CD_Encoder);
     private static final MethodTypeDesc MTD_encode = MethodTypeDesc.of(CD_Raw, CD_Object);
     private static final MethodTypeDesc MTD_tagged = MethodTypeDesc.of(CD_Raw, CD_Raw, CD_String, CD_String);
+    private static final MethodTypeDesc MTD_encodeList = MethodTypeDesc.of(CD_Raw, CD_List, CD_Encoder);
     private static final MethodTypeDesc MTD_mergeErrors =
             MethodTypeDesc.of(CD_NonEmptyList, CD_Result.arrayType());
     private static final MethodTypeDesc MTD_Map_put = MethodTypeDesc.of(CD_Object, CD_Object, CD_Object);
@@ -765,6 +766,15 @@ public final class Backend {
                 code.invokestatic(cd(e.typeName()), "encoder", MTD_encoder);
                 gen.expr(e.arg());
                 code.invokeinterface(CD_Encoder, "encode", MTD_encode);
+            }
+            case Ast.ListEnc le -> {
+                gen.expr(le.source());
+                switch (le.elem()) {
+                    case Ast.PrimEnc p -> code.invokestatic(CD_Encoders,
+                            p.kind() == Ast.PrimKind.STRING ? "textEncoder" : "intEncoder", MTD_encoder);
+                    case Ast.DataEnc d -> code.invokestatic(cd(d.typeName()), "encoder", MTD_encoder);
+                }
+                code.invokestatic(CD_Encoders, "encodeList", MTD_encodeList);
             }
             case Ast.ObjectRaw o -> {
                 code.new_(CD_LinkedHashMap);

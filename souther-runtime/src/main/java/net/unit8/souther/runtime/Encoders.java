@@ -1,6 +1,8 @@
 package net.unit8.souther.runtime;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -11,6 +13,25 @@ import java.util.Map;
 public final class Encoders {
 
     private Encoders() {}
+
+    /** The primitive text encoder as an {@link Encoder} (for list elements). */
+    public static Encoder<String> textEncoder() {
+        return Raw::text;
+    }
+
+    /** The primitive int encoder as an {@link Encoder}. */
+    public static Encoder<Long> intEncoder() {
+        return v -> Raw.integer(v);
+    }
+
+    /** Encodes a {@code List<T>} to a {@code Raw.List} by applying {@code element} to each item. */
+    public static Raw encodeList(List<?> values, Encoder<Object> element) {
+        List<Raw> out = new ArrayList<>(values.size());
+        for (Object v : values) {
+            out.add(element.encode(v));
+        }
+        return Raw.list(out);
+    }
 
     /** Returns the arm's encoded object with {@code key: tag} added at the front. */
     public static Raw tagged(Raw armRaw, String key, String tag) {
