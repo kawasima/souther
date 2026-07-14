@@ -61,8 +61,9 @@ public interface Ast {
         String name();
     }
 
-    /** A product data definition with one or more fields. */
+    /** A product data definition: included data (flattened) plus its own fields. */
     record Data(String name,
+                List<String> includes,
                 List<Field> fields,
                 Optional<Expr> invariant,
                 Optional<DecoderDef> decoder,
@@ -129,8 +130,9 @@ public interface Ast {
 
     record Require(Expr cond, String errorCode, SourcePos pos) implements DecStmt {}
 
-    /** A typed record literal {@code TypeName { field: expr, ... }} — a construction. */
-    record Construct(String typeName, List<FieldInit> inits, SourcePos pos) implements Ast {}
+    /** A typed record literal {@code TypeName { ..src, field: expr, ... }} — a construction. */
+    record Construct(String typeName, List<FieldInit> inits, List<String> spreads, SourcePos pos)
+            implements Ast {}
 
     /** One {@code field: expr} (or shorthand {@code field}) inside a record literal. */
     record FieldInit(String name, Expr value, SourcePos pos) implements Ast {}
@@ -163,8 +165,9 @@ public interface Ast {
 
     record Case(String armType, String binding, Expr body, SourcePos pos) implements Ast {}
 
-    /** {@code TypeName { field: expr, ... }} used as an expression (construction in a behavior). */
-    record NewData(String typeName, List<FieldInit> inits, SourcePos pos) implements Expr {}
+    /** {@code TypeName { ..src, field: expr, ... }} used as an expression (construction in a behavior). */
+    record NewData(String typeName, List<FieldInit> inits, List<String> spreads, SourcePos pos)
+            implements Expr {}
 
     record IntLit(long value, SourcePos pos) implements Expr {}
 

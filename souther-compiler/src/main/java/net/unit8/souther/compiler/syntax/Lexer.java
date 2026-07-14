@@ -32,7 +32,8 @@ public final class Lexer {
             Map.entry("required", TokenType.REQUIRED),
             Map.entry("constructs", TokenType.CONSTRUCTS),
             Map.entry("match", TokenType.MATCH),
-            Map.entry("case", TokenType.CASE));
+            Map.entry("case", TokenType.CASE),
+            Map.entry("include", TokenType.INCLUDE));
 
     private final String src;
     private int pos = 0;
@@ -127,7 +128,9 @@ public final class Lexer {
             case ')': return new Token(TokenType.RPAREN, ")", start);
             case ':': return new Token(TokenType.COLON, ":", start);
             case ',': return new Token(TokenType.COMMA, ",", start);
-            case '.': return new Token(TokenType.DOT, ".", start);
+            case '.':
+                if (match('.')) return new Token(TokenType.DOTDOT, "..", start);
+                return new Token(TokenType.DOT, ".", start);
             case '=':
                 if (match('=')) return new Token(TokenType.EQ, "==", start);
                 if (match('>')) return new Token(TokenType.FATARROW, "=>", start);
