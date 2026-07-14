@@ -123,6 +123,7 @@ public final class Backend {
         for (Ast.RequiredBehavior r : module.requireds()) {
             requiredNames.add(r.name());
             requiredSuccess.put(r.name(), b.successType(r.ret()));
+            out.put(module.name() + "." + r.name(), b.generateRequiredInterface(r.name()));
         }
         for (Ast.BehaviorDef bd : module.behaviors()) {
             switch (bd) {
@@ -148,17 +149,42 @@ public final class Backend {
         for (int i = 0; i < requireds.size(); i++) {
             params[i] = CD_Behavior;
         }
-        cb.withMethodBody("<init>", MethodTypeDesc.of(ConstantDescs.CD_void, params),
-                ClassFile.ACC_PUBLIC, code -> {
-                    code.aload(0);
-                    code.invokespecial(CD_Object, "<init>", MTD_void);
+        MethodTypeDesc ctorDesc = MethodTypeDesc.of(ConstantDescs.CD_void, params);
+        cb.withMethodBody("<init>", ctorDesc, ClassFile.ACC_PUBLIC, code -> {
+            code.aload(0);
+            code.invokespecial(CD_Object, "<init>", MTD_void);
+            for (int i = 0; i < requireds.size(); i++) {
+                code.aload(0);
+                code.aload(i + 1);
+                code.putfield(cdX, requireds.get(i), CD_Behavior);
+            }
+            code.return_();
+        });
+
+        // bind(<named required interfaces>) -> this behavior (spec 19.5)
+        ClassDesc[] bindParams = new ClassDesc[requireds.size()];
+        for (int i = 0; i < requireds.size(); i++) {
+            bindParams[i] = cd(requireds.get(i));
+        }
+        cb.withMethodBody("bind", MethodTypeDesc.of(cdX, bindParams),
+                ClassFile.ACC_PUBLIC | ClassFile.ACC_STATIC, code -> {
+                    code.new_(cdX);
+                    code.dup();
                     for (int i = 0; i < requireds.size(); i++) {
-                        code.aload(0);
-                        code.aload(i + 1);
-                        code.putfield(cdX, requireds.get(i), CD_Behavior);
+                        code.aload(i);
                     }
-                    code.return_();
+                    code.invokespecial(cdX, "<init>", ctorDesc);
+                    code.areturn();
                 });
+    }
+
+    /** Generates the named interface for a required behavior (spec 13.3): {@code interface r extends Behavior}. */
+    private byte[] generateRequiredInterface(String name) {
+        ClassDesc cdR = cd(name);
+        return CF.build(cdR, cb -> {
+            cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_INTERFACE | ClassFile.ACC_ABSTRACT);
+            cb.withInterfaceSymbols(CD_Behavior);
+        });
     }
 
     private Type resolveType(Ast.TypeRef ref) {
