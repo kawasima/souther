@@ -1,0 +1,16 @@
+module demo
+
+data Email {
+    value: String
+    invariant contains(value, "@")
+
+    decoder from Text as input {
+        let normalized = lowercase(trim(input))
+        require length(normalized) > 0 else EmptyEmail
+        require contains(normalized, "@") else MissingAtSign
+        Email { value: normalized }
+    }
+    encoder self {
+        Text(self.value)
+    }
+}
