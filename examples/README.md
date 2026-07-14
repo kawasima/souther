@@ -14,6 +14,7 @@ Souther の記法にはなく、データ形状から**導出**されます（JS
 | `contact.mdl` | 直和 data（sealed）＋ match 分岐（判別子は導出） |
 | `expense.mdl` | `List<T>` ＋ `size` ＋ 算術 ＋ 多分岐成功（`-> A | B`） |
 | `businesstrip.mdl` | 出張申請モデルの断面: include（共通項目）／状態遷移 behavior／`require` ガード／spread（`..申請`）／railway |
+| `member.mdl` | 会員照会: `required behavior findMember`（外界依存）＋ 型ルーティング `>>`（失敗アームが素通り）。`interop/` の Java 例と対で読む |
 
 ## コンパイル
 
@@ -24,11 +25,45 @@ java -cp souther-compiler/target/classes \
 ```
 
 生成された `.class` は Java 21+ のプログラムから利用できます。各 data には導出された
-`decoder()` / `encoder()`、behavior クラスには `apply(...)` があります。実行時ランタイム
-（`Raw` / `Result` / `Decoder` / `Encoder` など）は `souther-runtime` にあります。カスタムの
-境界コーデックが要るときは、生成された data の（不変条件を検査する）構築を呼ぶ Raoh
-デコーダを Java 側で書きます。
+`decoder()` / `encoder()`、behavior クラスには `apply(...)` があります。出力に Result は無く、
+`apply` は出力アームの値をそのまま返し、`decode` は成功値または `復号失敗`（`DecodeFailure`）を
+返します。実行時ランタイム（`Raw` / `Decoder` / `Encoder` / `DecodeFailure` / `Violation` など）は
+`souther-runtime` にあります。カスタムの境界コーデックが要るときは、生成された data の
+（不変条件を検査する）構築を呼ぶ Raoh デコーダを Java 側で書きます。
 
 > 注: 各機能を端から端まで駆動して検証しているのは `souther-compiler/src/test/java` の
 > `Compile*Test`（`.mdl` をコンパイル→バイトコードをロード→decode/encode/apply を実行）です。
 > ここの `.mdl` はその中で使っているモデルを読める実ファイルとして取り出したものです。
+
+## Java 相互運用（Spring Boot ＋ jOOQ）
+
+`member.mdl` と `interop/` の Java 例は、生成物を実アプリからどう呼ぶかを示します（`interop/` は
+読むための実例で、ビルドには組み込んでいません——Spring / jOOQ 依存は各自のプロジェクト側）。
+
+流れは一方向です。
+
+```text
+HTTP → decode（会員ID | 復号失敗）→ behavior >> → 出力アームを match → encode → HTTP
+```
+
+`member.mdl` の要点:
+
+```text
+required behavior findMember(id: 会員ID) -> 会員 | 会員なし | 保存データ不正 | DB不通
+behavior 会員を照会し整形する = findMember >> 会員を表示用に整形する
+// 会員を照会し整形する : 会員ID -> 会員表示 | 会員なし | 保存データ不正 | DB不通
+```
+
+`findMember` の成功アーム `会員` だけが整形段に流れ、失敗3アームは整形段を素通りして出力に
+残ります（型ルーティング。spec 14.2）。要求集合 `{findMember}` はコンパイラが推論します。
+
+| Java ファイル | 役割 |
+| --- | --- |
+| `JooqFindMember.java` | `required behavior findMember` の jOOQ 実装。**生成パッケージ `example.member` に置く**（spec 19.6）——失敗アームは非公開コンストラクタで、この境界実装だけが構築できる。DB 例外は `DB不通` アームに畳む |
+| `SoutherBeans.java` | `会員を照会し整形する.bind(new JooqFindMember(dsl))` でパイプラインを束縛し Bean 化（spec 19.5） |
+| `MemberController.java` | `@RestController`。入力を `会員ID.decoder()` で decode し、`apply` の出力アームを `switch` で HTTP ステータス（200 / 404 / 500 / 503）へ畳む |
+| `RawJson.java` | encoder が返す `Raw` を Jackson 用の素の Java 値へ落とす小物 |
+
+要は、アプリ側（コントローラ）は **data を構築できず**、出力アームを型で見分けて encode するだけ。
+data を生成できるのは decoder と、生成パッケージ内に置いた境界実装だけ——これがドメインの
+生成経路の封じ込め（spec 2.1）を Java 越しでも保つ仕掛けです。

@@ -1,0 +1,50 @@
+module example.member
+// exposing { ... } は仕様（4章）にあるが現状のコンパイラは未対応のため省略。
+// 生成クラスはすべて public なので Java から利用できる。
+
+// --- 値の型（単一プリミティブ newtype ＋ invariant）---
+// 会員ID = 文字列 // 空文字列ではない
+data 会員ID {
+    value: String
+    invariant length(value) > 0
+}
+
+// メールアドレス = 文字列 // @ を含む
+data メールアドレス {
+    value: String
+    invariant contains(value, "@")
+}
+
+// --- 会員（直積）---
+data 会員 {
+    id:    会員ID
+    メール:  メールアドレス
+    表示名:  String
+}
+
+// --- 照会の失敗アーム（ただの data。error でも Result でもない）---
+data 会員なし
+data 保存データ不正
+data DB不通
+
+// --- 外界依存：DB から会員を引く。jOOQ 実装を Java 側から注入する（13章）---
+// 戻り値は素の直和。会員 が本線、残り3つは失敗アーム。
+required behavior findMember(id: 会員ID) -> 会員 | 会員なし | 保存データ不正 | DB不通
+
+// --- 表示用の整形（純粋 behavior）---
+data 会員表示 {
+    id:    String
+    メール:  String
+    表示名:  String
+}
+
+behavior 会員を表示用に整形する(会員: 会員) -> 会員表示
+    constructs 会員表示
+{
+    会員表示 { id: 会員.id.value, メール: 会員.メール.value, 表示名: 会員.表示名 }
+}
+
+// --- 照会 → 整形。findMember の失敗アーム（会員なし / 保存データ不正 / DB不通）は
+//     整形段を素通りして出力に残る（型ルーティング、14.2）。要求集合 {findMember} は推論される。
+// 会員を照会し整形する : 会員ID -> 会員表示 | 会員なし | 保存データ不正 | DB不通
+behavior 会員を照会し整形する = findMember >> 会員を表示用に整形する
