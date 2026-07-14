@@ -46,6 +46,7 @@ public final class Backend {
     private static final ClassDesc CD_Decoder = ClassDesc.of("net.unit8.souther.runtime.Decoder");
     private static final ClassDesc CD_Encoder = ClassDesc.of("net.unit8.souther.runtime.Encoder");
     private static final ClassDesc CD_Decoders = ClassDesc.of("net.unit8.souther.runtime.Decoders");
+    private static final ClassDesc CD_Encoders = ClassDesc.of("net.unit8.souther.runtime.Encoders");
     private static final ClassDesc CD_Behavior = ClassDesc.of("net.unit8.souther.runtime.Behavior");
     private static final ClassDesc CD_Boolean = ClassDesc.of("java.lang.Boolean");
     private static final ClassDesc CD_IllegalStateException = ClassDesc.of("java.lang.IllegalStateException");
@@ -64,6 +65,7 @@ public final class Backend {
     private static final MethodTypeDesc MTD_size = MethodTypeDesc.of(ConstantDescs.CD_int);
     private static final MethodTypeDesc MTD_encoder = MethodTypeDesc.of(CD_Encoder);
     private static final MethodTypeDesc MTD_encode = MethodTypeDesc.of(CD_Raw, CD_Object);
+    private static final MethodTypeDesc MTD_tagged = MethodTypeDesc.of(CD_Raw, CD_Raw, CD_String, CD_String);
     private static final MethodTypeDesc MTD_mergeErrors =
             MethodTypeDesc.of(CD_NonEmptyList, CD_Result.arrayType());
     private static final MethodTypeDesc MTD_Map_put = MethodTypeDesc.of(CD_Object, CD_Object, CD_Object);
@@ -229,9 +231,51 @@ public final class Backend {
                             code.areturn();
                         });
             });
+            sum.encoder().ifPresent(enc -> {
+                ClassDesc cdEnc = cd(sum.name() + "$Enc");
+                cb.withMethodBody("encoder", MTD_encoder,
+                        ClassFile.ACC_PUBLIC | ClassFile.ACC_STATIC, code -> {
+                            code.new_(cdEnc);
+                            code.dup();
+                            code.invokespecial(cdEnc, "<init>", MTD_void);
+                            code.areturn();
+                        });
+            });
         }));
         sum.decoder().ifPresent(disc ->
                 out.put(pkg + "." + sum.name() + "$Dec", generateSumDecoder(sum, disc)));
+        sum.encoder().ifPresent(enc ->
+                out.put(pkg + "." + sum.name() + "$Enc", generateSumEncoder(sum, enc)));
+    }
+
+    private byte[] generateSumEncoder(Ast.SumData sum, Ast.SumEncoder enc) {
+        ClassDesc cdEnc = cd(sum.name() + "$Enc");
+        return CF.build(cdEnc, cb -> {
+            cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
+            cb.withInterfaceSymbols(CD_Encoder);
+            emitDefaultCtor(cb);
+            cb.withMethodBody("encode", MTD_encode, ClassFile.ACC_PUBLIC, code -> {
+                for (Ast.EncVariant v : enc.variants()) {
+                    ClassDesc armCd = cd(v.armType());
+                    code.aload(1);
+                    code.instanceOf(armCd);
+                    Label next = code.newLabel();
+                    code.ifeq(next);
+                    code.invokestatic(armCd, "encoder", MTD_encoder);
+                    code.aload(1);
+                    code.invokeinterface(CD_Encoder, "encode", MTD_encode);
+                    code.loadConstant(enc.key());
+                    code.loadConstant(v.tag());
+                    code.invokestatic(CD_Encoders, "tagged", MTD_tagged);
+                    code.areturn();
+                    code.labelBinding(next);
+                }
+                code.new_(CD_IllegalStateException);
+                code.dup();
+                code.invokespecial(CD_IllegalStateException, "<init>", MTD_void);
+                code.athrow();
+            });
+        });
     }
 
     private byte[] generateSumDecoder(Ast.SumData sum, Ast.Discriminate disc) {

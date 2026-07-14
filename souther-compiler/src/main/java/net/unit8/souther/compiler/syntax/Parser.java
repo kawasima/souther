@@ -171,11 +171,37 @@ public final class Parser {
             arms.add(expect(TokenType.IDENT).text());
         }
         Optional<Ast.Discriminate> decoder = Optional.empty();
+        Optional<Ast.SumEncoder> encoder = Optional.empty();
         if (match(TokenType.LBRACE)) {
-            decoder = Optional.of(parseDiscriminate());
+            while (!check(TokenType.RBRACE)) {
+                if (check(TokenType.DECODER)) {
+                    decoder = Optional.of(parseDiscriminate());
+                } else if (check(TokenType.ENCODER)) {
+                    encoder = Optional.of(parseSumEncoder());
+                } else {
+                    throw error(peek(), "expected decoder or encoder");
+                }
+            }
             expect(TokenType.RBRACE);
         }
-        return new Ast.SumData(name, arms, decoder, kw.pos());
+        return new Ast.SumData(name, arms, decoder, encoder, kw.pos());
+    }
+
+    private Ast.SumEncoder parseSumEncoder() {
+        Token kw = expect(TokenType.ENCODER);
+        contextual("discriminate");
+        contextual("on");
+        String key = expect(TokenType.STRING_LIT).text();
+        expect(TokenType.LBRACE);
+        List<Ast.EncVariant> variants = new ArrayList<>();
+        while (check(TokenType.IDENT)) {
+            Token arm = expect(TokenType.IDENT);
+            expect(TokenType.FATARROW);
+            Token tag = expect(TokenType.STRING_LIT);
+            variants.add(new Ast.EncVariant(arm.text(), tag.text(), arm.pos()));
+        }
+        expect(TokenType.RBRACE);
+        return new Ast.SumEncoder(key, variants, kw.pos());
     }
 
     private Ast.Discriminate parseDiscriminate() {

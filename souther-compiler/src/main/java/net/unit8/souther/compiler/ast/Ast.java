@@ -70,11 +70,17 @@ public interface Ast {
                 Optional<EncoderDef> encoder,
                 SourcePos pos) implements Def {}
 
-    /** A sum data definition {@code data X = A | B | ...} with an optional discriminate decoder. */
+    /** A sum data definition {@code data X = A | B | ...} with optional discriminate decoder/encoder. */
     record SumData(String name,
                    List<String> arms,
                    Optional<Discriminate> decoder,
+                   Optional<SumEncoder> encoder,
                    SourcePos pos) implements Def {}
+
+    /** {@code encoder discriminate on "key" { Arm => "tag" ... }} — the inverse of discriminate. */
+    record SumEncoder(String key, List<EncVariant> variants, SourcePos pos) implements Ast {}
+
+    record EncVariant(String armType, String tag, SourcePos pos) implements Ast {}
 
     /** A unit data definition {@code data U} with no fields. */
     record UnitData(String name, SourcePos pos) implements Def {}
