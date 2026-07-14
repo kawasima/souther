@@ -35,6 +35,7 @@ public final class Backend {
     private static final ClassDesc CD_Long = ClassDesc.of("java.lang.Long");
     private static final ClassDesc CD_CharSequence = ClassDesc.of("java.lang.CharSequence");
     private static final ClassDesc CD_Map = ClassDesc.of("java.util.Map");
+    private static final ClassDesc CD_List = ClassDesc.of("java.util.List");
     private static final ClassDesc CD_LinkedHashMap = ClassDesc.of("java.util.LinkedHashMap");
     private static final ClassDesc CD_Raw = ClassDesc.of("net.unit8.souther.runtime.Raw");
     private static final ClassDesc CD_Result = ClassDesc.of("net.unit8.souther.runtime.Result");
@@ -58,6 +59,8 @@ public final class Backend {
     private static final MethodTypeDesc MTD_objectField =
             MethodTypeDesc.of(CD_Result, CD_Raw, CD_String, CD_Decoder);
     private static final MethodTypeDesc MTD_decoder = MethodTypeDesc.of(CD_Decoder);
+    private static final MethodTypeDesc MTD_listOf = MethodTypeDesc.of(CD_Decoder, CD_Decoder);
+    private static final MethodTypeDesc MTD_size = MethodTypeDesc.of(ConstantDescs.CD_int);
     private static final MethodTypeDesc MTD_encoder = MethodTypeDesc.of(CD_Encoder);
     private static final MethodTypeDesc MTD_encode = MethodTypeDesc.of(CD_Raw, CD_Object);
     private static final MethodTypeDesc MTD_mergeErrors =
@@ -528,16 +531,8 @@ public final class Backend {
             Ast.Bind bind = binds.get(i);
             code.aload(1);
             code.loadConstant(bind.key());
-            switch (bind.ref()) {
-                case Ast.PrimDecRef p -> {
-                    String reader = p.kind() == Ast.PrimKind.STRING ? "stringField" : "longField";
-                    code.invokestatic(CD_Decoders, reader, MTD_field);
-                }
-                case Ast.DataDecRef d -> {
-                    code.invokestatic(cd(d.typeName()), "decoder", MTD_decoder);
-                    code.invokestatic(CD_Decoders, "objectField", MTD_objectField);
-                }
-            }
+            emitDecoderObject(code, bind.ref());
+            code.invokestatic(CD_Decoders, "objectField", MTD_objectField);
             int rSlot = gen.slot(Type.STRING);
             code.astore(rSlot);
             resultSlots[i] = rSlot;
@@ -579,7 +574,21 @@ public final class Backend {
         return switch (ref) {
             case Ast.PrimDecRef p -> p.kind() == Ast.PrimKind.STRING ? Type.STRING : Type.INT;
             case Ast.DataDecRef d -> Type.ref(d.typeName());
+            case Ast.ListDecRef l -> Type.list(bindType(l.element()));
         };
+    }
+
+    /** Pushes a {@code Decoder} object for the given bind reference onto the stack. */
+    private void emitDecoderObject(CodeBuilder code, Ast.DecRef ref) {
+        switch (ref) {
+            case Ast.PrimDecRef p -> code.invokestatic(CD_Decoders,
+                    p.kind() == Ast.PrimKind.STRING ? "textDecoder" : "intDecoder", MTD_decoder);
+            case Ast.DataDecRef d -> code.invokestatic(cd(d.typeName()), "decoder", MTD_decoder);
+            case Ast.ListDecRef l -> {
+                emitDecoderObject(code, l.element());
+                code.invokestatic(CD_Decoders, "listOf", MTD_listOf);
+            }
+        }
     }
 
     private void emitRequire(CodeBuilder code, Gen gen, Ast.Require req) {
@@ -809,6 +818,12 @@ public final class Backend {
                     code.invokevirtual(CD_String, "toLowerCase", MethodTypeDesc.of(CD_String));
                     return Type.STRING;
                 }
+                case "size" -> {
+                    expr(call.args().get(0));
+                    code.invokeinterface(CD_List, "size", MTD_size);
+                    code.i2l();
+                    return Type.INT;
+                }
                 default -> throw new CompileException(call.pos(), "unknown function `" + call.fn() + "`");
             }
         }
@@ -915,6 +930,7 @@ public final class Backend {
         if (type == Type.INT) return ConstantDescs.CD_long;
         if (type == Type.STRING) return CD_String;
         if (type == Type.BOOL) return ConstantDescs.CD_boolean;
+        if (type instanceof Type.ListOf) return CD_List;
         return cd(((Type.Ref) type).name());
     }
 
