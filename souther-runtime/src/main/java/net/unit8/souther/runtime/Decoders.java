@@ -121,10 +121,19 @@ public final class Decoders {
      */
     public static <T> Result<T, NonEmptyList<DecodeError>> variant(
             Raw raw, String key, String tag, Decoder<T> inner) {
-        Result<String, NonEmptyList<DecodeError>> t = stringField(raw, key);
-        if (t instanceof Result.Ok<String, NonEmptyList<DecodeError>> ok
-                && ok.value().equals(tag)) {
-            return inner.decode(raw);
+        return tag.equals(discriminant(raw, key)) ? inner.decode(raw) : null;
+    }
+
+    /** Reads the discriminant field as a string, accepting either a text or an integer value. */
+    private static String discriminant(Raw raw, String key) {
+        if (raw instanceof Raw.ObjectValue obj) {
+            Raw v = obj.value().get(key);
+            if (v instanceof Raw.TextValue t) {
+                return t.value();
+            }
+            if (v instanceof Raw.IntValue i) {
+                return Long.toString(i.value());
+            }
         }
         return null;
     }

@@ -214,8 +214,8 @@ public final class Parser {
         String key = expect(TokenType.STRING_LIT).text();
         expect(TokenType.LBRACE);
         List<Ast.Variant> variants = new ArrayList<>();
-        while (check(TokenType.STRING_LIT)) {
-            Token tag = advance();
+        while (check(TokenType.STRING_LIT) || check(TokenType.INT_LIT)) {
+            Token tag = advance(); // string tag, or an integer tag (e.g. representation_version)
             expect(TokenType.FATARROW);
             Token arm = expect(TokenType.IDENT);
             expect(TokenType.DOT);
