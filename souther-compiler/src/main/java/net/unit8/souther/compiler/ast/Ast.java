@@ -47,8 +47,8 @@ public interface Ast {
     record RequiredBehavior(String name, TypeRef paramType, RetType ret, SourcePos pos)
             implements Ast {}
 
-    /** A behavior return type: a success type, optionally as {@code Result<success, error>}. */
-    record RetType(TypeRef success, Optional<TypeRef> error, SourcePos pos) implements Ast {}
+    /** A behavior return type: one or more success types (a union), optionally {@code Result<..., error>}. */
+    record RetType(List<TypeRef> success, Optional<TypeRef> error, SourcePos pos) implements Ast {}
 
     /** A statement in a behavior body: a binding or a guard. */
     sealed interface BStmt extends Ast permits Let, Guard {}

@@ -98,14 +98,23 @@ public final class Parser {
         if (check(TokenType.IDENT) && peek().text().equals("Result") && peekAt(1).type() == TokenType.LT) {
             Token kw = advance();
             expect(TokenType.LT);
-            Ast.TypeRef succ = parseTypeRef();
+            List<Ast.TypeRef> succ = parseSuccessTypes();
             expect(TokenType.COMMA);
             Ast.TypeRef err = parseTypeRef();
             expect(TokenType.GT);
             return new Ast.RetType(succ, Optional.of(err), kw.pos());
         }
-        Ast.TypeRef s = parseTypeRef();
-        return new Ast.RetType(s, Optional.empty(), s.pos());
+        List<Ast.TypeRef> s = parseSuccessTypes();
+        return new Ast.RetType(s, Optional.empty(), s.get(0).pos());
+    }
+
+    private List<Ast.TypeRef> parseSuccessTypes() {
+        List<Ast.TypeRef> result = new ArrayList<>();
+        result.add(parseTypeRef());
+        while (match(TokenType.PIPE)) {
+            result.add(parseTypeRef());
+        }
+        return result;
     }
 
     private Ast.Guard parseGuard() {

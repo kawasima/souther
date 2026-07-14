@@ -39,7 +39,7 @@ public final class TypeChecker {
         for (Ast.RequiredBehavior r : module.requireds()) {
             allBehaviors.add(r.name());
             reqSigs.put(r.name(), new ReqSig(resolveType(r.paramType(), symbols),
-                    resolveType(r.ret().success(), symbols)));
+                    successType(r.ret(), symbols)));
         }
         Set<String> bodiesWithDeps = new HashSet<>();
         for (Ast.BehaviorDef b : module.behaviors()) {
@@ -81,12 +81,12 @@ public final class TypeChecker {
         for (Ast.BehaviorDef b : module.behaviors()) {
             if (b instanceof Ast.BodyBehavior body && body.params().size() == 1) {
                 sigs.put(body.name(), new Sig(resolveType(body.params().get(0).type(), symbols),
-                        resolveType(body.ret().success(), symbols)));
+                        successType(body.ret(), symbols)));
             }
         }
         for (Ast.RequiredBehavior r : module.requireds()) {
             sigs.put(r.name(), new Sig(resolveType(r.paramType(), symbols),
-                    resolveType(r.ret().success(), symbols)));
+                    successType(r.ret(), symbols)));
         }
         for (Ast.BehaviorDef b : module.behaviors()) {
             if (b instanceof Ast.PipeBehavior pipe) {
@@ -136,7 +136,7 @@ public final class TypeChecker {
 
     private static void checkBodyBehavior(Ast.BodyBehavior b, Map<String, Ast.Def> symbols,
                                           Set<String> allBehaviors, Map<String, ReqSig> reqSigs) {
-        Type successType = resolveType(b.ret().success(), symbols);
+        Type successType = successType(b.ret(), symbols);
         boolean isResult = b.ret().error().isPresent();
         Type errorType = isResult ? resolveType(b.ret().error().get(), symbols) : null;
 
@@ -182,7 +182,7 @@ public final class TypeChecker {
             }
         }
         Type rt = typeOf(b.result(), env, null, symbols);
-        if (!rt.equals(successType)) {
+        if (!subtypeOf(rt, successType)) {
             throw new CompileException(b.result().pos(),
                     "behavior `" + b.name() + "` returns " + successType + " but its body is " + rt);
         }
@@ -526,10 +526,15 @@ public final class TypeChecker {
                 requireType(iff.cond(), Type.BOOL, env, data, symbols, "if condition");
                 Type tt = typeOf(iff.then(), env, data, symbols);
                 Type et = typeOf(iff.els(), env, data, symbols);
-                if (!tt.equals(et)) {
-                    throw new CompileException(iff.pos(), "if branches disagree: " + tt + " vs " + et);
+                if (tt.equals(et)) {
+                    yield tt;
                 }
-                yield tt;
+                if (isDataLike(tt) && isDataLike(et)) {
+                    Set<String> names = new HashSet<>(namesOf(tt));
+                    names.addAll(namesOf(et));
+                    yield Type.union(names);
+                }
+                throw new CompileException(iff.pos(), "if branches disagree: " + tt + " vs " + et);
             }
         };
     }
@@ -669,6 +674,47 @@ public final class TypeChecker {
         if (!actual.equals(expected)) {
             throw new CompileException(e.pos(), what + " must be " + expected + " but is " + actual);
         }
+    }
+
+    /** The success type of a behavior return: a single type, or a union of two or more. */
+    public static Type successType(Ast.RetType ret, Map<String, Ast.Def> symbols) {
+        List<Type> members = new ArrayList<>();
+        for (Ast.TypeRef t : ret.success()) {
+            members.add(resolveType(t, symbols));
+        }
+        if (members.size() == 1) {
+            return members.get(0);
+        }
+        Set<String> names = new HashSet<>();
+        for (Type m : members) {
+            if (!(m instanceof Type.Ref r)) {
+                throw new CompileException(ret.pos(), "union members must be data types");
+            }
+            names.add(r.name());
+        }
+        return Type.union(names);
+    }
+
+    private static boolean isDataLike(Type t) {
+        return t instanceof Type.Ref || t instanceof Type.Union;
+    }
+
+    private static Set<String> namesOf(Type t) {
+        if (t instanceof Type.Ref r) {
+            return Set.of(r.name());
+        }
+        if (t instanceof Type.Union u) {
+            return u.members();
+        }
+        return Set.of();
+    }
+
+    /** True when a value of {@code sub} is acceptable where {@code sup} is expected. */
+    static boolean subtypeOf(Type sub, Type sup) {
+        if (sub.equals(sup)) {
+            return true;
+        }
+        return sup instanceof Type.Union u && u.members().containsAll(namesOf(sub));
     }
 
     public static Type resolveType(Ast.TypeRef ref, Map<String, Ast.Def> symbols) {
