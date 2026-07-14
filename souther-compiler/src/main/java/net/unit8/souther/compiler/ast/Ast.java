@@ -179,5 +179,5 @@ public interface Ast {
 
     record Not(Expr operand, SourcePos pos) implements Expr {}
 
-    enum BinOp { EQ, NE, LT, LE, GT, GE, AND, OR }
+    enum BinOp { EQ, NE, LT, LE, GT, GE, AND, OR, ADD, SUB, MUL }
 }

@@ -531,6 +531,11 @@ public final class TypeChecker {
                 requireType(bin.right(), Type.INT, env, data, symbols, "operand of comparison");
                 yield Type.BOOL;
             }
+            case ADD, SUB, MUL -> {
+                requireType(bin.left(), Type.INT, env, data, symbols, "operand of arithmetic");
+                requireType(bin.right(), Type.INT, env, data, symbols, "operand of arithmetic");
+                yield Type.INT;
+            }
             case EQ, NE -> {
                 Type lt = typeOf(bin.left(), env, data, symbols);
                 Type rt = typeOf(bin.right(), env, data, symbols);
