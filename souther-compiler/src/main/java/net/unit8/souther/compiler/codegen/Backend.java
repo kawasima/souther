@@ -769,6 +769,18 @@ public final class Backend {
                 case Ast.Binary bin -> binary(bin);
                 case Ast.NewData nd -> newData(nd);
                 case Ast.Match m -> match(m);
+                case Ast.If iff -> {
+                    expr(iff.cond());
+                    Label elseL = code.newLabel();
+                    Label end = code.newLabel();
+                    code.ifeq(elseL);
+                    Type tt = expr(iff.then());
+                    code.goto_(end);
+                    code.labelBinding(elseL);
+                    expr(iff.els());
+                    code.labelBinding(end);
+                    yield tt;
+                }
             };
         }
 

@@ -28,6 +28,8 @@ public final class Lexer {
             Map.entry("else", TokenType.ELSE),
             Map.entry("true", TokenType.TRUE),
             Map.entry("false", TokenType.FALSE),
+            Map.entry("if", TokenType.IF),
+            Map.entry("then", TokenType.THEN),
             Map.entry("behavior", TokenType.BEHAVIOR),
             Map.entry("required", TokenType.REQUIRED),
             Map.entry("constructs", TokenType.CONSTRUCTS),

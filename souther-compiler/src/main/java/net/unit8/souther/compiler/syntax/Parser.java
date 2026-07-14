@@ -533,6 +533,9 @@ public final class Parser {
             case MATCH -> {
                 return parseMatch();
             }
+            case IF -> {
+                return parseIf();
+            }
             case INT_LIT -> {
                 advance();
                 return new Ast.IntLit(Long.parseLong(t.text()), t.pos());
@@ -593,6 +596,16 @@ public final class Parser {
         }
         expect(TokenType.RBRACE);
         return new Ast.Match(scrutinee, cases, kw.pos());
+    }
+
+    private Ast.Expr parseIf() {
+        Token kw = expect(TokenType.IF);
+        Ast.Expr cond = parseExpr();
+        expect(TokenType.THEN);
+        Ast.Expr then = parseExpr();
+        expect(TokenType.ELSE);
+        Ast.Expr els = parseExpr();
+        return new Ast.If(cond, then, els, kw.pos());
     }
 
     private Ast.Expr call(Token name) {

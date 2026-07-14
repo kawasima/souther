@@ -158,7 +158,10 @@ public interface Ast {
     // --- expressions ---
 
     sealed interface Expr extends Ast
-            permits IntLit, StringLit, BoolLit, Var, FieldAccess, Call, Binary, Not, NewData, Match {}
+            permits IntLit, StringLit, BoolLit, Var, FieldAccess, Call, Binary, Not, NewData, Match, If {}
+
+    /** {@code if cond then a else b} — both branches must have the same type (spec 16.2). */
+    record If(Expr cond, Expr then, Expr els, SourcePos pos) implements Expr {}
 
     /** {@code match scrutinee { case Arm as x => body ... }} over a sum type. */
     record Match(Expr scrutinee, List<Case> cases, SourcePos pos) implements Expr {}
