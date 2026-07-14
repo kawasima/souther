@@ -827,6 +827,24 @@ public final class Backend {
                     code.ior();
                     return Type.BOOL;
                 }
+                case ADD -> {
+                    expr(bin.left());
+                    expr(bin.right());
+                    code.ladd();
+                    return Type.INT;
+                }
+                case SUB -> {
+                    expr(bin.left());
+                    expr(bin.right());
+                    code.lsub();
+                    return Type.INT;
+                }
+                case MUL -> {
+                    expr(bin.left());
+                    expr(bin.right());
+                    code.lmul();
+                    return Type.INT;
+                }
                 default -> {
                     Type lt = expr(bin.left());
                     expr(bin.right());

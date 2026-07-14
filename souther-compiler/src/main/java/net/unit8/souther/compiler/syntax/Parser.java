@@ -455,7 +455,7 @@ public final class Parser {
     }
 
     private Ast.Expr parseCmp() {
-        Ast.Expr left = parseUnary();
+        Ast.Expr left = parseAdd();
         Ast.BinOp op = switch (peek().type()) {
             case EQ -> Ast.BinOp.EQ;
             case NE -> Ast.BinOp.NE;
@@ -469,7 +469,26 @@ public final class Parser {
             return left;
         }
         Token t = advance();
-        return new Ast.Binary(op, left, parseUnary(), t.pos());
+        return new Ast.Binary(op, left, parseAdd(), t.pos());
+    }
+
+    private Ast.Expr parseAdd() {
+        Ast.Expr left = parseMul();
+        while (check(TokenType.PLUS) || check(TokenType.MINUS)) {
+            Token op = advance();
+            Ast.BinOp o = op.type() == TokenType.PLUS ? Ast.BinOp.ADD : Ast.BinOp.SUB;
+            left = new Ast.Binary(o, left, parseMul(), op.pos());
+        }
+        return left;
+    }
+
+    private Ast.Expr parseMul() {
+        Ast.Expr left = parseUnary();
+        while (check(TokenType.STAR)) {
+            Token op = advance();
+            left = new Ast.Binary(Ast.BinOp.MUL, left, parseUnary(), op.pos());
+        }
+        return left;
     }
 
     private Ast.Expr parseUnary() {

@@ -151,7 +151,11 @@ public final class Lexer {
                 return new Token(TokenType.PIPE, "|", start);
             case '-':
                 if (match('>')) return new Token(TokenType.ARROW, "->", start);
-                break;
+                return new Token(TokenType.MINUS, "-", start);
+            case '+':
+                return new Token(TokenType.PLUS, "+", start);
+            case '*':
+                return new Token(TokenType.STAR, "*", start);
             default:
                 break;
         }

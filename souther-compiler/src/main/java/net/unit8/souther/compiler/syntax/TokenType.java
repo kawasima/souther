@@ -10,7 +10,7 @@ public enum TokenType {
     // punctuation
     LBRACE, RBRACE, LPAREN, RPAREN, COLON, COMMA, DOT, ASSIGN, PIPE, ARROW, LARROW, FATARROW, GTGT,
     // operators
-    EQ, NE, LT, LE, GT, GE, AND, OR, NOT,
+    EQ, NE, LT, LE, GT, GE, AND, OR, NOT, PLUS, MINUS, STAR,
     // end of input
     EOF
 }
