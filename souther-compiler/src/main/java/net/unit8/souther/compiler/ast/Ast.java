@@ -86,8 +86,8 @@ public interface Ast {
     /** A field: a role name and its type. */
     record Field(String name, TypeRef type, SourcePos pos) implements Ast {}
 
-    /** A named type reference. Slice 2 knows {@code Int} and {@code String}. */
-    record TypeRef(String name, SourcePos pos) implements Ast {}
+    /** A named type reference, optionally with one type argument (e.g. {@code List<T>}). */
+    record TypeRef(String name, TypeRef arg, SourcePos pos) implements Ast {}
 
     /** The kind of primitive Raw a single-value decoder reads / an encoder writes. */
     enum RawKind { TEXT, INT }
@@ -109,12 +109,15 @@ public interface Ast {
     /** {@code name <- field("key", <decRef>)} inside an object decoder. */
     record Bind(String name, String key, DecRef ref, SourcePos pos) implements Ast {}
 
-    /** The decoder referenced by a bind: a primitive or another data's {@code .decoder}. */
-    sealed interface DecRef extends Ast permits PrimDecRef, DataDecRef {}
+    /** The decoder referenced by a bind: a primitive, another data's {@code .decoder}, or a list. */
+    sealed interface DecRef extends Ast permits PrimDecRef, DataDecRef, ListDecRef {}
 
     record PrimDecRef(PrimKind kind, SourcePos pos) implements DecRef {}
 
     record DataDecRef(String typeName, SourcePos pos) implements DecRef {}
+
+    /** {@code list(<elementDecRef>)} */
+    record ListDecRef(DecRef element, SourcePos pos) implements DecRef {}
 
     /** A primitive field decoder kind. */
     enum PrimKind { STRING, INT }

@@ -91,22 +91,21 @@ public final class Parser {
     private Ast.Param parseParam() {
         Token n = expect(TokenType.IDENT);
         expect(TokenType.COLON);
-        Token t = expect(TokenType.IDENT);
-        return new Ast.Param(n.text(), new Ast.TypeRef(t.text(), t.pos()), n.pos());
+        return new Ast.Param(n.text(), parseTypeRef(), n.pos());
     }
 
     private Ast.RetType parseRetType() {
-        Token t = expect(TokenType.IDENT);
-        if (t.text().equals("Result")) {
+        if (check(TokenType.IDENT) && peek().text().equals("Result") && peekAt(1).type() == TokenType.LT) {
+            Token kw = advance();
             expect(TokenType.LT);
-            Token succ = expect(TokenType.IDENT);
+            Ast.TypeRef succ = parseTypeRef();
             expect(TokenType.COMMA);
-            Token err = expect(TokenType.IDENT);
+            Ast.TypeRef err = parseTypeRef();
             expect(TokenType.GT);
-            return new Ast.RetType(new Ast.TypeRef(succ.text(), succ.pos()),
-                    Optional.of(new Ast.TypeRef(err.text(), err.pos())), t.pos());
+            return new Ast.RetType(succ, Optional.of(err), kw.pos());
         }
-        return new Ast.RetType(new Ast.TypeRef(t.text(), t.pos()), Optional.empty(), t.pos());
+        Ast.TypeRef s = parseTypeRef();
+        return new Ast.RetType(s, Optional.empty(), s.pos());
     }
 
     private Ast.Guard parseGuard() {
@@ -122,14 +121,12 @@ public final class Parser {
         expect(TokenType.BEHAVIOR);
         String name = expect(TokenType.IDENT).text();
         expect(TokenType.LPAREN);
-        Token first = expect(TokenType.IDENT);
-        Ast.TypeRef paramType;
-        if (match(TokenType.COLON)) {
-            Token t = expect(TokenType.IDENT);
-            paramType = new Ast.TypeRef(t.text(), t.pos());
-        } else {
-            paramType = new Ast.TypeRef(first.text(), first.pos());
+        // required behavior takes one input: (name: Type) or (Type)
+        if (peekAt(1).type() == TokenType.COLON) {
+            expect(TokenType.IDENT);
+            expect(TokenType.COLON);
         }
+        Ast.TypeRef paramType = parseTypeRef();
         expect(TokenType.RPAREN);
         expect(TokenType.ARROW);
         Ast.RetType ret = parseRetType();
@@ -236,8 +233,18 @@ public final class Parser {
     private Ast.Field parseField() {
         Token n = expect(TokenType.IDENT);
         expect(TokenType.COLON);
-        Token t = expect(TokenType.IDENT);
-        return new Ast.Field(n.text(), new Ast.TypeRef(t.text(), t.pos()), n.pos());
+        return new Ast.Field(n.text(), parseTypeRef(), n.pos());
+    }
+
+    private Ast.TypeRef parseTypeRef() {
+        Token n = expect(TokenType.IDENT);
+        if (n.text().equals("List") && check(TokenType.LT)) {
+            advance();
+            Ast.TypeRef arg = parseTypeRef();
+            expect(TokenType.GT);
+            return new Ast.TypeRef("List", arg, n.pos());
+        }
+        return new Ast.TypeRef(n.text(), null, n.pos());
     }
 
     // --- decoder ---
@@ -301,8 +308,13 @@ public final class Parser {
         return switch (t.text()) {
             case "string" -> new Ast.PrimDecRef(Ast.PrimKind.STRING, t.pos());
             case "int" -> new Ast.PrimDecRef(Ast.PrimKind.INT, t.pos());
-            default -> throw error(t,
-                    "expected string, int, or Type.decoder");
+            case "list" -> {
+                expect(TokenType.LPAREN);
+                Ast.DecRef element = parseDecRef();
+                expect(TokenType.RPAREN);
+                yield new Ast.ListDecRef(element, t.pos());
+            }
+            default -> throw error(t, "expected string, int, list(...), or Type.decoder");
         };
     }
 

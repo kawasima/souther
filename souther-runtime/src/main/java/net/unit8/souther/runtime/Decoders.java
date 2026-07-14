@@ -73,6 +73,47 @@ public final class Decoders {
         return field(raw, key, inner::decode);
     }
 
+    /** The primitive text decoder as a {@link Decoder} (for list elements and nesting). */
+    public static Decoder<String> textDecoder() {
+        return Decoders::text;
+    }
+
+    /** The primitive int decoder as a {@link Decoder}. */
+    public static Decoder<Long> intDecoder() {
+        return Decoders::integer;
+    }
+
+    /** Builds a decoder for {@code List<T>} that applies {@code element} to each item,
+     *  accumulating errors with {@code [index]} paths (spec sections 7.2, 15). */
+    public static <T> Decoder<List<T>> listOf(Decoder<T> element) {
+        return raw -> {
+            if (!(raw instanceof Raw.ListValue lv)) {
+                return fail("expected_list", "expected a list");
+            }
+            List<T> values = new ArrayList<>();
+            List<DecodeError> errors = new ArrayList<>();
+            int i = 0;
+            for (Raw item : lv.value()) {
+                switch (element.decode(item)) {
+                    case Result.Ok<T, NonEmptyList<DecodeError>> ok -> values.add(ok.value());
+                    case Result.Err<T, NonEmptyList<DecodeError>> err -> {
+                        for (DecodeError e : err.error().toList()) {
+                            List<PathElement> path = new ArrayList<>();
+                            path.add(new PathElement.Index(i));
+                            path.addAll(e.path());
+                            errors.add(new DecodeError(path, e.code(), e.message()));
+                        }
+                    }
+                }
+                i++;
+            }
+            if (!errors.isEmpty()) {
+                return Result.err(new NonEmptyList<>(errors.get(0), errors.subList(1, errors.size())));
+            }
+            return Result.ok(List.copyOf(values));
+        };
+    }
+
     /**
      * Discriminated decode: reads the string field {@code key}, matches it against
      * {@code tag}, and if it matches runs {@code inner}. Returns {@code null} when the

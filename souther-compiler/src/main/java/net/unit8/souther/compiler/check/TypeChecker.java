@@ -330,6 +330,7 @@ public final class TypeChecker {
                 }
                 yield Type.ref(d.typeName());
             }
+            case Ast.ListDecRef l -> Type.list(decRefType(l.element(), symbols));
         };
     }
 
@@ -514,6 +515,13 @@ public final class TypeChecker {
                 requireType(args.get(0), Type.STRING, env, data, symbols, "argument of lowercase");
                 yield Type.STRING;
             }
+            case "size" -> {
+                arity(call, 1);
+                if (!(typeOf(args.get(0), env, data, symbols) instanceof Type.ListOf)) {
+                    throw new CompileException(call.pos(), "size expects a List");
+                }
+                yield Type.INT;
+            }
             default -> throw new CompileException(call.pos(), "unknown function `" + call.fn() + "`");
         };
     }
@@ -574,6 +582,12 @@ public final class TypeChecker {
         return switch (ref.name()) {
             case "Int" -> Type.INT;
             case "String" -> Type.STRING;
+            case "List" -> {
+                if (ref.arg() == null) {
+                    throw new CompileException(ref.pos(), "List needs a type argument, e.g. List<Int>");
+                }
+                yield Type.list(resolveType(ref.arg(), symbols));
+            }
             default -> {
                 if (symbols.containsKey(ref.name())) {
                     yield Type.ref(ref.name());
