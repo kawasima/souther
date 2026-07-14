@@ -203,12 +203,17 @@ public final class Parser {
     private Ast.Data parseProduct(Token kw, String name) {
         expect(TokenType.LBRACE);
 
+        List<String> includes = new ArrayList<>();
         List<Ast.Field> fields = new ArrayList<>();
-        while (check(TokenType.IDENT)) {
-            fields.add(parseField());
+        while (check(TokenType.INCLUDE) || check(TokenType.IDENT)) {
+            if (match(TokenType.INCLUDE)) {
+                includes.add(expect(TokenType.IDENT).text());
+            } else {
+                fields.add(parseField());
+            }
         }
-        if (fields.isEmpty()) {
-            throw error(peek(), "data `" + name + "` must declare at least one field");
+        if (includes.isEmpty() && fields.isEmpty()) {
+            throw error(peek(), "data `" + name + "` must declare at least one field or include");
         }
 
         Optional<Ast.Expr> invariant = Optional.empty();
@@ -227,7 +232,7 @@ public final class Parser {
             }
         }
         expect(TokenType.RBRACE);
-        return new Ast.Data(name, fields, invariant, decoder, encoder, kw.pos());
+        return new Ast.Data(name, includes, fields, invariant, decoder, encoder, kw.pos());
     }
 
     private Ast.Field parseField() {
@@ -337,30 +342,41 @@ public final class Parser {
     private Ast.Construct parseConstruct() {
         Token type = expect(TokenType.IDENT);
         expect(TokenType.LBRACE);
-        List<Ast.FieldInit> inits = parseFieldInits();
+        Inits in = parseInits();
         expect(TokenType.RBRACE);
-        return new Ast.Construct(type.text(), inits, type.pos());
+        return new Ast.Construct(type.text(), in.fields(), in.spreads(), type.pos());
     }
 
     private Ast.Expr newData(Token type) {
         expect(TokenType.LBRACE);
-        List<Ast.FieldInit> inits = parseFieldInits();
+        Inits in = parseInits();
         expect(TokenType.RBRACE);
-        return new Ast.NewData(type.text(), inits, type.pos());
+        return new Ast.NewData(type.text(), in.fields(), in.spreads(), type.pos());
     }
 
-    private List<Ast.FieldInit> parseFieldInits() {
-        List<Ast.FieldInit> inits = new ArrayList<>();
+    private record Inits(List<Ast.FieldInit> fields, List<String> spreads) {}
+
+    private Inits parseInits() {
+        List<Ast.FieldInit> fields = new ArrayList<>();
+        List<String> spreads = new ArrayList<>();
         if (!check(TokenType.RBRACE)) {
-            inits.add(parseFieldInit());
+            parseInitElem(fields, spreads);
             while (match(TokenType.COMMA)) {
                 if (check(TokenType.RBRACE)) {
                     break; // trailing comma
                 }
-                inits.add(parseFieldInit());
+                parseInitElem(fields, spreads);
             }
         }
-        return inits;
+        return new Inits(fields, spreads);
+    }
+
+    private void parseInitElem(List<Ast.FieldInit> fields, List<String> spreads) {
+        if (match(TokenType.DOTDOT)) {
+            spreads.add(expect(TokenType.IDENT).text());
+        } else {
+            fields.add(parseFieldInit());
+        }
     }
 
     private Ast.FieldInit parseFieldInit() {

@@ -430,7 +430,7 @@ public final class Backend {
                         slot += width(f.getValue());
                     }
 
-                    data.invariant().ifPresent(inv -> {
+                    for (Ast.Expr inv : TypeChecker.effectiveInvariants(data, symbols)) {
                         gen.expr(inv);
                         Label ok = code.newLabel();
                         code.ifne(ok);
@@ -439,7 +439,7 @@ public final class Backend {
                         code.invokestatic(CD_Decoders, "fail", MTD_Result_String_String);
                         code.areturn();
                         code.labelBinding(ok);
-                    });
+                    }
 
                     code.new_(cdName);
                     code.dup();
@@ -604,15 +604,32 @@ public final class Backend {
 
     private void emitConstructCall(CodeBuilder code, Gen gen, ClassDesc cdName, Ast.Construct construct,
                                    Map<String, Type> fields) {
+        emitFieldValues(gen, fields, construct.inits(), construct.spreads());
+        code.invokestatic(cdName, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(fields)));
+        code.areturn();
+    }
+
+    /** Pushes each field value in declaration order, sourced from an explicit init or a spread. */
+    private void emitFieldValues(Gen gen, Map<String, Type> fields, List<Ast.FieldInit> inits,
+                                 List<String> spreads) {
         Map<String, Ast.FieldInit> byName = new HashMap<>();
-        for (Ast.FieldInit init : construct.inits()) {
+        for (Ast.FieldInit init : inits) {
             byName.put(init.name(), init);
         }
         for (String field : fields.keySet()) {
-            gen.expr(byName.get(field).value());
+            Ast.FieldInit init = byName.get(field);
+            if (init != null) {
+                gen.expr(init.value());
+                continue;
+            }
+            for (String sp : spreads) {
+                Ast.Data src = (Ast.Data) symbols.get(((Type.Ref) gen.varType(sp)).name());
+                if (fieldTypes(src).containsKey(field)) {
+                    gen.spreadField(sp, field);
+                    break;
+                }
+            }
         }
-        code.invokestatic(cdName, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(fields)));
-        code.areturn();
     }
 
     // --- $Enc class ---
@@ -779,18 +796,24 @@ public final class Backend {
             Ast.Data owner = (Ast.Data) symbols.get(nd.typeName());
             Map<String, Type> flds = fieldTypes(owner);
             ClassDesc cdType = cd(nd.typeName());
-            Map<String, Ast.FieldInit> byName = new HashMap<>();
-            for (Ast.FieldInit init : nd.inits()) {
-                byName.put(init.name(), init);
-            }
             code.new_(cdType);
             code.dup();
-            for (String field : flds.keySet()) {
-                expr(byName.get(field).value());
-            }
+            emitFieldValues(this, flds, nd.inits(), nd.spreads());
             code.invokespecial(cdType, "<init>",
                     MethodTypeDesc.of(ConstantDescs.CD_void, fieldDescs(flds)));
             return Type.ref(nd.typeName());
+        }
+
+        Type varType(String name) {
+            return env.get(name).type();
+        }
+
+        void spreadField(String spreadVar, String field) {
+            Var v = env.get(spreadVar);
+            String srcName = ((Type.Ref) v.type()).name();
+            Ast.Data src = (Ast.Data) symbols.get(srcName);
+            load(code, v.slot(), v.type());
+            code.getfield(cd(srcName), field, jvmType(fieldTypes(src).get(field)));
         }
 
         private Type call(Ast.Call call) {

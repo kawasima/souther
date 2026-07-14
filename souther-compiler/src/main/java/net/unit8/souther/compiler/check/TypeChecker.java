@@ -4,6 +4,7 @@ import net.unit8.souther.compiler.CompileException;
 import net.unit8.souther.compiler.SourcePos;
 import net.unit8.souther.compiler.ast.Ast;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -199,7 +200,7 @@ public final class TypeChecker {
                         "Behavior `" + b.name() + "` constructs `" + c
                                 + "` but does not declare `constructs " + c + "`.");
             }
-            if (symbols.get(c) instanceof Ast.Data d && d.invariant().isPresent()) {
+            if (symbols.get(c) instanceof Ast.Data d && !effectiveInvariants(d, symbols).isEmpty()) {
                 throw new CompileException(b.pos(), "E1003",
                         "Behavior `" + b.name() + "` constructs `" + c
                                 + "`, which has an invariant; construct it through a decoder instead.");
@@ -268,13 +269,40 @@ public final class TypeChecker {
         });
     }
 
-    /** Field name → type, in declaration order. */
+    /** Effective field name → type (included data flattened first, then own fields). */
     public static Map<String, Type> fieldTypes(Ast.Data data, Map<String, Ast.Def> symbols) {
         Map<String, Type> types = new LinkedHashMap<>();
+        for (String inc : data.includes()) {
+            if (!(symbols.get(inc) instanceof Ast.Data id)) {
+                throw new CompileException(data.pos(),
+                        "cannot `include " + inc + "` (not a product data)");
+            }
+            for (Map.Entry<String, Type> e : fieldTypes(id, symbols).entrySet()) {
+                if (types.put(e.getKey(), e.getValue()) != null) {
+                    throw new CompileException(data.pos(), "E1004", "Field `" + e.getKey()
+                            + "` from `include " + inc + "` conflicts with a field of `" + data.name() + "`.");
+                }
+            }
+        }
         for (Ast.Field f : data.fields()) {
-            types.put(f.name(), resolveType(f.type(), symbols));
+            if (types.put(f.name(), resolveType(f.type(), symbols)) != null) {
+                throw new CompileException(f.pos(), "E1004",
+                        "duplicate field `" + f.name() + "` in `" + data.name() + "`");
+            }
         }
         return types;
+    }
+
+    /** All invariants that apply to a data: included data's invariants first, then its own. */
+    public static List<Ast.Expr> effectiveInvariants(Ast.Data data, Map<String, Ast.Def> symbols) {
+        List<Ast.Expr> invs = new ArrayList<>();
+        for (String inc : data.includes()) {
+            if (symbols.get(inc) instanceof Ast.Data id) {
+                invs.addAll(effectiveInvariants(id, symbols));
+            }
+        }
+        data.invariant().ifPresent(invs::add);
+        return invs;
     }
 
     private static void checkData(Ast.Data data, Map<String, Ast.Def> symbols) {
@@ -341,24 +369,48 @@ public final class TypeChecker {
                     "decoder for `" + data.name() + "` must construct `" + data.name()
                             + "`, but constructs `" + c.typeName() + "`");
         }
+        checkConstruction(c.typeName(), c.inits(), c.spreads(), c.pos(), fields, env, data, symbols);
+    }
+
+    private static void checkConstruction(String typeName, List<Ast.FieldInit> inits, List<String> spreads,
+                                          SourcePos pos, Map<String, Type> fields, Map<String, Type> env,
+                                          Ast.Data data, Map<String, Ast.Def> symbols) {
         Map<String, Ast.FieldInit> byName = new HashMap<>();
-        for (Ast.FieldInit init : c.inits()) {
+        for (Ast.FieldInit init : inits) {
             if (byName.put(init.name(), init) != null) {
                 throw new CompileException(init.pos(), "duplicate field `" + init.name() + "`");
             }
-        }
-        if (byName.size() != fields.size() || !byName.keySet().equals(fields.keySet())) {
-            throw new CompileException(c.pos(),
-                    "construction of `" + data.name() + "` must set exactly its fields "
-                            + fields.keySet());
-        }
-        for (Map.Entry<String, Type> field : fields.entrySet()) {
-            Ast.FieldInit init = byName.get(field.getKey());
-            Type valueType = typeOf(init.value(), env, data, symbols);
-            if (!valueType.equals(field.getValue())) {
+            Type ft = fields.get(init.name());
+            if (ft == null) {
                 throw new CompileException(init.pos(),
-                        "field `" + init.name() + "` expects " + field.getValue()
-                                + " but got " + valueType);
+                        "`" + init.name() + "` is not a field of `" + typeName + "`");
+            }
+            Type vt = typeOf(init.value(), env, data, symbols);
+            if (!vt.equals(ft)) {
+                throw new CompileException(init.pos(),
+                        "field `" + init.name() + "` expects " + ft + " but got " + vt);
+            }
+        }
+        Map<String, Type> provided = new HashMap<>();
+        for (String sp : spreads) {
+            if (!(env.get(sp) instanceof Type.Ref ref)
+                    || !(symbols.get(ref.name()) instanceof Ast.Data sd)) {
+                throw new CompileException(pos, "spread `.." + sp + "` must be a data value");
+            }
+            provided.putAll(fieldTypes(sd, symbols));
+        }
+        for (Map.Entry<String, Type> f : fields.entrySet()) {
+            if (byName.containsKey(f.getKey())) {
+                continue;
+            }
+            Type pv = provided.get(f.getKey());
+            if (pv == null) {
+                throw new CompileException(pos, "E1005",
+                        "construction of `" + typeName + "` is missing field `" + f.getKey() + "`");
+            }
+            if (!pv.equals(f.getValue())) {
+                throw new CompileException(pos, "spread provides `" + f.getKey() + "` as " + pv
+                        + " but `" + typeName + "` needs " + f.getValue());
             }
         }
     }
@@ -415,7 +467,8 @@ public final class TypeChecker {
                 if (!(symbols.get(nd.typeName()) instanceof Ast.Data owner)) {
                     throw new CompileException(nd.pos(), "cannot construct `" + nd.typeName() + "`");
                 }
-                checkInits(nd.typeName(), nd.inits(), nd.pos(), fieldTypes(owner, symbols), env, data, symbols);
+                checkConstruction(nd.typeName(), nd.inits(), nd.spreads(), nd.pos(),
+                        fieldTypes(owner, symbols), env, data, symbols);
                 yield Type.ref(nd.typeName());
             }
             case Ast.Match m -> typeOfMatch(m, env, data, symbols);
@@ -458,25 +511,6 @@ public final class TypeChecker {
         return branchType;
     }
 
-    private static void checkInits(String typeName, List<Ast.FieldInit> inits, SourcePos pos,
-                                   Map<String, Type> fields, Map<String, Type> env, Ast.Data data,
-                                   Map<String, Ast.Def> symbols) {
-        Map<String, Ast.FieldInit> byName = new HashMap<>();
-        for (Ast.FieldInit init : inits) {
-            byName.put(init.name(), init);
-        }
-        if (byName.size() != fields.size() || !byName.keySet().equals(fields.keySet())) {
-            throw new CompileException(pos,
-                    "construction of `" + typeName + "` must set exactly its fields " + fields.keySet());
-        }
-        for (Map.Entry<String, Type> field : fields.entrySet()) {
-            Type valueType = typeOf(byName.get(field.getKey()).value(), env, data, symbols);
-            if (!valueType.equals(field.getValue())) {
-                throw new CompileException(byName.get(field.getKey()).pos(),
-                        "field `" + field.getKey() + "` expects " + field.getValue() + " but got " + valueType);
-            }
-        }
-    }
 
     private static Type typeOfFieldAccess(Ast.FieldAccess fa, Map<String, Type> env, Ast.Data data,
                                           Map<String, Ast.Def> symbols) {
