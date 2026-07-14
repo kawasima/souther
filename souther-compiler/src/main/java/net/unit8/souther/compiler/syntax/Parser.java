@@ -170,69 +170,8 @@ public final class Parser {
         while (match(TokenType.PIPE)) {
             arms.add(expect(TokenType.IDENT).text());
         }
-        Optional<Ast.Discriminate> decoder = Optional.empty();
-        Optional<Ast.SumEncoder> encoder = Optional.empty();
-        if (match(TokenType.LBRACE)) {
-            while (!check(TokenType.RBRACE)) {
-                if (check(TokenType.DECODER)) {
-                    decoder = Optional.of(parseDiscriminate());
-                } else if (check(TokenType.ENCODER)) {
-                    encoder = Optional.of(parseSumEncoder());
-                } else {
-                    throw error(peek(), "expected decoder or encoder");
-                }
-            }
-            expect(TokenType.RBRACE);
-        }
-        return new Ast.SumData(name, arms, decoder, encoder, kw.pos());
-    }
-
-    private Ast.SumEncoder parseSumEncoder() {
-        Token kw = expect(TokenType.ENCODER);
-        contextual("discriminate");
-        contextual("on");
-        String key = expect(TokenType.STRING_LIT).text();
-        expect(TokenType.LBRACE);
-        List<Ast.EncVariant> variants = new ArrayList<>();
-        while (check(TokenType.IDENT)) {
-            Token arm = expect(TokenType.IDENT);
-            expect(TokenType.FATARROW);
-            Token tag = expect(TokenType.STRING_LIT);
-            variants.add(new Ast.EncVariant(arm.text(), tag.text(), arm.pos()));
-        }
-        expect(TokenType.RBRACE);
-        return new Ast.SumEncoder(key, variants, kw.pos());
-    }
-
-    private Ast.Discriminate parseDiscriminate() {
-        expect(TokenType.DECODER);
-        expect(TokenType.FROM);
-        contextual("Object");
-        Token disc = peek();
-        contextual("discriminate");
-        contextual("on");
-        String key = expect(TokenType.STRING_LIT).text();
-        expect(TokenType.LBRACE);
-        List<Ast.Variant> variants = new ArrayList<>();
-        while (check(TokenType.STRING_LIT) || check(TokenType.INT_LIT)) {
-            Token tag = advance(); // string tag, or an integer tag (e.g. representation_version)
-            expect(TokenType.FATARROW);
-            Token arm = expect(TokenType.IDENT);
-            expect(TokenType.DOT);
-            expect(TokenType.DECODER);
-            variants.add(new Ast.Variant(tag.text(), arm.text(), tag.pos()));
-        }
-        expect(TokenType.RBRACE);
-        return new Ast.Discriminate(key, variants, disc.pos());
-    }
-
-    /** Consumes an identifier that must have the given text (a contextual keyword). */
-    private void contextual(String word) {
-        Token t = peek();
-        if (t.type() != TokenType.IDENT || !t.text().equals(word)) {
-            throw error(t, "expected `" + word + "`");
-        }
-        advance();
+        // decoders/encoders (incl. the sum discriminator) are derived, not written
+        return new Ast.SumData(name, arms, Optional.empty(), Optional.empty(), kw.pos());
     }
 
     private Ast.Data parseProduct(Token kw, String name) {
@@ -252,22 +191,17 @@ public final class Parser {
         }
 
         Optional<Ast.Expr> invariant = Optional.empty();
-        Optional<Ast.DecoderDef> decoder = Optional.empty();
-        Optional<Ast.EncoderDef> encoder = Optional.empty();
         while (!check(TokenType.RBRACE)) {
             if (check(TokenType.INVARIANT)) {
                 advance();
                 invariant = Optional.of(parseExpr());
-            } else if (check(TokenType.DECODER)) {
-                decoder = Optional.of(parseDecoder());
-            } else if (check(TokenType.ENCODER)) {
-                encoder = Optional.of(parseEncoder());
             } else {
-                throw error(peek(), "expected invariant, decoder, encoder, or '}'");
+                throw error(peek(), "expected invariant or '}'");
             }
         }
         expect(TokenType.RBRACE);
-        return new Ast.Data(name, includes, fields, invariant, decoder, encoder, kw.pos());
+        // decoders/encoders are derived, not written
+        return new Ast.Data(name, includes, fields, invariant, Optional.empty(), Optional.empty(), kw.pos());
     }
 
     private Ast.Field parseField() {
@@ -287,99 +221,12 @@ public final class Parser {
         return new Ast.TypeRef(n.text(), null, n.pos());
     }
 
-    // --- decoder ---
-
-    private Ast.DecoderDef parseDecoder() {
-        Token kw = expect(TokenType.DECODER);
-        expect(TokenType.FROM);
-        Token from = expect(TokenType.IDENT);
-        if (from.text().equals("Object")) {
-            return parseObjectDecoder(kw);
-        }
-        Ast.RawKind kind = rawKind(from);
-        expect(TokenType.AS);
-        String input = expect(TokenType.IDENT).text();
-        expect(TokenType.LBRACE);
-        List<Ast.DecStmt> stmts = new ArrayList<>();
-        while (check(TokenType.LET) || check(TokenType.REQUIRE)) {
-            stmts.add(check(TokenType.LET) ? parseLet() : parseRequire());
-        }
-        Ast.Construct result = parseConstruct();
-        expect(TokenType.RBRACE);
-        return new Ast.PrimDecoder(kind, input, stmts, result, kw.pos());
-    }
-
-    private Ast.ObjectDecoder parseObjectDecoder(Token kw) {
-        expect(TokenType.LBRACE);
-        List<Ast.Bind> binds = new ArrayList<>();
-        while (check(TokenType.IDENT) && peekAt(1).type() == TokenType.LARROW) {
-            binds.add(parseBind());
-        }
-        Ast.Construct result = parseConstruct();
-        expect(TokenType.RBRACE);
-        return new Ast.ObjectDecoder(binds, result, kw.pos());
-    }
-
-    private Ast.Bind parseBind() {
-        Token name = expect(TokenType.IDENT);
-        expect(TokenType.LARROW);
-        Token fn = expect(TokenType.IDENT);
-        if (!fn.text().equals("field")) {
-            throw error(fn, "expected `field(...)` on the right of `<-`");
-        }
-        expect(TokenType.LPAREN);
-        String key = expect(TokenType.STRING_LIT).text();
-        expect(TokenType.COMMA);
-        Ast.DecRef ref = parseDecRef();
-        expect(TokenType.RPAREN);
-        return new Ast.Bind(name.text(), key, ref, name.pos());
-    }
-
-    private Ast.DecRef parseDecRef() {
-        Token t = expect(TokenType.IDENT);
-        if (match(TokenType.DOT)) {
-            // `.decoder`: `decoder` lexes as a keyword, not an identifier
-            if (!check(TokenType.DECODER)) {
-                throw error(peek(), "expected `" + t.text() + ".decoder`");
-            }
-            advance();
-            return new Ast.DataDecRef(t.text(), t.pos());
-        }
-        return switch (t.text()) {
-            case "string" -> new Ast.PrimDecRef(Ast.PrimKind.STRING, t.pos());
-            case "int" -> new Ast.PrimDecRef(Ast.PrimKind.INT, t.pos());
-            case "list" -> {
-                expect(TokenType.LPAREN);
-                Ast.DecRef element = parseDecRef();
-                expect(TokenType.RPAREN);
-                yield new Ast.ListDecRef(element, t.pos());
-            }
-            default -> throw error(t, "expected string, int, list(...), or Type.decoder");
-        };
-    }
-
     private Ast.Let parseLet() {
         Token kw = expect(TokenType.LET);
         String name = expect(TokenType.IDENT).text();
         expect(TokenType.ASSIGN);
         Ast.Expr value = parseExpr();
         return new Ast.Let(name, value, kw.pos());
-    }
-
-    private Ast.Require parseRequire() {
-        Token kw = expect(TokenType.REQUIRE);
-        Ast.Expr cond = parseExpr();
-        expect(TokenType.ELSE);
-        String code = expect(TokenType.IDENT).text();
-        return new Ast.Require(cond, code, kw.pos());
-    }
-
-    private Ast.Construct parseConstruct() {
-        Token type = expect(TokenType.IDENT);
-        expect(TokenType.LBRACE);
-        Inits in = parseInits();
-        expect(TokenType.RBRACE);
-        return new Ast.Construct(type.text(), in.fields(), in.spreads(), type.pos());
     }
 
     private Ast.Expr newData(Token type) {
@@ -421,76 +268,6 @@ public final class Parser {
         }
         // shorthand: `field` means `field: field`
         return new Ast.FieldInit(n.text(), new Ast.Var(n.text(), n.pos()), n.pos());
-    }
-
-    // --- encoder ---
-
-    private Ast.EncoderDef parseEncoder() {
-        Token kw = expect(TokenType.ENCODER);
-        String self = expect(TokenType.IDENT).text();
-        expect(TokenType.LBRACE);
-        Ast.RawExpr result = parseRawExpr();
-        expect(TokenType.RBRACE);
-        return new Ast.EncoderDef(self, result, kw.pos());
-    }
-
-    private Ast.RawExpr parseRawExpr() {
-        Token k = expect(TokenType.IDENT);
-        switch (k.text()) {
-            case "Text" -> {
-                expect(TokenType.LPAREN);
-                Ast.Expr arg = parseExpr();
-                expect(TokenType.RPAREN);
-                return new Ast.TextRaw(arg, k.pos());
-            }
-            case "Int" -> {
-                expect(TokenType.LPAREN);
-                Ast.Expr arg = parseExpr();
-                expect(TokenType.RPAREN);
-                return new Ast.IntRaw(arg, k.pos());
-            }
-            case "Object" -> {
-                expect(TokenType.LBRACE);
-                List<Ast.RawEntry> entries = new ArrayList<>();
-                if (!check(TokenType.RBRACE)) {
-                    entries.add(parseRawEntry());
-                    while (match(TokenType.COMMA)) {
-                        if (check(TokenType.RBRACE)) {
-                            break;
-                        }
-                        entries.add(parseRawEntry());
-                    }
-                }
-                expect(TokenType.RBRACE);
-                return new Ast.ObjectRaw(entries, k.pos());
-            }
-            default -> {
-                // TypeName.encode(expr)
-                expect(TokenType.DOT);
-                Token m = expect(TokenType.IDENT);
-                if (!m.text().equals("encode")) {
-                    throw error(m, "expected `" + k.text() + ".encode(...)`");
-                }
-                expect(TokenType.LPAREN);
-                Ast.Expr arg = parseExpr();
-                expect(TokenType.RPAREN);
-                return new Ast.EncodeRaw(k.text(), arg, k.pos());
-            }
-        }
-    }
-
-    private Ast.RawEntry parseRawEntry() {
-        Token key = expect(TokenType.STRING_LIT);
-        expect(TokenType.COLON);
-        return new Ast.RawEntry(key.text(), parseRawExpr(), key.pos());
-    }
-
-    private Ast.RawKind rawKind(Token t) {
-        return switch (t.text()) {
-            case "Text" -> Ast.RawKind.TEXT;
-            case "Int" -> Ast.RawKind.INT;
-            default -> throw error(t, "unknown Raw kind `" + t.text() + "` (expected Text or Int)");
-        };
     }
 
     // --- expressions ---

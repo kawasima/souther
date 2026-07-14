@@ -20,26 +20,14 @@ class CompileBehaviorTest {
     private static final String MODULE = """
             module demo
 
-            data MemberId {
-                value: String
-                decoder from Text as input { MemberId { value: input } }
-                encoder self { Text(self.value) }
-            }
+            data MemberId { value: String }
 
             data Member {
                 id: MemberId
                 name: String
-                decoder from Object {
-                    id   <- field("id", MemberId.decoder)
-                    name <- field("name", string)
-                    Member { id, name }
-                }
             }
 
-            data Response {
-                id: MemberId
-                encoder self { Object { "id": MemberId.encode(self.id) } }
-            }
+            data Response { id: MemberId }
 
             behavior toResponse(m: Member) -> Response
                 constructs Response

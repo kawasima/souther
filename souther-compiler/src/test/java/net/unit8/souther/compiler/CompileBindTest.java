@@ -21,17 +21,10 @@ class CompileBindTest {
     private static final String MODULE = """
             module demo
 
-            data Id {
-                value: String
-                decoder from Text as i { Id { value: i } }
-                encoder self { Text(self.value) }
-            }
-            data Member {
-                id: Id
-                decoder from Object { id <- field("id", Id.decoder)  Member { id } }
-            }
-            data NotFound { reason: String  decoder from Text as r { NotFound { reason: r } } }
-            data Resp { id: Id  encoder self { Object { "id": Id.encode(self.id) } } }
+            data Id { value: String }
+            data Member { id: Id }
+            data NotFound { reason: String }
+            data Resp { id: Id }
 
             required behavior findMember(Id) -> Result<Member, NotFound>
 

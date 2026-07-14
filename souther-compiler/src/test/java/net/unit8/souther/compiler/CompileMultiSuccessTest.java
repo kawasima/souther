@@ -19,7 +19,7 @@ class CompileMultiSuccessTest {
     private static final String MODULE = """
             module demo
 
-            data Draft  { cost: Int  decoder from Object { cost <- field("cost", int)  Draft { cost } } }
+            data Draft  { cost: Int }
             data Cheap  { cost: Int }
             data Pricey { cost: Int }
 
@@ -31,7 +31,7 @@ class CompileMultiSuccessTest {
     @SuppressWarnings("unchecked")
     private String classify(BytesClassLoader loader, long cost) throws Exception {
         Decoder<?> dec = (Decoder<?>) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
-        Object draft = ((Result.Ok<?, ?>) dec.decode(Raw.object(Map.of("cost", Raw.integer(cost))))).value();
+        Object draft = ((Result.Ok<?, ?>) dec.decode(Raw.integer(cost))).value();
         Object behavior = loader.loadClass("demo.classify").getConstructor().newInstance();
         Result<?, ?> r = ((Behavior<Object, Object>) behavior).apply(draft);
         assertTrue(r.isOk());

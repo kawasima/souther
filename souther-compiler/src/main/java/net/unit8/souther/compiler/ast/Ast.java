@@ -148,7 +148,7 @@ public interface Ast {
     record EncoderDef(String selfName, RawExpr result, SourcePos pos) implements Ast {}
 
     /** A Raw-building expression. */
-    sealed interface RawExpr extends Ast permits TextRaw, IntRaw, ObjectRaw, EncodeRaw {}
+    sealed interface RawExpr extends Ast permits TextRaw, IntRaw, ObjectRaw, EncodeRaw, ListEnc {}
 
     record TextRaw(Expr arg, SourcePos pos) implements RawExpr {}
 
@@ -158,6 +158,16 @@ public interface Ast {
 
     /** {@code TypeName.encode(expr)} — encode a nested data value to Raw. */
     record EncodeRaw(String typeName, Expr arg, SourcePos pos) implements RawExpr {}
+
+    /** {@code list(expr, <elemEnc>)} — encode a {@code List<T>} to a Raw.List. */
+    record ListEnc(Expr source, EncElem elem, SourcePos pos) implements RawExpr {}
+
+    /** How to encode a list element: a primitive or another data's {@code .encode}. */
+    sealed interface EncElem extends Ast permits PrimEnc, DataEnc {}
+
+    record PrimEnc(PrimKind kind, SourcePos pos) implements EncElem {}
+
+    record DataEnc(String typeName, SourcePos pos) implements EncElem {}
 
     record RawEntry(String key, RawExpr value, SourcePos pos) implements Ast {}
 

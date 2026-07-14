@@ -1,16 +1,8 @@
-module demo
+// 単一フィールド data ＋ invariant（最小例）。
+// decoder/encoder は書かない — データ形状から導出される（value 型は newtype = 裸の文字列）。
+module example.email
 
 data Email {
     value: String
     invariant contains(value, "@")
-
-    decoder from Text as input {
-        let normalized = lowercase(trim(input))
-        require length(normalized) > 0 else EmptyEmail
-        require contains(normalized, "@") else MissingAtSign
-        Email { value: normalized }
-    }
-    encoder self {
-        Text(self.value)
-    }
 }

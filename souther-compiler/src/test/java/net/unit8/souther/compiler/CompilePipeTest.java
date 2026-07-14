@@ -18,9 +18,9 @@ class CompilePipeTest {
     private static final String MODULE = """
             module demo
 
-            data Wrap { value: String  decoder from Text as i { Wrap { value: i } } }
-            data Mid  { value: String  decoder from Text as i { Mid { value: i } } }
-            data Out  { value: String  encoder self { Text(self.value) } }
+            data Wrap { value: String }
+            data Mid  { value: String }
+            data Out  { value: String }
 
             behavior a(w: Wrap) -> Mid constructs Mid { Mid { value: w.value } }
             behavior b(m: Mid) -> Out constructs Out { Out { value: m.value } }

@@ -1,6 +1,6 @@
-// 出張申請モデルの一断面（SMDD 仕様DSL → Souther 実装モデル）
-// value type の invariant / include による共通項目 / 状態遷移 behavior /
-// require ガード / spread(..申請) / railway を通す例。
+// 出張申請モデルの一断面。ドメインは data＋invariant＋behavior だけ。
+// decoder/encoder は書かない（導出される。JSON キー＝フィールド名、value 型は newtype）。
+// カスタムのキー名・正規化・判別子が要るなら、それは境界（Java/Raoh）の仕事。
 //
 // コンパイル: java -cp souther-compiler/target/classes \
 //              net.unit8.souther.compiler.Main examples/businesstrip.mdl -d /tmp/out
@@ -9,51 +9,25 @@ module example.businesstrip
 data 従業員ID {
     value: String
     invariant length(value) > 0
-    decoder from Text as v { 従業員ID { value: trim(v) } }
-    encoder self { Text(self.value) }
 }
 
 data 金額 {
     value: Int
     invariant value >= 0
-    decoder from Int as n { 金額 { value: n } }
-    encoder self { Int(self.value) }
 }
 
 data 出張申請共通項目 {
     申請者: 従業員ID
     予定費用: 金額
-    decoder from Object {
-        申請者   <- field("applicant", 従業員ID.decoder)
-        予定費用 <- field("estimatedCost", 金額.decoder)
-        出張申請共通項目 { 申請者, 予定費用 }
-    }
-    encoder self {
-        Object {
-            "applicant": 従業員ID.encode(self.申請者),
-            "estimatedCost": 金額.encode(self.予定費用)
-        }
-    }
 }
 
 data 申請準備中 {
     include 出張申請共通項目
-    decoder from Object {
-        共通 <- field("common", 出張申請共通項目.decoder)
-        申請準備中 { ..共通 }
-    }
 }
 
 data 提出済み {
     include 出張申請共通項目
     提出日時: String
-    encoder self {
-        Object {
-            "applicant": 従業員ID.encode(self.申請者),
-            "estimatedCost": 金額.encode(self.予定費用),
-            "submittedAt": Text(self.提出日時)
-        }
-    }
 }
 
 data 却下 { 理由: String }

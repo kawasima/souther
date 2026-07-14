@@ -24,32 +24,15 @@ class CompileIncludeTest {
             data Common {
                 applicant: String
                 cost: Int
-                decoder from Object {
-                    applicant <- field("applicant", string)
-                    cost      <- field("cost", int)
-                    Common { applicant, cost }
-                }
             }
 
             data Draft {
                 include Common
-                decoder from Object {
-                    applicant <- field("applicant", string)
-                    cost      <- field("cost", int)
-                    Draft { applicant, cost }
-                }
             }
 
             data Submitted {
                 include Common
                 submittedAt: String
-                encoder self {
-                    Object {
-                        "applicant": Text(self.applicant),
-                        "cost": Int(self.cost),
-                        "submittedAt": Text(self.submittedAt)
-                    }
-                }
             }
 
             behavior submit(d: Draft, at: String) -> Submitted constructs Submitted {
@@ -83,14 +66,7 @@ class CompileIncludeTest {
         String src = """
                 module demo
                 data Common { applicant: String  cost: Int  invariant cost >= 0 }
-                data Draft {
-                    include Common
-                    decoder from Object {
-                        applicant <- field("applicant", string)
-                        cost      <- field("cost", int)
-                        Draft { applicant, cost }
-                    }
-                }
+                data Draft { include Common }
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
         Decoder<?> decoder = (Decoder<?>) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);

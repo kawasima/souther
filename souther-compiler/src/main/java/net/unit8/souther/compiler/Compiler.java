@@ -3,6 +3,7 @@ package net.unit8.souther.compiler;
 import net.unit8.souther.compiler.ast.Ast;
 import net.unit8.souther.compiler.check.TypeChecker;
 import net.unit8.souther.compiler.codegen.Backend;
+import net.unit8.souther.compiler.derive.Deriver;
 import net.unit8.souther.compiler.syntax.Parser;
 
 import java.io.IOException;
@@ -20,7 +21,7 @@ public final class Compiler {
 
     /** Compiles source into a map of binary class name → bytecode. */
     public static Map<String, byte[]> compile(String source) {
-        Ast.Module module = Parser.parse(source);
+        Ast.Module module = Deriver.derive(Parser.parse(source));
         TypeChecker.check(module);
         return Backend.generate(module);
     }

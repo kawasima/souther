@@ -507,6 +507,30 @@ public final class TypeChecker {
                 requireType(e.arg(), Type.ref(e.typeName()), env, data, symbols,
                         "argument of " + e.typeName() + ".encode");
             }
+            case Ast.ListEnc le -> {
+                Type st = typeOf(le.source(), env, data, symbols);
+                if (!(st instanceof Type.ListOf lo)) {
+                    throw new CompileException(le.pos(), "list(...) source must be a List, got " + st);
+                }
+                Type elemType = lo.element();
+                switch (le.elem()) {
+                    case Ast.PrimEnc p -> {
+                        Type expected = p.kind() == Ast.PrimKind.STRING ? Type.STRING : Type.INT;
+                        if (!elemType.equals(expected)) {
+                            throw new CompileException(le.pos(),
+                                    "list element encoder " + p.kind() + " does not match " + elemType);
+                        }
+                    }
+                    case Ast.DataEnc d -> {
+                        if (!elemType.equals(Type.ref(d.typeName()))
+                                || !(symbols.get(d.typeName()) instanceof Ast.Data dd)
+                                || dd.encoder().isEmpty()) {
+                            throw new CompileException(le.pos(),
+                                    "list element encoder `" + d.typeName() + "` does not match " + elemType);
+                        }
+                    }
+                }
+            }
         }
     }
 

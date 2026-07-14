@@ -17,8 +17,8 @@ class CompileIfTest {
     private static final String MODULE = """
             module demo
 
-            data In  { value: Int  decoder from Int as n { In { value: n } } }
-            data Out { label: String  encoder self { Text(self.label) } }
+            data In  { value: Int }
+            data Out { label: String }
 
             behavior classify(x: In) -> Out constructs Out {
                 Out { label: if x.value >= 100 then "high" else "low" }

@@ -20,22 +20,11 @@ class CompileMatchTest {
     private static final String MODULE = """
             module demo
 
-            data Label { value: String  encoder self { Text(self.value) } }
+            data Label { value: String }
 
-            data EmailContact {
-                email: String
-                decoder from Object { email <- field("email", string)  EmailContact { email } }
-            }
-            data PhoneContact {
-                phone: String
-                decoder from Object { phone <- field("phone", string)  PhoneContact { phone } }
-            }
-            data Contact = EmailContact | PhoneContact {
-                decoder from Object discriminate on "kind" {
-                    "email" => EmailContact.decoder
-                    "phone" => PhoneContact.decoder
-                }
-            }
+            data EmailContact { email: String }
+            data PhoneContact { phone: String }
+            data Contact = EmailContact | PhoneContact
 
             behavior contactValue(c: Contact) -> Label constructs Label {
                 match c {
@@ -66,14 +55,14 @@ class CompileMatchTest {
     @Test
     void matchSelectsTheEmailArm() throws Exception {
         BytesClassLoader loader = loader();
-        Raw out = run(loader, Raw.object(Map.of("kind", Raw.text("email"), "email", Raw.text("a@b"))));
+        Raw out = run(loader, Raw.object(Map.of("type", Raw.text("EmailContact"), "email", Raw.text("a@b"))));
         assertEquals(Raw.text("a@b"), out);
     }
 
     @Test
     void matchSelectsThePhoneArm() throws Exception {
         BytesClassLoader loader = loader();
-        Raw out = run(loader, Raw.object(Map.of("kind", Raw.text("phone"), "phone", Raw.text("123"))));
+        Raw out = run(loader, Raw.object(Map.of("type", Raw.text("PhoneContact"), "phone", Raw.text("123"))));
         assertEquals(Raw.text("123"), out);
     }
 
