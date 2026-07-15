@@ -742,7 +742,7 @@ public final class TypeChecker {
             }
             covered.add(c.armType());
             branchType = mergeBranch(m, branchType,
-                    typeOf(c.body(), bound(env, c.binding(), Type.ref(c.armType())), data, symbols, reqs), c);
+                    typeOf(c.body(), bound(env, c.binding(), armBindType(c.armType())), data, symbols, reqs), c);
         }
         for (String arm : arms) {
             if (!covered.contains(arm)) {
@@ -780,6 +780,20 @@ public final class TypeChecker {
             }
         }
         return branchType;
+    }
+
+    /** The type a match arm binds. A primitive-named arm (e.g. {@code Int} in {@code Int |
+     * DivisionByZero}) binds that primitive; a data-named arm binds its data type. */
+    public static Type armBindType(String armName) {
+        return switch (armName) {
+            case "Int" -> Type.INT;
+            case "String" -> Type.STRING;
+            case "Bool" -> Type.BOOL;
+            case "Decimal" -> Type.DECIMAL;
+            case "Date" -> Type.DATE;
+            case "DateTime" -> Type.DATETIME;
+            default -> Type.ref(armName);
+        };
     }
 
     /** Extends {@code env} with {@code name -> type} when both are present; otherwise returns it as is. */
@@ -904,6 +918,13 @@ public final class TypeChecker {
             }
             case "add", "subtract", "multiply" -> numericOp(call, env, data, symbols, reqs, false);
             case "compare" -> numericOp(call, env, data, symbols, reqs, true);
+            case "divide", "remainder" -> {
+                arity(call, 2);
+                requireType(args.get(0), Type.INT, env, data, symbols, reqs, "argument 1 of " + call.fn());
+                requireType(args.get(1), Type.INT, env, data, symbols, reqs, "argument 2 of " + call.fn());
+                // partial: a zero divisor produces the DivisionByZero arm (spec 18.2)
+                yield Type.union(new java.util.LinkedHashSet<>(List.of("Int", "DivisionByZero")));
+            }
             default -> {
                 // a required behavior called inline (spec 12.2, 13): type it as its success arm
                 ReqSig callee = reqs.get(call.fn());

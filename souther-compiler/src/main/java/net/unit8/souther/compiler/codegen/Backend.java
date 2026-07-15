@@ -50,6 +50,7 @@ public final class Backend {
     private static final ClassDesc CD_Behavior = ClassDesc.of("net.unit8.souther.runtime.Behavior");
     private static final ClassDesc CD_Violation = ClassDesc.of("net.unit8.souther.runtime.Violation");
     private static final ClassDesc CD_DecodeFailure = ClassDesc.of("net.unit8.souther.runtime.DecodeFailure");
+    private static final ClassDesc CD_DivisionByZero = ClassDesc.of("net.unit8.souther.runtime.DivisionByZero");
     private static final ClassDesc CD_Boolean = ClassDesc.of("java.lang.Boolean");
     private static final ClassDesc CD_BigDecimal = ClassDesc.of("java.math.BigDecimal");
     private static final ClassDesc CD_LocalDate = ClassDesc.of("java.time.LocalDate");
@@ -267,6 +268,20 @@ public final class Backend {
         return ifaces.toArray(new ClassDesc[0]);
     }
 
+    /** The class a match arm is tested against: a boxed/reference class for a primitive arm,
+     * otherwise the arm's data or built-in class. */
+    private ClassDesc matchArmClass(String armName) {
+        return switch (armName) {
+            case "Int" -> CD_Long;
+            case "Bool" -> CD_Boolean;
+            case "Decimal" -> CD_BigDecimal;
+            case "String" -> CD_String;
+            case "Date" -> CD_LocalDate;
+            case "DateTime" -> CD_LocalDateTime;
+            default -> armClass(armName);
+        };
+    }
+
     private Map<String, Type> fieldTypes(Ast.Data data) {
         return TypeChecker.fieldTypes(data, symbols);
     }
@@ -281,6 +296,7 @@ public final class Backend {
         return switch (typeName) {
             case "制約違反" -> CD_Violation;
             case "復号失敗" -> CD_DecodeFailure;
+            case "DivisionByZero" -> CD_DivisionByZero;
             case "Raw" -> CD_Raw;
             default -> cd(typeName);
         };
@@ -1091,7 +1107,7 @@ public final class Backend {
             for (Ast.Case c : m.cases()) {
                 ClassDesc armCd = element != null
                         ? (c.armType().equals("Some") ? CD_OptionSome : CD_OptionNone)
-                        : cd(c.armType());
+                        : matchArmClass(c.armType());
                 code.aload(sSlot);
                 code.instanceOf(armCd);
                 Label nextCase = code.newLabel();
@@ -1107,11 +1123,12 @@ public final class Backend {
                         bind(c.binding(), bslot, element);
                     }
                 } else if (element == null && c.binding() != null) {
+                    // a data arm binds the instance; a primitive arm (e.g. Int) unboxes the value
+                    Type bt = TypeChecker.armBindType(c.armType());
                     code.aload(sSlot);
-                    code.checkcast(armCd);
-                    int bslot = slot(Type.ref(c.armType()));
-                    code.astore(bslot);
-                    bind(c.binding(), bslot, Type.ref(c.armType()));
+                    int bslot = slot(bt);
+                    unbox(code, bt, bslot);
+                    bind(c.binding(), bslot, bt);
                 }
                 branchType = expr(c.body());
                 code.goto_(end);
@@ -1266,6 +1283,33 @@ public final class Backend {
                     }
                     code.i2l();
                     return Type.INT;
+                }
+                case "divide", "remainder" -> {
+                    expr(call.args().get(0));
+                    int aSlot = slot(Type.INT);
+                    code.lstore(aSlot);
+                    expr(call.args().get(1));
+                    int bSlot = slot(Type.INT);
+                    code.lstore(bSlot);
+                    code.lload(bSlot);
+                    code.lconst_0();
+                    code.lcmp();
+                    Label zero = code.newLabel();
+                    Label end = code.newLabel();
+                    code.ifeq(zero);                       // b == 0 -> DivisionByZero arm
+                    code.lload(aSlot);
+                    code.lload(bSlot);
+                    if (call.fn().equals("divide")) {
+                        code.ldiv();
+                    } else {
+                        code.lrem();
+                    }
+                    code.invokestatic(CD_Long, "valueOf", MTD_Long_valueOf);   // box the quotient
+                    code.goto_(end);
+                    code.labelBinding(zero);
+                    code.getstatic(CD_DivisionByZero, "INSTANCE", CD_DivisionByZero);
+                    code.labelBinding(end);
+                    return Type.union(new java.util.LinkedHashSet<>(java.util.List.of("Int", "DivisionByZero")));
                 }
                 default -> {
                     if (reqNames.contains(call.fn())) {
