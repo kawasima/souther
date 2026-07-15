@@ -19,9 +19,8 @@ public final class Lexer {
             Map.entry("module", TokenType.MODULE),
             Map.entry("data", TokenType.DATA),
             Map.entry("invariant", TokenType.INVARIANT),
-            Map.entry("decoder", TokenType.DECODER),
-            Map.entry("encoder", TokenType.ENCODER),
-            Map.entry("from", TokenType.FROM),
+            // decoder / encoder / from are not reserved (spec 5): they read as identifiers,
+            // e.g. the pipeline stages `Member.decoder` / `MemberResponse.encoder`
             Map.entry("as", TokenType.AS),
             Map.entry("let", TokenType.LET),
             Map.entry("require", TokenType.REQUIRE),

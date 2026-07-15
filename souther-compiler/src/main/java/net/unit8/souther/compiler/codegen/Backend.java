@@ -269,6 +269,7 @@ public final class Backend {
         return switch (typeName) {
             case "制約違反" -> CD_Violation;
             case "復号失敗" -> CD_DecodeFailure;
+            case "Raw" -> CD_Raw;
             default -> cd(typeName);
         };
     }
@@ -509,14 +510,11 @@ public final class Backend {
                 // slot 1 always holds the running value (an output arm, as an Object).
                 List<String> stages = pipe.stages();
                 // stage 0 consumes the whole input unconditionally
-                pushStage(code, cdP, stages.get(0), requiredNames, behaviorDeps);
-                code.aload(1);
-                code.invokeinterface(CD_Behavior, "apply", MTD_apply);
-                code.astore(1);
-                Type running = sigs.get(stages.get(0)).out();
+                applyStage(code, cdP, stages.get(0), requiredNames, behaviorDeps);
+                Type running = TypeChecker.stageSig(stages.get(0), sigs, symbols, pipe.pos()).out();
                 for (int i = 1; i < stages.size(); i++) {
                     String stage = stages.get(i);
-                    TypeChecker.Sig g = sigs.get(stage);
+                    TypeChecker.Sig g = TypeChecker.stageSig(stage, sigs, symbols, pipe.pos());
                     if (TypeChecker.isDataLike(running)) {
                         // route: apply g only if the running value is one of the arms it accepts
                         List<String> accepted = new ArrayList<>();
@@ -534,16 +532,10 @@ public final class Backend {
                         }
                         code.goto_(after);
                         code.labelBinding(doApply);
-                        pushStage(code, cdP, stage, requiredNames, behaviorDeps);
-                        code.aload(1);
-                        code.invokeinterface(CD_Behavior, "apply", MTD_apply);
-                        code.astore(1);
+                        applyStage(code, cdP, stage, requiredNames, behaviorDeps);
                         code.labelBinding(after);
                     } else {
-                        pushStage(code, cdP, stage, requiredNames, behaviorDeps);
-                        code.aload(1);
-                        code.invokeinterface(CD_Behavior, "apply", MTD_apply);
-                        code.astore(1);
+                        applyStage(code, cdP, stage, requiredNames, behaviorDeps);
                     }
                     running = TypeChecker.route(running, g, pipe.pos());
                 }
@@ -551,6 +543,31 @@ public final class Backend {
                 code.areturn();
             });
         });
+    }
+
+    /** Applies one pipeline stage to the running value in slot 1, storing the result back. A stage
+     * is a behavior, or a {@code Type.decoder}/{@code Type.encoder} boundary codec (spec 14.1). */
+    private void applyStage(CodeBuilder code, ClassDesc cdP, String stage, Set<String> requiredNames,
+                            Map<String, List<String>> behaviorDeps) {
+        if (stage.endsWith(".decoder")) {
+            String base = stage.substring(0, stage.lastIndexOf('.'));
+            code.invokestatic(cd(base), "decoder", MTD_decoder);
+            code.aload(1);
+            code.checkcast(CD_Raw);
+            code.invokeinterface(CD_Decoder, "decode", MTD_decode);
+            code.astore(1);
+        } else if (stage.endsWith(".encoder")) {
+            String base = stage.substring(0, stage.lastIndexOf('.'));
+            code.invokestatic(cd(base), "encoder", MTD_encoder);
+            code.aload(1);
+            code.invokeinterface(CD_Encoder, "encode", MTD_encode);
+            code.astore(1);
+        } else {
+            pushStage(code, cdP, stage, requiredNames, behaviorDeps);
+            code.aload(1);
+            code.invokeinterface(CD_Behavior, "apply", MTD_apply);
+            code.astore(1);
+        }
     }
 
     /** Pushes the behavior object for a pipeline stage: an injected required field, or a fresh
@@ -1317,6 +1334,7 @@ public final class Backend {
         if (type == Type.DECIMAL) return CD_BigDecimal;
         if (type == Type.DATE) return CD_LocalDate;
         if (type == Type.DATETIME) return CD_LocalDateTime;
+        if (type == Type.RAW) return CD_Raw;
         if (type instanceof Type.OptionOf) return CD_Option;
         if (type instanceof Type.ListOf) return CD_List;
         if (type instanceof Type.Union) return CD_Object;

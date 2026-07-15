@@ -54,9 +54,9 @@ public final class Parser {
         String name = expect(TokenType.IDENT).text();
         if (match(TokenType.ASSIGN)) {
             List<String> stages = new ArrayList<>();
-            stages.add(expect(TokenType.IDENT).text());
+            stages.add(parseStage());
             while (match(TokenType.GTGT)) {
-                stages.add(expect(TokenType.IDENT).text());
+                stages.add(parseStage());
             }
             return new Ast.PipeBehavior(name, stages, kw.pos());
         }
@@ -86,6 +86,15 @@ public final class Parser {
         Ast.Expr result = parseExpr();
         expect(TokenType.RBRACE);
         return new Ast.BodyBehavior(name, params, ret, constructs, stmts, result, kw.pos());
+    }
+
+    /** A pipeline stage: a behavior name, or {@code Type.decoder} / {@code Type.encoder}. */
+    private String parseStage() {
+        String s = expect(TokenType.IDENT).text();
+        if (match(TokenType.DOT)) {
+            s = s + "." + expect(TokenType.IDENT).text();
+        }
+        return s;
     }
 
     private Ast.Param parseParam() {

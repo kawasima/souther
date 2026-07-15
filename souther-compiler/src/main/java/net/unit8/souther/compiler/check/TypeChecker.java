@@ -120,24 +120,46 @@ public final class TypeChecker {
         }
         for (Ast.BehaviorDef b : module.behaviors()) {
             if (b instanceof Ast.PipeBehavior pipe) {
-                sigs.put(pipe.name(), pipeSig(pipe, sigs));
+                sigs.put(pipe.name(), pipeSig(pipe, sigs, symbols));
             }
         }
         return sigs;
     }
 
-    private static Sig pipeSig(Ast.PipeBehavior pipe, Map<String, Sig> sigs) {
+    /** The signature of a pipeline stage: a behavior, or a {@code Type.decoder}/{@code Type.encoder}
+     * boundary codec (spec 14.1). A decoder is {@code Raw -> T | 復号失敗}; an encoder is {@code T -> Raw}. */
+    public static Sig stageSig(String stage, Map<String, Sig> sigs, Map<String, Ast.Def> symbols,
+                               SourcePos pos) {
+        if (stage.endsWith(".decoder")) {
+            String base = codecBase(stage, symbols, pos);
+            return new Sig(Type.RAW, Type.union(new java.util.LinkedHashSet<>(List.of(base, "復号失敗"))));
+        }
+        if (stage.endsWith(".encoder")) {
+            return new Sig(Type.ref(codecBase(stage, symbols, pos)), Type.RAW);
+        }
+        Sig s = sigs.get(stage);
+        if (s == null) {
+            throw new CompileException(pos, "unknown behavior `" + stage + "` in pipeline");
+        }
+        return s;
+    }
+
+    private static String codecBase(String stage, Map<String, Ast.Def> symbols, SourcePos pos) {
+        String base = stage.substring(0, stage.lastIndexOf('.'));
+        if (!symbols.containsKey(base)) {
+            throw new CompileException(pos, "unknown data `" + base + "` in pipeline stage `" + stage + "`");
+        }
+        return base;
+    }
+
+    private static Sig pipeSig(Ast.PipeBehavior pipe, Map<String, Sig> sigs, Map<String, Ast.Def> symbols) {
         List<String> stages = pipe.stages();
-        for (String s : stages) {
-            if (!sigs.containsKey(s)) {
-                throw new CompileException(pipe.pos(), "unknown behavior `" + s + "` in pipeline");
-            }
-        }
-        Type running = sigs.get(stages.get(0)).out();
+        Sig first = stageSig(stages.get(0), sigs, symbols, pipe.pos());
+        Type running = first.out();
         for (int i = 1; i < stages.size(); i++) {
-            running = route(running, sigs.get(stages.get(i)), pipe.pos());
+            running = route(running, stageSig(stages.get(i), sigs, symbols, pipe.pos()), pipe.pos());
         }
-        return new Sig(sigs.get(stages.get(0)).in(), running);
+        return new Sig(first.in(), running);
     }
 
     /**
@@ -162,7 +184,7 @@ public final class TypeChecker {
                         "Cannot compose behaviors: no output arm of the left behavior is accepted by "
                                 + "the right behavior's input. Left output: " + out + ", right input: " + in);
             }
-            Set<String> gArms = namesOf(g.out());
+            Set<String> gArms = armNamesOf(g.out());
             if (gArms.isEmpty()) {
                 if (!rest.isEmpty()) {
                     throw new CompileException(pos, "E1701",
@@ -924,6 +946,15 @@ public final class TypeChecker {
             return u.members();
         }
         return Set.of();
+    }
+
+    /** Arm names of a stage output, treating a {@code Raw} encoder output as the arm {@code "Raw"}
+     * so it can be unioned with propagated error arms (spec 14.1, 24). */
+    private static Set<String> armNamesOf(Type t) {
+        if (t == Type.RAW) {
+            return Set.of("Raw");
+        }
+        return namesOf(t);
     }
 
     /** True when a value of {@code sub} is acceptable where {@code sup} is expected. */

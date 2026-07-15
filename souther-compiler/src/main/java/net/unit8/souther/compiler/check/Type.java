@@ -6,7 +6,7 @@ package net.unit8.souther.compiler.check;
  */
 public sealed interface Type permits Type.Prim, Type.Ref, Type.ListOf, Type.OptionOf, Type.Union {
 
-    enum Prim implements Type { INT, STRING, BOOL, DECIMAL, DATE, DATETIME }
+    enum Prim implements Type { INT, STRING, BOOL, DECIMAL, DATE, DATETIME, RAW }
 
     /** A reference to a named data type (product or sum). */
     record Ref(String name) implements Type {}
@@ -26,6 +26,8 @@ public sealed interface Type permits Type.Prim, Type.Ref, Type.ListOf, Type.Opti
     Type DECIMAL = Prim.DECIMAL;
     Type DATE = Prim.DATE;
     Type DATETIME = Prim.DATETIME;
+    /** The external representation type — a decoder-stage input / encoder-stage output (spec 14.1). */
+    Type RAW = Prim.RAW;
 
     static Type ref(String name) {
         return new Ref(name);
