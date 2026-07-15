@@ -87,6 +87,45 @@ class CompilePipeDepsTest {
         assertEquals("T", o.get("b"));
     }
 
+    /**
+     * Regression: a pipeline used as a stage of another pipeline contributed no requirements,
+     * because only body behaviors were resolved. The outer pipeline got a no-arg constructor and
+     * called the inner one's — which does not exist — so it compiled clean and then threw
+     * NoSuchMethodError on apply, with no way to inject the dependency at all.
+     */
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void aPipelineOfAPipelineStillCollectsTheInnerRequirements() throws Exception {
+        String src = MODULE + """
+
+                behavior relabel = (o: Out) -> Out constructs Out {
+                    Out { a: o.b, b: o.a }
+                }
+
+                behavior outer = handle >> relabel
+                """;
+        Map<String, byte[]> classes = new HashMap<>(Compiler.compile(src));
+        classes.put("demo.FetchImpl", compileSubclass(classes, "demo.FetchImpl", impl("FetchImpl", "fetch", "m")));
+        classes.put("demo.TagImpl", compileSubclass(classes, "demo.TagImpl", impl("TagImpl", "tag", "T")));
+
+        BytesClassLoader loader = new BytesClassLoader(classes, getClass().getClassLoader());
+        Class<?> outerClass = loader.loadClass("demo.outer");
+        // outer requires what handle requires, transitively — not nothing
+        var bind = outerClass.getMethod("bind", loader.loadClass("demo.fetch"), loader.loadClass("demo.tag"));
+
+        Object outer = bind.invoke(null,
+                loader.loadClass("demo.FetchImpl").getConstructor().newInstance(),
+                loader.loadClass("demo.TagImpl").getConstructor().newInstance());
+
+        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
+        Object out = ((Behavior) outer).apply(((Ok) inDec.decode("x", Path.ROOT)).value());
+
+        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
+        Map<?, ?> o = (Map<?, ?>) enc.encode(out);
+        assertEquals("T", o.get("a"), "relabel swaps the fields handle produced");
+        assertEquals("m", o.get("b"));
+    }
+
     private static byte[] compileSubclass(Map<String, byte[]> generated, String className, String source)
             throws Exception {
         java.nio.file.Path classesDir = Files.createTempDirectory("souther-gen");

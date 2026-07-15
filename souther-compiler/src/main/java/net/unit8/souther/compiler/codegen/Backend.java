@@ -262,13 +262,7 @@ public final class Backend {
             out.put(module.name() + "." + r.name(), b.generateRequiredBase(r.name(), unitArms));
         }
         Map<String, TypeChecker.Sig> sigs = TypeChecker.signatures(module, b.symbols);
-        // each body behavior's own required dependencies, in constructor (first-seen) order
-        Map<String, List<String>> behaviorDeps = new HashMap<>();
-        for (Ast.BehaviorDef bd : module.behaviors()) {
-            if (bd instanceof Ast.BodyBehavior body) {
-                behaviorDeps.put(body.name(), TypeChecker.requiredCalls(body, requiredNames));
-            }
-        }
+        Map<String, List<String>> behaviorDeps = requirementSets(module, requiredNames);
         for (Ast.BehaviorDef bd : module.behaviors()) {
             switch (bd) {
                 case Ast.BodyBehavior body -> out.put(module.name() + "." + body.name(),
@@ -702,20 +696,64 @@ public final class Backend {
         }
     }
 
+    /**
+     * Every behavior's requirement set, in constructor (first-seen) order (spec 13.6, 14.3).
+     *
+     * <p>A required behavior requires itself; a body behavior requires what it calls; a pipeline
+     * requires the union of its stages'. Pipelines are resolved too, and transitively: a pipeline
+     * used as a stage of another pipeline still needs its own dependencies injected, and leaving
+     * it out produced a class whose {@code apply} called a constructor that does not exist.
+     */
+    private static Map<String, List<String>> requirementSets(Ast.Module module, Set<String> requiredNames) {
+        Map<String, Ast.BehaviorDef> byName = new HashMap<>();
+        for (Ast.BehaviorDef bd : module.behaviors()) {
+            byName.put(bd.name(), bd);
+        }
+        Map<String, List<String>> memo = new HashMap<>();
+        for (Ast.BehaviorDef bd : module.behaviors()) {
+            resolveDeps(bd.name(), byName, requiredNames, memo, new LinkedHashSet<>());
+        }
+        return memo;
+    }
+
+    private static List<String> resolveDeps(String name, Map<String, Ast.BehaviorDef> byName,
+                                            Set<String> requiredNames, Map<String, List<String>> memo,
+                                            LinkedHashSet<String> inProgress) {
+        if (requiredNames.contains(name)) {
+            return List.of(name);
+        }
+        List<String> cached = memo.get(name);
+        if (cached != null) {
+            return cached;
+        }
+        Ast.BehaviorDef bd = byName.get(name);
+        if (bd == null) {
+            return List.of();
+        }
+        if (!inProgress.add(name)) {
+            throw new CompileException(bd.pos(),
+                    "cyclic behavior composition: " + String.join(" >> ", inProgress) + " >> " + name);
+        }
+        LinkedHashSet<String> deps = new LinkedHashSet<>();
+        switch (bd) {
+            case Ast.BodyBehavior body -> deps.addAll(TypeChecker.requiredCalls(body, requiredNames));
+            case Ast.PipeBehavior pipe -> {
+                for (String stage : pipe.stages()) {
+                    deps.addAll(resolveDeps(stage, byName, requiredNames, memo, inProgress));
+                }
+            }
+        }
+        inProgress.remove(name);
+        List<String> out = new ArrayList<>(deps);
+        memo.put(name, out);
+        return out;
+    }
+
     private byte[] generatePipe(Ast.PipeBehavior pipe, Set<String> requiredNames,
                                 Map<String, TypeChecker.Sig> sigs, Map<String, List<String>> behaviorDeps) {
         ClassDesc cdP = cd(pipe.name());
-        // the pipeline's injected fields are the union of every stage's requirements, first-seen
-        // (spec 14.3): a required stage requires itself; a body stage requires its own deps.
-        LinkedHashSet<String> fields = new LinkedHashSet<>();
-        for (String stage : pipe.stages()) {
-            if (requiredNames.contains(stage)) {
-                fields.add(stage);
-            } else {
-                fields.addAll(behaviorDeps.getOrDefault(stage, List.of()));
-            }
-        }
-        List<String> reqStages = new ArrayList<>(fields);
+        // the pipeline's injected fields are the union of its stages' requirements (spec 14.3)
+        List<String> reqStages = behaviorDeps.getOrDefault(pipe.name(), List.of());
 
         return build(cdP, cb -> {
             cb.withFlags(pub(pipe.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
