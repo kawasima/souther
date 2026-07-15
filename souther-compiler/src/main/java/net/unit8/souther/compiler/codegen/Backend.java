@@ -111,13 +111,24 @@ public final class Backend {
     private final Map<String, Ast.Def> symbols;
     private final Map<String, List<String>> armToSums;
     private final Map<String, String> typePackage;
+    /** True when the module has no {@code exposing} clause: everything stays public. */
+    private final boolean exposeAll;
+    /** Base names the module exposes (only these are public when {@link #exposeAll} is false). */
+    private final Set<String> exposed;
 
     private Backend(String pkg, Map<String, Ast.Def> symbols, Map<String, List<String>> armToSums,
-                    Map<String, String> typePackage) {
+                    Map<String, String> typePackage, boolean exposeAll, Set<String> exposed) {
         this.pkg = pkg;
         this.symbols = symbols;
         this.armToSums = armToSums;
         this.typePackage = typePackage;
+        this.exposeAll = exposeAll;
+        this.exposed = exposed;
+    }
+
+    /** {@code ACC_PUBLIC} when the name is exposed (or the module exposes all), else 0. */
+    private int pub(String name) {
+        return (exposeAll || exposed.contains(name)) ? ClassFile.ACC_PUBLIC : 0;
     }
 
     public static Map<String, byte[]> generate(Ast.Module module) {
@@ -136,7 +147,13 @@ public final class Backend {
                 }
             }
         }
-        Backend b = new Backend(module.name(), symbols, armToSums, typePackage);
+        Set<String> exposed = new HashSet<>();
+        for (String e : module.exposing()) {
+            int dot = e.indexOf('.');
+            exposed.add(dot < 0 ? e : e.substring(0, dot));
+        }
+        Backend b = new Backend(module.name(), symbols, armToSums, typePackage,
+                module.exposing().isEmpty(), exposed);
         Map<String, byte[]> out = new LinkedHashMap<>();
         for (Ast.Def def : module.defs()) {
             switch (def) {
@@ -307,7 +324,7 @@ public final class Backend {
         Map<String, Type> fields = fieldTypes(data);
 
         out.put(pkg + "." + data.name(), CF.build(cdName, cb -> {
-            cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
+            cb.withFlags(pub(data.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             ClassDesc[] ifaces = armInterfaces(data.name());
             if (ifaces.length > 0) {
                 cb.withInterfaceSymbols(ifaces);
@@ -336,7 +353,7 @@ public final class Backend {
             armCds.add(cd(arm));
         }
         out.put(pkg + "." + sum.name(), CF.build(cdX, cb -> {
-            cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_INTERFACE | ClassFile.ACC_ABSTRACT);
+            cb.withFlags(pub(sum.name()) | ClassFile.ACC_INTERFACE | ClassFile.ACC_ABSTRACT);
             cb.with(PermittedSubclassesAttribute.ofSymbols(armCds));
             sum.decoder().ifPresent(disc -> {
                 ClassDesc cdDec = cd(sum.name() + "$Dec");
@@ -426,7 +443,7 @@ public final class Backend {
     private void generateUnit(Ast.UnitData unit, Map<String, byte[]> out) {
         ClassDesc cdU = cd(unit.name());
         out.put(pkg + "." + unit.name(), CF.build(cdU, cb -> {
-            cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
+            cb.withFlags(pub(unit.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             ClassDesc[] ifaces = armInterfaces(unit.name());
             if (ifaces.length > 0) {
                 cb.withInterfaceSymbols(ifaces);
@@ -448,7 +465,7 @@ public final class Backend {
         }
         MethodTypeDesc mtdApply = MethodTypeDesc.of(CD_Object, applyParams);
         return CF.build(cdB, cb -> {
-            cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
+            cb.withFlags(pub(b.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             if (n == 1) {
                 cb.withInterfaceSymbols(CD_Behavior); // single-input behaviors compose with >>
             }
@@ -530,7 +547,7 @@ public final class Backend {
         List<String> reqStages = new ArrayList<>(fields);
 
         return CF.build(cdP, cb -> {
-            cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
+            cb.withFlags(pub(pipe.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_Behavior);
             emitInjection(cb, cdP, reqStages);
 
