@@ -1,0 +1,101 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>example.souther</groupId>
+    <artifactId>souther-examples</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <description>
+        Souther の開発ライフサイクルを検証する例。各モジュールは .mdl を持ち、javac の
+        アノテーションプロセッサ SoutherProcessor が生成した型を、型付きの Java から使う。
+        コア reactor とは独立していて、`mvn -o -f examples/pom.xml verify` でまとめて検証する。
+        （先に `mvn -o install` でコア成果物を ~/.m2 に入れておくこと。）
+    </description>
+
+    <modules>
+        <module>email</module>
+        <module>contact</module>
+        <module>expense</module>
+        <module>businesstrip</module>
+        <module>member</module>
+    </modules>
+
+    <properties>
+        <maven.compiler.release>25</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <souther.version>0.1.0-SNAPSHOT</souther.version>
+        <raoh.version>0.6.0</raoh.version>
+        <junit.version>5.11.3</junit.version>
+        <spring.version>5.3.15</spring.version>
+        <jooq.version>3.20.11</jooq.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency><groupId>net.unit8.souther</groupId><artifactId>souther-runtime</artifactId><version>${souther.version}</version></dependency>
+            <dependency><groupId>net.unit8.raoh</groupId><artifactId>raoh</artifactId><version>${raoh.version}</version></dependency>
+            <dependency><groupId>net.unit8.raoh</groupId><artifactId>raoh-json</artifactId><version>${raoh.version}</version></dependency>
+            <dependency><groupId>net.unit8.raoh</groupId><artifactId>raoh-jooq</artifactId><version>${raoh.version}</version></dependency>
+            <dependency><groupId>org.jooq</groupId><artifactId>jooq</artifactId><version>${jooq.version}</version></dependency>
+            <dependency><groupId>org.springframework</groupId><artifactId>spring-web</artifactId><version>${spring.version}</version></dependency>
+            <dependency><groupId>org.springframework</groupId><artifactId>spring-webmvc</artifactId><version>${spring.version}</version></dependency>
+            <dependency><groupId>org.springframework</groupId><artifactId>spring-context</artifactId><version>${spring.version}</version></dependency>
+            <dependency><groupId>org.springframework</groupId><artifactId>spring-tx</artifactId><version>${spring.version}</version></dependency>
+            <dependency>
+                <groupId>org.junit</groupId><artifactId>junit-bom</artifactId><version>${junit.version}</version>
+                <type>pom</type><scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><scope>test</scope></dependency>
+    </dependencies>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-surefire-plugin</artifactId><version>3.5.6</version></plugin>
+                <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-jar-plugin</artifactId><version>3.5.0</version></plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.15.0</version>
+                <executions>
+                    <!-- Only the main compile runs Souther: the annotation processor reads the
+                         module's .mdl and emits the generated types into target/classes, which the
+                         hand-written Java is then compiled against. -->
+                    <execution>
+                        <id>default-compile</id>
+                        <configuration>
+                            <annotationProcessorPaths>
+                                <path>
+                                    <groupId>net.unit8.souther</groupId>
+                                    <artifactId>souther-compiler</artifactId>
+                                    <version>${souther.version}</version>
+                                </path>
+                            </annotationProcessorPaths>
+                            <compilerArgs>
+                                <arg>-Asouther.mdl=${project.basedir}/src/main/mdl</arg>
+                            </compilerArgs>
+                        </configuration>
+                    </execution>
+                    <!-- Tests use the already-generated types; no processing (and souther-compiler
+                         is not on the test classpath, so nothing is discovered anyway). -->
+                    <execution>
+                        <id>default-testCompile</id>
+                        <configuration>
+                            <proc>none</proc>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

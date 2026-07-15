@@ -1,0 +1,31 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>example.souther</groupId>
+        <artifactId>souther-examples</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>member</artifactId>
+
+    <description>
+        会員照会の例。member.mdl から生成した型を、Spring MVC + jOOQ の境界コードから型付きで使う
+        （HTTP → decode → behavior >> → 出力アームを match → encode → HTTP）。境界コードは data を
+        構築できず、出力アームを見分けて encode するだけ（spec 2.1, 8.5）。
+    </description>
+
+    <dependencies>
+        <dependency><groupId>net.unit8.souther</groupId><artifactId>souther-runtime</artifactId></dependency>
+        <dependency><groupId>net.unit8.raoh</groupId><artifactId>raoh</artifactId></dependency>
+
+        <!-- 境界の相互運用。生成物の利用側であって検証対象ではないので provided。 -->
+        <dependency><groupId>org.springframework</groupId><artifactId>spring-web</artifactId><scope>provided</scope></dependency>
+        <dependency><groupId>org.springframework</groupId><artifactId>spring-webmvc</artifactId><scope>provided</scope></dependency>
+        <dependency><groupId>org.springframework</groupId><artifactId>spring-context</artifactId><scope>provided</scope></dependency>
+        <dependency><groupId>org.springframework</groupId><artifactId>spring-tx</artifactId><scope>provided</scope></dependency>
+        <dependency><groupId>org.jooq</groupId><artifactId>jooq</artifactId><scope>provided</scope></dependency>
+    </dependencies>
+</project>

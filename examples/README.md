@@ -1,47 +1,66 @@
 # Souther サンプル
 
-Souther のソース（`.mdl`）例。いずれも `mvn install` 済みのコンパイラで実際にコンパイルできます。
+Souther の開発ライフサイクル（`.mdl` を書く → 生成する → 型付き Java から使う → コンパイル・テスト）を
+そのまま検証する例です。各業務単位が独立した Maven モジュールになっていて、`.mdl` から型を生成し、
+その型を Java から使い、smoke テストで decode/encode を回します。
 
-ドメイン定義は **data ＋ invariant ＋ behavior** だけを書きます。decoder/encoder は
-Souther の記法にはなく、データ形状から**導出**されます（JSON キー＝フィールド名、
-単一プリミティブフィールドの data は newtype＝裸のプリミティブ、直和の判別子フィールドは
-`"type"`／タグはアーム名）。カスタムのキー名・正規化・判別子が必要なら、それは境界
-（Java / Raoh）の仕事です。
+ドメイン定義は **data ＋ invariant ＋ behavior** だけを書きます。decoder/encoder は Souther の記法には
+なく、データ形状から**導出**されます（JSON キー＝フィールド名、単一プリミティブフィールドの data は
+newtype＝裸のプリミティブ、直和の判別子フィールドは `"type"`／タグはアーム名）。
 
-| ファイル | 内容 |
-| --- | --- |
-| `email.mdl` | 単一フィールド data ＋ invariant（最小例。decoder/encoder は導出） |
-| `contact.mdl` | 直和 data（sealed）＋ match 分岐（判別子は導出） |
-| `expense.mdl` | `List<T>` ＋ `size` ＋ 算術 ＋ 多分岐成功（`-> A | B`） |
-| `businesstrip.mdl` | 出張申請モデルの断面: include（共通項目）／状態遷移 behavior／`require` ガード／spread（`..申請`）／railway |
-| `member.mdl` | 会員照会: `required behavior findMember`（外界依存）＋ 型ルーティング `>>`（失敗アームが素通り）。`interop/` の Java 例と対で読む |
+## 生成の仕組み: javac のアノテーションプロセッサ
 
-## コンパイル
+`.mdl → .class` は、専用のビルドツールプラグインではなく、**javac のアノテーションプロセッサ**
+（`net.unit8.souther.compiler.apt.SoutherProcessor`）で行います。`mvn compile`（や素の javac、Gradle）が
+走れば、プロセッサが `src/main/mdl` の `.mdl` をコンパイルし、生成した型を `target/classes` に吐きます。
+`target/classes` は javac のコンパイルクラスパスに入るので、手書きの Java（と smoke テスト）がその生成型を
+**そのまま参照してコンパイル**されます。exec ステップも別モジュールも Souther 専用プラグインも要りません。
 
-```sh
-mvn -q -pl souther-compiler -am install -DskipTests   # 一度だけ
-java -cp souther-compiler/target/classes \
-     net.unit8.souther.compiler.Main examples/businesstrip.mdl -d /tmp/out
+Maven の配線はこれだけ（`examples/pom.xml` で全モジュール共通に設定）:
+
+```xml
+<plugin>
+  <artifactId>maven-compiler-plugin</artifactId>
+  <configuration>
+    <annotationProcessorPaths>
+      <path>net.unit8.souther:souther-compiler:0.1.0-SNAPSHOT</path>
+    </annotationProcessorPaths>
+    <compilerArgs><arg>-Asouther.mdl=${project.basedir}/src/main/mdl</arg></compilerArgs>
+  </configuration>
+</plugin>
 ```
 
-生成された `.class` は Java 21+ のプログラムから利用できます。各 data には導出された
-`decoder()` / `encoder()`、behavior クラスには `apply(...)` があります。behavior の出力に Result は
-無く、`apply` は出力アームの値をそのまま返します。decode / encode は境界の縁で、Raoh の
-Decoder / Encoder として生成されます——`decoder()` は Raoh の `Decoder`（外部表現 → `Result<T>`）、
-`encoder()` は `T` を中立な Map/scalar へ写します。decode の失敗はドメインのアームではなく Raoh の
-`Result`（`Issues`）が運びます（spec 10）。`souther-runtime` は Raoh に依存せず、ドメイン世界の型
-（`Result` / `Option` / `Violation` など）だけを持ちます。カスタムの境界コーデックが要るときは、
-生成された data の（不変条件を検査する）構築を呼ぶ Raoh デコーダを Java 側で書きます。
+`souther-compiler` は `annotationProcessorPaths` に載るだけで、アプリの依存にも成果物 jar にも入りません。
+Gradle なら同じプロセッサを `annotationProcessor` 依存＋`-Asouther.mdl` の compilerArg で使います。
 
-> 注: 各機能を端から端まで駆動して検証しているのは `souther-compiler/src/test/java` の
-> `Compile*Test`（`.mdl` をコンパイル→バイトコードをロード→decode/encode/apply を実行）です。
-> ここの `.mdl` はその中で使っているモデルを読める実ファイルとして取り出したものです。
+## モジュール
 
-## Java 相互運用（Spring Boot ＋ jOOQ）
+| モジュール | 内容 |
+| --- | --- |
+| `email` | 単一フィールド data ＋ invariant（最小例。newtype＝裸の文字列から decode） |
+| `contact` | 直和 data（sealed）＋ 判別デコーダ（判別子 `"type"`／タグ＝アーム名） |
+| `expense` | `List<T>`／ネストした newtype／直積の decode・encode 往復 |
+| `businesstrip` | include（フィールド合成）＋ ネストした newtype invariant |
+| `member` | 会員照会。`required behavior findMember`（外界依存）＋ 型ルーティング `>>`。Spring MVC + jOOQ の境界コードを実際にコンパイルする（下記） |
 
-`member.mdl` と `interop/` の Java 例は、生成物を実アプリからどう呼ぶかを示します（`interop/` は
-読むための実例で、ビルドには組み込んでいません——Spring / jOOQ 依存は各自のプロジェクト側）。
+`.mdl` だけで手書き Java の無いモジュール（email/contact/expense/businesstrip）には、プロセッサを起動する
+ための最小の `package-info.java` を1つ置いています（javac はソースが1つ以上ないとアノテーション処理を
+起動しないため）。smoke テストは生成された `decoder()`/`encoder()` を型付きで叩きます
+（`decoder()` は `Decoder<…, T>`、`decode(input, Path.ROOT)` は `Result<T>` を返し、`Ok`/`Err` を
+パターンマッチで見分ける ── ワイルドカードもキャストも不要）。
 
+## 実行
+
+```sh
+mvn -o install -DskipTests              # コア（souther-runtime / souther-compiler）を ~/.m2 へ
+mvn -o -f examples/pom.xml verify       # 全例を生成→コンパイル→smoke テスト
+```
+
+コア reactor（ルートの `mvn test`）とは独立させてあり、Spring/jOOQ 依存でコアビルドを重くしません。
+
+## Java 相互運用（Spring MVC ＋ jOOQ）― member
+
+`member` モジュールは、生成物を実アプリからどう使うかを型付きで示し、かつ**実際にコンパイル**します。
 流れは一方向です。
 
 ```text
@@ -56,8 +75,8 @@ behavior 会員を照会し整形する = findMember >> 会員を表示用に整
 // 会員を照会し整形する : 会員ID -> 会員表示 | 会員なし | 保存データ不正 | DB不通
 ```
 
-`findMember` の成功アーム `会員` だけが整形段に流れ、失敗3アームは整形段を素通りして出力に
-残ります（型ルーティング。spec 14.2）。要求集合 `{findMember}` はコンパイラが推論します。
+`findMember` の成功アーム `会員` だけが整形段に流れ、失敗3アームは整形段を素通りして出力に残ります
+（型ルーティング。spec 14.2）。要求集合 `{findMember}` はコンパイラが推論します。
 
 生成された `findMember` は**抽象基底クラス**（`Behavior` を継承）で、宣言した単位data の出力アーム
 `会員なし` / `保存データ不正` / `DB不通` に対する `protected` ファクトリを持ちます。実装はこれを
@@ -65,7 +84,7 @@ behavior 会員を照会し整形する = findMember >> 会員を表示用に整
 
 | Java ファイル | パッケージ | 役割 |
 | --- | --- | --- |
-| `JooqFindMember.java` | `app.member`（アプリ側） | `findMember` を **extends** した jOOQ 実装。成功値 `会員` は decoder で組み立て、失敗アームは継承した `会員なし()` 等で作る。DB 例外は `DB不通` アームに畳む |
+| `JooqFindMember.java` | `app.member` | `findMember` を **extends** した jOOQ 実装。成功値 `会員` は decoder で組み立て、失敗アームは継承した `会員なし()` 等で作る。DB 例外は `DB不通` アームに畳む |
 | `SoutherBeans.java` | `app.member.web` | `会員を照会し整形する.bind(new JooqFindMember(dsl))` でパイプラインを束縛し Bean 化（spec 19.5） |
 | `MemberController.java` | `app.member.web` | `@RestController`。入力を `会員ID.decoder()` で decode し（`Result` の `Ok`/`Err` を分岐）、`apply` の出力アームを `switch` で HTTP ステータス（200 / 404 / 500 / 503）へ畳む。encode は素の Map を返すので Spring/Jackson がそのまま JSON 化 |
 
