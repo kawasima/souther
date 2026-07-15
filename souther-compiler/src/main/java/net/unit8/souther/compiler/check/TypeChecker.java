@@ -819,6 +819,14 @@ public final class TypeChecker {
                 }
                 yield Type.INT;
             }
+            case "get" -> {
+                arity(call, 2);
+                if (!(typeOf(args.get(0), env, data, symbols, reqs) instanceof Type.ListOf lo)) {
+                    throw new CompileException(call.pos(), "get expects a List as its first argument");
+                }
+                requireType(args.get(1), Type.INT, env, data, symbols, reqs, "index of get");
+                yield Type.option(lo.element());
+            }
             default -> {
                 // a required behavior called inline (spec 12.2, 13): type it as its success arm
                 ReqSig callee = reqs.get(call.fn());

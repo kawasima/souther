@@ -54,6 +54,7 @@ public final class Backend {
     private static final ClassDesc CD_BigDecimal = ClassDesc.of("java.math.BigDecimal");
     private static final ClassDesc CD_LocalDate = ClassDesc.of("java.time.LocalDate");
     private static final ClassDesc CD_LocalDateTime = ClassDesc.of("java.time.LocalDateTime");
+    private static final ClassDesc CD_Lists = ClassDesc.of("net.unit8.souther.runtime.Lists");
     private static final ClassDesc CD_Option = ClassDesc.of("net.unit8.souther.runtime.Option");
     private static final ClassDesc CD_OptionSome = CD_Option.nested("Some");
     private static final ClassDesc CD_OptionNone = CD_Option.nested("None");
@@ -1164,6 +1165,13 @@ public final class Backend {
                     code.invokeinterface(CD_List, "size", MTD_size);
                     code.i2l();
                     return Type.INT;
+                }
+                case "get" -> {
+                    Type lt = expr(call.args().get(0));      // List on stack
+                    expr(call.args().get(1));                // long index
+                    code.invokestatic(CD_Lists, "get",
+                            MethodTypeDesc.of(CD_Option, CD_List, ConstantDescs.CD_long));
+                    return Type.option(((Type.ListOf) lt).element());
                 }
                 default -> {
                     if (reqNames.contains(call.fn())) {
