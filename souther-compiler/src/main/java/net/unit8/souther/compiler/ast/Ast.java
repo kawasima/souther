@@ -202,7 +202,15 @@ public interface Ast {
     // --- expressions ---
 
     sealed interface Expr extends Ast
-            permits IntLit, StringLit, BoolLit, Var, FieldAccess, Call, Binary, Not, NewData, Match, If {}
+            permits IntLit, StringLit, BoolLit, Var, FieldAccess, Call, Binary, Not, NewData, Match, If,
+                    ListLit, ListComp {}
+
+    /** A list literal {@code [e1, e2, ...]} (one or more elements of the same type). */
+    record ListLit(List<Expr> elements, SourcePos pos) implements Expr {}
+
+    /** A guard-only comprehension {@code [element | guard, ...]}: the element is included when
+     * every guard holds, giving a 0-or-1 element list (spec 18.4, conditional accumulation). */
+    record ListComp(Expr element, List<Expr> guards, SourcePos pos) implements Expr {}
 
     /** {@code if cond then a else b} — both branches must have the same type (spec 16.2). */
     record If(Expr cond, Expr then, Expr els, SourcePos pos) implements Expr {}
@@ -232,5 +240,5 @@ public interface Ast {
 
     record Not(Expr operand, SourcePos pos) implements Expr {}
 
-    enum BinOp { EQ, NE, LT, LE, GT, GE, AND, OR, ADD, SUB, MUL }
+    enum BinOp { EQ, NE, LT, LE, GT, GE, AND, OR, ADD, SUB, MUL, CONCAT }
 }

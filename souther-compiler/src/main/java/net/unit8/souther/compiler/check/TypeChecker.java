@@ -98,6 +98,11 @@ public final class TypeChecker {
                 collectRequiredCalls(iff.then(), requiredNames, out);
                 collectRequiredCalls(iff.els(), requiredNames, out);
             }
+            case Ast.ListLit lit -> lit.elements().forEach(el -> collectRequiredCalls(el, requiredNames, out));
+            case Ast.ListComp comp -> {
+                collectRequiredCalls(comp.element(), requiredNames, out);
+                comp.guards().forEach(g -> collectRequiredCalls(g, requiredNames, out));
+            }
             default -> { }
         }
     }
@@ -247,7 +252,7 @@ public final class TypeChecker {
             }
         }
         Type rt = typeOf(b.result(), env, null, symbols, reqSigs);
-        if (!subtypeOf(rt, output)) {
+        if (!assignable(rt, output, symbols)) {
             throw new CompileException(b.result().pos(),
                     "behavior `" + b.name() + "` returns " + output + " but its body is " + rt);
         }
@@ -315,6 +320,11 @@ public final class TypeChecker {
                 forbidInvariantConstruct(iff.then(), symbols);
                 forbidInvariantConstruct(iff.els(), symbols);
             }
+            case Ast.ListLit lit -> lit.elements().forEach(el -> forbidInvariantConstruct(el, symbols));
+            case Ast.ListComp comp -> {
+                forbidInvariantConstruct(comp.element(), symbols);
+                comp.guards().forEach(g -> forbidInvariantConstruct(g, symbols));
+            }
             default -> { }
         }
     }
@@ -344,6 +354,11 @@ public final class TypeChecker {
                 collectConstructs(iff.cond(), out);
                 collectConstructs(iff.then(), out);
                 collectConstructs(iff.els(), out);
+            }
+            case Ast.ListLit lit -> lit.elements().forEach(el -> collectConstructs(el, out));
+            case Ast.ListComp comp -> {
+                collectConstructs(comp.element(), out);
+                comp.guards().forEach(g -> collectConstructs(g, out));
             }
             case Ast.IntLit ignored -> { }
             case Ast.StringLit ignored -> { }
@@ -711,7 +726,35 @@ public final class TypeChecker {
                 }
                 throw new CompileException(iff.pos(), "if branches disagree: " + tt + " vs " + et);
             }
+            case Ast.ListLit lit -> {
+                Type elem = null;
+                for (Ast.Expr el : lit.elements()) {
+                    Type t = typeOf(el, env, data, symbols, reqs);
+                    elem = elem == null ? t : unifyElem(elem, t, lit.pos());
+                }
+                yield Type.list(elem);
+            }
+            case Ast.ListComp comp -> {
+                for (Ast.Expr g : comp.guards()) {
+                    requireType(g, Type.BOOL, env, data, symbols, reqs, "guard of a comprehension");
+                }
+                yield Type.list(typeOf(comp.element(), env, data, symbols, reqs));
+            }
         };
+    }
+
+    /** The common element type of two list positions: identical types collapse; two data-like
+     * types widen to the union of their arms (so {@code [High] ++ [LowRole]} is a list of both). */
+    private static Type unifyElem(Type a, Type b, SourcePos pos) {
+        if (a.equals(b)) {
+            return a;
+        }
+        if (isDataLike(a) && isDataLike(b)) {
+            Set<String> names = new HashSet<>(namesOf(a));
+            names.addAll(namesOf(b));
+            return Type.union(names);
+        }
+        throw new CompileException(pos, "list elements disagree on type: " + a + " vs " + b);
     }
 
     private static Type typeOfMatch(Ast.Match m, Map<String, Type> env, Ast.Data data,
@@ -957,6 +1000,14 @@ public final class TypeChecker {
                 requireType(bin.right(), Type.INT, env, data, symbols, reqs, "operand of arithmetic");
                 yield Type.INT;
             }
+            case CONCAT -> {
+                Type lt = typeOf(bin.left(), env, data, symbols, reqs);
+                Type rt = typeOf(bin.right(), env, data, symbols, reqs);
+                if (!(lt instanceof Type.ListOf lo) || !(rt instanceof Type.ListOf ro)) {
+                    throw new CompileException(bin.pos(), "`++` needs two lists, got " + lt + " and " + rt);
+                }
+                yield Type.list(unifyElem(lo.element(), ro.element(), bin.pos()));
+            }
             case EQ, NE -> {
                 Type lt = typeOf(bin.left(), env, data, symbols, reqs);
                 Type rt = typeOf(bin.right(), env, data, symbols, reqs);
@@ -1052,6 +1103,36 @@ public final class TypeChecker {
             return true;
         }
         return sup instanceof Type.Union u && u.members().containsAll(namesOf(sub));
+    }
+
+    /** Whether a {@code from} value can be assigned where {@code to} is expected. Lists are
+     * covariant, and a data-like type widens to the set of leaf arms it can be — so a list of
+     * a sum's arms is assignable to a list of the sum (spec 8.3, 12.2). */
+    public static boolean assignable(Type from, Type to, Map<String, Ast.Def> symbols) {
+        if (from.equals(to)) {
+            return true;
+        }
+        if (from instanceof Type.ListOf a && to instanceof Type.ListOf b) {
+            return assignable(a.element(), b.element(), symbols);
+        }
+        Set<String> fa = leafArms(from, symbols);
+        Set<String> ta = leafArms(to, symbols);
+        return !fa.isEmpty() && !ta.isEmpty() && ta.containsAll(fa);
+    }
+
+    /** The set of leaf (non-sum) arm names a data-like type covers, flattening nested sums. */
+    private static Set<String> leafArms(Type t, Map<String, Ast.Def> symbols) {
+        Set<String> out = new HashSet<>();
+        for (String name : namesOf(t)) {
+            if (symbols.get(name) instanceof Ast.SumData s) {
+                for (String arm : s.arms()) {
+                    out.addAll(leafArms(Type.ref(arm), symbols));
+                }
+            } else {
+                out.add(name);
+            }
+        }
+        return out;
     }
 
     public static Type resolveType(Ast.TypeRef ref, Map<String, Ast.Def> symbols) {

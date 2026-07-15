@@ -38,6 +38,8 @@ public final class Backend {
     private static final ClassDesc CD_Map = ClassDesc.of("java.util.Map");
     private static final ClassDesc CD_List = ClassDesc.of("java.util.List");
     private static final ClassDesc CD_LinkedHashMap = ClassDesc.of("java.util.LinkedHashMap");
+    private static final ClassDesc CD_ArrayList = ClassDesc.of("java.util.ArrayList");
+    private static final ClassDesc CD_Collection = ClassDesc.of("java.util.Collection");
     private static final ClassDesc CD_Raw = ClassDesc.of("net.unit8.souther.runtime.Raw");
     private static final ClassDesc CD_Result = ClassDesc.of("net.unit8.souther.runtime.Result");
     private static final ClassDesc CD_ResultOk = CD_Result.nested("Ok");
@@ -81,6 +83,9 @@ public final class Backend {
     private static final MethodTypeDesc MTD_encode = MethodTypeDesc.of(CD_Raw, CD_Object);
     private static final MethodTypeDesc MTD_tagged = MethodTypeDesc.of(CD_Raw, CD_Raw, CD_String, CD_String);
     private static final MethodTypeDesc MTD_encodeList = MethodTypeDesc.of(CD_Raw, CD_List, CD_Encoder);
+    private static final MethodTypeDesc MTD_ArrayList_add = MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_Object);
+    private static final MethodTypeDesc MTD_List_copyOf = MethodTypeDesc.of(CD_List, CD_Collection);
+    private static final MethodTypeDesc MTD_Lists_concat = MethodTypeDesc.of(CD_List, CD_List, CD_List);
     private static final MethodTypeDesc MTD_encodeMap = MethodTypeDesc.of(CD_Raw, CD_Map, CD_Encoder);
     private static final MethodTypeDesc MTD_mergeErrors =
             MethodTypeDesc.of(CD_NonEmptyList, CD_Result.arrayType());
@@ -1111,7 +1116,51 @@ public final class Backend {
                     code.labelBinding(end);
                     yield tt;
                 }
+                case Ast.ListLit lit -> listLit(lit);
+                case Ast.ListComp comp -> listComp(comp);
             };
+        }
+
+        /** Builds an ArrayList of the literal's elements and returns it immutably. */
+        private Type listLit(Ast.ListLit lit) {
+            code.new_(CD_ArrayList);
+            code.dup();
+            code.invokespecial(CD_ArrayList, "<init>", MTD_void);
+            Type elem = null;
+            for (Ast.Expr el : lit.elements()) {
+                code.dup();
+                Type t = expr(el);
+                box(code, t);
+                code.invokevirtual(CD_ArrayList, "add", MTD_ArrayList_add);
+                code.pop();
+                elem = t;
+            }
+            code.invokestatic(CD_List, "copyOf", MTD_List_copyOf, true);
+            return Type.list(elem);
+        }
+
+        /** Adds the comprehension's element once, only if every guard holds; returns an
+         * immutable 0-or-1 element list. */
+        private Type listComp(Ast.ListComp comp) {
+            code.new_(CD_ArrayList);
+            code.dup();
+            code.invokespecial(CD_ArrayList, "<init>", MTD_void);
+            int listSlot = slot(Type.STRING);          // holds the ArrayList (a reference)
+            code.astore(listSlot);
+            Label skip = code.newLabel();
+            for (Ast.Expr g : comp.guards()) {
+                expr(g);
+                code.ifeq(skip);                       // a false guard skips the add
+            }
+            code.aload(listSlot);
+            Type elem = expr(comp.element());
+            box(code, elem);
+            code.invokevirtual(CD_ArrayList, "add", MTD_ArrayList_add);
+            code.pop();
+            code.labelBinding(skip);
+            code.aload(listSlot);
+            code.invokestatic(CD_List, "copyOf", MTD_List_copyOf, true);
+            return Type.list(elem);
         }
 
         private Type match(Ast.Match m) {
@@ -1394,6 +1443,12 @@ public final class Backend {
                     expr(bin.right());
                     code.lmul();
                     return Type.INT;
+                }
+                case CONCAT -> {
+                    Type lt = expr(bin.left());
+                    expr(bin.right());
+                    code.invokestatic(CD_Lists, "concat", MTD_Lists_concat);
+                    return lt;
                 }
                 default -> {
                     Type lt = expr(bin.left());

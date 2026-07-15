@@ -372,9 +372,13 @@ public final class Parser {
 
     private Ast.Expr parseAdd() {
         Ast.Expr left = parseMul();
-        while (check(TokenType.PLUS) || check(TokenType.MINUS)) {
+        while (check(TokenType.PLUS) || check(TokenType.MINUS) || check(TokenType.PLUSPLUS)) {
             Token op = advance();
-            Ast.BinOp o = op.type() == TokenType.PLUS ? Ast.BinOp.ADD : Ast.BinOp.SUB;
+            Ast.BinOp o = switch (op.type()) {
+                case PLUS -> Ast.BinOp.ADD;
+                case MINUS -> Ast.BinOp.SUB;
+                default -> Ast.BinOp.CONCAT;      // ++
+            };
             left = new Ast.Binary(o, left, parseMul(), op.pos());
         }
         return left;
@@ -428,6 +432,9 @@ public final class Parser {
                 expect(TokenType.RPAREN);
                 return e;
             }
+            case LBRACKET -> {
+                return parseList();
+            }
             case IDENT -> {
                 advance();
                 if (check(TokenType.LPAREN)) {
@@ -445,6 +452,28 @@ public final class Parser {
             }
             default -> throw error(t, "expected an expression");
         }
+    }
+
+    /** {@code [e1, e2, ...]} (a literal) or {@code [element | guard, ...]} (a guard comprehension). */
+    private Ast.Expr parseList() {
+        Token lb = expect(TokenType.LBRACKET);
+        Ast.Expr first = parseExpr();
+        if (match(TokenType.PIPE)) {
+            List<Ast.Expr> guards = new ArrayList<>();
+            guards.add(parseExpr());
+            while (match(TokenType.COMMA)) {
+                guards.add(parseExpr());
+            }
+            expect(TokenType.RBRACKET);
+            return new Ast.ListComp(first, guards, lb.pos());
+        }
+        List<Ast.Expr> elems = new ArrayList<>();
+        elems.add(first);
+        while (match(TokenType.COMMA)) {
+            elems.add(parseExpr());
+        }
+        expect(TokenType.RBRACKET);
+        return new Ast.ListLit(elems, lb.pos());
     }
 
     private Ast.Expr parseMatch() {

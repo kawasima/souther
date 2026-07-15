@@ -8,8 +8,8 @@ public enum TokenType {
     // literals and identifiers
     IDENT, INT_LIT, STRING_LIT,
     // punctuation
-    LBRACE, RBRACE, LPAREN, RPAREN, COLON, COMMA, DOT, DOTDOT, ASSIGN, PIPE, ARROW, LARROW, FATARROW, GTGT,
-    QUESTION,
+    LBRACE, RBRACE, LPAREN, RPAREN, LBRACKET, RBRACKET, COLON, COMMA, DOT, DOTDOT, ASSIGN, PIPE,
+    ARROW, LARROW, FATARROW, GTGT, QUESTION, PLUSPLUS,
     // operators
     EQ, NE, LT, LE, GT, GE, AND, OR, NOT, PLUS, MINUS, STAR,
     // end of input

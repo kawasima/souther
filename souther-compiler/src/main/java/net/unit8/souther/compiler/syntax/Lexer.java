@@ -129,6 +129,8 @@ public final class Lexer {
             case '}': return new Token(TokenType.RBRACE, "}", start);
             case '(': return new Token(TokenType.LPAREN, "(", start);
             case ')': return new Token(TokenType.RPAREN, ")", start);
+            case '[': return new Token(TokenType.LBRACKET, "[", start);
+            case ']': return new Token(TokenType.RBRACKET, "]", start);
             case ':': return new Token(TokenType.COLON, ":", start);
             case ',': return new Token(TokenType.COMMA, ",", start);
             case '.':
@@ -159,6 +161,7 @@ public final class Lexer {
                 if (match('>')) return new Token(TokenType.ARROW, "->", start);
                 return new Token(TokenType.MINUS, "-", start);
             case '+':
+                if (match('+')) return new Token(TokenType.PLUSPLUS, "++", start);
                 return new Token(TokenType.PLUS, "+", start);
             case '*':
                 return new Token(TokenType.STAR, "*", start);
