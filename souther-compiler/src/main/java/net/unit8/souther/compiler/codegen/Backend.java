@@ -411,6 +411,7 @@ public final class Backend {
             emitInjection(cb, cdB, injected);
             cb.withMethodBody("apply", mtdApply, ClassFile.ACC_PUBLIC, code -> {
                 Gen gen = new Gen(code, null, cdB, n + 1);
+                gen.requireds(requiredNames, requiredSuccess);
                 for (int i = 0; i < n; i++) {
                     Ast.Param p = b.params().get(i);
                     Type pt = resolveType(p.type());
@@ -868,12 +869,20 @@ public final class Backend {
         private final ClassDesc cdName;
         private final Map<String, Var> env = new HashMap<>();
         private int nextSlot;
+        private Set<String> reqNames = Set.of();
+        private Map<String, Type> reqSuccess = Map.of();
 
         Gen(CodeBuilder code, Ast.Data data, ClassDesc cdName, int firstSlot) {
             this.code = code;
             this.data = data;
             this.cdName = cdName;
             this.nextSlot = firstSlot;
+        }
+
+        /** Makes injected required behaviors callable inline from this body (spec 12.2, 13). */
+        void requireds(Set<String> names, Map<String, Type> success) {
+            this.reqNames = names;
+            this.reqSuccess = success;
         }
 
         void bind(String name, int slot, Type type) {
@@ -1026,7 +1035,38 @@ public final class Backend {
                     code.i2l();
                     return Type.INT;
                 }
-                default -> throw new CompileException(call.pos(), "unknown function `" + call.fn() + "`");
+                default -> {
+                    if (reqNames.contains(call.fn())) {
+                        return requiredCall(call);
+                    }
+                    throw new CompileException(call.pos(), "unknown function `" + call.fn() + "`");
+                }
+            }
+        }
+
+        /** Emits an inline call to an injected required behavior, leaving its success value on
+         * the stack cast to the success type (spec 12.2, 13). */
+        private Type requiredCall(Ast.Call call) {
+            code.aload(0);
+            code.getfield(cdName, call.fn(), CD_Behavior);
+            Type at = expr(call.args().get(0));
+            box(code, at);
+            code.invokeinterface(CD_Behavior, "apply", MTD_apply);
+            Type success = reqSuccess.get(call.fn());
+            stackCast(success);
+            return success;
+        }
+
+        /** Casts the {@code Object} on the stack to {@code type}, unboxing primitives. */
+        private void stackCast(Type type) {
+            if (type == Type.INT) {
+                code.checkcast(CD_Long);
+                code.invokevirtual(CD_Long, "longValue", MethodTypeDesc.of(ConstantDescs.CD_long));
+            } else if (type == Type.BOOL) {
+                code.checkcast(CD_Boolean);
+                code.invokevirtual(CD_Boolean, "booleanValue", MethodTypeDesc.of(ConstantDescs.CD_boolean));
+            } else if (!(type instanceof Type.Union)) {
+                code.checkcast(jvmType(type));
             }
         }
 
