@@ -136,6 +136,36 @@ public final class Backend {
     private static final ClassDesc CD_JavaOptional = ClassDesc.of("java.util.Optional");
     private static final MethodTypeDesc MTD_ofOptional = MethodTypeDesc.of(CD_Option, CD_JavaOptional);
     private static final MethodTypeDesc MTD_error = MethodTypeDesc.of(CD_Object);
+    // Per-source (JSON / jOOQ) decode targets (spec 10.6). JooqRecordDecoders.field returns a
+    // JooqRecordDecoder (not FieldDecoder); JsonDecoders.field returns FieldDecoder like the map source.
+    private static final ClassDesc CD_JooqRecordDecoder = ClassDesc.of("net.unit8.raoh.jooq.JooqRecordDecoder");
+    private static final MethodTypeDesc MTD_fieldJooq =
+            MethodTypeDesc.of(CD_JooqRecordDecoder, CD_String, CD_RDecoder);
+    private static final MethodTypeDesc MTD_optFieldJooq =
+            MethodTypeDesc.of(CD_JooqRecordDecoder, CD_String, CD_RDecoder);
+
+    /** The three boundary input sources a decoder can read from (spec 6, 10.6). */
+    private enum Src { NEUTRAL, JSON, JOOQ }
+
+    private static String srcSuffix(Src s) {
+        return switch (s) { case NEUTRAL -> "$Dec"; case JSON -> "$DecJson"; case JOOQ -> "$DecRecord"; };
+    }
+    private static String srcFactory(Src s) {
+        return switch (s) { case NEUTRAL -> "decoder"; case JSON -> "jsonDecoder"; case JOOQ -> "recordDecoder"; };
+    }
+    private static ClassDesc srcFieldOwner(Src s) {
+        return switch (s) {
+            case NEUTRAL -> CD_MapDecoders;
+            case JSON -> CD_JsonDecoders;
+            case JOOQ -> CD_JooqDecoders;
+        };
+    }
+    private static MethodTypeDesc srcFieldMtd(Src s) { return s == Src.JOOQ ? MTD_fieldJooq : MTD_field; }
+    private static MethodTypeDesc srcOptFieldMtd(Src s) { return s == Src.JOOQ ? MTD_optFieldJooq : MTD_optionalField; }
+    /** Leaf value decoders: JSON reads a JsonNode, the map/jOOQ column value is an Object. */
+    private static ClassDesc srcLeafOwner(Src s) { return s == Src.JSON ? CD_JsonDecoders : CD_ObjectDecoders; }
+    /** list()/map() combinator owner (JSON has its own; map/jOOQ leaf values are Objects). */
+    private static ClassDesc srcListOwner(Src s) { return s == Src.JSON ? CD_JsonDecoders : CD_ObjectDecoders; }
 
     // Generated classes aren't loadable while we compile, so stack-map merging (e.g. an
     // `if` producing a union of two data types) can't resolve their common supertype.
@@ -380,12 +410,27 @@ public final class Backend {
             }
             emitCtor(cb, cdName, fields);
             emitConstructMethod(cb, cdName, data, fields);
-            data.decoder().ifPresent(d -> emitFactory(cb, "decoder", CD_RDecoder, data, "$Dec"));
+            data.decoder().ifPresent(d -> {
+                boolean mapInput = isMapInput(data.name());
+                emitFactory(cb, "decoder", CD_RDecoder, data, "$Dec");
+                if (jsonCompatible(data.name())) emitSourceFactory(cb, data.name(), Src.JSON, mapInput);
+                if (recordCompatible(data.name())) emitSourceFactory(cb, data.name(), Src.JOOQ, mapInput);
+            });
             data.encoder().ifPresent(e -> emitFactory(cb, "encoder", CD_REncoder, data, "$Enc"));
         }));
 
-        data.decoder().ifPresent(dec ->
-                out.put(pkg + "." + data.name() + "$Dec", generateDecoderClass(cdName, data, dec, fields)));
+        data.decoder().ifPresent(dec -> {
+            out.put(pkg + "." + data.name() + "$Dec",
+                    generateDecoderClass(cdName, data, dec, fields, Src.NEUTRAL));
+            if (jsonCompatible(data.name())) {
+                out.put(pkg + "." + data.name() + "$DecJson",
+                        generateDecoderClass(cdName, data, dec, fields, Src.JSON));
+            }
+            if (recordCompatible(data.name())) {
+                out.put(pkg + "." + data.name() + "$DecRecord",
+                        generateDecoderClass(cdName, data, dec, fields, Src.JOOQ));
+            }
+        });
         data.encoder().ifPresent(enc ->
                 out.put(pkg + "." + data.name() + "$Enc", generateEncoderClass(cdName, data, enc)));
     }
@@ -401,15 +446,24 @@ public final class Backend {
         out.put(pkg + "." + sum.name(), CF.build(cdX, cb -> {
             cb.withFlags(pub(sum.name()) | ClassFile.ACC_INTERFACE | ClassFile.ACC_ABSTRACT);
             cb.with(PermittedSubclassesAttribute.ofSymbols(armCds));
-            sum.decoder().ifPresent(disc ->
-                    emitCodecFactory(cb, "decoder", CD_RDecoder, cd(sum.name() + "$Dec"),
-                            decoderSig(cdX, true)));
+            sum.decoder().ifPresent(disc -> {
+                emitCodecFactory(cb, "decoder", CD_RDecoder, cd(sum.name() + "$Dec"), decoderSig(cdX, true));
+                if (jsonCompatible(sum.name())) emitSourceFactory(cb, sum.name(), Src.JSON, true);
+                if (recordCompatible(sum.name())) emitSourceFactory(cb, sum.name(), Src.JOOQ, true);
+            });
             sum.encoder().ifPresent(enc ->
                     emitCodecFactory(cb, "encoder", CD_REncoder, cd(sum.name() + "$Enc"),
                             encoderSig(cdX)));
         }));
-        sum.decoder().ifPresent(disc ->
-                out.put(pkg + "." + sum.name() + "$Dec", generateSumDecoder(sum, disc)));
+        sum.decoder().ifPresent(disc -> {
+            out.put(pkg + "." + sum.name() + "$Dec", generateSumDecoder(sum, disc, Src.NEUTRAL));
+            if (jsonCompatible(sum.name())) {
+                out.put(pkg + "." + sum.name() + "$DecJson", generateSumDecoder(sum, disc, Src.JSON));
+            }
+            if (recordCompatible(sum.name())) {
+                out.put(pkg + "." + sum.name() + "$DecRecord", generateSumDecoder(sum, disc, Src.JOOQ));
+            }
+        });
         sum.encoder().ifPresent(enc ->
                 out.put(pkg + "." + sum.name() + "$Enc", generateSumEncoder(sum, enc)));
     }
@@ -449,19 +503,20 @@ public final class Backend {
         });
     }
 
-    private byte[] generateSumDecoder(Ast.SumData sum, Ast.Discriminate disc) {
-        ClassDesc cdDec = cd(sum.name() + "$Dec");
+    private byte[] generateSumDecoder(Ast.SumData sum, Ast.Discriminate disc, Src src) {
+        ClassDesc cdDec = cd(sum.name() + srcSuffix(src));
         return CF.build(cdDec, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_RDecoder);
             emitDefaultCtor(cb);
             // Build a Raoh discriminate decoder and delegate: the tag is read from the
-            // discriminator key, each arm dispatches to that arm's Raoh decoder (spec 10.3).
+            // discriminator key of the source, each arm dispatches to that arm's decoder for the
+            // same source (spec 10.3). discriminate/variant are the core (input-generic) combinators.
             cb.withMethodBody("decode", MTD_Rdecode, ClassFile.ACC_PUBLIC, code -> {
                 code.loadConstant(disc.key());
                 code.loadConstant(disc.key());
-                code.invokestatic(CD_ObjectDecoders, "string", MTD_leafString);
-                code.invokestatic(CD_MapDecoders, "field", MTD_field);
+                code.invokestatic(srcLeafOwner(src), "string", MTD_leafString);
+                code.invokestatic(srcFieldOwner(src), "field", srcFieldMtd(src));
                 pushInt(code, disc.variants().size());
                 code.anewarray(CD_RVariant);
                 int i = 0;
@@ -469,7 +524,7 @@ public final class Backend {
                     code.dup();
                     pushInt(code, i);
                     code.loadConstant(v.tag());
-                    invokeCodec(code, v.armType(), "decoder", MTD_Rdecoder);
+                    invokeCodec(code, v.armType(), srcFactory(src), MTD_Rdecoder);
                     code.invokestatic(CD_RDecoders, "variant", MTD_Rvariant);
                     code.aastore();
                     i++;
@@ -495,10 +550,18 @@ public final class Backend {
             }
             emitDefaultCtor(cb);
             // a unit is a field-less data: its codec reads/writes nothing but the tag the sum adds
+            // A unit ignores its input, so it decodes from every source. Generate all three so
+            // unit arms of a JSON/record sum have a matching decoder to dispatch to.
             emitCodecFactory(cb, "decoder", CD_RDecoder, cdDec, decoderSig(cdU, false));
+            emitCodecFactory(cb, "jsonDecoder", CD_RDecoder, cd(unit.name() + "$DecJson"),
+                    decoderSigFor(Src.JSON, cdU, false));
+            emitCodecFactory(cb, "recordDecoder", CD_RDecoder, cd(unit.name() + "$DecRecord"),
+                    decoderSigFor(Src.JOOQ, cdU, false));
             emitCodecFactory(cb, "encoder", CD_REncoder, cdEnc, encoderSig(cdU));
         }));
         out.put(pkg + "." + unit.name() + "$Dec", generateUnitDecoder(cdU, cdDec));
+        out.put(pkg + "." + unit.name() + "$DecJson", generateUnitDecoder(cdU, cd(unit.name() + "$DecJson")));
+        out.put(pkg + "." + unit.name() + "$DecRecord", generateUnitDecoder(cdU, cd(unit.name() + "$DecRecord")));
         out.put(pkg + "." + unit.name() + "$Enc", generateUnitEncoder(cdEnc));
     }
 
@@ -816,11 +879,102 @@ public final class Backend {
                 + "Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;>;");
     }
 
+    /** Source-specific decoder factory signature: {@code Decoder<In,T>} with In per source. */
+    private static MethodSignature decoderSigFor(Src src, ClassDesc type, boolean mapInput) {
+        String in = switch (src) {
+            case NEUTRAL -> mapInput
+                    ? "Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;"
+                    : "Ljava/lang/Object;";
+            case JSON -> "Ltools/jackson/databind/JsonNode;";
+            case JOOQ -> "Lorg/jooq/Record;";
+        };
+        return MethodSignature.parseFrom(
+                "()Lnet/unit8/raoh/decode/Decoder<" + in + type.descriptorString() + ">;");
+    }
+
+    /** Emits a source's decoder factory ({@code jsonDecoder()} / {@code recordDecoder()}). */
+    private void emitSourceFactory(ClassBuilder cb, String typeName, Src src, boolean mapInput) {
+        emitCodecFactory(cb, srcFactory(src), CD_RDecoder, cd(typeName + srcSuffix(src)),
+                decoderSigFor(src, cd(typeName), mapInput));
+    }
+
+    // --- source compatibility: which extra source decoders a type's shape supports (spec 10.6) ---
+
+    /** JSON supports nested/list/map/optional but has no temporal leaf, so a type is JSON-decodable
+     * iff no Date/DateTime appears anywhere in its shape. */
+    private boolean jsonCompatible(String typeName) {
+        return jsonOk(typeName, new HashSet<>());
+    }
+
+    private boolean jsonOk(String typeName, Set<String> seen) {
+        if (!seen.add(typeName)) {
+            return true;
+        }
+        Ast.Def def = symbols.get(typeName);
+        if (def instanceof Ast.SumData sum) {
+            for (String arm : sum.arms()) {
+                if (!jsonOk(arm, seen)) return false;
+            }
+            return true;
+        }
+        if (def instanceof Ast.Data data) {
+            for (Type t : fieldTypes(data).values()) {
+                if (!jsonOkType(t, seen)) return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean jsonOkType(Type t, Set<String> seen) {
+        if (t == Type.DATE || t == Type.DATETIME) return false;
+        if (t instanceof Type.OptionOf o) return jsonOkType(o.element(), seen);
+        if (t instanceof Type.ListOf l) return jsonOkType(l.element(), seen);
+        if (t instanceof Type.MapOf m) return jsonOkType(m.value(), seen);
+        if (t instanceof Type.Ref r) return jsonOk(r.name(), seen);
+        return true;
+    }
+
+    /** jOOQ rows are flat: a type is Record-decodable iff it is an object (or a sum of objects/units)
+     * whose every field is a scalar column — a primitive, a newtype, or an optional of those; no
+     * nested object, list, map, or sum. */
+    private boolean recordCompatible(String typeName) {
+        Ast.Def def = symbols.get(typeName);
+        if (def instanceof Ast.SumData sum) {
+            for (String arm : sum.arms()) {
+                Ast.Def armDef = symbols.get(arm);
+                if (armDef instanceof Ast.UnitData) continue;
+                if (!(armDef instanceof Ast.Data d) || !isFlatObject(d)) return false;
+            }
+            return true;
+        }
+        return def instanceof Ast.Data data && isFlatObject(data);
+    }
+
+    private boolean isFlatObject(Ast.Data data) {
+        if (!(data.decoder().orElse(null) instanceof Ast.ObjectDecoder)) {
+            return false;   // a newtype is a bare column, not a whole-row object
+        }
+        for (Type t : fieldTypes(data).values()) {
+            if (!flatColumn(t)) return false;
+        }
+        return true;
+    }
+
+    private boolean flatColumn(Type t) {
+        if (t instanceof Type.OptionOf o) return flatColumn(o.element());
+        if (t instanceof Type.ListOf || t instanceof Type.MapOf || t instanceof Type.Union) return false;
+        if (t instanceof Type.Ref r) {
+            return symbols.get(r.name()) instanceof Ast.Data d
+                    && d.decoder().orElse(null) instanceof Ast.PrimDecoder;   // newtype column only
+        }
+        return true;   // primitive scalar
+    }
+
     // --- $Dec class ---
 
     private byte[] generateDecoderClass(ClassDesc cdName, Ast.Data data, Ast.DecoderDef dec,
-                                        Map<String, Type> fields) {
-        ClassDesc cdDec = cd(data.name() + "$Dec");
+                                        Map<String, Type> fields, Src src) {
+        ClassDesc cdDec = cd(data.name() + srcSuffix(src));
         return CF.build(cdDec, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_RDecoder);
@@ -829,8 +983,8 @@ public final class Backend {
             cb.withMethodBody("decode", MTD_Rdecode, ClassFile.ACC_PUBLIC, code -> {
                 Gen gen = new Gen(code, data, cdName, 3);
                 switch (dec) {
-                    case Ast.PrimDecoder prim -> emitPrimDecode(code, gen, cdName, prim, fields);
-                    case Ast.ObjectDecoder obj -> emitObjectDecode(code, gen, cdName, obj, fields);
+                    case Ast.PrimDecoder prim -> emitPrimDecode(code, gen, cdName, prim, fields, src);
+                    case Ast.ObjectDecoder obj -> emitObjectDecode(code, gen, cdName, obj, fields, src);
                 }
             });
         });
@@ -849,28 +1003,30 @@ public final class Backend {
         return false;
     }
 
-    /** Pushes a Raoh leaf {@code Decoder} for a primitive value read from a bare Object. */
-    private void emitLeafDecoder(CodeBuilder code, Ast.PrimKind kind) {
+    /** Pushes a Raoh leaf {@code Decoder} for a primitive value from the given source. */
+    private void emitLeafDecoder(CodeBuilder code, Ast.PrimKind kind, Src src) {
+        ClassDesc owner = srcLeafOwner(src);
         switch (kind) {
-            case STRING -> code.invokestatic(CD_ObjectDecoders, "string", MTD_leafString);
-            case INT -> code.invokestatic(CD_ObjectDecoders, "long_", MTD_leafLong);
-            case BOOL -> code.invokestatic(CD_ObjectDecoders, "bool", MTD_leafBool);
-            case DECIMAL -> code.invokestatic(CD_ObjectDecoders, "decimal", MTD_leafDecimal);
-            case DATE -> code.invokestatic(CD_ObjectDecoders, "date", MTD_leafTemporal);
-            case DATETIME -> code.invokestatic(CD_ObjectDecoders, "dateTime", MTD_leafTemporal);
+            case STRING -> code.invokestatic(owner, "string", MTD_leafString);
+            case INT -> code.invokestatic(owner, "long_", MTD_leafLong);
+            case BOOL -> code.invokestatic(owner, "bool", MTD_leafBool);
+            case DECIMAL -> code.invokestatic(owner, "decimal", MTD_leafDecimal);
+            case DATE -> code.invokestatic(owner, "date", MTD_leafTemporal);
+            case DATETIME -> code.invokestatic(owner, "dateTime", MTD_leafTemporal);
         }
     }
 
     private void emitPrimDecode(CodeBuilder code, Gen gen, ClassDesc cdName, Ast.PrimDecoder prim,
-                                Map<String, Type> fields) {
+                                Map<String, Type> fields, Src src) {
         Type inputType = TypeChecker.primType(prim.from());
+        ClassDesc leaf = srcLeafOwner(src);
         switch (prim.from()) {
-            case TEXT -> code.invokestatic(CD_ObjectDecoders, "string", MTD_leafString);
-            case INT -> code.invokestatic(CD_ObjectDecoders, "long_", MTD_leafLong);
-            case BOOL -> code.invokestatic(CD_ObjectDecoders, "bool", MTD_leafBool);
-            case DECIMAL -> code.invokestatic(CD_ObjectDecoders, "decimal", MTD_leafDecimal);
-            case DATE -> code.invokestatic(CD_ObjectDecoders, "date", MTD_leafTemporal);
-            case DATETIME -> code.invokestatic(CD_ObjectDecoders, "dateTime", MTD_leafTemporal);
+            case TEXT -> code.invokestatic(leaf, "string", MTD_leafString);
+            case INT -> code.invokestatic(leaf, "long_", MTD_leafLong);
+            case BOOL -> code.invokestatic(leaf, "bool", MTD_leafBool);
+            case DECIMAL -> code.invokestatic(leaf, "decimal", MTD_leafDecimal);
+            case DATE -> code.invokestatic(leaf, "date", MTD_leafTemporal);
+            case DATETIME -> code.invokestatic(leaf, "dateTime", MTD_leafTemporal);
         }
         code.aload(1);                                                 // in (bare value)
         code.aload(2);                                                 // path
@@ -906,18 +1062,18 @@ public final class Backend {
     }
 
     private void emitObjectDecode(CodeBuilder code, Gen gen, ClassDesc cdName, Ast.ObjectDecoder obj,
-                                  Map<String, Type> fields) {
+                                  Map<String, Type> fields, Src src) {
         List<Ast.Bind> binds = obj.binds();
         int[] resultSlots = new int[binds.size()];
         for (int i = 0; i < binds.size(); i++) {
             Ast.Bind bind = binds.get(i);
             code.loadConstant(bind.key());
             if (bind.ref() instanceof Ast.OptionDecRef opt) {
-                emitDecoderObject(code, opt.element());
-                code.invokestatic(CD_MapDecoders, "optionalField", MTD_optionalField);
+                emitDecoderObject(code, opt.element(), src);
+                code.invokestatic(srcFieldOwner(src), "optionalField", srcOptFieldMtd(src));
             } else {
-                emitDecoderObject(code, bind.ref());
-                code.invokestatic(CD_MapDecoders, "field", MTD_field);
+                emitDecoderObject(code, bind.ref(), src);
+                code.invokestatic(srcFieldOwner(src), "field", srcFieldMtd(src));
             }
             code.aload(1);   // in (Map)
             code.aload(2);   // path
@@ -984,25 +1140,34 @@ public final class Backend {
         };
     }
 
-    /** Pushes a {@code Decoder} object for the given bind reference onto the stack. */
-    private void emitDecoderObject(CodeBuilder code, Ast.DecRef ref) {
+    /** Pushes a {@code Decoder} for the given field-value reference, for the given source. */
+    private void emitDecoderObject(CodeBuilder code, Ast.DecRef ref, Src src) {
         switch (ref) {
-            case Ast.PrimDecRef p -> emitLeafDecoder(code, p.kind());
+            case Ast.PrimDecRef p -> emitLeafDecoder(code, p.kind(), src);
             case Ast.DataDecRef d -> {
-                invokeCodec(code, d.typeName(), "decoder", MTD_Rdecoder);
-                if (isMapInput(d.typeName())) {
-                    code.invokestatic(CD_MapDecoders, "nested", MTD_nested);   // Decoder<Map> -> Decoder<Object>
+                switch (src) {
+                    case NEUTRAL -> {
+                        invokeCodec(code, d.typeName(), "decoder", MTD_Rdecoder);
+                        if (isMapInput(d.typeName())) {
+                            code.invokestatic(CD_MapDecoders, "nested", MTD_nested);   // Decoder<Map> -> Decoder<Object>
+                        }
+                    }
+                    // JSON field value is a JsonNode: the nested type's json decoder reads it directly.
+                    case JSON -> invokeCodec(code, d.typeName(), "jsonDecoder", MTD_Rdecoder);
+                    // jOOQ rows are flat: only a newtype (a bare column) is nestable; objects/sums are
+                    // gated out of record generation, so this only ever pushes a newtype's Object decoder.
+                    case JOOQ -> invokeCodec(code, d.typeName(), "decoder", MTD_Rdecoder);
                 }
             }
             case Ast.ListDecRef l -> {
-                emitDecoderObject(code, l.element());
-                code.invokestatic(CD_ObjectDecoders, "list", MTD_listDec);
+                emitDecoderObject(code, l.element(), src);
+                code.invokestatic(srcListOwner(src), "list", MTD_listDec);
             }
             case Ast.OptionDecRef o -> throw new CompileException(o.pos(),
                     "optional is only supported as a direct object field");
             case Ast.MapDecRef mp -> {
-                emitDecoderObject(code, mp.value());
-                code.invokestatic(CD_ObjectDecoders, "map", MTD_mapDec);
+                emitDecoderObject(code, mp.value(), src);
+                code.invokestatic(srcListOwner(src), "map", MTD_mapDec);
             }
         }
     }

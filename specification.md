@@ -508,7 +508,7 @@ Source -> AST -> (導出で decoder/encoder を AST に充填) -> 型検査 -> C
 
 Souther のランタイム（souther-runtime）は Raoh に依存しない。Raoh に依存するのは生成されたバイトコードと、それを使うアプリだけである。プリミティブ解析・エラー集積（Applicative）・判別振り分け（10.3）は Raoh の combinator が担い、Souther は data の形状（キー・型・判別子・アームタグ）を Raoh の decoder 構築へ写すだけである。
 
-decoder は入力源ごとに生成する。素の値 / Map は raoh-core、JSON の `JsonNode` は raoh-json、jOOQ の `Record` は raoh-jooq の combinator を使う。骨組み（キー・型・判別子・アームタグ）は源に依らず共通で、末端のフィールド取得だけが源ごとに差し替わる。当面はすべての公開 data に対して各源ぶんを生成し、使われ方で絞る最適化は後付けとする。
+decoder は入力源ごとに生成する。素の値 / Map は raoh-core、JSON の `JsonNode` は raoh-json、jOOQ の `Record` は raoh-jooq の combinator を使う。骨組み（キー・型・判別子・アームタグ）は源に依らず共通で、末端のフィールド取得だけが源ごとに差し替わる。各公開 data には、その形状が対応する源ぶんを生成する ── 素の値 / Map は常に、JSON は temporal（`Date` / `DateTime`）を含まない形状に、jOOQ `Record` は入れ子・List・Map を持たない平坦な形状（スカラ列と newtype 列のみ）に対して生成する（raoh-json / raoh-jooq の能力に合わせる。単位dataは入力を無視するので全源に対応する）。
 
 ---
 
@@ -962,7 +962,7 @@ public static Decoder<Record,   出張申請> recordDecoder()  // DB 行（raoh-
 public static Encoder<出張申請, Map<String,Object>> encoder()  // 出張申請 -> Map（JSON化は境界で valueToTree）
 ```
 
-具体的な実装は ClassFile backend が Raoh の combinator を直接バイトコードとして生成する（10.6）。souther-runtime は Raoh に依存せず、Raoh 依存は生成コードとアプリ側にある。どの入力源ぶんを生成するかは当面すべての公開 data に対して生成し、絞り込みは後付けの最適化とする。
+具体的な実装は ClassFile backend が Raoh の combinator を直接バイトコードとして生成する（10.6）。souther-runtime は Raoh に依存せず、Raoh 依存は生成コードとアプリ側にある。`jsonDecoder()` / `recordDecoder()` はその data の形状が対応する場合にのみ生成する（10.6。JSON は temporal 無しの形状、`Record` は平坦な形状）。`decoder()`（素の値 / Map）は常に生成する。
 
 ### 19.5 behavior
 
@@ -1320,7 +1320,7 @@ var result = handle.apply(rawInput);
 
 ### 25.2 後回し
 
-Javaソース生成backend（人間可読な生成コード）、増分コンパイル、IDEプラグイン、LSP、ソースマップ、ユーザー定義高階behavior、高度な型推論、静的不変条件証明、structural intersection types、手書き decoder / encoder 構文（別キー名・正規化・業務固有の判別子は境界のカスタムコーデックで扱う）、入力源を使われ方で絞る生成の最適化（当面はすべての公開 data に各源ぶんを生成する。10.6）、JSON Schema生成、Wasm出力、JavaScript出力、非同期required behavior。
+Javaソース生成backend（人間可読な生成コード）、増分コンパイル、IDEプラグイン、LSP、ソースマップ、ユーザー定義高階behavior、高度な型推論、静的不変条件証明、structural intersection types、手書き decoder / encoder 構文（別キー名・正規化・業務固有の判別子は境界のカスタムコーデックで扱う）、入力源を使われ方で絞る生成の最適化（現状は data の形状が対応する源ぶんを生成する。10.6）、JSON temporal / jOOQ 入れ子の対応（現状はそれぞれ JSON temporal を持つ型 / 入れ子を持つ型では該当源の decoder を生成しない）、JSON Schema生成、Wasm出力、JavaScript出力、非同期required behavior。
 
 ---
 

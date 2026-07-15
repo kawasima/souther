@@ -41,6 +41,22 @@
             <artifactId>raoh-jooq</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Jackson 3 (provided by raoh-json) is needed at runtime to exercise a generated
+             jsonDecoder() against a real JsonNode in tests. -->
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>3.1.0</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- jOOQ (provided by raoh-jooq) is needed at runtime to load/verify a generated
+             recordDecoder()'s $DecRecord bytecode in tests. -->
+        <dependency>
+            <groupId>org.jooq</groupId>
+            <artifactId>jooq</artifactId>
+            <version>3.20.3</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
