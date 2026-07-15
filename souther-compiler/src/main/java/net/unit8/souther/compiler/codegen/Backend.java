@@ -771,34 +771,33 @@ public final class Backend {
                 List<String> stages = pipe.stages();
                 // stage 0 consumes the whole input unconditionally
                 applyStage(code, cdP, stages.get(0), requiredNames, behaviorDeps);
-                Type running = TypeChecker.stageSig(stages.get(0), sigs, symbols, pipe.pos()).out();
+                Type mainline = TypeChecker.stageSig(stages.get(0), sigs, symbols, pipe.pos()).out();
+                Label end = code.newLabel();
                 for (int i = 1; i < stages.size(); i++) {
                     String stage = stages.get(i);
                     TypeChecker.Sig g = TypeChecker.stageSig(stage, sigs, symbols, pipe.pos());
-                    if (TypeChecker.isDataLike(running)) {
-                        // route: apply g only if the running value is one of the arms it accepts
-                        List<String> accepted = new ArrayList<>();
-                        for (String arm : TypeChecker.namesOf(running)) {
-                            if (TypeChecker.subtypeOf(Type.ref(arm), g.in())) {
-                                accepted.add(arm);
-                            }
-                        }
+                    if (TypeChecker.isDataLike(mainline)) {
+                        // Apply g only when the running value is one of the main-line arms it
+                        // accepts. Anything else has left the main line: jump to the end rather
+                        // than offering it to the stages after this one (spec 14.2). Branching to
+                        // the end is what makes a retired arm unreachable without tagging it — the
+                        // same arm type may legitimately reappear on the main line downstream.
+                        List<String> accepted = TypeChecker.mainlineArms(mainline, g);
                         Label doApply = code.newLabel();
-                        Label after = code.newLabel();
                         for (String arm : accepted) {
                             code.aload(1);
                             code.instanceOf(armClass(arm));
                             code.ifne(doApply);
                         }
-                        code.goto_(after);
+                        code.goto_(end);
                         code.labelBinding(doApply);
                         applyStage(code, cdP, stage, requiredNames, behaviorDeps);
-                        code.labelBinding(after);
                     } else {
                         applyStage(code, cdP, stage, requiredNames, behaviorDeps);
                     }
-                    running = TypeChecker.route(running, g, pipe.pos());
+                    mainline = TypeChecker.stageOut(mainline, g, pipe.pos());
                 }
+                code.labelBinding(end);
                 code.aload(1);
                 code.areturn();
             });

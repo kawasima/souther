@@ -68,6 +68,47 @@ class CompileRailwayTest {
         assertEquals("demo.TooLarge", r.getClass().getName());
     }
 
+    /**
+     * Regression: an arm that leaves the main line must stay off it. The router kept the passed
+     * arm in the running union and offered it to every later stage, so a stage that happened to
+     * accept it pulled it back in — `A >> B >> C` returned C's output for a value B had already
+     * dropped. That is not Railway (spec 14.2), and it made the meaning of a pipeline depend on
+     * where it was split.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void anArmThatLeftTheMainLineIsNotOfferedToLaterStages() throws Exception {
+        String src = """
+                module demo
+                data In = { v: Int }
+                data Mid = { v: Int }
+                data Off = { v: Int }
+                data Out = { v: Int }
+
+                // over 100 leaves as Off
+                behavior 判定 = (i: In) -> Mid | Off constructs Mid, Off {
+                    require i.v <= 100 else Off { v: i.v }
+                    Mid { v: i.v }
+                }
+                // takes Mid only — Off passes it by
+                behavior 加工 = (m: Mid) -> Out constructs Out { Out { v: m.v } }
+                // would accept Off, but Off already left the main line at 加工
+                behavior 仕上げ = (x: Off | Out) -> Out constructs Out { Out { v: 0 } }
+
+                behavior flow = 判定 >> 加工 >> 仕上げ
+                """;
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Object flow = loader.loadClass("demo.flow").getConstructor().newInstance();
+        Decoder dec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
+
+        Object off = ((Behavior<Object, Object>) flow).apply(((Ok) dec.decode(500L, Path.ROOT)).value());
+        assertEquals("demo.Off", off.getClass().getName(),
+                "Off left the main line at 加工, so 仕上げ must not pick it up");
+
+        Object ok = ((Behavior<Object, Object>) flow).apply(((Ok) dec.decode(5L, Path.ROOT)).value());
+        assertEquals("demo.Out", ok.getClass().getName(), "the main line still reaches 仕上げ");
+    }
+
     @Test
     void requireElseValueMustBeAnOutputArm() {
         // `other` is a B, which is not one of `bad`'s output arms (just A), so this is rejected.

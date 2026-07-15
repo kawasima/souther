@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -187,50 +188,80 @@ public final class TypeChecker {
     private static Sig pipeSig(Ast.PipeBehavior pipe, Map<String, Sig> sigs, Map<String, Ast.Def> symbols) {
         List<String> stages = pipe.stages();
         Sig first = stageSig(stages.get(0), sigs, symbols, pipe.pos());
-        Type running = first.out();
+        Type mainline = first.out();
+        Set<String> retired = new LinkedHashSet<>();
         for (int i = 1; i < stages.size(); i++) {
-            running = route(running, stageSig(stages.get(i), sigs, symbols, pipe.pos()), pipe.pos());
+            mainline = route(mainline, stageSig(stages.get(i), sigs, symbols, pipe.pos()),
+                    retired, pipe.pos());
         }
-        return new Sig(first.in(), running);
+        return new Sig(first.in(), withRetired(mainline, retired));
+    }
+
+    /** The pipeline's output: what the last stage yields, plus everything that left the main line. */
+    private static Type withRetired(Type mainline, Set<String> retired) {
+        if (retired.isEmpty()) {
+            return mainline;
+        }
+        Set<String> all = new LinkedHashSet<>(armNamesOf(mainline));
+        if (all.isEmpty()) {
+            throw new IllegalStateException("cannot merge non-data stage output with retired arms");
+        }
+        all.addAll(retired);
+        return armSetType(all);
+    }
+
+    /** The main-line arms {@code g} accepts — the ones the backend routes into it (spec 14.2). */
+    public static List<String> mainlineArms(Type mainline, Sig g) {
+        List<String> accepted = new ArrayList<>();
+        for (String arm : namesOf(mainline)) {
+            if (subtypeOf(Type.ref(arm), g.in())) {
+                accepted.add(arm);
+            }
+        }
+        return accepted;
+    }
+
+    /** The main line after {@code g} runs, for the backend's routing walk. */
+    public static Type stageOut(Type mainline, Sig g, SourcePos pos) {
+        return route(mainline, g, new LinkedHashSet<>(), pos);
     }
 
     /**
-     * Type-routed composition (spec 14.2): the arms of {@code out} that the next stage's input
-     * accepts feed it; the rest propagate. The composed output is {@code g.out} unioned with the
-     * propagated arms. Returns which arms were consumed via {@code consumed} (may be null).
+     * One step of type-routed composition (spec 14.2). Returns the new main line — what {@code g}
+     * yields — and adds the arms {@code g} did not accept to {@code retired}.
+     *
+     * <p>An arm that leaves the main line does not come back: later stages are only offered the
+     * main line. That is what makes this Railway (14.2). Feeding the retired arms onward instead
+     * would let a stage pick up something an earlier stage had already dropped, which changes the
+     * meaning of a pipeline depending on where it is split.
+     *
+     * <p>Retirement lives inside one pipeline. Naming an intermediate (`behavior fg = f >> g`)
+     * gives it an ordinary sum as its output, and `fg >> h` offers all of it again — a value does
+     * not carry a mark saying it once left a main line (2.6).
      */
-    public static Type route(Type out, Sig g, SourcePos pos) {
+    private static Type route(Type mainline, Sig g, Set<String> retired, SourcePos pos) {
         Type in = g.in();
-        if (isDataLike(out)) {
-            Set<String> consumed = new HashSet<>();
-            Set<String> rest = new HashSet<>();
-            for (String arm : namesOf(out)) {
+        if (isDataLike(mainline)) {
+            Set<String> consumed = new LinkedHashSet<>();
+            Set<String> passed = new LinkedHashSet<>();
+            for (String arm : namesOf(mainline)) {
                 if (subtypeOf(Type.ref(arm), in)) {
                     consumed.add(arm);
                 } else {
-                    rest.add(arm);
+                    passed.add(arm);
                 }
             }
             if (consumed.isEmpty()) {
                 throw new CompileException(pos, "E1701",
                         "Cannot compose behaviors: no output arm of the left behavior is accepted by "
-                                + "the right behavior's input. Left output: " + out + ", right input: " + in);
+                                + "the right behavior's input. Left output: " + mainline + ", right input: " + in);
             }
-            Set<String> gArms = armNamesOf(g.out());
-            if (gArms.isEmpty()) {
-                if (!rest.isEmpty()) {
-                    throw new CompileException(pos, "E1701",
-                            "cannot merge non-data stage output " + g.out() + " with propagated arms " + rest);
-                }
-                return g.out();
-            }
-            Set<String> result = new HashSet<>(rest);
-            result.addAll(gArms);
-            return armSetType(result);
+            retired.addAll(passed);
+            return g.out();
         }
-        if (!out.equals(in)) {
+        if (!mainline.equals(in)) {
             throw new CompileException(pos, "E1701",
-                    "Cannot compose behaviors. Left output: " + out + ", right input: " + in);
+                    "Cannot compose behaviors. Left output: " + mainline + ", right input: " + in);
         }
         return g.out();
     }
