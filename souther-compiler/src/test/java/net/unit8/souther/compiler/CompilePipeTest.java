@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** End-to-end test for {@code >>} composition and required-behavior injection = (spec 14, 13, 19.5). */
 class CompilePipeTest {
@@ -82,5 +83,37 @@ class CompilePipeTest {
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1701", e.code());
+    }
+
+    /**
+     * A stage takes one input (spec 14.1). The rule was only enforced by accident — a multi-input
+     * behavior was left out of the signature table and then reported as unknown, which it is not.
+     */
+    @Test
+    void aMultiInputBehaviorCannotBeAStage() {
+        String src = """
+                module demo
+                data Wrap = { value: String }
+                data Mid = { value: String }
+                behavior a = (w: Wrap) -> Mid constructs Mid { Mid { value: w.value } }
+                behavior two = (m: Mid, k: String) -> Mid constructs Mid { Mid { value: k } }
+                behavior bad = a >> two
+                """;
+        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
+        assertTrue(e.getMessage().contains("takes 2 inputs"), e.getMessage());
+        assertTrue(e.getMessage().contains("14.1"), "the diagnostic should name the rule: " + e.getMessage());
+    }
+
+    @Test
+    void anUndefinedStageIsStillReportedAsUnknown() {
+        String src = """
+                module demo
+                data Wrap = { value: String }
+                data Mid = { value: String }
+                behavior a = (w: Wrap) -> Mid constructs Mid { Mid { value: w.value } }
+                behavior bad = a >> nosuch
+                """;
+        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
+        assertTrue(e.getMessage().contains("unknown behavior"), e.getMessage());
     }
 }

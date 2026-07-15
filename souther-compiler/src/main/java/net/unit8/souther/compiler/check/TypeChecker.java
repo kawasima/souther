@@ -51,8 +51,41 @@ public final class TypeChecker {
                 checkBodyBehavior(body, symbols, allBehaviors, reqSigs);
             }
         }
-        // validates composition types; a stage's own requirements propagate to the pipeline (14.3)
+        checkStagesAreSingleInput(module);
+        // validates composition types
         signatures(module, symbols);
+    }
+
+    /**
+     * A pipeline stage takes exactly one input (spec 14.1): {@code >>} hands one value along, so a
+     * behavior of several inputs is called inline or matched on instead. Checked here, by name, so
+     * the diagnostic states the rule — such a stage used to fall through to the signature lookup
+     * and be reported as an unknown behavior, which it is not.
+     */
+    private static void checkStagesAreSingleInput(Ast.Module module) {
+        Map<String, Integer> arity = new HashMap<>();
+        for (Ast.BehaviorDef b : module.behaviors()) {
+            if (b instanceof Ast.BodyBehavior body) {
+                arity.put(body.name(), body.params().size());
+            }
+        }
+        for (Ast.RequiredBehavior r : module.requireds()) {
+            arity.put(r.name(), r.paramType() == null ? 0 : 1);
+        }
+        for (Ast.BehaviorDef b : module.behaviors()) {
+            if (!(b instanceof Ast.PipeBehavior pipe)) {
+                continue;
+            }
+            for (String stage : pipe.stages()) {
+                Integer n = arity.get(stage);
+                if (n != null && n != 1) {
+                    throw new CompileException(pipe.pos(),
+                            "`" + stage + "` takes " + n + " inputs, so it cannot be a stage of `"
+                                    + pipe.name() + "`. A stage takes one input: call it inline or "
+                                    + "open the branches with `match` instead (spec 14.1).");
+                }
+            }
+        }
     }
 
     /** A required behavior's input and success types (for typing calls). */
@@ -220,7 +253,7 @@ public final class TypeChecker {
         // The body is one expression (spec 16.4), so this single walk sees every construction —
         // including the ones under a desugared `require`.
         Set<String> constructed = new HashSet<>();
-        collectConstructs(b.body(), constructed, symbols);
+        collectConstructs(b.body(), constructed, symbols, new HashSet<>(env.keySet()));
         for (String c : constructed) {
             if (!b.constructs().contains(c)) {
                 throw new CompileException(b.pos(), "E1002",
@@ -350,43 +383,58 @@ public final class TypeChecker {
         }
     }
 
-    private static void collectConstructs(Ast.Expr e, Set<String> out, Map<String, Ast.Def> symbols) {
+    /**
+     * The data types {@code e} constructs.
+     *
+     * <p>{@code bound} carries the names in scope, because a bare identifier is a unit data's
+     * construction only when nothing has bound it — a local of the same name wins (spec 8.4).
+     * Without it, a parameter named after a unit data was read as constructing that unit.
+     */
+    private static void collectConstructs(Ast.Expr e, Set<String> out, Map<String, Ast.Def> symbols,
+                                          Set<String> bound) {
         switch (e) {
             case Ast.LetIn li -> {
-                collectConstructs(li.value(), out, symbols);
-                collectConstructs(li.body(), out, symbols);
+                collectConstructs(li.value(), out, symbols, bound);
+                Set<String> inner = new HashSet<>(bound);
+                inner.add(li.name());
+                collectConstructs(li.body(), out, symbols, inner);
             }
             case Ast.NewData nd -> {
                 out.add(nd.typeName());
                 for (Ast.FieldInit init : nd.inits()) {
-                    collectConstructs(init.value(), out, symbols);
+                    collectConstructs(init.value(), out, symbols, bound);
                 }
             }
-            case Ast.FieldAccess fa -> collectConstructs(fa.target(), out, symbols);
-            case Ast.Call call -> call.args().forEach(a -> collectConstructs(a, out, symbols));
+            case Ast.FieldAccess fa -> collectConstructs(fa.target(), out, symbols, bound);
+            case Ast.Call call -> call.args().forEach(a -> collectConstructs(a, out, symbols, bound));
             case Ast.Binary bin -> {
-                collectConstructs(bin.left(), out, symbols);
-                collectConstructs(bin.right(), out, symbols);
+                collectConstructs(bin.left(), out, symbols, bound);
+                collectConstructs(bin.right(), out, symbols, bound);
             }
-            case Ast.Not not -> collectConstructs(not.operand(), out, symbols);
+            case Ast.Not not -> collectConstructs(not.operand(), out, symbols, bound);
             case Ast.Match m -> {
-                collectConstructs(m.scrutinee(), out, symbols);
+                collectConstructs(m.scrutinee(), out, symbols, bound);
                 for (Ast.Case c : m.cases()) {
-                    collectConstructs(c.body(), out, symbols);
+                    Set<String> inner = new HashSet<>(bound);
+                    if (c.binding() != null) {
+                        inner.add(c.binding());
+                    }
+                    collectConstructs(c.body(), out, symbols, inner);
                 }
             }
             case Ast.If iff -> {
-                collectConstructs(iff.cond(), out, symbols);
-                collectConstructs(iff.then(), out, symbols);
-                collectConstructs(iff.els(), out, symbols);
+                collectConstructs(iff.cond(), out, symbols, bound);
+                collectConstructs(iff.then(), out, symbols, bound);
+                collectConstructs(iff.els(), out, symbols, bound);
             }
-            case Ast.ListLit lit -> lit.elements().forEach(el -> collectConstructs(el, out, symbols));
+            case Ast.ListLit lit -> lit.elements().forEach(el -> collectConstructs(el, out, symbols, bound));
             case Ast.ListComp comp -> {
-                collectConstructs(comp.element(), out, symbols);
-                comp.guards().forEach(g -> collectConstructs(g, out, symbols));
+                collectConstructs(comp.element(), out, symbols, bound);
+                comp.guards().forEach(g -> collectConstructs(g, out, symbols, bound));
             }
             // a bare name that resolves to a unit data is that unit's construction (spec 8.4)
-            case Ast.Var v when symbols.get(v.name()) instanceof Ast.UnitData -> out.add(v.name());
+            case Ast.Var v when !bound.contains(v.name())
+                    && symbols.get(v.name()) instanceof Ast.UnitData -> out.add(v.name());
             case Ast.IntLit ignored -> { }
             case Ast.StringLit ignored -> { }
             case Ast.BoolLit ignored -> { }
