@@ -417,6 +417,7 @@ public final class Backend {
                 cb.withField(f.getKey(), jvmType(f.getValue()), ClassFile.ACC_FINAL);
             }
             emitCtor(cb, cdName, fields);
+            emitValueEquality(cb, cdName, fields);
             emitConstructMethod(cb, cdName, data, fields);
             data.decoder().ifPresent(d -> {
                 boolean mapInput = isMapInput(data.name());
@@ -557,6 +558,7 @@ public final class Backend {
                 cb.withInterfaceSymbols(ifaces);
             }
             emitDefaultCtor(cb);
+            emitValueEquality(cb, cdU, Map.of());   // all units of a type are the same value
             // a unit is a field-less data: its codec reads/writes nothing but the tag the sum adds
             // A unit ignores its input, so it decodes from every source. Generate all three so
             // unit arms of a JSON/record sum have a matching decoder to dispatch to.
@@ -657,8 +659,12 @@ public final class Backend {
                     // call an injected required behavior; its apply returns the value directly
                     code.aload(0);
                     code.getfield(cdB, call.fn(), CD_Behavior);
-                    Type at = gen.expr(call.args().get(0));
-                    box(code, at);
+                    if (call.args().isEmpty()) {
+                        code.aconst_null();    // `() -> R` (spec 13.1)
+                    } else {
+                        Type at = gen.expr(call.args().get(0));
+                        box(code, at);
+                    }
                     code.invokeinterface(CD_Behavior, "apply", MTD_apply);
                     Type letType = requiredSuccess.get(call.fn());
                     int vSlot = gen.slot(letType);
@@ -850,6 +856,88 @@ public final class Backend {
     }
 
     // --- value class members ---
+
+    /** True when {@code t} is carried as a reference on the JVM (everything but Int and Bool). */
+    private static boolean isReference(Type t) {
+        return t != Type.INT && t != Type.BOOL;
+    }
+
+    private static final ClassDesc CD_Objects = ClassDesc.of("java.util.Objects");
+    private static final MethodTypeDesc MTD_Objects_equals =
+            MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_Object, CD_Object);
+    private static final MethodTypeDesc MTD_Objects_hashCode =
+            MethodTypeDesc.of(ConstantDescs.CD_int, CD_Object);
+    private static final MethodTypeDesc MTD_Long_hashCode =
+            MethodTypeDesc.of(ConstantDescs.CD_int, ConstantDescs.CD_long);
+
+    /**
+     * Emits {@code equals} / {@code hashCode} comparing every field.
+     *
+     * <p>A data is an immutable value, so two of them are the same when their fields are — which
+     * is what {@code ==} means on a data (spec 16.2) and what Java callers expect of a value
+     * class. A unit data has no fields, so all of its values are equal.
+     */
+    private void emitValueEquality(ClassBuilder cb, ClassDesc cdName, Map<String, Type> fields) {
+        cb.withMethodBody("equals", MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_Object),
+                ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL, code -> {
+                    Label same = code.newLabel();
+                    Label differs = code.newLabel();
+                    code.aload(0);
+                    code.aload(1);
+                    code.if_acmpeq(same);
+                    code.aload(1);
+                    code.instanceOf(cdName);
+                    code.ifeq(differs);
+                    if (!fields.isEmpty()) {
+                        code.aload(1);
+                        code.checkcast(cdName);
+                        code.astore(2);
+                        for (Map.Entry<String, Type> f : fields.entrySet()) {
+                            Type t = f.getValue();
+                            code.aload(0);
+                            code.getfield(cdName, f.getKey(), jvmType(t));
+                            code.aload(2);
+                            code.getfield(cdName, f.getKey(), jvmType(t));
+                            if (t == Type.INT) {
+                                code.lcmp();
+                                code.ifne(differs);
+                            } else if (t == Type.BOOL) {
+                                code.if_icmpne(differs);
+                            } else {
+                                code.invokestatic(CD_Objects, "equals", MTD_Objects_equals);
+                                code.ifeq(differs);
+                            }
+                        }
+                    }
+                    code.labelBinding(same);
+                    code.iconst_1();
+                    code.ireturn();
+                    code.labelBinding(differs);
+                    code.iconst_0();
+                    code.ireturn();
+                });
+
+        cb.withMethodBody("hashCode", MethodTypeDesc.of(ConstantDescs.CD_int),
+                ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL, code -> {
+                    code.iconst_1();
+                    for (Map.Entry<String, Type> f : fields.entrySet()) {
+                        Type t = f.getValue();
+                        code.loadConstant(31);
+                        code.imul();
+                        code.aload(0);
+                        code.getfield(cdName, f.getKey(), jvmType(t));
+                        if (t == Type.INT) {
+                            code.invokestatic(CD_Long, "hashCode", MTD_Long_hashCode);
+                        } else if (t == Type.BOOL) {
+                            // already an int 0/1
+                        } else {
+                            code.invokestatic(CD_Objects, "hashCode", MTD_Objects_hashCode);
+                        }
+                        code.iadd();
+                    }
+                    code.ireturn();
+                });
+    }
 
     private void emitCtor(ClassBuilder cb, ClassDesc cdName, Map<String, Type> fields) {
         cb.withMethodBody("<init>", MethodTypeDesc.of(ConstantDescs.CD_void, fieldDescs(fields)), 0, code -> {
@@ -1807,8 +1895,12 @@ public final class Backend {
         private Type requiredCall(Ast.Call call) {
             code.aload(0);
             code.getfield(cdName, call.fn(), CD_Behavior);
-            Type at = expr(call.args().get(0));
-            box(code, at);
+            if (call.args().isEmpty()) {
+                code.aconst_null();        // `() -> R`: the implementation ignores the input
+            } else {
+                Type at = expr(call.args().get(0));
+                box(code, at);
+            }
             code.invokeinterface(CD_Behavior, "apply", MTD_apply);
             Type success = reqSuccess.get(call.fn());
             stackCast(success);
@@ -1872,6 +1964,16 @@ public final class Backend {
                     if (lt == Type.STRING) {
                         code.invokevirtual(CD_String, "equals",
                                 MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_Object));
+                        if (bin.op() == Ast.BinOp.NE) {
+                            code.iconst_1();
+                            code.ixor();
+                        }
+                        return Type.BOOL;
+                    }
+                    if (isReference(lt)) {
+                        // a data (or any boxed value) compares by its fields — the generated
+                        // equals (spec 16.2). Objects.equals keeps it null-tolerant.
+                        code.invokestatic(CD_Objects, "equals", MTD_Objects_equals);
                         if (bin.op() == Ast.BinOp.NE) {
                             code.iconst_1();
                             code.ixor();

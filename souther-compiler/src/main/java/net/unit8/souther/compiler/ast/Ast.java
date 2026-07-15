@@ -53,7 +53,12 @@ public interface Ast {
     /** {@code behavior name = f >> g >> ...} */
     record PipeBehavior(String name, List<String> stages, SourcePos pos) implements BehaviorDef {}
 
-    /** {@code required behavior name = (T) -> R} — implemented in Java, injected. */
+    /**
+     * {@code required behavior name = (T) -> R} — implemented in Java, injected.
+     *
+     * <p>{@code paramType} is null for the zero-argument form {@code () -> R} (spec 13.1), such
+     * as a clock. That is "takes no input", not "takes a Unit": Unit stays off the surface (7.3).
+     */
     record RequiredBehavior(String name, TypeRef paramType, RetType ret, SourcePos pos)
             implements Ast {}
 

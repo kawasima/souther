@@ -40,7 +40,7 @@ public final class Deriver {
         for (Ast.Def def : module.defs()) {
             defs.add(switch (def) {
                 case Ast.Data d -> deriveData(d, symbols, armNames.contains(d.name()));
-                case Ast.SumData s -> deriveSum(s);
+                case Ast.SumData s -> deriveSum(s, symbols);
                 case Ast.UnitData u -> u;
             });
         }
@@ -218,27 +218,53 @@ public final class Deriver {
 
     // --- sum derivation ---
 
-    private static Ast.SumData deriveSum(Ast.SumData s) {
+    private static Ast.SumData deriveSum(Ast.SumData s, Map<String, Ast.Def> symbols) {
+        List<String> leaves = leafArms(s, symbols);
         Optional<Ast.Discriminate> decoder = s.decoder().isPresent()
                 ? s.decoder()
-                : Optional.of(new Ast.Discriminate("type", tagVariants(s), s.pos()));
+                : Optional.of(new Ast.Discriminate("type", tagVariants(s, leaves), s.pos()));
         Optional<Ast.SumEncoder> encoder = s.encoder().isPresent()
                 ? s.encoder()
-                : Optional.of(new Ast.SumEncoder("type", encVariants(s), s.pos()));
+                : Optional.of(new Ast.SumEncoder("type", encVariants(s, leaves), s.pos()));
         return new Ast.SumData(s.name(), s.arms(), decoder, encoder, s.pos());
     }
 
-    private static List<Ast.Variant> tagVariants(Ast.SumData s) {
-        List<Ast.Variant> variants = new ArrayList<>();
+    /**
+     * The arms a derived codec dispatches over, with nested sums folded to their leaves —
+     * `費用負担区分 = 自社負担 | 先方負担` where `自社負担 = 立替 | 仮払い | 会社カード` dispatches over
+     * 立替 / 仮払い / 会社カード / 先方負担 (spec 8.3, 10.3).
+     *
+     * <p>Folding is what makes a nested sum round-trip. Tagging the direct arm instead would put
+     * two levels on one `"type"` key: the outer encoder wrote {@code {type: 自社負担}}, losing
+     * which leaf it was, and the inner decoder then rejected that same tag.
+     */
+    private static List<String> leafArms(Ast.SumData s, Map<String, Ast.Def> symbols) {
+        List<String> leaves = new ArrayList<>();
+        collectLeafArms(s, symbols, leaves);
+        return leaves;
+    }
+
+    private static void collectLeafArms(Ast.SumData s, Map<String, Ast.Def> symbols, List<String> out) {
         for (String arm : s.arms()) {
+            if (symbols.get(arm) instanceof Ast.SumData nested) {
+                collectLeafArms(nested, symbols, out);
+            } else if (!out.contains(arm)) {
+                out.add(arm);
+            }
+        }
+    }
+
+    private static List<Ast.Variant> tagVariants(Ast.SumData s, List<String> arms) {
+        List<Ast.Variant> variants = new ArrayList<>();
+        for (String arm : arms) {
             variants.add(new Ast.Variant(arm, arm, s.pos()));
         }
         return variants;
     }
 
-    private static List<Ast.EncVariant> encVariants(Ast.SumData s) {
+    private static List<Ast.EncVariant> encVariants(Ast.SumData s, List<String> arms) {
         List<Ast.EncVariant> variants = new ArrayList<>();
-        for (String arm : s.arms()) {
+        for (String arm : arms) {
             variants.add(new Ast.EncVariant(arm, arm, s.pos()));
         }
         return variants;

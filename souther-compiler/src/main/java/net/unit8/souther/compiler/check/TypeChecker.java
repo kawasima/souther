@@ -42,7 +42,8 @@ public final class TypeChecker {
         Map<String, ReqSig> reqSigs = new HashMap<>();
         for (Ast.RequiredBehavior r : module.requireds()) {
             allBehaviors.add(r.name());
-            reqSigs.put(r.name(), new ReqSig(resolveType(r.paramType(), symbols),
+            reqSigs.put(r.name(), new ReqSig(
+                    r.paramType() == null ? null : resolveType(r.paramType(), symbols),
                     successType(r.ret(), symbols)));
         }
         for (Ast.BehaviorDef b : module.behaviors()) {
@@ -119,8 +120,11 @@ public final class TypeChecker {
             }
         }
         for (Ast.RequiredBehavior r : module.requireds()) {
-            sigs.put(r.name(), new Sig(resolveType(r.paramType(), symbols),
-                    successType(r.ret(), symbols)));
+            // a zero-arg required behavior takes no input, so it cannot be a stage (spec 14.1)
+            if (r.paramType() != null) {
+                sigs.put(r.name(), new Sig(resolveType(r.paramType(), symbols),
+                        successType(r.ret(), symbols)));
+            }
         }
         for (Ast.BehaviorDef b : module.behaviors()) {
             if (b instanceof Ast.PipeBehavior pipe) {
@@ -409,15 +413,20 @@ public final class TypeChecker {
             }
         }
         sum.decoder().ifPresent(disc -> {
+            // a derived codec dispatches over the leaves, so a nested sum's arms count too (8.3, 10.3)
+            Set<String> dispatchable = leafArms(Type.ref(sum.name()), symbols);
             for (Ast.Variant v : disc.variants()) {
                 Ast.Def armDef = symbols.get(v.armType());
-                if (armDef == null || !sum.arms().contains(v.armType())) {
+                if (armDef == null || !dispatchable.contains(v.armType())) {
                     throw new CompileException(v.pos(),
                             "variant `" + v.armType() + "` is not an arm of `" + sum.name() + "`");
                 }
-                // a unit-data arm has an implicit (field-less) decoder generated on its class
-                if (!(armDef instanceof Ast.UnitData)
-                        && (!(armDef instanceof Ast.Data d) || d.decoder().isEmpty())) {
+                // a unit-data arm has an implicit (field-less) decoder generated on its class;
+                // an arm may itself be a sum (spec 8.3's nested `自社負担 | 先方負担`)
+                boolean armDecodes = armDef instanceof Ast.UnitData
+                        || (armDef instanceof Ast.Data d && d.decoder().isPresent())
+                        || (armDef instanceof Ast.SumData s && s.decoder().isPresent());
+                if (!armDecodes) {
                     throw new CompileException(v.pos(),
                             "variant `" + v.armType() + "` needs a decoder");
                 }
@@ -425,19 +434,22 @@ public final class TypeChecker {
         });
         sum.encoder().ifPresent(enc -> {
             Set<String> covered = new HashSet<>();
+            Set<String> encodable = leafArms(Type.ref(sum.name()), symbols);
             for (Ast.EncVariant v : enc.variants()) {
-                if (!sum.arms().contains(v.armType())) {
+                if (!encodable.contains(v.armType())) {
                     throw new CompileException(v.pos(),
                             "`" + v.armType() + "` is not an arm of `" + sum.name() + "`");
                 }
                 Ast.Def armDef = symbols.get(v.armType());
-                if (!(armDef instanceof Ast.UnitData)
-                        && (!(armDef instanceof Ast.Data d) || d.encoder().isEmpty())) {
+                boolean armEncodes = armDef instanceof Ast.UnitData
+                        || (armDef instanceof Ast.Data d && d.encoder().isPresent())
+                        || (armDef instanceof Ast.SumData s && s.encoder().isPresent());
+                if (!armEncodes) {
                     throw new CompileException(v.pos(), "arm `" + v.armType() + "` needs an encoder");
                 }
                 covered.add(v.armType());
             }
-            for (String arm : sum.arms()) {
+            for (String arm : encodable) {
                 if (!covered.contains(arm)) {
                     throw new CompileException(enc.pos(),
                             "encoder for `" + sum.name() + "` is missing arm `" + arm + "`");
@@ -693,9 +705,11 @@ public final class TypeChecker {
                 }
             }
             case Ast.DataEnc d -> {
-                if (!elemType.equals(Type.ref(d.typeName()))
-                        || !(symbols.get(d.typeName()) instanceof Ast.Data dd)
-                        || dd.encoder().isEmpty()) {
+                // the element may be a product or a sum: `List<事前承認理由>` holds a sum (spec 11.2)
+                Ast.Def def = symbols.get(d.typeName());
+                boolean hasEncoder = (def instanceof Ast.Data dd && dd.encoder().isPresent())
+                        || (def instanceof Ast.SumData sd && sd.encoder().isPresent());
+                if (!elemType.equals(Type.ref(d.typeName())) || !hasEncoder) {
                     throw new CompileException(pos,
                             "element encoder `" + d.typeName() + "` does not match " + elemType);
                 }
@@ -1014,9 +1028,13 @@ public final class TypeChecker {
                 if (callee == null) {
                     throw new CompileException(call.pos(), "unknown function `" + call.fn() + "`");
                 }
-                arity(call, 1);
-                requireType(args.get(0), callee.param(), env, data, symbols, reqs,
-                        "argument of " + call.fn());
+                if (callee.param() == null) {
+                    arity(call, 0);            // `() -> R`, e.g. 現在時刻() (spec 13.1)
+                } else {
+                    arity(call, 1);
+                    requireType(args.get(0), callee.param(), env, data, symbols, reqs,
+                            "argument of " + call.fn());
+                }
                 yield callee.success();
             }
         };
@@ -1051,7 +1069,9 @@ public final class TypeChecker {
             case EQ, NE -> {
                 Type lt = typeOf(bin.left(), env, data, symbols, reqs);
                 Type rt = typeOf(bin.right(), env, data, symbols, reqs);
-                if (!lt.equals(rt) || lt instanceof Type.Ref) {
+                // two values of the same data compare by their fields (spec 16.2); across
+                // different types there is nothing to compare
+                if (!lt.equals(rt)) {
                     throw new CompileException(bin.pos(), "cannot compare " + lt + " with " + rt);
                 }
                 yield Type.BOOL;

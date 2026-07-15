@@ -201,12 +201,15 @@ public final class Parser {
         }
         expect(TokenType.ASSIGN);
         expect(TokenType.LPAREN);
-        // required behavior takes one input: (name: Type) or (Type)
-        if (peekAt(1).type() == TokenType.COLON) {
-            expect(TokenType.IDENT);
-            expect(TokenType.COLON);
+        // one input — (name: Type) or (Type) — or none: () -> R, e.g. a clock (spec 13.1)
+        Ast.TypeRef paramType = null;
+        if (!check(TokenType.RPAREN)) {
+            if (peekAt(1).type() == TokenType.COLON) {
+                expect(TokenType.IDENT);
+                expect(TokenType.COLON);
+            }
+            paramType = parseTypeRef();
         }
-        Ast.TypeRef paramType = parseTypeRef();
         expect(TokenType.RPAREN);
         expect(TokenType.ARROW);
         Ast.RetType ret = parseRetType();
