@@ -147,7 +147,7 @@ public final class Parser {
     private Ast.Param parseParam() {
         Token n = expect(TokenType.IDENT);
         expect(TokenType.COLON);
-        return new Ast.Param(n.text(), parseTypeRef(), n.pos());
+        return new Ast.Param(n.text(), parseRetType(), n.pos());   // may be a union: A | B
     }
 
     private Ast.RetType parseRetType() {

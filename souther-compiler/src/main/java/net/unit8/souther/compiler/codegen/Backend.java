@@ -442,7 +442,7 @@ public final class Backend {
                 gen.requireds(requiredNames, requiredSuccess);
                 for (int i = 0; i < n; i++) {
                     Ast.Param p = b.params().get(i);
-                    Type pt = resolveType(p.type());
+                    Type pt = successType(p.type());
                     code.aload(i + 1);
                     int slot = gen.slot(pt);
                     unbox(code, pt, slot);

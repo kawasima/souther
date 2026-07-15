@@ -42,8 +42,8 @@ public interface Ast {
                         Expr result,
                         SourcePos pos) implements BehaviorDef {}
 
-    /** A behavior parameter. */
-    record Param(String name, TypeRef type, SourcePos pos) implements Ast {}
+    /** A behavior parameter. Its type may be an anonymous union of arms (spec 12.2). */
+    record Param(String name, RetType type, SourcePos pos) implements Ast {}
 
     /** {@code behavior name = f >> g >> ...} */
     record PipeBehavior(String name, List<String> stages, SourcePos pos) implements BehaviorDef {}

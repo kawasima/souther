@@ -114,7 +114,7 @@ public final class TypeChecker {
         Map<String, Sig> sigs = new HashMap<>();
         for (Ast.BehaviorDef b : module.behaviors()) {
             if (b instanceof Ast.BodyBehavior body && body.params().size() == 1) {
-                sigs.put(body.name(), new Sig(resolveType(body.params().get(0).type(), symbols),
+                sigs.put(body.name(), new Sig(successType(body.params().get(0).type(), symbols),
                         successType(body.ret(), symbols)));
             }
         }
@@ -214,7 +214,7 @@ public final class TypeChecker {
 
         Map<String, Type> env = new HashMap<>();
         for (Ast.Param p : b.params()) {
-            env.put(p.name(), resolveType(p.type(), symbols));
+            env.put(p.name(), successType(p.type(), symbols));
         }
         for (Ast.BStmt stmt : b.stmts()) {
             switch (stmt) {
@@ -720,24 +720,34 @@ public final class TypeChecker {
         if (st instanceof Type.OptionOf oo) {
             return typeOfOptionMatch(m, oo.element(), env, data, symbols, reqs);
         }
+        if (st instanceof Type.Union union) {
+            return typeOfArmsMatch(m, union.members(), "union " + union, env, data, symbols, reqs);
+        }
         if (!(st instanceof Type.Ref ref) || !(symbols.get(ref.name()) instanceof Ast.SumData sum)) {
             throw new CompileException(m.pos(), "match requires a sum-typed value, got " + st);
         }
+        return typeOfArmsMatch(m, new HashSet<>(sum.arms()), "data `" + sum.name() + "`",
+                env, data, symbols, reqs);
+    }
+
+    /** Match over a fixed set of data arms (a named sum's arms, or an anonymous union's members).
+     * Each arm binds its own data type; every arm must be covered (E1201). */
+    private static Type typeOfArmsMatch(Ast.Match m, Set<String> arms, String what, Map<String, Type> env,
+                                        Ast.Data data, Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
         Set<String> covered = new HashSet<>();
         Type branchType = null;
         for (Ast.Case c : m.cases()) {
-            if (!sum.arms().contains(c.armType())) {
-                throw new CompileException(c.pos(),
-                        "`" + c.armType() + "` is not an arm of `" + sum.name() + "`");
+            if (!arms.contains(c.armType())) {
+                throw new CompileException(c.pos(), "`" + c.armType() + "` is not an arm of " + what);
             }
             covered.add(c.armType());
             branchType = mergeBranch(m, branchType,
                     typeOf(c.body(), bound(env, c.binding(), Type.ref(c.armType())), data, symbols, reqs), c);
         }
-        for (String arm : sum.arms()) {
+        for (String arm : arms) {
             if (!covered.contains(arm)) {
                 throw new CompileException(m.pos(), "E1201",
-                        "Non-exhaustive match for data `" + sum.name() + "`. Missing case: " + arm);
+                        "Non-exhaustive match for " + what + ". Missing case: " + arm);
             }
         }
         if (branchType == null) {
