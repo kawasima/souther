@@ -97,7 +97,7 @@ public interface Ast {
     record TypeRef(String name, TypeRef arg, SourcePos pos) implements Ast {}
 
     /** The kind of primitive Raw a single-value decoder reads / an encoder writes. */
-    enum RawKind { TEXT, INT }
+    enum RawKind { TEXT, INT, BOOL, DECIMAL, DATE, DATETIME }
 
     // --- decoders ---
 
@@ -127,7 +127,7 @@ public interface Ast {
     record ListDecRef(DecRef element, SourcePos pos) implements DecRef {}
 
     /** A primitive field decoder kind. */
-    enum PrimKind { STRING, INT }
+    enum PrimKind { STRING, INT, BOOL, DECIMAL, DATE, DATETIME }
 
     /** A statement in a single-value decoder body. */
     sealed interface DecStmt extends Ast permits Let, Require {}
@@ -148,11 +148,20 @@ public interface Ast {
     record EncoderDef(String selfName, RawExpr result, SourcePos pos) implements Ast {}
 
     /** A Raw-building expression. */
-    sealed interface RawExpr extends Ast permits TextRaw, IntRaw, ObjectRaw, EncodeRaw, ListEnc {}
+    sealed interface RawExpr extends Ast
+            permits TextRaw, IntRaw, BoolRaw, DecimalRaw, IsoTextRaw, ObjectRaw, EncodeRaw, ListEnc {}
 
     record TextRaw(Expr arg, SourcePos pos) implements RawExpr {}
 
     record IntRaw(Expr arg, SourcePos pos) implements RawExpr {}
+
+    record BoolRaw(Expr arg, SourcePos pos) implements RawExpr {}
+
+    /** Encodes a {@code Decimal} field to a {@code Raw.Decimal}. */
+    record DecimalRaw(Expr arg, SourcePos pos) implements RawExpr {}
+
+    /** Encodes a {@code Date}/{@code DateTime} field to a {@code Raw.Text} via its ISO8601 form. */
+    record IsoTextRaw(Expr arg, SourcePos pos) implements RawExpr {}
 
     record ObjectRaw(List<RawEntry> entries, SourcePos pos) implements RawExpr {}
 

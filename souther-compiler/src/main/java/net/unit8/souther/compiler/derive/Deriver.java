@@ -59,7 +59,7 @@ public final class Deriver {
         // not as a bare primitive newtype
         Map.Entry<String, Type> single = isArm ? null : singlePrimField(fields);
         if (single != null) {
-            Ast.RawKind kind = single.getValue() == Type.STRING ? Ast.RawKind.TEXT : Ast.RawKind.INT;
+            Ast.RawKind kind = rawKind(single.getValue());
             Ast.Construct result = new Ast.Construct(d.name(),
                     List.of(new Ast.FieldInit(single.getKey(), new Ast.Var("__in", pos), pos)),
                     List.of(), pos);
@@ -74,12 +74,48 @@ public final class Deriver {
         return new Ast.ObjectDecoder(binds, new Ast.Construct(d.name(), inits, List.of(), pos), pos);
     }
 
-    private static Ast.DecRef decRef(Type t, Ast.Data d, SourcePos pos) {
+    private static Ast.RawKind rawKind(Type t) {
         if (t == Type.STRING) {
-            return new Ast.PrimDecRef(Ast.PrimKind.STRING, pos);
+            return Ast.RawKind.TEXT;
         }
-        if (t == Type.INT) {
-            return new Ast.PrimDecRef(Ast.PrimKind.INT, pos);
+        if (t == Type.BOOL) {
+            return Ast.RawKind.BOOL;
+        }
+        if (t == Type.DECIMAL) {
+            return Ast.RawKind.DECIMAL;
+        }
+        if (t == Type.DATE) {
+            return Ast.RawKind.DATE;
+        }
+        if (t == Type.DATETIME) {
+            return Ast.RawKind.DATETIME;
+        }
+        return Ast.RawKind.INT;
+    }
+
+    private static Ast.PrimKind primKind(Type t) {
+        if (t == Type.STRING) {
+            return Ast.PrimKind.STRING;
+        }
+        if (t == Type.BOOL) {
+            return Ast.PrimKind.BOOL;
+        }
+        if (t == Type.DECIMAL) {
+            return Ast.PrimKind.DECIMAL;
+        }
+        if (t == Type.DATE) {
+            return Ast.PrimKind.DATE;
+        }
+        if (t == Type.DATETIME) {
+            return Ast.PrimKind.DATETIME;
+        }
+        return Ast.PrimKind.INT;
+    }
+
+    private static Ast.DecRef decRef(Type t, Ast.Data d, SourcePos pos) {
+        if (t == Type.STRING || t == Type.INT || t == Type.BOOL
+                || t == Type.DECIMAL || t == Type.DATE || t == Type.DATETIME) {
+            return new Ast.PrimDecRef(primKind(t), pos);
         }
         if (t instanceof Type.Ref r) {
             return new Ast.DataDecRef(r.name(), pos);
@@ -98,9 +134,7 @@ public final class Deriver {
         Map.Entry<String, Type> single = isArm ? null : singlePrimField(fields);
         if (single != null) {
             Ast.Expr access = new Ast.FieldAccess(new Ast.Var("self", pos), single.getKey(), pos);
-            Ast.RawExpr raw = single.getValue() == Type.STRING
-                    ? new Ast.TextRaw(access, pos) : new Ast.IntRaw(access, pos);
-            return new Ast.EncoderDef("self", raw, pos);
+            return new Ast.EncoderDef("self", primRaw(single.getValue(), access, pos), pos);
         }
         List<Ast.RawEntry> entries = new ArrayList<>();
         for (Map.Entry<String, Type> f : fields.entrySet()) {
@@ -109,13 +143,31 @@ public final class Deriver {
         return new Ast.EncoderDef("self", new Ast.ObjectRaw(entries, pos), pos);
     }
 
-    private static Ast.RawExpr rawFor(Type t, String field, Ast.Data d, SourcePos pos) {
-        Ast.Expr access = new Ast.FieldAccess(new Ast.Var("self", pos), field, pos);
+    private static Ast.RawExpr primRaw(Type t, Ast.Expr access, SourcePos pos) {
         if (t == Type.STRING) {
             return new Ast.TextRaw(access, pos);
         }
-        if (t == Type.INT) {
-            return new Ast.IntRaw(access, pos);
+        if (t == Type.BOOL) {
+            return new Ast.BoolRaw(access, pos);
+        }
+        if (t == Type.DECIMAL) {
+            return new Ast.DecimalRaw(access, pos);
+        }
+        if (t == Type.DATE || t == Type.DATETIME) {
+            return new Ast.IsoTextRaw(access, pos);
+        }
+        return new Ast.IntRaw(access, pos);
+    }
+
+    private static boolean isPrim(Type t) {
+        return t == Type.STRING || t == Type.INT || t == Type.BOOL
+                || t == Type.DECIMAL || t == Type.DATE || t == Type.DATETIME;
+    }
+
+    private static Ast.RawExpr rawFor(Type t, String field, Ast.Data d, SourcePos pos) {
+        Ast.Expr access = new Ast.FieldAccess(new Ast.Var("self", pos), field, pos);
+        if (isPrim(t)) {
+            return primRaw(t, access, pos);
         }
         if (t instanceof Type.Ref r) {
             return new Ast.EncodeRaw(r.name(), access, pos);
@@ -174,6 +226,6 @@ public final class Deriver {
             return null;
         }
         Map.Entry<String, Type> only = fields.entrySet().iterator().next();
-        return (only.getValue() == Type.INT || only.getValue() == Type.STRING) ? only : null;
+        return isPrim(only.getValue()) ? only : null;
     }
 }

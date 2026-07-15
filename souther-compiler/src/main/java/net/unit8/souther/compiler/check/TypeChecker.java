@@ -423,7 +423,7 @@ public final class TypeChecker {
                                      Map<String, Ast.Def> symbols) {
         switch (dec) {
             case Ast.PrimDecoder prim -> {
-                Type inputType = prim.from() == Ast.RawKind.TEXT ? Type.STRING : Type.INT;
+                Type inputType = primType(prim.from());
                 Map<String, Type> env = new HashMap<>();
                 env.put(prim.inputName(), inputType);
                 for (Ast.DecStmt stmt : prim.stmts()) {
@@ -444,9 +444,31 @@ public final class TypeChecker {
         }
     }
 
+    public static Type primType(Ast.RawKind kind) {
+        return switch (kind) {
+            case TEXT -> Type.STRING;
+            case INT -> Type.INT;
+            case BOOL -> Type.BOOL;
+            case DECIMAL -> Type.DECIMAL;
+            case DATE -> Type.DATE;
+            case DATETIME -> Type.DATETIME;
+        };
+    }
+
+    public static Type primType(Ast.PrimKind kind) {
+        return switch (kind) {
+            case STRING -> Type.STRING;
+            case INT -> Type.INT;
+            case BOOL -> Type.BOOL;
+            case DECIMAL -> Type.DECIMAL;
+            case DATE -> Type.DATE;
+            case DATETIME -> Type.DATETIME;
+        };
+    }
+
     private static Type decRefType(Ast.DecRef ref, Map<String, Ast.Def> symbols) {
         return switch (ref) {
-            case Ast.PrimDecRef p -> p.kind() == Ast.PrimKind.STRING ? Type.STRING : Type.INT;
+            case Ast.PrimDecRef p -> primType(p.kind());
             case Ast.DataDecRef d -> {
                 Ast.Def def = symbols.get(d.typeName());
                 boolean hasDecoder = (def instanceof Ast.Data dd && dd.decoder().isPresent())
@@ -524,6 +546,15 @@ public final class TypeChecker {
         switch (raw) {
             case Ast.TextRaw t -> requireType(t.arg(), Type.STRING, env, data, symbols, "argument of Text");
             case Ast.IntRaw i -> requireType(i.arg(), Type.INT, env, data, symbols, "argument of Int");
+            case Ast.BoolRaw b -> requireType(b.arg(), Type.BOOL, env, data, symbols, "argument of Bool");
+            case Ast.DecimalRaw d -> requireType(d.arg(), Type.DECIMAL, env, data, symbols,
+                    "argument of Decimal");
+            case Ast.IsoTextRaw t -> {
+                Type at = typeOf(t.arg(), env, data, symbols);
+                if (at != Type.DATE && at != Type.DATETIME) {
+                    throw new CompileException(t.pos(), "ISO text encoder expects Date or DateTime, got " + at);
+                }
+            }
             case Ast.ObjectRaw o -> {
                 for (Ast.RawEntry entry : o.entries()) {
                     checkRawExpr(entry.value(), env, data, symbols);
@@ -802,6 +833,10 @@ public final class TypeChecker {
         return switch (ref.name()) {
             case "Int" -> Type.INT;
             case "String" -> Type.STRING;
+            case "Bool" -> Type.BOOL;
+            case "Decimal" -> Type.DECIMAL;
+            case "Date" -> Type.DATE;
+            case "DateTime" -> Type.DATETIME;
             case "制約違反" -> Type.ref("制約違反");   // built-in constraint-violation arm (spec 9.4)
             case "復号失敗" -> Type.ref("復号失敗");   // built-in decode-failure arm (spec 10.5)
             case "List" -> {

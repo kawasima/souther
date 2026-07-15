@@ -8,6 +8,10 @@ import net.unit8.raoh.Path;
 
 import net.unit8.souther.runtime.DecodeError.PathElement;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -42,9 +46,52 @@ public final class Decoders {
         return fromRaoh(RAOH_TEXT.decode(toJava(raw), Path.ROOT));
     }
 
+    private static final net.unit8.raoh.decode.Decoder<Object, Boolean> RAOH_BOOL =
+            (in, path) -> in instanceof Boolean b
+                    ? net.unit8.raoh.Result.ok(b)
+                    : net.unit8.raoh.Result.fail(path, "expected_bool", "expected a boolean value");
+
     /** Reads a {@code Raw.Int} as a {@code long}. Called by generated {@code decode} bodies. */
     public static Result<Long, NonEmptyList<DecodeError>> integer(Raw raw) {
         return fromRaoh(RAOH_INT.decode(toJava(raw), Path.ROOT));
+    }
+
+    /** Reads a {@code Raw.Bool} as a {@code boolean}. Called by generated {@code decode} bodies. */
+    public static Result<Boolean, NonEmptyList<DecodeError>> bool(Raw raw) {
+        return fromRaoh(RAOH_BOOL.decode(toJava(raw), Path.ROOT));
+    }
+
+    /** Reads a {@code Raw.Decimal} (or an integer, widened) as a {@link BigDecimal}. */
+    public static Result<BigDecimal, NonEmptyList<DecodeError>> decimal(Raw raw) {
+        return switch (raw) {
+            case Raw.DecimalValue d -> Result.ok(d.value());
+            case Raw.IntValue i -> Result.ok(BigDecimal.valueOf(i.value()));
+            default -> fail("expected_decimal", "expected a decimal value");
+        };
+    }
+
+    /** Reads a {@code Raw.Text} as an ISO8601 {@link LocalDate} (spec section 7.1). */
+    public static Result<LocalDate, NonEmptyList<DecodeError>> date(Raw raw) {
+        if (!(raw instanceof Raw.TextValue t)) {
+            return fail("expected_date", "expected an ISO8601 date text");
+        }
+        try {
+            return Result.ok(LocalDate.parse(t.value()));
+        } catch (DateTimeParseException e) {
+            return fail("expected_date", "expected an ISO8601 date text");
+        }
+    }
+
+    /** Reads a {@code Raw.Text} as an ISO8601 {@link LocalDateTime} (spec section 7.1). */
+    public static Result<LocalDateTime, NonEmptyList<DecodeError>> dateTime(Raw raw) {
+        if (!(raw instanceof Raw.TextValue t)) {
+            return fail("expected_datetime", "expected an ISO8601 date-time text");
+        }
+        try {
+            return Result.ok(LocalDateTime.parse(t.value()));
+        } catch (DateTimeParseException e) {
+            return fail("expected_datetime", "expected an ISO8601 date-time text");
+        }
     }
 
     /**
@@ -81,6 +128,26 @@ public final class Decoders {
     /** The primitive int decoder as a {@link Decoder}. */
     public static Decoder<Long> intDecoder() {
         return raw -> finish(integer(raw));
+    }
+
+    /** The primitive bool decoder as a {@link Decoder}. */
+    public static Decoder<Boolean> boolDecoder() {
+        return raw -> finish(bool(raw));
+    }
+
+    /** The primitive decimal decoder as a {@link Decoder}. */
+    public static Decoder<BigDecimal> decimalDecoder() {
+        return raw -> finish(decimal(raw));
+    }
+
+    /** The primitive date decoder as a {@link Decoder}. */
+    public static Decoder<LocalDate> dateDecoder() {
+        return raw -> finish(date(raw));
+    }
+
+    /** The primitive date-time decoder as a {@link Decoder}. */
+    public static Decoder<LocalDateTime> dateTimeDecoder() {
+        return raw -> finish(dateTime(raw));
     }
 
     /** The decoder boundary value {@code T | 復号失敗}: the value on success, a

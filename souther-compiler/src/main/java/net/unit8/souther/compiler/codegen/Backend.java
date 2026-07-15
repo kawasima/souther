@@ -51,6 +51,9 @@ public final class Backend {
     private static final ClassDesc CD_Violation = ClassDesc.of("net.unit8.souther.runtime.Violation");
     private static final ClassDesc CD_DecodeFailure = ClassDesc.of("net.unit8.souther.runtime.DecodeFailure");
     private static final ClassDesc CD_Boolean = ClassDesc.of("java.lang.Boolean");
+    private static final ClassDesc CD_BigDecimal = ClassDesc.of("java.math.BigDecimal");
+    private static final ClassDesc CD_LocalDate = ClassDesc.of("java.time.LocalDate");
+    private static final ClassDesc CD_LocalDateTime = ClassDesc.of("java.time.LocalDateTime");
     private static final ClassDesc CD_IllegalStateException = ClassDesc.of("java.lang.IllegalStateException");
 
     private static final MethodTypeDesc MTD_void = MethodTypeDesc.of(ConstantDescs.CD_void);
@@ -644,8 +647,15 @@ public final class Backend {
 
     private void emitPrimDecode(CodeBuilder code, Gen gen, ClassDesc cdName, Ast.PrimDecoder prim,
                                 Map<String, Type> fields) {
-        Type inputType = prim.from() == Ast.RawKind.TEXT ? Type.STRING : Type.INT;
-        String readMethod = prim.from() == Ast.RawKind.TEXT ? "text" : "integer";
+        Type inputType = TypeChecker.primType(prim.from());
+        String readMethod = switch (prim.from()) {
+            case TEXT -> "text";
+            case INT -> "integer";
+            case BOOL -> "bool";
+            case DECIMAL -> "decimal";
+            case DATE -> "date";
+            case DATETIME -> "dateTime";
+        };
 
         code.aload(1);
         code.invokestatic(CD_Decoders, readMethod, MTD_Result_Raw);
@@ -729,7 +739,7 @@ public final class Backend {
 
     private Type bindType(Ast.DecRef ref) {
         return switch (ref) {
-            case Ast.PrimDecRef p -> p.kind() == Ast.PrimKind.STRING ? Type.STRING : Type.INT;
+            case Ast.PrimDecRef p -> TypeChecker.primType(p.kind());
             case Ast.DataDecRef d -> Type.ref(d.typeName());
             case Ast.ListDecRef l -> Type.list(bindType(l.element()));
         };
@@ -738,8 +748,14 @@ public final class Backend {
     /** Pushes a {@code Decoder} object for the given bind reference onto the stack. */
     private void emitDecoderObject(CodeBuilder code, Ast.DecRef ref) {
         switch (ref) {
-            case Ast.PrimDecRef p -> code.invokestatic(CD_Decoders,
-                    p.kind() == Ast.PrimKind.STRING ? "textDecoder" : "intDecoder", MTD_decoder);
+            case Ast.PrimDecRef p -> code.invokestatic(CD_Decoders, switch (p.kind()) {
+                case STRING -> "textDecoder";
+                case INT -> "intDecoder";
+                case BOOL -> "boolDecoder";
+                case DECIMAL -> "decimalDecoder";
+                case DATE -> "dateDecoder";
+                case DATETIME -> "dateTimeDecoder";
+            }, MTD_decoder);
             case Ast.DataDecRef d -> code.invokestatic(cd(d.typeName()), "decoder", MTD_decoder);
             case Ast.ListDecRef l -> {
                 emitDecoderObject(code, l.element());
@@ -821,6 +837,20 @@ public final class Backend {
                 gen.expr(i.arg());
                 code.invokestatic(CD_Raw, "integer",
                         MethodTypeDesc.of(CD_Raw, ConstantDescs.CD_long), true);
+            }
+            case Ast.BoolRaw b -> {
+                gen.expr(b.arg());
+                code.invokestatic(CD_Raw, "bool",
+                        MethodTypeDesc.of(CD_Raw, ConstantDescs.CD_boolean), true);
+            }
+            case Ast.DecimalRaw d -> {
+                gen.expr(d.arg());
+                code.invokestatic(CD_Raw, "decimal", MethodTypeDesc.of(CD_Raw, CD_BigDecimal), true);
+            }
+            case Ast.IsoTextRaw t -> {
+                gen.expr(t.arg());
+                code.invokevirtual(CD_Object, "toString", MethodTypeDesc.of(CD_String));
+                code.invokestatic(CD_Raw, "text", MethodTypeDesc.of(CD_Raw, CD_String), true);
             }
             case Ast.EncodeRaw e -> {
                 code.invokestatic(cd(e.typeName()), "encoder", MTD_encoder);
@@ -1122,6 +1152,10 @@ public final class Backend {
             code.checkcast(CD_Long);
             code.invokevirtual(CD_Long, "longValue", MethodTypeDesc.of(ConstantDescs.CD_long));
             code.lstore(slot);
+        } else if (type == Type.BOOL) {
+            code.checkcast(CD_Boolean);
+            code.invokevirtual(CD_Boolean, "booleanValue", MethodTypeDesc.of(ConstantDescs.CD_boolean));
+            code.istore(slot);
         } else {
             code.checkcast(jvmType(type));
             code.astore(slot);
@@ -1132,6 +1166,9 @@ public final class Backend {
         if (type == Type.INT) return ConstantDescs.CD_long;
         if (type == Type.STRING) return CD_String;
         if (type == Type.BOOL) return ConstantDescs.CD_boolean;
+        if (type == Type.DECIMAL) return CD_BigDecimal;
+        if (type == Type.DATE) return CD_LocalDate;
+        if (type == Type.DATETIME) return CD_LocalDateTime;
         if (type instanceof Type.ListOf) return CD_List;
         if (type instanceof Type.Union) return CD_Object;
         return armClass(((Type.Ref) type).name());
