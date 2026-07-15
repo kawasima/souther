@@ -4,8 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A list guaranteed to hold at least one element. Used as the failure type of decoders
- * so that at least one {@link DecodeError} is always present (spec section 7.3, 10.1).
+ * A list guaranteed to hold at least one element (spec section 7.3). A runtime auxiliary type;
+ * not writable as a field type in the DSL. Decode-error accumulation now lives in Raoh, so this
+ * type carries no decode role — it remains available as a general non-empty list.
  *
  * @param head the first element
  * @param tail the remaining elements (possibly empty)

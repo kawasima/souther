@@ -28,7 +28,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>25</maven.compiler.release>
-        <raoh.version>0.6.0-SNAPSHOT</raoh.version>
+        <raoh.version>0.6.0</raoh.version>
         <junit.version>5.11.3</junit.version>
     </properties>
 
@@ -37,6 +37,16 @@
             <dependency>
                 <groupId>net.unit8.raoh</groupId>
                 <artifactId>raoh</artifactId>
+                <version>${raoh.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.unit8.raoh</groupId>
+                <artifactId>raoh-json</artifactId>
+                <version>${raoh.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.unit8.raoh</groupId>
+                <artifactId>raoh-jooq</artifactId>
                 <version>${raoh.version}</version>
             </dependency>
             <dependency>

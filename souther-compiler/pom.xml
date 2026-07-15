@@ -19,10 +19,26 @@
 
     <dependencies>
         <!-- Test scope only. The compiler drives generated classes that reference
-             souther-runtime, so the runtime (and Raoh) are on the test classpath. -->
+             souther-runtime and Raoh (decode/encode target Raoh directly), so both are on
+             the test classpath (spec 10.6). -->
         <dependency>
             <groupId>net.unit8.souther</groupId>
             <artifactId>souther-runtime</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.unit8.raoh</groupId>
+            <artifactId>raoh</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.unit8.raoh</groupId>
+            <artifactId>raoh-json</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>net.unit8.raoh</groupId>
+            <artifactId>raoh-jooq</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

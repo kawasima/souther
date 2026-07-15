@@ -73,7 +73,6 @@ public final class Backend {
     private static final MethodTypeDesc MTD_Result_String_String =
             MethodTypeDesc.of(CD_Result, CD_String, CD_String);
     private static final MethodTypeDesc MTD_Object = MethodTypeDesc.of(CD_Object);
-    private static final MethodTypeDesc MTD_field = MethodTypeDesc.of(CD_Result, CD_Raw, CD_String);
     private static final MethodTypeDesc MTD_objectField =
             MethodTypeDesc.of(CD_Result, CD_Raw, CD_String, CD_Decoder);
     private static final MethodTypeDesc MTD_decoder = MethodTypeDesc.of(CD_Decoder);
@@ -99,6 +98,70 @@ public final class Backend {
     private static final MethodTypeDesc MTD_Long_valueOf = MethodTypeDesc.of(CD_Long, ConstantDescs.CD_long);
     private static final MethodTypeDesc MTD_Boolean_valueOf =
             MethodTypeDesc.of(CD_Boolean, ConstantDescs.CD_boolean);
+
+    // --- Raoh 0.6.0 decode/encode targets (generated code depends on Raoh directly; spec 10.6) ---
+    private static final ClassDesc CD_Class = ClassDesc.of("java.lang.Class");
+    private static final ClassDesc CD_RDecoder = ClassDesc.of("net.unit8.raoh.decode.Decoder");
+    private static final ClassDesc CD_REncoder = ClassDesc.of("net.unit8.raoh.encode.Encoder");
+    private static final ClassDesc CD_RResult = ClassDesc.of("net.unit8.raoh.Result");
+    private static final ClassDesc CD_ROk = ClassDesc.of("net.unit8.raoh.Ok");
+    private static final ClassDesc CD_RErr = ClassDesc.of("net.unit8.raoh.Err");
+    private static final ClassDesc CD_RIssues = ClassDesc.of("net.unit8.raoh.Issues");
+    private static final ClassDesc CD_RPath = ClassDesc.of("net.unit8.raoh.Path");
+    private static final ClassDesc CD_ObjectDecoders = ClassDesc.of("net.unit8.raoh.decode.ObjectDecoders");
+    private static final ClassDesc CD_MapDecoders = ClassDesc.of("net.unit8.raoh.decode.map.MapDecoders");
+    private static final ClassDesc CD_JsonDecoders = ClassDesc.of("net.unit8.raoh.json.JsonDecoders");
+    private static final ClassDesc CD_JooqDecoders = ClassDesc.of("net.unit8.raoh.jooq.JooqRecordDecoders");
+    private static final ClassDesc CD_RDecoders = ClassDesc.of("net.unit8.raoh.decode.Decoders");
+    private static final ClassDesc CD_RVariant = CD_RDecoders.nested("Variant");
+    private static final ClassDesc CD_FieldDecoder = ClassDesc.of("net.unit8.raoh.decode.FieldDecoder");
+    private static final ClassDesc CD_StringDecoder = ClassDesc.of("net.unit8.raoh.decode.builtin.StringDecoder");
+    private static final ClassDesc CD_LongDecoder = ClassDesc.of("net.unit8.raoh.decode.builtin.LongDecoder");
+    private static final ClassDesc CD_BoolDecoder = ClassDesc.of("net.unit8.raoh.decode.builtin.BoolDecoder");
+    private static final ClassDesc CD_DecimalDecoder = ClassDesc.of("net.unit8.raoh.decode.builtin.DecimalDecoder");
+    private static final ClassDesc CD_TemporalDecoder = ClassDesc.of("net.unit8.raoh.decode.builtin.TemporalDecoder");
+    private static final ClassDesc CD_ListDecoder = ClassDesc.of("net.unit8.raoh.decode.builtin.ListDecoder");
+    private static final ClassDesc CD_RecordDecoder = ClassDesc.of("net.unit8.raoh.decode.builtin.RecordDecoder");
+    private static final ClassDesc CD_ObjectEncoders = ClassDesc.of("net.unit8.raoh.encode.ObjectEncoders");
+    private static final ClassDesc CD_MapEncoders = ClassDesc.of("net.unit8.raoh.encode.MapEncoders");
+    private static final ClassDesc CD_MapEncVariant = CD_MapEncoders.nested("Variant");
+
+    // Souther Result stays for the behavior/__construct side (Raoh-free)
+    private static final MethodTypeDesc MTD_Result_ok = MethodTypeDesc.of(CD_Result, CD_Object);
+    private static final MethodTypeDesc MTD_Result_err = MethodTypeDesc.of(CD_Result, CD_Object);
+    // Raoh decode/encode SAMs, factories, combinators
+    private static final MethodTypeDesc MTD_Rdecode = MethodTypeDesc.of(CD_RResult, CD_Object, CD_RPath);
+    private static final MethodTypeDesc MTD_Rencode = MethodTypeDesc.of(CD_Object, CD_Object);
+    private static final MethodTypeDesc MTD_Rdecoder = MethodTypeDesc.of(CD_RDecoder);
+    private static final MethodTypeDesc MTD_Rencoder = MethodTypeDesc.of(CD_REncoder);
+    private static final MethodTypeDesc MTD_leafString = MethodTypeDesc.of(CD_StringDecoder);
+    private static final MethodTypeDesc MTD_leafLong = MethodTypeDesc.of(CD_LongDecoder);
+    private static final MethodTypeDesc MTD_leafBool = MethodTypeDesc.of(CD_BoolDecoder);
+    private static final MethodTypeDesc MTD_leafDecimal = MethodTypeDesc.of(CD_DecimalDecoder);
+    private static final MethodTypeDesc MTD_leafTemporal = MethodTypeDesc.of(CD_TemporalDecoder);
+    private static final MethodTypeDesc MTD_field = MethodTypeDesc.of(CD_FieldDecoder, CD_String, CD_RDecoder);
+    private static final MethodTypeDesc MTD_optionalField = MethodTypeDesc.of(CD_RDecoder, CD_String, CD_RDecoder);
+    private static final MethodTypeDesc MTD_listDec = MethodTypeDesc.of(CD_ListDecoder, CD_RDecoder);
+    private static final MethodTypeDesc MTD_mapDec = MethodTypeDesc.of(CD_RecordDecoder, CD_RDecoder);
+    private static final MethodTypeDesc MTD_Rvariant = MethodTypeDesc.of(CD_RVariant, CD_String, CD_RDecoder);
+    private static final MethodTypeDesc MTD_Rdiscriminate =
+            MethodTypeDesc.of(CD_RDecoder, CD_String, CD_RDecoder, CD_RVariant.arrayType());
+    private static final MethodTypeDesc MTD_Rok = MethodTypeDesc.of(CD_RResult, CD_Object);
+    private static final MethodTypeDesc MTD_Rerr = MethodTypeDesc.of(CD_RResult, CD_RIssues);
+    private static final MethodTypeDesc MTD_Rfail = MethodTypeDesc.of(CD_RResult, CD_RPath, CD_String, CD_String);
+    private static final MethodTypeDesc MTD_Rencode_leaf = MethodTypeDesc.of(CD_REncoder);
+    private static final MethodTypeDesc MTD_Rencode_list = MethodTypeDesc.of(CD_REncoder, CD_REncoder);
+    private static final MethodTypeDesc MTD_Rencode_variant =
+            MethodTypeDesc.of(CD_MapEncVariant, CD_Class, CD_String, CD_REncoder);
+    private static final MethodTypeDesc MTD_Rencode_discriminate =
+            MethodTypeDesc.of(CD_REncoder, CD_String, CD_MapEncVariant.arrayType());
+    private static final MethodTypeDesc MTD_Issues_merge = MethodTypeDesc.of(CD_RIssues, CD_RIssues);
+    private static final MethodTypeDesc MTD_Issues_isEmpty = MethodTypeDesc.of(ConstantDescs.CD_boolean);
+    private static final MethodTypeDesc MTD_Err_issues = MethodTypeDesc.of(CD_RIssues);
+    private static final MethodTypeDesc MTD_nested = MethodTypeDesc.of(CD_RDecoder, CD_RDecoder);
+    private static final ClassDesc CD_JavaOptional = ClassDesc.of("java.util.Optional");
+    private static final MethodTypeDesc MTD_ofOptional = MethodTypeDesc.of(CD_Option, CD_JavaOptional);
+    private static final MethodTypeDesc MTD_error = MethodTypeDesc.of(CD_Object);
 
     // Generated classes aren't loadable while we compile, so stack-map merging (e.g. an
     // `if` producing a union of two data types) can't resolve their common supertype.
@@ -323,9 +386,7 @@ public final class Backend {
     private ClassDesc armClass(String typeName) {
         return switch (typeName) {
             case "制約違反" -> CD_Violation;
-            case "復号失敗" -> CD_DecodeFailure;
             case "DivisionByZero" -> CD_DivisionByZero;
-            case "Raw" -> CD_Raw;
             default -> cd(typeName);
         };
     }
@@ -345,8 +406,8 @@ public final class Backend {
             }
             emitCtor(cb, cdName, fields);
             emitConstructMethod(cb, cdName, data, fields);
-            data.decoder().ifPresent(d -> emitFactory(cb, "decoder", CD_Decoder, data, "$Dec"));
-            data.encoder().ifPresent(e -> emitFactory(cb, "encoder", CD_Encoder, data, "$Enc"));
+            data.decoder().ifPresent(d -> emitFactory(cb, "decoder", CD_RDecoder, data, "$Dec"));
+            data.encoder().ifPresent(e -> emitFactory(cb, "encoder", CD_REncoder, data, "$Enc"));
         }));
 
         data.decoder().ifPresent(dec ->
@@ -368,7 +429,7 @@ public final class Backend {
             cb.with(PermittedSubclassesAttribute.ofSymbols(armCds));
             sum.decoder().ifPresent(disc -> {
                 ClassDesc cdDec = cd(sum.name() + "$Dec");
-                cb.withMethodBody("decoder", MTD_decoder,
+                cb.withMethodBody("decoder", MTD_Rdecoder,
                         ClassFile.ACC_PUBLIC | ClassFile.ACC_STATIC, code -> {
                             code.new_(cdDec);
                             code.dup();
@@ -378,7 +439,7 @@ public final class Backend {
             });
             sum.encoder().ifPresent(enc -> {
                 ClassDesc cdEnc = cd(sum.name() + "$Enc");
-                cb.withMethodBody("encoder", MTD_encoder,
+                cb.withMethodBody("encoder", MTD_Rencoder,
                         ClassFile.ACC_PUBLIC | ClassFile.ACC_STATIC, code -> {
                             code.new_(cdEnc);
                             code.dup();
@@ -397,21 +458,26 @@ public final class Backend {
         ClassDesc cdEnc = cd(sum.name() + "$Enc");
         return CF.build(cdEnc, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
-            cb.withInterfaceSymbols(CD_Encoder);
+            cb.withInterfaceSymbols(CD_REncoder);
             emitDefaultCtor(cb);
-            cb.withMethodBody("encode", MTD_encode, ClassFile.ACC_PUBLIC, code -> {
+            // Dispatch on the runtime arm type, encode that arm to a Map, then inject the
+            // discriminator key = arm tag (spec 11.2).
+            cb.withMethodBody("encode", MTD_Rencode, ClassFile.ACC_PUBLIC, code -> {
                 for (Ast.EncVariant v : enc.variants()) {
                     ClassDesc armCd = cd(v.armType());
                     code.aload(1);
                     code.instanceOf(armCd);
                     Label next = code.newLabel();
                     code.ifeq(next);
-                    invokeCodec(code, v.armType(), "encoder", MTD_encoder);
+                    invokeCodec(code, v.armType(), "encoder", MTD_Rencoder);
                     code.aload(1);
-                    code.invokeinterface(CD_Encoder, "encode", MTD_encode);
+                    code.invokeinterface(CD_REncoder, "encode", MTD_Rencode);
+                    code.checkcast(CD_Map);
+                    code.dup();
                     code.loadConstant(enc.key());
                     code.loadConstant(v.tag());
-                    code.invokestatic(CD_Encoders, "tagged", MTD_tagged);
+                    code.invokeinterface(CD_Map, "put", MTD_Map_put);
+                    code.pop();
                     code.areturn();
                     code.labelBinding(next);
                 }
@@ -427,25 +493,31 @@ public final class Backend {
         ClassDesc cdDec = cd(sum.name() + "$Dec");
         return CF.build(cdDec, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
-            cb.withInterfaceSymbols(CD_Decoder);
+            cb.withInterfaceSymbols(CD_RDecoder);
             emitDefaultCtor(cb);
-            cb.withMethodBody("decode", MTD_decode, ClassFile.ACC_PUBLIC, code -> {
-                for (Ast.Variant v : disc.variants()) {
-                    code.aload(1);
-                    code.loadConstant(disc.key());
-                    code.loadConstant(v.tag());
-                    invokeCodec(code, v.armType(), "decoder", MTD_decoder);
-                    code.invokestatic(CD_Decoders, "variant", MTD_variant);
-                    code.astore(2);
-                    code.aload(2);
-                    Label next = code.newLabel();
-                    code.ifnull(next);
-                    code.aload(2);
-                    code.areturn();
-                    code.labelBinding(next);
-                }
+            // Build a Raoh discriminate decoder and delegate: the tag is read from the
+            // discriminator key, each arm dispatches to that arm's Raoh decoder (spec 10.3).
+            cb.withMethodBody("decode", MTD_Rdecode, ClassFile.ACC_PUBLIC, code -> {
                 code.loadConstant(disc.key());
-                code.invokestatic(CD_Decoders, "noVariant", MTD_noVariant);
+                code.loadConstant(disc.key());
+                code.invokestatic(CD_ObjectDecoders, "string", MTD_leafString);
+                code.invokestatic(CD_MapDecoders, "field", MTD_field);
+                pushInt(code, disc.variants().size());
+                code.anewarray(CD_RVariant);
+                int i = 0;
+                for (Ast.Variant v : disc.variants()) {
+                    code.dup();
+                    pushInt(code, i);
+                    code.loadConstant(v.tag());
+                    invokeCodec(code, v.armType(), "decoder", MTD_Rdecoder);
+                    code.invokestatic(CD_RDecoders, "variant", MTD_Rvariant);
+                    code.aastore();
+                    i++;
+                }
+                code.invokestatic(CD_RDecoders, "discriminate", MTD_Rdiscriminate);
+                code.aload(1);
+                code.aload(2);
+                code.invokeinterface(CD_RDecoder, "decode", MTD_Rdecode);
                 code.areturn();
             });
         });
@@ -463,39 +535,39 @@ public final class Backend {
             }
             emitDefaultCtor(cb);
             // a unit is a field-less data: its codec reads/writes nothing but the tag the sum adds
-            emitNewFactory(cb, "decoder", CD_Decoder, cdDec);
-            emitNewFactory(cb, "encoder", CD_Encoder, cdEnc);
+            emitNewFactory(cb, "decoder", CD_RDecoder, cdDec);
+            emitNewFactory(cb, "encoder", CD_REncoder, cdEnc);
         }));
         out.put(pkg + "." + unit.name() + "$Dec", generateUnitDecoder(cdU, cdDec));
         out.put(pkg + "." + unit.name() + "$Enc", generateUnitEncoder(cdEnc));
     }
 
-    /** Decodes a unit: ignore the Raw (a unit carries no data) and build the singleton value. */
+    /** Decodes a unit: ignore the input (a unit carries no data) and build the singleton value. */
     private byte[] generateUnitDecoder(ClassDesc cdU, ClassDesc cdDec) {
         return CF.build(cdDec, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
-            cb.withInterfaceSymbols(CD_Decoder);
+            cb.withInterfaceSymbols(CD_RDecoder);
             emitDefaultCtor(cb);
-            cb.withMethodBody("decode", MTD_decode, ClassFile.ACC_PUBLIC, code -> {
+            cb.withMethodBody("decode", MTD_Rdecode, ClassFile.ACC_PUBLIC, code -> {
                 code.new_(cdU);
                 code.dup();
                 code.invokespecial(cdU, "<init>", MTD_void);
+                code.invokestatic(CD_RResult, "ok", MTD_Rok, true);
                 code.areturn();
             });
         });
     }
 
-    /** Encodes a unit to an empty {@code Raw.Object}; the sum encoder adds the discriminant tag. */
+    /** Encodes a unit to an empty Map; the sum encoder adds the discriminator tag. */
     private byte[] generateUnitEncoder(ClassDesc cdEnc) {
         return CF.build(cdEnc, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
-            cb.withInterfaceSymbols(CD_Encoder);
+            cb.withInterfaceSymbols(CD_REncoder);
             emitDefaultCtor(cb);
-            cb.withMethodBody("encode", MTD_encode, ClassFile.ACC_PUBLIC, code -> {
+            cb.withMethodBody("encode", MTD_Rencode, ClassFile.ACC_PUBLIC, code -> {
                 code.new_(CD_LinkedHashMap);
                 code.dup();
                 code.invokespecial(CD_LinkedHashMap, "<init>", MTD_void);
-                code.invokestatic(CD_Raw, "object", MTD_Raw_object, true);
                 code.areturn();
             });
         });
@@ -654,25 +726,12 @@ public final class Backend {
      * is a behavior, or a {@code Type.decoder}/{@code Type.encoder} boundary codec (spec 14.1). */
     private void applyStage(CodeBuilder code, ClassDesc cdP, String stage, Set<String> requiredNames,
                             Map<String, List<String>> behaviorDeps) {
-        if (stage.endsWith(".decoder")) {
-            String base = stage.substring(0, stage.lastIndexOf('.'));
-            invokeCodec(code, base, "decoder", MTD_decoder);
-            code.aload(1);
-            code.checkcast(CD_Raw);
-            code.invokeinterface(CD_Decoder, "decode", MTD_decode);
-            code.astore(1);
-        } else if (stage.endsWith(".encoder")) {
-            String base = stage.substring(0, stage.lastIndexOf('.'));
-            invokeCodec(code, base, "encoder", MTD_encoder);
-            code.aload(1);
-            code.invokeinterface(CD_Encoder, "encode", MTD_encode);
-            code.astore(1);
-        } else {
-            pushStage(code, cdP, stage, requiredNames, behaviorDeps);
-            code.aload(1);
-            code.invokeinterface(CD_Behavior, "apply", MTD_apply);
-            code.astore(1);
-        }
+        // decode/encode are boundary edges, not pipeline stages (spec 14.1): `>>` composes
+        // behaviors only.
+        pushStage(code, cdP, stage, requiredNames, behaviorDeps);
+        code.aload(1);
+        code.invokeinterface(CD_Behavior, "apply", MTD_apply);
+        code.astore(1);
     }
 
     /** Pushes the behavior object for a pipeline stage: an injected required field, or a fresh
@@ -745,9 +804,8 @@ public final class Backend {
                         gen.expr(inv);
                         Label ok = code.newLabel();
                         code.ifne(ok);
-                        code.loadConstant("invariant_violation");
                         code.loadConstant("invariant violated on " + data.name());
-                        code.invokestatic(CD_Decoders, "fail", MTD_Result_String_String);
+                        code.invokestatic(CD_Result, "err", MTD_Result_err, true);
                         code.areturn();
                         code.labelBinding(ok);
                     }
@@ -785,10 +843,11 @@ public final class Backend {
         ClassDesc cdDec = cd(data.name() + "$Dec");
         return CF.build(cdDec, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
-            cb.withInterfaceSymbols(CD_Decoder);
+            cb.withInterfaceSymbols(CD_RDecoder);
             emitDefaultCtor(cb);
-            cb.withMethodBody("decode", MTD_decode, ClassFile.ACC_PUBLIC, code -> {
-                Gen gen = new Gen(code, data, cdName, 2);
+            // Raoh Decoder SAM: decode(Object in, Path path) -> Result. this=0, in=1, path=2.
+            cb.withMethodBody("decode", MTD_Rdecode, ClassFile.ACC_PUBLIC, code -> {
+                Gen gen = new Gen(code, data, cdName, 3);
                 switch (dec) {
                     case Ast.PrimDecoder prim -> emitPrimDecode(code, gen, cdName, prim, fields);
                     case Ast.ObjectDecoder obj -> emitObjectDecode(code, gen, cdName, obj, fields);
@@ -797,33 +856,57 @@ public final class Backend {
         });
     }
 
+    /** True when the type's decoder reads from a {@code Map} (object/sum), false for a bare
+     * value (newtype/unit). Used to bridge nested field-value decoders with {@code nested()}. */
+    private boolean isMapInput(String typeName) {
+        Ast.Def def = symbols.get(typeName);
+        if (def instanceof Ast.SumData) {
+            return true;
+        }
+        if (def instanceof Ast.Data data) {
+            return data.decoder().map(d -> d instanceof Ast.ObjectDecoder).orElse(false);
+        }
+        return false;
+    }
+
+    /** Pushes a Raoh leaf {@code Decoder} for a primitive value read from a bare Object. */
+    private void emitLeafDecoder(CodeBuilder code, Ast.PrimKind kind) {
+        switch (kind) {
+            case STRING -> code.invokestatic(CD_ObjectDecoders, "string", MTD_leafString);
+            case INT -> code.invokestatic(CD_ObjectDecoders, "long_", MTD_leafLong);
+            case BOOL -> code.invokestatic(CD_ObjectDecoders, "bool", MTD_leafBool);
+            case DECIMAL -> code.invokestatic(CD_ObjectDecoders, "decimal", MTD_leafDecimal);
+            case DATE -> code.invokestatic(CD_ObjectDecoders, "date", MTD_leafTemporal);
+            case DATETIME -> code.invokestatic(CD_ObjectDecoders, "dateTime", MTD_leafTemporal);
+        }
+    }
+
     private void emitPrimDecode(CodeBuilder code, Gen gen, ClassDesc cdName, Ast.PrimDecoder prim,
                                 Map<String, Type> fields) {
         Type inputType = TypeChecker.primType(prim.from());
-        String readMethod = switch (prim.from()) {
-            case TEXT -> "text";
-            case INT -> "integer";
-            case BOOL -> "bool";
-            case DECIMAL -> "decimal";
-            case DATE -> "date";
-            case DATETIME -> "dateTime";
-        };
-
-        code.aload(1);
-        code.invokestatic(CD_Decoders, readMethod, MTD_Result_Raw);
+        switch (prim.from()) {
+            case TEXT -> code.invokestatic(CD_ObjectDecoders, "string", MTD_leafString);
+            case INT -> code.invokestatic(CD_ObjectDecoders, "long_", MTD_leafLong);
+            case BOOL -> code.invokestatic(CD_ObjectDecoders, "bool", MTD_leafBool);
+            case DECIMAL -> code.invokestatic(CD_ObjectDecoders, "decimal", MTD_leafDecimal);
+            case DATE -> code.invokestatic(CD_ObjectDecoders, "date", MTD_leafTemporal);
+            case DATETIME -> code.invokestatic(CD_ObjectDecoders, "dateTime", MTD_leafTemporal);
+        }
+        code.aload(1);                                                 // in (bare value)
+        code.aload(2);                                                 // path
+        code.invokeinterface(CD_RDecoder, "decode", MTD_Rdecode);      // Result
         int rSlot = gen.slot(Type.STRING);
         code.astore(rSlot);
         code.aload(rSlot);
-        code.instanceOf(CD_ResultErr);
+        code.instanceOf(CD_RErr);
         Label notErr = code.newLabel();
         code.ifeq(notErr);
-        code.aload(rSlot);
-        code.invokestatic(CD_Decoders, "finish", MTD_finish);
+        code.aload(rSlot);                                            // Err -> return as-is
         code.areturn();
         code.labelBinding(notErr);
         code.aload(rSlot);
-        code.checkcast(CD_ResultOk);
-        code.invokevirtual(CD_ResultOk, "value", MTD_Object);
+        code.checkcast(CD_ROk);
+        code.invokevirtual(CD_ROk, "value", MTD_Object);
         int inputSlot = gen.slot(inputType);
         unbox(code, inputType, inputSlot);
         gen.bind(prim.inputName(), inputSlot, inputType);
@@ -848,36 +931,45 @@ public final class Backend {
         int[] resultSlots = new int[binds.size()];
         for (int i = 0; i < binds.size(); i++) {
             Ast.Bind bind = binds.get(i);
-            code.aload(1);
             code.loadConstant(bind.key());
             if (bind.ref() instanceof Ast.OptionDecRef opt) {
                 emitDecoderObject(code, opt.element());
-                code.invokestatic(CD_Decoders, "optionalObjectField", MTD_objectField);
+                code.invokestatic(CD_MapDecoders, "optionalField", MTD_optionalField);
             } else {
                 emitDecoderObject(code, bind.ref());
-                code.invokestatic(CD_Decoders, "objectField", MTD_objectField);
+                code.invokestatic(CD_MapDecoders, "field", MTD_field);
             }
+            code.aload(1);   // in (Map)
+            code.aload(2);   // path
+            code.invokeinterface(CD_RDecoder, "decode", MTD_Rdecode);
             int rSlot = gen.slot(Type.STRING);
             code.astore(rSlot);
             resultSlots[i] = rSlot;
         }
 
-        pushInt(code, binds.size());
-        code.anewarray(CD_Result);
+        // Accumulate every field's issues (applicative), then fail once if any (spec 15).
+        int accSlot = gen.slot(Type.STRING);
+        code.getstatic(CD_RIssues, "EMPTY", CD_RIssues);
+        code.astore(accSlot);
         for (int i = 0; i < binds.size(); i++) {
-            code.dup();
-            pushInt(code, i);
             code.aload(resultSlots[i]);
-            code.aastore();
+            code.instanceOf(CD_RErr);
+            Label notErr = code.newLabel();
+            code.ifeq(notErr);
+            code.aload(accSlot);
+            code.aload(resultSlots[i]);
+            code.checkcast(CD_RErr);
+            code.invokevirtual(CD_RErr, "issues", MTD_Err_issues);
+            code.invokevirtual(CD_RIssues, "merge", MTD_Issues_merge);
+            code.astore(accSlot);
+            code.labelBinding(notErr);
         }
-        code.invokestatic(CD_Decoders, "mergeErrors", MTD_mergeErrors);
-        int errSlot = gen.slot(Type.STRING);
-        code.astore(errSlot);
-        code.aload(errSlot);
+        code.aload(accSlot);
+        code.invokevirtual(CD_RIssues, "isEmpty", MTD_Issues_isEmpty);
         Label ok = code.newLabel();
-        code.ifnull(ok);
-        code.aload(errSlot);
-        code.invokestatic(CD_Decoders, "decodeFailure", MTD_decodeFailure);
+        code.ifne(ok);
+        code.aload(accSlot);
+        code.invokestatic(CD_RResult, "err", MTD_Rerr, true);
         code.areturn();
         code.labelBinding(ok);
 
@@ -885,11 +977,19 @@ public final class Backend {
             Ast.Bind bind = binds.get(i);
             Type t = bindType(bind.ref());
             code.aload(resultSlots[i]);
-            code.checkcast(CD_ResultOk);
-            code.invokevirtual(CD_ResultOk, "value", MTD_Object);
-            int vSlot = gen.slot(t);
-            unbox(code, t, vSlot);
-            gen.bind(bind.name(), vSlot, t);
+            code.checkcast(CD_ROk);
+            code.invokevirtual(CD_ROk, "value", MTD_Object);
+            if (bind.ref() instanceof Ast.OptionDecRef) {
+                code.checkcast(CD_JavaOptional);
+                code.invokestatic(CD_Option, "ofOptional", MTD_ofOptional, true);
+                int vSlot = gen.slot(t);
+                code.astore(vSlot);
+                gen.bind(bind.name(), vSlot, t);
+            } else {
+                int vSlot = gen.slot(t);
+                unbox(code, t, vSlot);
+                gen.bind(bind.name(), vSlot, t);
+            }
         }
         emitConstructCall(code, gen, cdName, obj.result(), fields);
     }
@@ -907,24 +1007,22 @@ public final class Backend {
     /** Pushes a {@code Decoder} object for the given bind reference onto the stack. */
     private void emitDecoderObject(CodeBuilder code, Ast.DecRef ref) {
         switch (ref) {
-            case Ast.PrimDecRef p -> code.invokestatic(CD_Decoders, switch (p.kind()) {
-                case STRING -> "textDecoder";
-                case INT -> "intDecoder";
-                case BOOL -> "boolDecoder";
-                case DECIMAL -> "decimalDecoder";
-                case DATE -> "dateDecoder";
-                case DATETIME -> "dateTimeDecoder";
-            }, MTD_decoder);
-            case Ast.DataDecRef d -> invokeCodec(code, d.typeName(), "decoder", MTD_decoder);
+            case Ast.PrimDecRef p -> emitLeafDecoder(code, p.kind());
+            case Ast.DataDecRef d -> {
+                invokeCodec(code, d.typeName(), "decoder", MTD_Rdecoder);
+                if (isMapInput(d.typeName())) {
+                    code.invokestatic(CD_MapDecoders, "nested", MTD_nested);   // Decoder<Map> -> Decoder<Object>
+                }
+            }
             case Ast.ListDecRef l -> {
                 emitDecoderObject(code, l.element());
-                code.invokestatic(CD_Decoders, "listOf", MTD_listOf);
+                code.invokestatic(CD_ObjectDecoders, "list", MTD_listDec);
             }
             case Ast.OptionDecRef o -> throw new CompileException(o.pos(),
                     "optional is only supported as a direct object field");
             case Ast.MapDecRef mp -> {
                 emitDecoderObject(code, mp.value());
-                code.invokestatic(CD_Decoders, "mapOf", MTD_listOf);   // (Decoder) -> Decoder
+                code.invokestatic(CD_ObjectDecoders, "map", MTD_mapDec);
             }
         }
     }
@@ -933,9 +1031,10 @@ public final class Backend {
         gen.expr(req.cond());
         Label cont = code.newLabel();
         code.ifne(cont);
+        code.getstatic(CD_RPath, "ROOT", CD_RPath);
         code.loadConstant(req.errorCode());
         code.loadConstant(req.errorCode());
-        code.invokestatic(CD_Decoders, "fail", MTD_Result_String_String);
+        code.invokestatic(CD_RResult, "fail", MTD_Rfail, true);
         code.areturn();
         code.labelBinding(cont);
     }
@@ -944,7 +1043,27 @@ public final class Backend {
                                    Map<String, Type> fields) {
         emitFieldValues(gen, fields, construct.inits(), construct.spreads());
         code.invokestatic(cdName, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(fields)));
-        code.invokestatic(CD_Decoders, "finish", MTD_finish);
+        // Souther construction Result -> Raoh boundary Result. An invariant failure becomes a
+        // Raoh failure (spec 9.4, 10.1); success wraps the constructed value.
+        int srSlot = gen.slot(Type.STRING);
+        code.astore(srSlot);
+        code.aload(srSlot);
+        code.instanceOf(CD_ResultErr);
+        Label okL = code.newLabel();
+        code.ifeq(okL);
+        code.getstatic(CD_RPath, "ROOT", CD_RPath);
+        code.loadConstant("invariant_violation");
+        code.aload(srSlot);
+        code.checkcast(CD_ResultErr);
+        code.invokevirtual(CD_ResultErr, "error", MTD_error);
+        code.checkcast(CD_String);
+        code.invokestatic(CD_RResult, "fail", MTD_Rfail, true);
+        code.areturn();
+        code.labelBinding(okL);
+        code.aload(srSlot);
+        code.checkcast(CD_ResultOk);
+        code.invokevirtual(CD_ResultOk, "value", MTD_Object);
+        code.invokestatic(CD_RResult, "ok", MTD_Rok, true);
         code.areturn();
     }
 
@@ -977,9 +1096,9 @@ public final class Backend {
         ClassDesc cdEnc = cd(data.name() + "$Enc");
         return CF.build(cdEnc, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
-            cb.withInterfaceSymbols(CD_Encoder);
+            cb.withInterfaceSymbols(CD_REncoder);
             emitDefaultCtor(cb);
-            cb.withMethodBody("encode", MTD_encode, ClassFile.ACC_PUBLIC, code -> {
+            cb.withMethodBody("encode", MTD_Rencode, ClassFile.ACC_PUBLIC, code -> {
                 Gen gen = new Gen(code, data, cdName, 2);
                 code.aload(1);
                 code.checkcast(cdName);
@@ -994,33 +1113,24 @@ public final class Backend {
 
     private void emitRawExpr(CodeBuilder code, Gen gen, Ast.RawExpr raw) {
         switch (raw) {
-            case Ast.TextRaw t -> {
-                gen.expr(t.arg());
-                code.invokestatic(CD_Raw, "text", MethodTypeDesc.of(CD_Raw, CD_String), true);
-            }
+            case Ast.TextRaw t -> gen.expr(t.arg());                 // String is a neutral value
             case Ast.IntRaw i -> {
                 gen.expr(i.arg());
-                code.invokestatic(CD_Raw, "integer",
-                        MethodTypeDesc.of(CD_Raw, ConstantDescs.CD_long), true);
+                box(code, Type.INT);                                 // long -> Long
             }
             case Ast.BoolRaw b -> {
                 gen.expr(b.arg());
-                code.invokestatic(CD_Raw, "bool",
-                        MethodTypeDesc.of(CD_Raw, ConstantDescs.CD_boolean), true);
+                box(code, Type.BOOL);                                // boolean -> Boolean
             }
-            case Ast.DecimalRaw d -> {
-                gen.expr(d.arg());
-                code.invokestatic(CD_Raw, "decimal", MethodTypeDesc.of(CD_Raw, CD_BigDecimal), true);
-            }
+            case Ast.DecimalRaw d -> gen.expr(d.arg());              // BigDecimal is neutral
             case Ast.IsoTextRaw t -> {
                 gen.expr(t.arg());
                 code.invokevirtual(CD_Object, "toString", MethodTypeDesc.of(CD_String));
-                code.invokestatic(CD_Raw, "text", MethodTypeDesc.of(CD_Raw, CD_String), true);
             }
             case Ast.EncodeRaw e -> {
-                invokeCodec(code, e.typeName(), "encoder", MTD_encoder);
+                invokeCodec(code, e.typeName(), "encoder", MTD_Rencoder);
                 gen.expr(e.arg());
-                code.invokeinterface(CD_Encoder, "encode", MTD_encode);
+                code.invokeinterface(CD_REncoder, "encode", MTD_Rencode);
             }
             case Ast.OptionRaw o -> {
                 Type at = gen.expr(o.access());            // Option on the stack
@@ -1039,18 +1149,20 @@ public final class Backend {
                 code.goto_(end);
                 code.labelBinding(none);
                 code.pop();                                 // discard the None value
-                code.invokestatic(CD_Raw, "nullValue", MethodTypeDesc.of(CD_Raw), true);
+                code.aconst_null();                         // null in the neutral tree
                 code.labelBinding(end);
             }
             case Ast.ListEnc le -> {
-                gen.expr(le.source());
                 pushElemEncoder(code, le.elem());
-                code.invokestatic(CD_Encoders, "encodeList", MTD_encodeList);
+                code.invokestatic(CD_MapEncoders, "list", MTD_Rencode_list);
+                gen.expr(le.source());
+                code.invokeinterface(CD_REncoder, "encode", MTD_Rencode);
             }
             case Ast.MapEnc me -> {
-                gen.expr(me.source());
                 pushElemEncoder(code, me.elem());
-                code.invokestatic(CD_Encoders, "encodeMap", MTD_encodeMap);
+                code.invokestatic(CD_MapEncoders, "mapOf", MTD_Rencode_list);
+                gen.expr(me.source());
+                code.invokeinterface(CD_REncoder, "encode", MTD_Rencode);
             }
             case Ast.ObjectRaw o -> {
                 code.new_(CD_LinkedHashMap);
@@ -1063,17 +1175,17 @@ public final class Backend {
                     code.invokeinterface(CD_Map, "put", MTD_Map_put);
                     code.pop();
                 }
-                code.invokestatic(CD_Raw, "object", MTD_Raw_object, true);
+                // the LinkedHashMap is itself the neutral object value
             }
         }
     }
 
-    /** Pushes the element {@link net.unit8.souther.runtime.Encoder} for a list/map element. */
+    /** Pushes a Raoh {@link net.unit8.raoh.encode.Encoder} for a list/map element. */
     private void pushElemEncoder(CodeBuilder code, Ast.EncElem elem) {
         switch (elem) {
-            case Ast.PrimEnc p -> code.invokestatic(CD_Encoders,
-                    p.kind() == Ast.PrimKind.STRING ? "textEncoder" : "intEncoder", MTD_encoder);
-            case Ast.DataEnc d -> invokeCodec(code, d.typeName(), "encoder", MTD_encoder);
+            case Ast.PrimEnc p -> code.invokestatic(CD_ObjectEncoders,
+                    p.kind() == Ast.PrimKind.STRING ? "string" : "long_", MTD_Rencode_leaf);
+            case Ast.DataEnc d -> invokeCodec(code, d.typeName(), "encoder", MTD_Rencoder);
         }
     }
 
