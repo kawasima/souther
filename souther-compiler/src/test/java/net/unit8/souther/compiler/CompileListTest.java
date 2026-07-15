@@ -34,7 +34,7 @@ class CompileListTest {
             data Count = { value: Int }
 
             behavior countReasons = (r: Request) -> Count constructs Count {
-                Count { value: size(r.reasons) }
+                Count { value: length(r.reasons) }
             }
             """;
 

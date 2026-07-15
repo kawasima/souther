@@ -207,7 +207,16 @@ public interface Ast {
 
     sealed interface Expr extends Ast
             permits IntLit, StringLit, BoolLit, Var, FieldAccess, Call, Binary, Not, NewData, Match, If,
-                    ListLit, ListComp, LetIn {}
+                    ListLit, ListComp, LetIn, Block {}
+
+    /**
+     * {@code x => expr}, or {@code (acc, x) => expr} — a block (spec 12.5).
+     *
+     * <p>Second-class: it may only be an argument, never a value that is returned, stored in a
+     * field, or bound by {@code let}. The parser only accepts one in an argument position, and
+     * because it cannot escape, the backend inlines it rather than building a closure.
+     */
+    record Block(List<String> params, Expr body, SourcePos pos) implements Expr {}
 
     /**
      * {@code let name = value} followed by {@code body} — what a body's {@code let} desugars to

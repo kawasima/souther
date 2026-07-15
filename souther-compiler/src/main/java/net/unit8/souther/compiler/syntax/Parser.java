@@ -548,13 +548,58 @@ public final class Parser {
         expect(TokenType.LPAREN);
         List<Ast.Expr> args = new ArrayList<>();
         if (!check(TokenType.RPAREN)) {
-            args.add(parseExpr());
+            args.add(parseArg());
             while (match(TokenType.COMMA)) {
-                args.add(parseExpr());
+                args.add(parseArg());
             }
         }
         expect(TokenType.RPAREN);
         return new Ast.Call(name.text(), args, name.pos());
+    }
+
+    /**
+     * An argument: an expression, or a block (spec 12.5). Blocks are only parsed here, which is
+     * what makes them second-class — there is no other position in the grammar that accepts one,
+     * so a block cannot be returned, stored, or bound to a {@code let}.
+     */
+    private Ast.Expr parseArg() {
+        // x => body
+        if (check(TokenType.IDENT) && peekAt(1).type() == TokenType.FATARROW) {
+            Token p = expect(TokenType.IDENT);
+            expect(TokenType.FATARROW);
+            return new Ast.Block(List.of(p.text()), parseExpr(), p.pos());
+        }
+        // (acc, x) => body
+        if (check(TokenType.LPAREN) && isBlockParams()) {
+            Token open = expect(TokenType.LPAREN);
+            List<String> params = new ArrayList<>();
+            params.add(expect(TokenType.IDENT).text());
+            while (match(TokenType.COMMA)) {
+                params.add(expect(TokenType.IDENT).text());
+            }
+            expect(TokenType.RPAREN);
+            expect(TokenType.FATARROW);
+            return new Ast.Block(params, parseExpr(), open.pos());
+        }
+        return parseExpr();
+    }
+
+    /** Distinguishes {@code (a, b) =>} from a parenthesised expression by scanning to the `)`. */
+    private boolean isBlockParams() {
+        int i = 1;
+        if (peekAt(i).type() != TokenType.IDENT) {
+            return false;
+        }
+        i++;
+        while (peekAt(i).type() == TokenType.COMMA) {
+            i++;
+            if (peekAt(i).type() != TokenType.IDENT) {
+                return false;
+            }
+            i++;
+        }
+        return peekAt(i).type() == TokenType.RPAREN
+                && peekAt(i + 1).type() == TokenType.FATARROW;
     }
 
     // --- token helpers ---

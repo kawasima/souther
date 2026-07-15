@@ -132,6 +132,8 @@ public final class TypeChecker {
                 collectRequiredCalls(li.value(), requiredNames, out);
                 collectRequiredCalls(li.body(), requiredNames, out);
             }
+            // a block's requirements float out to the behavior that passes it (spec 12.5, 29)
+            case Ast.Block block -> collectRequiredCalls(block.body(), requiredNames, out);
             default -> { }
         }
     }
@@ -431,6 +433,12 @@ public final class TypeChecker {
             case Ast.ListComp comp -> {
                 collectConstructs(comp.element(), out, symbols, bound);
                 comp.guards().forEach(g -> collectConstructs(g, out, symbols, bound));
+            }
+            case Ast.Block block -> {
+                // a block builds under the enclosing behavior's permission (spec 12.5)
+                Set<String> inner = new HashSet<>(bound);
+                inner.addAll(block.params());
+                collectConstructs(block.body(), out, symbols, inner);
             }
             // a bare name that resolves to a unit data is that unit's construction (spec 8.4)
             case Ast.Var v when !bound.contains(v.name())
@@ -787,6 +795,11 @@ public final class TypeChecker {
                 inner.put(li.name(), typeOf(li.value(), env, data, symbols, reqs));
                 yield typeOf(li.body(), inner, data, symbols, reqs);
             }
+            // reached only where a block is not an argument of a block-taking call: it has no
+            // type of its own, because it is not a value (spec 12.5)
+            case Ast.Block block -> throw new CompileException(block.pos(),
+                    "a block is not a value: it can only be passed as an argument, not returned, "
+                            + "stored in a data, or bound with `let` (spec 12.5)");
             case Ast.Var v -> {
                 Type t = env.get(v.name());
                 if (t != null) {
@@ -981,7 +994,12 @@ public final class TypeChecker {
         return switch (call.fn()) {
             case "length" -> {
                 arity(call, 1);
-                requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "argument of length");
+                // one name for both, as spec 18.1 and 18.4 both call it `length`
+                Type t = typeOf(args.get(0), env, data, symbols, reqs);
+                if (!(t instanceof Type.ListOf) && t != Type.STRING) {
+                    throw new CompileException(call.pos(),
+                            "argument of length must be a String or a List but is " + t);
+                }
                 yield Type.INT;
             }
             case "contains" -> {
@@ -1019,12 +1037,38 @@ public final class TypeChecker {
                 requireType(args.get(2), Type.INT, env, data, symbols, reqs, "argument 3 of substring");
                 yield Type.STRING;
             }
-            case "size" -> {
-                arity(call, 1);
-                if (!(typeOf(args.get(0), env, data, symbols, reqs) instanceof Type.ListOf)) {
-                    throw new CompileException(call.pos(), "size expects a List");
+            case "map", "filter", "all", "any" -> {
+                arity(call, 2);
+                Type src = typeOf(args.get(0), env, data, symbols, reqs);
+                if (!(src instanceof Type.ListOf lo)) {
+                    throw new CompileException(call.pos(), call.fn() + " expects a List, got " + src);
                 }
-                yield Type.INT;
+                Type bt = blockType(call, args.get(1), List.of(lo.element()), env, data, symbols, reqs);
+                yield switch (call.fn()) {
+                    case "map" -> Type.list(bt);
+                    case "filter" -> {
+                        requireBlockBool(call, bt);
+                        yield src;
+                    }
+                    default -> {
+                        requireBlockBool(call, bt);
+                        yield Type.BOOL;
+                    }
+                };
+            }
+            case "fold" -> {
+                arity(call, 3);
+                Type src = typeOf(args.get(0), env, data, symbols, reqs);
+                if (!(src instanceof Type.ListOf lo)) {
+                    throw new CompileException(call.pos(), "fold expects a List, got " + src);
+                }
+                Type acc = typeOf(args.get(1), env, data, symbols, reqs);
+                Type bt = blockType(call, args.get(2), List.of(acc, lo.element()), env, data, symbols, reqs);
+                if (!bt.equals(acc)) {
+                    throw new CompileException(call.pos(),
+                            "fold's block must return the accumulator type " + acc + ", got " + bt);
+                }
+                yield acc;
             }
             case "get" -> {
                 arity(call, 2);
@@ -1138,6 +1182,39 @@ public final class TypeChecker {
         }
         requireType(call.args().get(1), lt, env, data, symbols, reqs, "argument 2 of " + call.fn());
         return compare ? Type.INT : lt;
+    }
+
+    /**
+     * Types a block argument, binding its parameters to {@code paramTypes} (spec 12.5).
+     *
+     * <p>The parameters are visible only inside the block's body, and its requirement set is
+     * whatever it calls — which flows outward into the enclosing behavior's, so nothing about
+     * requirements has to be written down (spec 29).
+     */
+    private static Type blockType(Ast.Call call, Ast.Expr arg, List<Type> paramTypes,
+                                  Map<String, Type> env, Ast.Data data,
+                                  Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
+        if (!(arg instanceof Ast.Block block)) {
+            throw new CompileException(arg.pos(),
+                    call.fn() + " expects a block, e.g. `" + call.fn() + "(xs, x => ...)` (spec 12.5)");
+        }
+        if (block.params().size() != paramTypes.size()) {
+            throw new CompileException(block.pos(),
+                    "this block takes " + paramTypes.size() + " parameter(s), got "
+                            + block.params().size());
+        }
+        Map<String, Type> inner = new HashMap<>(env);
+        for (int i = 0; i < paramTypes.size(); i++) {
+            inner.put(block.params().get(i), paramTypes.get(i));
+        }
+        return typeOf(block.body(), inner, data, symbols, reqs);
+    }
+
+    private static void requireBlockBool(Ast.Call call, Type bt) {
+        if (bt != Type.BOOL) {
+            throw new CompileException(call.pos(),
+                    call.fn() + "'s block must return Bool, got " + bt);
+        }
     }
 
     private static void arity(Ast.Call call, int n) {

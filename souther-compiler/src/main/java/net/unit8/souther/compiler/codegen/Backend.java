@@ -1564,6 +1564,8 @@ public final class Backend {
                     bind(li.name(), s, vt);
                     yield expr(li.body());
                 }
+                // a block has no value of its own; it is inlined by the call it is passed to
+                case Ast.Block b -> throw new CompileException(b.pos(), "a block is not a value");
                 case Ast.IntLit lit -> {
                     code.loadConstant(lit.value());
                     yield Type.INT;
@@ -1641,6 +1643,140 @@ public final class Backend {
             }
             code.invokestatic(CD_List, "copyOf", MTD_List_copyOf, true);
             return Type.list(elem);
+        }
+
+        /**
+         * Emits a list combinator that takes a block (spec 18.4), inlining the block's body into
+         * an index loop.
+         *
+         * <p>No closure is built: a block is second-class (spec 12.5), so it cannot outlive the
+         * call and there is nothing to capture it into. A required behavior called from the body
+         * reads the enclosing behavior's injected field, which is why the requirement simply
+         * belongs to that behavior.
+         */
+        private Type listBlockOp(Ast.Call call) {
+            String op = call.fn();
+            boolean folding = op.equals("fold");
+            Ast.Block block = (Ast.Block) call.args().get(folding ? 2 : 1);
+
+            Type srcType = expr(call.args().get(0));
+            Type elemType = ((Type.ListOf) srcType).element();
+            int srcSlot = slot(Type.STRING);
+            code.astore(srcSlot);
+
+            // acc: the growing list (map/filter), the running value (fold), or the answer (all/any)
+            Type accType = null;
+            int accSlot;
+            switch (op) {
+                case "map", "filter" -> {
+                    code.new_(CD_ArrayList);
+                    code.dup();
+                    code.invokespecial(CD_ArrayList, "<init>", MTD_void);
+                    accSlot = slot(Type.STRING);
+                    code.astore(accSlot);
+                }
+                case "fold" -> {
+                    accType = expr(call.args().get(1));
+                    box(code, accType);
+                    accSlot = slot(Type.STRING);
+                    code.astore(accSlot);
+                }
+                default -> {                       // all starts true, any starts false
+                    code.loadConstant(op.equals("all") ? 1 : 0);
+                    accSlot = slot(Type.BOOL);
+                    code.istore(accSlot);
+                }
+            }
+            Type resultType = accType;
+
+            int iSlot = slot(Type.BOOL);
+            code.iconst_0();
+            code.istore(iSlot);
+            Label test = code.newLabel();
+            Label done = code.newLabel();
+            code.labelBinding(test);
+            code.iload(iSlot);
+            code.aload(srcSlot);
+            code.invokeinterface(CD_List, "size", MTD_size);
+            code.if_icmpge(done);
+
+            // bind the block's parameters for this element
+            code.aload(srcSlot);
+            code.iload(iSlot);
+            code.invokeinterface(CD_List, "get", MethodTypeDesc.of(CD_Object, ConstantDescs.CD_int));
+            int elemSlot = slot(elemType);
+            unbox(code, elemType, elemSlot);
+            if (folding) {
+                int fAccSlot = slot(accType);
+                code.aload(accSlot);
+                unbox(code, accType, fAccSlot);
+                bind(block.params().get(0), fAccSlot, accType);
+                bind(block.params().get(1), elemSlot, elemType);
+                Type bt = expr(block.body());
+                box(code, bt);
+                code.astore(accSlot);
+            } else {
+                bind(block.params().get(0), elemSlot, elemType);
+                switch (op) {
+                    case "map" -> {
+                        code.aload(accSlot);
+                        Type bt = expr(block.body());
+                        resultType = bt;
+                        box(code, bt);
+                        code.invokevirtual(CD_ArrayList, "add", MTD_ArrayList_add);
+                        code.pop();
+                    }
+                    case "filter" -> {
+                        expr(block.body());
+                        Label skip = code.newLabel();
+                        code.ifeq(skip);
+                        code.aload(accSlot);
+                        load(code, elemSlot, elemType);
+                        box(code, elemType);
+                        code.invokevirtual(CD_ArrayList, "add", MTD_ArrayList_add);
+                        code.pop();
+                        code.labelBinding(skip);
+                    }
+                    default -> {
+                        // all: a false answer ends it; any: a true one does
+                        expr(block.body());
+                        Label keepGoing = code.newLabel();
+                        if (op.equals("all")) {
+                            code.ifne(keepGoing);
+                            code.iconst_0();
+                        } else {
+                            code.ifeq(keepGoing);
+                            code.iconst_1();
+                        }
+                        code.istore(accSlot);
+                        code.goto_(done);
+                        code.labelBinding(keepGoing);
+                    }
+                }
+            }
+            code.iinc(iSlot, 1);
+            code.goto_(test);
+            code.labelBinding(done);
+
+            switch (op) {
+                case "map", "filter" -> {
+                    code.aload(accSlot);
+                    code.invokestatic(CD_List, "copyOf", MTD_List_copyOf, true);
+                }
+                case "fold" -> {
+                    code.aload(accSlot);
+                    int outSlot = slot(accType);
+                    unbox(code, accType, outSlot);
+                    load(code, outSlot, accType);
+                }
+                default -> code.iload(accSlot);
+            }
+            return switch (op) {
+                case "map" -> Type.list(resultType);
+                case "filter" -> srcType;
+                case "fold" -> resultType;
+                default -> Type.BOOL;
+            };
         }
 
         /** Adds the comprehension's element once, only if every guard holds; returns an
@@ -1740,8 +1876,12 @@ public final class Backend {
         private Type call(Ast.Call call) {
             switch (call.fn()) {
                 case "length" -> {
-                    expr(call.args().get(0));
-                    code.invokevirtual(CD_String, "length", MethodTypeDesc.of(ConstantDescs.CD_int));
+                    Type t = expr(call.args().get(0));
+                    if (t instanceof Type.ListOf) {
+                        code.invokeinterface(CD_List, "size", MTD_size);
+                    } else {
+                        code.invokevirtual(CD_String, "length", MethodTypeDesc.of(ConstantDescs.CD_int));
+                    }
                     code.i2l();
                     return Type.INT;
                 }
@@ -1791,11 +1931,8 @@ public final class Backend {
                             MethodTypeDesc.of(CD_String, ConstantDescs.CD_int, ConstantDescs.CD_int));
                     return Type.STRING;
                 }
-                case "size" -> {
-                    expr(call.args().get(0));
-                    code.invokeinterface(CD_List, "size", MTD_size);
-                    code.i2l();
-                    return Type.INT;
+                case "map", "filter", "fold", "all", "any" -> {
+                    return listBlockOp(call);
                 }
                 case "get" -> {
                     Type ct = expr(call.args().get(0));      // List or Map on stack
