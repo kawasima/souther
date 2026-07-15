@@ -568,7 +568,7 @@ public final class TypeChecker {
                         "`" + init.name() + "` is not a field of `" + typeName + "`");
             }
             Type vt = typeOf(init.value(), env, data, symbols, reqs);
-            if (!vt.equals(ft)) {
+            if (!assignable(vt, ft, symbols)) {   // an arm value widens to its sum-typed field (spec 8.3)
                 throw new CompileException(init.pos(),
                         "field `" + init.name() + "` expects " + ft + " but got " + vt);
             }
@@ -590,7 +590,7 @@ public final class TypeChecker {
                 throw new CompileException(pos, "E1005",
                         "construction of `" + typeName + "` is missing field `" + f.getKey() + "`");
             }
-            if (!pv.equals(f.getValue())) {
+            if (!assignable(pv, f.getValue(), symbols)) {
                 throw new CompileException(pos, "spread provides `" + f.getKey() + "` as " + pv
                         + " but `" + typeName + "` needs " + f.getValue());
             }
@@ -634,7 +634,10 @@ public final class TypeChecker {
                 }
             }
             case Ast.EncodeRaw e -> {
-                if (!(symbols.get(e.typeName()) instanceof Ast.Data enc) || enc.encoder().isEmpty()) {
+                Ast.Def encDef = symbols.get(e.typeName());
+                boolean hasEncoder = (encDef instanceof Ast.Data ed && ed.encoder().isPresent())
+                        || (encDef instanceof Ast.SumData sd && sd.encoder().isPresent());
+                if (!hasEncoder) {
                     throw new CompileException(e.pos(),
                             "`" + e.typeName() + "` has no encoder to call `" + e.typeName() + ".encode`");
                 }
@@ -1052,7 +1055,7 @@ public final class TypeChecker {
     private static void requireType(Ast.Expr e, Type expected, Map<String, Type> env, Ast.Data data,
                                     Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs, String what) {
         Type actual = typeOf(e, env, data, symbols, reqs);
-        if (!actual.equals(expected)) {
+        if (!assignable(actual, expected, symbols)) {   // an arm widens to its sum (spec 8.3)
             throw new CompileException(e.pos(), what + " must be " + expected + " but is " + actual);
         }
     }

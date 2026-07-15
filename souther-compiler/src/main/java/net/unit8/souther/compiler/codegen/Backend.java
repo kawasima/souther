@@ -312,6 +312,12 @@ public final class Backend {
         return ClassDesc.of(typePackage.getOrDefault(typeName, pkg) + "." + typeName);
     }
 
+    /** Invokes a type's static {@code decoder()}/{@code encoder()} factory, as an interface
+     * method reference when the type is a sum (its factory lives on a sealed interface). */
+    private void invokeCodec(CodeBuilder code, String typeName, String method, MethodTypeDesc mtd) {
+        code.invokestatic(cd(typeName), method, mtd, symbols.get(typeName) instanceof Ast.SumData);
+    }
+
     /** The JVM class for an output arm: the built-in runtime {@code Violation} for 制約違反,
      * otherwise the generated data class in this module. */
     private ClassDesc armClass(String typeName) {
@@ -400,7 +406,7 @@ public final class Backend {
                     code.instanceOf(armCd);
                     Label next = code.newLabel();
                     code.ifeq(next);
-                    code.invokestatic(armCd, "encoder", MTD_encoder);
+                    invokeCodec(code, v.armType(), "encoder", MTD_encoder);
                     code.aload(1);
                     code.invokeinterface(CD_Encoder, "encode", MTD_encode);
                     code.loadConstant(enc.key());
@@ -428,7 +434,7 @@ public final class Backend {
                     code.aload(1);
                     code.loadConstant(disc.key());
                     code.loadConstant(v.tag());
-                    code.invokestatic(cd(v.armType()), "decoder", MTD_decoder);
+                    invokeCodec(code, v.armType(), "decoder", MTD_decoder);
                     code.invokestatic(CD_Decoders, "variant", MTD_variant);
                     code.astore(2);
                     code.aload(2);
@@ -650,14 +656,14 @@ public final class Backend {
                             Map<String, List<String>> behaviorDeps) {
         if (stage.endsWith(".decoder")) {
             String base = stage.substring(0, stage.lastIndexOf('.'));
-            code.invokestatic(cd(base), "decoder", MTD_decoder);
+            invokeCodec(code, base, "decoder", MTD_decoder);
             code.aload(1);
             code.checkcast(CD_Raw);
             code.invokeinterface(CD_Decoder, "decode", MTD_decode);
             code.astore(1);
         } else if (stage.endsWith(".encoder")) {
             String base = stage.substring(0, stage.lastIndexOf('.'));
-            code.invokestatic(cd(base), "encoder", MTD_encoder);
+            invokeCodec(code, base, "encoder", MTD_encoder);
             code.aload(1);
             code.invokeinterface(CD_Encoder, "encode", MTD_encode);
             code.astore(1);
@@ -909,7 +915,7 @@ public final class Backend {
                 case DATE -> "dateDecoder";
                 case DATETIME -> "dateTimeDecoder";
             }, MTD_decoder);
-            case Ast.DataDecRef d -> code.invokestatic(cd(d.typeName()), "decoder", MTD_decoder);
+            case Ast.DataDecRef d -> invokeCodec(code, d.typeName(), "decoder", MTD_decoder);
             case Ast.ListDecRef l -> {
                 emitDecoderObject(code, l.element());
                 code.invokestatic(CD_Decoders, "listOf", MTD_listOf);
@@ -1012,7 +1018,7 @@ public final class Backend {
                 code.invokestatic(CD_Raw, "text", MethodTypeDesc.of(CD_Raw, CD_String), true);
             }
             case Ast.EncodeRaw e -> {
-                code.invokestatic(cd(e.typeName()), "encoder", MTD_encoder);
+                invokeCodec(code, e.typeName(), "encoder", MTD_encoder);
                 gen.expr(e.arg());
                 code.invokeinterface(CD_Encoder, "encode", MTD_encode);
             }
@@ -1067,7 +1073,7 @@ public final class Backend {
         switch (elem) {
             case Ast.PrimEnc p -> code.invokestatic(CD_Encoders,
                     p.kind() == Ast.PrimKind.STRING ? "textEncoder" : "intEncoder", MTD_encoder);
-            case Ast.DataEnc d -> code.invokestatic(cd(d.typeName()), "encoder", MTD_encoder);
+            case Ast.DataEnc d -> invokeCodec(code, d.typeName(), "encoder", MTD_encoder);
         }
     }
 
