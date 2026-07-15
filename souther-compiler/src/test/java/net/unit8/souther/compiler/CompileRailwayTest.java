@@ -20,18 +20,18 @@ class CompileRailwayTest {
     private static final String MODULE = """
             module demo
 
-            data Amount { value: Int }
-            data TooLarge { limit: Int }
-            data Doubled { value: Int }
+            data Amount = { value: Int }
+            data TooLarge = { limit: Int }
+            data Doubled = { value: Int }
 
             // over 100 leaves the main line as a TooLarge arm
-            behavior guard(a: Amount) -> Amount | TooLarge {
+            behavior guard = (a: Amount) -> Amount | TooLarge {
                 require a.value <= 100 else TooLarge { limit: 100 }
                 a
             }
 
             // only accepts Amount; a TooLarge flowing in would bypass this stage
-            behavior toDoubled(a: Amount) -> Doubled constructs Doubled {
+            behavior toDoubled = (a: Amount) -> Doubled constructs Doubled {
                 Doubled { value: a.value }
             }
 
@@ -72,9 +72,9 @@ class CompileRailwayTest {
         // `other` is a B, which is not one of `bad`'s output arms (just A), so this is rejected.
         String src = """
                 module demo
-                data A { value: Int }
-                data B { value: Int }
-                behavior bad(a: A, other: B) -> A {
+                data A = { value: Int }
+                data B = { value: Int }
+                behavior bad = (a: A, other: B) -> A {
                     require a.value <= 1 else other
                     a
                 }

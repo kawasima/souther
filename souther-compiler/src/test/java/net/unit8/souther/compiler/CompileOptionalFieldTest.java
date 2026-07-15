@@ -24,8 +24,8 @@ class CompileOptionalFieldTest {
     private static final String MODULE = """
             module demo
 
-            data Id { value: String }
-            data Trip { id: Id  approver: Id? }
+            data Id = { value: String }
+            data Trip = { id: Id  approver: Id? }
             """;
 
     private BytesClassLoader loader() {

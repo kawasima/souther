@@ -23,7 +23,7 @@ class CompileMapTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                data Scores { byName: Map<String, Int> }
+                data Scores = { byName: Map<String, Int> }
                 """), getClass().getClassLoader());
         Decoder d = (Decoder) loader.loadClass("demo.Scores").getMethod("decoder").invoke(null);
 
@@ -43,10 +43,10 @@ class CompileMapTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                data Scores { byName: Map<String, Int> }
-                data Answer { found: Bool  value: Int }
+                data Scores = { byName: Map<String, Int> }
+                data Answer = { found: Bool  value: Int }
 
-                behavior lookupA(s: Scores) -> Answer constructs Answer {
+                behavior lookupA = (s: Scores) -> Answer constructs Answer {
                     match get(s.byName, "a") {
                         case Some as v => Answer { found: containsKey(s.byName, "a"), value: v }
                         case None => Answer { found: false, value: 0 }

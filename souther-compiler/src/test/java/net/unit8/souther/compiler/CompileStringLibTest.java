@@ -22,10 +22,10 @@ class CompileStringLibTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                data Name { value: String }
-                data Greeting { text: String }
+                data Name = { value: String }
+                data Greeting = { text: String }
 
-                behavior greet(n: Name) -> Greeting constructs Greeting {
+                behavior greet = (n: Name) -> Greeting constructs Greeting {
                     Greeting { text: concat(concat("hi ", uppercase(substring(n.value, 0, 3))), "!") }
                 }
                 """), getClass().getClassLoader());
@@ -45,7 +45,7 @@ class CompileStringLibTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                data Sku {
+                data Sku = {
                     value: String
                     invariant startsWith(value, "X") && endsWith(value, "Z")
                 }

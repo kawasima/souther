@@ -29,14 +29,14 @@ class CompilePipeDepsTest {
     private static final String MODULE = """
             module demo
 
-            data In { value: String }
-            data Mid { value: String }
-            data Out { a: String  b: String }
+            data In = { value: String }
+            data Mid = { value: String }
+            data Out = { a: String  b: String }
 
-            required behavior fetch(In) -> Mid
-            required behavior tag(Mid) -> Mid
+            required behavior fetch = (In) -> Mid
+            required behavior tag = (Mid) -> Mid
 
-            behavior enrich(m: Mid) -> Out constructs Out {
+            behavior enrich = (m: Mid) -> Out constructs Out {
                 let t = tag(m)
                 Out { a: m.value, b: t.value }
             }

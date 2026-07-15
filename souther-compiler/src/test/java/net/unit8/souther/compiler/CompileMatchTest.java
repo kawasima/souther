@@ -20,13 +20,13 @@ class CompileMatchTest {
     private static final String MODULE = """
             module demo
 
-            data Label { value: String }
+            data Label = { value: String }
 
-            data EmailContact { email: String }
-            data PhoneContact { phone: String }
+            data EmailContact = { email: String }
+            data PhoneContact = { phone: String }
             data Contact = EmailContact | PhoneContact
 
-            behavior contactValue(c: Contact) -> Label constructs Label {
+            behavior contactValue = (c: Contact) -> Label constructs Label {
                 match c {
                     case EmailContact as e => Label { value: e.email }
                     case PhoneContact as p => Label { value: p.phone }
@@ -69,11 +69,11 @@ class CompileMatchTest {
     void nonExhaustiveMatchIsE1201() {
         String src = """
                 module demo
-                data A { x: String }
-                data B { y: String }
+                data A = { x: String }
+                data B = { y: String }
                 data AB = A | B
-                data Label { value: String }
-                behavior pick(v: AB) -> Label constructs Label {
+                data Label = { value: String }
+                behavior pick = (v: AB) -> Label constructs Label {
                     match v {
                         case A as a => Label { value: a.x }
                     }

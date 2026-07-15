@@ -6,7 +6,7 @@ import java.nio.file.Path;
 import java.util.Map;
 
 /**
- * CLI entry point: {@code souther <file.mdl> -d <outdir>}. Compiles one source file to
+ * CLI entry point: {@code souther <file.sou> -d <outdir>}. Compiles one source file to
  * {@code .class} files under the output directory.
  */
 public final class Main {
@@ -22,7 +22,7 @@ public final class Main {
             }
         }
         if (source == null) {
-            System.err.println("usage: souther <file.mdl> -d <outdir>");
+            System.err.println("usage: souther <file.sou> -d <outdir>");
             System.exit(2);
             return;
         }

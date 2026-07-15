@@ -22,13 +22,13 @@ class CompileCallTest {
     private static final String MODULE = """
             module demo
 
-            data Id { value: String }
-            data Member { id: Id }
-            data Resp { id: Id }
+            data Id = { value: String }
+            data Member = { id: Id }
+            data Resp = { id: Id }
 
-            required behavior findMember(Id) -> Member
+            required behavior findMember = (Id) -> Member
 
-            behavior handle(id: Id) -> Resp
+            behavior handle = (id: Id) -> Resp
                 constructs Resp
             {
                 let m = findMember(id)

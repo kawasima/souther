@@ -11,7 +11,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
-/** businesstrip.mdl の include（フィールド合成）とネストした newtype invariant を decode で検査する。 */
+/** businesstrip.sou の include（フィールド合成）とネストした newtype invariant を decode で検査する。 */
 class BusinessTripTest {
 
     @Test

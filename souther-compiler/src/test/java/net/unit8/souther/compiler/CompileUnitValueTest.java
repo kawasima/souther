@@ -23,9 +23,9 @@ class CompileUnitValueTest {
             module demo
 
             data Mark
-            data Flag { on: Bool }
+            data Flag = { on: Bool }
 
-            behavior marks(f: Flag) -> List<Mark> constructs Mark {
+            behavior marks = (f: Flag) -> List<Mark> constructs Mark {
                 [Mark | f.on]
             }
             """;
@@ -53,8 +53,8 @@ class CompileUnitValueTest {
         String src = """
                 module demo
                 data Mark
-                data Flag { on: Bool }
-                behavior marks(f: Flag) -> List<Mark> {
+                data Flag = { on: Bool }
+                behavior marks = (f: Flag) -> List<Mark> {
                     [Mark | f.on]
                 }
                 """;

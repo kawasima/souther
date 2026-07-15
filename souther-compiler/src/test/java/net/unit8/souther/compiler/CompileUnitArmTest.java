@@ -23,8 +23,8 @@ class CompileUnitArmTest {
     private static final String MODULE = """
             module demo
 
-            data Amount { value: Int }
-            data High { threshold: Amount }
+            data Amount = { value: Int }
+            data High = { threshold: Amount }
             data LowRole
             data Reason = High | LowRole
             """;

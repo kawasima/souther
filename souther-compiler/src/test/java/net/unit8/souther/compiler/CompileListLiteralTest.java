@@ -25,9 +25,9 @@ class CompileListLiteralTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                data In { a: Int  b: Int }
+                data In = { a: Int  b: Int }
 
-                behavior pick(x: In) -> List<Int> {
+                behavior pick = (x: In) -> List<Int> {
                     [x.a] ++ [x.b | x.b > 0]
                 }
                 """), getClass().getClassLoader());
@@ -47,13 +47,13 @@ class CompileListLiteralTest {
     private static final String REASONS = """
             module demo
 
-            data Amount { value: Int }
-            data High { threshold: Amount }
-            data LowRole { note: String }
+            data Amount = { value: Int }
+            data High = { threshold: Amount }
+            data LowRole = { note: String }
             data Reason = High | LowRole
-            data In { cost: Amount }
+            data In = { cost: Amount }
 
-            behavior reasons(x: In) -> List<Reason>
+            behavior reasons = (x: In) -> List<Reason>
                 constructs High, LowRole
             {
                 [High { threshold: x.cost } | x.cost.value > 100] ++ [LowRole { note: "role" }]

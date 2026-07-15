@@ -22,11 +22,11 @@ class CompileOptionMatchTest {
     private static final String MODULE = """
             module demo
 
-            data Id { value: String }
-            data Trip { id: Id  approver: Id? }
-            data Label { value: String }
+            data Id = { value: String }
+            data Trip = { id: Id  approver: Id? }
+            data Label = { value: String }
 
-            behavior approverLabel(t: Trip) -> Label constructs Label {
+            behavior approverLabel = (t: Trip) -> Label constructs Label {
                 match t.approver {
                     case Some as a => Label { value: a.value }
                     case None => Label { value: "none" }

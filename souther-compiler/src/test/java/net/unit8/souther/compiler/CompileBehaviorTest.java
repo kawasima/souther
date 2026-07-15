@@ -20,16 +20,16 @@ class CompileBehaviorTest {
     private static final String MODULE = """
             module demo
 
-            data MemberId { value: String }
+            data MemberId = { value: String }
 
-            data Member {
+            data Member = {
                 id: MemberId
                 name: String
             }
 
-            data Response { id: MemberId }
+            data Response = { id: MemberId }
 
-            behavior toResponse(m: Member) -> Response
+            behavior toResponse = (m: Member) -> Response
                 constructs Response
             {
                 Response { id: m.id }
@@ -59,8 +59,8 @@ class CompileBehaviorTest {
     void undeclaredConstructionIsE1002() {
         String src = """
                 module demo
-                data Response { id: String }
-                behavior make(x: String) -> Response {
+                data Response = { id: String }
+                behavior make = (x: String) -> Response {
                     Response { id: x }
                 }
                 """;
@@ -72,8 +72,8 @@ class CompileBehaviorTest {
     void constructingInvariantDataInPureBehaviorIsE1003() {
         String src = """
                 module demo
-                data Positive { value: Int  invariant value > 0 }
-                behavior make(x: Int) -> Positive
+                data Positive = { value: Int  invariant value > 0 }
+                behavior make = (x: Int) -> Positive
                     constructs Positive
                 {
                     Positive { value: x }

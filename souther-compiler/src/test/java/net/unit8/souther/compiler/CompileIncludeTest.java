@@ -21,21 +21,21 @@ class CompileIncludeTest {
     private static final String FLOW = """
             module demo
 
-            data Common {
+            data Common = {
                 applicant: String
                 cost: Int
             }
 
-            data Draft {
+            data Draft = {
                 include Common
             }
 
-            data Submitted {
+            data Submitted = {
                 include Common
                 submittedAt: String
             }
 
-            behavior submit(d: Draft, at: String) -> Submitted constructs Submitted {
+            behavior submit = (d: Draft, at: String) -> Submitted constructs Submitted {
                 Submitted { ..d, submittedAt: at }
             }
             """;
@@ -65,8 +65,8 @@ class CompileIncludeTest {
     void includedInvariantRunsOnConstruction() throws Exception {
         String src = """
                 module demo
-                data Common { applicant: String  cost: Int  invariant cost >= 0 }
-                data Draft { include Common }
+                data Common = { applicant: String  cost: Int  invariant cost >= 0 }
+                data Draft = { include Common }
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
         Decoder decoder = (Decoder) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);

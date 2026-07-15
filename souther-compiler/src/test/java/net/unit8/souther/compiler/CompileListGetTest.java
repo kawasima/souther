@@ -20,11 +20,11 @@ class CompileListGetTest {
     private static final String MODULE = """
             module demo
 
-            data Item { value: String }
-            data Bag { items: List<Item> }
-            data Label { value: String }
+            data Item = { value: String }
+            data Bag = { items: List<Item> }
+            data Label = { value: String }
 
-            behavior firstValue(b: Bag) -> Label constructs Label {
+            behavior firstValue = (b: Bag) -> Label constructs Label {
                 match get(b.items, 0) {
                     case Some as x => Label { value: x.value }
                     case None => Label { value: "none" }

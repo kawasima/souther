@@ -25,15 +25,15 @@ class CompileDeriveTest {
     private static final String MODULE = """
             module demo
 
-            data 金額 { value: Int  invariant value >= 0 }
+            data 金額 = { value: Int  invariant value >= 0 }
 
-            data Member {
+            data Member = {
                 cost: 金額
                 name: String
             }
 
-            data EmailC { email: String }
-            data PhoneC { phone: String }
+            data EmailC = { email: String }
+            data PhoneC = { phone: String }
             data Contact = EmailC | PhoneC
             """;
 

@@ -21,10 +21,10 @@ class CompileDecimalMathTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                data Price { value: Decimal }
-                data Quote { subtotal: Decimal  doubled: Decimal }
+                data Price = { value: Decimal }
+                data Quote = { subtotal: Decimal  doubled: Decimal }
 
-                behavior quote(a: Price, b: Price) -> Quote constructs Quote {
+                behavior quote = (a: Price, b: Price) -> Quote constructs Quote {
                     Quote {
                         subtotal: add(a.value, b.value),
                         doubled: multiply(add(a.value, b.value), a.value)
@@ -52,7 +52,7 @@ class CompileDecimalMathTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                data Ordered {
+                data Ordered = {
                     lo: Int
                     hi: Int
                     invariant compare(lo, hi) <= 0

@@ -24,16 +24,16 @@ class CompileListTest {
     private static final String MODULE = """
             module demo
 
-            data Reason { code: String }
+            data Reason = { code: String }
 
-            data Request {
+            data Request = {
                 nums: List<Int>
                 reasons: List<Reason>
             }
 
-            data Count { value: Int }
+            data Count = { value: Int }
 
-            behavior countReasons(r: Request) -> Count constructs Count {
+            behavior countReasons = (r: Request) -> Count constructs Count {
                 Count { value: size(r.reasons) }
             }
             """;

@@ -33,7 +33,7 @@ public interface Ast {
         String name();
     }
 
-    /** {@code behavior name(p1: T1, ...) -> R constructs A, B { stmt*; result }}. */
+    /** {@code behavior name = (p1: T1, ...) -> R constructs A, B { stmt*; result }}. */
     record BodyBehavior(String name,
                         List<Param> params,
                         RetType ret,
@@ -48,7 +48,7 @@ public interface Ast {
     /** {@code behavior name = f >> g >> ...} */
     record PipeBehavior(String name, List<String> stages, SourcePos pos) implements BehaviorDef {}
 
-    /** {@code required behavior name(T) -> R} — implemented in Java, injected. */
+    /** {@code required behavior name = (T) -> R} — implemented in Java, injected. */
     record RequiredBehavior(String name, TypeRef paramType, RetType ret, SourcePos pos)
             implements Ast {}
 

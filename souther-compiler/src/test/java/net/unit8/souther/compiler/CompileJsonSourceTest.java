@@ -28,7 +28,7 @@ class CompileJsonSourceTest {
     private static final String MODULE = """
             module demo
 
-            data Account {
+            data Account = {
                 id: String
                 balance: Int
                 owner: String
@@ -36,8 +36,8 @@ class CompileJsonSourceTest {
                 invariant length(id) > 0
             }
 
-            data Submitted { note: String }
-            data Rejected  { reason: String }
+            data Submitted = { note: String }
+            data Rejected = { reason: String }
             data Application = Submitted | Rejected
             """;
 

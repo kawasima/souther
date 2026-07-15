@@ -25,8 +25,8 @@ class CompileVisibilityTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo exposing { Public }
 
-                data Internal { v: Int }
-                data Public { inner: Internal }
+                data Internal = { v: Int }
+                data Public = { inner: Internal }
                 """), getClass().getClassLoader());
 
         assertTrue(Modifier.isPublic(loader.loadClass("demo.Public").getModifiers()),
@@ -44,8 +44,8 @@ class CompileVisibilityTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo exposing { Contact, Contact.decoder }
 
-                data EmailC { email: String }
-                data PhoneC { phone: String }
+                data EmailC = { email: String }
+                data PhoneC = { phone: String }
                 data Contact = EmailC | PhoneC
                 """), getClass().getClassLoader());
 
@@ -65,7 +65,7 @@ class CompileVisibilityTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                data A { v: Int }
+                data A = { v: Int }
                 """), getClass().getClassLoader());
         assertTrue(Modifier.isPublic(loader.loadClass("demo.A").getModifiers()),
                 "without exposing, types stay public");

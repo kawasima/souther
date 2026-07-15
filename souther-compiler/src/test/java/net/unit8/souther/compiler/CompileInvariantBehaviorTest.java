@@ -23,14 +23,14 @@ class CompileInvariantBehaviorTest {
     private static final String MODULE = """
             module demo
 
-            data Draft { cost: Int }
+            data Draft = { cost: Int }
 
-            data Adjusted {
+            data Adjusted = {
                 cost: Int
                 invariant cost >= 0
             }
 
-            behavior discount(d: Draft) -> Adjusted | 制約違反 constructs Adjusted {
+            behavior discount = (d: Draft) -> Adjusted | 制約違反 constructs Adjusted {
                 Adjusted { cost: d.cost - 2000 }
             }
             """;
@@ -70,8 +70,8 @@ class CompileInvariantBehaviorTest {
     void constructingInvariantDataWithoutViolationArmIsE1003() {
         String src = """
                 module demo
-                data Positive { value: Int  invariant value > 0 }
-                behavior make(x: Int) -> Positive constructs Positive {
+                data Positive = { value: Int  invariant value > 0 }
+                behavior make = (x: Int) -> Positive constructs Positive {
                     Positive { value: x }
                 }
                 """;

@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
-/** email.mdl を SoutherProcessor が生成し、その decoder を型付きで叩く（最小例）。 */
+/** email.sou を SoutherProcessor が生成し、その decoder を型付きで叩く（最小例）。 */
 class EmailTest {
 
     @Test

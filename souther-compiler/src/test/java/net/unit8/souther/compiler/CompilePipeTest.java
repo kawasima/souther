@@ -12,21 +12,21 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-/** End-to-end test for {@code >>} composition and required-behavior injection (spec 14, 13, 19.5). */
+/** End-to-end test for {@code >>} composition and required-behavior injection = (spec 14, 13, 19.5). */
 class CompilePipeTest {
 
     private static final String MODULE = """
             module demo
 
-            data Wrap { value: String }
-            data Mid  { value: String }
-            data Out  { value: String }
+            data Wrap = { value: String }
+            data Mid = { value: String }
+            data Out = { value: String }
 
-            behavior a(w: Wrap) -> Mid constructs Mid { Mid { value: w.value } }
-            behavior b(m: Mid) -> Out constructs Out { Out { value: m.value } }
+            behavior a = (w: Wrap) -> Mid constructs Mid { Mid { value: w.value } }
+            behavior b = (m: Mid) -> Out constructs Out { Out { value: m.value } }
             behavior ab = a >> b
 
-            required behavior fetch(Wrap) -> Mid
+            required behavior fetch = (Wrap) -> Mid
             behavior handle = fetch >> b
             """;
 
@@ -75,9 +75,9 @@ class CompilePipeTest {
         // a: Wrap -> Mid; feeding Mid into a second `a` (which wants Wrap) accepts no arm.
         String src = """
                 module demo
-                data Wrap { value: String }
-                data Mid  { value: String }
-                behavior a(w: Wrap) -> Mid constructs Mid { Mid { value: w.value } }
+                data Wrap = { value: String }
+                data Mid = { value: String }
+                behavior a = (w: Wrap) -> Mid constructs Mid { Mid { value: w.value } }
                 behavior bad = a >> a
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));

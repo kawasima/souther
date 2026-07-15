@@ -31,29 +31,29 @@ module example.businesstrip exposing {
 }
 
 // A value type: the spec DSL's "// not empty" comment becomes an invariant.
-data 従業員ID {
+data 従業員ID = {
     value: String
     invariant length(value) > 0
 }
 
-data 金額 {
+data 金額 = {
     value: Int
     invariant value >= 0
 }
 
 // A state machine as a sum of named states; the common fields are flattened with `include`.
 data 出張申請 = 申請準備中 | 提出済み | 事前承認待ち | 事前承認済み
-data 申請準備中 { include 出張申請共通項目 }
-data 提出済み   { include 出張申請共通項目  提出日時: DateTime }
+data 申請準備中 = { include 出張申請共通項目 }
+data 提出済み = { include 出張申請共通項目  提出日時: DateTime }
 
 // "承認権限なし" is just a data — not an error type, not a Result.
 data 承認権限なし
 
-required behavior 現在時刻() -> DateTime   // a dependency: the clock is injected
+required behavior 現在時刻 = () -> DateTime   // a dependency: the clock is injected
 
 // The output is an unmarked sum. Whether an arm is a "failure" is decided by composition,
 // not by this behavior. The requirement set ({現在時刻}) is inferred, never declared.
-behavior 事前承認する(
+behavior 事前承認する = (
     申請:    事前承認待ち,
     承認者ID: 従業員ID
 ) -> 事前承認済み | 承認権限なし
@@ -179,9 +179,9 @@ Java 21+.
 ```sh
 mvn install                 # build souther-runtime and souther-compiler, run the tests
 
-# compile a single .mdl file to .class files
+# compile a single .sou file to .class files
 java -cp souther-compiler/target/classes:souther-runtime/target/classes \
-     net.unit8.souther.compiler.Main examples/businesstrip.mdl -d /tmp/out
+     net.unit8.souther.compiler.Main examples/businesstrip/src/main/souther/businesstrip.sou -d /tmp/out
 ```
 
 Programmatically:
@@ -196,7 +196,7 @@ Map<String, byte[]> classes = Compiler.compileModules(List.of(employeeSrc, tripS
 
 The repository is a two-module Maven build: `souther-runtime` (the `Raw` model, decoder/encoder
 facades, `Option`, `NonEmptyList`, `Behavior`) and `souther-compiler` (lexer, parser, type
-checker, deriver, and the ClassFile backend). Runnable `.mdl` examples and a Spring Boot + jOOQ
+checker, deriver, and the ClassFile backend). Runnable `.sou` examples and a Spring Boot + jOOQ
 interop example live under [`examples/`](examples/).
 
 ## Status

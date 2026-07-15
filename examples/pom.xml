@@ -9,7 +9,7 @@
     <packaging>pom</packaging>
 
     <description>
-        Souther の開発ライフサイクルを検証する例。各モジュールは .mdl を持ち、javac の
+        Souther の開発ライフサイクルを検証する例。各モジュールは .sou を持ち、javac の
         アノテーションプロセッサ SoutherProcessor が生成した型を、型付きの Java から使う。
         コア reactor とは独立していて、`mvn -o -f examples/pom.xml verify` でまとめて検証する。
         （先に `mvn -o install` でコア成果物を ~/.m2 に入れておくこと。）
@@ -69,7 +69,7 @@
                 <version>3.15.0</version>
                 <executions>
                     <!-- Only the main compile runs Souther: the annotation processor reads the
-                         module's .mdl and emits the generated types into target/classes, which the
+                         module's .sou and emits the generated types into target/classes, which the
                          hand-written Java is then compiled against. -->
                     <execution>
                         <id>default-compile</id>
@@ -82,7 +82,7 @@
                                 </path>
                             </annotationProcessorPaths>
                             <compilerArgs>
-                                <arg>-Asouther.mdl=${project.basedir}/src/main/mdl</arg>
+                                <arg>-Asouther.source=${project.basedir}/src/main/souther</arg>
                             </compilerArgs>
                         </configuration>
                     </execution>

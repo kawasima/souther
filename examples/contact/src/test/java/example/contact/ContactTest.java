@@ -12,7 +12,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
-/** contact.mdl の直和を判別デコーダで decode し、判別子タグ付きで encode し直す。 */
+/** contact.sou の直和を判別デコーダで decode し、判別子タグ付きで encode し直す。 */
 class ContactTest {
 
     @Test

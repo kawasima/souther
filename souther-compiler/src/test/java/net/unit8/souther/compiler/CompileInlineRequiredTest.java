@@ -29,13 +29,13 @@ class CompileInlineRequiredTest {
     private static final String MODULE = """
             module demo
 
-            data Id { value: String }
-            data Member { id: Id }
-            data Resp { m: Member }
+            data Id = { value: String }
+            data Member = { id: Id }
+            data Resp = { m: Member }
 
-            required behavior findMember(Id) -> Member
+            required behavior findMember = (Id) -> Member
 
-            behavior handle(id: Id) -> Resp constructs Resp {
+            behavior handle = (id: Id) -> Resp constructs Resp {
                 Resp { m: findMember(id) }
             }
             """;

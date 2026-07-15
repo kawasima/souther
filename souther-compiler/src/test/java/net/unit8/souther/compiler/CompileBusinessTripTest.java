@@ -23,34 +23,34 @@ class CompileBusinessTripTest {
     private static final String MODEL = """
             module example.businesstrip
 
-            data 従業員ID {
+            data 従業員ID = {
                 value: String
                 invariant length(value) > 0
             }
 
-            data 金額 {
+            data 金額 = {
                 value: Int
                 invariant value >= 0
             }
 
-            data 出張申請共通項目 {
+            data 出張申請共通項目 = {
                 申請者: 従業員ID
                 予定費用: 金額
             }
 
-            data 申請準備中 {
+            data 申請準備中 = {
                 include 出張申請共通項目
             }
 
-            data 提出済み {
+            data 提出済み = {
                 include 出張申請共通項目
                 提出日時: String
             }
 
-            data 却下 { 理由: String }
+            data 却下 = { 理由: String }
 
             // 提出する: 予定費用が上限内なら提出済みへ遷移、超過なら却下（失敗も普通の data アーム）
-            behavior 提出する(申請: 申請準備中, 提出日時: String) -> 提出済み | 却下
+            behavior 提出する = (申請: 申請準備中, 提出日時: String) -> 提出済み | 却下
                 constructs 提出済み
             {
                 require 申請.予定費用.value <= 100000 else 却下 { 理由: "high_cost" }

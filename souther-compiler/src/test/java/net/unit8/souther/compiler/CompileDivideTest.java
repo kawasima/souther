@@ -19,10 +19,10 @@ class CompileDivideTest {
     private static final String MODULE = """
             module demo
 
-            data Pair { a: Int  b: Int }
-            data Outcome { q: Int  ok: Bool }
+            data Pair = { a: Int  b: Int }
+            data Outcome = { q: Int  ok: Bool }
 
-            behavior divideThem(p: Pair) -> Outcome constructs Outcome {
+            behavior divideThem = (p: Pair) -> Outcome constructs Outcome {
                 match divide(p.a, p.b) {
                     case Int as q => Outcome { q: q, ok: true }
                     case DivisionByZero => Outcome { q: 0, ok: false }

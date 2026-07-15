@@ -17,15 +17,15 @@ class CompileMultiParamTest {
     private static final String MODULE = """
             module demo
 
-            data A { value: Int }
-            data B { value: Int }
+            data A = { value: Int }
+            data B = { value: Int }
 
-            data Pair {
+            data Pair = {
                 left: Int
                 right: Int
             }
 
-            behavior mkPair(a: A, b: B) -> Pair constructs Pair {
+            behavior mkPair = (a: A, b: B) -> Pair constructs Pair {
                 Pair { left: a.value, right: b.value }
             }
             """;

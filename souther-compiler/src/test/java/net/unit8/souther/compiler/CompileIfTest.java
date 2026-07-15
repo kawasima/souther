@@ -18,10 +18,10 @@ class CompileIfTest {
     private static final String MODULE = """
             module demo
 
-            data In  { value: Int }
-            data Out { label: String }
+            data In = { value: Int }
+            data Out = { label: String }
 
-            behavior classify(x: In) -> Out constructs Out {
+            behavior classify = (x: In) -> Out constructs Out {
                 Out { label: if x.value >= 100 then "high" else "low" }
             }
             """;
@@ -48,8 +48,8 @@ class CompileIfTest {
     void branchesMustAgreeOnType() {
         String src = """
                 module demo
-                data Out { value: Int }
-                behavior bad(x: Int) -> Out constructs Out {
+                data Out = { value: Int }
+                behavior bad = (x: Int) -> Out constructs Out {
                     Out { value: if x >= 0 then 1 else "no" }
                 }
                 """;

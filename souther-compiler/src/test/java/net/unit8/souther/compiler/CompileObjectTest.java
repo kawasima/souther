@@ -27,7 +27,7 @@ class CompileObjectTest {
     private static final String ACCOUNT = """
             module demo
 
-            data Account {
+            data Account = {
                 id: String
                 balance: Int
                 owner: String

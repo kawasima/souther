@@ -23,12 +23,12 @@ class CompileArmWideningTest {
     private static final String MODULE = """
             module demo
 
-            data A { x: Int  tag: Int }
-            data B { y: Int }
+            data A = { x: Int  tag: Int }
+            data B = { y: Int }
             data AB = A | B
-            data Wrap { it: AB }
+            data Wrap = { it: AB }
 
-            behavior wrap(a: A) -> Wrap constructs Wrap {
+            behavior wrap = (a: A) -> Wrap constructs Wrap {
                 Wrap { it: a }
             }
             """;
@@ -55,12 +55,12 @@ class CompileArmWideningTest {
         // store expects the sum AB; use passes an A (an arm) — must type-check
         String src = """
                 module demo
-                data A { x: Int }
-                data B { y: Int }
+                data A = { x: Int }
+                data B = { y: Int }
                 data AB = A | B
-                data Stored { it: AB }
-                required behavior store(AB) -> Stored
-                behavior use(a: A) -> Stored { store(a) }
+                data Stored = { it: AB }
+                required behavior store = (AB) -> Stored
+                behavior use = (a: A) -> Stored { store(a) }
                 """;
         assertDoesNotThrow(() -> Compiler.compile(src));
     }

@@ -25,7 +25,7 @@ class CompileModuleTest {
                 従業員ID.decoder
             }
 
-            data 従業員ID { value: String  invariant length(value) > 0 }
+            data 従業員ID = { value: String  invariant length(value) > 0 }
             """;
 
     private static final String TRIP = """
@@ -38,7 +38,7 @@ class CompileModuleTest {
                 従業員ID
             }
 
-            data Trip { who: 従業員ID }
+            data Trip = { who: 従業員ID }
             """;
 
     @Test
@@ -67,12 +67,12 @@ class CompileModuleTest {
         String a = """
                 module m.a exposing { A }
                 import m.b { B }
-                data A { b: B }
+                data A = { b: B }
                 """;
         String b = """
                 module m.b exposing { B }
                 import m.a { A }
-                data B { value: String }
+                data B = { value: String }
                 """;
         CompileException e = assertThrows(CompileException.class,
                 () -> Compiler.compileModules(List.of(a, b)));

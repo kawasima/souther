@@ -22,16 +22,16 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 /**
- * A javac annotation processor that compiles Souther {@code .mdl} sources to {@code .class} as a
+ * A javac annotation processor that compiles Souther {@code .sou} sources to {@code .class} as a
  * side effect of an ordinary {@code javac} run (spec 4, 20). Point it at a directory (or a single
- * {@code .mdl} file) with {@code -Asouther.mdl=<path>}; each module found is compiled and its
+ * {@code .sou} file) with {@code -Asouther.source=<path>}; each module found is compiled and its
  * classes are emitted through the {@link Filer}, so hand-written Java in the same compilation can
  * reference the generated types directly.
  *
  * <p>This needs no build-tool plugin: it is discovered the standard way (Maven
  * {@code annotationProcessorPaths}, Gradle {@code annotationProcessor}, or plain
- * {@code javac -processorpath}). With no {@code souther.mdl} option it is a no-op, so it is harmless
- * to have on any classpath.
+ * {@code javac -processorpath}). With no {@code souther.source} option it is a no-op, so it is
+ * harmless to have on any classpath.
  */
 @SupportedAnnotationTypes("*")
 public final class SoutherProcessor extends AbstractProcessor {
@@ -45,7 +45,7 @@ public final class SoutherProcessor extends AbstractProcessor {
 
     @Override
     public Set<String> getSupportedOptions() {
-        return Set.of("souther.mdl");
+        return Set.of("souther.source");
     }
 
     @Override
@@ -53,7 +53,7 @@ public final class SoutherProcessor extends AbstractProcessor {
         if (done) {
             return false;
         }
-        String configured = processingEnv.getOptions().get("souther.mdl");
+        String configured = processingEnv.getOptions().get("souther.source");
         if (configured == null || configured.isBlank()) {
             return false;   // not configured: no-op
         }
@@ -81,11 +81,11 @@ public final class SoutherProcessor extends AbstractProcessor {
         return false;
     }
 
-    /** Reads a single {@code .mdl} file, or every {@code .mdl} under a directory (path-sorted). */
+    /** Reads a single {@code .sou} file, or every {@code .sou} under a directory (path-sorted). */
     private static List<String> readSources(Path path) throws IOException {
         if (Files.isDirectory(path)) {
             try (Stream<Path> walk = Files.walk(path)) {
-                List<Path> files = walk.filter(p -> p.toString().endsWith(".mdl")).sorted().toList();
+                List<Path> files = walk.filter(p -> p.toString().endsWith(".sou")).sorted().toList();
                 List<String> sources = new ArrayList<>();
                 for (Path file : files) {
                     sources.add(Files.readString(file));

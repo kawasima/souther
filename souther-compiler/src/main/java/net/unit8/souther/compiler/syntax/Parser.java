@@ -96,10 +96,19 @@ public final class Parser {
         return sb.toString();
     }
 
+    /**
+     * {@code behavior name = <rhs>} where the rhs is either a pipeline ({@code a >> b}) or a
+     * parameter list with a body. One token after {@code =} tells them apart: {@code (} is a body.
+     */
     private Ast.BehaviorDef parseBehavior() {
         Token kw = expect(TokenType.BEHAVIOR);
         String name = expect(TokenType.IDENT).text();
-        if (match(TokenType.ASSIGN)) {
+        if (check(TokenType.LPAREN)) {
+            throw error(peek(), "behavior `" + name + "` needs `=` before its parameters: "
+                    + "`behavior " + name + " = (...) -> ...`");
+        }
+        expect(TokenType.ASSIGN);
+        if (!check(TokenType.LPAREN)) {
             List<String> stages = new ArrayList<>();
             stages.add(parseStage());
             while (match(TokenType.GTGT)) {
@@ -171,6 +180,11 @@ public final class Parser {
         Token kw = expect(TokenType.REQUIRED);
         expect(TokenType.BEHAVIOR);
         String name = expect(TokenType.IDENT).text();
+        if (check(TokenType.LPAREN)) {
+            throw error(peek(), "required behavior `" + name + "` needs `=` before its parameter: "
+                    + "`required behavior " + name + " = (...) -> ...`");
+        }
+        expect(TokenType.ASSIGN);
         expect(TokenType.LPAREN);
         // required behavior takes one input: (name: Type) or (Type)
         if (peekAt(1).type() == TokenType.COLON) {
@@ -194,14 +208,20 @@ public final class Parser {
 
     // --- data ---
 
+    /**
+     * {@code data name = <rhs>} where the rhs is either a product body ({@code { ... }}) or a sum's
+     * arms ({@code A | B}); a name with no rhs is a unit. One token after {@code =} tells the
+     * product from the sum.
+     */
     private Ast.Def parseDef() {
         Token kw = expect(TokenType.DATA);
         String name = expect(TokenType.IDENT).text();
-        if (match(TokenType.ASSIGN)) {
-            return parseSum(kw, name);
-        }
         if (check(TokenType.LBRACE)) {
-            return parseProduct(kw, name);
+            throw error(peek(), "data `" + name + "` needs `=` before its body: "
+                    + "`data " + name + " = { ... }`");
+        }
+        if (match(TokenType.ASSIGN)) {
+            return check(TokenType.LBRACE) ? parseProduct(kw, name) : parseSum(kw, name);
         }
         return new Ast.UnitData(name, kw.pos());
     }

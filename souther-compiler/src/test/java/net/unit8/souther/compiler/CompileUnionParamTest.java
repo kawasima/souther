@@ -20,11 +20,11 @@ class CompileUnionParamTest {
     private static final String MODULE = """
             module demo
 
-            data Sub { x: Int }
-            data Pre { y: Int }
-            data Done { v: Int }
+            data Sub = { x: Int }
+            data Pre = { y: Int }
+            data Done = { v: Int }
 
-            behavior finish(app: Sub | Pre) -> Done constructs Done {
+            behavior finish = (app: Sub | Pre) -> Done constructs Done {
                 match app {
                     case Sub as s => Done { v: s.x }
                     case Pre as p => Done { v: p.y }

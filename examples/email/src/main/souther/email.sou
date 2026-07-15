@@ -2,7 +2,7 @@
 // decoder/encoder は書かない — データ形状から導出される（value 型は newtype = 裸の文字列）。
 module example.email
 
-data Email {
+data Email = {
     value: String
     invariant contains(value, "@")
 }

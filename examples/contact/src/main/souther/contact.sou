@@ -2,14 +2,14 @@
 // 判別デコーダ/エンコーダは導出される（判別子フィールド "type"、タグ＝アーム名）。
 module example.contact
 
-data EmailContact { email: String }
-data PhoneContact { phone: String }
+data EmailContact = { email: String }
+data PhoneContact = { phone: String }
 data Contact = EmailContact | PhoneContact
 
-data Label { value: String }
+data Label = { value: String }
 
 // match でアームごとに値を取り出す
-behavior 連絡先の値(c: Contact) -> Label constructs Label {
+behavior 連絡先の値 = (c: Contact) -> Label constructs Label {
     match c {
         case EmailContact as e => Label { value: e.email }
         case PhoneContact as p => Label { value: p.phone }

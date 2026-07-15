@@ -12,7 +12,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/** expense.mdl の List&lt;T&gt; とネストした data を持つ直積を decode / encode する。 */
+/** expense.sou の List&lt;T&gt; とネストした data を持つ直積を decode / encode する。 */
 class ExpenseTest {
 
     @Test

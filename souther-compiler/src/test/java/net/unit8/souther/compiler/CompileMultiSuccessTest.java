@@ -17,11 +17,11 @@ class CompileMultiSuccessTest {
     private static final String MODULE = """
             module demo
 
-            data Draft  { cost: Int }
-            data Cheap  { cost: Int }
-            data Pricey { cost: Int }
+            data Draft = { cost: Int }
+            data Cheap = { cost: Int }
+            data Pricey = { cost: Int }
 
-            behavior classify(d: Draft) -> Cheap | Pricey constructs Cheap, Pricey {
+            behavior classify = (d: Draft) -> Cheap | Pricey constructs Cheap, Pricey {
                 if d.cost <= 100 then Cheap { cost: d.cost } else Pricey { cost: d.cost }
             }
             """;
@@ -46,11 +46,11 @@ class CompileMultiSuccessTest {
     void bodyMustProduceAMemberOfTheDeclaredUnion() {
         String src = """
                 module demo
-                data Draft { cost: Int }
-                data Cheap { cost: Int }
-                data Pricey { cost: Int }
-                data Other { cost: Int }
-                behavior bad(d: Draft) -> Cheap | Pricey constructs Other {
+                data Draft = { cost: Int }
+                data Cheap = { cost: Int }
+                data Pricey = { cost: Int }
+                data Other = { cost: Int }
+                behavior bad = (d: Draft) -> Cheap | Pricey constructs Other {
                     Other { cost: d.cost }
                 }
                 """;
