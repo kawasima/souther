@@ -23,7 +23,11 @@ public final class TypeChecker {
     private TypeChecker() {}
 
     public static void check(Ast.Module module) {
-        Map<String, Ast.Def> symbols = symbols(module);
+        check(module, symbols(module));
+    }
+
+    /** Type-checks a module against {@code symbols} (own definitions plus any imported ones). */
+    public static void check(Ast.Module module, Map<String, Ast.Def> symbols) {
         for (Ast.Def def : module.defs()) {
             switch (def) {
                 case Ast.Data data -> checkData(data, symbols);

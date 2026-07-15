@@ -107,14 +107,24 @@ public final class Backend {
     private final String pkg;
     private final Map<String, Ast.Def> symbols;
     private final Map<String, List<String>> armToSums;
+    private final Map<String, String> typePackage;
 
-    private Backend(String pkg, Map<String, Ast.Def> symbols, Map<String, List<String>> armToSums) {
+    private Backend(String pkg, Map<String, Ast.Def> symbols, Map<String, List<String>> armToSums,
+                    Map<String, String> typePackage) {
         this.pkg = pkg;
         this.symbols = symbols;
         this.armToSums = armToSums;
+        this.typePackage = typePackage;
     }
 
     public static Map<String, byte[]> generate(Ast.Module module) {
+        return generate(module, TypeChecker.symbols(module), Map.of());
+    }
+
+    /** Generates a module's classes. {@code symbols} covers own plus imported definitions;
+     * {@code typePackage} maps an imported type name to its declaring module (spec 4). */
+    public static Map<String, byte[]> generate(Ast.Module module, Map<String, Ast.Def> symbols,
+                                               Map<String, String> typePackage) {
         Map<String, List<String>> armToSums = new HashMap<>();
         for (Ast.Def def : module.defs()) {
             if (def instanceof Ast.SumData sum) {
@@ -123,7 +133,7 @@ public final class Backend {
                 }
             }
         }
-        Backend b = new Backend(module.name(), TypeChecker.symbols(module), armToSums);
+        Backend b = new Backend(module.name(), symbols, armToSums, typePackage);
         Map<String, byte[]> out = new LinkedHashMap<>();
         for (Ast.Def def : module.defs()) {
             switch (def) {
@@ -260,7 +270,7 @@ public final class Backend {
     }
 
     private ClassDesc cd(String typeName) {
-        return ClassDesc.of(pkg + "." + typeName);
+        return ClassDesc.of(typePackage.getOrDefault(typeName, pkg) + "." + typeName);
     }
 
     /** The JVM class for an output arm: the built-in runtime {@code Violation} for 制約違反,

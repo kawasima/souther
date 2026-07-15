@@ -24,9 +24,14 @@ public final class Deriver {
     private Deriver() {}
 
     public static Ast.Module derive(Ast.Module module) {
-        Map<String, Ast.Def> symbols = TypeChecker.symbols(module);
+        return derive(module, TypeChecker.symbols(module));
+    }
+
+    /** Derives codecs using {@code symbols} for type resolution (own definitions plus any
+     * imported ones, for cross-module fields — spec 4). */
+    public static Ast.Module derive(Ast.Module module, Map<String, Ast.Def> symbols) {
         java.util.Set<String> armNames = new java.util.HashSet<>();
-        for (Ast.Def def : module.defs()) {
+        for (Ast.Def def : symbols.values()) {
             if (def instanceof Ast.SumData s) {
                 armNames.addAll(s.arms());
             }
@@ -39,7 +44,8 @@ public final class Deriver {
                 case Ast.UnitData u -> u;
             });
         }
-        return new Ast.Module(module.name(), defs, module.behaviors(), module.requireds(), module.pos());
+        return new Ast.Module(module.name(), module.exposing(), module.imports(), defs,
+                module.behaviors(), module.requireds(), module.pos());
     }
 
     private static Ast.Data deriveData(Ast.Data d, Map<String, Ast.Def> symbols, boolean isArm) {

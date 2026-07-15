@@ -32,6 +32,11 @@ public final class Parser {
     public Ast.Module parseModule() {
         Token m = expect(TokenType.MODULE);
         String name = qualifiedName();
+        List<String> exposing = check(TokenType.EXPOSING) ? parseExposing() : new ArrayList<>();
+        List<Ast.Import> imports = new ArrayList<>();
+        while (check(TokenType.IMPORT)) {
+            imports.add(parseImport());
+        }
         List<Ast.Def> defs = new ArrayList<>();
         List<Ast.BehaviorDef> behaviors = new ArrayList<>();
         List<Ast.RequiredBehavior> requireds = new ArrayList<>();
@@ -46,7 +51,49 @@ public final class Parser {
                 throw error(peek(), "expected data, behavior, or required");
             }
         }
-        return new Ast.Module(name, defs, behaviors, requireds, m.pos());
+        return new Ast.Module(name, exposing, imports, defs, behaviors, requireds, m.pos());
+    }
+
+    /** {@code exposing { name, name.decoder, ... }} — the module's public surface (spec 4). */
+    private List<String> parseExposing() {
+        expect(TokenType.EXPOSING);
+        expect(TokenType.LBRACE);
+        List<String> names = new ArrayList<>();
+        names.add(dottedName());
+        while (match(TokenType.COMMA)) {
+            if (check(TokenType.RBRACE)) {
+                break;
+            }
+            names.add(dottedName());
+        }
+        expect(TokenType.RBRACE);
+        return names;
+    }
+
+    /** {@code import <module> { name, ... }} — explicit imports only (no wildcards, spec 4). */
+    private Ast.Import parseImport() {
+        Token kw = expect(TokenType.IMPORT);
+        String module = qualifiedName();
+        expect(TokenType.LBRACE);
+        List<String> names = new ArrayList<>();
+        names.add(expect(TokenType.IDENT).text());
+        while (match(TokenType.COMMA)) {
+            if (check(TokenType.RBRACE)) {
+                break;
+            }
+            names.add(expect(TokenType.IDENT).text());
+        }
+        expect(TokenType.RBRACE);
+        return new Ast.Import(module, names, kw.pos());
+    }
+
+    /** An exposed entry: a bare name or a {@code Name.decoder}/{@code Name.encoder} member. */
+    private String dottedName() {
+        StringBuilder sb = new StringBuilder(expect(TokenType.IDENT).text());
+        while (match(TokenType.DOT)) {
+            sb.append('.').append(expect(TokenType.IDENT).text());
+        }
+        return sb.toString();
     }
 
     private Ast.BehaviorDef parseBehavior() {

@@ -16,12 +16,17 @@ public interface Ast {
     /** The source position of this node. Every record below provides it. */
     SourcePos pos();
 
-    /** A whole source file: data definitions, behaviors, and required-behavior declarations. */
+    /** A whole source file: its public surface, imports, and definitions. */
     record Module(String name,
+                  List<String> exposing,
+                  List<Import> imports,
                   List<Def> defs,
                   List<BehaviorDef> behaviors,
                   List<RequiredBehavior> requireds,
                   SourcePos pos) implements Ast {}
+
+    /** {@code import <module> { name, ... }} — an explicit, non-wildcard import (spec 4). */
+    record Import(String module, List<String> names, SourcePos pos) implements Ast {}
 
     /** A behavior definition: a body form or a pipeline (`>>`) form. */
     sealed interface BehaviorDef extends Ast permits BodyBehavior, PipeBehavior {

@@ -17,6 +17,8 @@ public final class Lexer {
 
     private static final Map<String, TokenType> KEYWORDS = Map.ofEntries(
             Map.entry("module", TokenType.MODULE),
+            Map.entry("import", TokenType.IMPORT),
+            Map.entry("exposing", TokenType.EXPOSING),
             Map.entry("data", TokenType.DATA),
             Map.entry("invariant", TokenType.INVARIANT),
             // decoder / encoder / from are not reserved (spec 5): they read as identifiers,

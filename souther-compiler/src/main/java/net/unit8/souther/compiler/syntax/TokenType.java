@@ -3,8 +3,8 @@ package net.unit8.souther.compiler.syntax;
 /** The lexical token kinds recognised by the slice-1 lexer. */
 public enum TokenType {
     // keywords
-    MODULE, DATA, INVARIANT, DECODER, ENCODER, FROM, AS, LET, REQUIRE, ELSE, TRUE, FALSE, IF, THEN,
-    BEHAVIOR, REQUIRED, CONSTRUCTS, MATCH, CASE, INCLUDE,
+    MODULE, IMPORT, EXPOSING, DATA, INVARIANT, DECODER, ENCODER, FROM, AS, LET, REQUIRE, ELSE,
+    TRUE, FALSE, IF, THEN, BEHAVIOR, REQUIRED, CONSTRUCTS, MATCH, CASE, INCLUDE,
     // literals and identifiers
     IDENT, INT_LIT, STRING_LIT,
     // punctuation
