@@ -56,16 +56,49 @@ public final class TypeChecker {
     /** A required behavior's input and success types (for typing calls). */
     private record ReqSig(Type param, Type success) {}
 
-    /** The distinct required behaviors a body calls, in first-seen order. */
+    /** The distinct required behaviors a body calls, in first-seen order. Calls may appear
+     * anywhere in an expression (e.g. inline in a record literal), not only bound to a let. */
     public static List<String> requiredCalls(Ast.BodyBehavior body, java.util.Set<String> requiredNames) {
         List<String> calls = new java.util.ArrayList<>();
         for (Ast.BStmt stmt : body.stmts()) {
-            if (stmt instanceof Ast.Let let && let.value() instanceof Ast.Call call
-                    && requiredNames.contains(call.fn()) && !calls.contains(call.fn())) {
-                calls.add(call.fn());
+            switch (stmt) {
+                case Ast.Let let -> collectRequiredCalls(let.value(), requiredNames, calls);
+                case Ast.Guard guard -> {
+                    collectRequiredCalls(guard.cond(), requiredNames, calls);
+                    collectRequiredCalls(guard.failure(), requiredNames, calls);
+                }
             }
         }
+        collectRequiredCalls(body.result(), requiredNames, calls);
         return calls;
+    }
+
+    private static void collectRequiredCalls(Ast.Expr e, Set<String> requiredNames, List<String> out) {
+        switch (e) {
+            case Ast.Call call -> {
+                if (requiredNames.contains(call.fn()) && !out.contains(call.fn())) {
+                    out.add(call.fn());
+                }
+                call.args().forEach(a -> collectRequiredCalls(a, requiredNames, out));
+            }
+            case Ast.NewData nd -> nd.inits().forEach(i -> collectRequiredCalls(i.value(), requiredNames, out));
+            case Ast.FieldAccess fa -> collectRequiredCalls(fa.target(), requiredNames, out);
+            case Ast.Binary bin -> {
+                collectRequiredCalls(bin.left(), requiredNames, out);
+                collectRequiredCalls(bin.right(), requiredNames, out);
+            }
+            case Ast.Not not -> collectRequiredCalls(not.operand(), requiredNames, out);
+            case Ast.Match m -> {
+                collectRequiredCalls(m.scrutinee(), requiredNames, out);
+                m.cases().forEach(c -> collectRequiredCalls(c.body(), requiredNames, out));
+            }
+            case Ast.If iff -> {
+                collectRequiredCalls(iff.cond(), requiredNames, out);
+                collectRequiredCalls(iff.then(), requiredNames, out);
+                collectRequiredCalls(iff.els(), requiredNames, out);
+            }
+            default -> { }
+        }
     }
 
     private static List<String> requiredCalls(Ast.BodyBehavior body, Map<String, ReqSig> reqSigs) {
@@ -192,16 +225,16 @@ public final class TypeChecker {
                         if (call.args().size() != 1) {
                             throw new CompileException(call.pos(), call.fn() + " takes one argument");
                         }
-                        requireType(call.args().get(0), callee.param(), env, null, symbols,
+                        requireType(call.args().get(0), callee.param(), env, null, symbols, reqSigs,
                                 "argument of " + call.fn());
                         env.put(let.name(), callee.success());
                     } else {
-                        env.put(let.name(), typeOf(let.value(), env, null, symbols));
+                        env.put(let.name(), typeOf(let.value(), env, null, symbols, reqSigs));
                     }
                 }
                 case Ast.Guard guard -> {
-                    requireType(guard.cond(), Type.BOOL, env, null, symbols, "require condition");
-                    Type ft = typeOf(guard.failure(), env, null, symbols);
+                    requireType(guard.cond(), Type.BOOL, env, null, symbols, reqSigs, "require condition");
+                    Type ft = typeOf(guard.failure(), env, null, symbols, reqSigs);
                     if (!subtypeOf(ft, output)) {
                         throw new CompileException(guard.failure().pos(),
                                 "`require ... else` value must be one of the output arms " + output
@@ -210,7 +243,7 @@ public final class TypeChecker {
                 }
             }
         }
-        Type rt = typeOf(b.result(), env, null, symbols);
+        Type rt = typeOf(b.result(), env, null, symbols, reqSigs);
         if (!subtypeOf(rt, output)) {
             throw new CompileException(b.result().pos(),
                     "behavior `" + b.name() + "` returns " + output + " but its body is " + rt);
@@ -429,7 +462,8 @@ public final class TypeChecker {
                 for (Ast.DecStmt stmt : prim.stmts()) {
                     switch (stmt) {
                         case Ast.Let let -> env.put(let.name(), typeOf(let.value(), env, data, symbols));
-                        case Ast.Require req -> requireBool(req.cond(), env, data, symbols);
+                        case Ast.Require req -> requireType(req.cond(), Type.BOOL, env, data, symbols,
+                                NO_REQS, "require condition");
                     }
                 }
                 checkConstruct(prim.result(), data, fields, env, symbols);
@@ -490,12 +524,13 @@ public final class TypeChecker {
                     "decoder for `" + data.name() + "` must construct `" + data.name()
                             + "`, but constructs `" + c.typeName() + "`");
         }
-        checkConstruction(c.typeName(), c.inits(), c.spreads(), c.pos(), fields, env, data, symbols);
+        checkConstruction(c.typeName(), c.inits(), c.spreads(), c.pos(), fields, env, data, symbols, NO_REQS);
     }
 
     private static void checkConstruction(String typeName, List<Ast.FieldInit> inits, List<String> spreads,
                                           SourcePos pos, Map<String, Type> fields, Map<String, Type> env,
-                                          Ast.Data data, Map<String, Ast.Def> symbols) {
+                                          Ast.Data data, Map<String, Ast.Def> symbols,
+                                          Map<String, ReqSig> reqs) {
         Map<String, Ast.FieldInit> byName = new HashMap<>();
         for (Ast.FieldInit init : inits) {
             if (byName.put(init.name(), init) != null) {
@@ -506,7 +541,7 @@ public final class TypeChecker {
                 throw new CompileException(init.pos(),
                         "`" + init.name() + "` is not a field of `" + typeName + "`");
             }
-            Type vt = typeOf(init.value(), env, data, symbols);
+            Type vt = typeOf(init.value(), env, data, symbols, reqs);
             if (!vt.equals(ft)) {
                 throw new CompileException(init.pos(),
                         "field `" + init.name() + "` expects " + ft + " but got " + vt);
@@ -544,10 +579,13 @@ public final class TypeChecker {
     private static void checkRawExpr(Ast.RawExpr raw, Map<String, Type> env, Ast.Data data,
                                      Map<String, Ast.Def> symbols) {
         switch (raw) {
-            case Ast.TextRaw t -> requireType(t.arg(), Type.STRING, env, data, symbols, "argument of Text");
-            case Ast.IntRaw i -> requireType(i.arg(), Type.INT, env, data, symbols, "argument of Int");
-            case Ast.BoolRaw b -> requireType(b.arg(), Type.BOOL, env, data, symbols, "argument of Bool");
-            case Ast.DecimalRaw d -> requireType(d.arg(), Type.DECIMAL, env, data, symbols,
+            case Ast.TextRaw t -> requireType(t.arg(), Type.STRING, env, data, symbols, NO_REQS,
+                    "argument of Text");
+            case Ast.IntRaw i -> requireType(i.arg(), Type.INT, env, data, symbols, NO_REQS,
+                    "argument of Int");
+            case Ast.BoolRaw b -> requireType(b.arg(), Type.BOOL, env, data, symbols, NO_REQS,
+                    "argument of Bool");
+            case Ast.DecimalRaw d -> requireType(d.arg(), Type.DECIMAL, env, data, symbols, NO_REQS,
                     "argument of Decimal");
             case Ast.IsoTextRaw t -> {
                 Type at = typeOf(t.arg(), env, data, symbols);
@@ -565,7 +603,7 @@ public final class TypeChecker {
                     throw new CompileException(e.pos(),
                             "`" + e.typeName() + "` has no encoder to call `" + e.typeName() + ".encode`");
                 }
-                requireType(e.arg(), Type.ref(e.typeName()), env, data, symbols,
+                requireType(e.arg(), Type.ref(e.typeName()), env, data, symbols, NO_REQS,
                         "argument of " + e.typeName() + ".encode");
             }
             case Ast.ListEnc le -> {
@@ -597,8 +635,16 @@ public final class TypeChecker {
 
     // --- expression typing (shared with the backend) ---
 
+    /** No required behaviors are in scope (decoders, encoders, invariants — spec 9.3, 17). */
+    private static final Map<String, ReqSig> NO_REQS = Map.of();
+
     public static Type typeOf(Ast.Expr e, Map<String, Type> env, Ast.Data data,
                               Map<String, Ast.Def> symbols) {
+        return typeOf(e, env, data, symbols, NO_REQS);
+    }
+
+    public static Type typeOf(Ast.Expr e, Map<String, Type> env, Ast.Data data,
+                              Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
         return switch (e) {
             case Ast.IntLit ignored -> Type.INT;
             case Ast.StringLit ignored -> Type.STRING;
@@ -610,26 +656,26 @@ public final class TypeChecker {
                 }
                 yield t;
             }
-            case Ast.FieldAccess fa -> typeOfFieldAccess(fa, env, data, symbols);
-            case Ast.Call call -> typeOfCall(call, env, data, symbols);
+            case Ast.FieldAccess fa -> typeOfFieldAccess(fa, env, data, symbols, reqs);
+            case Ast.Call call -> typeOfCall(call, env, data, symbols, reqs);
             case Ast.Not not -> {
-                requireType(not.operand(), Type.BOOL, env, data, symbols, "operand of `!`");
+                requireType(not.operand(), Type.BOOL, env, data, symbols, reqs, "operand of `!`");
                 yield Type.BOOL;
             }
-            case Ast.Binary bin -> typeOfBinary(bin, env, data, symbols);
+            case Ast.Binary bin -> typeOfBinary(bin, env, data, symbols, reqs);
             case Ast.NewData nd -> {
                 if (!(symbols.get(nd.typeName()) instanceof Ast.Data owner)) {
                     throw new CompileException(nd.pos(), "cannot construct `" + nd.typeName() + "`");
                 }
                 checkConstruction(nd.typeName(), nd.inits(), nd.spreads(), nd.pos(),
-                        fieldTypes(owner, symbols), env, data, symbols);
+                        fieldTypes(owner, symbols), env, data, symbols, reqs);
                 yield Type.ref(nd.typeName());
             }
-            case Ast.Match m -> typeOfMatch(m, env, data, symbols);
+            case Ast.Match m -> typeOfMatch(m, env, data, symbols, reqs);
             case Ast.If iff -> {
-                requireType(iff.cond(), Type.BOOL, env, data, symbols, "if condition");
-                Type tt = typeOf(iff.then(), env, data, symbols);
-                Type et = typeOf(iff.els(), env, data, symbols);
+                requireType(iff.cond(), Type.BOOL, env, data, symbols, reqs, "if condition");
+                Type tt = typeOf(iff.then(), env, data, symbols, reqs);
+                Type et = typeOf(iff.els(), env, data, symbols, reqs);
                 if (tt.equals(et)) {
                     yield tt;
                 }
@@ -644,8 +690,8 @@ public final class TypeChecker {
     }
 
     private static Type typeOfMatch(Ast.Match m, Map<String, Type> env, Ast.Data data,
-                                    Map<String, Ast.Def> symbols) {
-        Type st = typeOf(m.scrutinee(), env, data, symbols);
+                                    Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
+        Type st = typeOf(m.scrutinee(), env, data, symbols, reqs);
         if (!(st instanceof Type.Ref ref) || !(symbols.get(ref.name()) instanceof Ast.SumData sum)) {
             throw new CompileException(m.pos(), "match requires a sum-typed value, got " + st);
         }
@@ -659,7 +705,7 @@ public final class TypeChecker {
             covered.add(c.armType());
             Map<String, Type> benv = new HashMap<>(env);
             benv.put(c.binding(), Type.ref(c.armType()));
-            Type bt = typeOf(c.body(), benv, data, symbols);
+            Type bt = typeOf(c.body(), benv, data, symbols, reqs);
             if (branchType == null) {
                 branchType = bt;
             } else if (!branchType.equals(bt)) {
@@ -681,8 +727,8 @@ public final class TypeChecker {
 
 
     private static Type typeOfFieldAccess(Ast.FieldAccess fa, Map<String, Type> env, Ast.Data data,
-                                          Map<String, Ast.Def> symbols) {
-        Type target = typeOf(fa.target(), env, data, symbols);
+                                          Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
+        Type target = typeOf(fa.target(), env, data, symbols, reqs);
         if (target instanceof Type.Ref ref && symbols.get(ref.name()) instanceof Ast.Data owner) {
             Type ft = fieldTypes(owner, symbols).get(fa.field());
             if (ft != null) {
@@ -693,76 +739,78 @@ public final class TypeChecker {
     }
 
     private static Type typeOfCall(Ast.Call call, Map<String, Type> env, Ast.Data data,
-                                   Map<String, Ast.Def> symbols) {
+                                   Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
         List<Ast.Expr> args = call.args();
         return switch (call.fn()) {
             case "length" -> {
                 arity(call, 1);
-                requireType(args.get(0), Type.STRING, env, data, symbols, "argument of length");
+                requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "argument of length");
                 yield Type.INT;
             }
             case "contains" -> {
                 arity(call, 2);
-                requireType(args.get(0), Type.STRING, env, data, symbols, "argument 1 of contains");
-                requireType(args.get(1), Type.STRING, env, data, symbols, "argument 2 of contains");
+                requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "argument 1 of contains");
+                requireType(args.get(1), Type.STRING, env, data, symbols, reqs, "argument 2 of contains");
                 yield Type.BOOL;
             }
             case "trim" -> {
                 arity(call, 1);
-                requireType(args.get(0), Type.STRING, env, data, symbols, "argument of trim");
+                requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "argument of trim");
                 yield Type.STRING;
             }
             case "lowercase" -> {
                 arity(call, 1);
-                requireType(args.get(0), Type.STRING, env, data, symbols, "argument of lowercase");
+                requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "argument of lowercase");
                 yield Type.STRING;
             }
             case "size" -> {
                 arity(call, 1);
-                if (!(typeOf(args.get(0), env, data, symbols) instanceof Type.ListOf)) {
+                if (!(typeOf(args.get(0), env, data, symbols, reqs) instanceof Type.ListOf)) {
                     throw new CompileException(call.pos(), "size expects a List");
                 }
                 yield Type.INT;
             }
-            default -> throw new CompileException(call.pos(), "unknown function `" + call.fn() + "`");
+            default -> {
+                // a required behavior called inline (spec 12.2, 13): type it as its success arm
+                ReqSig callee = reqs.get(call.fn());
+                if (callee == null) {
+                    throw new CompileException(call.pos(), "unknown function `" + call.fn() + "`");
+                }
+                arity(call, 1);
+                requireType(args.get(0), callee.param(), env, data, symbols, reqs,
+                        "argument of " + call.fn());
+                yield callee.success();
+            }
         };
     }
 
     private static Type typeOfBinary(Ast.Binary bin, Map<String, Type> env, Ast.Data data,
-                                     Map<String, Ast.Def> symbols) {
+                                     Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
         return switch (bin.op()) {
             case AND, OR -> {
-                requireType(bin.left(), Type.BOOL, env, data, symbols, "operand of logical operator");
-                requireType(bin.right(), Type.BOOL, env, data, symbols, "operand of logical operator");
+                requireType(bin.left(), Type.BOOL, env, data, symbols, reqs, "operand of logical operator");
+                requireType(bin.right(), Type.BOOL, env, data, symbols, reqs, "operand of logical operator");
                 yield Type.BOOL;
             }
             case LT, LE, GT, GE -> {
-                requireType(bin.left(), Type.INT, env, data, symbols, "operand of comparison");
-                requireType(bin.right(), Type.INT, env, data, symbols, "operand of comparison");
+                requireType(bin.left(), Type.INT, env, data, symbols, reqs, "operand of comparison");
+                requireType(bin.right(), Type.INT, env, data, symbols, reqs, "operand of comparison");
                 yield Type.BOOL;
             }
             case ADD, SUB, MUL -> {
-                requireType(bin.left(), Type.INT, env, data, symbols, "operand of arithmetic");
-                requireType(bin.right(), Type.INT, env, data, symbols, "operand of arithmetic");
+                requireType(bin.left(), Type.INT, env, data, symbols, reqs, "operand of arithmetic");
+                requireType(bin.right(), Type.INT, env, data, symbols, reqs, "operand of arithmetic");
                 yield Type.INT;
             }
             case EQ, NE -> {
-                Type lt = typeOf(bin.left(), env, data, symbols);
-                Type rt = typeOf(bin.right(), env, data, symbols);
+                Type lt = typeOf(bin.left(), env, data, symbols, reqs);
+                Type rt = typeOf(bin.right(), env, data, symbols, reqs);
                 if (!lt.equals(rt) || lt instanceof Type.Ref) {
                     throw new CompileException(bin.pos(), "cannot compare " + lt + " with " + rt);
                 }
                 yield Type.BOOL;
             }
         };
-    }
-
-    private static void requireBool(Ast.Expr cond, Map<String, Type> env, Ast.Data data,
-                                    Map<String, Ast.Def> symbols) {
-        Type t = typeOf(cond, env, data, symbols);
-        if (t != Type.BOOL) {
-            throw new CompileException(cond.pos(), "require condition must have type Bool. Found: " + t);
-        }
     }
 
     private static void arity(Ast.Call call, int n) {
@@ -773,8 +821,8 @@ public final class TypeChecker {
     }
 
     private static void requireType(Ast.Expr e, Type expected, Map<String, Type> env, Ast.Data data,
-                                    Map<String, Ast.Def> symbols, String what) {
-        Type actual = typeOf(e, env, data, symbols);
+                                    Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs, String what) {
+        Type actual = typeOf(e, env, data, symbols, reqs);
         if (!actual.equals(expected)) {
             throw new CompileException(e.pos(), what + " must be " + expected + " but is " + actual);
         }
