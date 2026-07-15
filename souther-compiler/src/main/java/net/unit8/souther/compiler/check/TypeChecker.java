@@ -58,10 +58,14 @@ public final class TypeChecker {
     }
 
     /**
-     * A pipeline stage takes exactly one input (spec 14.1): {@code >>} hands one value along, so a
-     * behavior of several inputs is called inline or matched on instead. Checked here, by name, so
-     * the diagnostic states the rule — such a stage used to fall through to the signature lookup
-     * and be reported as an unknown behavior, which it is not.
+     * Every stage after the first takes exactly one input (spec 14.1): {@code >>} hands a single
+     * value along.
+     *
+     * <p>The first stage is not restricted — it consumes the pipeline's own arguments, and the
+     * pipeline simply takes what it takes. The spec DSL relies on this
+     * (`behavior 却下して差し戻す = 却下する >> 差し戻す`, where `却下する` reads
+     * `事前承認待ち AND 却下者ID`); requiring the whole chain to be single-input would reject the
+     * very line 14.1 cites.
      */
     private static void checkStagesAreSingleInput(Ast.Module module) {
         Map<String, Integer> arity = new HashMap<>();
@@ -77,13 +81,15 @@ public final class TypeChecker {
             if (!(b instanceof Ast.PipeBehavior pipe)) {
                 continue;
             }
-            for (String stage : pipe.stages()) {
+            for (int i = 1; i < pipe.stages().size(); i++) {
+                String stage = pipe.stages().get(i);
                 Integer n = arity.get(stage);
                 if (n != null && n != 1) {
                     throw new CompileException(pipe.pos(),
-                            "`" + stage + "` takes " + n + " inputs, so it cannot be a stage of `"
-                                    + pipe.name() + "`. A stage takes one input: call it inline or "
-                                    + "open the branches with `match` instead (spec 14.1).");
+                            "`" + stage + "` takes " + n + " inputs, so it cannot follow `>>` in `"
+                                    + pipe.name() + "`. Every stage after the first takes one input: "
+                                    + "call it inline or open the branches with `match` instead "
+                                    + "(spec 14.1). Only the first stage may take several.");
                 }
             }
         }
@@ -143,16 +149,35 @@ public final class TypeChecker {
         return requiredCalls(body, reqSigs.keySet());
     }
 
-    /** A behavior's input and output types. */
-    public record Sig(Type in, Type out) {}
+    /**
+     * A behavior's input and output types.
+     *
+     * <p>{@code ins} is the whole parameter list. Only the first stage of a pipeline may have more
+     * than one: {@code >>} hands a single value along, so every stage after the first takes one
+     * input (spec 14.1). {@link #in} is for those.
+     */
+    public record Sig(List<Type> ins, Type out) {
+        public Sig(Type in, Type out) {
+            this(List.of(in), out);
+        }
+
+        /** The sole input. Only call this for a stage after the first, which takes exactly one. */
+        public Type in() {
+            return ins.get(0);
+        }
+    }
 
     /** Builds the input/output signature of every behavior, checking pipeline composition. */
     public static Map<String, Sig> signatures(Ast.Module module, Map<String, Ast.Def> symbols) {
         Map<String, Sig> sigs = new HashMap<>();
         for (Ast.BehaviorDef b : module.behaviors()) {
-            if (b instanceof Ast.BodyBehavior body && body.params().size() == 1) {
-                sigs.put(body.name(), new Sig(successType(body.params().get(0).type(), symbols),
-                        successType(body.ret(), symbols)));
+            if (b instanceof Ast.BodyBehavior body) {
+                // any arity: a multi-input behavior can still be a pipeline's first stage (14.1)
+                List<Type> ins = new ArrayList<>();
+                for (Ast.Param p : body.params()) {
+                    ins.add(successType(p.type(), symbols));
+                }
+                sigs.put(body.name(), new Sig(ins, successType(body.ret(), symbols)));
             }
         }
         for (Ast.RequiredBehavior r : module.requireds()) {
@@ -194,7 +219,8 @@ public final class TypeChecker {
             mainline = route(mainline, stageSig(stages.get(i), sigs, symbols, pipe.pos()),
                     retired, pipe.pos());
         }
-        return new Sig(first.in(), withRetired(mainline, retired));
+        // the pipeline takes whatever its first stage takes (spec 14.1)
+        return new Sig(first.ins(), withRetired(mainline, retired));
     }
 
     /** The pipeline's output: what the last stage yields, plus everything that left the main line. */

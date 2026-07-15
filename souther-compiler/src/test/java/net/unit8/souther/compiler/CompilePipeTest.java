@@ -86,11 +86,10 @@ class CompilePipeTest {
     }
 
     /**
-     * A stage takes one input (spec 14.1). The rule was only enforced by accident — a multi-input
-     * behavior was left out of the signature table and then reported as unknown, which it is not.
+     * Only stages after the first take one input (spec 14.1): {@code >>} hands one value along.
      */
     @Test
-    void aMultiInputBehaviorCannotBeAStage() {
+    void aMultiInputBehaviorCannotFollowAnArrow() {
         String src = """
                 module demo
                 data Wrap = { value: String }
@@ -102,6 +101,51 @@ class CompilePipeTest {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertTrue(e.getMessage().contains("takes 2 inputs"), e.getMessage());
         assertTrue(e.getMessage().contains("14.1"), "the diagnostic should name the rule: " + e.getMessage());
+    }
+
+    /**
+     * The first stage may take several — the pipeline then takes them too. 14.1 restricted the
+     * whole chain, which rejected the spec DSL line it cited as its own justification:
+     * `behavior 却下して差し戻す = 却下する >> 差し戻す`, where `却下する` reads
+     * `事前承認待ち AND 却下者ID`. Nothing in the routing rule needs the left operand to be unary.
+     */
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void theFirstStageMayTakeSeveralInputs() throws Exception {
+        String src = """
+                module demo
+                data Id = { value: String }
+                data Pending = { boss: Id }
+                data Rejected = { v: Int }
+                data Draft = { v: Int }
+                data NoRight
+
+                behavior reject = (p: Pending, by: Id) -> Rejected | NoRight
+                    constructs Rejected, NoRight
+                {
+                    require by == p.boss else NoRight
+                    Rejected { v: 1 }
+                }
+                behavior sendBack = (r: Rejected) -> Draft constructs Draft { Draft { v: r.v } }
+
+                behavior rejectAndSendBack = reject >> sendBack
+                """;
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Class<?> flow = loader.loadClass("demo.rejectAndSendBack");
+        // the pipeline takes what its first stage takes, so it is not a one-input Behavior
+        var apply = flow.getMethod("apply", Object.class, Object.class);
+
+        Decoder idDec = (Decoder) loader.loadClass("demo.Id").getMethod("decoder").invoke(null);
+        Object boss = ((Ok) idDec.decode("boss", Path.ROOT)).value();
+        Object other = ((Ok) idDec.decode("other", Path.ROOT)).value();
+        java.lang.reflect.Constructor<?> pc = loader.loadClass("demo.Pending").getDeclaredConstructors()[0];
+        pc.setAccessible(true);
+        Object pending = pc.newInstance(boss);
+
+        Object o = flow.getConstructor().newInstance();
+        assertEquals("demo.Draft", apply.invoke(o, pending, boss).getClass().getName());
+        assertEquals("demo.NoRight", apply.invoke(o, pending, other).getClass().getName(),
+                "NoRight leaves the main line at sendBack and comes out as the pipeline's output");
     }
 
     @Test

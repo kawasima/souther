@@ -760,17 +760,24 @@ public final class Backend {
         ClassDesc cdP = cd(pipe.name());
         // the pipeline's injected fields are the union of its stages' requirements (spec 14.3)
         List<String> reqStages = behaviorDeps.getOrDefault(pipe.name(), List.of());
+        // the pipeline takes whatever its first stage takes (spec 14.1)
+        int arity = TypeChecker.stageSig(pipe.stages().get(0), sigs, symbols, pipe.pos()).ins().size();
+        ClassDesc[] applyParams = new ClassDesc[arity];
+        java.util.Arrays.fill(applyParams, CD_Object);
+        MethodTypeDesc mtdApply = MethodTypeDesc.of(CD_Object, applyParams);
 
         return build(cdP, cb -> {
             cb.withFlags(pub(pipe.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
-            cb.withInterfaceSymbols(CD_Behavior);
+            if (arity == 1) {
+                cb.withInterfaceSymbols(CD_Behavior);   // only single-input pipelines compose
+            }
             emitInjection(cb, cdP, reqStages);
 
-            cb.withMethodBody("apply", MTD_apply, ClassFile.ACC_PUBLIC, code -> {
+            cb.withMethodBody("apply", mtdApply, ClassFile.ACC_PUBLIC, code -> {
                 // slot 1 always holds the running value (an output arm, as an Object).
                 List<String> stages = pipe.stages();
-                // stage 0 consumes the whole input unconditionally
-                applyStage(code, cdP, stages.get(0), requiredNames, behaviorDeps);
+                // stage 0 consumes the pipeline's arguments unconditionally
+                applyFirstStage(code, cdP, stages.get(0), arity, requiredNames, behaviorDeps);
                 Type mainline = TypeChecker.stageSig(stages.get(0), sigs, symbols, pipe.pos()).out();
                 Label end = code.newLabel();
                 for (int i = 1; i < stages.size(); i++) {
@@ -802,6 +809,29 @@ public final class Backend {
                 code.areturn();
             });
         });
+    }
+
+    /**
+     * Applies the first stage to the pipeline's own arguments, leaving the result in slot 1.
+     *
+     * <p>Only this stage may take several inputs (spec 14.1). A multi-input behavior does not
+     * implement {@code Behavior} — that interface takes one value — so it is called on its own
+     * class rather than through the interface.
+     */
+    private void applyFirstStage(CodeBuilder code, ClassDesc cdP, String stage, int arity,
+                                 Set<String> requiredNames, Map<String, List<String>> behaviorDeps) {
+        if (arity == 1) {
+            applyStage(code, cdP, stage, requiredNames, behaviorDeps);
+            return;
+        }
+        pushStage(code, cdP, stage, requiredNames, behaviorDeps);
+        for (int i = 0; i < arity; i++) {
+            code.aload(i + 1);
+        }
+        ClassDesc[] params = new ClassDesc[arity];
+        java.util.Arrays.fill(params, CD_Object);
+        code.invokevirtual(cd(stage), "apply", MethodTypeDesc.of(CD_Object, params));
+        code.astore(1);
     }
 
     /** Applies one pipeline stage to the running value in slot 1, storing the result back. A stage
