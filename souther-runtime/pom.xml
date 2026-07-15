@@ -18,6 +18,12 @@
         directly from generated code, not through this module (spec 10.6, 28).
     </description>
 
+    <properties>
+        <!-- This ships alongside the generated classes, so it targets Java 21 like they do
+             (spec 19.1). Only the compiler itself may use a newer JDK. -->
+        <maven.compiler.release>21</maven.compiler.release>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

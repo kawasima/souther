@@ -179,6 +179,20 @@ public final class Backend {
                         : ClassHierarchyResolver.ClassHierarchyInfo.ofClass(ConstantDescs.CD_Object);
             }));
 
+    /**
+     * Builds a class targeting Java 21 (spec 19.1).
+     *
+     * <p>The version is pinned rather than left to {@link ClassFile#of}, which defaults to the
+     * JDK running the compiler: the generated code would then track whatever JDK built it, and
+     * two developers on different JDKs would emit mutually incompatible artifacts.
+     */
+    private static byte[] build(ClassDesc cd, java.util.function.Consumer<ClassBuilder> handler) {
+        return CF.build(cd, cb -> {
+            cb.withVersion(ClassFile.JAVA_21_VERSION, 0);
+            handler.accept(cb);
+        });
+    }
+
     private final String pkg;
     private final Map<String, Ast.Def> symbols;
     private final Map<String, List<String>> armToSums;
@@ -319,7 +333,7 @@ public final class Backend {
      */
     private byte[] generateRequiredBase(String name, List<String> unitArms) {
         ClassDesc cdR = cd(name);
-        return CF.build(cdR, cb -> {
+        return build(cdR, cb -> {
             cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_ABSTRACT | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_Behavior);
             // protected no-arg ctor so subclasses in any package can call super()
@@ -399,7 +413,7 @@ public final class Backend {
         ClassDesc cdName = cd(data.name());
         Map<String, Type> fields = fieldTypes(data);
 
-        out.put(pkg + "." + data.name(), CF.build(cdName, cb -> {
+        out.put(pkg + "." + data.name(), build(cdName, cb -> {
             cb.withFlags(pub(data.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             ClassDesc[] ifaces = armInterfaces(data.name());
             if (ifaces.length > 0) {
@@ -443,7 +457,7 @@ public final class Backend {
         for (String arm : sum.arms()) {
             armCds.add(cd(arm));
         }
-        out.put(pkg + "." + sum.name(), CF.build(cdX, cb -> {
+        out.put(pkg + "." + sum.name(), build(cdX, cb -> {
             cb.withFlags(pub(sum.name()) | ClassFile.ACC_INTERFACE | ClassFile.ACC_ABSTRACT);
             cb.with(PermittedSubclassesAttribute.ofSymbols(armCds));
             sum.decoder().ifPresent(disc -> {
@@ -470,7 +484,7 @@ public final class Backend {
 
     private byte[] generateSumEncoder(Ast.SumData sum, Ast.SumEncoder enc) {
         ClassDesc cdEnc = cd(sum.name() + "$Enc");
-        return CF.build(cdEnc, cb -> {
+        return build(cdEnc, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_REncoder);
             emitDefaultCtor(cb);
@@ -505,7 +519,7 @@ public final class Backend {
 
     private byte[] generateSumDecoder(Ast.SumData sum, Ast.Discriminate disc, Src src) {
         ClassDesc cdDec = cd(sum.name() + srcSuffix(src));
-        return CF.build(cdDec, cb -> {
+        return build(cdDec, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_RDecoder);
             emitDefaultCtor(cb);
@@ -542,7 +556,7 @@ public final class Backend {
         ClassDesc cdU = cd(unit.name());
         ClassDesc cdDec = cd(unit.name() + "$Dec");
         ClassDesc cdEnc = cd(unit.name() + "$Enc");
-        out.put(pkg + "." + unit.name(), CF.build(cdU, cb -> {
+        out.put(pkg + "." + unit.name(), build(cdU, cb -> {
             cb.withFlags(pub(unit.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             ClassDesc[] ifaces = armInterfaces(unit.name());
             if (ifaces.length > 0) {
@@ -567,7 +581,7 @@ public final class Backend {
 
     /** Decodes a unit: ignore the input (a unit carries no data) and build the singleton value. */
     private byte[] generateUnitDecoder(ClassDesc cdU, ClassDesc cdDec) {
-        return CF.build(cdDec, cb -> {
+        return build(cdDec, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_RDecoder);
             emitDefaultCtor(cb);
@@ -583,7 +597,7 @@ public final class Backend {
 
     /** Encodes a unit to an empty Map; the sum encoder adds the discriminator tag. */
     private byte[] generateUnitEncoder(ClassDesc cdEnc) {
-        return CF.build(cdEnc, cb -> {
+        return build(cdEnc, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_REncoder);
             emitDefaultCtor(cb);
@@ -609,7 +623,7 @@ public final class Backend {
             applyParams[i] = CD_Object;
         }
         MethodTypeDesc mtdApply = MethodTypeDesc.of(CD_Object, applyParams);
-        return CF.build(cdB, cb -> {
+        return build(cdB, cb -> {
             cb.withFlags(pub(b.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             if (n == 1) {
                 cb.withInterfaceSymbols(CD_Behavior); // single-input behaviors compose with >>
@@ -703,7 +717,7 @@ public final class Backend {
         }
         List<String> reqStages = new ArrayList<>(fields);
 
-        return CF.build(cdP, cb -> {
+        return build(cdP, cb -> {
             cb.withFlags(pub(pipe.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_Behavior);
             emitInjection(cb, cdP, reqStages);
@@ -1012,7 +1026,7 @@ public final class Backend {
     private byte[] generateDecoderClass(ClassDesc cdName, Ast.Data data, Ast.DecoderDef dec,
                                         Map<String, Type> fields, Src src) {
         ClassDesc cdDec = cd(data.name() + srcSuffix(src));
-        return CF.build(cdDec, cb -> {
+        return build(cdDec, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_RDecoder);
             emitDefaultCtor(cb);
@@ -1276,7 +1290,7 @@ public final class Backend {
 
     private byte[] generateEncoderClass(ClassDesc cdName, Ast.Data data, Ast.EncoderDef enc) {
         ClassDesc cdEnc = cd(data.name() + "$Enc");
-        return CF.build(cdEnc, cb -> {
+        return build(cdEnc, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_REncoder);
             emitDefaultCtor(cb);
