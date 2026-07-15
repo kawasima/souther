@@ -1,10 +1,11 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.Raw;
-import net.unit8.souther.runtime.Result;
+
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -37,14 +38,15 @@ class CompileMatchTest {
         return new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
     }
 
-    private Raw run(BytesClassLoader loader, Raw contactRaw) throws Exception {
-        Decoder<?> cd = (Decoder<?>) loader.loadClass("demo.Contact").getMethod("decoder").invoke(null);
-        Object contact = cd.decode(contactRaw);
+    private Object run(BytesClassLoader loader, Map<String, Object> contactInput) throws Exception {
+        Decoder cd = (Decoder) loader.loadClass("demo.Contact").getMethod("decoder").invoke(null);
+        Object contact = ((Ok) cd.decode(contactInput, Path.ROOT)).value();
 
         Object behavior = loader.loadClass("demo.contactValue").getConstructor().newInstance();
         @SuppressWarnings("unchecked")
         Object label = ((Behavior<Object, Object>) behavior).apply(contact);
 
+        // Label is a single-field newtype, so its encoder yields the bare String.
         Encoder enc = (Encoder) loader.loadClass("demo.Label").getMethod("encoder").invoke(null);
         return enc.encode(label);
     }
@@ -52,15 +54,15 @@ class CompileMatchTest {
     @Test
     void matchSelectsTheEmailArm() throws Exception {
         BytesClassLoader loader = loader();
-        Raw out = run(loader, Raw.object(Map.of("type", Raw.text("EmailContact"), "email", Raw.text("a@b"))));
-        assertEquals(Raw.text("a@b"), out);
+        Object out = run(loader, Map.of("type", "EmailContact", "email", "a@b"));
+        assertEquals("a@b", out);
     }
 
     @Test
     void matchSelectsThePhoneArm() throws Exception {
         BytesClassLoader loader = loader();
-        Raw out = run(loader, Raw.object(Map.of("type", Raw.text("PhoneContact"), "phone", Raw.text("123"))));
-        assertEquals(Raw.text("123"), out);
+        Object out = run(loader, Map.of("type", "PhoneContact", "phone", "123"));
+        assertEquals("123", out);
     }
 
     @Test

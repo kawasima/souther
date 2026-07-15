@@ -135,30 +135,19 @@ public final class TypeChecker {
         return sigs;
     }
 
-    /** The signature of a pipeline stage: a behavior, or a {@code Type.decoder}/{@code Type.encoder}
-     * boundary codec (spec 14.1). A decoder is {@code Raw -> T | 復号失敗}; an encoder is {@code T -> Raw}. */
+    /** The signature of a pipeline stage. Only behaviors compose with {@code >>}; decode/encode
+     * are boundary edges, not stages (spec 14.1). */
     public static Sig stageSig(String stage, Map<String, Sig> sigs, Map<String, Ast.Def> symbols,
                                SourcePos pos) {
-        if (stage.endsWith(".decoder")) {
-            String base = codecBase(stage, symbols, pos);
-            return new Sig(Type.RAW, Type.union(new java.util.LinkedHashSet<>(List.of(base, "復号失敗"))));
-        }
-        if (stage.endsWith(".encoder")) {
-            return new Sig(Type.ref(codecBase(stage, symbols, pos)), Type.RAW);
+        if (stage.endsWith(".decoder") || stage.endsWith(".encoder")) {
+            throw new CompileException(pos, "decode/encode are boundary edges, not pipeline stages; "
+                    + "`>>` composes behaviors only (spec 14.1)");
         }
         Sig s = sigs.get(stage);
         if (s == null) {
             throw new CompileException(pos, "unknown behavior `" + stage + "` in pipeline");
         }
         return s;
-    }
-
-    private static String codecBase(String stage, Map<String, Ast.Def> symbols, SourcePos pos) {
-        String base = stage.substring(0, stage.lastIndexOf('.'));
-        if (!symbols.containsKey(base)) {
-            throw new CompileException(pos, "unknown data `" + base + "` in pipeline stage `" + stage + "`");
-        }
-        return base;
     }
 
     private static Sig pipeSig(Ast.PipeBehavior pipe, Map<String, Sig> sigs, Map<String, Ast.Def> symbols) {

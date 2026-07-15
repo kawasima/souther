@@ -1,15 +1,16 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.DecodeError;
-import net.unit8.souther.runtime.DecodeFailure;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.NonEmptyList;
-import net.unit8.souther.runtime.Raw;
-import net.unit8.souther.runtime.Result;
+import net.unit8.raoh.Err;
+import net.unit8.raoh.Issue;
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.Result;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -43,53 +44,49 @@ class CompileObjectTest {
     @Test
     void decodesAndEncodesAnObject() throws Exception {
         Class<?> account = compileAccount();
-        Decoder<?> decoder = (Decoder<?>) account.getMethod("decoder").invoke(null);
+        Decoder decoder = (Decoder) account.getMethod("decoder").invoke(null);
 
-        Raw input = Raw.object(Map.of(
-                "id", Raw.text("acc-1"),
-                "balance", Raw.integer(100),
-                "owner", Raw.text("bob")));
+        Result r = decoder.decode(Map.of(
+                "id", "acc-1",
+                "balance", 100L,
+                "owner", "bob"), Path.ROOT);
+        assertTrue(r instanceof Ok, "expected a valid account to decode");
 
-        Object value = decoder.decode(input);
-        assertTrue(!(value instanceof DecodeFailure), "expected a valid account to decode");
         Encoder enc = (Encoder) account.getMethod("encoder").invoke(null);
-        Raw.ObjectValue encoded = (Raw.ObjectValue) enc.encode(value);
-        assertEquals(Raw.integer(100), encoded.value().get("balance"));
-        assertEquals(Raw.text("acc-1"), encoded.value().get("id"));
+        Map<?, ?> encoded = (Map<?, ?>) enc.encode(((Ok) r).value());
+        assertEquals(100L, encoded.get("balance"));
+        assertEquals("acc-1", encoded.get("id"));
     }
 
     @Test
     void accumulatesEveryFieldError() throws Exception {
-        Decoder<?> decoder = (Decoder<?>) compileAccount().getMethod("decoder").invoke(null);
+        Decoder decoder = (Decoder) compileAccount().getMethod("decoder").invoke(null);
 
         // id is an int (expected text), balance is text (expected int), owner is missing.
-        Raw input = Raw.object(Map.of(
-                "id", Raw.integer(5),
-                "balance", Raw.text("nope")));
+        Result r = decoder.decode(Map.of(
+                "id", 5L,
+                "balance", "nope"), Path.ROOT);
+        assertTrue(r instanceof Err);
+        List<Issue> issues = ((Err) r).issues().asList();
+        assertEquals(3, issues.size(), "all three field errors should accumulate");
 
-        Object bad = decoder.decode(input);
-        assertTrue(bad instanceof DecodeFailure);
-        NonEmptyList<DecodeError> errors = ((DecodeFailure) bad).errors();
-        assertEquals(3, errors.size(), "all three field errors should accumulate");
-
-        Set<String> codes = errors.toList().stream()
-                .map(DecodeError::code)
+        Set<String> codes = issues.stream()
+                .map(Issue::code)
                 .collect(Collectors.toSet());
-        assertEquals(Set.of("expected_text", "expected_int", "required"), codes);
+        // two type mismatches (id, balance) collapse to one code; owner missing -> required
+        assertEquals(Set.of("type_mismatch", "required"), codes);
     }
 
     @Test
     void invariantRunsAfterAccumulation() throws Exception {
-        Decoder<?> decoder = (Decoder<?>) compileAccount().getMethod("decoder").invoke(null);
+        Decoder decoder = (Decoder) compileAccount().getMethod("decoder").invoke(null);
 
-        Raw input = Raw.object(Map.of(
-                "id", Raw.text(""),
-                "balance", Raw.integer(0),
-                "owner", Raw.text("bob")));
-
-        Object bad = decoder.decode(input);
-        assertTrue(bad instanceof DecodeFailure);
+        Result r = decoder.decode(Map.of(
+                "id", "",
+                "balance", 0L,
+                "owner", "bob"), Path.ROOT);
+        assertTrue(r instanceof Err);
         assertEquals("invariant_violation",
-                ((DecodeFailure) bad).errors().head().code());
+                ((Err) r).issues().asList().get(0).code());
     }
 }

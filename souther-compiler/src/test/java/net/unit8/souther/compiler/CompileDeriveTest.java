@@ -1,12 +1,11 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.DecodeError;
-import net.unit8.souther.runtime.DecodeFailure;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.NonEmptyList;
-import net.unit8.souther.runtime.Raw;
-import net.unit8.souther.runtime.Result;
+import net.unit8.raoh.Err;
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.Result;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -42,8 +41,8 @@ class CompileDeriveTest {
         return new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
     }
 
-    private Decoder<?> decoder(BytesClassLoader loader, String type) throws Exception {
-        return (Decoder<?>) loader.loadClass("demo." + type).getMethod("decoder").invoke(null);
+    private Decoder decoder(BytesClassLoader loader, String type) throws Exception {
+        return (Decoder) loader.loadClass("demo." + type).getMethod("decoder").invoke(null);
     }
 
     private Encoder encoder(BytesClassLoader loader, String type) throws Exception {
@@ -53,39 +52,40 @@ class CompileDeriveTest {
     @Test
     void newtypeDerivesAPrimitiveCodec() throws Exception {
         BytesClassLoader loader = loader();
-        Decoder<?> d = decoder(loader, "金額");
+        Decoder d = decoder(loader, "金額");
 
-        Object ok = d.decode(Raw.integer(50));
-        assertTrue(!(ok instanceof DecodeFailure));
-        assertEquals(Raw.integer(50), encoder(loader, "金額").encode(ok));
+        Result r = d.decode(50L, Path.ROOT);
+        assertTrue(r instanceof Ok);
+        assertEquals(50L, encoder(loader, "金額").encode(((Ok) r).value()));
 
-        assertTrue(d.decode(Raw.integer(-5)) instanceof DecodeFailure,
+        assertTrue(d.decode(-5L, Path.ROOT) instanceof Err,
                 "invariant still runs on the derived construction");
     }
 
     @Test
     void recordDerivesAnObjectCodec() throws Exception {
         BytesClassLoader loader = loader();
-        Object ok = decoder(loader, "Member")
-                .decode(Raw.object(Map.of("cost", Raw.integer(30), "name", Raw.text("bob"))));
-        assertTrue(!(ok instanceof DecodeFailure));
+        Result r = decoder(loader, "Member")
+                .decode(Map.of("cost", 30L, "name", "bob"), Path.ROOT);
+        assertTrue(r instanceof Ok);
 
-        Raw.ObjectValue out = (Raw.ObjectValue) encoder(loader, "Member").encode(ok);
-        assertEquals(Raw.integer(30), out.value().get("cost"));
-        assertEquals(Raw.text("bob"), out.value().get("name"));
+        Map<?, ?> out = (Map<?, ?>) encoder(loader, "Member").encode(((Ok) r).value());
+        assertEquals(30L, out.get("cost"));
+        assertEquals("bob", out.get("name"));
     }
 
     @Test
     void sumDerivesADiscriminatorOnType() throws Exception {
         BytesClassLoader loader = loader();
-        Object email = decoder(loader, "Contact")
-                .decode(Raw.object(Map.of("type", Raw.text("EmailC"), "email", Raw.text("a@b"))));
-        assertTrue(!(email instanceof DecodeFailure));
+        Result r = decoder(loader, "Contact")
+                .decode(Map.of("type", "EmailC", "email", "a@b"), Path.ROOT);
+        assertTrue(r instanceof Ok);
+        Object email = ((Ok) r).value();
         assertEquals("demo.EmailC", email.getClass().getName());
 
         // round-trips through the derived sum encoder
-        Raw.ObjectValue out = (Raw.ObjectValue) encoder(loader, "Contact").encode(email);
-        assertEquals(Raw.text("EmailC"), out.value().get("type"));
-        assertEquals(Raw.text("a@b"), out.value().get("email"));
+        Map<?, ?> out = (Map<?, ?>) encoder(loader, "Contact").encode(email);
+        assertEquals("EmailC", out.get("type"));
+        assertEquals("a@b", out.get("email"));
     }
 }

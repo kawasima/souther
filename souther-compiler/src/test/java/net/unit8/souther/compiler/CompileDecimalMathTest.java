@@ -1,9 +1,10 @@
 package net.unit8.souther.compiler;
 
-
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.Raw;
+import net.unit8.raoh.Err;
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -31,18 +32,18 @@ class CompileDecimalMathTest {
                 }
                 """), getClass().getClassLoader());
 
-        Decoder<?> priceDec = (Decoder<?>) loader.loadClass("demo.Price").getMethod("decoder").invoke(null);
-        Object a = priceDec.decode(Raw.decimal(new BigDecimal("1.5")));
-        Object b = priceDec.decode(Raw.decimal(new BigDecimal("2.25")));
+        Decoder priceDec = (Decoder) loader.loadClass("demo.Price").getMethod("decoder").invoke(null);
+        Object a = ((Ok) priceDec.decode(new BigDecimal("1.5"), Path.ROOT)).value();
+        Object b = ((Ok) priceDec.decode(new BigDecimal("2.25"), Path.ROOT)).value();
 
         Object behavior = loader.loadClass("demo.quote").getConstructor().newInstance();
         Object quote = behavior.getClass()
                 .getMethod("apply", Object.class, Object.class).invoke(behavior, a, b);
 
         Encoder enc = (Encoder) loader.loadClass("demo.Quote").getMethod("encoder").invoke(null);
-        Raw.ObjectValue out = (Raw.ObjectValue) enc.encode(quote);
-        assertEquals(Raw.decimal(new BigDecimal("3.75")), out.value().get("subtotal"));
-        assertEquals(Raw.decimal(new BigDecimal("5.625")), out.value().get("doubled")); // 3.75 * 1.5
+        java.util.Map<?, ?> out = (java.util.Map<?, ?>) enc.encode(quote);
+        assertEquals(new BigDecimal("3.75"), out.get("subtotal"));
+        assertEquals(new BigDecimal("5.625"), out.get("doubled")); // 3.75 * 1.5
     }
 
     @Test
@@ -57,10 +58,8 @@ class CompileDecimalMathTest {
                     invariant compare(lo, hi) <= 0
                 }
                 """), getClass().getClassLoader());
-        Decoder<?> d = (Decoder<?>) loader.loadClass("demo.Ordered").getMethod("decoder").invoke(null);
-        assertEquals(false, d.decode(Raw.object(java.util.Map.of("lo", Raw.integer(1), "hi", Raw.integer(2))))
-                instanceof net.unit8.souther.runtime.DecodeFailure);
-        assertEquals(true, d.decode(Raw.object(java.util.Map.of("lo", Raw.integer(5), "hi", Raw.integer(2))))
-                instanceof net.unit8.souther.runtime.DecodeFailure);
+        Decoder d = (Decoder) loader.loadClass("demo.Ordered").getMethod("decoder").invoke(null);
+        assertEquals(false, d.decode(java.util.Map.of("lo", 1L, "hi", 2L), Path.ROOT) instanceof Err);
+        assertEquals(true, d.decode(java.util.Map.of("lo", 5L, "hi", 2L), Path.ROOT) instanceof Err);
     }
 }

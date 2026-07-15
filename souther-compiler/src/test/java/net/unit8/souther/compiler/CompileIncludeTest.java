@@ -1,12 +1,11 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.DecodeError;
-import net.unit8.souther.runtime.DecodeFailure;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.NonEmptyList;
-import net.unit8.souther.runtime.Raw;
-import net.unit8.souther.runtime.Result;
+import net.unit8.raoh.Err;
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.Result;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -45,9 +44,10 @@ class CompileIncludeTest {
     void spreadCarriesIncludedFieldsThroughATransition() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(FLOW), getClass().getClassLoader());
 
-        Decoder<?> draftDecoder = (Decoder<?>) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
-        Object draft = draftDecoder.decode(
-                Raw.object(Map.of("applicant", Raw.text("bob"), "cost", Raw.integer(100))));
+        Decoder draftDecoder = (Decoder) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
+        Result r = draftDecoder.decode(Map.of("applicant", "bob", "cost", 100L), Path.ROOT);
+        assertTrue(r instanceof Ok);
+        Object draft = ((Ok) r).value();
 
         Object submit = loader.loadClass("demo.submit").getConstructor().newInstance();
         Object submitted = submit.getClass()
@@ -55,10 +55,10 @@ class CompileIncludeTest {
                 .invoke(submit, draft, "2026");
 
         Encoder enc = (Encoder) loader.loadClass("demo.Submitted").getMethod("encoder").invoke(null);
-        Raw.ObjectValue out = (Raw.ObjectValue) enc.encode(submitted);
-        assertEquals(Raw.text("bob"), out.value().get("applicant"));  // from ..d (included field)
-        assertEquals(Raw.integer(100), out.value().get("cost"));      // from ..d (included field)
-        assertEquals(Raw.text("2026"), out.value().get("submittedAt"));
+        Map<?, ?> out = (Map<?, ?>) enc.encode(submitted);
+        assertEquals("bob", out.get("applicant"));  // from ..d (included field)
+        assertEquals(100L, out.get("cost"));         // from ..d (included field)
+        assertEquals("2026", out.get("submittedAt"));
     }
 
     @Test
@@ -69,16 +69,14 @@ class CompileIncludeTest {
                 data Draft { include Common }
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
-        Decoder<?> decoder = (Decoder<?>) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
+        Decoder decoder = (Decoder) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
 
-        Object good = decoder.decode(
-                Raw.object(Map.of("applicant", Raw.text("bob"), "cost", Raw.integer(5))));
-        assertTrue(!(good instanceof DecodeFailure));
+        Result good = decoder.decode(Map.of("applicant", "bob", "cost", 5L), Path.ROOT);
+        assertTrue(good instanceof Ok);
 
-        Object bad = decoder.decode(
-                Raw.object(Map.of("applicant", Raw.text("bob"), "cost", Raw.integer(-5))));
-        assertTrue(bad instanceof DecodeFailure, "Common's invariant is inherited by Draft");
+        Result bad = decoder.decode(Map.of("applicant", "bob", "cost", -5L), Path.ROOT);
+        assertTrue(bad instanceof Err, "Common's invariant is inherited by Draft");
         assertEquals("invariant_violation",
-                ((DecodeFailure) bad).errors().head().code());
+                ((Err) bad).issues().asList().get(0).code());
     }
 }

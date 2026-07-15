@@ -1,11 +1,12 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.Raw;
-import net.unit8.souther.runtime.Result;
 import net.unit8.souther.runtime.Violation;
+
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -39,8 +40,8 @@ class CompileInvariantBehaviorTest {
     }
 
     private Object draft(BytesClassLoader loader, long cost) throws Exception {
-        Decoder<?> d = (Decoder<?>) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
-        return d.decode(Raw.integer(cost));
+        Decoder d = (Decoder) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
+        return ((Ok) d.decode(cost, Path.ROOT)).value();
     }
 
     @Test
@@ -52,7 +53,7 @@ class CompileInvariantBehaviorTest {
         assertEquals("demo.Adjusted", r.getClass().getName(), "3000 - 2000 = 1000 >= 0");
 
         Encoder enc = (Encoder) loader.loadClass("demo.Adjusted").getMethod("encoder").invoke(null);
-        assertEquals(Raw.integer(1000), enc.encode(r));
+        assertEquals(1000L, enc.encode(r));
     }
 
     @Test

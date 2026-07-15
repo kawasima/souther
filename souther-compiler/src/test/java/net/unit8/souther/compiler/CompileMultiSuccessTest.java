@@ -1,13 +1,12 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Raw;
-import net.unit8.souther.runtime.Result;
+
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.decode.Decoder;
 
 import org.junit.jupiter.api.Test;
-
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -29,8 +28,8 @@ class CompileMultiSuccessTest {
 
     @SuppressWarnings("unchecked")
     private String classify(BytesClassLoader loader, long cost) throws Exception {
-        Decoder<?> dec = (Decoder<?>) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
-        Object draft = dec.decode(Raw.integer(cost));
+        Decoder dec = (Decoder) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
+        Object draft = ((Ok) dec.decode(cost, Path.ROOT)).value();
         Object behavior = loader.loadClass("demo.classify").getConstructor().newInstance();
         Object r = ((Behavior<Object, Object>) behavior).apply(draft);
         return r.getClass().getName();

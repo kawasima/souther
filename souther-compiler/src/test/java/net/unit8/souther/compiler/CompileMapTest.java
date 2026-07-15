@@ -1,10 +1,12 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
-import net.unit8.souther.runtime.DecodeFailure;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.Raw;
+
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.Result;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -23,17 +25,16 @@ class CompileMapTest {
 
                 data Scores { byName: Map<String, Int> }
                 """), getClass().getClassLoader());
-        Decoder<?> d = (Decoder<?>) loader.loadClass("demo.Scores").getMethod("decoder").invoke(null);
+        Decoder d = (Decoder) loader.loadClass("demo.Scores").getMethod("decoder").invoke(null);
 
-        Object ok = d.decode(Raw.object(Map.of("byName",
-                Raw.object(Map.of("a", Raw.integer(1), "b", Raw.integer(2))))));
-        assertTrue(!(ok instanceof DecodeFailure));
+        Result r = d.decode(Map.of("byName", Map.of("a", 1L, "b", 2L)), Path.ROOT);
+        assertTrue(r instanceof Ok);
 
         Encoder enc = (Encoder) loader.loadClass("demo.Scores").getMethod("encoder").invoke(null);
-        Raw.ObjectValue out = (Raw.ObjectValue) enc.encode(ok);
-        Raw.ObjectValue byName = (Raw.ObjectValue) out.value().get("byName");
-        assertEquals(Raw.integer(1), byName.value().get("a"));
-        assertEquals(Raw.integer(2), byName.value().get("b"));
+        Map<?, ?> out = (Map<?, ?>) enc.encode(((Ok) r).value());
+        Map<?, ?> byName = (Map<?, ?>) out.get("byName");
+        assertEquals(1L, byName.get("a"));
+        assertEquals(2L, byName.get("b"));
     }
 
     @Test
@@ -53,15 +54,16 @@ class CompileMapTest {
                 }
                 """), getClass().getClassLoader());
 
-        Decoder<?> d = (Decoder<?>) loader.loadClass("demo.Scores").getMethod("decoder").invoke(null);
-        Object scores = d.decode(Raw.object(Map.of("byName",
-                Raw.object(Map.of("a", Raw.integer(7))))));
+        Decoder d = (Decoder) loader.loadClass("demo.Scores").getMethod("decoder").invoke(null);
+        Result r = d.decode(Map.of("byName", Map.of("a", 7L)), Path.ROOT);
+        assertTrue(r instanceof Ok);
+        Object scores = ((Ok) r).value();
         Object answer = ((Behavior<Object, Object>) loader.loadClass("demo.lookupA")
                 .getConstructor().newInstance()).apply(scores);
 
         Encoder enc = (Encoder) loader.loadClass("demo.Answer").getMethod("encoder").invoke(null);
-        Raw.ObjectValue out = (Raw.ObjectValue) enc.encode(answer);
-        assertEquals(Raw.bool(true), out.value().get("found"));
-        assertEquals(Raw.integer(7), out.value().get("value"));
+        Map<?, ?> out = (Map<?, ?>) enc.encode(answer);
+        assertEquals(true, out.get("found"));
+        assertEquals(7L, out.get("value"));
     }
 }

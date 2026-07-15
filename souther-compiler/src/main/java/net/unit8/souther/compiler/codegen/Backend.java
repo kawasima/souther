@@ -10,7 +10,9 @@ import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassHierarchyResolver;
 import java.lang.classfile.CodeBuilder;
 import java.lang.classfile.Label;
+import java.lang.classfile.MethodSignature;
 import java.lang.classfile.attribute.PermittedSubclassesAttribute;
+import java.lang.classfile.attribute.SignatureAttribute;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDescs;
 import java.lang.constant.MethodTypeDesc;
@@ -40,18 +42,11 @@ public final class Backend {
     private static final ClassDesc CD_LinkedHashMap = ClassDesc.of("java.util.LinkedHashMap");
     private static final ClassDesc CD_ArrayList = ClassDesc.of("java.util.ArrayList");
     private static final ClassDesc CD_Collection = ClassDesc.of("java.util.Collection");
-    private static final ClassDesc CD_Raw = ClassDesc.of("net.unit8.souther.runtime.Raw");
     private static final ClassDesc CD_Result = ClassDesc.of("net.unit8.souther.runtime.Result");
     private static final ClassDesc CD_ResultOk = CD_Result.nested("Ok");
     private static final ClassDesc CD_ResultErr = CD_Result.nested("Err");
-    private static final ClassDesc CD_NonEmptyList = ClassDesc.of("net.unit8.souther.runtime.NonEmptyList");
-    private static final ClassDesc CD_Decoder = ClassDesc.of("net.unit8.souther.runtime.Decoder");
-    private static final ClassDesc CD_Encoder = ClassDesc.of("net.unit8.souther.runtime.Encoder");
-    private static final ClassDesc CD_Decoders = ClassDesc.of("net.unit8.souther.runtime.Decoders");
-    private static final ClassDesc CD_Encoders = ClassDesc.of("net.unit8.souther.runtime.Encoders");
     private static final ClassDesc CD_Behavior = ClassDesc.of("net.unit8.souther.runtime.Behavior");
     private static final ClassDesc CD_Violation = ClassDesc.of("net.unit8.souther.runtime.Violation");
-    private static final ClassDesc CD_DecodeFailure = ClassDesc.of("net.unit8.souther.runtime.DecodeFailure");
     private static final ClassDesc CD_DivisionByZero = ClassDesc.of("net.unit8.souther.runtime.DivisionByZero");
     private static final ClassDesc CD_Boolean = ClassDesc.of("java.lang.Boolean");
     private static final ClassDesc CD_BigDecimal = ClassDesc.of("java.math.BigDecimal");
@@ -65,34 +60,13 @@ public final class Backend {
     private static final ClassDesc CD_IllegalStateException = ClassDesc.of("java.lang.IllegalStateException");
 
     private static final MethodTypeDesc MTD_void = MethodTypeDesc.of(ConstantDescs.CD_void);
-    private static final MethodTypeDesc MTD_Result_Raw = MethodTypeDesc.of(CD_Result, CD_Raw);
-    private static final MethodTypeDesc MTD_decode = MethodTypeDesc.of(CD_Object, CD_Raw);
-    private static final MethodTypeDesc MTD_finish = MethodTypeDesc.of(CD_Object, CD_Result);
-    private static final MethodTypeDesc MTD_decodeFailure = MethodTypeDesc.of(CD_Object, CD_NonEmptyList);
     private static final MethodTypeDesc MTD_Result_Object = MethodTypeDesc.of(CD_Result, CD_Object);
-    private static final MethodTypeDesc MTD_Result_String_String =
-            MethodTypeDesc.of(CD_Result, CD_String, CD_String);
     private static final MethodTypeDesc MTD_Object = MethodTypeDesc.of(CD_Object);
-    private static final MethodTypeDesc MTD_objectField =
-            MethodTypeDesc.of(CD_Result, CD_Raw, CD_String, CD_Decoder);
-    private static final MethodTypeDesc MTD_decoder = MethodTypeDesc.of(CD_Decoder);
-    private static final MethodTypeDesc MTD_listOf = MethodTypeDesc.of(CD_Decoder, CD_Decoder);
     private static final MethodTypeDesc MTD_size = MethodTypeDesc.of(ConstantDescs.CD_int);
-    private static final MethodTypeDesc MTD_encoder = MethodTypeDesc.of(CD_Encoder);
-    private static final MethodTypeDesc MTD_encode = MethodTypeDesc.of(CD_Raw, CD_Object);
-    private static final MethodTypeDesc MTD_tagged = MethodTypeDesc.of(CD_Raw, CD_Raw, CD_String, CD_String);
-    private static final MethodTypeDesc MTD_encodeList = MethodTypeDesc.of(CD_Raw, CD_List, CD_Encoder);
     private static final MethodTypeDesc MTD_ArrayList_add = MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_Object);
     private static final MethodTypeDesc MTD_List_copyOf = MethodTypeDesc.of(CD_List, CD_Collection);
     private static final MethodTypeDesc MTD_Lists_concat = MethodTypeDesc.of(CD_List, CD_List, CD_List);
-    private static final MethodTypeDesc MTD_encodeMap = MethodTypeDesc.of(CD_Raw, CD_Map, CD_Encoder);
-    private static final MethodTypeDesc MTD_mergeErrors =
-            MethodTypeDesc.of(CD_NonEmptyList, CD_Result.arrayType());
     private static final MethodTypeDesc MTD_Map_put = MethodTypeDesc.of(CD_Object, CD_Object, CD_Object);
-    private static final MethodTypeDesc MTD_Raw_object = MethodTypeDesc.of(CD_Raw, CD_Map);
-    private static final MethodTypeDesc MTD_variant =
-            MethodTypeDesc.of(CD_Object, CD_Raw, CD_String, CD_String, CD_Decoder);
-    private static final MethodTypeDesc MTD_noVariant = MethodTypeDesc.of(CD_Object, CD_String);
     private static final MethodTypeDesc MTD_apply = MethodTypeDesc.of(CD_Object, CD_Object);
     private static final MethodTypeDesc MTD_orValue = MethodTypeDesc.of(CD_Object, CD_Result);
     private static final MethodTypeDesc MTD_Long_valueOf = MethodTypeDesc.of(CD_Long, ConstantDescs.CD_long);
@@ -427,26 +401,12 @@ public final class Backend {
         out.put(pkg + "." + sum.name(), CF.build(cdX, cb -> {
             cb.withFlags(pub(sum.name()) | ClassFile.ACC_INTERFACE | ClassFile.ACC_ABSTRACT);
             cb.with(PermittedSubclassesAttribute.ofSymbols(armCds));
-            sum.decoder().ifPresent(disc -> {
-                ClassDesc cdDec = cd(sum.name() + "$Dec");
-                cb.withMethodBody("decoder", MTD_Rdecoder,
-                        ClassFile.ACC_PUBLIC | ClassFile.ACC_STATIC, code -> {
-                            code.new_(cdDec);
-                            code.dup();
-                            code.invokespecial(cdDec, "<init>", MTD_void);
-                            code.areturn();
-                        });
-            });
-            sum.encoder().ifPresent(enc -> {
-                ClassDesc cdEnc = cd(sum.name() + "$Enc");
-                cb.withMethodBody("encoder", MTD_Rencoder,
-                        ClassFile.ACC_PUBLIC | ClassFile.ACC_STATIC, code -> {
-                            code.new_(cdEnc);
-                            code.dup();
-                            code.invokespecial(cdEnc, "<init>", MTD_void);
-                            code.areturn();
-                        });
-            });
+            sum.decoder().ifPresent(disc ->
+                    emitCodecFactory(cb, "decoder", CD_RDecoder, cd(sum.name() + "$Dec"),
+                            decoderSig(cdX, true)));
+            sum.encoder().ifPresent(enc ->
+                    emitCodecFactory(cb, "encoder", CD_REncoder, cd(sum.name() + "$Enc"),
+                            encoderSig(cdX)));
         }));
         sum.decoder().ifPresent(disc ->
                 out.put(pkg + "." + sum.name() + "$Dec", generateSumDecoder(sum, disc)));
@@ -535,8 +495,8 @@ public final class Backend {
             }
             emitDefaultCtor(cb);
             // a unit is a field-less data: its codec reads/writes nothing but the tag the sum adds
-            emitNewFactory(cb, "decoder", CD_RDecoder, cdDec);
-            emitNewFactory(cb, "encoder", CD_REncoder, cdEnc);
+            emitCodecFactory(cb, "decoder", CD_RDecoder, cdDec, decoderSig(cdU, false));
+            emitCodecFactory(cb, "encoder", CD_REncoder, cdEnc, encoderSig(cdU));
         }));
         out.put(pkg + "." + unit.name() + "$Dec", generateUnitDecoder(cdU, cdDec));
         out.put(pkg + "." + unit.name() + "$Enc", generateUnitEncoder(cdEnc));
@@ -574,16 +534,6 @@ public final class Backend {
     }
 
     /** Emits a {@code static} factory that returns a fresh instance of {@code impl}. */
-    private void emitNewFactory(ClassBuilder cb, String name, ClassDesc returnIface, ClassDesc impl) {
-        cb.withMethodBody(name, MethodTypeDesc.of(returnIface),
-                ClassFile.ACC_PUBLIC | ClassFile.ACC_STATIC, code -> {
-                    code.new_(impl);
-                    code.dup();
-                    code.invokespecial(impl, "<init>", MTD_void);
-                    code.areturn();
-                });
-    }
-
     // --- behaviors ---
 
     private byte[] generateBodyBehavior(Ast.BodyBehavior b, Set<String> requiredNames,
@@ -827,13 +777,43 @@ public final class Backend {
     private void emitFactory(ClassBuilder cb, String name, ClassDesc returnIface, Ast.Data data,
                              String suffix) {
         ClassDesc impl = cd(data.name() + suffix);
-        cb.withMethodBody(name, MethodTypeDesc.of(returnIface),
-                ClassFile.ACC_PUBLIC | ClassFile.ACC_STATIC, code -> {
-                    code.new_(impl);
-                    code.dup();
-                    code.invokespecial(impl, "<init>", MTD_void);
-                    code.areturn();
+        ClassDesc self = cd(data.name());
+        MethodSignature sig = name.equals("decoder")
+                ? decoderSig(self, isMapInput(data.name()))
+                : encoderSig(self);
+        emitCodecFactory(cb, name, returnIface, impl, sig);
+    }
+
+    /** Emits a static {@code decoder()}/{@code encoder()} factory returning a fresh {@code impl},
+     * with a generic {@code Signature} so callers get {@code Decoder<..,T>} / {@code Encoder<T,..>}
+     * rather than a raw type. */
+    private void emitCodecFactory(ClassBuilder cb, String name, ClassDesc returnIface, ClassDesc impl,
+                                  MethodSignature sig) {
+        cb.withMethod(name, MethodTypeDesc.of(returnIface),
+                ClassFile.ACC_PUBLIC | ClassFile.ACC_STATIC, mb -> {
+                    mb.with(SignatureAttribute.of(sig));
+                    mb.withCode(code -> {
+                        code.new_(impl);
+                        code.dup();
+                        code.invokespecial(impl, "<init>", MTD_void);
+                        code.areturn();
+                    });
                 });
+    }
+
+    /** {@code Decoder<Map<String,Object>,T>} for objects/sums, {@code Decoder<Object,T>} for newtypes/units. */
+    private static MethodSignature decoderSig(ClassDesc type, boolean mapInput) {
+        String in = mapInput
+                ? "Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;"
+                : "Ljava/lang/Object;";
+        return MethodSignature.parseFrom(
+                "()Lnet/unit8/raoh/decode/Decoder<" + in + type.descriptorString() + ">;");
+    }
+
+    /** {@code Encoder<T,Map<String,Object>>}. */
+    private static MethodSignature encoderSig(ClassDesc type) {
+        return MethodSignature.parseFrom("()Lnet/unit8/raoh/encode/Encoder<" + type.descriptorString()
+                + "Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;>;");
     }
 
     // --- $Dec class ---
@@ -1701,7 +1681,6 @@ public final class Backend {
         if (type == Type.DECIMAL) return CD_BigDecimal;
         if (type == Type.DATE) return CD_LocalDate;
         if (type == Type.DATETIME) return CD_LocalDateTime;
-        if (type == Type.RAW) return CD_Raw;
         if (type instanceof Type.OptionOf) return CD_Option;
         if (type instanceof Type.ListOf) return CD_List;
         if (type instanceof Type.MapOf) return CD_Map;

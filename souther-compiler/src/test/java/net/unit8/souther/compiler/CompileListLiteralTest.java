@@ -1,8 +1,10 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Raw;
+
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.decode.Decoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -29,8 +31,8 @@ class CompileListLiteralTest {
                     [x.a] ++ [x.b | x.b > 0]
                 }
                 """), getClass().getClassLoader());
-        Decoder<?> d = (Decoder<?>) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = d.decode(Raw.object(Map.of("a", Raw.integer(a), "b", Raw.integer(b))));
+        Decoder d = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
+        Object in = ((Ok) d.decode(Map.of("a", a, "b", b), Path.ROOT)).value();
         return (List<?>) ((Behavior<Object, Object>) loader.loadClass("demo.pick")
                 .getConstructor().newInstance()).apply(in);
     }
@@ -61,8 +63,8 @@ class CompileListLiteralTest {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private List<?> reasons(long cost) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(REASONS), getClass().getClassLoader());
-        Decoder<?> d = (Decoder<?>) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = d.decode(Raw.object(Map.of("cost", Raw.integer(cost))));
+        Decoder d = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
+        Object in = ((Ok) d.decode(Map.of("cost", cost), Path.ROOT)).value();
         return (List<?>) ((Behavior<Object, Object>) loader.loadClass("demo.reasons")
                 .getConstructor().newInstance()).apply(in);
     }

@@ -1,9 +1,12 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.Raw;
+
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.Result;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +14,6 @@ import javax.tools.ToolProvider;
 
 import java.io.File;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -40,13 +42,16 @@ class CompileInlineRequiredTest {
 
     private static final String IMPL_SRC = """
             package demo;
-            import net.unit8.souther.runtime.Raw;
-            import net.unit8.souther.runtime.Decoder;
+            import net.unit8.raoh.Ok;
+            import net.unit8.raoh.Path;
+            import net.unit8.raoh.Result;
+            import net.unit8.raoh.decode.Decoder;
             import java.util.Map;
             public final class FindMemberImpl extends findMember {
                 public Object apply(Object in) {
-                    Decoder<?> d = Member.decoder();
-                    return d.decode(Raw.object(Map.of("id", Raw.text("m-1"))));
+                    Decoder d = Member.decoder();
+                    Result r = d.decode(Map.of("id", "m-1"), Path.ROOT);
+                    return ((Ok) r).value();
                 }
             }
             """;
@@ -65,27 +70,27 @@ class CompileInlineRequiredTest {
         Object impl = loader.loadClass("demo.FindMemberImpl").getConstructor().newInstance();
         Object handle = bind.invoke(null, impl);
 
-        Decoder<?> idDecoder = (Decoder<?>) loader.loadClass("demo.Id").getMethod("decoder").invoke(null);
-        Object id = idDecoder.decode(Raw.text("q"));
+        Decoder idDecoder = (Decoder) loader.loadClass("demo.Id").getMethod("decoder").invoke(null);
+        Object id = ((Ok) idDecoder.decode("q", Path.ROOT)).value();
         Object r = ((Behavior) handle).apply(id);
 
         Encoder enc = (Encoder) loader.loadClass("demo.Resp").getMethod("encoder").invoke(null);
-        Raw.ObjectValue out = (Raw.ObjectValue) enc.encode(r);
-        Raw.ObjectValue m = (Raw.ObjectValue) out.value().get("m");
-        assertEquals(Raw.text("m-1"), m.value().get("id"));
+        Map<?, ?> out = (Map<?, ?>) enc.encode(r);
+        Map<?, ?> m = (Map<?, ?>) out.get("m");
+        assertEquals("m-1", m.get("id"));
     }
 
     private static byte[] compileSubclass(Map<String, byte[]> generated, String className, String source)
             throws Exception {
-        Path classesDir = Files.createTempDirectory("souther-gen");
+        java.nio.file.Path classesDir = Files.createTempDirectory("souther-gen");
         for (Map.Entry<String, byte[]> e : generated.entrySet()) {
-            Path p = classesDir.resolve(e.getKey().replace('.', '/') + ".class");
+            java.nio.file.Path p = classesDir.resolve(e.getKey().replace('.', '/') + ".class");
             Files.createDirectories(p.getParent());
             Files.write(p, e.getValue());
         }
-        Path srcFile = classesDir.resolve(className.replace('.', '/') + ".java");
+        java.nio.file.Path srcFile = classesDir.resolve(className.replace('.', '/') + ".java");
         Files.writeString(srcFile, source);
-        Path outDir = Files.createTempDirectory("souther-impl");
+        java.nio.file.Path outDir = Files.createTempDirectory("souther-impl");
 
         String cp = classesDir + File.pathSeparator + System.getProperty("java.class.path");
         int rc = ToolProvider.getSystemJavaCompiler().run(null, null, null,

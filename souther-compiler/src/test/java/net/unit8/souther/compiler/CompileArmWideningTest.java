@@ -1,9 +1,11 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.Raw;
+
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -35,17 +37,17 @@ class CompileArmWideningTest {
     @SuppressWarnings({"unchecked", "rawtypes"})
     void anArmAssignsToASumField() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        Decoder<?> ad = (Decoder<?>) loader.loadClass("demo.A").getMethod("decoder").invoke(null);
-        Object a = ad.decode(Raw.object(Map.of("x", Raw.integer(5), "tag", Raw.integer(1))));
+        Decoder ad = (Decoder) loader.loadClass("demo.A").getMethod("decoder").invoke(null);
+        Object a = ((Ok) ad.decode(Map.of("x", 5L, "tag", 1L), Path.ROOT)).value();
 
         Object wrap = ((Behavior<Object, Object>) loader.loadClass("demo.wrap")
                 .getConstructor().newInstance()).apply(a);
 
         Encoder enc = (Encoder) loader.loadClass("demo.Wrap").getMethod("encoder").invoke(null);
-        Raw.ObjectValue out = (Raw.ObjectValue) enc.encode(wrap);
-        Raw.ObjectValue it = (Raw.ObjectValue) out.value().get("it");
-        assertEquals(Raw.text("A"), it.value().get("type"), "the arm is tagged as its sum's arm");
-        assertEquals(Raw.integer(5), it.value().get("x"));
+        Map<?, ?> out = (Map<?, ?>) enc.encode(wrap);
+        Map<?, ?> it = (Map<?, ?>) out.get("it");
+        assertEquals("A", it.get("type"), "the arm is tagged as its sum's arm");
+        assertEquals(5L, it.get("x"));
     }
 
     @Test

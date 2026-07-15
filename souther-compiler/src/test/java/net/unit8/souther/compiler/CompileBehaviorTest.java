@@ -1,10 +1,11 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.Raw;
-import net.unit8.souther.runtime.Result;
+
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -12,7 +13,6 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** End-to-end test for pure single-input behaviors and the constructs checks (spec 12, 22.2, 22.3). */
 class CompileBehaviorTest {
@@ -41,18 +41,18 @@ class CompileBehaviorTest {
     void pureBehaviorTransformsAValue() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
 
-        Decoder<?> memberDecoder = (Decoder<?>) loader.loadClass("demo.Member")
+        Decoder memberDecoder = (Decoder) loader.loadClass("demo.Member")
                 .getMethod("decoder").invoke(null);
-        Object member = memberDecoder.decode(
-                Raw.object(Map.of("id", Raw.text("m-1"), "name", Raw.text("bob"))));
+        Object member = ((Ok) memberDecoder.decode(
+                Map.of("id", "m-1", "name", "bob"), Path.ROOT)).value();
 
         Object behavior = loader.loadClass("demo.toResponse").getConstructor().newInstance();
         Object response = ((Behavior<Object, Object>) behavior).apply(member);
 
         Encoder responseEncoder = (Encoder) loader.loadClass("demo.Response")
                 .getMethod("encoder").invoke(null);
-        Raw.ObjectValue encoded = (Raw.ObjectValue) responseEncoder.encode(response);
-        assertEquals(Raw.text("m-1"), encoded.value().get("id"), "response carries the member id");
+        Map<?, ?> encoded = (Map<?, ?>) responseEncoder.encode(response);
+        assertEquals("m-1", encoded.get("id"), "response carries the member id");
     }
 
     @Test

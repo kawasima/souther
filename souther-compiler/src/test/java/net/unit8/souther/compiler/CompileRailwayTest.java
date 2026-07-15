@@ -1,9 +1,10 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Raw;
-import net.unit8.souther.runtime.Result;
+
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.decode.Decoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -42,8 +43,8 @@ class CompileRailwayTest {
     }
 
     private Object amount(BytesClassLoader loader, long n) throws Exception {
-        Decoder<?> d = (Decoder<?>) loader.loadClass("demo.Amount").getMethod("decoder").invoke(null);
-        return d.decode(Raw.integer(n));
+        Decoder d = (Decoder) loader.loadClass("demo.Amount").getMethod("decoder").invoke(null);
+        return ((Ok) d.decode(n, Path.ROOT)).value();
     }
 
     @Test

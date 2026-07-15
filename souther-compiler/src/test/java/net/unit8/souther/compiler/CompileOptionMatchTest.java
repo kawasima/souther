@@ -1,9 +1,11 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.Raw;
+
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -32,26 +34,27 @@ class CompileOptionMatchTest {
             }
             """;
 
-    private String run(Map<String, Raw> tripObject) throws Exception {
+    private String run(Map<String, Object> tripObject) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        Decoder<?> cd = (Decoder<?>) loader.loadClass("demo.Trip").getMethod("decoder").invoke(null);
-        Object trip = cd.decode(Raw.object(tripObject));
+        Decoder cd = (Decoder) loader.loadClass("demo.Trip").getMethod("decoder").invoke(null);
+        Object trip = ((Ok) cd.decode(tripObject, Path.ROOT)).value();
 
         Object behavior = loader.loadClass("demo.approverLabel").getConstructor().newInstance();
         @SuppressWarnings("unchecked")
         Object label = ((Behavior<Object, Object>) behavior).apply(trip);
 
+        // Label is a single-field newtype, so its encoder yields the bare String.
         Encoder enc = (Encoder) loader.loadClass("demo.Label").getMethod("encoder").invoke(null);
-        return ((Raw.TextValue) enc.encode(label)).value();
+        return (String) enc.encode(label);
     }
 
     @Test
     void someBindsTheUnwrappedValue() throws Exception {
-        assertEquals("e-9", run(Map.of("id", Raw.text("t-1"), "approver", Raw.text("e-9"))));
+        assertEquals("e-9", run(Map.of("id", "t-1", "approver", "e-9")));
     }
 
     @Test
     void noneTakesTheNoneArm() throws Exception {
-        assertEquals("none", run(Map.of("id", Raw.text("t-1"))));
+        assertEquals("none", run(Map.of("id", "t-1")));
     }
 }

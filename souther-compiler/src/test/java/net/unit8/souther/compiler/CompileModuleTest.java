@@ -1,9 +1,11 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.DecodeFailure;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.Raw;
+import net.unit8.raoh.Err;
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.Result;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -47,17 +49,17 @@ class CompileModuleTest {
         // the imported 従業員ID class lives in the declaring module's package
         loader.loadClass("example.employee.従業員ID");
 
-        Decoder<?> tripDec = (Decoder<?>) loader.loadClass("example.trip.Trip")
+        Decoder tripDec = (Decoder) loader.loadClass("example.trip.Trip")
                 .getMethod("decoder").invoke(null);
-        Object trip = tripDec.decode(Raw.object(Map.of("who", Raw.text("e-1"))));
-        assertTrue(!(trip instanceof DecodeFailure));
+        Result r = tripDec.decode(Map.of("who", "e-1"), Path.ROOT);
+        assertTrue(r instanceof Ok);
 
         Encoder enc = (Encoder) loader.loadClass("example.trip.Trip").getMethod("encoder").invoke(null);
-        Raw.ObjectValue out = (Raw.ObjectValue) enc.encode(trip);
-        assertEquals(Raw.text("e-1"), out.value().get("who"));
+        Map<?, ?> out = (Map<?, ?>) enc.encode(((Ok) r).value());
+        assertEquals("e-1", out.get("who"));
 
         // the imported type's invariant still runs during cross-module decode
-        assertTrue(tripDec.decode(Raw.object(Map.of("who", Raw.text("")))) instanceof DecodeFailure);
+        assertTrue(tripDec.decode(Map.of("who", ""), Path.ROOT) instanceof Err);
     }
 
     @Test

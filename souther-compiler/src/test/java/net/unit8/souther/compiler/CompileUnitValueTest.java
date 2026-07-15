@@ -1,8 +1,10 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Raw;
+
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.decode.Decoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -31,8 +33,8 @@ class CompileUnitValueTest {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private List<?> marks(boolean on) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        Decoder<?> d = (Decoder<?>) loader.loadClass("demo.Flag").getMethod("decoder").invoke(null);
-        Object flag = d.decode(Raw.bool(on));   // Flag is a single-Bool newtype: bare bool
+        Decoder d = (Decoder) loader.loadClass("demo.Flag").getMethod("decoder").invoke(null);
+        Object flag = ((Ok) d.decode(on, Path.ROOT)).value();   // Flag is a single-Bool newtype: bare bool
         return (List<?>) ((Behavior<Object, Object>) loader.loadClass("demo.marks")
                 .getConstructor().newInstance()).apply(flag);
     }

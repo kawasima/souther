@@ -1,13 +1,17 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.DecodeFailure;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.Raw;
+import net.unit8.raoh.Err;
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.Result;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -23,8 +27,8 @@ class CompilePrimitiveTypesTest {
         return new BytesClassLoader(Compiler.compile(module), getClass().getClassLoader());
     }
 
-    private Decoder<?> decoder(BytesClassLoader loader, String pkgType) throws Exception {
-        return (Decoder<?>) loader.loadClass(pkgType).getMethod("decoder").invoke(null);
+    private Decoder decoder(BytesClassLoader loader, String pkgType) throws Exception {
+        return (Decoder) loader.loadClass(pkgType).getMethod("decoder").invoke(null);
     }
 
     private Encoder encoder(BytesClassLoader loader, String pkgType) throws Exception {
@@ -38,11 +42,11 @@ class CompilePrimitiveTypesTest {
 
                 data Flag { value: Bool }
                 """);
-        Decoder<?> d = decoder(loader, "demo.Flag");
+        Decoder d = decoder(loader, "demo.Flag");
 
-        Object ok = d.decode(Raw.bool(true));
-        assertTrue(!(ok instanceof DecodeFailure), "a bare bool decodes as a newtype");
-        assertEquals(Raw.bool(true), encoder(loader, "demo.Flag").encode(ok));
+        Result r = d.decode(true, Path.ROOT);
+        assertTrue(r instanceof Ok, "a bare bool decodes as a newtype");
+        assertEquals(true, encoder(loader, "demo.Flag").encode(((Ok) r).value()));
     }
 
     @Test
@@ -52,12 +56,12 @@ class CompilePrimitiveTypesTest {
 
                 data Account { name: String  active: Bool }
                 """);
-        Object ok = decoder(loader, "demo.Account")
-                .decode(Raw.object(Map.of("name", Raw.text("a"), "active", Raw.bool(false))));
-        assertTrue(!(ok instanceof DecodeFailure));
+        Result r = decoder(loader, "demo.Account")
+                .decode(Map.of("name", "a", "active", false), Path.ROOT);
+        assertTrue(r instanceof Ok);
 
-        Raw.ObjectValue out = (Raw.ObjectValue) encoder(loader, "demo.Account").encode(ok);
-        assertEquals(Raw.bool(false), out.value().get("active"));
+        Map<?, ?> out = (Map<?, ?>) encoder(loader, "demo.Account").encode(((Ok) r).value());
+        assertEquals(false, out.get("active"));
     }
 
     @Test
@@ -67,34 +71,35 @@ class CompilePrimitiveTypesTest {
 
                 data Price { value: Decimal }
                 """);
-        Object ok = decoder(loader, "demo.Price").decode(Raw.decimal(new BigDecimal("12.50")));
-        assertTrue(!(ok instanceof DecodeFailure), "a bare decimal decodes as a newtype");
-        assertEquals(Raw.decimal(new BigDecimal("12.50")), encoder(loader, "demo.Price").encode(ok));
+        Result r = decoder(loader, "demo.Price").decode(new BigDecimal("12.50"), Path.ROOT);
+        assertTrue(r instanceof Ok, "a bare decimal decodes as a newtype");
+        assertEquals(new BigDecimal("12.50"), encoder(loader, "demo.Price").encode(((Ok) r).value()));
     }
 
     @Test
-    void dateFieldReadsFromIsoText() throws Exception {
+    void dateFieldReadsFromLocalDate() throws Exception {
         BytesClassLoader loader = loader("""
                 module demo
 
                 data Event { on: Date }
                 """);
-        Object ok = decoder(loader, "demo.Event").decode(Raw.text("2026-07-15"));
-        assertTrue(!(ok instanceof DecodeFailure), "a Date decodes from an ISO8601 text value");
-        assertEquals(Raw.text("2026-07-15"), encoder(loader, "demo.Event").encode(ok));
+        Result r = decoder(loader, "demo.Event").decode(LocalDate.parse("2026-07-15"), Path.ROOT);
+        assertTrue(r instanceof Ok, "a Date decodes from a LocalDate value");
+        assertEquals("2026-07-15", encoder(loader, "demo.Event").encode(((Ok) r).value()));
 
-        assertTrue(decoder(loader, "demo.Event").decode(Raw.text("not-a-date")) instanceof DecodeFailure);
+        assertTrue(decoder(loader, "demo.Event").decode("not-a-date", Path.ROOT) instanceof Err);
     }
 
     @Test
-    void dateTimeFieldReadsFromIsoText() throws Exception {
+    void dateTimeFieldReadsFromLocalDateTime() throws Exception {
         BytesClassLoader loader = loader("""
                 module demo
 
                 data Stamp { at: DateTime }
                 """);
-        Object ok = decoder(loader, "demo.Stamp").decode(Raw.text("2026-07-15T10:30:45"));
-        assertTrue(!(ok instanceof DecodeFailure), "a DateTime decodes from an ISO8601 text value");
-        assertEquals(Raw.text("2026-07-15T10:30:45"), encoder(loader, "demo.Stamp").encode(ok));
+        Result r = decoder(loader, "demo.Stamp")
+                .decode(LocalDateTime.parse("2026-07-15T10:30:45"), Path.ROOT);
+        assertTrue(r instanceof Ok, "a DateTime decodes from a LocalDateTime value");
+        assertEquals("2026-07-15T10:30:45", encoder(loader, "demo.Stamp").encode(((Ok) r).value()));
     }
 }

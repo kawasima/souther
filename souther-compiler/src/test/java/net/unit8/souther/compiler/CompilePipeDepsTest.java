@@ -1,8 +1,11 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.Raw;
+
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -10,7 +13,6 @@ import javax.tools.ToolProvider;
 
 import java.io.File;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -45,12 +47,13 @@ class CompilePipeDepsTest {
     private static String impl(String cls, String param, String midValue) {
         return """
                 package demo;
-                import net.unit8.souther.runtime.Raw;
-                import net.unit8.souther.runtime.Decoder;
+                import net.unit8.raoh.Ok;
+                import net.unit8.raoh.Path;
+                import net.unit8.raoh.decode.Decoder;
                 public final class %s extends %s {
                     public Object apply(Object in) {
-                        Decoder<?> d = Mid.decoder();
-                        return d.decode(Raw.text("%s"));
+                        Decoder d = Mid.decoder();
+                        return ((Ok) d.decode("%s", Path.ROOT)).value();
                     }
                 }
                 """.formatted(cls, param, midValue);
@@ -74,27 +77,27 @@ class CompilePipeDepsTest {
                 loader.loadClass("demo.FetchImpl").getConstructor().newInstance(),
                 loader.loadClass("demo.TagImpl").getConstructor().newInstance());
 
-        Object in = loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object inVal = ((net.unit8.souther.runtime.Decoder<?>) in).decode(Raw.text("x"));
+        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
+        Object inVal = ((Ok) inDec.decode("x", Path.ROOT)).value();
         Object out = ((Behavior) handle).apply(inVal);
 
         Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        Raw.ObjectValue o = (Raw.ObjectValue) enc.encode(out);
-        assertEquals(Raw.text("m"), o.value().get("a"));
-        assertEquals(Raw.text("T"), o.value().get("b"));
+        Map<?, ?> o = (Map<?, ?>) enc.encode(out);
+        assertEquals("m", o.get("a"));
+        assertEquals("T", o.get("b"));
     }
 
     private static byte[] compileSubclass(Map<String, byte[]> generated, String className, String source)
             throws Exception {
-        Path classesDir = Files.createTempDirectory("souther-gen");
+        java.nio.file.Path classesDir = Files.createTempDirectory("souther-gen");
         for (Map.Entry<String, byte[]> e : generated.entrySet()) {
-            Path p = classesDir.resolve(e.getKey().replace('.', '/') + ".class");
+            java.nio.file.Path p = classesDir.resolve(e.getKey().replace('.', '/') + ".class");
             Files.createDirectories(p.getParent());
             Files.write(p, e.getValue());
         }
-        Path srcFile = classesDir.resolve(className.replace('.', '/') + ".java");
+        java.nio.file.Path srcFile = classesDir.resolve(className.replace('.', '/') + ".java");
         Files.writeString(srcFile, source);
-        Path outDir = Files.createTempDirectory("souther-impl");
+        java.nio.file.Path outDir = Files.createTempDirectory("souther-impl");
         String cp = classesDir + File.pathSeparator + System.getProperty("java.class.path");
         int rc = ToolProvider.getSystemJavaCompiler().run(null, null, null,
                 "-encoding", "UTF-8", "-classpath", cp, "-d", outDir.toString(), srcFile.toString());

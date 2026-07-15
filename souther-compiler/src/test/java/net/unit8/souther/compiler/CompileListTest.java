@@ -1,13 +1,14 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
-import net.unit8.souther.runtime.DecodeError;
-import net.unit8.souther.runtime.DecodeFailure;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.NonEmptyList;
-import net.unit8.souther.runtime.Raw;
-import net.unit8.souther.runtime.Result;
+
+import net.unit8.raoh.Err;
+import net.unit8.raoh.Issue;
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.Result;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -45,34 +46,32 @@ class CompileListTest {
     @SuppressWarnings("unchecked")
     void decodesListsAndCountsThem() throws Exception {
         BytesClassLoader loader = loader();
-        Decoder<?> decoder = (Decoder<?>) loader.loadClass("demo.Request").getMethod("decoder").invoke(null);
+        Decoder decoder = (Decoder) loader.loadClass("demo.Request").getMethod("decoder").invoke(null);
 
-        Raw input = Raw.object(Map.of(
-                "nums", Raw.list(List.of(Raw.integer(1), Raw.integer(2), Raw.integer(3))),
-                "reasons", Raw.list(List.of(Raw.text("high"), Raw.text("late")))));
-        Object request = decoder.decode(input);
-        assertTrue(!(request instanceof DecodeFailure));
+        Result r = decoder.decode(Map.of(
+                "nums", List.of(1L, 2L, 3L),
+                "reasons", List.of("high", "late")), Path.ROOT);
+        assertTrue(r instanceof Ok);
+        Object request = ((Ok) r).value();
         Object count = loader.loadClass("demo.countReasons").getConstructor().newInstance();
         Object out = ((Behavior<Object, Object>) count).apply(request);
 
         Encoder enc = (Encoder) loader.loadClass("demo.Count").getMethod("encoder").invoke(null);
-        assertEquals(Raw.integer(2), enc.encode(out));
+        assertEquals(2L, enc.encode(out));
     }
 
     @Test
     void listElementErrorsCarryIndexPaths() throws Exception {
-        Decoder<?> decoder = (Decoder<?>) loader().loadClass("demo.Request")
+        Decoder decoder = (Decoder) loader().loadClass("demo.Request")
                 .getMethod("decoder").invoke(null);
 
-        Raw input = Raw.object(Map.of(
-                "nums", Raw.list(List.of(Raw.integer(1), Raw.text("bad"), Raw.integer(3))),
-                "reasons", Raw.list(List.of())));
-        Object bad = decoder.decode(input);
-        assertTrue(bad instanceof DecodeFailure);
-        DecodeError e = ((DecodeFailure) bad).errors().head();
-        assertEquals("expected_int", e.code());
+        Result r = decoder.decode(Map.of(
+                "nums", List.of(1L, "bad", 3L),
+                "reasons", List.of()), Path.ROOT);
+        assertTrue(r instanceof Err);
+        Issue e = ((Err) r).issues().asList().get(0);
+        assertEquals("type_mismatch", e.code());
         // path is [nums, 1]
-        assertEquals(new DecodeError.PathElement.Field("nums"), e.path().get(0));
-        assertEquals(new DecodeError.PathElement.Index(1), e.path().get(1));
+        assertEquals("/nums/1", e.path().toJsonPointer());
     }
 }

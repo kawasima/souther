@@ -1,9 +1,10 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.DecodeFailure;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.Raw;
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.Result;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -11,6 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -30,8 +32,8 @@ class CompileOptionalFieldTest {
         return new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
     }
 
-    private Decoder<?> decoder(BytesClassLoader loader) throws Exception {
-        return (Decoder<?>) loader.loadClass("demo.Trip").getMethod("decoder").invoke(null);
+    private Decoder decoder(BytesClassLoader loader) throws Exception {
+        return (Decoder) loader.loadClass("demo.Trip").getMethod("decoder").invoke(null);
     }
 
     private Encoder encoder(BytesClassLoader loader) throws Exception {
@@ -41,21 +43,21 @@ class CompileOptionalFieldTest {
     @Test
     void presentOptionalRoundTrips() throws Exception {
         BytesClassLoader loader = loader();
-        Object ok = decoder(loader).decode(Raw.object(new HashMap<>(Map.of(
-                "id", Raw.text("t-1"), "approver", Raw.text("e-9")))));
-        assertTrue(!(ok instanceof DecodeFailure));
+        Result r = decoder(loader).decode(new HashMap<>(Map.of(
+                "id", "t-1", "approver", "e-9")), Path.ROOT);
+        assertTrue(r instanceof Ok);
 
-        Raw.ObjectValue out = (Raw.ObjectValue) encoder(loader).encode(ok);
-        assertEquals(Raw.text("e-9"), out.value().get("approver"));
+        Map<?, ?> out = (Map<?, ?>) encoder(loader).encode(((Ok) r).value());
+        assertEquals("e-9", out.get("approver"));
     }
 
     @Test
     void absentOptionalDecodesToNone() throws Exception {
         BytesClassLoader loader = loader();
-        Object ok = decoder(loader).decode(Raw.object(Map.of("id", Raw.text("t-1"))));
-        assertTrue(!(ok instanceof DecodeFailure), "an absent optional key is None, not a failure");
+        Result r = decoder(loader).decode(Map.of("id", "t-1"), Path.ROOT);
+        assertTrue(r instanceof Ok, "an absent optional key is None, not a failure");
 
-        Raw.ObjectValue out = (Raw.ObjectValue) encoder(loader).encode(ok);
-        assertEquals(Raw.nullValue(), out.value().get("approver"), "None encodes to Raw.Null");
+        Map<?, ?> out = (Map<?, ?>) encoder(loader).encode(((Ok) r).value());
+        assertNull(out.get("approver"), "None encodes to null");
     }
 }

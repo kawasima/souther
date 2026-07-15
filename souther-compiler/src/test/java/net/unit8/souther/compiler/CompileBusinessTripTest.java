@@ -1,9 +1,9 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.Raw;
-import net.unit8.souther.runtime.Result;
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -63,10 +63,10 @@ class CompileBusinessTripTest {
     }
 
     private Object draft(BytesClassLoader loader, long cost) throws Exception {
-        Decoder<?> d = (Decoder<?>) loader.loadClass("example.businesstrip.申請準備中")
+        Decoder d = (Decoder) loader.loadClass("example.businesstrip.申請準備中")
                 .getMethod("decoder").invoke(null);
-        Raw raw = Raw.object(Map.of("申請者", Raw.text("emp-1"), "予定費用", Raw.integer(cost)));
-        return d.decode(raw);
+        Map<String, Object> input = Map.of("申請者", "emp-1", "予定費用", cost);
+        return ((Ok) d.decode(input, Path.ROOT)).value();
     }
 
     private Object submit(BytesClassLoader loader, Object draft, String at) throws Exception {
@@ -85,10 +85,10 @@ class CompileBusinessTripTest {
 
         Encoder enc = (Encoder) loader.loadClass("example.businesstrip.提出済み")
                 .getMethod("encoder").invoke(null);
-        Raw.ObjectValue out = (Raw.ObjectValue) enc.encode(r);
-        assertEquals(Raw.text("emp-1"), out.value().get("申請者"));       // carried via ..申請
-        assertEquals(Raw.integer(50000), out.value().get("予定費用"));    // carried via ..申請
-        assertEquals(Raw.text("2026-07-14"), out.value().get("提出日時"));
+        Map<?, ?> out = (Map<?, ?>) enc.encode(r);
+        assertEquals("emp-1", out.get("申請者"));        // carried via ..申請
+        assertEquals(50000L, out.get("予定費用"));        // carried via ..申請
+        assertEquals("2026-07-14", out.get("提出日時"));
     }
 
     @Test

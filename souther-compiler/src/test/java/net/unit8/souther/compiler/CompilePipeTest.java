@@ -1,10 +1,11 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.Raw;
-import net.unit8.souther.runtime.Result;
+
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -34,8 +35,8 @@ class CompilePipeTest {
     }
 
     private Object decode(BytesClassLoader loader, String type, String value) throws Exception {
-        Decoder<?> d = (Decoder<?>) loader.loadClass("demo." + type).getMethod("decoder").invoke(null);
-        return d.decode(Raw.text(value));
+        Decoder d = (Decoder) loader.loadClass("demo." + type).getMethod("decoder").invoke(null);
+        return ((Ok) d.decode(value, Path.ROOT)).value();
     }
 
     @Test
@@ -46,32 +47,27 @@ class CompilePipeTest {
         // apply returns the output arm value directly
         Object out = ((Behavior<Object, Object>) ab).apply(decode(loader, "Wrap", "hi"));
 
+        // Out is a single-field newtype, so its encoder yields the bare String value.
         Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        assertEquals(Raw.text("hi"), ((Raw.ObjectValue) rewrap(enc, out)).value().get("value"));
-    }
-
-    // Out's encoder is `Text(self.value)`, so encode returns a Raw.Text; wrap it for a uniform check.
-    private Raw rewrap(Encoder enc, Object out) {
-        Raw raw = enc.encode(out);
-        return Raw.object(java.util.Map.of("value", raw));
+        assertEquals("hi", enc.encode(out));
     }
 
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
     void injectsRequiredBehaviorIntoPipeline() throws Exception {
         BytesClassLoader loader = loader();
-        Decoder<?> midDecoder = (Decoder<?>) loader.loadClass("demo.Mid")
+        Decoder midDecoder = (Decoder) loader.loadClass("demo.Mid")
                 .getMethod("decoder").invoke(null);
 
         // The Java-side implementation of `fetch` returns the Mid arm value directly.
-        Behavior fetch = w -> midDecoder.decode(Raw.text("hello"));
+        Behavior fetch = w -> ((Ok) midDecoder.decode("hello", Path.ROOT)).value();
 
         Object handle = loader.loadClass("demo.handle")
                 .getConstructor(Behavior.class).newInstance(fetch);
         Object out = ((Behavior) handle).apply(decode(loader, "Wrap", "ignored"));
 
         Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        assertEquals(Raw.text("hello"), enc.encode(out));
+        assertEquals("hello", enc.encode(out));
     }
 
     @Test

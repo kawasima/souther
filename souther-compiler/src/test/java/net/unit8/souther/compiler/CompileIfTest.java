@@ -1,10 +1,11 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.Raw;
-import net.unit8.souther.runtime.Result;
+
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -27,12 +28,13 @@ class CompileIfTest {
 
     @SuppressWarnings("unchecked")
     private String classify(BytesClassLoader loader, long n) throws Exception {
-        Decoder<?> inDec = (Decoder<?>) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = inDec.decode(Raw.integer(n));
+        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
+        Object in = ((Ok) inDec.decode(n, Path.ROOT)).value();
         Object behavior = loader.loadClass("demo.classify").getConstructor().newInstance();
         Object out = ((Behavior<Object, Object>) behavior).apply(in);
+        // Out is a single-field newtype, so its encoder yields the bare String.
         Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        return ((Raw.TextValue) enc.encode(out)).value();
+        return (String) enc.encode(out);
     }
 
     @Test

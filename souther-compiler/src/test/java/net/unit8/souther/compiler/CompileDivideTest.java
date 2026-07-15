@@ -1,9 +1,11 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.Raw;
+
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -29,27 +31,27 @@ class CompileDivideTest {
             """;
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private Raw.ObjectValue divide(long a, long b) throws Exception {
+    private Map<?, ?> divide(long a, long b) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        Decoder<?> d = (Decoder<?>) loader.loadClass("demo.Pair").getMethod("decoder").invoke(null);
-        Object pair = d.decode(Raw.object(Map.of("a", Raw.integer(a), "b", Raw.integer(b))));
+        Decoder d = (Decoder) loader.loadClass("demo.Pair").getMethod("decoder").invoke(null);
+        Object pair = ((Ok) d.decode(Map.of("a", a, "b", b), Path.ROOT)).value();
         Object outcome = ((Behavior<Object, Object>) loader.loadClass("demo.divideThem")
                 .getConstructor().newInstance()).apply(pair);
         Encoder enc = (Encoder) loader.loadClass("demo.Outcome").getMethod("encoder").invoke(null);
-        return (Raw.ObjectValue) enc.encode(outcome);
+        return (Map<?, ?>) enc.encode(outcome);
     }
 
     @Test
     void dividesWhenDivisorNonZero() throws Exception {
-        Raw.ObjectValue out = divide(10, 2);
-        assertEquals(Raw.integer(5), out.value().get("q"));
-        assertEquals(Raw.bool(true), out.value().get("ok"));
+        Map<?, ?> out = divide(10, 2);
+        assertEquals(5L, out.get("q"));
+        assertEquals(true, out.get("ok"));
     }
 
     @Test
     void takesDivisionByZeroArm() throws Exception {
-        Raw.ObjectValue out = divide(10, 0);
-        assertEquals(Raw.integer(0), out.value().get("q"));
-        assertEquals(Raw.bool(false), out.value().get("ok"));
+        Map<?, ?> out = divide(10, 0);
+        assertEquals(0L, out.get("q"));
+        assertEquals(false, out.get("ok"));
     }
 }

@@ -1,11 +1,13 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Decoder;
-import net.unit8.souther.runtime.Encoder;
-import net.unit8.souther.runtime.Raw;
-import net.unit8.souther.runtime.Result;
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
+
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -32,8 +34,8 @@ class CompileMultiParamTest {
     void twoArgumentBehaviorUsesBothInputs() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
 
-        Object a = decode(loader, "A", 3);
-        Object b = decode(loader, "B", 7);
+        Object a = decode(loader, "A", 3L);
+        Object b = decode(loader, "B", 7L);
 
         Object behavior = loader.loadClass("demo.mkPair").getConstructor().newInstance();
         Object out = behavior.getClass()
@@ -41,13 +43,13 @@ class CompileMultiParamTest {
                 .invoke(behavior, a, b);
 
         Encoder enc = (Encoder) loader.loadClass("demo.Pair").getMethod("encoder").invoke(null);
-        Raw.ObjectValue pair = (Raw.ObjectValue) enc.encode(out);
-        assertEquals(Raw.integer(3), pair.value().get("left"));
-        assertEquals(Raw.integer(7), pair.value().get("right"));
+        Map<?, ?> pair = (Map<?, ?>) enc.encode(out);
+        assertEquals(3L, pair.get("left"));
+        assertEquals(7L, pair.get("right"));
     }
 
     private Object decode(BytesClassLoader loader, String type, long n) throws Exception {
-        Decoder<?> d = (Decoder<?>) loader.loadClass("demo." + type).getMethod("decoder").invoke(null);
-        return d.decode(Raw.integer(n));
+        Decoder d = (Decoder) loader.loadClass("demo." + type).getMethod("decoder").invoke(null);
+        return ((Ok) d.decode(n, Path.ROOT)).value();
     }
 }
