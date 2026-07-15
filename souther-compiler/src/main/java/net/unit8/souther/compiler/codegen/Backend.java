@@ -1130,11 +1130,18 @@ public final class Backend {
                 }
                 case Ast.Var v -> {
                     Var var = env.get(v.name());
-                    if (var == null) {
-                        throw new CompileException(v.pos(), "unbound identifier `" + v.name() + "`");
+                    if (var != null) {
+                        load(code, var.slot(), var.type());
+                        yield var.type();
                     }
-                    load(code, var.slot(), var.type());
-                    yield var.type();
+                    if (symbols.get(v.name()) instanceof Ast.UnitData) {
+                        ClassDesc cdU = cd(v.name());
+                        code.new_(cdU);
+                        code.dup();
+                        code.invokespecial(cdU, "<init>", MTD_void);
+                        yield Type.ref(v.name());
+                    }
+                    throw new CompileException(v.pos(), "unbound identifier `" + v.name() + "`");
                 }
                 case Ast.FieldAccess fa -> {
                     Type targetType = expr(fa.target());

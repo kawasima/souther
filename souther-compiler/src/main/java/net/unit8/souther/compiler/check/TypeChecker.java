@@ -258,10 +258,10 @@ public final class TypeChecker {
         }
 
         Set<String> constructed = new HashSet<>();
-        collectConstructs(b.result(), constructed);
+        collectConstructs(b.result(), constructed, symbols);
         for (Ast.BStmt stmt : b.stmts()) {
             if (stmt instanceof Ast.Let let) {
-                collectConstructs(let.value(), constructed);
+                collectConstructs(let.value(), constructed, symbols);
             }
         }
         for (String c : constructed) {
@@ -329,37 +329,39 @@ public final class TypeChecker {
         }
     }
 
-    private static void collectConstructs(Ast.Expr e, Set<String> out) {
+    private static void collectConstructs(Ast.Expr e, Set<String> out, Map<String, Ast.Def> symbols) {
         switch (e) {
             case Ast.NewData nd -> {
                 out.add(nd.typeName());
                 for (Ast.FieldInit init : nd.inits()) {
-                    collectConstructs(init.value(), out);
+                    collectConstructs(init.value(), out, symbols);
                 }
             }
-            case Ast.FieldAccess fa -> collectConstructs(fa.target(), out);
-            case Ast.Call call -> call.args().forEach(a -> collectConstructs(a, out));
+            case Ast.FieldAccess fa -> collectConstructs(fa.target(), out, symbols);
+            case Ast.Call call -> call.args().forEach(a -> collectConstructs(a, out, symbols));
             case Ast.Binary bin -> {
-                collectConstructs(bin.left(), out);
-                collectConstructs(bin.right(), out);
+                collectConstructs(bin.left(), out, symbols);
+                collectConstructs(bin.right(), out, symbols);
             }
-            case Ast.Not not -> collectConstructs(not.operand(), out);
+            case Ast.Not not -> collectConstructs(not.operand(), out, symbols);
             case Ast.Match m -> {
-                collectConstructs(m.scrutinee(), out);
+                collectConstructs(m.scrutinee(), out, symbols);
                 for (Ast.Case c : m.cases()) {
-                    collectConstructs(c.body(), out);
+                    collectConstructs(c.body(), out, symbols);
                 }
             }
             case Ast.If iff -> {
-                collectConstructs(iff.cond(), out);
-                collectConstructs(iff.then(), out);
-                collectConstructs(iff.els(), out);
+                collectConstructs(iff.cond(), out, symbols);
+                collectConstructs(iff.then(), out, symbols);
+                collectConstructs(iff.els(), out, symbols);
             }
-            case Ast.ListLit lit -> lit.elements().forEach(el -> collectConstructs(el, out));
+            case Ast.ListLit lit -> lit.elements().forEach(el -> collectConstructs(el, out, symbols));
             case Ast.ListComp comp -> {
-                collectConstructs(comp.element(), out);
-                comp.guards().forEach(g -> collectConstructs(g, out));
+                collectConstructs(comp.element(), out, symbols);
+                comp.guards().forEach(g -> collectConstructs(g, out, symbols));
             }
+            // a bare name that resolves to a unit data is that unit's construction (spec 8.4)
+            case Ast.Var v when symbols.get(v.name()) instanceof Ast.UnitData -> out.add(v.name());
             case Ast.IntLit ignored -> { }
             case Ast.StringLit ignored -> { }
             case Ast.BoolLit ignored -> { }
@@ -695,10 +697,14 @@ public final class TypeChecker {
             case Ast.BoolLit ignored -> Type.BOOL;
             case Ast.Var v -> {
                 Type t = env.get(v.name());
-                if (t == null) {
-                    throw new CompileException(v.pos(), "unknown identifier `" + v.name() + "`");
+                if (t != null) {
+                    yield t;
                 }
-                yield t;
+                // a bare name that isn't a local is a unit-data value (spec 8.4)
+                if (symbols.get(v.name()) instanceof Ast.UnitData) {
+                    yield Type.ref(v.name());
+                }
+                throw new CompileException(v.pos(), "unknown identifier `" + v.name() + "`");
             }
             case Ast.FieldAccess fa -> typeOfFieldAccess(fa, env, data, symbols, reqs);
             case Ast.Call call -> typeOfCall(call, env, data, symbols, reqs);
