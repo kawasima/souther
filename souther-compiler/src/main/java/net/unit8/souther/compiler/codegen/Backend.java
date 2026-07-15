@@ -145,12 +145,20 @@ public final class Backend {
             out.put(module.name() + "." + r.name(), b.generateRequiredBase(r.name(), unitArms));
         }
         Map<String, TypeChecker.Sig> sigs = TypeChecker.signatures(module, b.symbols);
+        // each body behavior's own required dependencies, in constructor (first-seen) order
+        Map<String, List<String>> behaviorDeps = new HashMap<>();
+        for (Ast.BehaviorDef bd : module.behaviors()) {
+            if (bd instanceof Ast.BodyBehavior body) {
+                behaviorDeps.put(body.name(), TypeChecker.requiredCalls(body, requiredNames));
+            }
+        }
         for (Ast.BehaviorDef bd : module.behaviors()) {
             switch (bd) {
                 case Ast.BodyBehavior body -> out.put(module.name() + "." + body.name(),
                         b.generateBodyBehavior(body, requiredNames, requiredSuccess));
                 case Ast.PipeBehavior pipe ->
-                        out.put(module.name() + "." + pipe.name(), b.generatePipe(pipe, requiredNames, sigs));
+                        out.put(module.name() + "." + pipe.name(),
+                                b.generatePipe(pipe, requiredNames, sigs, behaviorDeps));
             }
         }
         return out;
@@ -477,11 +485,19 @@ public final class Backend {
     }
 
     private byte[] generatePipe(Ast.PipeBehavior pipe, Set<String> requiredNames,
-                                Map<String, TypeChecker.Sig> sigs) {
+                                Map<String, TypeChecker.Sig> sigs, Map<String, List<String>> behaviorDeps) {
         ClassDesc cdP = cd(pipe.name());
-        // required stages become injected fields, in first-seen order
-        List<String> reqStages = new ArrayList<>(new LinkedHashSet<>(
-                pipe.stages().stream().filter(requiredNames::contains).toList()));
+        // the pipeline's injected fields are the union of every stage's requirements, first-seen
+        // (spec 14.3): a required stage requires itself; a body stage requires its own deps.
+        LinkedHashSet<String> fields = new LinkedHashSet<>();
+        for (String stage : pipe.stages()) {
+            if (requiredNames.contains(stage)) {
+                fields.add(stage);
+            } else {
+                fields.addAll(behaviorDeps.getOrDefault(stage, List.of()));
+            }
+        }
+        List<String> reqStages = new ArrayList<>(fields);
 
         return CF.build(cdP, cb -> {
             cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
@@ -492,7 +508,7 @@ public final class Backend {
                 // slot 1 always holds the running value (an output arm, as an Object).
                 List<String> stages = pipe.stages();
                 // stage 0 consumes the whole input unconditionally
-                pushStage(code, cdP, stages.get(0), requiredNames);
+                pushStage(code, cdP, stages.get(0), requiredNames, behaviorDeps);
                 code.aload(1);
                 code.invokeinterface(CD_Behavior, "apply", MTD_apply);
                 code.astore(1);
@@ -517,13 +533,13 @@ public final class Backend {
                         }
                         code.goto_(after);
                         code.labelBinding(doApply);
-                        pushStage(code, cdP, stage, requiredNames);
+                        pushStage(code, cdP, stage, requiredNames, behaviorDeps);
                         code.aload(1);
                         code.invokeinterface(CD_Behavior, "apply", MTD_apply);
                         code.astore(1);
                         code.labelBinding(after);
                     } else {
-                        pushStage(code, cdP, stage, requiredNames);
+                        pushStage(code, cdP, stage, requiredNames, behaviorDeps);
                         code.aload(1);
                         code.invokeinterface(CD_Behavior, "apply", MTD_apply);
                         code.astore(1);
@@ -536,17 +552,26 @@ public final class Backend {
         });
     }
 
-    /** Pushes the behavior object for a pipeline stage: an injected field or a fresh instance. */
-    private void pushStage(CodeBuilder code, ClassDesc cdP, String stage, Set<String> requiredNames) {
+    /** Pushes the behavior object for a pipeline stage: an injected required field, or a fresh
+     * body-behavior instance constructed with the required dependencies it declares (spec 14.3). */
+    private void pushStage(CodeBuilder code, ClassDesc cdP, String stage, Set<String> requiredNames,
+                           Map<String, List<String>> behaviorDeps) {
         if (requiredNames.contains(stage)) {
             code.aload(0);
             code.getfield(cdP, stage, CD_Behavior);
-        } else {
-            ClassDesc cdStage = cd(stage);
-            code.new_(cdStage);
-            code.dup();
-            code.invokespecial(cdStage, "<init>", MTD_void);
+            return;
         }
+        ClassDesc cdStage = cd(stage);
+        code.new_(cdStage);
+        code.dup();
+        List<String> deps = behaviorDeps.getOrDefault(stage, List.of());
+        ClassDesc[] ctorParams = new ClassDesc[deps.size()];
+        for (int i = 0; i < deps.size(); i++) {
+            code.aload(0);
+            code.getfield(cdP, deps.get(i), CD_Behavior);   // reuse the pipeline's injected field
+            ctorParams[i] = CD_Behavior;
+        }
+        code.invokespecial(cdStage, "<init>", MethodTypeDesc.of(ConstantDescs.CD_void, ctorParams));
     }
 
     private void box(CodeBuilder code, Type type) {

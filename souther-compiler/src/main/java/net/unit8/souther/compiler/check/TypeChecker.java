@@ -41,16 +41,13 @@ public final class TypeChecker {
             reqSigs.put(r.name(), new ReqSig(resolveType(r.paramType(), symbols),
                     successType(r.ret(), symbols)));
         }
-        Set<String> bodiesWithDeps = new HashSet<>();
         for (Ast.BehaviorDef b : module.behaviors()) {
             if (b instanceof Ast.BodyBehavior body) {
                 checkBodyBehavior(body, symbols, allBehaviors, reqSigs);
-                if (!requiredCalls(body, reqSigs).isEmpty()) {
-                    bodiesWithDeps.add(body.name());
-                }
             }
         }
-        checkPipelines(module, symbols, bodiesWithDeps);
+        // validates composition types; a stage's own requirements propagate to the pipeline (14.3)
+        signatures(module, symbols);
     }
 
     /** A required behavior's input and success types (for typing calls). */
@@ -127,26 +124,6 @@ public final class TypeChecker {
             }
         }
         return sigs;
-    }
-
-    private static void checkPipelines(Ast.Module module, Map<String, Ast.Def> symbols,
-                                       Set<String> bodiesWithDeps) {
-        Map<String, Sig> sigs = signatures(module, symbols);
-        for (Ast.BehaviorDef b : module.behaviors()) {
-            if (b instanceof Ast.PipeBehavior pipe) {
-                for (String stage : pipe.stages()) {
-                    if (bodiesWithDeps.contains(stage)) {
-                        throw new CompileException(pipe.pos(),
-                                "pipeline stage `" + stage + "` has its own dependencies, which is not "
-                                        + "supported; inline it or make it a required behavior");
-                    }
-                }
-            }
-        }
-        // side effect: signatures() already validated composition types
-        if (sigs.isEmpty()) {
-            return;
-        }
     }
 
     private static Sig pipeSig(Ast.PipeBehavior pipe, Map<String, Sig> sigs) {
