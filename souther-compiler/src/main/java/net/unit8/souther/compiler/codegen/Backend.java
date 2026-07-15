@@ -1015,19 +1015,34 @@ public final class Backend {
             Type st = expr(m.scrutinee());
             int sSlot = slot(st);
             store(code, sSlot, st);
+            Type element = st instanceof Type.OptionOf oo ? oo.element() : null;
             Label end = code.newLabel();
             Type branchType = null;
             for (Ast.Case c : m.cases()) {
-                ClassDesc armCd = cd(c.armType());
+                ClassDesc armCd = element != null
+                        ? (c.armType().equals("Some") ? CD_OptionSome : CD_OptionNone)
+                        : cd(c.armType());
                 code.aload(sSlot);
                 code.instanceOf(armCd);
                 Label nextCase = code.newLabel();
                 code.ifeq(nextCase);
-                code.aload(sSlot);
-                code.checkcast(armCd);
-                int bslot = slot(Type.ref(c.armType()));
-                code.astore(bslot);
-                bind(c.binding(), bslot, Type.ref(c.armType()));
+                if (element != null && c.armType().equals("Some")) {
+                    // unwrap Some(v) -> v, bound to the element type
+                    code.aload(sSlot);
+                    code.checkcast(CD_OptionSome);
+                    code.invokevirtual(CD_OptionSome, "value", MTD_Object);
+                    int bslot = slot(element);
+                    unbox(code, element, bslot);
+                    if (c.binding() != null) {
+                        bind(c.binding(), bslot, element);
+                    }
+                } else if (element == null && c.binding() != null) {
+                    code.aload(sSlot);
+                    code.checkcast(armCd);
+                    int bslot = slot(Type.ref(c.armType()));
+                    code.astore(bslot);
+                    bind(c.binding(), bslot, Type.ref(c.armType()));
+                }
                 branchType = expr(c.body());
                 code.goto_(end);
                 code.labelBinding(nextCase);

@@ -702,6 +702,9 @@ public final class TypeChecker {
     private static Type typeOfMatch(Ast.Match m, Map<String, Type> env, Ast.Data data,
                                     Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
         Type st = typeOf(m.scrutinee(), env, data, symbols, reqs);
+        if (st instanceof Type.OptionOf oo) {
+            return typeOfOptionMatch(m, oo.element(), env, data, symbols, reqs);
+        }
         if (!(st instanceof Type.Ref ref) || !(symbols.get(ref.name()) instanceof Ast.SumData sum)) {
             throw new CompileException(m.pos(), "match requires a sum-typed value, got " + st);
         }
@@ -713,15 +716,8 @@ public final class TypeChecker {
                         "`" + c.armType() + "` is not an arm of `" + sum.name() + "`");
             }
             covered.add(c.armType());
-            Map<String, Type> benv = new HashMap<>(env);
-            benv.put(c.binding(), Type.ref(c.armType()));
-            Type bt = typeOf(c.body(), benv, data, symbols, reqs);
-            if (branchType == null) {
-                branchType = bt;
-            } else if (!branchType.equals(bt)) {
-                throw new CompileException(c.pos(),
-                        "match branches disagree: " + branchType + " vs " + bt);
-            }
+            branchType = mergeBranch(m, branchType,
+                    typeOf(c.body(), bound(env, c.binding(), Type.ref(c.armType())), data, symbols, reqs), c);
         }
         for (String arm : sum.arms()) {
             if (!covered.contains(arm)) {
@@ -731,6 +727,53 @@ public final class TypeChecker {
         }
         if (branchType == null) {
             throw new CompileException(m.pos(), "match has no cases");
+        }
+        return branchType;
+    }
+
+    /** Match over {@code Option<element>}: arms are {@code Some} (binds the element) and
+     * {@code None}; both must be present (spec 16.3). */
+    private static Type typeOfOptionMatch(Ast.Match m, Type element, Map<String, Type> env, Ast.Data data,
+                                          Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
+        Set<String> covered = new HashSet<>();
+        Type branchType = null;
+        for (Ast.Case c : m.cases()) {
+            Type bind = switch (c.armType()) {
+                case "Some" -> element;
+                case "None" -> null;
+                default -> throw new CompileException(c.pos(),
+                        "`" + c.armType() + "` is not an arm of Option; use Some or None");
+            };
+            covered.add(c.armType());
+            branchType = mergeBranch(m, branchType,
+                    typeOf(c.body(), bound(env, c.binding(), bind), data, symbols, reqs), c);
+        }
+        for (String arm : List.of("Some", "None")) {
+            if (!covered.contains(arm)) {
+                throw new CompileException(m.pos(), "E1201",
+                        "Non-exhaustive match for Option. Missing case: " + arm);
+            }
+        }
+        return branchType;
+    }
+
+    /** Extends {@code env} with {@code name -> type} when both are present; otherwise returns it as is. */
+    private static Map<String, Type> bound(Map<String, Type> env, String name, Type type) {
+        if (name == null || type == null) {
+            return env;
+        }
+        Map<String, Type> benv = new HashMap<>(env);
+        benv.put(name, type);
+        return benv;
+    }
+
+    private static Type mergeBranch(Ast.Match m, Type branchType, Type bt, Ast.Case c) {
+        if (branchType == null) {
+            return bt;
+        }
+        if (!branchType.equals(bt)) {
+            throw new CompileException(c.pos(),
+                    "match branches disagree: " + branchType + " vs " + bt);
         }
         return branchType;
     }

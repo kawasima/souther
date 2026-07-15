@@ -391,11 +391,10 @@ public final class Parser {
         while (check(TokenType.CASE)) {
             advance();
             Token arm = expect(TokenType.IDENT);
-            expect(TokenType.AS);
-            Token binding = expect(TokenType.IDENT);
+            String binding = match(TokenType.AS) ? expect(TokenType.IDENT).text() : null;
             expect(TokenType.FATARROW);
             Ast.Expr body = parseExpr();
-            cases.add(new Ast.Case(arm.text(), binding.text(), body, arm.pos()));
+            cases.add(new Ast.Case(arm.text(), binding, body, arm.pos()));
         }
         expect(TokenType.RBRACE);
         return new Ast.Match(scrutinee, cases, kw.pos());
