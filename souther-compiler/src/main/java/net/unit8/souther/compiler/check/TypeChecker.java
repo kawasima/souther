@@ -392,7 +392,9 @@ public final class TypeChecker {
                     throw new CompileException(v.pos(),
                             "variant `" + v.armType() + "` is not an arm of `" + sum.name() + "`");
                 }
-                if (!(armDef instanceof Ast.Data d) || d.decoder().isEmpty()) {
+                // a unit-data arm has an implicit (field-less) decoder generated on its class
+                if (!(armDef instanceof Ast.UnitData)
+                        && (!(armDef instanceof Ast.Data d) || d.decoder().isEmpty())) {
                     throw new CompileException(v.pos(),
                             "variant `" + v.armType() + "` needs a decoder");
                 }
@@ -405,7 +407,9 @@ public final class TypeChecker {
                     throw new CompileException(v.pos(),
                             "`" + v.armType() + "` is not an arm of `" + sum.name() + "`");
                 }
-                if (!(symbols.get(v.armType()) instanceof Ast.Data d) || d.encoder().isEmpty()) {
+                Ast.Def armDef = symbols.get(v.armType());
+                if (!(armDef instanceof Ast.UnitData)
+                        && (!(armDef instanceof Ast.Data d) || d.encoder().isEmpty())) {
                     throw new CompileException(v.pos(), "arm `" + v.armType() + "` needs an encoder");
                 }
                 covered.add(v.armType());

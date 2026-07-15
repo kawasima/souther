@@ -447,6 +447,8 @@ public final class Backend {
 
     private void generateUnit(Ast.UnitData unit, Map<String, byte[]> out) {
         ClassDesc cdU = cd(unit.name());
+        ClassDesc cdDec = cd(unit.name() + "$Dec");
+        ClassDesc cdEnc = cd(unit.name() + "$Enc");
         out.put(pkg + "." + unit.name(), CF.build(cdU, cb -> {
             cb.withFlags(pub(unit.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             ClassDesc[] ifaces = armInterfaces(unit.name());
@@ -454,7 +456,54 @@ public final class Backend {
                 cb.withInterfaceSymbols(ifaces);
             }
             emitDefaultCtor(cb);
+            // a unit is a field-less data: its codec reads/writes nothing but the tag the sum adds
+            emitNewFactory(cb, "decoder", CD_Decoder, cdDec);
+            emitNewFactory(cb, "encoder", CD_Encoder, cdEnc);
         }));
+        out.put(pkg + "." + unit.name() + "$Dec", generateUnitDecoder(cdU, cdDec));
+        out.put(pkg + "." + unit.name() + "$Enc", generateUnitEncoder(cdEnc));
+    }
+
+    /** Decodes a unit: ignore the Raw (a unit carries no data) and build the singleton value. */
+    private byte[] generateUnitDecoder(ClassDesc cdU, ClassDesc cdDec) {
+        return CF.build(cdDec, cb -> {
+            cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
+            cb.withInterfaceSymbols(CD_Decoder);
+            emitDefaultCtor(cb);
+            cb.withMethodBody("decode", MTD_decode, ClassFile.ACC_PUBLIC, code -> {
+                code.new_(cdU);
+                code.dup();
+                code.invokespecial(cdU, "<init>", MTD_void);
+                code.areturn();
+            });
+        });
+    }
+
+    /** Encodes a unit to an empty {@code Raw.Object}; the sum encoder adds the discriminant tag. */
+    private byte[] generateUnitEncoder(ClassDesc cdEnc) {
+        return CF.build(cdEnc, cb -> {
+            cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
+            cb.withInterfaceSymbols(CD_Encoder);
+            emitDefaultCtor(cb);
+            cb.withMethodBody("encode", MTD_encode, ClassFile.ACC_PUBLIC, code -> {
+                code.new_(CD_LinkedHashMap);
+                code.dup();
+                code.invokespecial(CD_LinkedHashMap, "<init>", MTD_void);
+                code.invokestatic(CD_Raw, "object", MTD_Raw_object, true);
+                code.areturn();
+            });
+        });
+    }
+
+    /** Emits a {@code static} factory that returns a fresh instance of {@code impl}. */
+    private void emitNewFactory(ClassBuilder cb, String name, ClassDesc returnIface, ClassDesc impl) {
+        cb.withMethodBody(name, MethodTypeDesc.of(returnIface),
+                ClassFile.ACC_PUBLIC | ClassFile.ACC_STATIC, code -> {
+                    code.new_(impl);
+                    code.dup();
+                    code.invokespecial(impl, "<init>", MTD_void);
+                    code.areturn();
+                });
     }
 
     // --- behaviors ---
