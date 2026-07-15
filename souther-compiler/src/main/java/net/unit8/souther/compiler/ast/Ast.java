@@ -33,13 +33,18 @@ public interface Ast {
         String name();
     }
 
-    /** {@code behavior name = (p1: T1, ...) -> R constructs A, B { stmt*; result }}. */
+    /**
+     * {@code behavior name = (p1: T1, ...) -> R constructs A, B { body }}.
+     *
+     * <p>{@code body} is a single expression. The surface forms {@code let} and {@code require}
+     * are desugared by the parser into {@link LetIn} and {@link If} (spec 16.4), so every later
+     * stage sees one expression tree and has exactly one place where a value can be constructed.
+     */
     record BodyBehavior(String name,
                         List<Param> params,
                         RetType ret,
                         List<String> constructs,
-                        List<BStmt> stmts,
-                        Expr result,
+                        Expr body,
                         SourcePos pos) implements BehaviorDef {}
 
     /** A behavior parameter. Its type may be an anonymous union of arms (spec 12.2). */
@@ -54,12 +59,6 @@ public interface Ast {
 
     /** A behavior return type: the output sum — one or more unmarked domain arms (spec 12.2). */
     record RetType(List<TypeRef> arms, SourcePos pos) implements Ast {}
-
-    /** A statement in a behavior body: a binding or a guard. */
-    sealed interface BStmt extends Ast permits Let, Guard {}
-
-    /** {@code require cond else <failure>} inside a behavior body. */
-    record Guard(Expr cond, Expr failure, SourcePos pos) implements BStmt {}
 
     /** A top-level data definition: product, sum, or unit. */
     sealed interface Def extends Ast permits Data, SumData, UnitData {
@@ -143,7 +142,7 @@ public interface Ast {
     /** A statement in a single-value decoder body. */
     sealed interface DecStmt extends Ast permits Let, Require {}
 
-    record Let(String name, Expr value, SourcePos pos) implements DecStmt, BStmt {}
+    record Let(String name, Expr value, SourcePos pos) implements DecStmt {}
 
     record Require(Expr cond, String errorCode, SourcePos pos) implements DecStmt {}
 
@@ -203,7 +202,14 @@ public interface Ast {
 
     sealed interface Expr extends Ast
             permits IntLit, StringLit, BoolLit, Var, FieldAccess, Call, Binary, Not, NewData, Match, If,
-                    ListLit, ListComp {}
+                    ListLit, ListComp, LetIn {}
+
+    /**
+     * {@code let name = value} followed by {@code body} — what a body's {@code let} desugars to
+     * (spec 16.1). Nesting the rest of the body inside keeps {@code value} from being evaluated
+     * when an enclosing {@code if} (a desugared {@code require}) takes the other branch.
+     */
+    record LetIn(String name, Expr value, Expr body, SourcePos pos) implements Expr {}
 
     /** A list literal {@code [e1, e2, ...]} (one or more elements of the same type). */
     record ListLit(List<Expr> elements, SourcePos pos) implements Expr {}

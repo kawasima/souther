@@ -66,6 +66,58 @@ class CompileInvariantBehaviorTest {
         assertInstanceOf(Violation.class, r);
     }
 
+    /**
+     * Regression: constructing inside {@code require ... else} skipped the invariant check
+     * entirely and handed back a value that breaks it. The guard was a statement, and only the
+     * result expression was railway-bound, so the else branch emitted a bare constructor call.
+     * {@code require} now desugars to {@code if} (spec 16.4) and both branches are tail, so the
+     * construction goes through {@code __construct} wherever it sits.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void invariantIsCheckedForAConstructionInsideAGuardElse() throws Exception {
+        String src = """
+                module demo
+                data Draft = { cost: Int }
+                data Adjusted = { cost: Int  invariant cost >= 0 }
+                data Kept = { v: Int }
+
+                behavior adjust = (d: Draft) -> Kept | Adjusted | 制約違反
+                    constructs Kept, Adjusted
+                {
+                    require d.cost != 999 else Adjusted { cost: d.cost - 2000 }
+                    Kept { v: d.cost }
+                }
+                """;
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Object adjust = loader.loadClass("demo.adjust").getConstructor().newInstance();
+        Decoder dec = (Decoder) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
+
+        // the guard fails, so the else branch builds Adjusted { cost: 999 - 2000 = -1001 },
+        // which breaks cost >= 0 — it must not come back as an Adjusted
+        Object bad = ((Behavior<Object, Object>) adjust).apply(((Ok) dec.decode(999L, Path.ROOT)).value());
+        assertInstanceOf(Violation.class, bad, "a guard's else branch must check the invariant too");
+
+        Object ok = ((Behavior<Object, Object>) adjust).apply(((Ok) dec.decode(3000L, Path.ROOT)).value());
+        assertEquals("demo.Kept", ok.getClass().getName());
+    }
+
+    /** The value a guard returns is constructed, so it needs declaring too (spec 12.3). */
+    @Test
+    void constructingTheGuardValueWithoutDeclaringItIsE1002() {
+        String src = """
+                module demo
+                data Draft = { cost: Int }
+                data Rejected = { why: String }
+                behavior adjust = (d: Draft) -> Draft | Rejected {
+                    require d.cost > 0 else Rejected { why: "nonpositive" }
+                    d
+                }
+                """;
+        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
+        assertEquals("E1002", e.code());
+    }
+
     @Test
     void constructingInvariantDataWithoutViolationArmIsE1003() {
         String src = """

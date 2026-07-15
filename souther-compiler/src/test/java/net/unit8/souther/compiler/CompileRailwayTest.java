@@ -24,8 +24,9 @@ class CompileRailwayTest {
             data TooLarge = { limit: Int }
             data Doubled = { value: Int }
 
-            // over 100 leaves the main line as a TooLarge arm
-            behavior guard = (a: Amount) -> Amount | TooLarge {
+            // over 100 leaves the main line as a TooLarge arm. `require ... else` mints the
+            // TooLarge, so the behavior declares it (spec 12.3).
+            behavior guard = (a: Amount) -> Amount | TooLarge constructs TooLarge {
                 require a.value <= 100 else TooLarge { limit: 100 }
                 a
             }

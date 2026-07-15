@@ -135,13 +135,36 @@ public final class Parser {
             }
         }
         expect(TokenType.LBRACE);
-        List<Ast.BStmt> stmts = new ArrayList<>();
-        while (check(TokenType.LET) || check(TokenType.REQUIRE)) {
-            stmts.add(check(TokenType.LET) ? parseLet() : parseGuard());
-        }
-        Ast.Expr result = parseExpr();
+        Ast.Expr body = parseBody();
         expect(TokenType.RBRACE);
-        return new Ast.BodyBehavior(name, params, ret, constructs, stmts, result, kw.pos());
+        return new Ast.BodyBehavior(name, params, ret, constructs, body, kw.pos());
+    }
+
+    /**
+     * A behavior body: {@code let} / {@code require} statements followed by a result expression,
+     * desugared on the spot into one expression (spec 16.4).
+     *
+     * <pre>
+     * let x = v      &lt;rest&gt;   =&gt;  LetIn(x, v, &lt;rest&gt;)
+     * require c else f &lt;rest&gt; =&gt;  If(c, &lt;rest&gt;, f)
+     * </pre>
+     *
+     * Recursing (rather than folding a flat list) puts {@code rest} inside the branch, so a
+     * {@code let} after a {@code require} is not evaluated when the guard fails.
+     */
+    private Ast.Expr parseBody() {
+        if (check(TokenType.LET)) {
+            Ast.Let let = parseLet();
+            return new Ast.LetIn(let.name(), let.value(), parseBody(), let.pos());
+        }
+        if (check(TokenType.REQUIRE)) {
+            Token kw = expect(TokenType.REQUIRE);
+            Ast.Expr cond = parseExpr();
+            expect(TokenType.ELSE);
+            Ast.Expr failure = parseExpr();
+            return new Ast.If(cond, parseBody(), failure, kw.pos());
+        }
+        return parseExpr();
     }
 
     /** A pipeline stage: a behavior name, or {@code Type.decoder} / {@code Type.encoder}. */
@@ -166,14 +189,6 @@ public final class Parser {
             arms.add(parseTypeRef());
         }
         return new Ast.RetType(arms, arms.get(0).pos());
-    }
-
-    private Ast.Guard parseGuard() {
-        Token kw = expect(TokenType.REQUIRE);
-        Ast.Expr cond = parseExpr();
-        expect(TokenType.ELSE);
-        Ast.Expr failure = parseExpr();
-        return new Ast.Guard(cond, failure, kw.pos());
     }
 
     private Ast.RequiredBehavior parseRequired() {

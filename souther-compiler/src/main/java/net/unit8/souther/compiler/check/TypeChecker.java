@@ -61,16 +61,7 @@ public final class TypeChecker {
      * anywhere in an expression (e.g. inline in a record literal), not only bound to a let. */
     public static List<String> requiredCalls(Ast.BodyBehavior body, java.util.Set<String> requiredNames) {
         List<String> calls = new java.util.ArrayList<>();
-        for (Ast.BStmt stmt : body.stmts()) {
-            switch (stmt) {
-                case Ast.Let let -> collectRequiredCalls(let.value(), requiredNames, calls);
-                case Ast.Guard guard -> {
-                    collectRequiredCalls(guard.cond(), requiredNames, calls);
-                    collectRequiredCalls(guard.failure(), requiredNames, calls);
-                }
-            }
-        }
-        collectRequiredCalls(body.result(), requiredNames, calls);
+        collectRequiredCalls(body.body(), requiredNames, calls);
         return calls;
     }
 
@@ -102,6 +93,10 @@ public final class TypeChecker {
             case Ast.ListComp comp -> {
                 collectRequiredCalls(comp.element(), requiredNames, out);
                 comp.guards().forEach(g -> collectRequiredCalls(g, requiredNames, out));
+            }
+            case Ast.LetIn li -> {
+                collectRequiredCalls(li.value(), requiredNames, out);
+                collectRequiredCalls(li.body(), requiredNames, out);
             }
             default -> { }
         }
@@ -210,49 +205,18 @@ public final class TypeChecker {
         for (Ast.Param p : b.params()) {
             env.put(p.name(), successType(p.type(), symbols));
         }
-        for (Ast.BStmt stmt : b.stmts()) {
-            switch (stmt) {
-                case Ast.Let let -> {
-                    if (let.value() instanceof Ast.Call call && allBehaviors.contains(call.fn())) {
-                        ReqSig callee = reqSigs.get(call.fn());
-                        if (callee == null) {
-                            throw new CompileException(call.pos(),
-                                    "only required behaviors can be called from a body; compose others with `>>`");
-                        }
-                        if (call.args().size() != 1) {
-                            throw new CompileException(call.pos(), call.fn() + " takes one argument");
-                        }
-                        requireType(call.args().get(0), callee.param(), env, null, symbols, reqSigs,
-                                "argument of " + call.fn());
-                        env.put(let.name(), callee.success());
-                    } else {
-                        env.put(let.name(), typeOf(let.value(), env, null, symbols, reqSigs));
-                    }
-                }
-                case Ast.Guard guard -> {
-                    requireType(guard.cond(), Type.BOOL, env, null, symbols, reqSigs, "require condition");
-                    Type ft = typeOf(guard.failure(), env, null, symbols, reqSigs);
-                    if (!subtypeOf(ft, output)) {
-                        throw new CompileException(guard.failure().pos(),
-                                "`require ... else` value must be one of the output arms " + output
-                                        + " but is " + ft);
-                    }
-                }
-            }
-        }
-        Type rt = typeOf(b.result(), env, null, symbols, reqSigs);
+        rejectNonRequiredCalls(b.body(), allBehaviors, reqSigs);
+
+        Type rt = typeOf(b.body(), env, null, symbols, reqSigs);
         if (!assignable(rt, output, symbols)) {
-            throw new CompileException(b.result().pos(),
+            throw new CompileException(b.body().pos(),
                     "behavior `" + b.name() + "` returns " + output + " but its body is " + rt);
         }
 
+        // The body is one expression (spec 16.4), so this single walk sees every construction —
+        // including the ones under a desugared `require`.
         Set<String> constructed = new HashSet<>();
-        collectConstructs(b.result(), constructed, symbols);
-        for (Ast.BStmt stmt : b.stmts()) {
-            if (stmt instanceof Ast.Let let) {
-                collectConstructs(let.value(), constructed, symbols);
-            }
-        }
+        collectConstructs(b.body(), constructed, symbols);
         for (String c : constructed) {
             if (!b.constructs().contains(c)) {
                 throw new CompileException(b.pos(), "E1002",
@@ -267,18 +231,82 @@ public final class TypeChecker {
                                 + "violation. Add an arm `制約違反`.");
             }
         }
-        // invariant-bearing construction is railway-bound, so it may only be the behavior's result
-        for (Ast.BStmt stmt : b.stmts()) {
-            if (stmt instanceof Ast.Let let) {
-                forbidInvariantConstruct(let.value(), symbols);
+        checkInvariantConstructInTail(b.body(), symbols);
+    }
+
+    /**
+     * Constructing an invariant-bearing data is railway-bound: {@code __construct} returns a
+     * {@code Result}, and a violation has to leave as one of the behavior's output arms (spec 9.4).
+     * That is only possible from a tail position, so allow it there and nowhere else.
+     *
+     * <p>{@code e} is in tail position, as are the branches of an {@code if} and the body of a
+     * {@code let}. A desugared {@code require} (spec 16.4) is an {@code if}, so the construction
+     * after a guard stays in tail position. {@code match} arms are not treated as tail: the
+     * backend emits a match as a value-producing expression, so a violation there would have
+     * nowhere to return from.
+     */
+    private static void checkInvariantConstructInTail(Ast.Expr e, Map<String, Ast.Def> symbols) {
+        switch (e) {
+            case Ast.If iff -> {
+                forbidInvariantConstruct(iff.cond(), symbols);
+                checkInvariantConstructInTail(iff.then(), symbols);
+                checkInvariantConstructInTail(iff.els(), symbols);
             }
+            case Ast.LetIn li -> {
+                forbidInvariantConstruct(li.value(), symbols);
+                checkInvariantConstructInTail(li.body(), symbols);
+            }
+            case Ast.NewData nd when isInvariantBearing(nd.typeName(), symbols) ->
+                    nd.inits().forEach(i -> forbidInvariantConstruct(i.value(), symbols));
+            default -> forbidInvariantConstruct(e, symbols);
         }
-        if (b.result() instanceof Ast.NewData nd && isInvariantBearing(nd.typeName(), symbols)) {
-            for (Ast.FieldInit init : nd.inits()) {
-                forbidInvariantConstruct(init.value(), symbols);
+    }
+
+    /**
+     * Only required behaviors may be called from a body; other behaviors compose with {@code >>}
+     * (spec 14.1). Checked up front so the diagnostic names the rule rather than reporting the
+     * behavior as an unknown function.
+     */
+    private static void rejectNonRequiredCalls(Ast.Expr e, Set<String> allBehaviors,
+                                               Map<String, ReqSig> reqSigs) {
+        if (e instanceof Ast.Call call && allBehaviors.contains(call.fn())
+                && !reqSigs.containsKey(call.fn())) {
+            throw new CompileException(call.pos(),
+                    "only required behaviors can be called from a body; compose others with `>>`");
+        }
+        forEachChild(e, c -> rejectNonRequiredCalls(c, allBehaviors, reqSigs));
+    }
+
+    /** Applies {@code f} to every direct subexpression of {@code e}. */
+    private static void forEachChild(Ast.Expr e, java.util.function.Consumer<Ast.Expr> f) {
+        switch (e) {
+            case Ast.NewData nd -> nd.inits().forEach(i -> f.accept(i.value()));
+            case Ast.FieldAccess fa -> f.accept(fa.target());
+            case Ast.Call call -> call.args().forEach(f);
+            case Ast.Binary bin -> {
+                f.accept(bin.left());
+                f.accept(bin.right());
             }
-        } else {
-            forbidInvariantConstruct(b.result(), symbols);
+            case Ast.Not not -> f.accept(not.operand());
+            case Ast.Match m -> {
+                f.accept(m.scrutinee());
+                m.cases().forEach(c -> f.accept(c.body()));
+            }
+            case Ast.If iff -> {
+                f.accept(iff.cond());
+                f.accept(iff.then());
+                f.accept(iff.els());
+            }
+            case Ast.ListLit lit -> lit.elements().forEach(f);
+            case Ast.ListComp comp -> {
+                f.accept(comp.element());
+                comp.guards().forEach(f);
+            }
+            case Ast.LetIn li -> {
+                f.accept(li.value());
+                f.accept(li.body());
+            }
+            default -> { }
         }
     }
 
@@ -320,6 +348,10 @@ public final class TypeChecker {
 
     private static void collectConstructs(Ast.Expr e, Set<String> out, Map<String, Ast.Def> symbols) {
         switch (e) {
+            case Ast.LetIn li -> {
+                collectConstructs(li.value(), out, symbols);
+                collectConstructs(li.body(), out, symbols);
+            }
             case Ast.NewData nd -> {
                 out.add(nd.typeName());
                 for (Ast.FieldInit init : nd.inits()) {
@@ -687,6 +719,12 @@ public final class TypeChecker {
             case Ast.IntLit ignored -> Type.INT;
             case Ast.StringLit ignored -> Type.STRING;
             case Ast.BoolLit ignored -> Type.BOOL;
+            case Ast.LetIn li -> {
+                // the binding is visible only inside the body, so a sibling branch cannot see it
+                Map<String, Type> inner = new HashMap<>(env);
+                inner.put(li.name(), typeOf(li.value(), env, data, symbols, reqs));
+                yield typeOf(li.body(), inner, data, symbols, reqs);
+            }
             case Ast.Var v -> {
                 Type t = env.get(v.name());
                 if (t != null) {

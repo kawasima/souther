@@ -626,54 +626,66 @@ public final class Backend {
                     unbox(code, pt, slot);
                     gen.bind(p.name(), slot, pt);
                 }
-                for (Ast.BStmt stmt : b.stmts()) {
-                    switch (stmt) {
-                        case Ast.Let let when let.value() instanceof Ast.Call call
-                                && requiredNames.contains(call.fn()) -> {
-                            // call an injected required behavior; its apply returns the value directly
-                            code.aload(0);
-                            code.getfield(cdB, call.fn(), CD_Behavior);
-                            Type at = gen.expr(call.args().get(0));
-                            box(code, at);
-                            code.invokeinterface(CD_Behavior, "apply", MTD_apply);
-                            Type letType = requiredSuccess.get(call.fn());
-                            int vSlot = gen.slot(letType);
-                            unbox(code, letType, vSlot);
-                            gen.bind(let.name(), vSlot, letType);
-                        }
-                        case Ast.Let let -> {
-                            Type t = gen.expr(let.value());
-                            int slot = gen.slot(t);
-                            store(code, slot, t);
-                            gen.bind(let.name(), slot, t);
-                        }
-                        case Ast.Guard guard -> {
-                            gen.expr(guard.cond());
-                            Label cont = code.newLabel();
-                            code.ifne(cont);
-                            Type ft = gen.expr(guard.failure());
-                            box(code, ft);
-                            code.areturn();
-                            code.labelBinding(cont);
-                        }
-                    }
-                }
-                if (b.result() instanceof Ast.NewData nd
-                        && TypeChecker.isInvariantBearing(nd.typeName(), symbols)) {
-                    // railway construct: __construct checks invariants and returns a Result
-                    ClassDesc cdType = cd(nd.typeName());
-                    Map<String, Type> flds = fieldTypes((Ast.Data) symbols.get(nd.typeName()));
-                    emitFieldValues(gen, flds, nd.inits(), nd.spreads());
-                    code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(flds)));
-                    code.invokestatic(CD_Violation, "orValue", MTD_orValue);
-                    code.areturn();
-                } else {
-                    Type rt = gen.expr(b.result());
-                    box(code, rt);
-                    code.areturn();
-                }
+                emitBodyTail(gen, code, b.body(), cdB, requiredNames, requiredSuccess);
             });
         });
+    }
+
+    /**
+     * Emits {@code e} in tail position: every path ends in an {@code areturn}.
+     *
+     * <p>Constructing an invariant-bearing data goes through {@code __construct}, which checks the
+     * invariant and returns a {@code Result}; {@code Violation.orValue} turns that into either the
+     * value or the violation arm, and either way it is what the behavior returns (spec 9.2, 9.4).
+     * Because a desugared {@code require} (spec 16.4) is an {@code if} whose branches are tail,
+     * this is reached for constructions on both sides of a guard — there is no second, unchecked
+     * construction path.
+     */
+    private void emitBodyTail(Gen gen, CodeBuilder code, Ast.Expr e, ClassDesc cdB,
+                              Set<String> requiredNames, Map<String, Type> requiredSuccess) {
+        switch (e) {
+            case Ast.LetIn li -> {
+                if (li.value() instanceof Ast.Call call && requiredNames.contains(call.fn())) {
+                    // call an injected required behavior; its apply returns the value directly
+                    code.aload(0);
+                    code.getfield(cdB, call.fn(), CD_Behavior);
+                    Type at = gen.expr(call.args().get(0));
+                    box(code, at);
+                    code.invokeinterface(CD_Behavior, "apply", MTD_apply);
+                    Type letType = requiredSuccess.get(call.fn());
+                    int vSlot = gen.slot(letType);
+                    unbox(code, letType, vSlot);
+                    gen.bind(li.name(), vSlot, letType);
+                } else {
+                    Type t = gen.expr(li.value());
+                    int slot = gen.slot(t);
+                    store(code, slot, t);
+                    gen.bind(li.name(), slot, t);
+                }
+                emitBodyTail(gen, code, li.body(), cdB, requiredNames, requiredSuccess);
+            }
+            case Ast.If iff -> {
+                gen.expr(iff.cond());
+                Label elseL = code.newLabel();
+                code.ifeq(elseL);
+                emitBodyTail(gen, code, iff.then(), cdB, requiredNames, requiredSuccess);
+                code.labelBinding(elseL);
+                emitBodyTail(gen, code, iff.els(), cdB, requiredNames, requiredSuccess);
+            }
+            case Ast.NewData nd when TypeChecker.isInvariantBearing(nd.typeName(), symbols) -> {
+                ClassDesc cdType = cd(nd.typeName());
+                Map<String, Type> flds = fieldTypes((Ast.Data) symbols.get(nd.typeName()));
+                emitFieldValues(gen, flds, nd.inits(), nd.spreads());
+                code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(flds)));
+                code.invokestatic(CD_Violation, "orValue", MTD_orValue);
+                code.areturn();
+            }
+            default -> {
+                Type rt = gen.expr(e);
+                box(code, rt);
+                code.areturn();
+            }
+        }
     }
 
     private byte[] generatePipe(Ast.PipeBehavior pipe, Set<String> requiredNames,
@@ -1404,6 +1416,14 @@ public final class Backend {
 
         Type expr(Ast.Expr e) {
             return switch (e) {
+                case Ast.LetIn li -> {
+                    // a `let` reached outside tail position: bind, then value the body
+                    Type vt = expr(li.value());
+                    int s = slot(vt);
+                    store(code, s, vt);
+                    bind(li.name(), s, vt);
+                    yield expr(li.body());
+                }
                 case Ast.IntLit lit -> {
                     code.loadConstant(lit.value());
                     yield Type.INT;
