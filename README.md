@@ -145,8 +145,8 @@ undercut one of the ideas above.
   stay closed: an intersection value has no clear constructor and no clear invariant to check.
   The spec DSL's `AND` means "has all of A's fields, plus more", which is nominal field
   composition — `include` — not "is both A and B".
-- **No `Result` / `Either`, no success/failure枠.** Outputs are unmarked domain sums; the
-  happy-path/off-path split is a property of a *composition*, not of a value.
+- **No `Result` / `Either`, no dedicated success/failure slot.** Outputs are unmarked domain
+  sums; the happy-path/off-path split is a property of a *composition*, not of a value.
 - **No type classes / traits, higher-kinded types, dependent types, SMT or termination proofs.**
   Souther tracks two things about data (which values are it, which expressions may construct it)
   and three about a behavior (input, output sum, required-behavior set). That is the whole type
@@ -213,7 +213,7 @@ bytecode generation.
 
 ## License
 
-Copyright © kawasima
+Copyright ©kawasima 2026
 
 Released under the [Eclipse Public License 2.0](https://www.eclipse.org/legal/epl-2.0/)
 (EPL-2.0). See [`LICENSE`](LICENSE) for the full text.
