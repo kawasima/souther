@@ -44,11 +44,8 @@ public final class JooqFindMember extends findMember {
     public Object apply(Object input) {
         会員ID id = (会員ID) input;
         // 値を data の外へ取り出すのは encoder を通す（spec 8.5）。会員ID は newtype なので
-        // encode すると実行時は裸の String になる。※ 現状 encoder() の generic signature は
-        // どの型も Encoder<T, Map<String,Object>> なので、Object 経由で受けてから String へ落とす
-        // （newtype を Encoder<T, String> と型付けする core 側の改善で不要になる）。
-        Object encodedId = 会員ID.encoder().encode(id);
-        String idStr = (String) encodedId;
+        // encoder() は Encoder<会員ID, String>、encode は裸の String を返す（キャスト不要）。
+        String idStr = 会員ID.encoder().encode(id);
         try {
             Record3<String, String, String> row = dsl
                     .select(field(name("id"), String.class),

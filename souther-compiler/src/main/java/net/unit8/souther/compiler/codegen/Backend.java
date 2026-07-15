@@ -453,7 +453,7 @@ public final class Backend {
             });
             sum.encoder().ifPresent(enc ->
                     emitCodecFactory(cb, "encoder", CD_REncoder, cd(sum.name() + "$Enc"),
-                            encoderSig(cdX)));
+                            encoderSig(cdX, CD_Map)));
         }));
         sum.decoder().ifPresent(disc -> {
             out.put(pkg + "." + sum.name() + "$Dec", generateSumDecoder(sum, disc, Src.NEUTRAL));
@@ -557,7 +557,7 @@ public final class Backend {
                     decoderSigFor(Src.JSON, cdU, false));
             emitCodecFactory(cb, "recordDecoder", CD_RDecoder, cd(unit.name() + "$DecRecord"),
                     decoderSigFor(Src.JOOQ, cdU, false));
-            emitCodecFactory(cb, "encoder", CD_REncoder, cdEnc, encoderSig(cdU));
+            emitCodecFactory(cb, "encoder", CD_REncoder, cdEnc, encoderSig(cdU, CD_Map));
         }));
         out.put(pkg + "." + unit.name() + "$Dec", generateUnitDecoder(cdU, cdDec));
         out.put(pkg + "." + unit.name() + "$DecJson", generateUnitDecoder(cdU, cd(unit.name() + "$DecJson")));
@@ -843,7 +843,7 @@ public final class Backend {
         ClassDesc self = cd(data.name());
         MethodSignature sig = name.equals("decoder")
                 ? decoderSig(self, isMapInput(data.name()))
-                : encoderSig(self);
+                : encoderSig(self, encoderOutput(data));
         emitCodecFactory(cb, name, returnIface, impl, sig);
     }
 
@@ -873,10 +873,35 @@ public final class Backend {
                 "()Lnet/unit8/raoh/decode/Decoder<" + in + type.descriptorString() + ">;");
     }
 
-    /** {@code Encoder<T,Map<String,Object>>}. */
-    private static MethodSignature encoderSig(ClassDesc type) {
-        return MethodSignature.parseFrom("()Lnet/unit8/raoh/encode/Encoder<" + type.descriptorString()
-                + "Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;>;");
+    /** {@code Encoder<T,O>}: {@code O} is {@code Map<String,Object>} for objects/sums/units, or the
+     * bare (boxed) scalar for a newtype — a newtype encodes to a plain value, not a map. */
+    private static MethodSignature encoderSig(ClassDesc type, ClassDesc output) {
+        String out = output.equals(CD_Map)
+                ? "Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>;"
+                : output.descriptorString();
+        return MethodSignature.parseFrom(
+                "()Lnet/unit8/raoh/encode/Encoder<" + type.descriptorString() + out + ">;");
+    }
+
+    /** The runtime type a data's {@code encode} returns: a {@code Map} for objects/sums, the bare
+     * boxed scalar (or {@code Object} for a nested/list/optional value) for a newtype. */
+    private static ClassDesc encoderOutput(Ast.Data data) {
+        return data.encoder().map(enc -> rawOutputType(enc.result())).orElse(CD_Map);
+    }
+
+    private static ClassDesc rawOutputType(Ast.RawExpr raw) {
+        return switch (raw) {
+            case Ast.TextRaw ignored -> CD_String;
+            case Ast.IsoTextRaw ignored -> CD_String;
+            case Ast.IntRaw ignored -> CD_Long;
+            case Ast.BoolRaw ignored -> CD_Boolean;
+            case Ast.DecimalRaw ignored -> CD_BigDecimal;
+            case Ast.ObjectRaw ignored -> CD_Map;
+            case Ast.EncodeRaw ignored -> CD_Object;
+            case Ast.OptionRaw ignored -> CD_Object;
+            case Ast.ListEnc ignored -> CD_Object;
+            case Ast.MapEnc ignored -> CD_Object;
+        };
     }
 
     /** Source-specific decoder factory signature: {@code Decoder<In,T>} with In per source. */
