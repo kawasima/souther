@@ -853,6 +853,8 @@ public final class TypeChecker {
                 requireType(args.get(1), Type.INT, env, data, symbols, reqs, "index of get");
                 yield Type.option(lo.element());
             }
+            case "add", "subtract", "multiply" -> numericOp(call, env, data, symbols, reqs, false);
+            case "compare" -> numericOp(call, env, data, symbols, reqs, true);
             default -> {
                 // a required behavior called inline (spec 12.2, 13): type it as its success arm
                 ReqSig callee = reqs.get(call.fn());
@@ -894,6 +896,19 @@ public final class TypeChecker {
                 yield Type.BOOL;
             }
         };
+    }
+
+    /** A binary numeric op over two Int or two Decimal operands (spec 18.2, 18.3). {@code compare}
+     * yields Int (-1/0/1); the arithmetic ops yield the operand type. */
+    private static Type numericOp(Ast.Call call, Map<String, Type> env, Ast.Data data,
+                                  Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs, boolean compare) {
+        arity(call, 2);
+        Type lt = typeOf(call.args().get(0), env, data, symbols, reqs);
+        if (lt != Type.INT && lt != Type.DECIMAL) {
+            throw new CompileException(call.pos(), call.fn() + " expects Int or Decimal, got " + lt);
+        }
+        requireType(call.args().get(1), lt, env, data, symbols, reqs, "argument 2 of " + call.fn());
+        return compare ? Type.INT : lt;
     }
 
     private static void arity(Ast.Call call, int n) {

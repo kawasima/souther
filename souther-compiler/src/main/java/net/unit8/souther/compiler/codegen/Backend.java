@@ -1200,6 +1200,35 @@ public final class Backend {
                             MethodTypeDesc.of(CD_Option, CD_List, ConstantDescs.CD_long));
                     return Type.option(((Type.ListOf) lt).element());
                 }
+                case "add", "subtract", "multiply" -> {
+                    Type t = expr(call.args().get(0));
+                    expr(call.args().get(1));
+                    if (t == Type.DECIMAL) {
+                        code.invokevirtual(CD_BigDecimal, call.fn(),
+                                MethodTypeDesc.of(CD_BigDecimal, CD_BigDecimal));
+                    } else {
+                        switch (call.fn()) {
+                            case "add" -> code.ladd();
+                            case "subtract" -> code.lsub();
+                            default -> code.lmul();
+                        }
+                    }
+                    return t;
+                }
+                case "compare" -> {
+                    Type t = expr(call.args().get(0));
+                    expr(call.args().get(1));
+                    if (t == Type.DECIMAL) {
+                        code.invokevirtual(CD_BigDecimal, "compareTo",
+                                MethodTypeDesc.of(ConstantDescs.CD_int, CD_BigDecimal));
+                    } else {
+                        code.invokestatic(CD_Long, "compare",
+                                MethodTypeDesc.of(ConstantDescs.CD_int, ConstantDescs.CD_long,
+                                        ConstantDescs.CD_long));
+                    }
+                    code.i2l();
+                    return Type.INT;
+                }
                 default -> {
                     if (reqNames.contains(call.fn())) {
                         return requiredCall(call);
