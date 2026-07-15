@@ -123,6 +123,9 @@ public final class Deriver {
         if (t instanceof Type.ListOf lo) {
             return new Ast.ListDecRef(decRef(lo.element(), d, pos), pos);
         }
+        if (t instanceof Type.OptionOf oo) {
+            return new Ast.OptionDecRef(decRef(oo.element(), d, pos), pos);
+        }
         throw new CompileException(pos,
                 "cannot derive a decoder for field type " + t + " in `" + d.name() + "`");
     }
@@ -165,7 +168,10 @@ public final class Deriver {
     }
 
     private static Ast.RawExpr rawFor(Type t, String field, Ast.Data d, SourcePos pos) {
-        Ast.Expr access = new Ast.FieldAccess(new Ast.Var("self", pos), field, pos);
+        return rawForAccess(t, new Ast.FieldAccess(new Ast.Var("self", pos), field, pos), d, pos);
+    }
+
+    private static Ast.RawExpr rawForAccess(Type t, Ast.Expr access, Ast.Data d, SourcePos pos) {
         if (isPrim(t)) {
             return primRaw(t, access, pos);
         }
@@ -174,6 +180,11 @@ public final class Deriver {
         }
         if (t instanceof Type.ListOf lo) {
             return new Ast.ListEnc(access, encElem(lo.element(), d, pos), pos);
+        }
+        if (t instanceof Type.OptionOf oo) {
+            String elemVar = "$opt";
+            Ast.RawExpr inner = rawForAccess(oo.element(), new Ast.Var(elemVar, pos), d, pos);
+            return new Ast.OptionRaw(access, inner, elemVar, pos);
         }
         throw new CompileException(pos,
                 "cannot derive an encoder for field type " + t + " in `" + d.name() + "`");

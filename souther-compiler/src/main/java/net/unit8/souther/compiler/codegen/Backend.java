@@ -54,6 +54,9 @@ public final class Backend {
     private static final ClassDesc CD_BigDecimal = ClassDesc.of("java.math.BigDecimal");
     private static final ClassDesc CD_LocalDate = ClassDesc.of("java.time.LocalDate");
     private static final ClassDesc CD_LocalDateTime = ClassDesc.of("java.time.LocalDateTime");
+    private static final ClassDesc CD_Option = ClassDesc.of("net.unit8.souther.runtime.Option");
+    private static final ClassDesc CD_OptionSome = CD_Option.nested("Some");
+    private static final ClassDesc CD_OptionNone = CD_Option.nested("None");
     private static final ClassDesc CD_IllegalStateException = ClassDesc.of("java.lang.IllegalStateException");
 
     private static final MethodTypeDesc MTD_void = MethodTypeDesc.of(ConstantDescs.CD_void);
@@ -699,8 +702,13 @@ public final class Backend {
             Ast.Bind bind = binds.get(i);
             code.aload(1);
             code.loadConstant(bind.key());
-            emitDecoderObject(code, bind.ref());
-            code.invokestatic(CD_Decoders, "objectField", MTD_objectField);
+            if (bind.ref() instanceof Ast.OptionDecRef opt) {
+                emitDecoderObject(code, opt.element());
+                code.invokestatic(CD_Decoders, "optionalObjectField", MTD_objectField);
+            } else {
+                emitDecoderObject(code, bind.ref());
+                code.invokestatic(CD_Decoders, "objectField", MTD_objectField);
+            }
             int rSlot = gen.slot(Type.STRING);
             code.astore(rSlot);
             resultSlots[i] = rSlot;
@@ -743,6 +751,7 @@ public final class Backend {
             case Ast.PrimDecRef p -> TypeChecker.primType(p.kind());
             case Ast.DataDecRef d -> Type.ref(d.typeName());
             case Ast.ListDecRef l -> Type.list(bindType(l.element()));
+            case Ast.OptionDecRef o -> Type.option(bindType(o.element()));
         };
     }
 
@@ -762,6 +771,8 @@ public final class Backend {
                 emitDecoderObject(code, l.element());
                 code.invokestatic(CD_Decoders, "listOf", MTD_listOf);
             }
+            case Ast.OptionDecRef o -> throw new CompileException(o.pos(),
+                    "optional is only supported as a direct object field");
         }
     }
 
@@ -857,6 +868,26 @@ public final class Backend {
                 code.invokestatic(cd(e.typeName()), "encoder", MTD_encoder);
                 gen.expr(e.arg());
                 code.invokeinterface(CD_Encoder, "encode", MTD_encode);
+            }
+            case Ast.OptionRaw o -> {
+                Type at = gen.expr(o.access());            // Option on the stack
+                Type elemType = ((Type.OptionOf) at).element();
+                code.dup();
+                code.instanceOf(CD_OptionNone);
+                Label none = code.newLabel();
+                Label end = code.newLabel();
+                code.ifne(none);
+                code.checkcast(CD_OptionSome);
+                code.invokevirtual(CD_OptionSome, "value", MTD_Object);
+                int slot = gen.slot(elemType);
+                unbox(code, elemType, slot);
+                gen.bind(o.elemVar(), slot, elemType);
+                emitRawExpr(code, gen, o.inner());          // Some(v) -> encode v
+                code.goto_(end);
+                code.labelBinding(none);
+                code.pop();                                 // discard the None value
+                code.invokestatic(CD_Raw, "nullValue", MethodTypeDesc.of(CD_Raw), true);
+                code.labelBinding(end);
             }
             case Ast.ListEnc le -> {
                 gen.expr(le.source());
@@ -1209,6 +1240,7 @@ public final class Backend {
         if (type == Type.DECIMAL) return CD_BigDecimal;
         if (type == Type.DATE) return CD_LocalDate;
         if (type == Type.DATETIME) return CD_LocalDateTime;
+        if (type instanceof Type.OptionOf) return CD_Option;
         if (type instanceof Type.ListOf) return CD_List;
         if (type instanceof Type.Union) return CD_Object;
         return armClass(((Type.Ref) type).name());

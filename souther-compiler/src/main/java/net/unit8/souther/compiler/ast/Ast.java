@@ -117,7 +117,7 @@ public interface Ast {
     record Bind(String name, String key, DecRef ref, SourcePos pos) implements Ast {}
 
     /** The decoder referenced by a bind: a primitive, another data's {@code .decoder}, or a list. */
-    sealed interface DecRef extends Ast permits PrimDecRef, DataDecRef, ListDecRef {}
+    sealed interface DecRef extends Ast permits PrimDecRef, DataDecRef, ListDecRef, OptionDecRef {}
 
     record PrimDecRef(PrimKind kind, SourcePos pos) implements DecRef {}
 
@@ -125,6 +125,9 @@ public interface Ast {
 
     /** {@code list(<elementDecRef>)} */
     record ListDecRef(DecRef element, SourcePos pos) implements DecRef {}
+
+    /** An optional field decoder: absent/null becomes {@code None}, present decodes {@code element}. */
+    record OptionDecRef(DecRef element, SourcePos pos) implements DecRef {}
 
     /** A primitive field decoder kind. */
     enum PrimKind { STRING, INT, BOOL, DECIMAL, DATE, DATETIME }
@@ -149,7 +152,11 @@ public interface Ast {
 
     /** A Raw-building expression. */
     sealed interface RawExpr extends Ast
-            permits TextRaw, IntRaw, BoolRaw, DecimalRaw, IsoTextRaw, ObjectRaw, EncodeRaw, ListEnc {}
+            permits TextRaw, IntRaw, BoolRaw, DecimalRaw, IsoTextRaw, ObjectRaw, EncodeRaw, ListEnc, OptionRaw {}
+
+    /** Encodes an optional field: {@code None} becomes {@code Raw.Null}, {@code Some(v)} encodes
+     * {@code v} via {@code inner}, which reads the unwrapped value bound to {@code elemVar}. */
+    record OptionRaw(Expr access, RawExpr inner, String elemVar, SourcePos pos) implements RawExpr {}
 
     record TextRaw(Expr arg, SourcePos pos) implements RawExpr {}
 

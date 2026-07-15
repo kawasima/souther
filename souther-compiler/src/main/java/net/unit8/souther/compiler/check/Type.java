@@ -4,7 +4,7 @@ package net.unit8.souther.compiler.check;
  * The Souther value types. Either a primitive ({@code Int}/{@code String}/{@code Bool})
  * or a reference to a named data type. {@code Type.INT} etc. remain usable as constants.
  */
-public sealed interface Type permits Type.Prim, Type.Ref, Type.ListOf, Type.Union {
+public sealed interface Type permits Type.Prim, Type.Ref, Type.ListOf, Type.OptionOf, Type.Union {
 
     enum Prim implements Type { INT, STRING, BOOL, DECIMAL, DATE, DATETIME }
 
@@ -13,6 +13,9 @@ public sealed interface Type permits Type.Prim, Type.Ref, Type.ListOf, Type.Unio
 
     /** A homogeneous list of {@code element}. */
     record ListOf(Type element) implements Type {}
+
+    /** An optional value {@code Option<element>} — the desugaring of a {@code T?} field (spec 7.4). */
+    record OptionOf(Type element) implements Type {}
 
     /** An anonymous union of data types (a behavior's multi-success output). */
     record Union(java.util.Set<String> members) implements Type {}
@@ -30,6 +33,10 @@ public sealed interface Type permits Type.Prim, Type.Ref, Type.ListOf, Type.Unio
 
     static Type list(Type element) {
         return new ListOf(element);
+    }
+
+    static Type option(Type element) {
+        return new OptionOf(element);
     }
 
     static Type union(java.util.Set<String> members) {

@@ -514,6 +514,7 @@ public final class TypeChecker {
                 yield Type.ref(d.typeName());
             }
             case Ast.ListDecRef l -> Type.list(decRefType(l.element(), symbols));
+            case Ast.OptionDecRef o -> Type.option(decRefType(o.element(), symbols));
         };
     }
 
@@ -592,6 +593,15 @@ public final class TypeChecker {
                 if (at != Type.DATE && at != Type.DATETIME) {
                     throw new CompileException(t.pos(), "ISO text encoder expects Date or DateTime, got " + at);
                 }
+            }
+            case Ast.OptionRaw o -> {
+                Type at = typeOf(o.access(), env, data, symbols);
+                if (!(at instanceof Type.OptionOf oo)) {
+                    throw new CompileException(o.pos(), "optional encoder expects an Option, got " + at);
+                }
+                Map<String, Type> inner = new HashMap<>(env);
+                inner.put(o.elemVar(), oo.element());
+                checkRawExpr(o.inner(), inner, data, symbols);
             }
             case Ast.ObjectRaw o -> {
                 for (Ast.RawEntry entry : o.entries()) {
@@ -892,6 +902,12 @@ public final class TypeChecker {
                     throw new CompileException(ref.pos(), "List needs a type argument, e.g. List<Int>");
                 }
                 yield Type.list(resolveType(ref.arg(), symbols));
+            }
+            case "Option" -> {
+                if (ref.arg() == null) {
+                    throw new CompileException(ref.pos(), "Option needs a type argument");
+                }
+                yield Type.option(resolveType(ref.arg(), symbols));
             }
             default -> {
                 if (symbols.containsKey(ref.name())) {

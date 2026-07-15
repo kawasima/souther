@@ -193,7 +193,12 @@ public final class Parser {
     private Ast.Field parseField() {
         Token n = expect(TokenType.IDENT);
         expect(TokenType.COLON);
-        return new Ast.Field(n.text(), parseTypeRef(), n.pos());
+        Ast.TypeRef type = parseTypeRef();
+        if (match(TokenType.QUESTION)) {
+            // `T?` desugars to Option<T> (spec 7.4); `?` is only field optionality
+            type = new Ast.TypeRef("Option", type, type.pos());
+        }
+        return new Ast.Field(n.text(), type, n.pos());
     }
 
     private Ast.TypeRef parseTypeRef() {

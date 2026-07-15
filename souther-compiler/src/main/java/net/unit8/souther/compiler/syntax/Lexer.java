@@ -161,6 +161,8 @@ public final class Lexer {
                 return new Token(TokenType.PLUS, "+", start);
             case '*':
                 return new Token(TokenType.STAR, "*", start);
+            case '?':
+                return new Token(TokenType.QUESTION, "?", start);
             default:
                 break;
         }

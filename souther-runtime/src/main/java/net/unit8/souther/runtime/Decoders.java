@@ -120,6 +120,23 @@ public final class Decoders {
         return field(raw, key, child -> toResult(inner.decode(child)));
     }
 
+    /** Reads an optional field {@code key}: absent or null is {@code None}; a present value
+     * decodes with {@code inner} to {@code Some} (or an error). Spec section 7.4. */
+    public static <T> Result<Option<T>, NonEmptyList<DecodeError>> optionalObjectField(
+            Raw raw, String key, Decoder<T> inner) {
+        if (!(raw instanceof Raw.ObjectValue obj)) {
+            return fail("expected_object", "expected an object");
+        }
+        Raw child = obj.value().get(key);
+        if (child == null || child instanceof Raw.NullValue) {
+            return Result.ok(Option.none());
+        }
+        return switch (Decoders.<T>toResult(inner.decode(child))) {
+            case Result.Ok<T, NonEmptyList<DecodeError>> ok -> Result.ok(Option.some(ok.value()));
+            case Result.Err<T, NonEmptyList<DecodeError>> err -> Result.err(prefix(key, err.error()));
+        };
+    }
+
     /** The primitive text decoder as a {@link Decoder} (for list elements and nesting). */
     public static Decoder<String> textDecoder() {
         return raw -> finish(text(raw));
