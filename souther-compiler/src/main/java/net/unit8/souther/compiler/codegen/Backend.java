@@ -892,6 +892,30 @@ public final class Backend {
     }
 
     private static final ClassDesc CD_Objects = ClassDesc.of("java.util.Objects");
+    private static final MethodTypeDesc MTD_BD_compareTo =
+            MethodTypeDesc.of(ConstantDescs.CD_int, CD_BigDecimal);
+    private static final MethodTypeDesc MTD_BD_strip = MethodTypeDesc.of(CD_BigDecimal);
+
+    /**
+     * Emits value equality for two {@code Decimal}s on the stack, leaving a boolean.
+     *
+     * <p>{@code BigDecimal.equals} also compares the scale, so it calls 1.0 and 1.00 different.
+     * Scale is how a number was written, not what it is (spec 7.1): the same amount arrives with
+     * a different scale depending on whether it was read from JSON or a DB column, and a money
+     * type whose equality turns on that is a trap. Compare by value instead — as Clojure, Scala
+     * and Ceylon all chose for the same reason.
+     */
+    private void emitDecimalEquals(CodeBuilder code) {
+        code.invokevirtual(CD_BigDecimal, "compareTo", MTD_BD_compareTo);
+        Label eq = code.newLabel();
+        Label done = code.newLabel();
+        code.ifeq(eq);
+        code.iconst_0();
+        code.goto_(done);
+        code.labelBinding(eq);
+        code.iconst_1();
+        code.labelBinding(done);
+    }
     private static final MethodTypeDesc MTD_Objects_equals =
             MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_Object, CD_Object);
     private static final MethodTypeDesc MTD_Objects_hashCode =
@@ -932,6 +956,9 @@ public final class Backend {
                                 code.ifne(differs);
                             } else if (t == Type.BOOL) {
                                 code.if_icmpne(differs);
+                            } else if (t == Type.DECIMAL) {
+                                emitDecimalEquals(code);   // by value, not by scale (spec 7.1)
+                                code.ifeq(differs);
                             } else {
                                 code.invokestatic(CD_Objects, "equals", MTD_Objects_equals);
                                 code.ifeq(differs);
@@ -959,6 +986,12 @@ public final class Backend {
                             code.invokestatic(CD_Long, "hashCode", MTD_Long_hashCode);
                         } else if (t == Type.BOOL) {
                             // already an int 0/1
+                        } else if (t == Type.DECIMAL) {
+                            // equality ignores scale, so the hash must too, or 1.0 and 1.00 land
+                            // in different buckets and a Map keyed by this data stops working.
+                            // Groovy changed `==` and left hashCode alone; that bug is still open.
+                            code.invokevirtual(CD_BigDecimal, "stripTrailingZeros", MTD_BD_strip);
+                            code.invokestatic(CD_Objects, "hashCode", MTD_Objects_hashCode);
                         } else {
                             code.invokestatic(CD_Objects, "hashCode", MTD_Objects_hashCode);
                         }
@@ -2136,9 +2169,17 @@ public final class Backend {
                         }
                         return Type.BOOL;
                     }
+                    if (lt == Type.DECIMAL) {
+                        emitDecimalEquals(code);          // by value, ignoring scale (spec 7.1)
+                        if (bin.op() == Ast.BinOp.NE) {
+                            code.iconst_1();
+                            code.ixor();
+                        }
+                        return Type.BOOL;
+                    }
                     if (isReference(lt)) {
                         // a data (or any boxed value) compares by its fields — the generated
-                        // equals (spec 16.2). Objects.equals keeps it null-tolerant.
+                        // equals (spec 7.1). Objects.equals keeps it null-tolerant.
                         code.invokestatic(CD_Objects, "equals", MTD_Objects_equals);
                         if (bin.op() == Ast.BinOp.NE) {
                             code.iconst_1();
