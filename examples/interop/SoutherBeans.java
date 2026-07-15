@@ -1,6 +1,6 @@
-package example.member.web;
+package app.member.web;
 
-import example.member.JooqFindMember;
+import app.member.JooqFindMember;
 import example.member.会員を照会し整形する;
 
 import org.jooq.DSLContext;

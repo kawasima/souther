@@ -130,7 +130,13 @@ public final class Backend {
         for (Ast.RequiredBehavior r : module.requireds()) {
             requiredNames.add(r.name());
             requiredSuccess.put(r.name(), b.successType(r.ret()));
-            out.put(module.name() + "." + r.name(), b.generateRequiredInterface(r.name()));
+            List<String> unitArms = new ArrayList<>();
+            for (Ast.TypeRef t : r.ret().arms()) {
+                if (b.symbols.get(t.name()) instanceof Ast.UnitData) {
+                    unitArms.add(t.name());
+                }
+            }
+            out.put(module.name() + "." + r.name(), b.generateRequiredBase(r.name(), unitArms));
         }
         Map<String, TypeChecker.Sig> sigs = TypeChecker.signatures(module, b.symbols);
         for (Ast.BehaviorDef bd : module.behaviors()) {
@@ -186,12 +192,35 @@ public final class Backend {
                 });
     }
 
-    /** Generates the named interface for a required behavior (spec 13.3): {@code interface r extends Behavior}. */
-    private byte[] generateRequiredInterface(String name) {
+    /**
+     * Generates the abstract base class for a required behavior (spec 13.3): an abstract
+     * {@code Behavior} that a Java implementation extends. The base exposes a {@code protected}
+     * factory for each declared unit-data output arm — the only sanctioned way for the
+     * implementation to mint those arms (spec 2.1). The data constructors stay non-public, so
+     * a subclass can build exactly this behavior's declared arms and nothing else, from any
+     * package (no in-package placement required).
+     */
+    private byte[] generateRequiredBase(String name, List<String> unitArms) {
         ClassDesc cdR = cd(name);
         return CF.build(cdR, cb -> {
-            cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_INTERFACE | ClassFile.ACC_ABSTRACT);
+            cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_ABSTRACT | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_Behavior);
+            // protected no-arg ctor so subclasses in any package can call super()
+            cb.withMethodBody("<init>", MTD_void, ClassFile.ACC_PROTECTED, code -> {
+                code.aload(0);
+                code.invokespecial(CD_Object, "<init>", MTD_void);
+                code.return_();
+            });
+            for (String arm : unitArms) {
+                ClassDesc armCd = cd(arm);
+                cb.withMethodBody(arm, MethodTypeDesc.of(armCd),
+                        ClassFile.ACC_PROTECTED | ClassFile.ACC_FINAL, code -> {
+                            code.new_(armCd);
+                            code.dup();
+                            code.invokespecial(armCd, "<init>", MTD_void);
+                            code.areturn();
+                        });
+            }
         });
     }
 

@@ -57,23 +57,18 @@ behavior 会員を照会し整形する = findMember >> 会員を表示用に整
 `findMember` の成功アーム `会員` だけが整形段に流れ、失敗3アームは整形段を素通りして出力に
 残ります（型ルーティング。spec 14.2）。要求集合 `{findMember}` はコンパイラが推論します。
 
-| Java ファイル | 役割 |
-| --- | --- |
-| `JooqFindMember.java` | `required behavior findMember` の jOOQ 実装。**生成パッケージ `example.member` に置く**（spec 19.6）——失敗アームは非公開コンストラクタで、この境界実装だけが構築できる。DB 例外は `DB不通` アームに畳む |
-| `SoutherBeans.java` | `会員を照会し整形する.bind(new JooqFindMember(dsl))` でパイプラインを束縛し Bean 化（spec 19.5） |
-| `MemberController.java` | `@RestController`。入力を `会員ID.decoder()` で decode し、`apply` の出力アームを `switch` で HTTP ステータス（200 / 404 / 500 / 503）へ畳む |
-| `RawJson.java` | encoder が返す `Raw` を Jackson 用の素の Java 値へ落とす小物 |
+生成された `findMember` は**抽象基底クラス**（`Behavior` を継承）で、宣言した単位data の出力アーム
+`会員なし` / `保存データ不正` / `DB不通` に対する `protected` ファクトリを持ちます。実装はこれを
+`extends` し、失敗アームは継承したファクトリで作ります（`new` ではない）。
 
-要は、アプリ側（コントローラ）は **data を構築できず**、出力アームを型で見分けて encode するだけ。
-data を生成できるのは decoder と、生成パッケージ内に置いた境界実装だけ——これがドメインの
-生成経路の封じ込め（spec 2.1）を Java 越しでも保つ仕掛けです。
+| Java ファイル | パッケージ | 役割 |
+| --- | --- | --- |
+| `JooqFindMember.java` | `app.member`（アプリ側） | `findMember` を **extends** した jOOQ 実装。成功値 `会員` は decoder で組み立て、失敗アームは継承した `会員なし()` 等で作る。DB 例外は `DB不通` アームに畳む |
+| `SoutherBeans.java` | `app.member.web` | `会員を照会し整形する.bind(new JooqFindMember(dsl))` でパイプラインを束縛し Bean 化（spec 19.5） |
+| `MemberController.java` | `app.member.web` | `@RestController`。入力を `会員ID.decoder()` で decode し、`apply` の出力アームを `switch` で HTTP ステータス（200 / 404 / 500 / 503）へ畳む |
+| `RawJson.java` | `app.member.web` | encoder が返す `Raw` を Jackson 用の素の Java 値へ落とす小物 |
 
-> **設計メモ（未実装）: 効果実装のアーム構築。**
-> いまの `JooqFindMember` は失敗アーム（`会員なし` 等）を `new` で作っています。これはコンストラクタが
-> package-private で、実装を生成パッケージ `example.member` に同居させたから動くだけで、in-package なら
-> **任意の data を `new` できてしまう**——生成経路の封じ込め（spec 2.1）を厳密には満たさない暫定策です。
-> あるべき形は「required behavior の実装に、その behavior が**宣言した出力アームだけ**を構築する capability
-> を渡す」こと。具体的には、コンパイラが required behavior ごとに抽象基底クラスを生成し、宣言アームの
-> `protected` ファクトリ（`会員なし()` 等）を持たせ、実装はそれを継承する。すると実装は **どのパッケージにも
-> 置け**、**宣言アーム以外は作れず**、`new` による抜け道が塞がる。data のコンストラクタは非公開のまま。
-> spec 13.3 / 19.6 とコンパイラ（`generateRequiredInterface` と `bind`）の変更が要る。
+生成経路の封じ込め（spec 2.1）が Java 越しでも保たれます。data のコンストラクタは非公開なので、
+コントローラは data を構築できず、出力アームを型で見分けて encode するだけ。効果実装（`JooqFindMember`）
+だけが、しかも `findMember` を継承することで**その behavior が宣言した出力アームに限って**構築できます。
+別パッケージから `new 会員なし()` はコンパイルできません。値の取り出しも encoder を通します（spec 8.5）。

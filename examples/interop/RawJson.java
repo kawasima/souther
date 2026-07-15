@@ -1,4 +1,4 @@
-package example.member.web;
+package app.member.web;
 
 import net.unit8.souther.runtime.Raw;
 

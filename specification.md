@@ -702,21 +702,27 @@ required behavior は本体を持たない。
 
 DBクエリ、HTTP呼び出し、ファイル読み書き、時刻取得、ID生成、メッセージ送信。これらの具体的なAPIは言語コアへ持ち込まない。
 
-### 13.3 Java interface生成
+### 13.3 Java基底クラス生成
+
+required behavior は**抽象基底クラス**として生成する。`Behavior` を継承し、宣言した単位data の出力アームごとに、そのアームを構築する `protected` ファクトリを持つ。
 
 ```text
-required behavior findMember(id: MemberId) -> Member | FindMemberError
+required behavior findMember(id: 会員ID) -> 会員 | 会員なし | 保存データ不正 | DB不通
 ```
 
 から概念的に次を生成する。
 
 ```java
-public interface FindMember {
-    FindMemberResult apply(MemberId id);   // sealed: Member | FindMemberError の直和
+public abstract class findMember implements Behavior {
+    protected findMember() {}
+    protected final 会員なし   会員なし()   { ... }   // 宣言した単位アームだけ
+    protected final 保存データ不正 保存データ不正() { ... }
+    protected final DB不通    DB不通()    { ... }
+    // apply(input) は Behavior から継承（未実装）。実装が override する。
 }
 ```
 
-Java側で実装する（24章）。
+Java側はこれを `extends` して `apply` を実装する（24章）。成功値（`会員` など）は decoder で組み立て、失敗アームは継承した `protected` ファクトリで作る。data のコンストラクタは非公開なので、実装は「その behavior が宣言した出力アーム」に限って構築でき、生成パッケージの外（どのパッケージ）にも置ける。これで生成経路の封じ込め（2.1）が Java 越しでも保たれる。単位でない／invariant を持つ出力アームはファクトリを生成せず、decoder 由来で得る。
 
 ### 13.4 Java実装の規則
 
@@ -993,7 +999,7 @@ var handle = Handle.bind(new JdbcFindMember(dataSource));
 
 ### 19.6 生成権限の露出防止
 
-生成権限は公開Java APIとして露出させない。プロトタイプでは、dataのconstructorはprivate、内部生成メソッドはpackage-private、生成behaviorを同一生成パッケージへ配置する。Reflection、Unsafe、バイトコード改変は保証対象外とする。
+生成権限は公開Java APIとして露出させない。dataのconstructorは非公開（package-private）、`__construct` などの内部生成メソッドも非公開にする。required behavior の Java 実装は、生成された抽象基底クラス（13.3）を `extends` し、その behavior が**宣言した出力アームだけ**を、基底の `protected` ファクトリ経由で構築する。data のコンストラクタを呼ぶ抜け道は無いので、実装は生成パッケージの外に置ける（同一パッケージ配置は不要）。生成 behavior（`constructs`）も生成物の一部として同様に閉じる。Reflection、Unsafe、バイトコード改変は保証対象外とする。
 
 ---
 
@@ -1343,7 +1349,7 @@ var result = handle.apply(rawInput);
 
 ### 25.1 必須
 
-`.mdl`読み込み、Lexer、Parser、AST、モジュール、import、`data`（直積・直和・単位・アーム参照・`include`）、`?`、`invariant`、形状からの `decoder` / `encoder` 導出（newtype・JSONキー＝フィールド名・判別子 `"type"`／アーム名タグ）、`behavior`、`required behavior`、`constructs`、要求集合の推論、レコードリテラルと spread と `with`、印の無い直和出力（失敗もアーム）、`>>`（型ルーティング合成）、`match`、`let`、`if`、`require`、`Option`、`NonEmptyList`、null禁止、例外禁止、網羅性検査、生成権限検査、invariant違反アーム検査、behavior合成型検査、ClassFile バイトコード生成、Java interface生成、Raoh Decoder生成、Unicode識別子、単体テスト。
+`.mdl`読み込み、Lexer、Parser、AST、モジュール、import、`data`（直積・直和・単位・アーム参照・`include`）、`?`、`invariant`、形状からの `decoder` / `encoder` 導出（newtype・JSONキー＝フィールド名・判別子 `"type"`／アーム名タグ）、`behavior`、`required behavior`、`constructs`、要求集合の推論、レコードリテラルと spread と `with`、印の無い直和出力（失敗もアーム）、`>>`（型ルーティング合成）、`match`、`let`、`if`、`require`、`Option`、`NonEmptyList`、null禁止、例外禁止、網羅性検査、生成権限検査、invariant違反アーム検査、behavior合成型検査、ClassFile バイトコード生成、Java基底クラス生成、Raoh Decoder生成、Unicode識別子、単体テスト。
 
 ### 25.2 後回し
 
@@ -1370,7 +1376,7 @@ Javaソース生成backend（人間可読な生成コード）、増分コンパ
 15. 印の無い直和出力（失敗もアーム。error / Result / success / failure は無い）
 16. `>>`（型ルーティング合成）と `match`
 17. required behavior と要求集合の推論
-18. Java interface生成
+18. Java基底クラス生成
 19. requirement propagation
 20. `invariant`（include 由来を含む）
 21. match網羅性検査

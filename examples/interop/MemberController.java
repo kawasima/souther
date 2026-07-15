@@ -2,7 +2,7 @@
 // コントローラは data を構築できない（コンストラクタは非公開）。できるのは
 // 「出力アームを型で見分ける（instanceof / switch）」ことと「encoder で外へ出す」ことだけ。
 // これがドメインとの境界になる（spec 8.5, 2.1）。
-package example.member.web;
+package app.member.web;
 
 import example.member.DB不通;
 import example.member.会員ID;
