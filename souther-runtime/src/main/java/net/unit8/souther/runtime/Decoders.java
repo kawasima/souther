@@ -223,6 +223,36 @@ public final class Decoders {
         };
     }
 
+    /** Builds a decoder for {@code Map<String, T>} that applies {@code value} to each entry,
+     *  accumulating errors with {@code [key]} paths (spec sections 7.2, 15). */
+    public static <T> Decoder<java.util.Map<String, T>> mapOf(Decoder<T> value) {
+        return raw -> {
+            if (!(raw instanceof Raw.ObjectValue obj)) {
+                return new DecodeFailure(NonEmptyList.of(
+                        DecodeError.atRoot("expected_object", "expected an object")));
+            }
+            java.util.Map<String, T> values = new java.util.LinkedHashMap<>();
+            List<DecodeError> errors = new ArrayList<>();
+            for (java.util.Map.Entry<String, Raw> entry : obj.value().entrySet()) {
+                switch (Decoders.<T>toResult(value.decode(entry.getValue()))) {
+                    case Result.Ok<T, NonEmptyList<DecodeError>> ok -> values.put(entry.getKey(), ok.value());
+                    case Result.Err<T, NonEmptyList<DecodeError>> err -> {
+                        for (DecodeError e : err.error().toList()) {
+                            List<PathElement> path = new ArrayList<>();
+                            path.add(new PathElement.Field(entry.getKey()));
+                            path.addAll(e.path());
+                            errors.add(new DecodeError(path, e.code(), e.message()));
+                        }
+                    }
+                }
+            }
+            if (!errors.isEmpty()) {
+                return new DecodeFailure(new NonEmptyList<>(errors.get(0), errors.subList(1, errors.size())));
+            }
+            return java.util.Map.copyOf(values);
+        };
+    }
+
     /**
      * Discriminated decode: reads the string field {@code key}, matches it against
      * {@code tag}, and if it matches runs {@code inner}. Returns {@code null} when the

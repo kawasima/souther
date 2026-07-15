@@ -55,6 +55,7 @@ public final class Backend {
     private static final ClassDesc CD_LocalDate = ClassDesc.of("java.time.LocalDate");
     private static final ClassDesc CD_LocalDateTime = ClassDesc.of("java.time.LocalDateTime");
     private static final ClassDesc CD_Lists = ClassDesc.of("net.unit8.souther.runtime.Lists");
+    private static final ClassDesc CD_Maps = ClassDesc.of("net.unit8.souther.runtime.Maps");
     private static final ClassDesc CD_Option = ClassDesc.of("net.unit8.souther.runtime.Option");
     private static final ClassDesc CD_OptionSome = CD_Option.nested("Some");
     private static final ClassDesc CD_OptionNone = CD_Option.nested("None");
@@ -79,6 +80,7 @@ public final class Backend {
     private static final MethodTypeDesc MTD_encode = MethodTypeDesc.of(CD_Raw, CD_Object);
     private static final MethodTypeDesc MTD_tagged = MethodTypeDesc.of(CD_Raw, CD_Raw, CD_String, CD_String);
     private static final MethodTypeDesc MTD_encodeList = MethodTypeDesc.of(CD_Raw, CD_List, CD_Encoder);
+    private static final MethodTypeDesc MTD_encodeMap = MethodTypeDesc.of(CD_Raw, CD_Map, CD_Encoder);
     private static final MethodTypeDesc MTD_mergeErrors =
             MethodTypeDesc.of(CD_NonEmptyList, CD_Result.arrayType());
     private static final MethodTypeDesc MTD_Map_put = MethodTypeDesc.of(CD_Object, CD_Object, CD_Object);
@@ -805,6 +807,7 @@ public final class Backend {
             case Ast.DataDecRef d -> Type.ref(d.typeName());
             case Ast.ListDecRef l -> Type.list(bindType(l.element()));
             case Ast.OptionDecRef o -> Type.option(bindType(o.element()));
+            case Ast.MapDecRef mp -> Type.map(bindType(mp.value()));
         };
     }
 
@@ -826,6 +829,10 @@ public final class Backend {
             }
             case Ast.OptionDecRef o -> throw new CompileException(o.pos(),
                     "optional is only supported as a direct object field");
+            case Ast.MapDecRef mp -> {
+                emitDecoderObject(code, mp.value());
+                code.invokestatic(CD_Decoders, "mapOf", MTD_listOf);   // (Decoder) -> Decoder
+            }
         }
     }
 
@@ -944,12 +951,13 @@ public final class Backend {
             }
             case Ast.ListEnc le -> {
                 gen.expr(le.source());
-                switch (le.elem()) {
-                    case Ast.PrimEnc p -> code.invokestatic(CD_Encoders,
-                            p.kind() == Ast.PrimKind.STRING ? "textEncoder" : "intEncoder", MTD_encoder);
-                    case Ast.DataEnc d -> code.invokestatic(cd(d.typeName()), "encoder", MTD_encoder);
-                }
+                pushElemEncoder(code, le.elem());
                 code.invokestatic(CD_Encoders, "encodeList", MTD_encodeList);
+            }
+            case Ast.MapEnc me -> {
+                gen.expr(me.source());
+                pushElemEncoder(code, me.elem());
+                code.invokestatic(CD_Encoders, "encodeMap", MTD_encodeMap);
             }
             case Ast.ObjectRaw o -> {
                 code.new_(CD_LinkedHashMap);
@@ -964,6 +972,15 @@ public final class Backend {
                 }
                 code.invokestatic(CD_Raw, "object", MTD_Raw_object, true);
             }
+        }
+    }
+
+    /** Pushes the element {@link net.unit8.souther.runtime.Encoder} for a list/map element. */
+    private void pushElemEncoder(CodeBuilder code, Ast.EncElem elem) {
+        switch (elem) {
+            case Ast.PrimEnc p -> code.invokestatic(CD_Encoders,
+                    p.kind() == Ast.PrimKind.STRING ? "textEncoder" : "intEncoder", MTD_encoder);
+            case Ast.DataEnc d -> code.invokestatic(cd(d.typeName()), "encoder", MTD_encoder);
         }
     }
 
@@ -1194,11 +1211,32 @@ public final class Backend {
                     return Type.INT;
                 }
                 case "get" -> {
-                    Type lt = expr(call.args().get(0));      // List on stack
-                    expr(call.args().get(1));                // long index
+                    Type ct = expr(call.args().get(0));      // List or Map on stack
+                    expr(call.args().get(1));                // long index / String key
+                    if (ct instanceof Type.MapOf mo) {
+                        code.invokestatic(CD_Maps, "get", MethodTypeDesc.of(CD_Option, CD_Map, CD_String));
+                        return Type.option(mo.value());
+                    }
                     code.invokestatic(CD_Lists, "get",
                             MethodTypeDesc.of(CD_Option, CD_List, ConstantDescs.CD_long));
-                    return Type.option(((Type.ListOf) lt).element());
+                    return Type.option(((Type.ListOf) ct).element());
+                }
+                case "containsKey" -> {
+                    expr(call.args().get(0));
+                    expr(call.args().get(1));
+                    code.invokestatic(CD_Maps, "containsKey",
+                            MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_Map, CD_String));
+                    return Type.BOOL;
+                }
+                case "keys" -> {
+                    expr(call.args().get(0));
+                    code.invokestatic(CD_Maps, "keys", MethodTypeDesc.of(CD_List, CD_Map));
+                    return Type.list(Type.STRING);
+                }
+                case "values" -> {
+                    Type mt = expr(call.args().get(0));
+                    code.invokestatic(CD_Maps, "values", MethodTypeDesc.of(CD_List, CD_Map));
+                    return Type.list(((Type.MapOf) mt).value());
                 }
                 case "add", "subtract", "multiply" -> {
                     Type t = expr(call.args().get(0));
@@ -1376,6 +1414,7 @@ public final class Backend {
         if (type == Type.RAW) return CD_Raw;
         if (type instanceof Type.OptionOf) return CD_Option;
         if (type instanceof Type.ListOf) return CD_List;
+        if (type instanceof Type.MapOf) return CD_Map;
         if (type instanceof Type.Union) return CD_Object;
         return armClass(((Type.Ref) type).name());
     }

@@ -265,6 +265,17 @@ public final class Parser {
             expect(TokenType.GT);
             return new Ast.TypeRef("List", arg, n.pos());
         }
+        if (n.text().equals("Map") && check(TokenType.LT)) {
+            advance();
+            Ast.TypeRef key = parseTypeRef();
+            if (!key.name().equals("String") || key.arg() != null) {
+                throw error(peek(), "Map key type must be String");
+            }
+            expect(TokenType.COMMA);
+            Ast.TypeRef value = parseTypeRef();
+            expect(TokenType.GT);
+            return new Ast.TypeRef("Map", value, n.pos());   // key is always String; carry the value type
+        }
         return new Ast.TypeRef(n.text(), null, n.pos());
     }
 

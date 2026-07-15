@@ -33,6 +33,15 @@ public final class Encoders {
         return Raw.list(out);
     }
 
+    /** Encodes a {@code Map<String, T>} to a {@code Raw.Object} by applying {@code value} to each entry. */
+    public static Raw encodeMap(Map<String, ?> map, Encoder<Object> value) {
+        Map<String, Raw> out = new LinkedHashMap<>();
+        for (Map.Entry<String, ?> e : map.entrySet()) {
+            out.put(e.getKey(), value.encode(e.getValue()));
+        }
+        return Raw.object(out);
+    }
+
     /** Returns the arm's encoded object with {@code key: tag} added at the front. */
     public static Raw tagged(Raw armRaw, String key, String tag) {
         if (armRaw instanceof Raw.ObjectValue obj) {

@@ -132,6 +132,9 @@ public final class Deriver {
         if (t instanceof Type.OptionOf oo) {
             return new Ast.OptionDecRef(decRef(oo.element(), d, pos), pos);
         }
+        if (t instanceof Type.MapOf mo) {
+            return new Ast.MapDecRef(decRef(mo.value(), d, pos), pos);
+        }
         throw new CompileException(pos,
                 "cannot derive a decoder for field type " + t + " in `" + d.name() + "`");
     }
@@ -191,6 +194,9 @@ public final class Deriver {
             String elemVar = "$opt";
             Ast.RawExpr inner = rawForAccess(oo.element(), new Ast.Var(elemVar, pos), d, pos);
             return new Ast.OptionRaw(access, inner, elemVar, pos);
+        }
+        if (t instanceof Type.MapOf mo) {
+            return new Ast.MapEnc(access, encElem(mo.value(), d, pos), pos);
         }
         throw new CompileException(pos,
                 "cannot derive an encoder for field type " + t + " in `" + d.name() + "`");

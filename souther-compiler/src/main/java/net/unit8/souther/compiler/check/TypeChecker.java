@@ -518,6 +518,7 @@ public final class TypeChecker {
             }
             case Ast.ListDecRef l -> Type.list(decRefType(l.element(), symbols));
             case Ast.OptionDecRef o -> Type.option(decRefType(o.element(), symbols));
+            case Ast.MapDecRef mp -> Type.map(decRefType(mp.value(), symbols));
         };
     }
 
@@ -624,23 +625,34 @@ public final class TypeChecker {
                 if (!(st instanceof Type.ListOf lo)) {
                     throw new CompileException(le.pos(), "list(...) source must be a List, got " + st);
                 }
-                Type elemType = lo.element();
-                switch (le.elem()) {
-                    case Ast.PrimEnc p -> {
-                        Type expected = p.kind() == Ast.PrimKind.STRING ? Type.STRING : Type.INT;
-                        if (!elemType.equals(expected)) {
-                            throw new CompileException(le.pos(),
-                                    "list element encoder " + p.kind() + " does not match " + elemType);
-                        }
-                    }
-                    case Ast.DataEnc d -> {
-                        if (!elemType.equals(Type.ref(d.typeName()))
-                                || !(symbols.get(d.typeName()) instanceof Ast.Data dd)
-                                || dd.encoder().isEmpty()) {
-                            throw new CompileException(le.pos(),
-                                    "list element encoder `" + d.typeName() + "` does not match " + elemType);
-                        }
-                    }
+                checkEncElem(le.elem(), lo.element(), le.pos(), symbols);
+            }
+            case Ast.MapEnc me -> {
+                Type st = typeOf(me.source(), env, data, symbols);
+                if (!(st instanceof Type.MapOf mo)) {
+                    throw new CompileException(me.pos(), "map encoder source must be a Map, got " + st);
+                }
+                checkEncElem(me.elem(), mo.value(), me.pos(), symbols);
+            }
+        }
+    }
+
+    private static void checkEncElem(Ast.EncElem elem, Type elemType, SourcePos pos,
+                                     Map<String, Ast.Def> symbols) {
+        switch (elem) {
+            case Ast.PrimEnc p -> {
+                Type expected = p.kind() == Ast.PrimKind.STRING ? Type.STRING : Type.INT;
+                if (!elemType.equals(expected)) {
+                    throw new CompileException(pos,
+                            "element encoder " + p.kind() + " does not match " + elemType);
+                }
+            }
+            case Ast.DataEnc d -> {
+                if (!elemType.equals(Type.ref(d.typeName()))
+                        || !(symbols.get(d.typeName()) instanceof Ast.Data dd)
+                        || dd.encoder().isEmpty()) {
+                    throw new CompileException(pos,
+                            "element encoder `" + d.typeName() + "` does not match " + elemType);
                 }
             }
         }
@@ -847,11 +859,38 @@ public final class TypeChecker {
             }
             case "get" -> {
                 arity(call, 2);
-                if (!(typeOf(args.get(0), env, data, symbols, reqs) instanceof Type.ListOf lo)) {
-                    throw new CompileException(call.pos(), "get expects a List as its first argument");
+                Type first = typeOf(args.get(0), env, data, symbols, reqs);
+                if (first instanceof Type.ListOf lo) {
+                    requireType(args.get(1), Type.INT, env, data, symbols, reqs, "index of get");
+                    yield Type.option(lo.element());
                 }
-                requireType(args.get(1), Type.INT, env, data, symbols, reqs, "index of get");
-                yield Type.option(lo.element());
+                if (first instanceof Type.MapOf mo) {
+                    requireType(args.get(1), Type.STRING, env, data, symbols, reqs, "key of get");
+                    yield Type.option(mo.value());
+                }
+                throw new CompileException(call.pos(), "get expects a List or Map, got " + first);
+            }
+            case "containsKey" -> {
+                arity(call, 2);
+                if (!(typeOf(args.get(0), env, data, symbols, reqs) instanceof Type.MapOf)) {
+                    throw new CompileException(call.pos(), "containsKey expects a Map");
+                }
+                requireType(args.get(1), Type.STRING, env, data, symbols, reqs, "key of containsKey");
+                yield Type.BOOL;
+            }
+            case "keys" -> {
+                arity(call, 1);
+                if (!(typeOf(args.get(0), env, data, symbols, reqs) instanceof Type.MapOf)) {
+                    throw new CompileException(call.pos(), "keys expects a Map");
+                }
+                yield Type.list(Type.STRING);
+            }
+            case "values" -> {
+                arity(call, 1);
+                if (!(typeOf(args.get(0), env, data, symbols, reqs) instanceof Type.MapOf mo)) {
+                    throw new CompileException(call.pos(), "values expects a Map");
+                }
+                yield Type.list(mo.value());
             }
             case "add", "subtract", "multiply" -> numericOp(call, env, data, symbols, reqs, false);
             case "compare" -> numericOp(call, env, data, symbols, reqs, true);
@@ -1005,6 +1044,12 @@ public final class TypeChecker {
                     throw new CompileException(ref.pos(), "Option needs a type argument");
                 }
                 yield Type.option(resolveType(ref.arg(), symbols));
+            }
+            case "Map" -> {
+                if (ref.arg() == null) {
+                    throw new CompileException(ref.pos(), "Map needs a value type, e.g. Map<String, Int>");
+                }
+                yield Type.map(resolveType(ref.arg(), symbols));
             }
             default -> {
                 if (symbols.containsKey(ref.name())) {
