@@ -788,9 +788,28 @@ public final class TypeChecker {
                 requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "argument of trim");
                 yield Type.STRING;
             }
-            case "lowercase" -> {
+            case "lowercase", "uppercase" -> {
                 arity(call, 1);
-                requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "argument of lowercase");
+                requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "argument of " + call.fn());
+                yield Type.STRING;
+            }
+            case "concat" -> {
+                arity(call, 2);
+                requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "argument 1 of concat");
+                requireType(args.get(1), Type.STRING, env, data, symbols, reqs, "argument 2 of concat");
+                yield Type.STRING;
+            }
+            case "startsWith", "endsWith" -> {
+                arity(call, 2);
+                requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "argument 1 of " + call.fn());
+                requireType(args.get(1), Type.STRING, env, data, symbols, reqs, "argument 2 of " + call.fn());
+                yield Type.BOOL;
+            }
+            case "substring" -> {
+                arity(call, 3);
+                requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "argument 1 of substring");
+                requireType(args.get(1), Type.INT, env, data, symbols, reqs, "argument 2 of substring");
+                requireType(args.get(2), Type.INT, env, data, symbols, reqs, "argument 3 of substring");
                 yield Type.STRING;
             }
             case "size" -> {
