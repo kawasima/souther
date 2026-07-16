@@ -323,8 +323,25 @@ public final class TypeChecker {
             mainline = route(mainline, stageSig(stages.get(i), sigs, symbols, pipe.pos()),
                     retired, pipe.pos());
         }
+        Type out = withRetired(mainline, retired);
+        // an optional declared output must match the inferred one exactly (spec 14.5): neither a
+        // missing arm (too narrow) nor an extra one (too wide) is accepted.
+        if (pipe.declaredOut() != null) {
+            Set<String> inferred = leafArms(out, symbols);
+            Set<String> declared = leafArms(successType(pipe.declaredOut(), symbols), symbols);
+            if (!inferred.equals(declared)) {
+                throw new CompileException(pipe.pos(), "E1604", "behavior " + pipe.name()
+                        + " declares -> " + armList(declared) + ", but the pipeline produces "
+                        + armList(inferred) + ". Update the declared output or handle the arm.");
+            }
+        }
         // the pipeline takes whatever its first stage takes (spec 14.1)
-        return new Sig(first.ins(), withRetired(mainline, retired));
+        return new Sig(first.ins(), out);
+    }
+
+    /** Formats a set of arm names as {@code A | B} (sorted, for a stable diagnostic). */
+    private static String armList(Set<String> arms) {
+        return String.join(" | ", new java.util.TreeSet<>(arms));
     }
 
     /** The pipeline's output: what the last stage yields, plus everything that left the main line. */

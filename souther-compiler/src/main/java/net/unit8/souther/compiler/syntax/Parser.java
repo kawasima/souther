@@ -116,7 +116,10 @@ public final class Parser {
             while (match(TokenType.GTGT)) {
                 stages.add(parseStage());
             }
-            return new Ast.PipeBehavior(name, stages, kw.pos());
+            // an optional trailing `-> arms` declares the composition's output (spec 14.5); the
+            // stages are behavior names, so this `->` reads unambiguously as the pipeline's own
+            Ast.RetType declaredOut = match(TokenType.ARROW) ? parseRetType() : null;
+            return new Ast.PipeBehavior(name, stages, declaredOut, kw.pos());
         }
         expect(TokenType.LPAREN);
         List<Ast.Param> params = new ArrayList<>();

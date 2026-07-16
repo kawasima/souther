@@ -56,8 +56,13 @@ public interface Ast {
     /** A behavior parameter. Its type may be an anonymous union of arms (spec 12.2). */
     record Param(String name, RetType type, SourcePos pos) implements Ast {}
 
-    /** {@code behavior name = f >> g >> ...} */
-    record PipeBehavior(String name, List<String> stages, SourcePos pos) implements BehaviorDef {}
+    /**
+     * {@code behavior name = f >> g >> ... [-> A | B]} — a composition (spec 14.1). {@code declaredOut}
+     * is the optional trailing output declaration (14.5): null when absent (output is inferred), else
+     * the declared arms, which must match the inferred output exactly (E1604).
+     */
+    record PipeBehavior(String name, List<String> stages, RetType declaredOut, SourcePos pos)
+            implements BehaviorDef {}
 
     /**
      * {@code fn name (a1, ...) = body} — a behavior's implementation (spec 13.1). If a same-named
