@@ -1587,6 +1587,10 @@ public final class Backend {
                 code.dup();
                 code.invokespecial(CD_LinkedHashMap, "<init>", MTD_void);
                 for (Ast.RawEntry entry : o.entries()) {
+                    if (entry.value() instanceof Ast.OptionRaw opt) {
+                        emitOptionalEntry(code, gen, entry.key(), opt);
+                        continue;
+                    }
                     code.dup();
                     code.loadConstant(entry.key());
                     emitRawExpr(code, gen, entry.value());
@@ -1596,6 +1600,35 @@ public final class Backend {
                 // the LinkedHashMap is itself the neutral object value
             }
         }
+    }
+
+    /**
+     * Puts an optional field into the object map only when it is {@code Some}: {@code None} omits
+     * the key entirely rather than writing {@code null} (spec 11.2). The map is on the stack on
+     * entry and left on the stack on exit, so both the Some and None branches converge on it.
+     */
+    private void emitOptionalEntry(CodeBuilder code, Gen gen, String key, Ast.OptionRaw o) {
+        Type at = gen.expr(o.access());                 // map, opt
+        Type elemType = ((Type.OptionOf) at).element();
+        code.dup();                                     // map, opt, opt
+        code.instanceOf(CD_OptionNone);                 // map, opt, isNone
+        Label none = code.newLabel();
+        Label end = code.newLabel();
+        code.ifne(none);                                // map, opt
+        code.checkcast(CD_OptionSome);
+        code.invokevirtual(CD_OptionSome, "value", MTD_Object);   // map, valueObj
+        int slot = gen.slot(elemType);
+        unbox(code, elemType, slot);                    // map (value bound to local)
+        gen.bind(o.elemVar(), slot, elemType);
+        code.dup();                                     // map, map
+        code.loadConstant(key);                         // map, map, key
+        emitRawExpr(code, gen, o.inner());              // map, map, key, encoded
+        code.invokeinterface(CD_Map, "put", MTD_Map_put);
+        code.pop();                                     // map
+        code.goto_(end);
+        code.labelBinding(none);                        // map, opt
+        code.pop();                                     // map (drop the None, write nothing)
+        code.labelBinding(end);
     }
 
     /** Pushes a Raoh {@link net.unit8.raoh.encode.Encoder} for a list/map element. */

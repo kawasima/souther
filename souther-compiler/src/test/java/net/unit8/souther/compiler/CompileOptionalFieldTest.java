@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -58,6 +58,7 @@ class CompileOptionalFieldTest {
         assertTrue(r instanceof Ok, "an absent optional key is None, not a failure");
 
         Map<?, ?> out = (Map<?, ?>) encoder(loader).encode(((Ok) r).value());
-        assertNull(out.get("approver"), "None encodes to null");
+        assertFalse(out.containsKey("approver"),
+                "None omits the key entirely, not a null value (spec 11.2)");
     }
 }
