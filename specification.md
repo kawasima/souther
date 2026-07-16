@@ -185,7 +185,7 @@ import example.employee {
 module   import   exposing
 data     invariant include
 behavior fn        constructs  requires
-match    case     as       with
+match    case     as
 let      if       then     else
 require
 true     false
@@ -843,7 +843,7 @@ behavior applyChange = (input: ChangeEmailRequest) -> Member
 
 複数dataを生成する場合は列挙する: `constructs Member, AuditRecord`。
 
-次はdata生成とみなす: レコードリテラル（`型名 { ... }`）、直和dataのコンストラクタ、`with` 更新、単位dataの構築、新しいdataを要素に含むコレクション生成。既存値をそのまま返す場合は生成とみなさない。
+次はdata生成とみなす: レコードリテラル（`型名 { ... }`）、直和dataのコンストラクタ、単位dataの構築、新しいdataを要素に含むコレクション生成。既存値をそのまま返す場合は生成とみなさない。
 
 組み込みの `Some` / `None`（7.3）は data 生成とみなさない。Option はドメインの data ではなく補助型で、invariant を持たないので 2.2 に守るものが無い。だから `?` フィールドに値を入れる（7.4）のに `constructs` は要らない——そもそも Option は型として書けないので `constructs Some` と宣言するすべも無い（7.3）。
 
@@ -873,7 +873,7 @@ behavior 上限を検査する = (a: 金額) -> 金額 | 上限超過
 
 依存（`requires`）も同じ理由で書く（12.6）。**単純な behavior が宣言するのは、生成権限と依存の両方である。** 推論に任せるのは `>>` 合成だけで、そこは段から計算できる（14.3）。
 
-### 12.4 レコードリテラル・spread・with
+### 12.4 レコードリテラル・spread
 
 構築は、構築する型名を書いたレコードリテラルで行う。
 
@@ -895,9 +895,9 @@ behavior 上限を検査する = (a: 金額) -> 金額 | 上限超過
 事前承認済み { ..申請, 事前承認日時: 現在時刻(), 事前承認者: 承認者ID }
 ```
 
-`with` は同じ型の一部フィールドを差し替える糖衣である。`x with { f: v }` は `TypeOf(x) { ..x, f: v }` と等しい。
+同じ型のまま一部フィールドだけ差し替えるときも、型名を書いて spread を使う。`x` の型が `Member` なら `Member { ..x, 住所: 新住所 }` と書く。専用の更新構文は設けない。Souther では業務的に意味のある変化は型境界をまたぐ（`申請 → 事前承認済み`）ので、同一型の書き換えは少なく、そのために「型名を書かない」構築を導入すると「あらゆる構築は型名を名乗る」という規則（下段）を崩す。
 
-いずれも生成権限（`constructs`）を要する。構築点に型名が出るので、権限検査もフィールド検査もその場で済む。
+レコードリテラルも spread も生成権限（`constructs`）を要する。構築点に型名が出るので、権限検査もフィールド検査もその場で済む。
 
 ### 12.5 ブロック
 
@@ -1986,7 +1986,7 @@ var result = handle.apply(rawInput);
 
 ### 25.1 必須
 
-`.sou`読み込み、Lexer、Parser、AST、モジュール、import、`data`（直積・直和・単位・アーム参照・`include`）、`?`、`invariant`、形状からの `decoder` / `encoder` 導出（newtype・JSONキー＝フィールド名・判別子 `"type"`／アーム名タグ）、`behavior`（仕様のみ。引数ゼロの `()` を含む）、`fn`（同名の behavior への束縛と、助けの fn）、実装を書かない behavior の Java 注入、`constructs`、`requires`（宣言と `fn` の引数への展開、実装との突き合わせ。12.6）、合成の要求集合の推論（14.3）と任意の出力宣言の突き合わせ（14.5）、レコードリテラルと spread と `with`、リストのリテラルとガード内包と `++`（18.4）、ブロックと高階の `fn`（12.5・13.6）、印の無い直和出力（失敗もアーム）、`>>`（型ルーティング合成）、`match`、`let`、`if`、`require`（`if` への脱糖。16.4）、`Option`、`NonEmptyList`、null禁止、例外禁止、網羅性検査、生成権限検査、invariant 違反での中断（7.3・9.4）、behavior合成型検査、助けの fn の構築集合の推移推論と呼び出す behavior の `constructs` との突き合わせ（12.5）、invariant から呼ぶ fn の純粋性検査（9.3）、ClassFile バイトコード生成（Java 21 のクラスファイルバージョンで出力。19.1）、Java基底クラス生成、Raoh の decoder/encoder としての生成（入力源ごと＝素の値/Map・JSON(`JsonNode`)・jOOQ `Record`、集積・判別は Raoh の combinator、souther-runtime は Raoh 非依存）、Unicode識別子、単体テスト。
+`.sou`読み込み、Lexer、Parser、AST、モジュール、import、`data`（直積・直和・単位・アーム参照・`include`）、`?`、`invariant`、形状からの `decoder` / `encoder` 導出（newtype・JSONキー＝フィールド名・判別子 `"type"`／アーム名タグ）、`behavior`（仕様のみ。引数ゼロの `()` を含む）、`fn`（同名の behavior への束縛と、助けの fn）、実装を書かない behavior の Java 注入、`constructs`、`requires`（宣言と `fn` の引数への展開、実装との突き合わせ。12.6）、合成の要求集合の推論（14.3）と任意の出力宣言の突き合わせ（14.5）、レコードリテラルと spread、リストのリテラルとガード内包と `++`（18.4）、ブロックと高階の `fn`（12.5・13.6）、印の無い直和出力（失敗もアーム）、`>>`（型ルーティング合成）、`match`、`let`、`if`、`require`（`if` への脱糖。16.4）、`Option`、`NonEmptyList`、null禁止、例外禁止、網羅性検査、生成権限検査、invariant 違反での中断（7.3・9.4）、behavior合成型検査、助けの fn の構築集合の推移推論と呼び出す behavior の `constructs` との突き合わせ（12.5）、invariant から呼ぶ fn の純粋性検査（9.3）、ClassFile バイトコード生成（Java 21 のクラスファイルバージョンで出力。19.1）、Java基底クラス生成、Raoh の decoder/encoder としての生成（入力源ごと＝素の値/Map・JSON(`JsonNode`)・jOOQ `Record`、集積・判別は Raoh の combinator、souther-runtime は Raoh 非依存）、Unicode識別子、単体テスト。
 
 ### 25.2 後回し
 
