@@ -1,7 +1,7 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
-import net.unit8.souther.runtime.Violation;
+import net.unit8.souther.runtime.ConstraintViolation;
 
 import net.unit8.raoh.Ok;
 import net.unit8.raoh.Path;
@@ -12,12 +12,12 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * A behavior may construct an invariant-bearing data as its result; an invariant violation
- * yields the built-in 制約違反 arm (runtime {@link Violation}) instead of the value (spec 9.4).
+ * A behavior may construct an invariant-bearing data as its result. When the invariant holds the
+ * value is returned; when it is violated the computation aborts by throwing a runtime
+ * {@link ConstraintViolation} — a violation is a model bug, not a business arm (spec 7.3, 9.4).
+ * The output type carries no 制約違反 arm.
  */
 class CompileInvariantBehaviorTest {
 
@@ -31,7 +31,7 @@ class CompileInvariantBehaviorTest {
                 invariant cost >= 0
             }
 
-            behavior discount = (d: Draft) -> Adjusted | 制約違反 constructs Adjusted {
+            behavior discount = (d: Draft) -> Adjusted constructs Adjusted {
                 Adjusted { cost: d.cost - 2000 }
             }
             """;
@@ -59,12 +59,14 @@ class CompileInvariantBehaviorTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void invariantViolationYieldsTheViolationArm() throws Exception {
+    void invariantViolationAborts() throws Exception {
         BytesClassLoader loader = loader();
         Object discount = loader.loadClass("demo.discount").getConstructor().newInstance();
-        Object r = ((Behavior<Object, Object>) discount).apply(draft(loader, 100));
-        // 100 - 2000 = -1900 violates cost >= 0, so the output is the 制約違反 arm
-        assertInstanceOf(Violation.class, r);
+        // 100 - 2000 = -1900 violates cost >= 0, so the construction aborts rather than returning
+        ConstraintViolation v = assertThrows(ConstraintViolation.class,
+                () -> ((Behavior<Object, Object>) discount).apply(draft(loader, 100)));
+        // the message names the data whose invariant broke
+        org.junit.jupiter.api.Assertions.assertTrue(v.getMessage().contains("Adjusted"), v.getMessage());
     }
 
     /**
@@ -72,7 +74,7 @@ class CompileInvariantBehaviorTest {
      * entirely and handed back a value that breaks it. The guard was a statement, and only the
      * result expression was railway-bound, so the else branch emitted a bare constructor call.
      * {@code require} now desugars to {@code if} (spec 16.4) and both branches are tail, so the
-     * construction goes through {@code __construct} wherever it sits.
+     * construction goes through {@code __construct} wherever it sits — and aborts on violation.
      */
     @Test
     @SuppressWarnings("unchecked")
@@ -83,7 +85,7 @@ class CompileInvariantBehaviorTest {
                 data Adjusted = { cost: Int  invariant cost >= 0 }
                 data Kept = { v: Int }
 
-                behavior adjust = (d: Draft) -> Kept | Adjusted | 制約違反
+                behavior adjust = (d: Draft) -> Kept | Adjusted
                     constructs Kept, Adjusted
                 {
                     require d.cost != 999 else Adjusted { cost: d.cost - 2000 }
@@ -95,9 +97,10 @@ class CompileInvariantBehaviorTest {
         Decoder dec = (Decoder) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
 
         // the guard fails, so the else branch builds Adjusted { cost: 999 - 2000 = -1001 },
-        // which breaks cost >= 0 — it must not come back as an Adjusted
-        Object bad = ((Behavior<Object, Object>) adjust).apply(((Ok) dec.decode(999L, Path.ROOT)).value());
-        assertInstanceOf(Violation.class, bad, "a guard's else branch must check the invariant too");
+        // which breaks cost >= 0 — it must abort, not come back as an Adjusted
+        assertThrows(ConstraintViolation.class,
+                () -> ((Behavior<Object, Object>) adjust).apply(((Ok) dec.decode(999L, Path.ROOT)).value()),
+                "a guard's else branch must check the invariant too");
 
         Object ok = ((Behavior<Object, Object>) adjust).apply(((Ok) dec.decode(3000L, Path.ROOT)).value());
         assertEquals("demo.Kept", ok.getClass().getName());
@@ -120,40 +123,11 @@ class CompileInvariantBehaviorTest {
     }
 
     /**
-     * `制約違反` is a built-in arm (spec 7.3), not a name the writer picks. The compiler cannot
-     * tell which of a behavior's business arms is meant to carry a violation, so the destination
-     * is fixed; a business-named arm does not qualify.
+     * Constructing invariant-bearing data no longer requires a 制約違反 output arm — the
+     * declaration below compiles, and a violation would abort at run time (spec 7.3, 9.4).
      */
     @Test
-    void theViolationArmMustBeTheBuiltInOne() {
-        String withBusinessName = """
-                module demo
-                data Draft = { cost: Int }
-                data Adjusted = { cost: Int  invariant cost >= 0 }
-                data 値引き超過
-                behavior discount = (d: Draft) -> Adjusted | 値引き超過 constructs Adjusted {
-                    Adjusted { cost: d.cost - 2000 }
-                }
-                """;
-        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(withBusinessName));
-        assertEquals("E1003", e.code(), "a business-named arm is not where a violation goes");
-        assertTrue(e.getMessage().contains("制約違反"), e.getMessage());
-    }
-
-    /** The built-in arm is the runtime Violation, and it is routed like any other output arm. */
-    @Test
-    @SuppressWarnings("unchecked")
-    void theViolationArmIsTheRuntimeViolationType() throws Exception {
-        BytesClassLoader loader = loader();
-        Object discount = loader.loadClass("demo.discount").getConstructor().newInstance();
-        Object r = ((Behavior<Object, Object>) discount).apply(draft(loader, 100));
-        assertInstanceOf(Violation.class, r);
-        assertTrue(((Violation) r).message().contains("Adjusted"),
-                "the message names the data whose invariant broke: " + ((Violation) r).message());
-    }
-
-    @Test
-    void constructingInvariantDataWithoutViolationArmIsE1003() {
+    void constructingInvariantDataNeedsNoViolationArm() {
         String src = """
                 module demo
                 data Positive = { value: Int  invariant value > 0 }
@@ -161,7 +135,7 @@ class CompileInvariantBehaviorTest {
                     Positive { value: x }
                 }
                 """;
-        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
-        assertEquals("E1003", e.code());
+        // compiles without error (no E1003, which is retired)
+        Compiler.compile(src);
     }
 }

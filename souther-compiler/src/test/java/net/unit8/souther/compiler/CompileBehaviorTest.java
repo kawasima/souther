@@ -69,7 +69,8 @@ class CompileBehaviorTest {
     }
 
     @Test
-    void constructingInvariantDataInPureBehaviorIsE1003() {
+    void constructingInvariantDataNeedsNoViolationArm() {
+        // A violation aborts (spec 7.3, 9.4), so the output needs no 制約違反 arm — this compiles.
         String src = """
                 module demo
                 data Positive = { value: Int  invariant value > 0 }
@@ -79,7 +80,6 @@ class CompileBehaviorTest {
                     Positive { value: x }
                 }
                 """;
-        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
-        assertEquals("E1003", e.code());
+        Compiler.compile(src);
     }
 }

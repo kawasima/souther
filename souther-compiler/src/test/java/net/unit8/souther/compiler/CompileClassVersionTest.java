@@ -24,7 +24,7 @@ class CompileClassVersionTest {
             data PhoneContact = { phone: String }
             data Mark
 
-            behavior 名を取る = (c: EmailContact) -> 会員ID | 制約違反 constructs 会員ID {
+            behavior 名を取る = (c: EmailContact) -> 会員ID constructs 会員ID {
                 会員ID { value: c.email }
             }
             """;

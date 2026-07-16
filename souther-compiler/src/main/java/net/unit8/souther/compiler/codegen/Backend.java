@@ -46,7 +46,8 @@ public final class Backend {
     private static final ClassDesc CD_ResultOk = CD_Result.nested("Ok");
     private static final ClassDesc CD_ResultErr = CD_Result.nested("Err");
     private static final ClassDesc CD_Behavior = ClassDesc.of("net.unit8.souther.runtime.Behavior");
-    private static final ClassDesc CD_Violation = ClassDesc.of("net.unit8.souther.runtime.Violation");
+    private static final ClassDesc CD_ConstraintViolation =
+            ClassDesc.of("net.unit8.souther.runtime.ConstraintViolation");
     private static final ClassDesc CD_DivisionByZero = ClassDesc.of("net.unit8.souther.runtime.DivisionByZero");
     private static final ClassDesc CD_Boolean = ClassDesc.of("java.lang.Boolean");
     private static final ClassDesc CD_BigDecimal = ClassDesc.of("java.math.BigDecimal");
@@ -68,7 +69,7 @@ public final class Backend {
     private static final MethodTypeDesc MTD_Lists_concat = MethodTypeDesc.of(CD_List, CD_List, CD_List);
     private static final MethodTypeDesc MTD_Map_put = MethodTypeDesc.of(CD_Object, CD_Object, CD_Object);
     private static final MethodTypeDesc MTD_apply = MethodTypeDesc.of(CD_Object, CD_Object);
-    private static final MethodTypeDesc MTD_orValue = MethodTypeDesc.of(CD_Object, CD_Result);
+    private static final MethodTypeDesc MTD_orThrow = MethodTypeDesc.of(CD_Object, CD_Result);
     private static final MethodTypeDesc MTD_Long_valueOf = MethodTypeDesc.of(CD_Long, ConstantDescs.CD_long);
     private static final MethodTypeDesc MTD_Boolean_valueOf =
             MethodTypeDesc.of(CD_Boolean, ConstantDescs.CD_boolean);
@@ -393,11 +394,11 @@ public final class Backend {
         code.invokestatic(cd(typeName), method, mtd, symbols.get(typeName) instanceof Ast.SumData);
     }
 
-    /** The JVM class for an output arm: the built-in runtime {@code Violation} for 制約違反,
-     * otherwise the generated data class in this module. */
+    /** The JVM class for an output arm: the built-in {@code DivisionByZero}, otherwise the
+     * generated data class in this module. An invariant violation is no longer an arm — it aborts
+     * (spec 7.3, 9.4) — so there is no 制約違反 case here. */
     private ClassDesc armClass(String typeName) {
         return switch (typeName) {
-            case "制約違反" -> CD_Violation;
             case "DivisionByZero" -> CD_DivisionByZero;
             default -> cd(typeName);
         };
@@ -645,8 +646,9 @@ public final class Backend {
      * Emits {@code e} in tail position: every path ends in an {@code areturn}.
      *
      * <p>Constructing an invariant-bearing data goes through {@code __construct}, which checks the
-     * invariant and returns a {@code Result}; {@code Violation.orValue} turns that into either the
-     * value or the violation arm, and either way it is what the behavior returns (spec 9.2, 9.4).
+     * invariant and returns a {@code Result}; {@code ConstraintViolation.orThrow} turns that into
+     * either the value (returned) or a thrown {@code ConstraintViolation} — an invariant violation
+     * aborts rather than riding an output arm (spec 7.3, 9.4).
      * Because a desugared {@code require} (spec 16.4) is an {@code if} whose branches are tail,
      * this is reached for constructions on both sides of a guard — there is no second, unchecked
      * construction path.
@@ -691,7 +693,7 @@ public final class Backend {
                 Map<String, Type> flds = fieldTypes((Ast.Data) symbols.get(nd.typeName()));
                 emitFieldValues(gen, flds, nd.inits(), nd.spreads());
                 code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(flds)));
-                code.invokestatic(CD_Violation, "orValue", MTD_orValue);
+                code.invokestatic(CD_ConstraintViolation, "orThrow", MTD_orThrow);
                 code.areturn();
             }
             default -> {

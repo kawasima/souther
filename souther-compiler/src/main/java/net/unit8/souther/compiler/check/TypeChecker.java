@@ -295,7 +295,6 @@ public final class TypeChecker {
     private static void checkBodyBehavior(Ast.BodyBehavior b, Map<String, Ast.Def> symbols,
                                           Set<String> allBehaviors, Map<String, ReqSig> reqSigs) {
         Type output = successType(b.ret(), symbols);
-        Set<String> outputArms = namesOf(output);
 
         Map<String, Type> env = new HashMap<>();
         for (Ast.Param p : b.params()) {
@@ -319,27 +318,22 @@ public final class TypeChecker {
                         "Behavior `" + b.name() + "` constructs `" + c
                                 + "` but does not declare `constructs " + c + "`.");
             }
-            // an invariant violation needs an output arm to go to (spec 9.4)
-            if (isInvariantBearing(c, symbols) && !outputArms.contains("制約違反")) {
-                throw new CompileException(b.pos(), "E1003",
-                        "Behavior `" + b.name() + "` constructs `" + c
-                                + "`, which has an invariant, but its output has no place for a "
-                                + "violation. Add an arm `制約違反`.");
-            }
+            // An invariant violation aborts (spec 7.3, 9.4); it no longer needs an output arm.
         }
         checkInvariantConstructInTail(b.body(), symbols);
     }
 
     /**
-     * Constructing an invariant-bearing data is railway-bound: {@code __construct} returns a
-     * {@code Result}, and a violation has to leave as one of the behavior's output arms (spec 9.4).
-     * That is only possible from a tail position, so allow it there and nowhere else.
+     * Constructing an invariant-bearing data goes through {@code __construct}, and on violation it
+     * aborts (spec 7.3, 9.4). The backend only emits that checked construction (and its abort) in
+     * tail position, so for now allow an invariant-bearing construction there and nowhere else.
+     * This is a backend limitation, not a semantic rule — a violation aborts wherever it happens.
      *
      * <p>{@code e} is in tail position, as are the branches of an {@code if} and the body of a
      * {@code let}. A desugared {@code require} (spec 16.4) is an {@code if}, so the construction
      * after a guard stays in tail position. {@code match} arms are not treated as tail: the
-     * backend emits a match as a value-producing expression, so a violation there would have
-     * nowhere to return from.
+     * backend emits a match as a value-producing expression, which does not yet route the checked
+     * construction.
      */
     private static void checkInvariantConstructInTail(Ast.Expr e, Map<String, Ast.Def> symbols) {
         switch (e) {
@@ -1385,8 +1379,7 @@ public final class TypeChecker {
             case "Decimal" -> Type.DECIMAL;
             case "Date" -> Type.DATE;
             case "DateTime" -> Type.DATETIME;
-            case "制約違反" -> Type.ref("制約違反");   // built-in constraint-violation arm (spec 9.4)
-            case "復号失敗" -> Type.ref("復号失敗");   // built-in decode-failure arm (spec 10.5)
+            // 制約違反 is no longer a writable arm: an invariant violation aborts (spec 7.3, 9.4).
             case "List" -> {
                 if (ref.arg() == null) {
                     throw new CompileException(ref.pos(), "List needs a type argument, e.g. List<Int>");
