@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * A behavior may construct an invariant-bearing data as its result; an invariant violation
@@ -116,6 +117,39 @@ class CompileInvariantBehaviorTest {
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1002", e.code());
+    }
+
+    /**
+     * `制約違反` is a built-in arm (spec 7.3), not a name the writer picks. The compiler cannot
+     * tell which of a behavior's business arms is meant to carry a violation, so the destination
+     * is fixed; a business-named arm does not qualify.
+     */
+    @Test
+    void theViolationArmMustBeTheBuiltInOne() {
+        String withBusinessName = """
+                module demo
+                data Draft = { cost: Int }
+                data Adjusted = { cost: Int  invariant cost >= 0 }
+                data 値引き超過
+                behavior discount = (d: Draft) -> Adjusted | 値引き超過 constructs Adjusted {
+                    Adjusted { cost: d.cost - 2000 }
+                }
+                """;
+        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(withBusinessName));
+        assertEquals("E1003", e.code(), "a business-named arm is not where a violation goes");
+        assertTrue(e.getMessage().contains("制約違反"), e.getMessage());
+    }
+
+    /** The built-in arm is the runtime Violation, and it is routed like any other output arm. */
+    @Test
+    @SuppressWarnings("unchecked")
+    void theViolationArmIsTheRuntimeViolationType() throws Exception {
+        BytesClassLoader loader = loader();
+        Object discount = loader.loadClass("demo.discount").getConstructor().newInstance();
+        Object r = ((Behavior<Object, Object>) discount).apply(draft(loader, 100));
+        assertInstanceOf(Violation.class, r);
+        assertTrue(((Violation) r).message().contains("Adjusted"),
+                "the message names the data whose invariant broke: " + ((Violation) r).message());
     }
 
     @Test
