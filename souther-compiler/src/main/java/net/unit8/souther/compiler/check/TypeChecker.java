@@ -1140,11 +1140,17 @@ public final class TypeChecker {
         if (branchType == null) {
             return bt;
         }
-        if (!branchType.equals(bt)) {
-            throw new CompileException(c.pos(),
-                    "match branches disagree: " + branchType + " vs " + bt);
+        if (branchType.equals(bt)) {
+            return branchType;
         }
-        return branchType;
+        // arms yielding different data types widen to their union, as `if` branches do (spec 16.2)
+        if (isDataLike(branchType) && isDataLike(bt)) {
+            Set<String> names = new HashSet<>(namesOf(branchType));
+            names.addAll(namesOf(bt));
+            return Type.union(names);
+        }
+        throw new CompileException(c.pos(),
+                "match branches disagree: " + branchType + " vs " + bt);
     }
 
 
