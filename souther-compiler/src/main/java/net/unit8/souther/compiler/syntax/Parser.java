@@ -294,8 +294,8 @@ public final class Parser {
         Ast.TypeRef inner = new Ast.TypeRef(first.text(), null, first.pos());
         List<Ast.Field> fields = List.of(new Ast.Field("value", inner, first.pos()));
         Optional<Ast.Expr> invariant = Optional.empty();
-        if (match(TokenType.INVARIANT)) {
-            invariant = Optional.of(parseExpr());
+        while (match(TokenType.INVARIANT)) {
+            invariant = Optional.of(conjoin(invariant, parseExpr()));
         }
         return new Ast.Data(name, true, List.of(), fields, invariant,
                 Optional.empty(), Optional.empty(), kw.pos());
@@ -321,7 +321,8 @@ public final class Parser {
         while (!check(TokenType.RBRACE)) {
             if (check(TokenType.INVARIANT)) {
                 advance();
-                invariant = Optional.of(parseExpr());
+                // several `invariant` lines all apply: conjoin them so none is silently dropped
+                invariant = Optional.of(conjoin(invariant, parseExpr()));
             } else {
                 throw error(peek(), "expected invariant or '}'");
             }
@@ -330,6 +331,12 @@ public final class Parser {
         // decoders/encoders are derived, not written
         return new Ast.Data(name, false, includes, fields, invariant,
                 Optional.empty(), Optional.empty(), kw.pos());
+    }
+
+    /** Combines an accumulated invariant with the next one under {@code &&}; every line must hold. */
+    private Ast.Expr conjoin(Optional<Ast.Expr> acc, Ast.Expr next) {
+        return acc.map(prev -> (Ast.Expr) new Ast.Binary(Ast.BinOp.AND, prev, next, next.pos()))
+                .orElse(next);
     }
 
     private Ast.Field parseField() {
