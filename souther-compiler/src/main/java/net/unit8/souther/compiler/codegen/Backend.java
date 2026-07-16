@@ -48,6 +48,10 @@ public final class Backend {
     private static final ClassDesc CD_Behavior = ClassDesc.of("net.unit8.souther.runtime.Behavior");
     private static final ClassDesc CD_ConstraintViolation =
             ClassDesc.of("net.unit8.souther.runtime.ConstraintViolation");
+    private static final ClassDesc CD_IntMath = ClassDesc.of("net.unit8.souther.runtime.IntMath");
+    /** {@code (long, long) -> long}: overflow-checked Int arithmetic (spec 18.2). */
+    private static final MethodTypeDesc MTD_intExact =
+            MethodTypeDesc.of(ConstantDescs.CD_long, ConstantDescs.CD_long, ConstantDescs.CD_long);
     private static final ClassDesc CD_DivisionByZero = ClassDesc.of("net.unit8.souther.runtime.DivisionByZero");
     private static final ClassDesc CD_Boolean = ClassDesc.of("java.lang.Boolean");
     private static final ClassDesc CD_BigDecimal = ClassDesc.of("java.math.BigDecimal");
@@ -2057,11 +2061,13 @@ public final class Backend {
                         code.invokevirtual(CD_BigDecimal, call.fn(),
                                 MethodTypeDesc.of(CD_BigDecimal, CD_BigDecimal));
                     } else {
-                        switch (call.fn()) {
-                            case "add" -> code.ladd();
-                            case "subtract" -> code.lsub();
-                            default -> code.lmul();
-                        }
+                        // Int arithmetic aborts on overflow rather than wrapping (spec 18.2)
+                        String exact = switch (call.fn()) {
+                            case "add" -> "addExact";
+                            case "subtract" -> "subtractExact";
+                            default -> "multiplyExact";
+                        };
+                        code.invokestatic(CD_IntMath, exact, MTD_intExact);
                     }
                     return t;
                 }
@@ -2159,22 +2165,24 @@ public final class Backend {
                     code.ior();
                     return Type.BOOL;
                 }
+                // +, -, * are Int-only (Decimal uses the add/subtract/multiply calls) and abort on
+                // overflow rather than wrapping (spec 18.2).
                 case ADD -> {
                     expr(bin.left());
                     expr(bin.right());
-                    code.ladd();
+                    code.invokestatic(CD_IntMath, "addExact", MTD_intExact);
                     return Type.INT;
                 }
                 case SUB -> {
                     expr(bin.left());
                     expr(bin.right());
-                    code.lsub();
+                    code.invokestatic(CD_IntMath, "subtractExact", MTD_intExact);
                     return Type.INT;
                 }
                 case MUL -> {
                     expr(bin.left());
                     expr(bin.right());
-                    code.lmul();
+                    code.invokestatic(CD_IntMath, "multiplyExact", MTD_intExact);
                     return Type.INT;
                 }
                 case CONCAT -> {
