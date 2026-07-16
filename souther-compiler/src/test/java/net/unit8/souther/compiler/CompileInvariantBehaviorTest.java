@@ -31,9 +31,9 @@ class CompileInvariantBehaviorTest {
                 invariant cost >= 0
             }
 
-            behavior discount = (d: Draft) -> Adjusted constructs Adjusted {
-                Adjusted { cost: d.cost - 2000 }
-            }
+            behavior discount = (d: Draft) -> Adjusted constructs Adjusted
+
+            fn discount (d) = Adjusted { cost: d.cost - 2000 }
             """;
 
     private BytesClassLoader loader() {
@@ -87,7 +87,8 @@ class CompileInvariantBehaviorTest {
 
                 behavior adjust = (d: Draft) -> Kept | Adjusted
                     constructs Kept, Adjusted
-                {
+
+                fn adjust (d) = {
                     require d.cost != 999 else Adjusted { cost: d.cost - 2000 }
                     Kept { v: d.cost }
                 }
@@ -113,7 +114,9 @@ class CompileInvariantBehaviorTest {
                 module demo
                 data Draft = { cost: Int }
                 data Rejected = { why: String }
-                behavior adjust = (d: Draft) -> Draft | Rejected {
+                behavior adjust = (d: Draft) -> Draft | Rejected
+
+                fn adjust (d) = {
                     require d.cost > 0 else Rejected { why: "nonpositive" }
                     d
                 }
@@ -131,9 +134,9 @@ class CompileInvariantBehaviorTest {
         String src = """
                 module demo
                 data Positive = { value: Int  invariant value > 0 }
-                behavior make = (x: Int) -> Positive constructs Positive {
-                    Positive { value: x }
-                }
+                behavior make = (x: Int) -> Positive constructs Positive
+
+                fn make (x) = Positive { value: x }
                 """;
         // compiles without error (no E1003, which is retired)
         Compiler.compile(src);

@@ -35,9 +35,9 @@ class CompileIncludeTest {
                 submittedAt: String
             }
 
-            behavior submit = (d: Draft, at: String) -> Submitted constructs Submitted {
-                Submitted { ..d, submittedAt: at }
-            }
+            behavior submit = (d: Draft, at: String) -> Submitted constructs Submitted
+
+            fn submit (d, at) = Submitted { ..d, submittedAt: at }
             """;
 
     @Test

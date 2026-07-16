@@ -33,9 +33,9 @@ class CompileListTest {
 
             data Count = { value: Int }
 
-            behavior countReasons = (r: Request) -> Count constructs Count {
-                Count { value: length(r.reasons) }
-            }
+            behavior countReasons = (r: Request) -> Count constructs Count
+
+            fn countReasons (r) = Count { value: length(r.reasons) }
             """;
 
     private BytesClassLoader loader() {

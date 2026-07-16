@@ -26,12 +26,13 @@ class CompileMatchTest {
             data PhoneContact = { phone: String }
             data Contact = EmailContact | PhoneContact
 
-            behavior contactValue = (c: Contact) -> Label constructs Label {
+            behavior contactValue = (c: Contact) -> Label constructs Label
+
+            fn contactValue (c) =
                 match c {
                     case EmailContact as e => Label { value: e.email }
                     case PhoneContact as p => Label { value: p.phone }
                 }
-            }
             """;
 
     private BytesClassLoader loader() {
@@ -73,11 +74,12 @@ class CompileMatchTest {
                 data B = { y: String }
                 data AB = A | B
                 data Label = { value: String }
-                behavior pick = (v: AB) -> Label constructs Label {
+                behavior pick = (v: AB) -> Label constructs Label
+
+                fn pick (v) =
                     match v {
                         case A as a => Label { value: a.x }
                     }
-                }
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1201", e.code());

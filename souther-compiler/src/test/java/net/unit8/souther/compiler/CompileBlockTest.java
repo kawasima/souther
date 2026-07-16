@@ -23,11 +23,17 @@ class CompileBlockTest {
     private static final String MODULE = """
             module demo
 
-            behavior 倍にする   = (xs: List<Int>) -> List<Int> { map(xs, x => x * 2) }
-            behavior 正だけ     = (xs: List<Int>) -> List<Int> { filter(xs, x => x > 0) }
-            behavior 合計       = (xs: List<Int>) -> Int { fold(xs, 0, (acc, x) => acc + x) }
-            behavior 全部正か   = (xs: List<Int>) -> Bool { all(xs, x => x > 0) }
-            behavior どれか正か = (xs: List<Int>) -> Bool { any(xs, x => x > 0) }
+            behavior 倍にする   = (xs: List<Int>) -> List<Int>
+            behavior 正だけ     = (xs: List<Int>) -> List<Int>
+            behavior 合計       = (xs: List<Int>) -> Int
+            behavior 全部正か   = (xs: List<Int>) -> Bool
+            behavior どれか正か = (xs: List<Int>) -> Bool
+
+            fn 倍にする   (xs) = map(xs, x => x * 2)
+            fn 正だけ     (xs) = filter(xs, x => x > 0)
+            fn 合計       (xs) = fold(xs, 0, (acc, x) => acc + x)
+            fn 全部正か   (xs) = all(xs, x => x > 0)
+            fn どれか正か (xs) = any(xs, x => x > 0)
             """;
 
     @SuppressWarnings("unchecked")
@@ -67,9 +73,8 @@ class CompileBlockTest {
                 data 検証済み明細 = { コード: String }
                 behavior 明細を検証する = (xs: List<未検証明細>) -> List<検証済み明細>
                     constructs 検証済み明細
-                {
-                    map(xs, x => 検証済み明細 { コード: x.コード })
-                }
+
+                fn 明細を検証する (xs) = map(xs, x => 検証済み明細 { コード: x.コード })
                 """;
         assertTrue(Compiler.compile(src).containsKey("demo.明細を検証する"));
     }
@@ -80,9 +85,8 @@ class CompileBlockTest {
                 module demo
                 data 未検証明細 = { コード: String }
                 data 検証済み明細 = { コード: String }
-                behavior 明細を検証する = (xs: List<未検証明細>) -> List<検証済み明細> {
-                    map(xs, x => 検証済み明細 { コード: x.コード })
-                }
+                behavior 明細を検証する = (xs: List<未検証明細>) -> List<検証済み明細>
+                fn 明細を検証する (xs) = map(xs, x => 検証済み明細 { コード: x.コード })
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1002", e.code());
@@ -95,10 +99,9 @@ class CompileBlockTest {
                 module demo
                 data Id = { v: String }
                 data Nm = { v: String }
-                required behavior 名前を引く = (id: Id) -> Nm
-                behavior 全部引く = (xs: List<Id>) -> List<Nm> {
-                    map(xs, x => 名前を引く(x))
-                }
+                behavior 名前を引く = (id: Id) -> Nm
+                behavior 全部引く = (xs: List<Id>) -> List<Nm> requires 名前を引く
+                fn 全部引く (xs, 名前を引く) = map(xs, x => 名前を引く(x))
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
         Class<?> c = loader.loadClass("demo.全部引く");
@@ -111,7 +114,8 @@ class CompileBlockTest {
     void aBlockCannotBeBoundToALet() {
         String src = """
                 module demo
-                behavior f = (xs: List<Int>) -> Int {
+                behavior f = (xs: List<Int>) -> Int
+                fn f (xs) = {
                     let g = x => x * 2
                     1
                 }
@@ -132,7 +136,8 @@ class CompileBlockTest {
     void theBlockMustReturnBoolForFilter() {
         String src = """
                 module demo
-                behavior f = (xs: List<Int>) -> List<Int> { filter(xs, x => x * 2) }
+                behavior f = (xs: List<Int>) -> List<Int>
+                fn f (xs) = filter(xs, x => x * 2)
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertTrue(e.getMessage().contains("Bool"), e.getMessage());
@@ -142,7 +147,8 @@ class CompileBlockTest {
     void mapWithoutABlockIsRejected() {
         String src = """
                 module demo
-                behavior f = (xs: List<Int>) -> List<Int> { map(xs, xs) }
+                behavior f = (xs: List<Int>) -> List<Int>
+                fn f (xs) = map(xs, xs)
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertTrue(e.getMessage().contains("block"), e.getMessage());

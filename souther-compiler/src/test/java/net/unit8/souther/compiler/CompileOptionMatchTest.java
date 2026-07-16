@@ -26,12 +26,13 @@ class CompileOptionMatchTest {
             data Trip = { id: Id  approver: Id? }
             data Label = { value: String }
 
-            behavior approverLabel = (t: Trip) -> Label constructs Label {
+            behavior approverLabel = (t: Trip) -> Label constructs Label
+
+            fn approverLabel (t) =
                 match t.approver {
                     case Some as a => Label { value: a.value }
                     case None => Label { value: "none" }
                 }
-            }
             """;
 
     private String run(Map<String, Object> tripObject) throws Exception {

@@ -33,10 +33,12 @@ class CompilePipeDepsTest {
             data Mid = { value: String }
             data Out = { a: String  b: String }
 
-            required behavior fetch = (In) -> Mid
-            required behavior tag = (Mid) -> Mid
+            behavior fetch = (input: In) -> Mid
+            behavior tag = (m: Mid) -> Mid
 
-            behavior enrich = (m: Mid) -> Out constructs Out {
+            behavior enrich = (m: Mid) -> Out constructs Out requires tag
+
+            fn enrich (m, tag) = {
                 let t = tag(m)
                 Out { a: m.value, b: t.value }
             }
@@ -98,9 +100,9 @@ class CompilePipeDepsTest {
     void aPipelineOfAPipelineStillCollectsTheInnerRequirements() throws Exception {
         String src = MODULE + """
 
-                behavior relabel = (o: Out) -> Out constructs Out {
-                    Out { a: o.b, b: o.a }
-                }
+                behavior relabel = (o: Out) -> Out constructs Out
+
+                fn relabel (o) = Out { a: o.b, b: o.a }
 
                 behavior outer = handle >> relabel
                 """;

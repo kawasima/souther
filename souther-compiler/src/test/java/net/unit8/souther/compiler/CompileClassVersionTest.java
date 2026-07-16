@@ -24,9 +24,9 @@ class CompileClassVersionTest {
             data PhoneContact = { phone: String }
             data Mark
 
-            behavior 名を取る = (c: EmailContact) -> 会員ID constructs 会員ID {
-                会員ID { value: c.email }
-            }
+            behavior 名を取る = (c: EmailContact) -> 会員ID constructs 会員ID
+
+            fn 名を取る (c) = 会員ID { value: c.email }
             """;
 
     /** major 65 is Java 21; the JDK running this test is newer, so a default would not match. */

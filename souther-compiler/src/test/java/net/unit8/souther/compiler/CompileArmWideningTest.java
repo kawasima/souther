@@ -28,9 +28,9 @@ class CompileArmWideningTest {
             data AB = A | B
             data Wrap = { it: AB }
 
-            behavior wrap = (a: A) -> Wrap constructs Wrap {
-                Wrap { it: a }
-            }
+            behavior wrap = (a: A) -> Wrap constructs Wrap
+
+            fn wrap (a) = Wrap { it: a }
             """;
 
     @Test
@@ -59,8 +59,9 @@ class CompileArmWideningTest {
                 data B = { y: Int }
                 data AB = A | B
                 data Stored = { it: AB }
-                required behavior store = (AB) -> Stored
-                behavior use = (a: A) -> Stored { store(a) }
+                behavior store = (ab: AB) -> Stored
+                behavior use = (a: A) -> Stored requires store
+                fn use (a, store) = store(a)
                 """;
         assertDoesNotThrow(() -> Compiler.compile(src));
     }

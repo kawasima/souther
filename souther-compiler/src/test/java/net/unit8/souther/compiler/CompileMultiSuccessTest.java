@@ -21,9 +21,10 @@ class CompileMultiSuccessTest {
             data Cheap = { cost: Int }
             data Pricey = { cost: Int }
 
-            behavior classify = (d: Draft) -> Cheap | Pricey constructs Cheap, Pricey {
+            behavior classify = (d: Draft) -> Cheap | Pricey constructs Cheap, Pricey
+
+            fn classify (d) =
                 if d.cost <= 100 then Cheap { cost: d.cost } else Pricey { cost: d.cost }
-            }
             """;
 
     @SuppressWarnings("unchecked")
@@ -50,9 +51,9 @@ class CompileMultiSuccessTest {
                 data Cheap = { cost: Int }
                 data Pricey = { cost: Int }
                 data Other = { cost: Int }
-                behavior bad = (d: Draft) -> Cheap | Pricey constructs Other {
-                    Other { cost: d.cost }
-                }
+                behavior bad = (d: Draft) -> Cheap | Pricey constructs Other
+
+                fn bad (d) = Other { cost: d.cost }
                 """;
         assertThrows(CompileException.class, () -> Compiler.compile(src));
     }

@@ -24,11 +24,11 @@ class CompileDecimalMathTest {
                 data Price = { value: Decimal }
                 data Quote = { subtotal: Decimal  doubled: Decimal }
 
-                behavior quote = (a: Price, b: Price) -> Quote constructs Quote {
-                    Quote {
-                        subtotal: add(a.value, b.value),
-                        doubled: multiply(add(a.value, b.value), a.value)
-                    }
+                behavior quote = (a: Price, b: Price) -> Quote constructs Quote
+
+                fn quote (a, b) = Quote {
+                    subtotal: add(a.value, b.value),
+                    doubled: multiply(add(a.value, b.value), a.value)
                 }
                 """), getClass().getClassLoader());
 

@@ -249,25 +249,39 @@ public final class Backend {
                 case Ast.UnitData unit -> b.generateUnit(unit, out);
             }
         }
+        Map<String, Ast.FnDef> fns = new HashMap<>();
+        for (Ast.FnDef fn : module.fns()) {
+            fns.put(fn.name(), fn);
+        }
+        // Injection targets (spec 13.2): a SpecBehavior with no matching fn. Each becomes an
+        // abstract base class a Java implementation extends (13.3).
         Set<String> requiredNames = new HashSet<>();
         Map<String, Type> requiredSuccess = new HashMap<>();
-        for (Ast.RequiredBehavior r : module.requireds()) {
-            requiredNames.add(r.name());
-            requiredSuccess.put(r.name(), b.successType(r.ret()));
-            List<String> unitArms = new ArrayList<>();
-            for (Ast.TypeRef t : r.ret().arms()) {
-                if (b.symbols.get(t.name()) instanceof Ast.UnitData) {
-                    unitArms.add(t.name());
+        for (Ast.BehaviorDef bd : module.behaviors()) {
+            if (bd instanceof Ast.SpecBehavior spec && !fns.containsKey(spec.name())) {
+                requiredNames.add(spec.name());
+                requiredSuccess.put(spec.name(), b.successType(spec.ret()));
+                List<String> unitArms = new ArrayList<>();
+                for (Ast.TypeRef t : spec.ret().arms()) {
+                    if (b.symbols.get(t.name()) instanceof Ast.UnitData) {
+                        unitArms.add(t.name());
+                    }
                 }
+                out.put(module.name() + "." + spec.name(), b.generateRequiredBase(spec.name(), unitArms));
             }
-            out.put(module.name() + "." + r.name(), b.generateRequiredBase(r.name(), unitArms));
         }
         Map<String, TypeChecker.Sig> sigs = TypeChecker.signatures(module, b.symbols);
         Map<String, List<String>> behaviorDeps = requirementSets(module, requiredNames);
         for (Ast.BehaviorDef bd : module.behaviors()) {
             switch (bd) {
-                case Ast.BodyBehavior body -> out.put(module.name() + "." + body.name(),
-                        b.generateBodyBehavior(body, requiredNames, requiredSuccess));
+                case Ast.SpecBehavior spec -> {
+                    Ast.FnDef fn = fns.get(spec.name());
+                    if (fn != null) {
+                        out.put(module.name() + "." + spec.name(),
+                                b.generateSpecFn(spec, fn, requiredNames, requiredSuccess));
+                    }
+                    // else: injection target — its abstract base was generated above (spec 13.3)
+                }
                 case Ast.PipeBehavior pipe ->
                         out.put(module.name() + "." + pipe.name(),
                                 b.generatePipe(pipe, requiredNames, sigs, behaviorDeps));
@@ -610,18 +624,26 @@ public final class Backend {
     /** Emits a {@code static} factory that returns a fresh instance of {@code impl}. */
     // --- behaviors ---
 
-    private byte[] generateBodyBehavior(Ast.BodyBehavior b, Set<String> requiredNames,
-                                        Map<String, Type> requiredSuccess) {
-        ClassDesc cdB = cd(b.name());
-        int n = b.params().size();
-        List<String> injected = TypeChecker.requiredCalls(b, requiredNames);
+    /**
+     * Generates a behavior implemented by a {@code fn} (spec 13.1). The behavior's inputs are the
+     * {@code apply} arguments; its {@code requires} are injected fields (12.6). The {@code fn}'s
+     * leading parameters name the inputs (their types come from the behavior); the trailing ones
+     * name the injected behaviors and are resolved as inline calls, not bound as locals.
+     */
+    private byte[] generateSpecFn(Ast.SpecBehavior spec, Ast.FnDef fn, Set<String> requiredNames,
+                                  Map<String, Type> requiredSuccess) {
+        ClassDesc cdB = cd(spec.name());
+        int n = spec.params().size();
+        // declared requires, validated to equal what the fn calls (E1602/E1603); the same order is
+        // used by pipeline callers (requirementSets), so the injected fields line up.
+        List<String> injected = spec.requires();
         ClassDesc[] applyParams = new ClassDesc[n];
         for (int i = 0; i < n; i++) {
             applyParams[i] = CD_Object;
         }
         MethodTypeDesc mtdApply = MethodTypeDesc.of(CD_Object, applyParams);
         return build(cdB, cb -> {
-            cb.withFlags(pub(b.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
+            cb.withFlags(pub(spec.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             if (n == 1) {
                 cb.withInterfaceSymbols(CD_Behavior); // single-input behaviors compose with >>
             }
@@ -630,14 +652,14 @@ public final class Backend {
                 Gen gen = new Gen(code, null, cdB, n + 1);
                 gen.requireds(requiredNames, requiredSuccess);
                 for (int i = 0; i < n; i++) {
-                    Ast.Param p = b.params().get(i);
-                    Type pt = successType(p.type());
+                    // the fn's leading param names the input; its type comes from the behavior
+                    Type pt = successType(spec.params().get(i).type());
                     code.aload(i + 1);
                     int slot = gen.slot(pt);
                     unbox(code, pt, slot);
-                    gen.bind(p.name(), slot, pt);
+                    gen.bind(fn.params().get(i).name(), slot, pt);
                 }
-                emitBodyTail(gen, code, b.body(), cdB, requiredNames, requiredSuccess);
+                emitBodyTail(gen, code, fn.body(), cdB, requiredNames, requiredSuccess);
             });
         });
     }
@@ -744,7 +766,9 @@ public final class Backend {
         }
         LinkedHashSet<String> deps = new LinkedHashSet<>();
         switch (bd) {
-            case Ast.BodyBehavior body -> deps.addAll(TypeChecker.requiredCalls(body, requiredNames));
+            // an injection target short-circuits above, so a SpecBehavior here is fn-implemented:
+            // its dependencies are its declared requires, in that order (spec 12.6, 13.6)
+            case Ast.SpecBehavior spec -> deps.addAll(spec.requires());
             case Ast.PipeBehavior pipe -> {
                 for (String stage : pipe.stages()) {
                     deps.addAll(resolveDeps(stage, byName, requiredNames, memo, inProgress));

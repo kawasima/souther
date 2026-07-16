@@ -39,19 +39,19 @@ public final class Parser {
         }
         List<Ast.Def> defs = new ArrayList<>();
         List<Ast.BehaviorDef> behaviors = new ArrayList<>();
-        List<Ast.RequiredBehavior> requireds = new ArrayList<>();
+        List<Ast.FnDef> fns = new ArrayList<>();
         while (!check(TokenType.EOF)) {
             if (check(TokenType.DATA)) {
                 defs.add(parseDef());
             } else if (check(TokenType.BEHAVIOR)) {
                 behaviors.add(parseBehavior());
-            } else if (check(TokenType.REQUIRED)) {
-                requireds.add(parseRequired());
+            } else if (check(TokenType.FN)) {
+                fns.add(parseFn());
             } else {
-                throw error(peek(), "expected data, behavior, or required");
+                throw error(peek(), "expected data, behavior, or fn");
             }
         }
-        return new Ast.Module(name, exposing, imports, defs, behaviors, requireds, m.pos());
+        return new Ast.Module(name, exposing, imports, defs, behaviors, fns, m.pos());
     }
 
     /** {@code exposing { name, name.decoder, ... }} — the module's public surface (spec 4). */
@@ -98,7 +98,9 @@ public final class Parser {
 
     /**
      * {@code behavior name = <rhs>} where the rhs is either a pipeline ({@code a >> b}) or a
-     * parameter list with a body. One token after {@code =} tells them apart: {@code (} is a body.
+     * signature ({@code (params) -> ret [constructs ...] [requires ...]}). One token after {@code =}
+     * tells them apart: {@code (} is a signature. A behavior has no body — the implementation is a
+     * same-named {@code fn} (13.1), a {@code >>} composition, or Java injection (12, 13.2).
      */
     private Ast.BehaviorDef parseBehavior() {
         Token kw = expect(TokenType.BEHAVIOR);
@@ -127,17 +129,64 @@ public final class Parser {
         expect(TokenType.RPAREN);
         expect(TokenType.ARROW);
         Ast.RetType ret = parseRetType();
+        // `constructs` and `requires` may appear in either order after the return type.
         List<String> constructs = new ArrayList<>();
-        if (match(TokenType.CONSTRUCTS)) {
-            constructs.add(expect(TokenType.IDENT).text());
-            while (match(TokenType.COMMA)) {
-                constructs.add(expect(TokenType.IDENT).text());
+        List<String> requires = new ArrayList<>();
+        boolean more = true;
+        while (more) {
+            if (match(TokenType.CONSTRUCTS)) {
+                parseNameList(constructs);
+            } else if (match(TokenType.REQUIRES)) {
+                parseNameList(requires);
+            } else {
+                more = false;
             }
         }
-        expect(TokenType.LBRACE);
-        Ast.Expr body = parseBody();
-        expect(TokenType.RBRACE);
-        return new Ast.BodyBehavior(name, params, ret, constructs, body, kw.pos());
+        return new Ast.SpecBehavior(name, params, ret, constructs, requires, kw.pos());
+    }
+
+    /** A comma-separated list of identifiers, appended to {@code out} (at least one). */
+    private void parseNameList(List<String> out) {
+        out.add(expect(TokenType.IDENT).text());
+        while (match(TokenType.COMMA)) {
+            out.add(expect(TokenType.IDENT).text());
+        }
+    }
+
+    /**
+     * {@code fn name (a1, ...) = body} — a behavior's implementation (spec 13.1). Parameters are
+     * bare names when the {@code fn} implements a same-named behavior (types come from it), or
+     * {@code name: type} when it is a helper. The body is a single expression; {@code { ... }} is a
+     * block expression (16.5).
+     */
+    private Ast.FnDef parseFn() {
+        Token kw = expect(TokenType.FN);
+        String name = expect(TokenType.IDENT).text();
+        expect(TokenType.LPAREN);
+        List<Ast.FnParam> params = new ArrayList<>();
+        if (!check(TokenType.RPAREN)) {
+            params.add(parseFnParam());
+            while (match(TokenType.COMMA)) {
+                params.add(parseFnParam());
+            }
+        }
+        expect(TokenType.RPAREN);
+        expect(TokenType.ASSIGN);
+        Ast.Expr body;
+        if (match(TokenType.LBRACE)) {
+            body = parseBody();
+            expect(TokenType.RBRACE);
+        } else {
+            body = parseExpr();
+        }
+        return new Ast.FnDef(name, params, body, kw.pos());
+    }
+
+    /** A {@code fn} parameter: {@code name} (type from the behavior) or {@code name: type} (helper). */
+    private Ast.FnParam parseFnParam() {
+        Token n = expect(TokenType.IDENT);
+        Ast.RetType type = match(TokenType.COLON) ? parseRetType() : null;
+        return new Ast.FnParam(n.text(), type, n.pos());
     }
 
     /**
@@ -189,31 +238,6 @@ public final class Parser {
             arms.add(parseTypeRef());
         }
         return new Ast.RetType(arms, arms.get(0).pos());
-    }
-
-    private Ast.RequiredBehavior parseRequired() {
-        Token kw = expect(TokenType.REQUIRED);
-        expect(TokenType.BEHAVIOR);
-        String name = expect(TokenType.IDENT).text();
-        if (check(TokenType.LPAREN)) {
-            throw error(peek(), "required behavior `" + name + "` needs `=` before its parameter: "
-                    + "`required behavior " + name + " = (...) -> ...`");
-        }
-        expect(TokenType.ASSIGN);
-        expect(TokenType.LPAREN);
-        // one input — (name: Type) or (Type) — or none: () -> R, e.g. a clock (spec 13.1)
-        Ast.TypeRef paramType = null;
-        if (!check(TokenType.RPAREN)) {
-            if (peekAt(1).type() == TokenType.COLON) {
-                expect(TokenType.IDENT);
-                expect(TokenType.COLON);
-            }
-            paramType = parseTypeRef();
-        }
-        expect(TokenType.RPAREN);
-        expect(TokenType.ARROW);
-        Ast.RetType ret = parseRetType();
-        return new Ast.RequiredBehavior(name, paramType, ret, kw.pos());
     }
 
     private String qualifiedName() {

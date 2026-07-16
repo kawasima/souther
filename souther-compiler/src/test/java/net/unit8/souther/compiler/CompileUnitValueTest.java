@@ -25,9 +25,9 @@ class CompileUnitValueTest {
             data Mark
             data Flag = { on: Bool }
 
-            behavior marks = (f: Flag) -> List<Mark> constructs Mark {
-                [Mark | f.on]
-            }
+            behavior marks = (f: Flag) -> List<Mark> constructs Mark
+
+            fn marks (f) = [Mark | f.on]
             """;
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -54,9 +54,8 @@ class CompileUnitValueTest {
                 module demo
                 data Mark
                 data Flag = { on: Bool }
-                behavior marks = (f: Flag) -> List<Mark> {
-                    [Mark | f.on]
-                }
+                behavior marks = (f: Flag) -> List<Mark>
+                fn marks (f) = [Mark | f.on]
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1002", e.code());

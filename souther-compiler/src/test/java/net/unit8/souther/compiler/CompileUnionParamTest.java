@@ -24,12 +24,13 @@ class CompileUnionParamTest {
             data Pre = { y: Int }
             data Done = { v: Int }
 
-            behavior finish = (app: Sub | Pre) -> Done constructs Done {
+            behavior finish = (app: Sub | Pre) -> Done constructs Done
+
+            fn finish (app) =
                 match app {
                     case Sub as s => Done { v: s.x }
                     case Pre as p => Done { v: p.y }
                 }
-            }
             """;
 
     @SuppressWarnings({"unchecked", "rawtypes"})

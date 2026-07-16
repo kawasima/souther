@@ -31,9 +31,8 @@ class CompileBehaviorTest {
 
             behavior toResponse = (m: Member) -> Response
                 constructs Response
-            {
-                Response { id: m.id }
-            }
+
+            fn toResponse (m) = Response { id: m.id }
             """;
 
     @Test
@@ -60,9 +59,9 @@ class CompileBehaviorTest {
         String src = """
                 module demo
                 data Response = { id: String }
-                behavior make = (x: String) -> Response {
-                    Response { id: x }
-                }
+                behavior make = (x: String) -> Response
+
+                fn make (x) = Response { id: x }
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1002", e.code());
@@ -76,9 +75,8 @@ class CompileBehaviorTest {
                 data Positive = { value: Int  invariant value > 0 }
                 behavior make = (x: Int) -> Positive
                     constructs Positive
-                {
-                    Positive { value: x }
-                }
+
+                fn make (x) = Positive { value: x }
                 """;
         Compiler.compile(src);
     }

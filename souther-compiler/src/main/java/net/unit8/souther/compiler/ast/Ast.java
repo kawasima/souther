@@ -22,29 +22,35 @@ public interface Ast {
                   List<Import> imports,
                   List<Def> defs,
                   List<BehaviorDef> behaviors,
-                  List<RequiredBehavior> requireds,
+                  List<FnDef> fns,
                   SourcePos pos) implements Ast {}
 
     /** {@code import <module> { name, ... }} — an explicit, non-wildcard import (spec 4). */
     record Import(String module, List<String> names, SourcePos pos) implements Ast {}
 
-    /** A behavior definition: a body form or a pipeline (`>>`) form. */
-    sealed interface BehaviorDef extends Ast permits BodyBehavior, PipeBehavior {
+    /**
+     * A behavior definition — a specification, not an implementation (spec 12, 21.1). It is either
+     * a {@link SpecBehavior} (an input/output signature, with the body left to a matching
+     * {@link FnDef} or to Java injection) or a {@link PipeBehavior} (a {@code >>} composition, which
+     * is itself the implementation).
+     */
+    sealed interface BehaviorDef extends Ast permits SpecBehavior, PipeBehavior {
         String name();
     }
 
     /**
-     * {@code behavior name = (p1: T1, ...) -> R constructs A, B { body }}.
+     * {@code behavior name = (p1: T1, ...) -> R constructs A, B requires C, D} — a signature with
+     * no body (spec 12.1). A same-named {@link FnDef} is its implementation (13.1); with none, and
+     * not a pipeline, it is a Java-injected behavior (13.2).
      *
-     * <p>{@code body} is a single expression. The surface forms {@code let} and {@code require}
-     * are desugared by the parser into {@link LetIn} and {@link If} (spec 16.4), so every later
-     * stage sees one expression tree and has exactly one place where a value can be constructed.
+     * <p>{@code requires} lists the implementation-less behaviors the {@code fn} calls; they become
+     * the {@code fn}'s trailing arguments and the injected fields of the generated class (12.6).
      */
-    record BodyBehavior(String name,
+    record SpecBehavior(String name,
                         List<Param> params,
                         RetType ret,
                         List<String> constructs,
-                        Expr body,
+                        List<String> requires,
                         SourcePos pos) implements BehaviorDef {}
 
     /** A behavior parameter. Its type may be an anonymous union of arms (spec 12.2). */
@@ -54,13 +60,19 @@ public interface Ast {
     record PipeBehavior(String name, List<String> stages, SourcePos pos) implements BehaviorDef {}
 
     /**
-     * {@code required behavior name = (T) -> R} — implemented in Java, injected.
+     * {@code fn name (a1, ...) = body} — a behavior's implementation (spec 13.1). If a same-named
+     * {@link SpecBehavior} exists, the parameter types come from it and {@code params} carry only
+     * names ({@link FnParam#type()} is null); otherwise it is a helper {@code fn} that writes its
+     * own parameter types.
      *
-     * <p>{@code paramType} is null for the zero-argument form {@code () -> R} (spec 13.1), such
-     * as a clock. That is "takes no input", not "takes a Unit": Unit stays off the surface (7.3).
+     * <p>{@code body} is a single expression. The surface forms {@code let} and {@code require} are
+     * desugared by the parser into {@link LetIn} and {@link If} (spec 16.4), so every later stage
+     * sees one expression tree and has exactly one place where a value can be constructed.
      */
-    record RequiredBehavior(String name, TypeRef paramType, RetType ret, SourcePos pos)
-            implements Ast {}
+    record FnDef(String name, List<FnParam> params, Expr body, SourcePos pos) implements Ast {}
+
+    /** A {@code fn} parameter: a name, and a type only when the {@code fn} is a helper (spec 13.1). */
+    record FnParam(String name, RetType type, SourcePos pos) implements Ast {}
 
     /** A behavior return type: the output sum — one or more unmarked domain arms (spec 12.2). */
     record RetType(List<TypeRef> arms, SourcePos pos) implements Ast {}

@@ -36,25 +36,133 @@ public final class TypeChecker {
                 case Ast.UnitData ignored -> { }
             }
         }
+        Map<String, Ast.FnDef> fns = new HashMap<>();
+        for (Ast.FnDef fn : module.fns()) {
+            if (fns.put(fn.name(), fn) != null) {
+                throw new CompileException(fn.pos(), "duplicate `fn " + fn.name() + "`");
+            }
+        }
         Set<String> allBehaviors = new HashSet<>();
+        Set<String> specNames = new HashSet<>();
         for (Ast.BehaviorDef b : module.behaviors()) {
             allBehaviors.add(b.name());
+            if (b instanceof Ast.SpecBehavior) {
+                specNames.add(b.name());
+            }
         }
+        // Injection targets (spec 13.2): a SpecBehavior with no matching fn. Its name and success
+        // type let a fn call it inline (spec 12.2); it is the "required" behavior of the old form.
         Map<String, ReqSig> reqSigs = new HashMap<>();
-        for (Ast.RequiredBehavior r : module.requireds()) {
-            allBehaviors.add(r.name());
-            reqSigs.put(r.name(), new ReqSig(
-                    r.paramType() == null ? null : resolveType(r.paramType(), symbols),
-                    successType(r.ret(), symbols)));
+        for (Ast.BehaviorDef b : module.behaviors()) {
+            if (b instanceof Ast.SpecBehavior spec && !fns.containsKey(spec.name())) {
+                reqSigs.put(spec.name(), new ReqSig(
+                        spec.params().isEmpty() ? null : successType(spec.params().get(0).type(), symbols),
+                        successType(spec.ret(), symbols)));
+            }
         }
         for (Ast.BehaviorDef b : module.behaviors()) {
-            if (b instanceof Ast.BodyBehavior body) {
-                checkBodyBehavior(body, symbols, allBehaviors, reqSigs);
+            if (b instanceof Ast.SpecBehavior spec) {
+                Ast.FnDef fn = fns.get(spec.name());
+                if (fn != null) {
+                    checkSpecFn(spec, fn, symbols, allBehaviors, reqSigs);
+                }
             }
+        }
+        // A fn must implement a SpecBehavior of the same module (spec 13.1); one matching a pipeline
+        // is rejected (a pipeline is already its own implementation). Helper fns (no matching
+        // behavior) are not yet supported.
+        for (Ast.FnDef fn : module.fns()) {
+            if (specNames.contains(fn.name())) {
+                continue;
+            }
+            if (allBehaviors.contains(fn.name())) {
+                throw new CompileException(fn.pos(), "`fn " + fn.name()
+                        + "` cannot implement the composition `behavior " + fn.name()
+                        + "`, which is already its own implementation (spec 13.1)");
+            }
+            throw new CompileException(fn.pos(), "helper `fn " + fn.name()
+                    + "` (no matching behavior) is not yet supported");
         }
         checkStagesAreSingleInput(module);
         // validates composition types
         signatures(module, symbols);
+    }
+
+    /**
+     * Checks a behavior's {@code fn} implementation against the behavior's declared signature
+     * (spec 13.1). The {@code fn}'s parameters are the behavior's inputs followed by its
+     * {@code requires} (12.6); the trailing ones name the injection targets in declared order and
+     * do not bind values — they resolve as inline calls to those behaviors.
+     */
+    private static void checkSpecFn(Ast.SpecBehavior spec, Ast.FnDef fn, Map<String, Ast.Def> symbols,
+                                    Set<String> allBehaviors, Map<String, ReqSig> reqSigs) {
+        int nBusiness = spec.params().size();
+        int nReq = spec.requires().size();
+        if (fn.params().size() != nBusiness + nReq) {
+            throw new CompileException(fn.pos(), "`fn " + fn.name() + "` takes " + fn.params().size()
+                    + " parameter(s) but `behavior " + spec.name() + "` has " + nBusiness + " input(s)"
+                    + (nReq == 0 ? "" : " plus " + nReq + " requires") + " (spec 13.1)");
+        }
+        for (Ast.FnParam p : fn.params()) {
+            if (p.type() != null) {
+                throw new CompileException(p.pos(), "`fn " + fn.name() + "` implements `behavior "
+                        + spec.name() + "`, so its parameters take their types from it — do not annotate `"
+                        + p.name() + "` (spec 13.1)");
+            }
+        }
+        for (int i = 0; i < nReq; i++) {
+            String got = fn.params().get(nBusiness + i).name();
+            String want = spec.requires().get(i);
+            if (!got.equals(want)) {
+                throw new CompileException(fn.pos(), "`fn " + fn.name() + "` parameter `" + got
+                        + "` should be `" + want + "`: the `requires` become the trailing parameters "
+                        + "in declared order (spec 12.6)");
+            }
+        }
+
+        Map<String, Type> env = new HashMap<>();
+        for (int i = 0; i < nBusiness; i++) {
+            env.put(fn.params().get(i).name(), successType(spec.params().get(i).type(), symbols));
+        }
+        Type output = successType(spec.ret(), symbols);
+        rejectNonRequiredCalls(fn.body(), allBehaviors, reqSigs);
+
+        Type rt = typeOf(fn.body(), env, null, symbols, reqSigs);
+        if (!assignable(rt, output, symbols)) {
+            throw new CompileException(fn.body().pos(),
+                    "behavior `" + spec.name() + "` returns " + output + " but its fn body is " + rt);
+        }
+
+        // One expression (spec 16.4): this single walk sees every construction, including under a
+        // desugared `require`.
+        Set<String> constructed = new HashSet<>();
+        collectConstructs(fn.body(), constructed, symbols, new HashSet<>(env.keySet()));
+        for (String c : constructed) {
+            if (!spec.constructs().contains(c)) {
+                throw new CompileException(spec.pos(), "E1002",
+                        "Behavior `" + spec.name() + "` constructs `" + c
+                                + "` but does not declare `constructs " + c + "`.");
+            }
+        }
+        checkInvariantConstructInTail(fn.body(), symbols);
+
+        // The requires clause must match what the fn actually calls (spec 12.6): missing -> E1602,
+        // extra -> E1603.
+        List<String> actual = requiredCalls(fn.body(), reqSigs.keySet());
+        for (String call : actual) {
+            if (!spec.requires().contains(call)) {
+                throw new CompileException(spec.pos(), "E1602", "`fn " + fn.name() + "` calls `" + call
+                        + "`, which has no implementation, but `behavior " + spec.name()
+                        + "` does not declare `requires " + call + "`.");
+            }
+        }
+        for (String req : spec.requires()) {
+            if (!actual.contains(req)) {
+                throw new CompileException(spec.pos(), "E1603", "`behavior " + spec.name()
+                        + "` declares `requires " + req + "`, but `fn " + fn.name()
+                        + "` never calls it. Remove it from the `requires` clause.");
+            }
+        }
     }
 
     /**
@@ -70,12 +178,9 @@ public final class TypeChecker {
     private static void checkStagesAreSingleInput(Ast.Module module) {
         Map<String, Integer> arity = new HashMap<>();
         for (Ast.BehaviorDef b : module.behaviors()) {
-            if (b instanceof Ast.BodyBehavior body) {
-                arity.put(body.name(), body.params().size());
+            if (b instanceof Ast.SpecBehavior spec) {
+                arity.put(spec.name(), spec.params().size());
             }
-        }
-        for (Ast.RequiredBehavior r : module.requireds()) {
-            arity.put(r.name(), r.paramType() == null ? 0 : 1);
         }
         for (Ast.BehaviorDef b : module.behaviors()) {
             if (!(b instanceof Ast.PipeBehavior pipe)) {
@@ -98,11 +203,11 @@ public final class TypeChecker {
     /** A required behavior's input and success types (for typing calls). */
     private record ReqSig(Type param, Type success) {}
 
-    /** The distinct required behaviors a body calls, in first-seen order. Calls may appear
+    /** The distinct injection targets a fn body calls, in first-seen order. Calls may appear
      * anywhere in an expression (e.g. inline in a record literal), not only bound to a let. */
-    public static List<String> requiredCalls(Ast.BodyBehavior body, java.util.Set<String> requiredNames) {
+    public static List<String> requiredCalls(Ast.Expr body, java.util.Set<String> requiredNames) {
         List<String> calls = new java.util.ArrayList<>();
-        collectRequiredCalls(body.body(), requiredNames, calls);
+        collectRequiredCalls(body, requiredNames, calls);
         return calls;
     }
 
@@ -145,10 +250,6 @@ public final class TypeChecker {
         }
     }
 
-    private static List<String> requiredCalls(Ast.BodyBehavior body, Map<String, ReqSig> reqSigs) {
-        return requiredCalls(body, reqSigs.keySet());
-    }
-
     /**
      * A behavior's input and output types.
      *
@@ -169,22 +270,25 @@ public final class TypeChecker {
 
     /** Builds the input/output signature of every behavior, checking pipeline composition. */
     public static Map<String, Sig> signatures(Ast.Module module, Map<String, Ast.Def> symbols) {
+        Set<String> fnNames = new HashSet<>();
+        for (Ast.FnDef fn : module.fns()) {
+            fnNames.add(fn.name());
+        }
         Map<String, Sig> sigs = new HashMap<>();
         for (Ast.BehaviorDef b : module.behaviors()) {
-            if (b instanceof Ast.BodyBehavior body) {
-                // any arity: a multi-input behavior can still be a pipeline's first stage (14.1)
-                List<Type> ins = new ArrayList<>();
-                for (Ast.Param p : body.params()) {
-                    ins.add(successType(p.type(), symbols));
+            if (b instanceof Ast.SpecBehavior spec) {
+                if (fnNames.contains(spec.name())) {
+                    // implemented: any arity — a multi-input behavior can be a pipeline's first stage (14.1)
+                    List<Type> ins = new ArrayList<>();
+                    for (Ast.Param p : spec.params()) {
+                        ins.add(successType(p.type(), symbols));
+                    }
+                    sigs.put(spec.name(), new Sig(ins, successType(spec.ret(), symbols)));
+                } else if (spec.params().size() == 1) {
+                    // injected: only a single-input one can be a stage; a zero-arg one cannot (14.1)
+                    sigs.put(spec.name(), new Sig(successType(spec.params().get(0).type(), symbols),
+                            successType(spec.ret(), symbols)));
                 }
-                sigs.put(body.name(), new Sig(ins, successType(body.ret(), symbols)));
-            }
-        }
-        for (Ast.RequiredBehavior r : module.requireds()) {
-            // a zero-arg required behavior takes no input, so it cannot be a stage (spec 14.1)
-            if (r.paramType() != null) {
-                sigs.put(r.name(), new Sig(resolveType(r.paramType(), symbols),
-                        successType(r.ret(), symbols)));
             }
         }
         for (Ast.BehaviorDef b : module.behaviors()) {
@@ -290,37 +394,6 @@ public final class TypeChecker {
                     "Cannot compose behaviors. Left output: " + mainline + ", right input: " + in);
         }
         return g.out();
-    }
-
-    private static void checkBodyBehavior(Ast.BodyBehavior b, Map<String, Ast.Def> symbols,
-                                          Set<String> allBehaviors, Map<String, ReqSig> reqSigs) {
-        Type output = successType(b.ret(), symbols);
-
-        Map<String, Type> env = new HashMap<>();
-        for (Ast.Param p : b.params()) {
-            env.put(p.name(), successType(p.type(), symbols));
-        }
-        rejectNonRequiredCalls(b.body(), allBehaviors, reqSigs);
-
-        Type rt = typeOf(b.body(), env, null, symbols, reqSigs);
-        if (!assignable(rt, output, symbols)) {
-            throw new CompileException(b.body().pos(),
-                    "behavior `" + b.name() + "` returns " + output + " but its body is " + rt);
-        }
-
-        // The body is one expression (spec 16.4), so this single walk sees every construction —
-        // including the ones under a desugared `require`.
-        Set<String> constructed = new HashSet<>();
-        collectConstructs(b.body(), constructed, symbols, new HashSet<>(env.keySet()));
-        for (String c : constructed) {
-            if (!b.constructs().contains(c)) {
-                throw new CompileException(b.pos(), "E1002",
-                        "Behavior `" + b.name() + "` constructs `" + c
-                                + "` but does not declare `constructs " + c + "`.");
-            }
-            // An invariant violation aborts (spec 7.3, 9.4); it no longer needs an output arm.
-        }
-        checkInvariantConstructInTail(b.body(), symbols);
     }
 
     /**

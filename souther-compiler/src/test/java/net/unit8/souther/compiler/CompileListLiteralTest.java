@@ -27,9 +27,9 @@ class CompileListLiteralTest {
 
                 data In = { a: Int  b: Int }
 
-                behavior pick = (x: In) -> List<Int> {
-                    [x.a] ++ [x.b | x.b > 0]
-                }
+                behavior pick = (x: In) -> List<Int>
+
+                fn pick (x) = [x.a] ++ [x.b | x.b > 0]
                 """), getClass().getClassLoader());
         Decoder d = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
         Object in = ((Ok) d.decode(Map.of("a", a, "b", b), Path.ROOT)).value();
@@ -55,9 +55,9 @@ class CompileListLiteralTest {
 
             behavior reasons = (x: In) -> List<Reason>
                 constructs High, LowRole
-            {
+
+            fn reasons (x) =
                 [High { threshold: x.cost } | x.cost.value > 100] ++ [LowRole { note: "role" }]
-            }
             """;
 
     @SuppressWarnings({"unchecked", "rawtypes"})

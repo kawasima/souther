@@ -37,9 +37,13 @@ class CompileEqualityTest {
             data Answer = Yes | No
             data R = { v: Bool }
 
-            behavior 同じか = (p: Pair) -> R constructs R { R { v: p.a == p.b } }
-            behavior 金額が同じか = (x: Money, y: Money) -> R constructs R { R { v: x.amount == y.amount } }
-            behavior 答えが同じか = (x: Answer, y: Answer) -> R constructs R { R { v: x == y } }
+            behavior 同じか = (p: Pair) -> R constructs R
+            behavior 金額が同じか = (x: Money, y: Money) -> R constructs R
+            behavior 答えが同じか = (x: Answer, y: Answer) -> R constructs R
+
+            fn 同じか (p) = R { v: p.a == p.b }
+            fn 金額が同じか (x, y) = R { v: x.amount == y.amount }
+            fn 答えが同じか (x, y) = R { v: x == y }
             """;
 
     private BytesClassLoader loader() {

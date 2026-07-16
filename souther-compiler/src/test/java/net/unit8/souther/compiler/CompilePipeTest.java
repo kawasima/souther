@@ -23,11 +23,13 @@ class CompilePipeTest {
             data Mid = { value: String }
             data Out = { value: String }
 
-            behavior a = (w: Wrap) -> Mid constructs Mid { Mid { value: w.value } }
-            behavior b = (m: Mid) -> Out constructs Out { Out { value: m.value } }
+            behavior a = (w: Wrap) -> Mid constructs Mid
+            fn a (w) = Mid { value: w.value }
+            behavior b = (m: Mid) -> Out constructs Out
+            fn b (m) = Out { value: m.value }
             behavior ab = a >> b
 
-            required behavior fetch = (Wrap) -> Mid
+            behavior fetch = (w: Wrap) -> Mid
             behavior handle = fetch >> b
             """;
 
@@ -78,7 +80,8 @@ class CompilePipeTest {
                 module demo
                 data Wrap = { value: String }
                 data Mid = { value: String }
-                behavior a = (w: Wrap) -> Mid constructs Mid { Mid { value: w.value } }
+                behavior a = (w: Wrap) -> Mid constructs Mid
+                fn a (w) = Mid { value: w.value }
                 behavior bad = a >> a
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
@@ -94,8 +97,10 @@ class CompilePipeTest {
                 module demo
                 data Wrap = { value: String }
                 data Mid = { value: String }
-                behavior a = (w: Wrap) -> Mid constructs Mid { Mid { value: w.value } }
-                behavior two = (m: Mid, k: String) -> Mid constructs Mid { Mid { value: k } }
+                behavior a = (w: Wrap) -> Mid constructs Mid
+                fn a (w) = Mid { value: w.value }
+                behavior two = (m: Mid, k: String) -> Mid constructs Mid
+                fn two (m, k) = Mid { value: k }
                 behavior bad = a >> two
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
@@ -122,11 +127,13 @@ class CompilePipeTest {
 
                 behavior reject = (p: Pending, by: Id) -> Rejected | NoRight
                     constructs Rejected, NoRight
-                {
+
+                fn reject (p, by) = {
                     require by == p.boss else NoRight
                     Rejected { v: 1 }
                 }
-                behavior sendBack = (r: Rejected) -> Draft constructs Draft { Draft { v: r.v } }
+                behavior sendBack = (r: Rejected) -> Draft constructs Draft
+                fn sendBack (r) = Draft { v: r.v }
 
                 behavior rejectAndSendBack = reject >> sendBack
                 """;
@@ -154,7 +161,8 @@ class CompilePipeTest {
                 module demo
                 data Wrap = { value: String }
                 data Mid = { value: String }
-                behavior a = (w: Wrap) -> Mid constructs Mid { Mid { value: w.value } }
+                behavior a = (w: Wrap) -> Mid constructs Mid
+                fn a (w) = Mid { value: w.value }
                 behavior bad = a >> nosuch
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));

@@ -20,9 +20,8 @@ class CompileBareIdentifierTest {
                 module demo
                 data 立替
                 data R = { v: Int }
-                behavior f = (立替: Int) -> R constructs R {
-                    R { v: 立替 }
-                }
+                behavior f = (立替: Int) -> R constructs R
+                fn f (立替) = R { v: 立替 }
                 """;
         assertTrue(Compiler.compile(src).containsKey("demo.f"), "立替 here is the parameter, not a construction");
     }
@@ -33,7 +32,8 @@ class CompileBareIdentifierTest {
                 module demo
                 data 立替
                 data R = { v: Int }
-                behavior f = (x: Int) -> R constructs R {
+                behavior f = (x: Int) -> R constructs R
+                fn f (x) = {
                     let 立替 = x
                     R { v: 立替 }
                 }
@@ -47,9 +47,8 @@ class CompileBareIdentifierTest {
         String src = """
                 module demo
                 data 立替
-                behavior f = (x: Int) -> 立替 {
-                    立替
-                }
+                behavior f = (x: Int) -> 立替
+                fn f (x) = 立替
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1002", e.code());
@@ -60,9 +59,8 @@ class CompileBareIdentifierTest {
         String src = """
                 module demo
                 data 立替
-                behavior f = (x: Int) -> 立替 constructs 立替 {
-                    立替
-                }
+                behavior f = (x: Int) -> 立替 constructs 立替
+                fn f (x) = 立替
                 """;
         assertTrue(Compiler.compile(src).containsKey("demo.f"));
     }

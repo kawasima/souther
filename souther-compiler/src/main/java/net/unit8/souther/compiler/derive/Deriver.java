@@ -45,7 +45,7 @@ public final class Deriver {
             });
         }
         return new Ast.Module(module.name(), module.exposing(), module.imports(), defs,
-                module.behaviors(), module.requireds(), module.pos());
+                module.behaviors(), module.fns(), module.pos());
     }
 
     private static Ast.Data deriveData(Ast.Data d, Map<String, Ast.Def> symbols, boolean isArm) {
