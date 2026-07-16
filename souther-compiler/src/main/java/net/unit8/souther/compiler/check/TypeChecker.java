@@ -359,7 +359,7 @@ public final class TypeChecker {
         Set<String> retired = new LinkedHashSet<>();
         for (int i = 1; i < stages.size(); i++) {
             mainline = route(mainline, stageSig(stages.get(i), sigs, symbols, pipe.pos()),
-                    retired, pipe.pos());
+                    retired, symbols, pipe.pos());
         }
         Type out = withRetired(mainline, retired);
         // an optional declared output must match the inferred one exactly (spec 14.5): neither a
@@ -395,11 +395,11 @@ public final class TypeChecker {
         return armSetType(all);
     }
 
-    /** The main-line arms {@code g} accepts — the ones the backend routes into it (spec 14.2). */
-    public static List<String> mainlineArms(Type mainline, Sig g) {
+    /** The main-line leaf arms {@code g} accepts — the ones the backend routes into it (spec 14.2). */
+    public static List<String> mainlineArms(Type mainline, Sig g, Map<String, Ast.Def> symbols) {
         List<String> accepted = new ArrayList<>();
-        for (String arm : namesOf(mainline)) {
-            if (subtypeOf(Type.ref(arm), g.in())) {
+        for (String arm : leafArms(mainline, symbols)) {
+            if (assignable(Type.ref(arm), g.in(), symbols)) {
                 accepted.add(arm);
             }
         }
@@ -407,8 +407,8 @@ public final class TypeChecker {
     }
 
     /** The main line after {@code g} runs, for the backend's routing walk. */
-    public static Type stageOut(Type mainline, Sig g, SourcePos pos) {
-        return route(mainline, g, new LinkedHashSet<>(), pos);
+    public static Type stageOut(Type mainline, Sig g, Map<String, Ast.Def> symbols, SourcePos pos) {
+        return route(mainline, g, new LinkedHashSet<>(), symbols, pos);
     }
 
     /**
@@ -424,13 +424,16 @@ public final class TypeChecker {
      * gives it an ordinary sum as its output, and `fg >> h` offers all of it again — a value does
      * not carry a mark saying it once left a main line (2.6).
      */
-    private static Type route(Type mainline, Sig g, Set<String> retired, SourcePos pos) {
+    private static Type route(Type mainline, Sig g, Set<String> retired, Map<String, Ast.Def> symbols,
+                              SourcePos pos) {
         Type in = g.in();
         if (isDataLike(mainline)) {
             Set<String> consumed = new LinkedHashSet<>();
             Set<String> passed = new LinkedHashSet<>();
-            for (String arm : namesOf(mainline)) {
-                if (subtypeOf(Type.ref(arm), in)) {
+            // route over the leaf arms: a named sum output splits into its members, so a stage that
+            // accepts one of them consumes it while the rest retire (spec 8.3, 14.2)
+            for (String arm : leafArms(mainline, symbols)) {
+                if (assignable(Type.ref(arm), in, symbols)) {
                     consumed.add(arm);
                 } else {
                     passed.add(arm);

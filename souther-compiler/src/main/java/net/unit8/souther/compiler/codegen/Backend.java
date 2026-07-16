@@ -823,7 +823,7 @@ public final class Backend {
                         // than offering it to the stages after this one (spec 14.2). Branching to
                         // the end is what makes a retired arm unreachable without tagging it — the
                         // same arm type may legitimately reappear on the main line downstream.
-                        List<String> accepted = TypeChecker.mainlineArms(mainline, g);
+                        List<String> accepted = TypeChecker.mainlineArms(mainline, g, symbols);
                         Label doApply = code.newLabel();
                         for (String arm : accepted) {
                             code.aload(1);
@@ -836,7 +836,7 @@ public final class Backend {
                     } else {
                         applyStage(code, cdP, stage, requiredNames, behaviorDeps);
                     }
-                    mainline = TypeChecker.stageOut(mainline, g, pipe.pos());
+                    mainline = TypeChecker.stageOut(mainline, g, symbols, pipe.pos());
                 }
                 code.labelBinding(end);
                 code.aload(1);
