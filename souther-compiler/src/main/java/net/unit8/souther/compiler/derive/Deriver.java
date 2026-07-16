@@ -50,11 +50,20 @@ public final class Deriver {
 
     private static Ast.Data deriveData(Ast.Data d, Map<String, Ast.Def> symbols, boolean isArm) {
         Map<String, Type> fields = TypeChecker.fieldTypes(d, symbols);
+        // An explicit newtype `data X = Y` (spec 8.7) with a primitive Y rides the shape-based
+        // bare codec below. A newtype over a named data or sum is not derived yet — reject it
+        // rather than silently emit an object codec.
+        if (d.newtype() && !isPrim(fields.values().iterator().next())) {
+            throw new CompileException(d.pos(),
+                    "newtype over a non-primitive type (`" + d.name()
+                            + "`) is not yet implemented; use a primitive inner type for now (spec 8.7)");
+        }
         Optional<Ast.DecoderDef> decoder = d.decoder().isPresent()
                 ? d.decoder() : Optional.of(deriveDecoder(d, fields, isArm));
         Optional<Ast.EncoderDef> encoder = d.encoder().isPresent()
                 ? d.encoder() : Optional.of(deriveEncoder(d, fields, isArm));
-        return new Ast.Data(d.name(), d.includes(), d.fields(), d.invariant(), decoder, encoder, d.pos());
+        return new Ast.Data(d.name(), d.newtype(), d.includes(), d.fields(), d.invariant(),
+                decoder, encoder, d.pos());
     }
 
     // --- decoder derivation ---

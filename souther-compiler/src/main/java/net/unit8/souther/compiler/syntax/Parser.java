@@ -239,19 +239,39 @@ public final class Parser {
                     + "`data " + name + " = { ... }`");
         }
         if (match(TokenType.ASSIGN)) {
-            return check(TokenType.LBRACE) ? parseProduct(kw, name) : parseSum(kw, name);
+            if (check(TokenType.LBRACE)) {
+                return parseProduct(kw, name);
+            }
+            return parseSumOrNewtype(kw, name);
         }
         return new Ast.UnitData(name, kw.pos());
     }
 
-    private Ast.SumData parseSum(Token kw, String name) {
-        List<String> arms = new ArrayList<>();
-        arms.add(expect(TokenType.IDENT).text());
-        while (match(TokenType.PIPE)) {
-            arms.add(expect(TokenType.IDENT).text());
+    /**
+     * {@code data X = A | B ...} is a sum; {@code data X = Y} (a single name, no {@code |}) is a
+     * newtype over {@code Y} (spec 8.7). A sum always has a {@code |}, so a lone name can only be a
+     * newtype — there is no one-arm sum.
+     */
+    private Ast.Def parseSumOrNewtype(Token kw, String name) {
+        Token first = expect(TokenType.IDENT);
+        if (check(TokenType.PIPE)) {
+            List<String> arms = new ArrayList<>();
+            arms.add(first.text());
+            while (match(TokenType.PIPE)) {
+                arms.add(expect(TokenType.IDENT).text());
+            }
+            // decoders/encoders (incl. the sum discriminator) are derived, not written
+            return new Ast.SumData(name, arms, Optional.empty(), Optional.empty(), kw.pos());
         }
-        // decoders/encoders (incl. the sum discriminator) are derived, not written
-        return new Ast.SumData(name, arms, Optional.empty(), Optional.empty(), kw.pos());
+        // newtype: one implicit field `value` of type Y, encoded bare (spec 8.7)
+        Ast.TypeRef inner = new Ast.TypeRef(first.text(), null, first.pos());
+        List<Ast.Field> fields = List.of(new Ast.Field("value", inner, first.pos()));
+        Optional<Ast.Expr> invariant = Optional.empty();
+        if (match(TokenType.INVARIANT)) {
+            invariant = Optional.of(parseExpr());
+        }
+        return new Ast.Data(name, true, List.of(), fields, invariant,
+                Optional.empty(), Optional.empty(), kw.pos());
     }
 
     private Ast.Data parseProduct(Token kw, String name) {
@@ -281,7 +301,8 @@ public final class Parser {
         }
         expect(TokenType.RBRACE);
         // decoders/encoders are derived, not written
-        return new Ast.Data(name, includes, fields, invariant, Optional.empty(), Optional.empty(), kw.pos());
+        return new Ast.Data(name, false, includes, fields, invariant,
+                Optional.empty(), Optional.empty(), kw.pos());
     }
 
     private Ast.Field parseField() {

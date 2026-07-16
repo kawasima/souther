@@ -70,8 +70,17 @@ public interface Ast {
         String name();
     }
 
-    /** A product data definition: included data (flattened) plus its own fields. */
+    /**
+     * A product data definition: included data (flattened) plus its own fields.
+     *
+     * <p>{@code newtype} marks the explicit newtype form {@code data X = Y} (spec 8.7): a single
+     * implicit field named {@code value} of type {@code Y}, encoded as bare {@code Y} instead of an
+     * object. Everything else (construction {@code X { value: v }}, access {@code x.value},
+     * invariant on {@code value}) is the same as a one-field product; only the external
+     * representation differs.
+     */
     record Data(String name,
+                boolean newtype,
                 List<String> includes,
                 List<Field> fields,
                 Optional<Expr> invariant,
