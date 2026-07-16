@@ -56,7 +56,14 @@ public final class TypeChecker {
         Set<String> exposed = new HashSet<>();
         for (String e : module.exposing()) {
             int dot = e.indexOf('.');
-            exposed.add(dot < 0 ? e : e.substring(0, dot));
+            String base = dot < 0 ? e : e.substring(0, dot);
+            // an exposed name must resolve to a data or behavior; a typo would otherwise expose
+            // nothing and silently leave the intended type package-private (spec 4)
+            if (!symbols.containsKey(base) && !allBehaviors.contains(base)) {
+                throw new CompileException(module.pos(),
+                        "`exposing` names `" + base + "`, which is not a data or behavior of this module");
+            }
+            exposed.add(base);
         }
         // Injection targets (spec 13.2): a SpecBehavior with no matching fn. Its name and success
         // type let a fn call it inline (spec 12.2); it is the "required" behavior of the old form.
