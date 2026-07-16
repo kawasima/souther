@@ -2,6 +2,7 @@ package net.unit8.souther.compiler.codegen;
 
 import net.unit8.souther.compiler.CompileException;
 import net.unit8.souther.compiler.ast.Ast;
+import net.unit8.souther.compiler.check.HelperInliner;
 import net.unit8.souther.compiler.check.Type;
 import net.unit8.souther.compiler.check.TypeChecker;
 
@@ -261,6 +262,9 @@ public final class Backend {
         for (Ast.FnDef fn : module.fns()) {
             fns.put(fn.name(), fn);
         }
+        // Helper fns are expanded inline into each behavior body (spec 12.5); the backend never
+        // lowers a helper on its own.
+        HelperInliner inliner = HelperInliner.forModule(module);
         // Injection targets (spec 13.2): a SpecBehavior with no matching fn. Each becomes an
         // abstract base class a Java implementation extends (13.3).
         Set<String> requiredNames = new HashSet<>();
@@ -285,8 +289,10 @@ public final class Backend {
                 case Ast.SpecBehavior spec -> {
                     Ast.FnDef fn = fns.get(spec.name());
                     if (fn != null) {
+                        Ast.FnDef inlined = new Ast.FnDef(
+                                fn.name(), fn.params(), inliner.inline(fn.body()), fn.pos());
                         out.put(module.name() + "." + spec.name(),
-                                b.generateSpecFn(spec, fn, requiredNames, requiredSuccess));
+                                b.generateSpecFn(spec, inlined, requiredNames, requiredSuccess));
                     }
                     // else: injection target — its abstract base was generated above (spec 13.3)
                 }

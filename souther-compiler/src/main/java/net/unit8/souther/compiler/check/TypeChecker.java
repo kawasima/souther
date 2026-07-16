@@ -76,28 +76,27 @@ public final class TypeChecker {
                 checkInjectionConstructs(spec, symbols, exposeAll, exposed);
             }
         }
+        // Helper fns (no matching behavior) are expanded inline at each call site (spec 12.5); a
+        // helper is checked standalone against its own declared parameter types (spec 13.1).
+        HelperInliner inliner = HelperInliner.forModule(module);
+        checkHelpers(inliner, symbols, reqSigs);
         for (Ast.BehaviorDef b : module.behaviors()) {
             if (b instanceof Ast.SpecBehavior spec) {
                 Ast.FnDef fn = fns.get(spec.name());
                 if (fn != null) {
-                    checkSpecFn(spec, fn, symbols, allBehaviors, reqSigs);
+                    checkSpecFn(spec, fn, symbols, allBehaviors, reqSigs, inliner);
                 }
             }
         }
-        // A fn must implement a SpecBehavior of the same module (spec 13.1); one matching a pipeline
-        // is rejected (a pipeline is already its own implementation). Helper fns (no matching
-        // behavior) are not yet supported.
+        // A fn matching a pipeline is rejected (a pipeline is already its own implementation, so it
+        // cannot also have a fn body — spec 13.1). A fn matching a SpecBehavior is that behavior's
+        // implementation (checked above); any other fn is a helper (checked by checkHelpers).
         for (Ast.FnDef fn : module.fns()) {
-            if (specNames.contains(fn.name())) {
-                continue;
-            }
-            if (allBehaviors.contains(fn.name())) {
+            if (!specNames.contains(fn.name()) && allBehaviors.contains(fn.name())) {
                 throw new CompileException(fn.pos(), "`fn " + fn.name()
                         + "` cannot implement the composition `behavior " + fn.name()
                         + "`, which is already its own implementation (spec 13.1)");
             }
-            throw new CompileException(fn.pos(), "helper `fn " + fn.name()
-                    + "` (no matching behavior) is not yet supported");
         }
         checkStagesAreSingleInput(module);
         // validates composition types
@@ -110,8 +109,31 @@ public final class TypeChecker {
      * {@code requires} (12.6); the trailing ones name the injection targets in declared order and
      * do not bind values — they resolve as inline calls to those behaviors.
      */
+    /**
+     * Type-checks every helper fn standalone against its own declared parameter types (spec 13.1).
+     * Calls to other helpers in the body are expanded first, so what is left is builtins and
+     * injected behaviors, which {@code reqSigs} resolves. The construction-permission and
+     * {@code requires} checks are the caller's (the helper is inlined there), so they are not
+     * repeated here.
+     */
+    private static void checkHelpers(HelperInliner inliner, Map<String, Ast.Def> symbols,
+                                     Map<String, ReqSig> reqSigs) {
+        for (Ast.FnDef h : inliner.helpers().values()) {
+            Map<String, Type> env = new HashMap<>();
+            for (Ast.FnParam p : h.params()) {
+                if (p.type() == null) {
+                    throw new CompileException(p.pos(), "helper `fn " + h.name() + "` must annotate "
+                            + "parameter `" + p.name() + "` with its type (spec 13.1)");
+                }
+                env.put(p.name(), successType(p.type(), symbols));
+            }
+            typeOf(inliner.inline(h.body()), env, null, symbols, reqSigs);
+        }
+    }
+
     private static void checkSpecFn(Ast.SpecBehavior spec, Ast.FnDef fn, Map<String, Ast.Def> symbols,
-                                    Set<String> allBehaviors, Map<String, ReqSig> reqSigs) {
+                                    Set<String> allBehaviors, Map<String, ReqSig> reqSigs,
+                                    HelperInliner inliner) {
         int nBusiness = spec.params().size();
         int nReq = spec.requires().size();
         if (fn.params().size() != nBusiness + nReq) {
@@ -141,18 +163,22 @@ public final class TypeChecker {
             env.put(fn.params().get(i).name(), successType(spec.params().get(i).type(), symbols));
         }
         Type output = successType(spec.ret(), symbols);
-        rejectNonRequiredCalls(fn.body(), allBehaviors, reqSigs);
+        // Expand helper calls inline (spec 12.5): the whole body is then checked as one expression,
+        // so a helper's constructions and injected calls count toward this behavior's permission and
+        // requires — exactly as if the code had been written inline.
+        Ast.Expr body = inliner.inline(fn.body());
+        rejectNonRequiredCalls(body, allBehaviors, reqSigs);
 
-        Type rt = typeOf(fn.body(), env, null, symbols, reqSigs);
+        Type rt = typeOf(body, env, null, symbols, reqSigs);
         if (!assignable(rt, output, symbols)) {
-            throw new CompileException(fn.body().pos(),
+            throw new CompileException(body.pos(),
                     "behavior `" + spec.name() + "` returns " + output + " but its fn body is " + rt);
         }
 
         // One expression (spec 16.4): this single walk sees every construction, including under a
         // desugared `require`.
         Set<String> constructed = new HashSet<>();
-        collectConstructs(fn.body(), constructed, symbols, new HashSet<>(env.keySet()));
+        collectConstructs(body, constructed, symbols, new HashSet<>(env.keySet()));
         for (String c : constructed) {
             if (!spec.constructs().contains(c)) {
                 throw new CompileException(spec.pos(), "E1002",
@@ -160,11 +186,11 @@ public final class TypeChecker {
                                 + "` but does not declare `constructs " + c + "`.");
             }
         }
-        checkInvariantConstructInTail(fn.body(), symbols);
+        checkInvariantConstructInTail(body, symbols);
 
         // The requires clause must match what the fn actually calls (spec 12.6): missing -> E1602,
         // extra -> E1603.
-        List<String> actual = requiredCalls(fn.body(), reqSigs.keySet());
+        List<String> actual = requiredCalls(body, reqSigs.keySet());
         for (String call : actual) {
             if (!spec.requires().contains(call)) {
                 throw new CompileException(spec.pos(), "E1602", "`fn " + fn.name() + "` calls `" + call
