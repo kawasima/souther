@@ -50,6 +50,14 @@ public final class TypeChecker {
                 specNames.add(b.name());
             }
         }
+        // A data is Java-buildable from outside iff the whole module is public (no `exposing`) or
+        // its name is exposed. Used by the injection constructs check (E1305).
+        boolean exposeAll = module.exposing().isEmpty();
+        Set<String> exposed = new HashSet<>();
+        for (String e : module.exposing()) {
+            int dot = e.indexOf('.');
+            exposed.add(dot < 0 ? e : e.substring(0, dot));
+        }
         // Injection targets (spec 13.2): a SpecBehavior with no matching fn. Its name and success
         // type let a fn call it inline (spec 12.2); it is the "required" behavior of the old form.
         Map<String, ReqSig> reqSigs = new HashMap<>();
@@ -58,6 +66,7 @@ public final class TypeChecker {
                 reqSigs.put(spec.name(), new ReqSig(
                         spec.params().isEmpty() ? null : successType(spec.params().get(0).type(), symbols),
                         successType(spec.ret(), symbols)));
+                checkInjectionConstructs(spec, symbols, exposeAll, exposed);
             }
         }
         for (Ast.BehaviorDef b : module.behaviors()) {
@@ -161,6 +170,28 @@ public final class TypeChecker {
                 throw new CompileException(spec.pos(), "E1603", "`behavior " + spec.name()
                         + "` declares `requires " + req + "`, but `fn " + fn.name()
                         + "` never calls it. Remove it from the `requires` clause.");
+            }
+        }
+    }
+
+    /**
+     * An injected behavior's declared {@code constructs} must each be Java-buildable (spec 13.3):
+     * a unit data (the base class hands the implementation a {@code protected} factory) or an
+     * exposed data (its {@code decoder} is public). A non-unit, unexposed one is E1305 — Java has
+     * no way to mint it.
+     */
+    private static void checkInjectionConstructs(Ast.SpecBehavior spec, Map<String, Ast.Def> symbols,
+                                                 boolean exposeAll, Set<String> exposed) {
+        for (String c : spec.constructs()) {
+            Ast.Def d = symbols.get(c);
+            if (d == null || d instanceof Ast.UnitData) {
+                continue;   // unknown names are caught elsewhere; a unit has a generated factory
+            }
+            if (!exposeAll && !exposed.contains(c)) {
+                throw new CompileException(spec.pos(), "E1305", "Injected behavior `" + spec.name()
+                        + "` declares `constructs " + c + "`, but " + c + " is neither a unit data nor "
+                        + "exposed. Java cannot build it: no factory is generated and its decoder is not "
+                        + "public. Expose " + c + ", or make it a unit data.");
             }
         }
     }
