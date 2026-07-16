@@ -55,6 +55,10 @@ public final class Backend {
     private static final ClassDesc CD_DivisionByZero = ClassDesc.of("net.unit8.souther.runtime.DivisionByZero");
     private static final ClassDesc CD_Boolean = ClassDesc.of("java.lang.Boolean");
     private static final ClassDesc CD_BigDecimal = ClassDesc.of("java.math.BigDecimal");
+    private static final ClassDesc CD_RoundingMode = ClassDesc.of("java.math.RoundingMode");
+    /** {@code BigDecimal.divide(BigDecimal, int, RoundingMode)} (spec 18.3). */
+    private static final MethodTypeDesc MTD_bdDivide =
+            MethodTypeDesc.of(CD_BigDecimal, CD_BigDecimal, ConstantDescs.CD_int, CD_RoundingMode);
     private static final ClassDesc CD_LocalDate = ClassDesc.of("java.time.LocalDate");
     private static final ClassDesc CD_LocalDateTime = ClassDesc.of("java.time.LocalDateTime");
     private static final ClassDesc CD_Lists = ClassDesc.of("net.unit8.souther.runtime.Lists");
@@ -2085,32 +2089,14 @@ public final class Backend {
                     code.i2l();
                     return Type.INT;
                 }
-                case "divide", "remainder" -> {
-                    expr(call.args().get(0));
-                    int aSlot = slot(Type.INT);
-                    code.lstore(aSlot);
-                    expr(call.args().get(1));
-                    int bSlot = slot(Type.INT);
-                    code.lstore(bSlot);
-                    code.lload(bSlot);
-                    code.lconst_0();
-                    code.lcmp();
-                    Label zero = code.newLabel();
-                    Label end = code.newLabel();
-                    code.ifeq(zero);                       // b == 0 -> DivisionByZero arm
-                    code.lload(aSlot);
-                    code.lload(bSlot);
-                    if (call.fn().equals("divide")) {
-                        code.ldiv();
-                    } else {
-                        code.lrem();
+                case "divide" -> {
+                    if (call.args().size() == 4) {
+                        return decimalDivide(call);
                     }
-                    code.invokestatic(CD_Long, "valueOf", MTD_Long_valueOf);   // box the quotient
-                    code.goto_(end);
-                    code.labelBinding(zero);
-                    code.getstatic(CD_DivisionByZero, "INSTANCE", CD_DivisionByZero);
-                    code.labelBinding(end);
-                    return Type.union(new java.util.LinkedHashSet<>(java.util.List.of("Int", "DivisionByZero")));
+                    return intDivide(call, true);
+                }
+                case "remainder" -> {
+                    return intDivide(call, false);
                 }
                 default -> {
                     if (reqNames.contains(call.fn())) {
@@ -2119,6 +2105,64 @@ public final class Backend {
                     throw new CompileException(call.pos(), "unknown function `" + call.fn() + "`");
                 }
             }
+        }
+
+        /** {@code divide}/{@code remainder} on Int: a zero divisor takes the DivisionByZero arm,
+         * otherwise the quotient/remainder is boxed (spec 18.2). */
+        private Type intDivide(Ast.Call call, boolean divide) {
+            expr(call.args().get(0));
+            int aSlot = slot(Type.INT);
+            code.lstore(aSlot);
+            expr(call.args().get(1));
+            int bSlot = slot(Type.INT);
+            code.lstore(bSlot);
+            code.lload(bSlot);
+            code.lconst_0();
+            code.lcmp();
+            Label zero = code.newLabel();
+            Label end = code.newLabel();
+            code.ifeq(zero);                       // b == 0 -> DivisionByZero arm
+            code.lload(aSlot);
+            code.lload(bSlot);
+            if (divide) {
+                code.ldiv();
+            } else {
+                code.lrem();
+            }
+            code.invokestatic(CD_Long, "valueOf", MTD_Long_valueOf);   // box the quotient
+            code.goto_(end);
+            code.labelBinding(zero);
+            code.getstatic(CD_DivisionByZero, "INSTANCE", CD_DivisionByZero);
+            code.labelBinding(end);
+            return Type.union(new java.util.LinkedHashSet<>(java.util.List.of("Int", "DivisionByZero")));
+        }
+
+        /** {@code divide(a, b, scale, mode)} on Decimal: a zero divisor takes the DivisionByZero
+         * arm, otherwise {@code a.divide(b, scale, RoundingMode.mode)} (spec 18.3). */
+        private Type decimalDivide(Ast.Call call) {
+            expr(call.args().get(0));
+            int aSlot = slot(Type.DECIMAL);
+            code.astore(aSlot);
+            expr(call.args().get(1));
+            int bSlot = slot(Type.DECIMAL);
+            code.astore(bSlot);
+            code.aload(bSlot);
+            code.invokevirtual(CD_BigDecimal, "signum", MethodTypeDesc.of(ConstantDescs.CD_int));
+            Label zero = code.newLabel();
+            Label end = code.newLabel();
+            code.ifeq(zero);                       // signum == 0 -> DivisionByZero arm
+            code.aload(aSlot);
+            code.aload(bSlot);
+            expr(call.args().get(2));              // scale (Int, a long)
+            code.l2i();
+            String mode = ((Ast.Var) call.args().get(3)).name();
+            code.getstatic(CD_RoundingMode, mode, CD_RoundingMode);
+            code.invokevirtual(CD_BigDecimal, "divide", MTD_bdDivide);
+            code.goto_(end);
+            code.labelBinding(zero);
+            code.getstatic(CD_DivisionByZero, "INSTANCE", CD_DivisionByZero);
+            code.labelBinding(end);
+            return Type.union(new java.util.LinkedHashSet<>(java.util.List.of("Decimal", "DivisionByZero")));
         }
 
         /** Emits an inline call to an injected required behavior, leaving its success value on

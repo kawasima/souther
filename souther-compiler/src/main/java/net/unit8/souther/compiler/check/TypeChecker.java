@@ -1279,11 +1279,25 @@ public final class TypeChecker {
             }
             case "add", "subtract", "multiply" -> numericOp(call, env, data, symbols, reqs, false);
             case "compare" -> numericOp(call, env, data, symbols, reqs, true);
-            case "divide", "remainder" -> {
+            case "remainder" -> {
                 arity(call, 2);
-                requireType(args.get(0), Type.INT, env, data, symbols, reqs, "argument 1 of " + call.fn());
-                requireType(args.get(1), Type.INT, env, data, symbols, reqs, "argument 2 of " + call.fn());
+                requireType(args.get(0), Type.INT, env, data, symbols, reqs, "argument 1 of remainder");
+                requireType(args.get(1), Type.INT, env, data, symbols, reqs, "argument 2 of remainder");
                 // partial: a zero divisor produces the DivisionByZero arm (spec 18.2)
+                yield Type.union(new java.util.LinkedHashSet<>(List.of("Int", "DivisionByZero")));
+            }
+            case "divide" -> {
+                if (args.size() == 4) {
+                    // Decimal divide states its rounding: divide(a, b, scale, mode) (spec 18.3)
+                    requireType(args.get(0), Type.DECIMAL, env, data, symbols, reqs, "argument 1 of divide");
+                    requireType(args.get(1), Type.DECIMAL, env, data, symbols, reqs, "argument 2 of divide");
+                    requireType(args.get(2), Type.INT, env, data, symbols, reqs, "scale of divide");
+                    requireRoundingMode(args.get(3));
+                    yield Type.union(new java.util.LinkedHashSet<>(List.of("Decimal", "DivisionByZero")));
+                }
+                arity(call, 2);
+                requireType(args.get(0), Type.INT, env, data, symbols, reqs, "argument 1 of divide");
+                requireType(args.get(1), Type.INT, env, data, symbols, reqs, "argument 2 of divide");
                 yield Type.union(new java.util.LinkedHashSet<>(List.of("Int", "DivisionByZero")));
             }
             default -> {
@@ -1386,6 +1400,20 @@ public final class TypeChecker {
         if (bt != Type.BOOL) {
             throw new CompileException(call.pos(),
                     call.fn() + "'s block must return Bool, got " + bt);
+        }
+    }
+
+    /** The built-in rounding modes (spec 18.3), each a bare identifier resolving to a
+     * {@code java.math.RoundingMode} — like {@code None}, a built-in value, not a data (spec 8.4). */
+    public static final Set<String> ROUNDING_MODES = Set.of(
+            "HALF_UP", "HALF_EVEN", "HALF_DOWN", "UP", "DOWN", "CEILING", "FLOOR");
+
+    /** The rounding-mode argument of {@code divide} is one of the built-in identifiers, written
+     * bare — not an ordinary expression (spec 18.3). */
+    private static void requireRoundingMode(Ast.Expr e) {
+        if (!(e instanceof Ast.Var v) || !ROUNDING_MODES.contains(v.name())) {
+            throw new CompileException(e.pos(), "the rounding mode of `divide` must be one of "
+                    + "HALF_UP, HALF_EVEN, HALF_DOWN, UP, DOWN, CEILING, FLOOR (spec 18.3)");
         }
     }
 
