@@ -29,6 +29,15 @@ public final class TypeChecker {
 
     /** Type-checks a module against {@code symbols} (own definitions plus any imported ones). */
     public static void check(Ast.Module module, Map<String, Ast.Def> symbols) {
+        check(module, symbols, Map.of());
+    }
+
+    /**
+     * Type-checks a module. {@code importedSigs} carries the signatures of behaviors imported from
+     * other modules (spec 4, 14), so a composition can name an imported behavior as a stage.
+     */
+    public static void check(Ast.Module module, Map<String, Ast.Def> symbols,
+                             Map<String, Sig> importedSigs) {
         for (Ast.Def def : module.defs()) {
             switch (def) {
                 case Ast.Data data -> checkData(data, symbols);
@@ -99,8 +108,8 @@ public final class TypeChecker {
             }
         }
         checkStagesAreSingleInput(module);
-        // validates composition types
-        signatures(module, symbols);
+        // validates composition types (imported behaviors resolve as stages via importedSigs)
+        signatures(module, symbols, importedSigs);
     }
 
     /**
@@ -338,11 +347,21 @@ public final class TypeChecker {
 
     /** Builds the input/output signature of every behavior, checking pipeline composition. */
     public static Map<String, Sig> signatures(Ast.Module module, Map<String, Ast.Def> symbols) {
+        return signatures(module, symbols, Map.of());
+    }
+
+    /**
+     * Builds the input/output signature of every behavior, checking pipeline composition. The
+     * {@code imported} map seeds the resolvable behaviors with those imported from other modules
+     * (spec 4, 14), so a stage naming an imported behavior resolves through {@link #stageSig}.
+     */
+    public static Map<String, Sig> signatures(Ast.Module module, Map<String, Ast.Def> symbols,
+                                              Map<String, Sig> imported) {
         Set<String> fnNames = new HashSet<>();
         for (Ast.FnDef fn : module.fns()) {
             fnNames.add(fn.name());
         }
-        Map<String, Sig> sigs = new HashMap<>();
+        Map<String, Sig> sigs = new HashMap<>(imported);
         for (Ast.BehaviorDef b : module.behaviors()) {
             if (b instanceof Ast.SpecBehavior spec) {
                 if (fnNames.contains(spec.name())) {

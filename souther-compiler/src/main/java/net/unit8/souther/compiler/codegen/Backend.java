@@ -233,10 +233,18 @@ public final class Backend {
         return generate(module, TypeChecker.symbols(module), Map.of());
     }
 
-    /** Generates a module's classes. {@code symbols} covers own plus imported definitions;
-     * {@code typePackage} maps an imported type name to its declaring module (spec 4). */
     public static Map<String, byte[]> generate(Ast.Module module, Map<String, Ast.Def> symbols,
                                                Map<String, String> typePackage) {
+        return generate(module, symbols, typePackage, Map.of());
+    }
+
+    /** Generates a module's classes. {@code symbols} covers own plus imported definitions;
+     * {@code typePackage} maps an imported type or behavior name to its declaring module (spec 4);
+     * {@code importedSigs} carries imported behaviors' signatures so a composition can name one as
+     * a stage (spec 14). */
+    public static Map<String, byte[]> generate(Ast.Module module, Map<String, Ast.Def> symbols,
+                                               Map<String, String> typePackage,
+                                               Map<String, TypeChecker.Sig> importedSigs) {
         Map<String, List<String>> armToSums = new HashMap<>();
         for (Ast.Def def : module.defs()) {
             if (def instanceof Ast.SumData sum) {
@@ -256,7 +264,7 @@ public final class Backend {
         // <behavior名>結果 that its arms implement (spec 19.8). Register those arm->interface links
         // in armToSums before the data classes are generated, so each arm class picks the interface
         // up in withInterfaceSymbols. The interface classes themselves are emitted below.
-        Map<String, List<String>> behaviorResults = b.behaviorResultInterfaces(module);
+        Map<String, List<String>> behaviorResults = b.behaviorResultInterfaces(module, importedSigs);
         behaviorResults.forEach((resultName, arms) -> {
             for (String arm : arms) {
                 armToSums.computeIfAbsent(arm, k -> new ArrayList<>()).add(resultName);
@@ -301,7 +309,7 @@ public final class Backend {
                         b.generateRequiredBase(spec.name(), unitArms, inputRef, outputRef));
             }
         }
-        Map<String, TypeChecker.Sig> sigs = TypeChecker.signatures(module, b.symbols);
+        Map<String, TypeChecker.Sig> sigs = TypeChecker.signatures(module, b.symbols, importedSigs);
         Map<String, List<String>> behaviorDeps = requirementSets(module, requiredNames);
         Map<String, List<String>> pipeStages = TypeChecker.pipelineStages(module);
         for (Ast.BehaviorDef bd : module.behaviors()) {
@@ -419,8 +427,9 @@ public final class Backend {
      * interface (19.3) and a single-arm output uses that arm's own type, so neither gets one. Arm
      * order is sorted for deterministic bytecode.
      */
-    private Map<String, List<String>> behaviorResultInterfaces(Ast.Module module) {
-        Map<String, TypeChecker.Sig> sigs = TypeChecker.signatures(module, symbols);
+    private Map<String, List<String>> behaviorResultInterfaces(Ast.Module module,
+                                                               Map<String, TypeChecker.Sig> importedSigs) {
+        Map<String, TypeChecker.Sig> sigs = TypeChecker.signatures(module, symbols, importedSigs);
         Map<String, List<String>> results = new LinkedHashMap<>();
         for (Ast.BehaviorDef bd : module.behaviors()) {
             TypeChecker.Sig sig = sigs.get(bd.name());

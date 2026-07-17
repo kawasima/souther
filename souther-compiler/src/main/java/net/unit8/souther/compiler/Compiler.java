@@ -57,10 +57,45 @@ public final class Compiler {
         for (Ast.Module original : parsed) {
             Ast.Module m = derived.get(original.name());
             Map<String, Ast.Def> symbols = visibleDefs(m, derived);
-            TypeChecker.check(m, symbols);
-            out.putAll(Backend.generate(m, symbols, importedPackages(m)));
+            Map<String, TypeChecker.Sig> importedSigs = importedBehaviorSigs(m, derived);
+            TypeChecker.check(m, symbols, importedSigs);
+            out.putAll(Backend.generate(m, symbols, importedPackages(m), importedSigs));
         }
         return out;
+    }
+
+    /** Signatures of the behaviors {@code m} imports from other modules (spec 4, 14), so a
+     * composition here can name one as a stage. The declaring module's own signatures are computed
+     * against its visible defs; a behavior it in turn imports is out of scope for now. */
+    private static Map<String, TypeChecker.Sig> importedBehaviorSigs(
+            Ast.Module m, Map<String, Ast.Module> registry) {
+        Map<String, TypeChecker.Sig> result = new HashMap<>();
+        for (Ast.Import imp : m.imports()) {
+            Ast.Module src = registry.get(imp.module());
+            if (src == null) {
+                continue; // an unknown module is reported by visibleDefs
+            }
+            Set<String> behaviors = behaviorNames(src);
+            Map<String, TypeChecker.Sig> srcSigs = null;
+            for (String name : imp.names()) {
+                if (!behaviors.contains(name)) {
+                    continue;
+                }
+                if (srcSigs == null) {
+                    srcSigs = TypeChecker.signatures(src, visibleDefs(src, registry));
+                }
+                result.put(name, srcSigs.get(name));
+            }
+        }
+        return result;
+    }
+
+    private static Set<String> behaviorNames(Ast.Module m) {
+        Set<String> names = new HashSet<>();
+        for (Ast.BehaviorDef b : m.behaviors()) {
+            names.add(b.name());
+        }
+        return names;
     }
 
     /** Own definitions plus imported ones, validated against the source module's {@code exposing}. */
@@ -80,6 +115,11 @@ public final class Compiler {
                 }
                 Ast.Def d = srcDefs.get(name);
                 if (d == null) {
+                    // a behavior import is resolved separately (importedBehaviorSigs); it is not a
+                    // data Def, so it does not go into the symbols map.
+                    if (behaviorNames(src).contains(name)) {
+                        continue;
+                    }
                     throw new CompileException(imp.pos(),
                             "`" + name + "` is not defined in `" + imp.module() + "`");
                 }
