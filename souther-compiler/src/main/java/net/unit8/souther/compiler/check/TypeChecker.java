@@ -1101,6 +1101,10 @@ public final class TypeChecker {
                 if (symbols.get(v.name()) instanceof Ast.UnitData) {
                     yield Type.ref(v.name());
                 }
+                if (v.name().equals("null")) {
+                    throw new CompileException(v.pos(), "E1301",
+                            "`null` is not part of the language. Use an optional field with `?`.");
+                }
                 throw new CompileException(v.pos(), "unknown identifier `" + v.name() + "`");
             }
             case Ast.FieldAccess fa -> typeOfFieldAccess(fa, env, data, symbols, reqs);
@@ -1430,7 +1434,9 @@ public final class TypeChecker {
                 // a required behavior called inline (spec 12.2, 13): type it as its success arm
                 ReqSig callee = reqs.get(call.fn());
                 if (callee == null) {
-                    throw new CompileException(call.pos(), "unknown function `" + call.fn() + "`");
+                    throw new CompileException(call.pos(), "E1401", "`" + call.fn()
+                            + "` is not a behavior or builtin. Calling arbitrary JVM methods is not "
+                            + "allowed; declare a behavior without an `fn` and implement it from Java.");
                 }
                 if (callee.param() == null) {
                     arity(call, 0);            // `() -> R`, e.g. 現在時刻() (spec 13.1)
