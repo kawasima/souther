@@ -246,12 +246,16 @@ public final class TypeChecker {
                 arity.put(spec.name(), spec.params().size());
             }
         }
+        Map<String, List<String>> pipeStages = pipelineStages(module);
         for (Ast.BehaviorDef b : module.behaviors()) {
             if (!(b instanceof Ast.PipeBehavior pipe)) {
                 continue;
             }
-            for (int i = 1; i < pipe.stages().size(); i++) {
-                String stage = pipe.stages().get(i);
+            // check the flattened stages: a named intermediate splices in its own first stage, which
+            // then sits after `>>` and so must be single-input too (spec 14.1, 14.2)
+            List<String> stages = flattenStages(pipe.stages(), pipeStages, pipe.pos());
+            for (int i = 1; i < stages.size(); i++) {
+                String stage = stages.get(i);
                 Integer n = arity.get(stage);
                 if (n != null && n != 1) {
                     throw new CompileException(pipe.pos(),
@@ -355,12 +359,54 @@ public final class TypeChecker {
                 }
             }
         }
+        Map<String, List<String>> pipeStages = pipelineStages(module);
         for (Ast.BehaviorDef b : module.behaviors()) {
             if (b instanceof Ast.PipeBehavior pipe) {
-                sigs.put(pipe.name(), pipeSig(pipe, sigs, symbols));
+                sigs.put(pipe.name(), pipeSig(pipe, sigs, symbols, pipeStages));
             }
         }
         return sigs;
+    }
+
+    /** Maps each pipeline behavior's name to its declared stages (for flattening, spec 14.2). */
+    public static Map<String, List<String>> pipelineStages(Ast.Module module) {
+        Map<String, List<String>> stages = new HashMap<>();
+        for (Ast.BehaviorDef b : module.behaviors()) {
+            if (b instanceof Ast.PipeBehavior pipe) {
+                stages.put(pipe.name(), pipe.stages());
+            }
+        }
+        return stages;
+    }
+
+    /**
+     * Flattens a pipeline's stage list, splicing any stage that is itself a pipeline into its own
+     * (recursively flattened) stages (spec 14.2). This is what makes {@code >>} associative:
+     * {@code half >> finish} with {@code half = split >> work} routes over {@code split, work,
+     * finish}, exactly as the flat form would, so a retired arm stays retired across a named
+     * intermediate. A pipeline viewed on its own still has the merged output its own stages produce.
+     */
+    public static List<String> flattenStages(List<String> stages, Map<String, List<String>> pipeStages,
+                                             SourcePos pos) {
+        List<String> out = new ArrayList<>();
+        flattenInto(stages, pipeStages, out, new LinkedHashSet<>(), pos);
+        return out;
+    }
+
+    private static void flattenInto(List<String> stages, Map<String, List<String>> pipeStages,
+                                    List<String> out, Set<String> inProgress, SourcePos pos) {
+        for (String s : stages) {
+            List<String> sub = pipeStages.get(s);
+            if (sub == null) {
+                out.add(s);
+                continue;
+            }
+            if (!inProgress.add(s)) {
+                throw new CompileException(pos, "pipeline `" + s + "` composes with itself (a cycle)");
+            }
+            flattenInto(sub, pipeStages, out, inProgress, pos);
+            inProgress.remove(s);
+        }
     }
 
     /** The signature of a pipeline stage. Only behaviors compose with {@code >>}; decode/encode
@@ -378,8 +424,10 @@ public final class TypeChecker {
         return s;
     }
 
-    private static Sig pipeSig(Ast.PipeBehavior pipe, Map<String, Sig> sigs, Map<String, Ast.Def> symbols) {
-        List<String> stages = pipe.stages();
+    private static Sig pipeSig(Ast.PipeBehavior pipe, Map<String, Sig> sigs, Map<String, Ast.Def> symbols,
+                               Map<String, List<String>> pipeStages) {
+        // flatten nested pipeline stages so `>>` is associative (spec 14.2)
+        List<String> stages = flattenStages(pipe.stages(), pipeStages, pipe.pos());
         Sig first = stageSig(stages.get(0), sigs, symbols, pipe.pos());
         Type mainline = first.out();
         Set<String> retired = new LinkedHashSet<>();
@@ -446,9 +494,12 @@ public final class TypeChecker {
      * would let a stage pick up something an earlier stage had already dropped, which changes the
      * meaning of a pipeline depending on where it is split.
      *
-     * <p>Retirement lives inside one pipeline. Naming an intermediate (`behavior fg = f >> g`)
-     * gives it an ordinary sum as its output, and `fg >> h` offers all of it again — a value does
-     * not carry a mark saying it once left a main line (2.6).
+     * <p>Naming an intermediate does not lose the split (spec 14.2): a pipeline stage is flattened
+     * into its own stages before routing ({@link #flattenStages}), so `fg >> h` with
+     * `fg = f >> g` routes over `f, g, h` — a retired arm stays retired, exactly as in the flat
+     * `f >> g >> h`. That flattening is what makes `>>` associative; a value never carries a mark
+     * saying it once left a main line (2.6), the plumbing is structural. Viewed on its own, `fg`
+     * still has the merged sum `f`+`g` produce as its output.
      */
     private static Type route(Type mainline, Sig g, Set<String> retired, Map<String, Ast.Def> symbols,
                               SourcePos pos) {

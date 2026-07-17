@@ -284,6 +284,7 @@ public final class Backend {
         }
         Map<String, TypeChecker.Sig> sigs = TypeChecker.signatures(module, b.symbols);
         Map<String, List<String>> behaviorDeps = requirementSets(module, requiredNames);
+        Map<String, List<String>> pipeStages = TypeChecker.pipelineStages(module);
         for (Ast.BehaviorDef bd : module.behaviors()) {
             switch (bd) {
                 case Ast.SpecBehavior spec -> {
@@ -298,7 +299,7 @@ public final class Backend {
                 }
                 case Ast.PipeBehavior pipe ->
                         out.put(module.name() + "." + pipe.name(),
-                                b.generatePipe(pipe, requiredNames, sigs, behaviorDeps));
+                                b.generatePipe(pipe, requiredNames, sigs, behaviorDeps, pipeStages));
             }
         }
         return out;
@@ -796,12 +797,17 @@ public final class Backend {
     }
 
     private byte[] generatePipe(Ast.PipeBehavior pipe, Set<String> requiredNames,
-                                Map<String, TypeChecker.Sig> sigs, Map<String, List<String>> behaviorDeps) {
+                                Map<String, TypeChecker.Sig> sigs, Map<String, List<String>> behaviorDeps,
+                                Map<String, List<String>> pipeStages) {
         ClassDesc cdP = cd(pipe.name());
+        // Flatten nested pipeline stages so the routing is over leaf behaviors (spec 14.2): a named
+        // intermediate `half = split >> work` inlines to `split, work`, which keeps a retired arm
+        // retired across the composition, making `>>` associative.
+        List<String> flat = TypeChecker.flattenStages(pipe.stages(), pipeStages, pipe.pos());
         // the pipeline's injected fields are the union of its stages' requirements (spec 14.3)
         List<String> reqStages = behaviorDeps.getOrDefault(pipe.name(), List.of());
         // the pipeline takes whatever its first stage takes (spec 14.1)
-        int arity = TypeChecker.stageSig(pipe.stages().get(0), sigs, symbols, pipe.pos()).ins().size();
+        int arity = TypeChecker.stageSig(flat.get(0), sigs, symbols, pipe.pos()).ins().size();
         ClassDesc[] applyParams = new ClassDesc[arity];
         java.util.Arrays.fill(applyParams, CD_Object);
         MethodTypeDesc mtdApply = MethodTypeDesc.of(CD_Object, applyParams);
@@ -815,7 +821,7 @@ public final class Backend {
 
             cb.withMethodBody("apply", mtdApply, ClassFile.ACC_PUBLIC, code -> {
                 // slot 1 always holds the running value (an output arm, as an Object).
-                List<String> stages = pipe.stages();
+                List<String> stages = flat;
                 // stage 0 consumes the pipeline's arguments unconditionally
                 applyFirstStage(code, cdP, stages.get(0), arity, requiredNames, behaviorDeps);
                 Type mainline = TypeChecker.stageSig(stages.get(0), sigs, symbols, pipe.pos()).out();
