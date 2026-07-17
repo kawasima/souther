@@ -28,16 +28,34 @@ public final class Compiler {
 
     /** Compiles a single self-contained module (no imports) into binary class name → bytecode. */
     public static Map<String, byte[]> compile(String source) {
-        Ast.Module module = Deriver.derive(Parser.parse(source));
+        Ast.Module parsed = Parser.parse(source);
+        rejectReservedNamespace(parsed);
+        Ast.Module module = Deriver.derive(parsed);
         TypeChecker.check(module);
         return Backend.generate(module);
+    }
+
+    /** The namespace the compiler ships (souther.string/list/map/bool); a user module may not
+     * take a reserved name, or it could grant itself the core's privileges (ADR-0028). */
+    private static final String RESERVED_NAMESPACE = "souther";
+
+    private static void rejectReservedNamespace(Ast.Module m) {
+        String n = m.name();
+        if (n.equals(RESERVED_NAMESPACE) || n.startsWith(RESERVED_NAMESPACE + ".")) {
+            throw new CompileException(m.pos(), "module `" + n + "` is in the reserved `"
+                    + RESERVED_NAMESPACE + "` namespace: the compiler ships souther.string / "
+                    + "souther.list / souther.map / souther.bool, and a user module cannot take a "
+                    + "reserved name.");
+        }
     }
 
     /** Compiles a set of modules together, resolving explicit imports and rejecting cycles. */
     public static Map<String, byte[]> compileModules(List<String> sources) {
         List<Ast.Module> parsed = new ArrayList<>();
         for (String s : sources) {
-            parsed.add(Parser.parse(s));
+            Ast.Module m = Parser.parse(s);
+            rejectReservedNamespace(m);
+            parsed.add(m);
         }
         Map<String, Ast.Module> byName = new LinkedHashMap<>();
         for (Ast.Module m : parsed) {

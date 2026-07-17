@@ -1543,6 +1543,11 @@ Souther のコードは*外界に直接触れない*。次を禁止する。
 [#stdlib]
 == 標準ライブラリ
 
+[#reserved-namespace]
+=== 予約名前空間
+
+標準ライブラリはコンパイラが同梱する `+souther.string+` / `+souther.list+` / `+souther.map+` / `+souther.bool+` に置かれ、これらは自動 import される（だから `+length+` や `+map+` を修飾なしで呼べる）。`+souther+` 名前空間は予約されていて、ユーザーモジュールはこの名前を名乗れない——`+module souther.foo+` はコンパイルエラーとする。予約名前空間だけが core の特権（総称・再帰・intrinsic）を持つので、ユーザーが自分にそれを与えられないようにするための線引きである（<<algebraic-types>> の有界性）。`+southernmost+` のように文字列として `+souther+` で始まるだけの名前は、この名前空間の下ではないので通常のユーザー名である。
+
 [#stdlib-string]
 === String
 
