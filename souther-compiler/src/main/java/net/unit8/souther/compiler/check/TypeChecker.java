@@ -1745,7 +1745,9 @@ public final class TypeChecker {
         collectApplications(name, body, env, data, symbols, reqs, uses);
         if (uses.isEmpty()) {
             throw new CompileException(body.pos(), "cannot infer the type of the function `" + name
-                    + "`: it is never applied, so its parameter types are unknown");
+                    + "`: apply it (as `" + name + "(x)`) at least once so its parameter types are "
+                    + "known. A function passed on rather than applied — e.g. to a combinator — must "
+                    + "be written inline instead (`map(xs, x -> ...)`)");
         }
         List<Type> first = uses.get(0);
         for (List<Type> u : uses) {
