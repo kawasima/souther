@@ -1455,6 +1455,19 @@ match 出張申請 {
 
 アームの値は `+as+` で束縛し、フィールドはそこから参照する（`+s.提出日時+`）。パターンの中でフィールドを分解束縛する形は持たない。
 
+複数のアームを同じ処理に流したいときは、`+case A | B => ...+` と `+|+` で並べる（or-pattern）。状態機械の直和で「これらの状態は同じ扱い」を1本で書ける。
+
+[,text]
+----
+match 出張申請 {
+    case 提出済み | 事前承認待ち as x => ...   // x は 出張申請（直和型）
+    case 申請準備中 as d => ...
+    case 事前承認済み as a => ...
+}
+----
+
+or-pattern の束縛は、単一アームと扱いが違う。単一アームの `+as+` はそのアームの型に束縛する（`+case 提出済み as s+` の `+s+` は `+提出済み+`）が、or-pattern の `+as+` は*スクルーティニの直和型*に束縛する。どれか1つのアーム型では全ての選択肢に合わないからである。だから or-pattern の束縛からはアーム固有のフィールドを読めず、直和のまま持ち回るか、もう一度 match で開く。網羅性はアームを1つずつ数える。あるアームを2つの case が受けると重複エラーになる。この束縛規則は OCaml・Rust の or-pattern（全ての選択肢で同じ型に束縛する）と同じ立場である。
+
 `+Option+`（<<algebraic-types>>）だけは例外で、`+case Some as v+` の `+v+` は `+Some+` ではなく包まれている値に束縛される。`+Some+` にはフィールドが無いので、そうしないと中身に届かない。`+?+` フィールドと `+List.get+` / `+Map.get+` の戻り値は、これで取り出す。
 
 [,text]
@@ -2176,7 +2189,7 @@ var result = handle.apply(rawInput);
 [#mvp-required]
 === 必須
 
-`+.sou+`読み込み、Lexer、Parser、AST、モジュール、import、`+data+`（直積・直和・単位・アーム参照・`+include+`）、`+?+`、`+invariant+`、形状からの `+decoder+` / `+encoder+` 導出（newtype・JSONキー＝フィールド名・判別子 `+"type"+`／アーム名タグ）、`+behavior+`（仕様のみ。引数ゼロの `+()+` を含む）、`+fn+`（同名の behavior への束縛と、ヘルパー `+fn+`）、実装を書かない behavior の Java 注入、`+constructs+`、`+requires+`（宣言と `+fn+` の引数への展開、実装との突き合わせ。<<requires>>）、合成の要求集合の推論（<<composition-with-requirements>>）と任意の出力宣言の突き合わせ（<<declared-composition-output>>）、レコードリテラルと spread、リストのリテラルとガード内包と `{plus}{plus}`（<<stdlib-list>>）、ブロックと高階の `+fn+`（<<blocks>>・<<requirement-propagation>>）、印の無い直和出力（失敗もアーム）、`+>->+`（型ルーティング合成）、`+match+`、`+let+`、`+if+`、`+require+`（`+if+` への脱糖。<<require>>）、`+Option+`、`+NonEmptyList+`、null禁止、例外禁止、網羅性検査、生成権限検査、invariant 違反での中断（<<algebraic-types>>・<<violation-destination>>）、behavior合成型検査、ヘルパー `+fn+` の構築集合の推移推論と呼び出す behavior の `+constructs+` との突き合わせ（<<blocks>>）、invariant から呼ぶ fn の純粋性検査（<<invariant-expressions>>）、ClassFile バイトコード生成（Java 21 のクラスファイルバージョンで出力。<<target-jdk>>）、Java基底クラス生成、Raoh の decoder/encoder としての生成（入力源ごと＝素の値/Map・JSON(`+JsonNode+`)・jOOQ `+Record+`、集積・判別は Raoh の combinator、souther-runtime は Raoh 非依存）、Unicode識別子、単体テスト。
+`+.sou+`読み込み、Lexer、Parser、AST、モジュール、import、`+data+`（直積・直和・単位・アーム参照・`+include+`）、`+?+`、`+invariant+`、形状からの `+decoder+` / `+encoder+` 導出（newtype・JSONキー＝フィールド名・判別子 `+"type"+`／アーム名タグ）、`+behavior+`（仕様のみ。引数ゼロの `+()+` を含む）、`+fn+`（同名の behavior への束縛と、ヘルパー `+fn+`）、実装を書かない behavior の Java 注入、`+constructs+`、`+requires+`（宣言と `+fn+` の引数への展開、実装との突き合わせ。<<requires>>）、合成の要求集合の推論（<<composition-with-requirements>>）と任意の出力宣言の突き合わせ（<<declared-composition-output>>）、レコードリテラルと spread、リストのリテラルとガード内包と `{plus}{plus}`（<<stdlib-list>>）、ブロックと高階の `+fn+`（<<blocks>>・<<requirement-propagation>>）、印の無い直和出力（失敗もアーム）、`+>->+`（型ルーティング合成）、`+match+`（or-pattern を含む。<<match>>）、`+let+`、`+if+`、`+require+`（`+if+` への脱糖。<<require>>）、`+Option+`、`+NonEmptyList+`、null禁止、例外禁止、網羅性検査、生成権限検査、invariant 違反での中断（<<algebraic-types>>・<<violation-destination>>）、behavior合成型検査、ヘルパー `+fn+` の構築集合の推移推論と呼び出す behavior の `+constructs+` との突き合わせ（<<blocks>>）、invariant から呼ぶ fn の純粋性検査（<<invariant-expressions>>）、ClassFile バイトコード生成（Java 21 のクラスファイルバージョンで出力。<<target-jdk>>）、Java基底クラス生成、Raoh の decoder/encoder としての生成（入力源ごと＝素の値/Map・JSON(`+JsonNode+`)・jOOQ `+Record+`、集積・判別は Raoh の combinator、souther-runtime は Raoh 非依存）、Unicode識別子、単体テスト。
 
 [#mvp-deferred]
 === 後回し

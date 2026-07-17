@@ -1276,28 +1276,36 @@ public final class TypeChecker {
             return typeOfOptionMatch(m, oo.element(), env, data, symbols, reqs);
         }
         if (st instanceof Type.Union union) {
-            return typeOfArmsMatch(m, union.members(), "union " + union, env, data, symbols, reqs);
+            return typeOfArmsMatch(m, union.members(), "union " + union, st, env, data, symbols, reqs);
         }
         if (!(st instanceof Type.Ref ref) || !(symbols.get(ref.name()) instanceof Ast.SumData sum)) {
             throw new CompileException(m.pos(), "match requires a sum-typed value, got " + st);
         }
         return typeOfArmsMatch(m, new HashSet<>(sum.arms()), "data `" + sum.name() + "`",
-                env, data, symbols, reqs);
+                st, env, data, symbols, reqs);
     }
 
     /** Match over a fixed set of data arms (a named sum's arms, or an anonymous union's members).
-     * Each arm binds its own data type; every arm must be covered (E1201). */
-    private static Type typeOfArmsMatch(Ast.Match m, Set<String> arms, String what, Map<String, Type> env,
-                                        Ast.Data data, Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
+     * A single-arm case binds that arm's type; an or-pattern ({@code A | B}) binds {@code scrutinee}
+     * (the sum type), since no one arm type fits all its alternatives. Every arm must be covered
+     * exactly once (E1201; a second cover is an overlap error). */
+    private static Type typeOfArmsMatch(Ast.Match m, Set<String> arms, String what, Type scrutinee,
+                                        Map<String, Type> env, Ast.Data data, Map<String, Ast.Def> symbols,
+                                        Map<String, ReqSig> reqs) {
         Set<String> covered = new HashSet<>();
         Type branchType = null;
         for (Ast.Case c : m.cases()) {
-            if (!arms.contains(c.armType())) {
-                throw new CompileException(c.pos(), "`" + c.armType() + "` is not an arm of " + what);
+            for (String arm : c.armTypes()) {
+                if (!arms.contains(arm)) {
+                    throw new CompileException(c.pos(), "`" + arm + "` is not an arm of " + what);
+                }
+                if (!covered.add(arm)) {
+                    throw new CompileException(c.pos(), "`" + arm + "` is matched by more than one case");
+                }
             }
-            covered.add(c.armType());
+            Type bindType = c.armTypes().size() == 1 ? armBindType(c.armTypes().get(0)) : scrutinee;
             branchType = mergeBranch(m, branchType,
-                    typeOf(c.body(), bound(env, c.binding(), armBindType(c.armType())), data, symbols, reqs), c);
+                    typeOf(c.body(), bound(env, c.binding(), bindType), data, symbols, reqs), c);
         }
         for (String arm : arms) {
             if (!covered.contains(arm)) {
@@ -1318,13 +1326,18 @@ public final class TypeChecker {
         Set<String> covered = new HashSet<>();
         Type branchType = null;
         for (Ast.Case c : m.cases()) {
-            Type bind = switch (c.armType()) {
+            if (c.armTypes().size() != 1) {
+                throw new CompileException(c.pos(), "or-patterns are not allowed in an Option match;"
+                        + " use separate Some and None cases");
+            }
+            String armType = c.armTypes().get(0);
+            Type bind = switch (armType) {
                 case "Some" -> element;
                 case "None" -> null;
                 default -> throw new CompileException(c.pos(),
-                        "`" + c.armType() + "` is not an arm of Option; use Some or None");
+                        "`" + armType + "` is not an arm of Option; use Some or None");
             };
-            covered.add(c.armType());
+            covered.add(armType);
             branchType = mergeBranch(m, branchType,
                     typeOf(c.body(), bound(env, c.binding(), bind), data, symbols, reqs), c);
         }

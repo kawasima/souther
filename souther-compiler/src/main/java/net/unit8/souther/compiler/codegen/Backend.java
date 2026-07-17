@@ -2227,30 +2227,51 @@ public final class Backend {
             Label end = code.newLabel();
             Type branchType = null;
             for (Ast.Case c : m.cases()) {
-                ClassDesc armCd = element != null
-                        ? (c.armType().equals("Some") ? CD_OptionSome : CD_OptionNone)
-                        : matchArmClass(c.armType());
-                code.aload(sSlot);
-                code.instanceOf(armCd);
                 Label nextCase = code.newLabel();
-                code.ifeq(nextCase);
-                if (element != null && c.armType().equals("Some")) {
-                    // unwrap Some(v) -> v, bound to the element type
+                List<String> arms = c.armTypes();
+                if (element != null) {
+                    // Option match: a single Some/None arm (or-patterns are rejected by the checker)
+                    String arm = arms.get(0);
                     code.aload(sSlot);
-                    code.checkcast(CD_OptionSome);
-                    code.invokevirtual(CD_OptionSome, "value", MTD_Object);
-                    int bslot = slot(element);
-                    unbox(code, element, bslot);
-                    if (c.binding() != null) {
-                        bind(c.binding(), bslot, element);
+                    code.instanceOf(arm.equals("Some") ? CD_OptionSome : CD_OptionNone);
+                    code.ifeq(nextCase);
+                    if (arm.equals("Some")) {
+                        // unwrap Some(v) -> v, bound to the element type
+                        code.aload(sSlot);
+                        code.checkcast(CD_OptionSome);
+                        code.invokevirtual(CD_OptionSome, "value", MTD_Object);
+                        int bslot = slot(element);
+                        unbox(code, element, bslot);
+                        if (c.binding() != null) {
+                            bind(c.binding(), bslot, element);
+                        }
                     }
-                } else if (element == null && c.binding() != null) {
-                    // a data arm binds the instance; a primitive arm (e.g. Int) unboxes the value
-                    Type bt = TypeChecker.armBindType(c.armType());
+                } else if (arms.size() == 1) {
                     code.aload(sSlot);
-                    int bslot = slot(bt);
-                    unbox(code, bt, bslot);
-                    bind(c.binding(), bslot, bt);
+                    code.instanceOf(matchArmClass(arms.get(0)));
+                    code.ifeq(nextCase);
+                    if (c.binding() != null) {
+                        // a data arm binds the instance; a primitive arm (e.g. Int) unboxes the value
+                        Type bt = TypeChecker.armBindType(arms.get(0));
+                        code.aload(sSlot);
+                        int bslot = slot(bt);
+                        unbox(code, bt, bslot);
+                        bind(c.binding(), bslot, bt);
+                    }
+                } else {
+                    // or-pattern: run the body if the value is any of the arms; the binding (if any)
+                    // is the scrutinee's sum type, which every alternative already is
+                    Label body = code.newLabel();
+                    for (String arm : arms) {
+                        code.aload(sSlot);
+                        code.instanceOf(matchArmClass(arm));
+                        code.ifne(body);
+                    }
+                    code.goto_(nextCase);
+                    code.labelBinding(body);
+                    if (c.binding() != null) {
+                        bind(c.binding(), sSlot, st);
+                    }
                 }
                 branchType = expr(c.body());
                 code.goto_(end);

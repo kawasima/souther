@@ -99,7 +99,7 @@ public final class HelperInliner {
             case Ast.Match m -> {
                 List<Ast.Case> cases = new ArrayList<>();
                 for (Ast.Case c : m.cases()) {
-                    cases.add(new Ast.Case(c.armType(), c.binding(), inline(c.body()), c.pos()));
+                    cases.add(new Ast.Case(c.armTypes(), c.binding(), inline(c.body()), c.pos()));
                 }
                 yield new Ast.Match(inline(m.scrutinee()), cases, m.pos());
             }
@@ -194,7 +194,7 @@ public final class HelperInliner {
                 List<Ast.Case> cases = new ArrayList<>();
                 for (Ast.Case c : m.cases()) {
                     Map<String, String> inner = c.binding() == null ? subst : without(subst, c.binding());
-                    cases.add(new Ast.Case(c.armType(), c.binding(), rename(c.body(), inner), c.pos()));
+                    cases.add(new Ast.Case(c.armTypes(), c.binding(), rename(c.body(), inner), c.pos()));
                 }
                 yield new Ast.Match(rename(m.scrutinee(), subst), cases, m.pos());
             }

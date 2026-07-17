@@ -615,10 +615,16 @@ public final class Parser {
         while (check(TokenType.CASE)) {
             advance();
             Token arm = expect(TokenType.IDENT);
+            // `case A | B ... [as x] => body` — one arm, or several joined by `|` (spec 16.3)
+            List<String> armTypes = new ArrayList<>();
+            armTypes.add(arm.text());
+            while (match(TokenType.PIPE)) {
+                armTypes.add(expect(TokenType.IDENT).text());
+            }
             String binding = match(TokenType.AS) ? expect(TokenType.IDENT).text() : null;
             expect(TokenType.FATARROW);
             Ast.Expr body = parseExpr();
-            cases.add(new Ast.Case(arm.text(), binding, body, arm.pos()));
+            cases.add(new Ast.Case(armTypes, binding, body, arm.pos()));
         }
         expect(TokenType.RBRACE);
         return new Ast.Match(scrutinee, cases, kw.pos());

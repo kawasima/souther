@@ -282,7 +282,13 @@ public interface Ast {
     /** {@code match scrutinee { case Arm as x => body ... }} over a sum type. */
     record Match(Expr scrutinee, List<Case> cases, SourcePos pos) implements Expr {}
 
-    record Case(String armType, String binding, Expr body, SourcePos pos) implements Ast {}
+    /**
+     * One {@code match} arm: {@code case A | B ... [as x] => body} (spec 16.3). {@code armTypes}
+     * holds one arm name, or several joined by {@code |} (an or-pattern, spec 16.3). With one arm,
+     * {@code x} binds that arm's type; with several, it binds the scrutinee's sum type, since no
+     * single arm type fits all alternatives.
+     */
+    record Case(List<String> armTypes, String binding, Expr body, SourcePos pos) implements Ast {}
 
     /** {@code TypeName { ..src, field: expr, ... }} used as an expression (construction in a behavior). */
     record NewData(String typeName, List<FieldInit> inits, List<String> spreads, SourcePos pos)
