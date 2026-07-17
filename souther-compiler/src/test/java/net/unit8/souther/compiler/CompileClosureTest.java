@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * A lambda chosen at runtime cannot be expanded inline: {@code let f = if c then λ1 else λ2} binds
@@ -96,6 +97,89 @@ class CompileClosureTest {
 
             fn adder (n: Int) = (x) -> x + n
             """;
+
+    // a two-parameter closure chosen at runtime: apply passes both args through the Object[]
+    private static final String MULTIARG = """
+            module demo
+
+            data Pair = { a: Int  b: Int  plus: Bool }
+            data Out = { v: Int }
+
+            behavior check = (o: Pair) -> Out
+                constructs Out
+
+            fn check (o) = {
+                let f = if o.plus then (x, y) -> x + y else (x, y) -> x - y
+                Out { v: f(o.a, o.b) }
+            }
+            """;
+
+    @Test
+    void aMultiParameterClosure() throws Exception {
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MULTIARG), getClass().getClassLoader());
+        Object check = loader.loadClass("demo.Check").getDeclaredConstructor().newInstance();
+
+        Decoder d = (Decoder) loader.loadClass("demo.Pair").getMethod("decoder").invoke(null);
+        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
+        Object plus = ((Ok) d.decode(Map.of("a", 7L, "b", 3L, "plus", true), Path.ROOT)).value();
+        Object minus = ((Ok) d.decode(Map.of("a", 7L, "b", 3L, "plus", false), Path.ROOT)).value();
+        assertEquals(10L, ((Map<?, ?>) enc.encode(((Behavior) check).apply(plus))).get("v"));
+        assertEquals(4L, ((Map<?, ?>) enc.encode(((Behavior) check).apply(minus))).get("v"));
+    }
+
+    // a closure that constructs a data — the construction must count against the behavior's
+    // `constructs` permission even though it happens inside an escaping lambda
+    private static final String CONSTRUCTING = """
+            module demo
+
+            data In = { v: Int  up: Bool }
+            data Out = { v: Int }
+
+            behavior check = (o: In) -> Out
+                constructs Out
+
+            fn check (o) = {
+                let f = if o.up then (x) -> Out { v: x + 1 } else (x) -> Out { v: x - 1 }
+                f(o.v)
+            }
+            """;
+
+    @Test
+    void aClosureThatConstructsAData() throws Exception {
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(CONSTRUCTING), getClass().getClassLoader());
+        Object check = loader.loadClass("demo.Check").getDeclaredConstructor().newInstance();
+
+        Decoder d = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
+        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
+        Object up = ((Ok) d.decode(Map.of("v", 10L, "up", true), Path.ROOT)).value();
+        Object down = ((Ok) d.decode(Map.of("v", 10L, "up", false), Path.ROOT)).value();
+        assertEquals(11L, ((Map<?, ?>) enc.encode(((Behavior) check).apply(up))).get("v"));
+        assertEquals(9L, ((Map<?, ?>) enc.encode(((Behavior) check).apply(down))).get("v"));
+    }
+
+    /** A closure that constructs a data must still obey the behavior's `constructs` permission: here
+     * the else branch builds {@code Extra}, which is not declared, so it is E1002 — proving the
+     * permission check counts constructions inside an escaping lambda, not only inline ones. */
+    @Test
+    void aClosureCannotConstructAnUndeclaredData() {
+        String src = """
+                module demo
+
+                data In = { v: Int  up: Bool }
+                data Out = { v: Int }
+                data Extra = { w: Int }
+
+                behavior check = (o: In) -> Out
+                    constructs Out
+
+                fn check (o) = {
+                    let f = if o.up then (x) -> Out { v: x + 1 } else (x) -> { let e = Extra { w: x }  Out { v: e.w } }
+                    f(o.v)
+                }
+                """;
+        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
+        assertEquals("E1002", e.code(), e.getMessage());
+    }
 
     @Test
     void aHelperReturnsACapturingClosure() throws Exception {
