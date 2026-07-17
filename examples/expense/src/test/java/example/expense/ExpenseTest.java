@@ -17,11 +17,12 @@ class ExpenseTest {
 
     @Test
     void リストとネストdataを持つ申請がdecodeされencodeで往復する() {
-        // Int は Long。理由 = { コード: String } は単一プリミティブ = newtype なので、
-        // List<理由> は裸の文字列のリストから読む（Map ではない）。
+        // Int は Long。理由 = { コード: String } は業務フィールド名を持つレコード = object なので
+        // （波括弧は常に object、newtype は `data X = Y` の裸形だけ。spec 8.7）、
+        // List<理由> は { "コード": ... } の Map のリストから読む。
         Map<String, Object> raw = Map.of(
                 "予定費用", 50000L,
-                "理由リスト", List.of("A100", "B200"));
+                "理由リスト", List.of(Map.of("コード", "A100"), Map.of("コード", "B200")));
         Result<申請> decoded = 申請.decoder().decode(raw, Path.ROOT);
 
         switch (decoded) {
