@@ -459,7 +459,8 @@ public final class TypeChecker {
         }
         Sig s = sigs.get(stage);
         if (s == null) {
-            throw new CompileException(pos, "unknown behavior `" + stage + "` in pipeline");
+            throw new CompileException(pos, "unknown behavior `" + stage + "` in pipeline"
+                    + Suggest.hint(stage, sigs.keySet()));
         }
         return s;
     }
@@ -1126,7 +1127,8 @@ public final class TypeChecker {
                     throw new CompileException(v.pos(), "E1301",
                             "`null` is not part of the language. Use an optional field with `?`.");
                 }
-                throw new CompileException(v.pos(), "unknown identifier `" + v.name() + "`");
+                throw new CompileException(v.pos(), "unknown identifier `" + v.name() + "`"
+                        + Suggest.hint(v.name(), env.keySet()));
             }
             case Ast.FieldAccess fa -> typeOfFieldAccess(fa, env, data, symbols, reqs);
             case Ast.Call call -> typeOfCall(call, env, data, symbols, reqs);
@@ -1456,7 +1458,9 @@ public final class TypeChecker {
                 ReqSig callee = reqs.get(call.fn());
                 if (callee == null) {
                     throw new CompileException(call.pos(), "E1401", "`" + call.fn()
-                            + "` is not a behavior or builtin. Calling arbitrary JVM methods is not "
+                            + "` is not a behavior or builtin"
+                            + Suggest.hint(call.fn(), reqs.keySet())
+                            + ". Calling arbitrary JVM methods is not "
                             + "allowed; declare a behavior without an `fn` and implement it from Java.");
                 }
                 if (callee.param() == null) {
@@ -1704,7 +1708,8 @@ public final class TypeChecker {
                 if (symbols.containsKey(ref.name())) {
                     yield Type.ref(ref.name());
                 }
-                throw new CompileException(ref.pos(), "unknown type `" + ref.name() + "`");
+                throw new CompileException(ref.pos(), "unknown type `" + ref.name() + "`"
+                        + Suggest.hint(ref.name(), symbols.keySet()));
             }
         };
     }
