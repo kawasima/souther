@@ -1613,7 +1613,7 @@ public final class TypeChecker {
     }
 
     /** The set of leaf (non-sum) arm names a data-like type covers, flattening nested sums. */
-    private static Set<String> leafArms(Type t, Map<String, Ast.Def> symbols) {
+    public static Set<String> leafArms(Type t, Map<String, Ast.Def> symbols) {
         Set<String> out = new HashSet<>();
         for (String name : namesOf(t)) {
             if (symbols.get(name) instanceof Ast.SumData s) {

@@ -18,6 +18,7 @@ import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDescs;
 import java.lang.constant.MethodTypeDesc;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -250,7 +251,19 @@ public final class Backend {
         }
         Backend b = new Backend(module.name(), symbols, armToSums, typePackage,
                 module.exposing().isEmpty(), exposed);
+        // A behavior whose output is an anonymous union gets a generated sealed interface
+        // <behavior名>結果 that its arms implement (spec 19.8). Register those arm->interface links
+        // in armToSums before the data classes are generated, so each arm class picks the interface
+        // up in withInterfaceSymbols. The interface classes themselves are emitted below.
+        Map<String, List<String>> behaviorResults = b.behaviorResultInterfaces(module);
+        behaviorResults.forEach((resultName, arms) -> {
+            for (String arm : arms) {
+                armToSums.computeIfAbsent(arm, k -> new ArrayList<>()).add(resultName);
+            }
+        });
         Map<String, byte[]> out = new LinkedHashMap<>();
+        behaviorResults.forEach((resultName, arms) ->
+                out.put(module.name() + "." + resultName, b.generateBehaviorResult(resultName, arms)));
         for (Ast.Def def : module.defs()) {
             switch (def) {
                 case Ast.Data data -> b.generateData(data, out);
@@ -376,6 +389,45 @@ public final class Backend {
                             code.areturn();
                         });
             }
+        });
+    }
+
+    /**
+     * Behavior-result interfaces to generate (spec 19.8): for each behavior whose output is an
+     * anonymous union, maps {@code <behavior名>結果} to its leaf arms — the {@code permits} list and
+     * the set of arm classes that {@code implements} it. A named-sum output is already a sealed
+     * interface (19.3) and a single-arm output uses that arm's own type, so neither gets one. Arm
+     * order is sorted for deterministic bytecode.
+     */
+    private Map<String, List<String>> behaviorResultInterfaces(Ast.Module module) {
+        Map<String, TypeChecker.Sig> sigs = TypeChecker.signatures(module, symbols);
+        Map<String, List<String>> results = new LinkedHashMap<>();
+        for (Ast.BehaviorDef bd : module.behaviors()) {
+            TypeChecker.Sig sig = sigs.get(bd.name());
+            if (sig == null || !(sig.out() instanceof Type.Union)) {
+                continue;
+            }
+            List<String> arms = new ArrayList<>(TypeChecker.leafArms(sig.out(), symbols));
+            Collections.sort(arms);
+            results.put(bd.name() + "結果", arms);
+        }
+        return results;
+    }
+
+    /**
+     * Generates the sealed interface for a behavior's anonymous union output (spec 19.8). The body
+     * is empty: Java consumers receive a value and {@code switch} over the permitted arms, each of
+     * which carries its own codec, so the interface itself needs no members.
+     */
+    private byte[] generateBehaviorResult(String resultName, List<String> arms) {
+        ClassDesc cdR = cd(resultName);
+        List<ClassDesc> armCds = new ArrayList<>();
+        for (String arm : arms) {
+            armCds.add(cd(arm));
+        }
+        return build(cdR, cb -> {
+            cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_INTERFACE | ClassFile.ACC_ABSTRACT);
+            cb.with(PermittedSubclassesAttribute.ofSymbols(armCds));
         });
     }
 
