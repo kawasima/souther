@@ -2756,6 +2756,14 @@ public final class Backend {
                     code.labelBinding(end);
                     yield t;
                 }
+                case Ast.LetIn li -> {
+                    // a capture binding around the function: bind it here so the lambda captures it
+                    Type vt = expr(li.value());
+                    int s = slot(vt);
+                    store(code, s, vt);
+                    bind(li.name(), s, vt);
+                    yield emitFunctionValue(li.body(), paramTypes);
+                }
                 default -> expr(value);
             };
         }

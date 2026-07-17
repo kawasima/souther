@@ -215,7 +215,14 @@ public final class TypeChecker {
                 }
                 env.put(p.name(), resolveParamType(p.type(), symbols));
             }
-            typeOf(inliner.inline(h.body()), env, null, symbols, reqSigs);
+            Ast.Expr body = inliner.inline(h.body());
+            // a helper that returns a function (e.g. `fn adder (n) = (x) -> x + n`) has no application
+            // here to infer the lambda's parameter types from; it is checked where it is inlined and
+            // applied (spec §blocks).
+            if (producesFunction(body)) {
+                continue;
+            }
+            typeOf(body, env, null, symbols, reqSigs);
         }
     }
 
@@ -1706,6 +1713,9 @@ public final class TypeChecker {
         return switch (e) {
             case Ast.Block ignored -> true;
             case Ast.If iff -> producesFunction(iff.then()) || producesFunction(iff.els());
+            // a lambda returned under its capture bindings, e.g. inlining `adder(5)` leaves
+            // `let $n = 5 in (x) -> x + $n` (spec §blocks)
+            case Ast.LetIn li -> producesFunction(li.body());
             default -> false;
         };
     }
@@ -1786,6 +1796,12 @@ public final class TypeChecker {
                             + "types: " + t + " vs " + f);
                 }
                 yield t;
+            }
+            case Ast.LetIn li -> {
+                // a capture binding around the function (e.g. `let $n = 5 in (x) -> x + $n`)
+                Map<String, Type> inner = new HashMap<>(env);
+                inner.put(li.name(), typeOf(li.value(), env, data, symbols, reqs));
+                yield typeFunctionValue(li.body(), paramTypes, inner, data, symbols, reqs);
             }
             default -> typeOf(value, env, data, symbols, reqs);
         };

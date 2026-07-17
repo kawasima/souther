@@ -77,4 +77,35 @@ class CompileClosureTest {
         assertEquals(110L, run(loader, check, 10L, true));    // 100 + 10
         assertEquals(90L, run(loader, check, 10L, false));    // 100 - 10
     }
+
+    // a helper returns a lambda capturing its parameter: adder(5) is a closure over n = 5. Inlining
+    // adder leaves `let $n = 5 in (x) -> x + $n`, so the function value sits under a capture-let.
+    private static final String RETURNING = """
+            module demo
+
+            data Order = { v: Int }
+            data Result = { n: Int }
+
+            behavior check = (o: Order) -> Result
+                constructs Result
+
+            fn check (o) = {
+                let add5 = adder(5)
+                Result { n: add5(o.v) }
+            }
+
+            fn adder (n: Int) = (x) -> x + n
+            """;
+
+    @Test
+    void aHelperReturnsACapturingClosure() throws Exception {
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(RETURNING), getClass().getClassLoader());
+        Object check = loader.loadClass("demo.Check").getDeclaredConstructor().newInstance();
+
+        Decoder d = (Decoder) loader.loadClass("demo.Order").getMethod("decoder").invoke(null);
+        Object order = ((Ok) d.decode(Map.of("v", 10L), Path.ROOT)).value();
+        Object r = ((Behavior) check).apply(order);
+        Encoder enc = (Encoder) loader.loadClass("demo.Result").getMethod("encoder").invoke(null);
+        assertEquals(15L, ((Map<?, ?>) enc.encode(r)).get("n"));   // (x -> x + 5)(10)
+    }
 }
