@@ -1261,6 +1261,10 @@ public final class TypeChecker {
                 requireType(iff.cond(), Type.BOOL, env, data, symbols, reqs, "if condition");
                 Type tt = typeOf(iff.then(), env, data, symbols, reqs);
                 Type et = typeOf(iff.els(), env, data, symbols, reqs);
+                Type empty = absorbEmptyList(tt, et);   // one arm may be `[]` (ADR-0028)
+                if (empty != null) {
+                    yield empty;
+                }
                 if (tt.equals(et)) {
                     yield tt;
                 }
@@ -1272,6 +1276,9 @@ public final class TypeChecker {
                 throw new CompileException(iff.pos(), "if branches disagree: " + tt + " vs " + et);
             }
             case Ast.ListLit lit -> {
+                if (lit.elements().isEmpty()) {
+                    yield Type.EMPTY_LIST;   // `[]`: element type fixed by context (ADR-0028)
+                }
                 Type elem = null;
                 for (Ast.Expr el : lit.elements()) {
                     Type t = typeOf(el, env, data, symbols, reqs);
@@ -1290,7 +1297,27 @@ public final class TypeChecker {
 
     /** The common element type of two list positions: identical types collapse; two data-like
      * types widen to the union of their arms (so {@code [High] ++ [LowRole]} is a list of both). */
+    /** When one of two joined positions ({@code if}/{@code match} arms) is the empty list {@code []}
+     * and the other is a concrete list, the join is that concrete list — the empty list takes on its
+     * type (ADR-0028). Returns {@code null} when neither is empty, so the caller falls through to its
+     * ordinary rules. Two empty lists stay empty. */
+    private static Type absorbEmptyList(Type a, Type b) {
+        if (a.equals(Type.EMPTY_LIST)) {
+            return b;
+        }
+        if (b.equals(Type.EMPTY_LIST)) {
+            return a;
+        }
+        return null;
+    }
+
     private static Type unifyElem(Type a, Type b, SourcePos pos) {
+        if (a == Type.NOTHING) {   // the empty list absorbs into the other's element type (ADR-0028)
+            return b;
+        }
+        if (b == Type.NOTHING) {
+            return a;
+        }
         if (a.equals(b)) {
             return a;
         }
@@ -1414,6 +1441,10 @@ public final class TypeChecker {
         if (branchType.equals(bt)) {
             return branchType;
         }
+        Type empty = absorbEmptyList(branchType, bt);   // one arm may be `[]` (ADR-0028)
+        if (empty != null) {
+            return empty;
+        }
         // arms yielding different data types widen to their union, as `if` branches do (spec 16.2)
         if (isDataLike(branchType) && isDataLike(bt)) {
             Set<String> names = new HashSet<>(namesOf(branchType));
@@ -1495,7 +1526,15 @@ public final class TypeChecker {
                 }
                 Type acc = typeOf(args.get(1), env, data, symbols, reqs);
                 Type bt = blockType(call, args.get(2), List.of(acc, lo.element()), env, data, symbols, reqs);
-                if (!bt.equals(acc)) {
+                if (acc.equals(Type.EMPTY_LIST)) {
+                    // the seed is `[]`; the accumulator's type is the list the block grows (ADR-0028)
+                    if (!(bt instanceof Type.ListOf)) {
+                        throw new CompileException(call.pos(), "fold seeded with the empty list `[]` "
+                                + "must build a list, but its block returns " + bt);
+                    }
+                    yield bt;
+                }
+                if (!bt.equals(acc) && absorbEmptyList(acc, bt) == null) {
                     throw new CompileException(call.pos(),
                             "fold's block must return the accumulator type " + acc + ", got " + bt);
                 }
@@ -1928,6 +1967,9 @@ public final class TypeChecker {
     public static boolean assignable(Type from, Type to, Map<String, Ast.Def> symbols) {
         if (from.equals(to)) {
             return true;
+        }
+        if (from == Type.NOTHING) {
+            return true;   // the empty list's bottom element assigns into any element type (ADR-0028)
         }
         // immutable collections are element-covariant: A <: S makes a List/Map/Option of A
         // assignable to one of S. Sound because they cannot be mutated (spec 6), so no write can

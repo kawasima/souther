@@ -6,9 +6,16 @@ package net.unit8.souther.compiler.check;
  */
 public sealed interface Type
         permits Type.Prim, Type.Ref, Type.ListOf, Type.MapOf, Type.OptionOf, Type.Union, Type.FnOf,
-                Type.Var {
+                Type.Var, Type.Nothing {
 
     enum Prim implements Type { INT, STRING, BOOL, DECIMAL, DATE, DATETIME, RAW }
+
+    /** The element type of the empty-list literal {@code []} (ADR-0028): a bottom that unifies with
+     * any element type. It only ever appears as {@code ListOf(NOTHING)} — the empty list — whose type
+     * is fixed by context ({@code ++}, an {@code if}/{@code match} arm, a {@code fold} seed, or the
+     * {@code List<T>} a position expects). It never reaches codegen: an empty list is element-agnostic
+     * at runtime. */
+    record Nothing() implements Type {}
 
     /** A type variable ({@code 'a}), written only in the shipped core (ADR-0028). It stands for any
      * type; a non-recursive core helper carrying one is monomorphised by inline expansion, so the
@@ -45,6 +52,10 @@ public sealed interface Type
      * unioned with propagated error arms as the arm {@code "Raw"} (spec 24). Reserved — no stage
      * produces it yet; {@code >->} composes behaviors, not codecs (spec 14.1). */
     Type RAW = Prim.RAW;
+    /** The bottom element type of the empty-list literal (see {@link Nothing}). */
+    Type NOTHING = new Nothing();
+    /** The type of the empty-list literal {@code []}: a list whose element type is not yet fixed. */
+    Type EMPTY_LIST = new ListOf(NOTHING);
 
     static Type ref(String name) {
         return new Ref(name);

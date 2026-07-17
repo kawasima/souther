@@ -648,6 +648,10 @@ public final class Parser {
     /** {@code [e1, e2, ...]} (a literal) or {@code [element | guard, ...]} (a guard comprehension). */
     private Ast.Expr parseList() {
         Token lb = expect(TokenType.LBRACKET);
+        if (check(TokenType.RBRACKET)) {
+            advance();   // the empty list `[]`; its element type is fixed by context (ADR-0028)
+            return new Ast.ListLit(new ArrayList<>(), lb.pos());
+        }
         Ast.Expr first = parseExpr();
         if (match(TokenType.PIPE)) {
             List<Ast.Expr> guards = new ArrayList<>();

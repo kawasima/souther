@@ -2174,7 +2174,7 @@ public final class Backend {
                 elem = t;
             }
             code.invokestatic(CD_List, "copyOf", MTD_List_copyOf, true);
-            return Type.list(elem);
+            return elem == null ? Type.EMPTY_LIST : Type.list(elem);   // `[]` is the empty list (ADR-0028)
         }
 
         /**
@@ -2245,6 +2245,9 @@ public final class Backend {
                 bind(block.params().get(0), fAccSlot, accType);
                 bind(block.params().get(1), elemSlot, elemType);
                 Type bt = expr(block.body());
+                if (accType.equals(Type.EMPTY_LIST)) {
+                    resultType = bt;   // an empty-list seed takes the list the block grows (ADR-0028)
+                }
                 box(code, bt);
                 code.astore(accSlot);
             } else {
