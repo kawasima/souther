@@ -11,7 +11,7 @@ public enum TokenType {
     LBRACE, RBRACE, LPAREN, RPAREN, LBRACKET, RBRACKET, COLON, COMMA, DOT, DOTDOT, ASSIGN, PIPE,
     ARROW, LARROW, PIPEFWD, QUESTION, PLUSPLUS,
     // operators
-    EQ, NE, LT, LE, GT, GE, AND, OR, NOT, PLUS, MINUS, STAR,
+    EQ, NE, LT, LE, GT, GE, AND, OR, PLUS, MINUS, STAR,
     // end of input
     EOF
 }

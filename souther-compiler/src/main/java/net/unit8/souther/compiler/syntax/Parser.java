@@ -530,10 +530,6 @@ public final class Parser {
     }
 
     private Ast.Expr parseUnary() {
-        if (check(TokenType.NOT)) {
-            Token op = advance();
-            return new Ast.Not(parseUnary(), op.pos());
-        }
         if (check(TokenType.MINUS)) {
             Token op = advance();
             return new Ast.Neg(parseUnary(), op.pos());

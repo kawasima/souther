@@ -2139,12 +2139,6 @@ public final class Backend {
                     yield ft;
                 }
                 case Ast.Call call -> call(call);
-                case Ast.Not not -> {
-                    expr(not.operand());
-                    code.iconst_1();
-                    code.ixor();
-                    yield Type.BOOL;
-                }
                 case Ast.Binary bin -> binary(bin);
                 case Ast.NewData nd -> newData(nd);
                 case Ast.Match m -> match(m);
@@ -2886,7 +2880,6 @@ public final class Backend {
                     collectFree(bin.left(), bound, free);
                     collectFree(bin.right(), bound, free);
                 }
-                case Ast.Not not -> collectFree(not.operand(), bound, free);
                 case Ast.Neg neg -> collectFree(neg.operand(), bound, free);
                 case Ast.NewData nd -> {
                     nd.inits().forEach(i -> collectFree(i.value(), bound, free));

@@ -148,8 +148,6 @@ public final class Lexer {
             case '=':
                 if (match('=')) return new Token(TokenType.EQ, "==", start);
                 return new Token(TokenType.ASSIGN, "=", start);
-            case '!':
-                return new Token(TokenType.NOT, "!", start);
             case '/':
                 // `/=` is inequality (Elm/Haskell form). There is no division operator,
                 // so a lone `/` is an error. (`//` is a comment, consumed in skipTrivia.)

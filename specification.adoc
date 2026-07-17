@@ -247,7 +247,7 @@ true     false
 
 演算子・記号: `+=+` `+|+` `+>->+` `+?+` `+->+` `+.+` `+..+` `+[+` `+]+`
 
-比較・論理・算術: `+==+` `+/=+` `+<+` `+<=+` `+>+` `+>=+` `+&&+` `+||+` `+!+` `{plus}` `+-+` `+*+`
+比較・論理・算術: `+==+` `+/=+` `+<+` `+<=+` `+>+` `+>=+` `+&&+` `+||+` `{plus}` `+-+` `+*+`（否定は前置演算子でなく `+souther.bool+` の `+not+`。<<stdlib-bool>>）
 
 リスト: `+[+` `+]+`（リテラルとガード内包）、`{plus}{plus}`（連結）。<<stdlib-list>> に規則がある。
 
@@ -1659,7 +1659,7 @@ get  containsKey  keys  values
 not
 ----
 
-`+not+` は `+souther.bool+` に置かれた**最初の self-host 関数**である。プリミティブでなく Souther で `+let not (b: Bool) = if b then false else true+` と書かれ、自動 import される。非再帰なので呼び出し位置に inline 展開され、専用のクラスは生成されない。前置 `+!+` は同じ否定だが、`+not+` が入ったことで冗長になる（<<delimiters>> の演算子表からいずれ外す）。
+`+not+` は `+souther.bool+` に置かれた**最初の self-host 関数**である。プリミティブでなく Souther で `+let not (b: Bool) = if b then false else true+` と書かれ、自動 import される。非再帰なので呼び出し位置に inline 展開され、専用のクラスは生成されない。否定はこの `+not+` で書く——前置 `+!+` 演算子は持たない（`+not+` があるので冗長）。
 
 Souther の構文には現れない。data の形状から導出された decoder / encoder は、Raoh の Decoder / Encoder として ClassFile backend が生成する（<<codec-generation>>、<<encoder>>）。プリミティブ解析・エラー集積・判別振り分け・エンコードは Raoh の combinator が担い、souther-runtime 側に facade は持たない。境界のカスタムコーデック（<<custom-codec>>）は Java 側から Raoh を直接使う。
 

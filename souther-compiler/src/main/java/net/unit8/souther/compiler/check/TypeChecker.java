@@ -433,7 +433,6 @@ public final class TypeChecker {
                 collectRequiredCalls(bin.left(), requiredNames, out);
                 collectRequiredCalls(bin.right(), requiredNames, out);
             }
-            case Ast.Not not -> collectRequiredCalls(not.operand(), requiredNames, out);
             case Ast.Match m -> {
                 collectRequiredCalls(m.scrutinee(), requiredNames, out);
                 m.cases().forEach(c -> collectRequiredCalls(c.body(), requiredNames, out));
@@ -736,7 +735,6 @@ public final class TypeChecker {
                 f.accept(bin.left());
                 f.accept(bin.right());
             }
-            case Ast.Not not -> f.accept(not.operand());
             case Ast.Match m -> {
                 f.accept(m.scrutinee());
                 m.cases().forEach(c -> f.accept(c.body()));
@@ -776,7 +774,6 @@ public final class TypeChecker {
                 forbidInvariantConstruct(bin.left(), symbols);
                 forbidInvariantConstruct(bin.right(), symbols);
             }
-            case Ast.Not not -> forbidInvariantConstruct(not.operand(), symbols);
             case Ast.Match m -> {
                 forbidInvariantConstruct(m.scrutinee(), symbols);
                 m.cases().forEach(c -> forbidInvariantConstruct(c.body(), symbols));
@@ -823,7 +820,6 @@ public final class TypeChecker {
                 collectConstructs(bin.left(), out, symbols, bound);
                 collectConstructs(bin.right(), out, symbols, bound);
             }
-            case Ast.Not not -> collectConstructs(not.operand(), out, symbols, bound);
             case Ast.Neg neg -> collectConstructs(neg.operand(), out, symbols, bound);
             case Ast.Match m -> {
                 collectConstructs(m.scrutinee(), out, symbols, bound);
@@ -1251,10 +1247,6 @@ public final class TypeChecker {
             }
             case Ast.FieldAccess fa -> typeOfFieldAccess(fa, env, data, symbols, reqs);
             case Ast.Call call -> typeOfCall(call, env, data, symbols, reqs);
-            case Ast.Not not -> {
-                requireType(not.operand(), Type.BOOL, env, data, symbols, reqs, "operand of `!`");
-                yield Type.BOOL;
-            }
             case Ast.Binary bin -> typeOfBinary(bin, env, data, symbols, reqs);
             case Ast.NewData nd -> {
                 if (!(symbols.get(nd.typeName()) instanceof Ast.Data owner)) {

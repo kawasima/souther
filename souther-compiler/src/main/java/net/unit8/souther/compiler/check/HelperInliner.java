@@ -121,7 +121,6 @@ public final class HelperInliner {
             }
             case Ast.FieldAccess fa -> new Ast.FieldAccess(inline(fa.target()), fa.field(), fa.pos());
             case Ast.Binary bin -> new Ast.Binary(bin.op(), inline(bin.left()), inline(bin.right()), bin.pos());
-            case Ast.Not not -> new Ast.Not(inline(not.operand()), not.pos());
             case Ast.Neg neg -> new Ast.Neg(inline(neg.operand()), neg.pos());
             case Ast.NewData nd -> new Ast.NewData(nd.typeName(), inlineInits(nd.inits()), nd.spreads(), nd.pos());
             case Ast.Match m -> {
@@ -243,7 +242,6 @@ public final class HelperInliner {
                 yield new Ast.Call(callee, renameList(call.args(), subst, fnParams), call.pos());
             }
             case Ast.Binary bin -> new Ast.Binary(bin.op(), rename(bin.left(), subst, fnParams), rename(bin.right(), subst, fnParams), bin.pos());
-            case Ast.Not not -> new Ast.Not(rename(not.operand(), subst, fnParams), not.pos());
             case Ast.Neg neg -> new Ast.Neg(rename(neg.operand(), subst, fnParams), neg.pos());
             case Ast.NewData nd -> {
                 List<Ast.FieldInit> inits = new ArrayList<>();
@@ -358,7 +356,6 @@ public final class HelperInliner {
                 f.accept(bin.left());
                 f.accept(bin.right());
             }
-            case Ast.Not not -> f.accept(not.operand());
             case Ast.Neg neg -> f.accept(neg.operand());
             case Ast.Match m -> {
                 f.accept(m.scrutinee());

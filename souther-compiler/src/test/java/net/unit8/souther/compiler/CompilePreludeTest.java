@@ -52,4 +52,12 @@ class CompilePreludeTest {
     void autoImportedNotNegatesFalse() throws Exception {
         assertEquals(true, flip(false), "not(false) is true");
     }
+
+    /** The prefix `!` is gone now that `not` covers negation (ADR-0028). */
+    @Test
+    void thePrefixBangNoLongerParses() {
+        String src = MODULE.replace("not(i.flag)", "!i.flag");
+        org.junit.jupiter.api.Assertions.assertThrows(
+                CompileException.class, () -> Compiler.compile(src));
+    }
 }

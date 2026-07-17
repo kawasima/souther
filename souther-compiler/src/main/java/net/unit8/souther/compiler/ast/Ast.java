@@ -324,7 +324,6 @@ public interface Ast {
 
     record Binary(BinOp op, Expr left, Expr right, SourcePos pos) implements Expr {}
 
-    record Not(Expr operand, SourcePos pos) implements Expr {}
 
     enum BinOp { EQ, NE, LT, LE, GT, GE, AND, OR, ADD, SUB, MUL, CONCAT }
 }
