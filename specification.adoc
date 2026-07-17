@@ -210,6 +210,17 @@ module example.businesstrip exposing {
 
 `+exposing+` は型の粒度で公開する。公開した data の `+decoder()+` / `+encoder()+` は常に公開 API なので（<<jvm-codec>>）、`+出張申請.decoder+` のように member を絞る書き方はしない——絞れるものが無いからである。
 
+公開する behavior が `+>->+` 合成のときは、その出力を `+名前 : アーム+` の形で exposing に書く（<<declared-composition-output>>）。合成の出力は段から推論されるが（<<composition-with-requirements>>）、公開境界では推論に任せず署名を要求する。別モジュールや Java から使う契約が上流の変更で黙って変わらないようにするためである。書かなければコンパイルエラー（E1605）とする。
+
+[,text]
+----
+module example.order exposing {
+    注文を確定する : 確定注文 | 在庫不足
+}
+----
+
+exposing はモジュールのインターフェイス記述にあたる。実装は推論に任せ、境界だけ明示する。OCaml の `+.mli+`、F# の `+.fsi+`、TypeScript の `+.d.ts+` と同じ立場である。
+
 import は明示的に列挙する。ワイルドカードimportは禁止する。循環importはコンパイルエラーとする。
 
 [,text]
@@ -1387,6 +1398,8 @@ behavior 注文を確定する = 注文を検証する >-> 価格を記載する
 
 入力は宣言しない。パイプラインは point-free で、入力は先頭の段が決めるからである（<<sequential-composition>>）。宣言できるのは出力だけである。依存（`+requires+`）も同じ遠隔変更の危険を持つが、合成では推論のままにする（<<requires>>）。
 
+内部の合成ではこの宣言は任意である。だが `+exposing+` で公開する合成では*必須*とし、場所は定義行ではなく exposing の列に `+名前 : アーム+` と書く（<<modules>>）。公開境界を推論任せにすると、上流の段がアームを増やしたとき、別コンパイル単位（別モジュールや Java の非網羅 switch・JSON 直列化）にそれが黙って届く。定義側には知らせるものが無い。exposing に署名を置けば、増えた瞬間にその合成の定義がエラー（E1604）になり、書き手はアームを処理するか署名を更新するかを選ぶ。署名が無ければ E1605 とする。非合成の behavior は定義で型を書いているので、exposing に署名は書けない（書けば E1605）。この分担は ADR-0024 に対応する。
+
 [#arm-propagation]
 == behaviorのアーム伝播とDecoderのエラー集積
 
@@ -1934,7 +1947,19 @@ but the pipeline produces 確定注文 | 在庫不足 | 返品中.
 An upstream stage added an arm; update the declared output or handle it.
 ----
 
-宣言を書いた合成では、推論した出力との正確な一致を要求する（<<declared-composition-output>>）。書かなければ推論のままで、この検査は働かない。
+宣言を書いた合成では、推論した出力との正確な一致を要求する（<<declared-composition-output>>）。内部の合成では書かなければ推論のままで、この検査は働かない。公開する合成では宣言が必須で、exposing に置いた署名と推論を突き合わせる（<<declared-composition-output>>・E1605）。
+
+[#e1605]
+=== 公開合成の出力署名の欠落・誤配置
+
+[,text]
+----
+error E1605:
+exposed composition `注文を確定する` must declare its output in `exposing` (spec 14.5):
+write `exposing { 注文を確定する : 確定注文 | 在庫不足 }`
+----
+
+`+exposing+` で公開する `+>->+` 合成には出力署名を要求する（<<declared-composition-output>>）。欠けていればこのエラーになる。合成でない behavior に exposing で署名を書いた場合も、定義で型が決まっているので同じ E1605 とする。
 
 [#e1305]
 === 注入 behavior が作れない data を鋳造する

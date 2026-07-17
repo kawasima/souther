@@ -4,7 +4,9 @@ import net.unit8.souther.compiler.CompileException;
 import net.unit8.souther.compiler.ast.Ast;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -32,7 +34,8 @@ public final class Parser {
     public Ast.Module parseModule() {
         Token m = expect(TokenType.MODULE);
         String name = qualifiedName();
-        List<String> exposing = check(TokenType.EXPOSING) ? parseExposing() : new ArrayList<>();
+        Map<String, Ast.RetType> exposedOutputs = new HashMap<>();
+        List<String> exposing = check(TokenType.EXPOSING) ? parseExposing(exposedOutputs) : new ArrayList<>();
         List<Ast.Import> imports = new ArrayList<>();
         while (check(TokenType.IMPORT)) {
             imports.add(parseImport());
@@ -51,23 +54,37 @@ public final class Parser {
                 throw error(peek(), "expected data, behavior, or fn");
             }
         }
-        return new Ast.Module(name, exposing, imports, defs, behaviors, fns, m.pos());
+        return new Ast.Module(name, exposing, exposedOutputs, imports, defs, behaviors, fns, m.pos());
     }
 
-    /** {@code exposing { name, name.decoder, ... }} — the module's public surface (spec 4). */
-    private List<String> parseExposing() {
+    /**
+     * {@code exposing { name, name : A | B, ... }} — the module's public surface (spec 4). An
+     * exposed composition behavior carries its output signature here ({@code name : A | B}, spec
+     * 14.5); it is collected into {@code outputs} keyed by name. Other entries are bare names.
+     */
+    private List<String> parseExposing(Map<String, Ast.RetType> outputs) {
         expect(TokenType.EXPOSING);
         expect(TokenType.LBRACE);
         List<String> names = new ArrayList<>();
-        names.add(dottedName());
+        parseExposedEntry(names, outputs);
         while (match(TokenType.COMMA)) {
             if (check(TokenType.RBRACE)) {
                 break;
             }
-            names.add(dottedName());
+            parseExposedEntry(names, outputs);
         }
         expect(TokenType.RBRACE);
         return names;
+    }
+
+    /** One {@code exposing} entry: a name, optionally followed by {@code : A | B} (an exposed
+     * composition's output, spec 14.5). */
+    private void parseExposedEntry(List<String> names, Map<String, Ast.RetType> outputs) {
+        String name = dottedName();
+        names.add(name);
+        if (match(TokenType.COLON)) {
+            outputs.put(name, parseRetType());
+        }
     }
 
     /** {@code import <module> { name, ... }} — explicit imports only (no wildcards, spec 4). */

@@ -3,6 +3,7 @@ package net.unit8.souther.compiler.ast;
 import net.unit8.souther.compiler.SourcePos;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -16,9 +17,17 @@ public interface Ast {
     /** The source position of this node. Every record below provides it. */
     SourcePos pos();
 
-    /** A whole source file: its public surface, imports, and definitions. */
+    /**
+     * A whole source file: its public surface, imports, and definitions.
+     *
+     * <p>{@code exposedOutputs} maps an exposed composition behavior's name to the output signature
+     * written in the {@code exposing} list ({@code exposing { name : A | B }}, spec 14.5). An exposed
+     * {@code >->} composition must have one, checked to match its inferred output (ADR-0024); other
+     * exposed names carry no signature (their type is at the definition).
+     */
     record Module(String name,
                   List<String> exposing,
+                  Map<String, RetType> exposedOutputs,
                   List<Import> imports,
                   List<Def> defs,
                   List<BehaviorDef> behaviors,

@@ -30,7 +30,7 @@ class CompileModuleChainTest {
             fn inc (n) = n
             """;
     private static final String B = """
-            module b exposing { twice }
+            module b exposing { twice : N }
             import a { N, inc }
             behavior twice = inc >-> inc
             """;

@@ -136,7 +136,59 @@ public final class TypeChecker {
         }
         checkStagesAreSingleInput(module);
         // validates composition types (imported behaviors resolve as stages via importedSigs)
-        signatures(module, symbols, importedSigs);
+        Map<String, Sig> sigs = signatures(module, symbols, importedSigs);
+        // an exposed composition must declare its output in `exposing`, matching the inferred one
+        // (spec 14.5, ADR-0024), so a far-away change cannot grow a published output silently
+        checkExposedPipeOutputs(module, exposed, sigs, symbols);
+    }
+
+    /**
+     * An exposed composition ({@code >->}) behavior must declare its output in the {@code exposing}
+     * list ({@code exposing { name : A | B }}, spec 14.5, ADR-0024), and the declaration must match
+     * the inferred output exactly. A far-away change that grows the output then fails here, at the
+     * module boundary, instead of reaching separately-compiled consumers unannounced.
+     *
+     * <p>The requirement applies only to a composition that is explicitly exposed: a module with no
+     * {@code exposing} publishes everything with inference intact, and a non-composition behavior
+     * states its type at its definition, so a signature on one is rejected.
+     */
+    private static void checkExposedPipeOutputs(Ast.Module module, Set<String> exposed,
+            Map<String, Sig> sigs, Map<String, Ast.Def> symbols) {
+        Set<String> pipeNames = new HashSet<>();
+        for (Ast.BehaviorDef b : module.behaviors()) {
+            if (b instanceof Ast.PipeBehavior p) {
+                pipeNames.add(p.name());
+            }
+        }
+        // a signature in `exposing` is only meaningful on a composition behavior
+        for (String name : module.exposedOutputs().keySet()) {
+            if (!pipeNames.contains(name)) {
+                throw new CompileException(module.pos(), "E1605", "`exposing` gives an output "
+                        + "signature to `" + name + "`, which is not a composition (`>->`) behavior;"
+                        + " only a composition needs one — every other definition states its type"
+                        + " where it is written (spec 14.5)");
+            }
+        }
+        // every exposed composition must declare its output, matching the inferred one
+        for (Ast.BehaviorDef b : module.behaviors()) {
+            if (!(b instanceof Ast.PipeBehavior pipe) || !exposed.contains(pipe.name())) {
+                continue;
+            }
+            Set<String> inferred = leafArms(sigs.get(pipe.name()).out(), symbols);
+            Ast.RetType declared = module.exposedOutputs().get(pipe.name());
+            if (declared == null) {
+                throw new CompileException(pipe.pos(), "E1605", "exposed composition `" + pipe.name()
+                        + "` must declare its output in `exposing` (spec 14.5): write "
+                        + "`exposing { " + pipe.name() + " : " + armList(inferred) + " }`");
+            }
+            Set<String> declaredArms = leafArms(successType(declared, symbols), symbols);
+            if (!inferred.equals(declaredArms)) {
+                throw new CompileException(pipe.pos(), "E1604", "exposed composition `" + pipe.name()
+                        + "` declares -> " + armList(declaredArms) + " in `exposing`, but the pipeline"
+                        + " produces " + armList(inferred) + ". Update the declared output or handle"
+                        + " the arm.");
+            }
+        }
     }
 
     /**

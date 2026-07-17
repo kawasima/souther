@@ -44,8 +44,8 @@ public final class Deriver {
                 case Ast.UnitData u -> u;
             });
         }
-        return new Ast.Module(module.name(), module.exposing(), module.imports(), defs,
-                module.behaviors(), module.fns(), module.pos());
+        return new Ast.Module(module.name(), module.exposing(), module.exposedOutputs(),
+                module.imports(), defs, module.behaviors(), module.fns(), module.pos());
     }
 
     private static Ast.Data deriveData(Ast.Data d, Map<String, Ast.Def> symbols, boolean isArm) {

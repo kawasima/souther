@@ -38,3 +38,4 @@ specification is in Japanese.
 | [0021](0021-no-separate-ir-direct-bytecode.md) | No separate IR; the backend emits bytecode directly from the AST | §20, §21 |
 | [0022](0022-pin-classfile-version-to-java-21.md) | Pin the generated class-file version to Java 21 | §19.1 |
 | [0023](0023-capitalize-behavior-class-names.md) | Capitalize generated behavior class names; collisions with data are errors | §19.5 |
+| [0024](0024-exposed-composition-output-in-exposing.md) | An exposed composition declares its output signature in the exposing list | §4, §14.5, §19.8 |
