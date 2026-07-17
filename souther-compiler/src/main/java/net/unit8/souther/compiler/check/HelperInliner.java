@@ -90,21 +90,35 @@ public final class HelperInliner {
                 int k = counter++;
                 Map<String, String> subst = new HashMap<>();
                 Set<String> fnParams = new HashSet<>();
+                Map<String, Ast.FnDef> scopedLambdas = new HashMap<>();   // lambdas given to fn params
                 List<String> letNames = new ArrayList<>();
                 List<Ast.Expr> letValues = new ArrayList<>();
                 for (int i = 0; i < helper.params().size(); i++) {
                     Ast.FnParam p = helper.params().get(i);
                     Ast.Expr arg = args.get(i);
                     if (p.type() instanceof Ast.FnType) {
-                        // a function argument is not a value, so it cannot be bound to a let;
-                        // substitute it into the body directly (the fn is passed by name). Its name is
-                        // rewritten wherever it is used as a value or applied — f(x) becomes inc(x).
-                        if (!(arg instanceof Ast.Var fnName)) {
+                        // a function argument is not a value, so it cannot be bound to a let. A named
+                        // function is substituted directly (f(x) becomes inc(x)); a lambda is
+                        // registered under a fresh name as a scoped helper, so each application of the
+                        // parameter β-reduces to the lambda's body, as a let-bound lambda does (spec 12.5).
+                        if (arg instanceof Ast.Var fnName) {
+                            subst.put(p.name(), fnName.name());
+                            fnParams.add(p.name());
+                        } else if (arg instanceof Ast.Block lambda) {
+                            String f = "$" + k + "_" + p.name();
+                            subst.put(p.name(), f);
+                            fnParams.add(p.name());
+                            List<Ast.FnParam> lparams = new ArrayList<>();
+                            for (String lp : lambda.params()) {
+                                lparams.add(new Ast.FnParam(lp, null, lambda.pos()));
+                            }
+                            // the lambda's body is caller code, so it is not renamed by this helper's
+                            // substitution — only the enclosing helper body is.
+                            scopedLambdas.put(f, new Ast.FnDef(f, lparams, null, null, lambda.body(), lambda.pos()));
+                        } else {
                             throw new CompileException(arg.pos(), "the function passed to `" + p.name()
-                                    + "` of `let " + helper.name() + "` must be a named function");
+                                    + "` of `let " + helper.name() + "` must be a named function or a lambda");
                         }
-                        subst.put(p.name(), fnName.name());
-                        fnParams.add(p.name());
                     } else {
                         String f = "$" + k + "_" + p.name();
                         subst.put(p.name(), f);
@@ -112,7 +126,9 @@ public final class HelperInliner {
                         letValues.add(arg);
                     }
                 }
+                scopedLambdas.forEach(helpers::put);
                 Ast.Expr body = inline(rename(helper.body(), subst, fnParams));   // expand nested helpers too
+                scopedLambdas.keySet().forEach(helpers::remove);
                 // wrap innermost-first so the value parameters bind in declared order
                 for (int i = letNames.size() - 1; i >= 0; i--) {
                     body = new Ast.LetIn(letNames.get(i), letValues.get(i), body, call.pos());
