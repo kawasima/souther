@@ -349,16 +349,15 @@ Map<String, T>
 [,text]
 ----
 Option<T>    = Some(T) | None
-NonEmptyList<T>            // 空でないリスト
 Never                      // 値を持たない型。起こり得ないアーム（空の直和）
 Unit                       // 値が1つだけの型
 ----
 
 Souther に `+Result+` / `+Either+` 型は無い。behavior の出力は印の無いドメイン直和で、成功と失敗を分ける2枠の型を持たない（<<behavior>>・<<composition>>）。
 
-`+Never+` と `+Unit+` は、表層で書ける型名ではない。読み方の概念である。`+Never+` は起こり得ないアームを表す。単一アームの出力（`+-> A+`）は、失敗row が空だと読める。`+Unit+` は仕様DSLの `+単位型+` に対応する。ただしフィールドを書く手段としては提供せず、常に「フィールドを持たない data」（<<sum-data>>）で表す。`+NonEmptyList<T>+` はランタイムが持つ補助型で、ユーザーがフィールド型として書くものではない。
+`+Never+` と `+Unit+` は、表層で書ける型名ではない。読み方の概念である。`+Never+` は起こり得ないアームを表す。単一アームの出力（`+-> A+`）は、失敗row が空だと読める。`+Unit+` は仕様DSLの `+単位型+` に対応する。ただしフィールドを書く手段としては提供せず、常に「フィールドを持たない data」（<<sum-data>>）で表す。
 
-多相なのは、ここに挙げた stdlib の型（`+Option+` / `+List+` / `+Map+` / `+NonEmptyList+`）だけである。ユーザー定義のジェネリクスは無い。`+data+` も `+behavior+` も型引数を取らない。
+多相なのは、ここに挙げた stdlib の型（`+Option+` / `+List+` / `+Map+`）だけである。ユーザー定義のジェネリクスは無い。`+data+` も `+behavior+` も型引数を取らない。
 
 ==== invariant 違反は中断する
 
@@ -2204,7 +2203,7 @@ var result = handle.apply(rawInput);
 [#mvp-required]
 === 必須
 
-`+.sou+`読み込み、Lexer、Parser、AST、モジュール、import、`+data+`（直積・直和・単位・アーム参照・`+include+`）、`+?+`、`+invariant+`、形状からの `+decoder+` / `+encoder+` 導出（newtype・JSONキー＝フィールド名・判別子 `+"type"+`／アーム名タグ）、`+behavior+`（仕様のみ。引数ゼロの `+()+` を含む）、`+fn+`（同名の behavior への束縛と、ヘルパー `+fn+`）、実装を書かない behavior の Java 注入、`+constructs+`、`+requires+`（宣言と `+fn+` の引数への展開、実装との突き合わせ。<<requires>>）、合成の要求集合の推論（<<composition-with-requirements>>）と任意の出力宣言の突き合わせ（<<declared-composition-output>>）、レコードリテラルと spread、リストのリテラルとガード内包と `{plus}{plus}`（<<stdlib-list>>）、ブロックと高階の `+fn+`（<<blocks>>・<<requirement-propagation>>）、印の無い直和出力（失敗もアーム）、`+>->+`（型ルーティング合成）、`+match+`（or-pattern を含む。<<match>>）、`+let+`、`+if+`、`+require+`（`+if+` への脱糖。<<require>>）、`+Option+`、`+NonEmptyList+`、null禁止、例外禁止、網羅性検査、生成権限検査、invariant 違反での中断（<<algebraic-types>>・<<violation-destination>>）、behavior合成型検査、ヘルパー `+fn+` の構築集合の推移推論と呼び出す behavior の `+constructs+` との突き合わせ（<<blocks>>）、invariant から呼ぶ fn の純粋性検査（<<invariant-expressions>>）、ClassFile バイトコード生成（Java 21 のクラスファイルバージョンで出力。<<target-jdk>>）、Java基底クラス生成、Raoh の decoder/encoder としての生成（入力源ごと＝素の値/Map・JSON(`+JsonNode+`)・jOOQ `+Record+`、集積・判別は Raoh の combinator、souther-runtime は Raoh 非依存）、Unicode識別子、単体テスト。
+`+.sou+`読み込み、Lexer、Parser、AST、モジュール、import、`+data+`（直積・直和・単位・アーム参照・`+include+`）、`+?+`、`+invariant+`、形状からの `+decoder+` / `+encoder+` 導出（newtype・JSONキー＝フィールド名・判別子 `+"type"+`／アーム名タグ）、`+behavior+`（仕様のみ。引数ゼロの `+()+` を含む）、`+fn+`（同名の behavior への束縛と、ヘルパー `+fn+`）、実装を書かない behavior の Java 注入、`+constructs+`、`+requires+`（宣言と `+fn+` の引数への展開、実装との突き合わせ。<<requires>>）、合成の要求集合の推論（<<composition-with-requirements>>）と任意の出力宣言の突き合わせ（<<declared-composition-output>>）、レコードリテラルと spread、リストのリテラルとガード内包と `{plus}{plus}`（<<stdlib-list>>）、ブロックと高階の `+fn+`（<<blocks>>・<<requirement-propagation>>）、印の無い直和出力（失敗もアーム）、`+>->+`（型ルーティング合成）、`+match+`（or-pattern を含む。<<match>>）、`+let+`、`+if+`、`+require+`（`+if+` への脱糖。<<require>>）、`+Option+`、null禁止、例外禁止、網羅性検査、生成権限検査、invariant 違反での中断（<<algebraic-types>>・<<violation-destination>>）、behavior合成型検査、ヘルパー `+fn+` の構築集合の推移推論と呼び出す behavior の `+constructs+` との突き合わせ（<<blocks>>）、invariant から呼ぶ fn の純粋性検査（<<invariant-expressions>>）、ClassFile バイトコード生成（Java 21 のクラスファイルバージョンで出力。<<target-jdk>>）、Java基底クラス生成、Raoh の decoder/encoder としての生成（入力源ごと＝素の値/Map・JSON(`+JsonNode+`)・jOOQ `+Record+`、集積・判別は Raoh の combinator、souther-runtime は Raoh 非依存）、Unicode識別子、単体テスト。
 
 [#mvp-deferred]
 === 後回し

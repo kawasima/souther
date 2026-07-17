@@ -8,7 +8,7 @@ A business model is written in concrete business vocabulary. The question is whe
 
 ## Decision
 
-The only polymorphic types are the stdlib ones — `Option`, `List`, `Map`, `NonEmptyList`. Neither `data` nor `behavior` takes type parameters; there are no user-defined generics.
+The only polymorphic types are the stdlib ones — `Option`, `List`, `Map`. Neither `data` nor `behavior` takes type parameters; there are no user-defined generics.
 
 ## Consequences
 

@@ -201,8 +201,8 @@ Map<String, byte[]> classes = Compiler.compile(source);
 Map<String, byte[]> classes = Compiler.compileModules(List.of(employeeSrc, tripSrc));
 ```
 
-The repository is a two-module Maven build: `souther-runtime` (`Option`, `NonEmptyList`,
-`Behavior`, `Result`, `ConstraintViolation`, and the numeric / collection helpers; it does not
+The repository is a two-module Maven build: `souther-runtime` (`Option`, `Behavior`, `Fn`,
+`Result`, `ConstraintViolation`, and the numeric / collection helpers; it does not
 depend on Raoh) and `souther-compiler` (lexer, parser, type checker, deriver, and the ClassFile
 backend). Runnable `.sou` examples and a Spring Boot + jOOQ
 interop example live under [`examples/`](examples/).
