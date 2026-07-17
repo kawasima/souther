@@ -9,11 +9,14 @@ import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * A behavior parameter may be an anonymous union (spec 12.2), and its value is consumed by
- * matching each arm (spec 14.2, 16.3): {@code (app: Sub | Pre) -> ...} with a `match app`.
+ * A behavior takes a named-sum parameter and consumes it by matching each arm (spec 12.2, 16.3):
+ * {@code data SubPre = Sub | Pre} taken as {@code (app: SubPre) -> ...} with a `match app`. An
+ * anonymous union may not sit in a parameter (spec 8.6) — see {@link CompileUnionParamRejectTest}.
  */
 class CompileUnionParamTest {
 
@@ -22,9 +25,10 @@ class CompileUnionParamTest {
 
             data Sub = Int
             data Pre = Int
+            data SubPre = Sub | Pre
             data Done = Int
 
-            behavior finish = (app: Sub | Pre) -> Done constructs Done
+            behavior finish = (app: SubPre) -> Done constructs Done
 
             fn finish (app) =
                 match app {
@@ -36,8 +40,10 @@ class CompileUnionParamTest {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private long finish(String armType, long n) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        Decoder d = (Decoder) loader.loadClass("demo." + armType).getMethod("decoder").invoke(null);
-        Object arg = ((Ok) d.decode(n, Path.ROOT)).value();
+        // SubPre is a named sum; its arms are adjacently tagged ({type, value}), so the input to
+        // finish is decoded through the sum decoder rather than a bare arm value (spec 10.3, 12.2).
+        Decoder d = (Decoder) loader.loadClass("demo.SubPre").getMethod("decoder").invoke(null);
+        Object arg = ((Ok) d.decode(Map.of("type", armType, "value", n), Path.ROOT)).value();
         Object done = ((Behavior<Object, Object>) loader.loadClass("demo.Finish")
                 .getConstructor().newInstance()).apply(arg);
         // Done is a single-field newtype, so its encoder yields the bare Long.

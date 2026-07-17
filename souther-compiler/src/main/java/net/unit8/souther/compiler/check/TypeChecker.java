@@ -55,8 +55,9 @@ public final class TypeChecker {
         Set<String> specNames = new HashSet<>();
         for (Ast.BehaviorDef b : module.behaviors()) {
             allBehaviors.add(b.name());
-            if (b instanceof Ast.SpecBehavior) {
+            if (b instanceof Ast.SpecBehavior spec) {
                 specNames.add(b.name());
+                rejectAnonymousUnionParams(spec);
             }
         }
         // A data is Java-buildable from outside iff the whole module is public (no `exposing`) or
@@ -222,6 +223,26 @@ public final class TypeChecker {
      * exposed data (its {@code decoder} is public). A non-unit, unexposed one is E1305 — Java has
      * no way to mint it.
      */
+    /**
+     * An anonymous union appears only in a behavior's output; a parameter type is always a single
+     * named type, a named sum included (spec 8.6, 12.2). A parameter written as {@code A | B} — a
+     * {@code RetType} with more than one arm — is rejected: declare {@code data AB = A | B} and take
+     * {@code (x: AB)}, so the input has a name the reader and the JVM can hold onto.
+     */
+    private static void rejectAnonymousUnionParams(Ast.SpecBehavior spec) {
+        for (Ast.Param p : spec.params()) {
+            if (p.type().arms().size() > 1) {
+                String union = p.type().arms().stream()
+                        .map(Ast.TypeRef::name)
+                        .collect(java.util.stream.Collectors.joining(" | "));
+                throw new CompileException(p.pos(), "parameter `" + p.name()
+                        + "` has an anonymous union type `" + union + "`; a parameter type must be a"
+                        + " single named type — declare `data ... = " + union
+                        + "` and take that name (spec 8.6, 12.2)");
+            }
+        }
+    }
+
     private static void checkInjectionConstructs(Ast.SpecBehavior spec, Map<String, Ast.Def> symbols,
                                                  boolean exposeAll, Set<String> exposed) {
         for (String c : spec.constructs()) {

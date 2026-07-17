@@ -86,6 +86,7 @@ class CompileRailwayTest {
                 data Mid = { v: Int }
                 data Off = { v: Int }
                 data Out = { v: Int }
+                data OffOut = Off | Out
 
                 // over 100 leaves as Off
                 behavior 判定 = (i: In) -> Mid | Off constructs Mid, Off
@@ -97,7 +98,7 @@ class CompileRailwayTest {
                 behavior 加工 = (m: Mid) -> Out constructs Out
                 fn 加工 (m) = Out { v: m.v }
                 // would accept Off, but Off already left the main line at 加工
-                behavior 仕上げ = (x: Off | Out) -> Out constructs Out
+                behavior 仕上げ = (x: OffOut) -> Out constructs Out
                 fn 仕上げ (x) = Out { v: 0 }
 
                 behavior flow = 判定 >> 加工 >> 仕上げ

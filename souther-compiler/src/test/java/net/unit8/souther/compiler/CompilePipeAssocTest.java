@@ -25,6 +25,7 @@ class CompilePipeAssocTest {
             data Mid = Int
             data Off = Int
             data Out = Int
+            data OffOut = Off | Out
 
             behavior split = (i: In) -> Mid | Off constructs Mid, Off
             fn split (i) = {
@@ -35,7 +36,7 @@ class CompilePipeAssocTest {
             behavior work = (m: Mid) -> Out constructs Out
             fn work (m) = Out { value: m.value }
 
-            behavior finish = (x: Off | Out) -> Out constructs Out
+            behavior finish = (x: OffOut) -> Out constructs Out
             fn finish (x) = Out { value: 0 }
 
             behavior half = split >> work
