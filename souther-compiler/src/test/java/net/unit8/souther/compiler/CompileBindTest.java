@@ -31,7 +31,7 @@ class CompileBindTest {
     private static final String MODULE = """
             module demo
 
-            data Id = { value: String }
+            data Id = String
             data Member = { id: Id }
             data Resp = { id: Id }
 

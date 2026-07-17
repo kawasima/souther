@@ -20,7 +20,7 @@ class CompileBehaviorTest {
     private static final String MODULE = """
             module demo
 
-            data MemberId = { value: String }
+            data MemberId = String
 
             data Member = {
                 id: MemberId

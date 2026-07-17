@@ -20,9 +20,9 @@ class CompilePipeOutputTest {
         return """
                 module demo
 
-                data Amount = { value: Int }
+                data Amount = Int
                 data TooLarge = { limit: Int }
-                data Doubled = { value: Int }
+                data Doubled = Int
 
                 behavior guard = (a: Amount) -> Amount | TooLarge constructs TooLarge
                 fn guard (a) = {

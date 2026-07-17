@@ -22,9 +22,9 @@ class CompileOptionMatchTest {
     private static final String MODULE = """
             module demo
 
-            data Id = { value: String }
+            data Id = String
             data Trip = { id: Id  approver: Id? }
-            data Label = { value: String }
+            data Label = String
 
             behavior approverLabel = (t: Trip) -> Label constructs Label
 

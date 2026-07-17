@@ -6,7 +6,7 @@ data EmailContact = { email: String }
 data PhoneContact = { phone: String }
 data Contact = EmailContact | PhoneContact
 
-data Label = { value: String }
+data Label = String
 
 // match でアームごとに値を取り出す
 behavior 連絡先の値 = (c: Contact) -> Label constructs Label

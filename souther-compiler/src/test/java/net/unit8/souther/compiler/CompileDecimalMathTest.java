@@ -21,7 +21,7 @@ class CompileDecimalMathTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                data Price = { value: Decimal }
+                data Price = Decimal
                 data Quote = { subtotal: Decimal  doubled: Decimal }
 
                 behavior quote = (a: Price, b: Price) -> Quote constructs Quote

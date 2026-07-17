@@ -74,7 +74,7 @@ class CompileDecimalDivideTest {
         String src = """
                 module demo
                 data Pair = { a: Decimal  b: Decimal }
-                data Out = { value: Decimal }
+                data Out = Decimal
                 behavior divv = (p: Pair) -> Out constructs Out
                 fn divv (p) = Out { value: divide(p.a, p.b) }
                 """;

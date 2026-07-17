@@ -29,8 +29,8 @@ class CompilePipeDepsTest {
     private static final String MODULE = """
             module demo
 
-            data In = { value: String }
-            data Mid = { value: String }
+            data In = String
+            data Mid = String
             data Out = { a: String  b: String }
 
             behavior fetch = (input: In) -> Mid

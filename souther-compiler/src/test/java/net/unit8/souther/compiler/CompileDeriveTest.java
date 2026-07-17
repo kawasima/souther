@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Decoders/encoders are not written in the domain; they are derived from the data shape
  * (spec responsibility split). This module declares only data + invariant, yet decode/encode
- * work with default conventions (key = field name, single-primitive-field = newtype,
+ * work with default conventions (key = field name, {@code data X = Y} = bare newtype,
  * sum discriminator = "type"/arm name).
  */
 class CompileDeriveTest {
@@ -25,7 +25,8 @@ class CompileDeriveTest {
     private static final String MODULE = """
             module demo
 
-            data 金額 = { value: Int  invariant value >= 0 }
+            data 金額 = Int
+                invariant value >= 0
 
             data Member = {
                 cost: 金額

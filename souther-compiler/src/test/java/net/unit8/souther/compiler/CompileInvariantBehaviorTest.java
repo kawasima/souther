@@ -24,16 +24,14 @@ class CompileInvariantBehaviorTest {
     private static final String MODULE = """
             module demo
 
-            data Draft = { cost: Int }
+            data Draft = Int
 
-            data Adjusted = {
-                cost: Int
-                invariant cost >= 0
-            }
+            data Adjusted = Int
+                invariant value >= 0
 
             behavior discount = (d: Draft) -> Adjusted constructs Adjusted
 
-            fn discount (d) = Adjusted { cost: d.cost - 2000 }
+            fn discount (d) = Adjusted { value: d.value - 2000 }
             """;
 
     private BytesClassLoader loader() {
@@ -81,7 +79,7 @@ class CompileInvariantBehaviorTest {
     void invariantIsCheckedForAConstructionInsideAGuardElse() throws Exception {
         String src = """
                 module demo
-                data Draft = { cost: Int }
+                data Draft = Int
                 data Adjusted = { cost: Int  invariant cost >= 0 }
                 data Kept = { v: Int }
 
@@ -89,8 +87,8 @@ class CompileInvariantBehaviorTest {
                     constructs Kept, Adjusted
 
                 fn adjust (d) = {
-                    require d.cost != 999 else Adjusted { cost: d.cost - 2000 }
-                    Kept { v: d.cost }
+                    require d.value != 999 else Adjusted { cost: d.value - 2000 }
+                    Kept { v: d.value }
                 }
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());

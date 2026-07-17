@@ -20,9 +20,9 @@ class CompileRailwayTest {
     private static final String MODULE = """
             module demo
 
-            data Amount = { value: Int }
+            data Amount = Int
             data TooLarge = { limit: Int }
-            data Doubled = { value: Int }
+            data Doubled = Int
 
             // over 100 leaves the main line as a TooLarge arm. `require ... else` mints the
             // TooLarge, so the behavior declares it (spec 12.3).
@@ -82,7 +82,7 @@ class CompileRailwayTest {
     void anArmThatLeftTheMainLineIsNotOfferedToLaterStages() throws Exception {
         String src = """
                 module demo
-                data In = { v: Int }
+                data In = Int
                 data Mid = { v: Int }
                 data Off = { v: Int }
                 data Out = { v: Int }
@@ -90,8 +90,8 @@ class CompileRailwayTest {
                 // over 100 leaves as Off
                 behavior 判定 = (i: In) -> Mid | Off constructs Mid, Off
                 fn 判定 (i) = {
-                    require i.v <= 100 else Off { v: i.v }
-                    Mid { v: i.v }
+                    require i.value <= 100 else Off { v: i.value }
+                    Mid { v: i.value }
                 }
                 // takes Mid only — Off passes it by
                 behavior 加工 = (m: Mid) -> Out constructs Out
@@ -119,8 +119,8 @@ class CompileRailwayTest {
         // `other` is a B, which is not one of `bad`'s output arms (just A), so this is rejected.
         String src = """
                 module demo
-                data A = { value: Int }
-                data B = { value: Int }
+                data A = Int
+                data B = Int
                 behavior bad = (a: A, other: B) -> A
 
                 fn bad (a, other) = {

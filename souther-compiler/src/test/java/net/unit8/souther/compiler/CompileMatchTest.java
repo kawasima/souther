@@ -20,7 +20,7 @@ class CompileMatchTest {
     private static final String MODULE = """
             module demo
 
-            data Label = { value: String }
+            data Label = String
 
             data EmailContact = { email: String }
             data PhoneContact = { phone: String }
@@ -73,7 +73,7 @@ class CompileMatchTest {
                 data A = { x: String }
                 data B = { y: String }
                 data AB = A | B
-                data Label = { value: String }
+                data Label = String
                 behavior pick = (v: AB) -> Label constructs Label
 
                 fn pick (v) =

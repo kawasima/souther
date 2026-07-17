@@ -1,20 +1,16 @@
 // 出張申請モデルの一断面。ドメインは data＋invariant＋behavior だけ。
-// decoder/encoder は書かない（導出される。JSON キー＝フィールド名、value 型は newtype）。
+// decoder/encoder は書かない（導出される。JSON キー＝フィールド名、`data X = Y` は裸の newtype）。
 // カスタムのキー名・正規化・判別子が要るなら、それは境界（Java/Raoh）の仕事。
 //
 // コンパイル: java -cp souther-compiler/target/classes \
 //              net.unit8.souther.compiler.Main examples/businesstrip/src/main/souther/businesstrip.sou -d /tmp/out
 module example.businesstrip
 
-data 従業員ID = {
-    value: String
+data 従業員ID = String
     invariant length(value) > 0
-}
 
-data 金額 = {
-    value: Int
+data 金額 = Int
     invariant value >= 0
-}
 
 data 出張申請共通項目 = {
     申請者: 従業員ID

@@ -25,7 +25,7 @@ class CompileVisibilityTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo exposing { Public }
 
-                data Internal = { v: Int }
+                data Internal = Int
                 data Public = { inner: Internal }
                 """), getClass().getClassLoader());
 

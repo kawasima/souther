@@ -66,7 +66,7 @@ class CompileHelperFnTest {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile("""
                 module demo
 
-                data Id = { value: String }
+                data Id = String
                 data Tag = { a: String  b: String }
 
                 behavior label = (id: Id) -> Tag
@@ -84,7 +84,7 @@ class CompileHelperFnTest {
         Compiler.compile("""
                 module demo
 
-                data Id = { value: String }
+                data Id = String
                 data Tag = { a: String  b: String }
 
                 behavior label = (id: Id) -> Tag
@@ -102,7 +102,7 @@ class CompileHelperFnTest {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile("""
                 module demo
 
-                data Id = { value: String }
+                data Id = String
 
                 behavior noop = (id: Id) -> Id
 

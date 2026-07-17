@@ -47,7 +47,7 @@ class CompileListLiteralTest {
     private static final String REASONS = """
             module demo
 
-            data Amount = { value: Int }
+            data Amount = Int
             data High = { threshold: Amount }
             data LowRole = { note: String }
             data Reason = High | LowRole

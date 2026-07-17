@@ -19,9 +19,9 @@ class CompilePipeTest {
     private static final String MODULE = """
             module demo
 
-            data Wrap = { value: String }
-            data Mid = { value: String }
-            data Out = { value: String }
+            data Wrap = String
+            data Mid = String
+            data Out = String
 
             behavior a = (w: Wrap) -> Mid constructs Mid
             fn a (w) = Mid { value: w.value }
@@ -78,8 +78,8 @@ class CompilePipeTest {
         // a: Wrap -> Mid; feeding Mid into a second `a` (which wants Wrap) accepts no arm.
         String src = """
                 module demo
-                data Wrap = { value: String }
-                data Mid = { value: String }
+                data Wrap = String
+                data Mid = String
                 behavior a = (w: Wrap) -> Mid constructs Mid
                 fn a (w) = Mid { value: w.value }
                 behavior bad = a >> a
@@ -95,8 +95,8 @@ class CompilePipeTest {
     void aMultiInputBehaviorCannotFollowAnArrow() {
         String src = """
                 module demo
-                data Wrap = { value: String }
-                data Mid = { value: String }
+                data Wrap = String
+                data Mid = String
                 behavior a = (w: Wrap) -> Mid constructs Mid
                 fn a (w) = Mid { value: w.value }
                 behavior two = (m: Mid, k: String) -> Mid constructs Mid
@@ -119,7 +119,7 @@ class CompilePipeTest {
     void theFirstStageMayTakeSeveralInputs() throws Exception {
         String src = """
                 module demo
-                data Id = { value: String }
+                data Id = String
                 data Pending = { boss: Id }
                 data Rejected = { v: Int }
                 data Draft = { v: Int }
@@ -159,8 +159,8 @@ class CompilePipeTest {
     void anUndefinedStageIsStillReportedAsUnknown() {
         String src = """
                 module demo
-                data Wrap = { value: String }
-                data Mid = { value: String }
+                data Wrap = String
+                data Mid = String
                 behavior a = (w: Wrap) -> Mid constructs Mid
                 fn a (w) = Mid { value: w.value }
                 behavior bad = a >> nosuch

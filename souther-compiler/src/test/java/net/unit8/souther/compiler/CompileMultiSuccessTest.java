@@ -17,14 +17,14 @@ class CompileMultiSuccessTest {
     private static final String MODULE = """
             module demo
 
-            data Draft = { cost: Int }
+            data Draft = Int
             data Cheap = { cost: Int }
             data Pricey = { cost: Int }
 
             behavior classify = (d: Draft) -> Cheap | Pricey constructs Cheap, Pricey
 
             fn classify (d) =
-                if d.cost <= 100 then Cheap { cost: d.cost } else Pricey { cost: d.cost }
+                if d.value <= 100 then Cheap { cost: d.value } else Pricey { cost: d.value }
             """;
 
     @SuppressWarnings("unchecked")

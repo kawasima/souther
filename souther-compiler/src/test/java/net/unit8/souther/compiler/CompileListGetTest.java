@@ -20,9 +20,9 @@ class CompileListGetTest {
     private static final String MODULE = """
             module demo
 
-            data Item = { value: String }
+            data Item = String
             data Bag = { items: List<Item> }
-            data Label = { value: String }
+            data Label = String
 
             behavior firstValue = (b: Bag) -> Label constructs Label
 

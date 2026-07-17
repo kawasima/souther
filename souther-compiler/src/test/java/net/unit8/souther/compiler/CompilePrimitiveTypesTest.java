@@ -40,7 +40,7 @@ class CompilePrimitiveTypesTest {
         BytesClassLoader loader = loader("""
                 module demo
 
-                data Flag = { value: Bool }
+                data Flag = Bool
                 """);
         Decoder d = decoder(loader, "demo.Flag");
 
@@ -69,7 +69,7 @@ class CompilePrimitiveTypesTest {
         BytesClassLoader loader = loader("""
                 module demo
 
-                data Price = { value: Decimal }
+                data Price = Decimal
                 """);
         Result r = decoder(loader, "demo.Price").decode(new BigDecimal("12.50"), Path.ROOT);
         assertTrue(r instanceof Ok, "a bare decimal decodes as a newtype");
@@ -81,7 +81,7 @@ class CompilePrimitiveTypesTest {
         BytesClassLoader loader = loader("""
                 module demo
 
-                data Event = { on: Date }
+                data Event = Date
                 """);
         Result r = decoder(loader, "demo.Event").decode(LocalDate.parse("2026-07-15"), Path.ROOT);
         assertTrue(r instanceof Ok, "a Date decodes from a LocalDate value");
@@ -95,7 +95,7 @@ class CompilePrimitiveTypesTest {
         BytesClassLoader loader = loader("""
                 module demo
 
-                data Stamp = { at: DateTime }
+                data Stamp = DateTime
                 """);
         Result r = decoder(loader, "demo.Stamp")
                 .decode(LocalDateTime.parse("2026-07-15T10:30:45"), Path.ROOT);

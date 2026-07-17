@@ -22,12 +22,12 @@ class CompileStringLibTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                data Name = { value: String }
-                data Greeting = { text: String }
+                data Name = String
+                data Greeting = String
 
                 behavior greet = (n: Name) -> Greeting constructs Greeting
 
-                fn greet (n) = Greeting { text: concat(concat("hi ", uppercase(substring(n.value, 0, 3))), "!") }
+                fn greet (n) = Greeting { value: concat(concat("hi ", uppercase(substring(n.value, 0, 3))), "!") }
                 """), getClass().getClassLoader());
 
         Decoder nameDec = (Decoder) loader.loadClass("demo.Name").getMethod("decoder").invoke(null);
@@ -45,10 +45,8 @@ class CompileStringLibTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                data Sku = {
-                    value: String
+                data Sku = String
                     invariant startsWith(value, "X") && endsWith(value, "Z")
-                }
                 """), getClass().getClassLoader());
         Decoder d = (Decoder) loader.loadClass("demo.Sku").getMethod("decoder").invoke(null);
 

@@ -23,12 +23,10 @@ class CompileMultiInvariantTest {
     private static final String MODULE = """
             module demo
 
-            data In = { value: Int }
-            data Amount = {
-                value: Int
+            data In = Int
+            data Amount = Int
                 invariant value > 0
                 invariant value < 100
-            }
 
             behavior make = (i: In) -> Amount constructs Amount
             fn make (i) = Amount { value: i.value }

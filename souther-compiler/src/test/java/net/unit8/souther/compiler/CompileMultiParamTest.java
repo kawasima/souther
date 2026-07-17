@@ -17,8 +17,8 @@ class CompileMultiParamTest {
     private static final String MODULE = """
             module demo
 
-            data A = { value: Int }
-            data B = { value: Int }
+            data A = Int
+            data B = Int
 
             data Pair = {
                 left: Int

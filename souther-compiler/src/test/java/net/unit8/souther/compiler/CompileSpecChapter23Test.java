@@ -27,15 +27,11 @@ class CompileSpecChapter23Test {
     private static final String MODULE = """
             module example.businesstrip
 
-            data 金額 = {
-                value: Int
+            data 金額 = Int
                 invariant value >= 0
-            }
 
-            data 従業員ID = {
-                value: String
+            data 従業員ID = String
                 invariant length(value) > 0
-            }
 
             data 役職 = 管理職 | 一般社員
             data 管理職 = { level: Int  invariant level >= 1 && level <= 5 }

@@ -22,7 +22,7 @@ class CompileInjectionConstructsTest {
                 module demo
                 exposing { Member }
 
-                data Id = { value: String }
+                data Id = String
                 data Member = { id: Id }
                 data 会員なし
 
@@ -37,7 +37,7 @@ class CompileInjectionConstructsTest {
                 module demo
                 exposing { Member, 保存データ不正 }
 
-                data Id = { value: String }
+                data Id = String
                 data Member = { id: Id }
                 data 保存データ不正 = { reason: String }
 
@@ -52,7 +52,7 @@ class CompileInjectionConstructsTest {
                 module demo
                 exposing { Member }
 
-                data Id = { value: String }
+                data Id = String
                 data Member = { id: Id }
                 data 保存データ不正 = { reason: String }
 

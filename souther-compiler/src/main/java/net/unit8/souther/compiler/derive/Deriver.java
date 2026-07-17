@@ -70,9 +70,9 @@ public final class Deriver {
 
     private static Ast.DecoderDef deriveDecoder(Ast.Data d, Map<String, Type> fields, boolean isArm) {
         SourcePos pos = d.pos();
-        // a sum arm is embedded in the discriminated object, so it must decode from Object,
-        // not as a bare primitive newtype
-        Map.Entry<String, Type> single = isArm ? null : singlePrimField(fields);
+        // only an explicit newtype `data X = Y` is bare; a braced record is always an object, even
+        // with one field (spec 8.7). A sum arm is embedded in the discriminated object, never bare.
+        Map.Entry<String, Type> single = bareField(d, fields, isArm);
         if (single != null) {
             Ast.RawKind kind = rawKind(single.getValue());
             Ast.Construct result = new Ast.Construct(d.name(),
@@ -152,7 +152,7 @@ public final class Deriver {
 
     private static Ast.EncoderDef deriveEncoder(Ast.Data d, Map<String, Type> fields, boolean isArm) {
         SourcePos pos = d.pos();
-        Map.Entry<String, Type> single = isArm ? null : singlePrimField(fields);
+        Map.Entry<String, Type> single = bareField(d, fields, isArm);
         if (single != null) {
             Ast.Expr access = new Ast.FieldAccess(new Ast.Var("self", pos), single.getKey(), pos);
             return new Ast.EncoderDef("self", primRaw(single.getValue(), access, pos), pos);
@@ -279,8 +279,13 @@ public final class Deriver {
         return variants;
     }
 
-    private static Map.Entry<String, Type> singlePrimField(Map<String, Type> fields) {
-        if (fields.size() != 1) {
+    /**
+     * The bare inner field of an explicit newtype {@code data X = Y} whose {@code Y} is primitive
+     * (spec 8.7). A braced record is always an object — even a single-field one — so newtype-ness
+     * is decided by the {@code = Y} syntax, not the shape; a sum arm is never bare either.
+     */
+    private static Map.Entry<String, Type> bareField(Ast.Data d, Map<String, Type> fields, boolean isArm) {
+        if (!d.newtype() || isArm) {
             return null;
         }
         Map.Entry<String, Type> only = fields.entrySet().iterator().next();

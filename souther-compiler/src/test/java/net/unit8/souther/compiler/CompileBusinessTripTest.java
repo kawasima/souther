@@ -23,15 +23,11 @@ class CompileBusinessTripTest {
     private static final String MODEL = """
             module example.businesstrip
 
-            data 従業員ID = {
-                value: String
+            data 従業員ID = String
                 invariant length(value) > 0
-            }
 
-            data 金額 = {
-                value: Int
+            data 金額 = Int
                 invariant value >= 0
-            }
 
             data 出張申請共通項目 = {
                 申請者: 従業員ID

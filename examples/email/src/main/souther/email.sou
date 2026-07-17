@@ -1,8 +1,6 @@
-// 単一フィールド data ＋ invariant（最小例）。
-// decoder/encoder は書かない — データ形状から導出される（value 型は newtype = 裸の文字列）。
+// newtype data（`data X = Y`）＋ invariant（最小例）。
+// decoder/encoder は書かない — 導出される（`data X = Y` は裸の文字列として読み書きする）。
 module example.email
 
-data Email = {
-    value: String
+data Email = String
     invariant contains(value, "@")
-}

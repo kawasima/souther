@@ -24,8 +24,8 @@ class CompileIntOverflowTest {
         return """
                 module demo
 
-                data In = { value: Int }
-                data Out = { value: Int }
+                data In = Int
+                data Out = Int
 
                 behavior compute = (x: In) -> Out constructs Out
 

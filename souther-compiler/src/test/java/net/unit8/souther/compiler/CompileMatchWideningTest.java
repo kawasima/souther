@@ -28,14 +28,14 @@ class CompileMatchWideningTest {
             data B = { v: Int }
             data Both = A | B
 
-            data OutA = { a: Int }
-            data OutB = { b: Int }
+            data OutA = Int
+            data OutB = Int
 
             behavior pick = (x: Both) -> OutA | OutB constructs OutA, OutB
             fn pick (x) =
                 match x {
-                    case A as a => OutA { a: a.v }
-                    case B as b => OutB { b: b.v }
+                    case A as a => OutA { value: a.v }
+                    case B as b => OutB { value: b.v }
                 }
             """;
 

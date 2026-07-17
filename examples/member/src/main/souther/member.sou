@@ -4,16 +4,12 @@ module example.member
 
 // --- 値の型（単一プリミティブ newtype ＋ invariant）---
 // 会員ID = 文字列 // 空文字列ではない
-data 会員ID = {
-    value: String
+data 会員ID = String
     invariant length(value) > 0
-}
 
 // メールアドレス = 文字列 // @ を含む
-data メールアドレス = {
-    value: String
+data メールアドレス = String
     invariant contains(value, "@")
-}
 
 // --- 会員（直積）---
 data 会員 = {

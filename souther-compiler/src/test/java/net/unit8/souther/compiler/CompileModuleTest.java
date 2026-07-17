@@ -25,7 +25,8 @@ class CompileModuleTest {
                 従業員ID.decoder
             }
 
-            data 従業員ID = { value: String  invariant length(value) > 0 }
+            data 従業員ID = String
+                invariant length(value) > 0
             """;
 
     private static final String TRIP = """
@@ -72,7 +73,7 @@ class CompileModuleTest {
         String b = """
                 module m.b exposing { B }
                 import m.a { A }
-                data B = { value: String }
+                data B = String
                 """;
         CompileException e = assertThrows(CompileException.class,
                 () -> Compiler.compileModules(List.of(a, b)));

@@ -24,7 +24,7 @@ class CompileOptionalFieldTest {
     private static final String MODULE = """
             module demo
 
-            data Id = { value: String }
+            data Id = String
             data Trip = { id: Id  approver: Id? }
             """;
 

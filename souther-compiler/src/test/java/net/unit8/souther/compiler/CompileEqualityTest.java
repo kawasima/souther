@@ -30,7 +30,7 @@ class CompileEqualityTest {
             module demo
 
             data Money = { amount: Decimal }
-            data Id = { value: String }
+            data Id = String
             data Pair = { a: Id  b: Id }
             data Yes
             data No

@@ -66,6 +66,25 @@ class CompileNewtypeTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void bracedSingleFieldIsAnObjectNotBare() throws Exception {
+        // spec 8.7: newtype-ness is decided by the `= Y` syntax, not the single-field shape. A
+        // braced single field `{ value: T }` is always an object `{"value": ...}`, even though it
+        // has one primitive field. Only `data X = T` is bare.
+        String src = """
+                module demo
+                data Wrapped = { value: String }
+                """;
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Decoder dec = (Decoder) loader.loadClass("demo.Wrapped").getMethod("decoder").invoke(null);
+        Encoder enc = (Encoder) loader.loadClass("demo.Wrapped").getMethod("encoder").invoke(null);
+
+        Object v = ((Ok) dec.decode(java.util.Map.of("value", "x"), Path.ROOT)).value();
+        Object out = enc.encode(v);
+        assertEquals(java.util.Map.of("value", "x"), out, "a braced single field is an object");
+    }
+
+    @Test
     void newtypeOverNonPrimitiveIsDeferred() {
         // spec 8.7 allows a newtype over a named data or sum, but the deriver does not yet handle
         // it — it reports the boundary rather than silently emitting an object codec.

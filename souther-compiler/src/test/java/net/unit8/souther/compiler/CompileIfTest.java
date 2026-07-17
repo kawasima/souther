@@ -18,12 +18,12 @@ class CompileIfTest {
     private static final String MODULE = """
             module demo
 
-            data In = { value: Int }
-            data Out = { label: String }
+            data In = Int
+            data Out = String
 
             behavior classify = (x: In) -> Out constructs Out
 
-            fn classify (x) = Out { label: if x.value >= 100 then "high" else "low" }
+            fn classify (x) = Out { value: if x.value >= 100 then "high" else "low" }
             """;
 
     @SuppressWarnings("unchecked")
@@ -48,7 +48,7 @@ class CompileIfTest {
     void branchesMustAgreeOnType() {
         String src = """
                 module demo
-                data Out = { value: Int }
+                data Out = Int
                 behavior bad = (x: Int) -> Out constructs Out
 
                 fn bad (x) = Out { value: if x >= 0 then 1 else "no" }
