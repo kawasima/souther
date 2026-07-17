@@ -49,6 +49,9 @@ public final class Backend {
     private static final ClassDesc CD_ResultOk = CD_Result.nested("Ok");
     private static final ClassDesc CD_ResultErr = CD_Result.nested("Err");
     private static final ClassDesc CD_Behavior = ClassDesc.of("net.unit8.souther.runtime.Behavior");
+    private static final ClassDesc CD_Fn = ClassDesc.of("net.unit8.souther.runtime.Fn");
+    private static final MethodTypeDesc MTD_Fn_apply =
+            MethodTypeDesc.of(ClassDesc.of("java.lang.Object"), ClassDesc.of("java.lang.Object").arrayType());
     private static final ClassDesc CD_ConstraintViolation =
             ClassDesc.of("net.unit8.souther.runtime.ConstraintViolation");
     private static final ClassDesc CD_IntMath = ClassDesc.of("net.unit8.souther.runtime.IntMath");
@@ -213,6 +216,10 @@ public final class Backend {
     private final boolean exposeAll;
     /** Base names the module exposes (only these are public when {@link #exposeAll} is false). */
     private final Set<String> exposed;
+    /** Synthetic {@code Fn} classes generated for escaping lambdas (spec §blocks), merged into the
+     * module output once every behavior is generated. */
+    private final Map<String, byte[]> synthClasses = new LinkedHashMap<>();
+    private int lambdaCounter = 0;
 
     private Backend(String pkg, Map<String, Ast.Def> symbols, Map<String, List<String>> armToSums,
                     Map<String, String> typePackage, boolean exposeAll, Set<String> exposed) {
@@ -358,6 +365,7 @@ public final class Backend {
                                 b.generatePipe(pipe, requiredNames, sigs, behaviorDeps, pipeStages));
             }
         }
+        out.putAll(b.synthClasses);   // escaping lambdas compiled to Fn classes (spec §blocks)
         return out;
     }
 
@@ -870,6 +878,14 @@ public final class Backend {
                     int vSlot = gen.slot(letType);
                     unbox(code, letType, vSlot);
                     gen.bind(li.name(), vSlot, letType);
+                } else if (TypeChecker.isFunctionSelection(li.value())) {
+                    // a lambda chosen at runtime (e.g. by an `if`) — a first-class Fn (spec §blocks)
+                    List<Type> paramTypes = TypeChecker.inferFnParamTypes(
+                            li.name(), li.body(), gen.typesEnv(), gen.data, symbols);
+                    Type ft = gen.emitFunctionValue(li.value(), paramTypes);
+                    int slot = gen.slot(ft);
+                    store(code, slot, ft);
+                    gen.bind(li.name(), slot, ft);
                 } else {
                     Type t = gen.expr(li.value());
                     int slot = gen.slot(t);
@@ -1918,6 +1934,66 @@ public final class Backend {
         });
     }
 
+    private static String captureField(int i) {
+        return "c" + i;
+    }
+
+    /** Generates a synthetic {@code Fn} class for an escaping lambda: captured free variables become
+     * {@code final} fields set by the constructor, and the body compiles into {@code apply}, which
+     * unboxes its arguments from the {@code Object[]} and boxes its result (spec §blocks). */
+    private byte[] generateLambdaClass(ClassDesc cd, Ast.Block block, List<Type> paramTypes,
+                                       Type resultType, List<String> captureNames,
+                                       List<Type> captureTypes) {
+        return build(cd, cb -> {
+            cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
+            cb.withInterfaceSymbols(CD_Fn);
+            for (int i = 0; i < captureNames.size(); i++) {
+                cb.withField(captureField(i), jvmType(captureTypes.get(i)),
+                        ClassFile.ACC_PRIVATE | ClassFile.ACC_FINAL);
+            }
+            ClassDesc[] ctorDescs = new ClassDesc[captureTypes.size()];
+            for (int i = 0; i < captureTypes.size(); i++) {
+                ctorDescs[i] = jvmType(captureTypes.get(i));
+            }
+            cb.withMethodBody("<init>", MethodTypeDesc.of(ConstantDescs.CD_void, ctorDescs),
+                    ClassFile.ACC_PUBLIC, code -> {
+                code.aload(0);
+                code.invokespecial(CD_Object, "<init>", MTD_void);
+                int slot = 1;
+                for (int i = 0; i < captureNames.size(); i++) {
+                    code.aload(0);
+                    load(code, slot, captureTypes.get(i));
+                    code.putfield(cd, captureField(i), jvmType(captureTypes.get(i)));
+                    slot += width(captureTypes.get(i));
+                }
+                code.return_();
+            });
+            cb.withMethodBody("apply", MTD_Fn_apply, ClassFile.ACC_PUBLIC, code -> {
+                Gen g = new Gen(code, null, cd, 2);   // slot 0 = this, slot 1 = the Object[] args
+                for (int i = 0; i < paramTypes.size(); i++) {
+                    Type pt = paramTypes.get(i);
+                    int s = g.slot(pt);
+                    code.aload(1);
+                    pushInt(code, i);
+                    code.aaload();
+                    unbox(code, pt, s);
+                    g.bind(block.params().get(i), s, pt);
+                }
+                for (int i = 0; i < captureNames.size(); i++) {
+                    Type ct = captureTypes.get(i);
+                    int s = g.slot(ct);
+                    code.aload(0);
+                    code.getfield(cd, captureField(i), jvmType(ct));
+                    store(code, s, ct);
+                    g.bind(captureNames.get(i), s, ct);
+                }
+                Type rt = g.expr(block.body());
+                box(code, rt);
+                code.areturn();
+            });
+        });
+    }
+
     // --- expression code generation ---
 
     private final class Gen {
@@ -1957,7 +2033,15 @@ public final class Backend {
             return switch (e) {
                 case Ast.LetIn li -> {
                     // a `let` reached outside tail position: bind, then value the body
-                    Type vt = expr(li.value());
+                    Type vt;
+                    if (TypeChecker.isFunctionSelection(li.value())) {
+                        // a lambda that could not be inlined (chosen by an `if`): a first-class Fn
+                        List<Type> paramTypes = TypeChecker.inferFnParamTypes(
+                                li.name(), li.body(), typesEnv(), data, symbols);
+                        vt = emitFunctionValue(li.value(), paramTypes);
+                    } else {
+                        vt = expr(li.value());
+                    }
                     int s = slot(vt);
                     store(code, s, vt);
                     bind(li.name(), s, vt);
@@ -2440,6 +2524,10 @@ public final class Backend {
                     return intDivide(call, false);
                 }
                 default -> {
+                    Var fv = env.get(call.fn());
+                    if (fv != null && fv.type() instanceof Type.FnOf fnType) {
+                        return applyFn(call, fv, fnType);
+                    }
                     if (reqNames.contains(call.fn())) {
                         return requiredCall(call);
                     }
@@ -2643,6 +2731,168 @@ public final class Backend {
             code.iconst_1();
             code.labelBinding(end);
         }
+
+        /** A name-to-type view of this scope, for the checker's inference helpers. */
+        private Map<String, Type> typesEnv() {
+            Map<String, Type> t = new HashMap<>();
+            env.forEach((k, v) -> t.put(k, v.type()));
+            return t;
+        }
+
+        /** Emits a function value — a lambda, or an {@code if} that selects one — leaving an
+         * {@link net.unit8.souther.runtime.Fn} on the stack (spec §blocks). */
+        private Type emitFunctionValue(Ast.Expr value, List<Type> paramTypes) {
+            return switch (value) {
+                case Ast.Block b -> emitLambda(b, paramTypes);
+                case Ast.If iff -> {
+                    expr(iff.cond());
+                    Label elseL = code.newLabel();
+                    Label end = code.newLabel();
+                    code.ifeq(elseL);
+                    Type t = emitFunctionValue(iff.then(), paramTypes);
+                    code.goto_(end);
+                    code.labelBinding(elseL);
+                    emitFunctionValue(iff.els(), paramTypes);
+                    code.labelBinding(end);
+                    yield t;
+                }
+                default -> expr(value);
+            };
+        }
+
+        /** Compiles a lambda to a synthetic {@code Fn} class and emits {@code new} of it, passing the
+         * captured free variables to its constructor. */
+        private Type emitLambda(Ast.Block block, List<Type> paramTypes) {
+            Map<String, Type> inner = typesEnv();
+            for (int i = 0; i < paramTypes.size(); i++) {
+                inner.put(block.params().get(i), paramTypes.get(i));
+            }
+            Type resultType = TypeChecker.typeOf(block.body(), inner, data, symbols);
+            List<String> captureNames = freeVars(block);
+            List<Type> captureTypes = new ArrayList<>();
+            for (String c : captureNames) {
+                captureTypes.add(env.get(c).type());
+            }
+            String className = pkg + ".$Fn" + (lambdaCounter++);
+            ClassDesc cd = ClassDesc.of(className);
+            synthClasses.put(className,
+                    generateLambdaClass(cd, block, paramTypes, resultType, captureNames, captureTypes));
+
+            code.new_(cd);
+            code.dup();
+            for (int i = 0; i < captureNames.size(); i++) {
+                Var v = env.get(captureNames.get(i));
+                load(code, v.slot(), v.type());
+            }
+            ClassDesc[] ctorDescs = new ClassDesc[captureTypes.size()];
+            for (int i = 0; i < captureTypes.size(); i++) {
+                ctorDescs[i] = jvmType(captureTypes.get(i));
+            }
+            code.invokespecial(cd, "<init>", MethodTypeDesc.of(ConstantDescs.CD_void, ctorDescs));
+            return Type.fn(paramTypes, resultType);
+        }
+
+        /** Applies a first-class function value: {@code f.apply(new Object[]{args...})}, then casts
+         * the {@code Object} result back to the function's result type. */
+        private Type applyFn(Ast.Call call, Var fv, Type.FnOf fnType) {
+            load(code, fv.slot(), fv.type());   // the Fn receiver
+            pushInt(code, call.args().size());
+            code.anewarray(CD_Object);
+            for (int i = 0; i < call.args().size(); i++) {
+                code.dup();
+                pushInt(code, i);
+                Type at = expr(call.args().get(i));
+                box(code, at);
+                code.aastore();
+            }
+            code.invokeinterface(CD_Fn, "apply", MTD_Fn_apply);
+            castResult(fnType.result());
+            return fnType.result();
+        }
+
+        /** Casts/unboxes an {@code Object} on the stack to {@code t} (the inverse of {@link #box}). */
+        private void castResult(Type t) {
+            if (t == Type.INT) {
+                code.checkcast(CD_Long);
+                code.invokevirtual(CD_Long, "longValue", MethodTypeDesc.of(ConstantDescs.CD_long));
+            } else if (t == Type.BOOL) {
+                code.checkcast(CD_Boolean);
+                code.invokevirtual(CD_Boolean, "booleanValue", MethodTypeDesc.of(ConstantDescs.CD_boolean));
+            } else {
+                code.checkcast(jvmType(t));
+            }
+        }
+
+        /** The free variables of a lambda: names its body reads that are bound in the enclosing
+         * scope (so must be captured), in first-seen order. */
+        private List<String> freeVars(Ast.Block block) {
+            LinkedHashSet<String> free = new LinkedHashSet<>();
+            collectFree(block.body(), new HashSet<>(block.params()), free);
+            return new ArrayList<>(free);
+        }
+
+        private void collectFree(Ast.Expr e, Set<String> bound, LinkedHashSet<String> free) {
+            switch (e) {
+                case Ast.Var v -> maybeFree(v.name(), bound, free);
+                case Ast.Call c -> {
+                    maybeFree(c.fn(), bound, free);   // an applied function value is captured too
+                    c.args().forEach(a -> collectFree(a, bound, free));
+                }
+                case Ast.FieldAccess fa -> collectFree(fa.target(), bound, free);
+                case Ast.Binary bin -> {
+                    collectFree(bin.left(), bound, free);
+                    collectFree(bin.right(), bound, free);
+                }
+                case Ast.Not not -> collectFree(not.operand(), bound, free);
+                case Ast.Neg neg -> collectFree(neg.operand(), bound, free);
+                case Ast.NewData nd -> {
+                    nd.inits().forEach(i -> collectFree(i.value(), bound, free));
+                    nd.spreads().forEach(s -> maybeFree(s, bound, free));
+                }
+                case Ast.If iff -> {
+                    collectFree(iff.cond(), bound, free);
+                    collectFree(iff.then(), bound, free);
+                    collectFree(iff.els(), bound, free);
+                }
+                case Ast.LetIn li -> {
+                    collectFree(li.value(), bound, free);
+                    Set<String> inner = new HashSet<>(bound);
+                    inner.add(li.name());
+                    collectFree(li.body(), inner, free);
+                }
+                case Ast.Match m -> {
+                    collectFree(m.scrutinee(), bound, free);
+                    for (Ast.Case c : m.cases()) {
+                        Set<String> inner = bound;
+                        if (c.binding() != null) {
+                            inner = new HashSet<>(bound);
+                            inner.add(c.binding());
+                        }
+                        collectFree(c.body(), inner, free);
+                    }
+                }
+                case Ast.Block b -> {
+                    Set<String> inner = new HashSet<>(bound);
+                    inner.addAll(b.params());
+                    collectFree(b.body(), inner, free);
+                }
+                case Ast.ListLit lit -> lit.elements().forEach(x -> collectFree(x, bound, free));
+                case Ast.ListComp comp -> {
+                    collectFree(comp.element(), bound, free);
+                    comp.guards().forEach(g -> collectFree(g, bound, free));
+                }
+                case Ast.IntLit ignored -> { }
+                case Ast.DecimalLit ignored -> { }
+                case Ast.StringLit ignored -> { }
+                case Ast.BoolLit ignored -> { }
+            }
+        }
+
+        private void maybeFree(String name, Set<String> bound, LinkedHashSet<String> free) {
+            if (!bound.contains(name) && env.containsKey(name)) {
+                free.add(name);
+            }
+        }
     }
 
     private record Var(int slot, Type type) {}
@@ -2675,6 +2925,7 @@ public final class Backend {
         if (type instanceof Type.ListOf) return CD_List;
         if (type instanceof Type.MapOf) return CD_Map;
         if (type instanceof Type.Union) return CD_Object;
+        if (type instanceof Type.FnOf) return CD_Fn;
         return armClass(((Type.Ref) type).name());
     }
 

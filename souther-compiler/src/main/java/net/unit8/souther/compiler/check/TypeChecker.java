@@ -1201,7 +1201,15 @@ public final class TypeChecker {
             case Ast.LetIn li -> {
                 // the binding is visible only inside the body, so a sibling branch cannot see it
                 Map<String, Type> inner = new HashMap<>(env);
-                inner.put(li.name(), typeOf(li.value(), env, data, symbols, reqs));
+                if (isFunctionSelection(li.value())) {
+                    // a lambda bound to a local that could not be inlined (e.g. chosen by an `if`):
+                    // it is a first-class function value. Its parameter types are unannotated, so
+                    // infer them from how the body applies it (spec §blocks).
+                    List<Type> paramTypes = inferFnParamTypes(li.name(), li.body(), env, data, symbols, reqs);
+                    inner.put(li.name(), typeFunctionValue(li.value(), paramTypes, env, data, symbols, reqs));
+                } else {
+                    inner.put(li.name(), typeOf(li.value(), env, data, symbols, reqs));
+                }
                 yield typeOf(li.body(), inner, data, symbols, reqs);
             }
             // reached only where a block escapes: it may be passed as an argument, or bound to a
@@ -1689,6 +1697,98 @@ public final class TypeChecker {
             inner.put(block.params().get(i), paramTypes.get(i));
         }
         return typeOf(block.body(), inner, data, symbols, reqs);
+    }
+
+    /** Whether an expression bound to a {@code let} is a function value: a lambda, or an {@code if}
+     * whose branches are functions. Such a value cannot be inlined (the inliner leaves it), so it
+     * becomes a first-class {@code Fn} (spec §blocks). */
+    public static boolean producesFunction(Ast.Expr e) {
+        return switch (e) {
+            case Ast.Block ignored -> true;
+            case Ast.If iff -> producesFunction(iff.then()) || producesFunction(iff.els());
+            default -> false;
+        };
+    }
+
+    /** A function value that could not be inlined away and so becomes a first-class {@code Fn}: a
+     * function chosen at runtime by an {@code if} (spec §blocks). A bare lambda is not here — it is
+     * either inlined at its application or, if it escapes, reported as "a block is not a value". */
+    public static boolean isFunctionSelection(Ast.Expr e) {
+        return !(e instanceof Ast.Block) && producesFunction(e);
+    }
+
+    /** The backend re-derives a let-bound function's parameter types the same way (spec §blocks). */
+    public static List<Type> inferFnParamTypes(String name, Ast.Expr body, Map<String, Type> env,
+                                               Ast.Data data, Map<String, Ast.Def> symbols) {
+        return inferFnParamTypes(name, body, env, data, symbols, NO_REQS);
+    }
+
+    /** Infers a let-bound function's parameter types from how the body applies it: every
+     * {@code f(args)} in the body must agree on the argument types (spec §blocks). A function that
+     * is never applied cannot have its type inferred. */
+    private static List<Type> inferFnParamTypes(String name, Ast.Expr body, Map<String, Type> env,
+                                                Ast.Data data, Map<String, Ast.Def> symbols,
+                                                Map<String, ReqSig> reqs) {
+        List<List<Type>> uses = new ArrayList<>();
+        collectApplications(name, body, env, data, symbols, reqs, uses);
+        if (uses.isEmpty()) {
+            throw new CompileException(body.pos(), "cannot infer the type of the function `" + name
+                    + "`: it is never applied, so its parameter types are unknown");
+        }
+        List<Type> first = uses.get(0);
+        for (List<Type> u : uses) {
+            if (!u.equals(first)) {
+                throw new CompileException(body.pos(), "the function `" + name
+                        + "` is applied with different argument types: " + first + " vs " + u);
+            }
+        }
+        return first;
+    }
+
+    /** Collects the argument-type lists of every application {@code name(args)} in {@code e}. */
+    private static void collectApplications(String name, Ast.Expr e, Map<String, Type> env,
+                                            Ast.Data data, Map<String, Ast.Def> symbols,
+                                            Map<String, ReqSig> reqs, List<List<Type>> out) {
+        if (e instanceof Ast.Call call && call.fn().equals(name)) {
+            List<Type> argTypes = new ArrayList<>();
+            for (Ast.Expr a : call.args()) {
+                argTypes.add(typeOf(a, env, data, symbols, reqs));
+            }
+            out.add(argTypes);
+        }
+        forEachChild(e, sub -> collectApplications(name, sub, env, data, symbols, reqs, out));
+    }
+
+    /** Types a function value against inferred parameter types: a lambda binds its parameters and
+     * yields {@code FnOf(params, resultOfBody)}; an {@code if} requires both branches to be the same
+     * function type (spec §blocks). */
+    private static Type typeFunctionValue(Ast.Expr value, List<Type> paramTypes, Map<String, Type> env,
+                                          Ast.Data data, Map<String, Ast.Def> symbols,
+                                          Map<String, ReqSig> reqs) {
+        return switch (value) {
+            case Ast.Block b -> {
+                if (b.params().size() != paramTypes.size()) {
+                    throw new CompileException(b.pos(), "this lambda takes " + b.params().size()
+                            + " parameter(s) but is applied with " + paramTypes.size());
+                }
+                Map<String, Type> inner = new HashMap<>(env);
+                for (int i = 0; i < paramTypes.size(); i++) {
+                    inner.put(b.params().get(i), paramTypes.get(i));
+                }
+                yield Type.fn(paramTypes, typeOf(b.body(), inner, data, symbols, reqs));
+            }
+            case Ast.If iff -> {
+                requireType(iff.cond(), Type.BOOL, env, data, symbols, reqs, "if condition");
+                Type t = typeFunctionValue(iff.then(), paramTypes, env, data, symbols, reqs);
+                Type f = typeFunctionValue(iff.els(), paramTypes, env, data, symbols, reqs);
+                if (!t.equals(f)) {
+                    throw new CompileException(iff.pos(), "the two branches produce different function "
+                            + "types: " + t + " vs " + f);
+                }
+                yield t;
+            }
+            default -> typeOf(value, env, data, symbols, reqs);
+        };
     }
 
     private static void requireBlockBool(Ast.Call call, Type bt) {
