@@ -4,15 +4,15 @@ Status: Accepted (revised — was SML-style `=>`/`->` split)
 
 ## Context
 
-Souther has named definitions (`data`, `behavior`, `fn`), anonymous forms (match arms, lambdas), and type arrows. It needs a consistent assignment of `=` and the arrow across all three, and a decision on whether a named definition may bind a lambda.
+Souther has named definitions (`data`, `behavior`, `let`), anonymous forms (match arms, lambdas), and type arrows. It needs a consistent assignment of `=` and the arrow across all three, and a decision on whether a named definition may bind a lambda.
 
 An earlier version split the arrows SML-style: `->` for type arrows and `=>` for the anonymous forms. That split is dropped.
 
 ## Decision
 
-`=` binds a name to a right-hand side. A single arrow `->` serves everywhere else: the type arrow of a behavior declaration and a `fn` function-type argument (`(A) -> B`), the body of a lambda (`(x) -> e`), and a match arm (`| A -> body`). There is no `=>`.
+`=` binds a name to a right-hand side. A single arrow `->` serves everywhere else: the type arrow of a behavior declaration and a `let` function-type argument (`(A) -> B`), the body of a lambda (`(x) -> e`), and a match arm (`| A -> body`). There is no `=>`.
 
-Binding a lambda to a named definition (`fn f = (x) -> ...`) is still not allowed.
+Binding a lambda to a named definition (`let f = (x) -> ...`) is still not allowed.
 
 ## Consequences
 
@@ -22,6 +22,6 @@ Disallowing a lambda bound to a named definition follows the ML family's treatme
 
 ## References
 
-- Specification: §5 (delimiters), §13.1 (fn declaration), §16.3 (match)
+- Specification: §5 (delimiters), §13.1 (let declaration), §16.3 (match)
 - ADR-0001 (one-to-one with the spec DSL), ADR-0007 (F#-derived railway)
 - ADR-0025 (first-class functions)

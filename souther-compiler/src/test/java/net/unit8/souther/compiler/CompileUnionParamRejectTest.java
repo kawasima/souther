@@ -19,8 +19,8 @@ class CompileUnionParamRejectTest {
                 data Sub = Int
                 data Pre = Int
                 data Done = Int
-                behavior finish = (app: Sub | Pre) -> Done constructs Done
-                fn finish (app) = match app with
+                behavior finish : (app: Sub | Pre) -> Done constructs Done
+                let finish (app) = match app with
                     | Sub as s -> Done { value: s.value }
                     | Pre as p -> Done { value: p.value }
                 """;
@@ -36,8 +36,8 @@ class CompileUnionParamRejectTest {
                 data Pre = Int
                 data SubPre = Sub | Pre
                 data Done = Int
-                behavior finish = (app: SubPre) -> Done constructs Done
-                fn finish (app) = match app with
+                behavior finish : (app: SubPre) -> Done constructs Done
+                let finish (app) = match app with
                     | Sub as s -> Done { value: s.value }
                     | Pre as p -> Done { value: p.value }
                 """;

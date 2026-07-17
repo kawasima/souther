@@ -28,8 +28,8 @@ class CompileMultiInvariantTest {
                 invariant value > 0
                 invariant value < 100
 
-            behavior make = (i: In) -> Amount constructs Amount
-            fn make (i) = Amount { value: i.value }
+            behavior make : (i: In) -> Amount constructs Amount
+            let make (i) = Amount { value: i.value }
             """;
 
     @SuppressWarnings("unchecked")

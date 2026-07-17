@@ -31,8 +31,8 @@ class CompileMatchWideningTest {
             data OutA = Int
             data OutB = Int
 
-            behavior pick = (x: Both) -> OutA | OutB constructs OutA, OutB
-            fn pick (x) =
+            behavior pick : (x: Both) -> OutA | OutB constructs OutA, OutB
+            let pick (x) =
                 match x with
                     | A as a -> OutA { value: a.v }
                     | B as b -> OutB { value: b.v }

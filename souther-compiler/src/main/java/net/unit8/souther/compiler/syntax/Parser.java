@@ -48,10 +48,10 @@ public final class Parser {
                 defs.add(parseDef());
             } else if (check(TokenType.BEHAVIOR)) {
                 behaviors.add(parseBehavior());
-            } else if (check(TokenType.FN)) {
+            } else if (check(TokenType.LET)) {
                 fns.add(parseFn());
             } else {
-                throw error(peek(), "expected data, behavior, or fn");
+                throw error(peek(), "expected data, behavior, or let");
             }
         }
         return new Ast.Module(name, exposing, exposedOutputs, imports, defs, behaviors, fns, m.pos());
@@ -122,47 +122,50 @@ public final class Parser {
     private Ast.BehaviorDef parseBehavior() {
         Token kw = expect(TokenType.BEHAVIOR);
         String name = expect(TokenType.IDENT).text();
+        // System 2 (ML): `:` gives a value a type (the signature), `=` binds a definition
+        // (the composition). A behavior signature reads `behavior name : (...) -> ...`; a
+        // composition reads `behavior name = stage >-> stage`.
         if (check(TokenType.LPAREN)) {
-            throw error(peek(), "behavior `" + name + "` needs `=` before its parameters: "
-                    + "`behavior " + name + " = (...) -> ...`");
+            throw error(peek(), "a behavior signature uses `:` before its parameters: "
+                    + "`behavior " + name + " : (...) -> ...`");
+        }
+        if (match(TokenType.COLON)) {
+            expect(TokenType.LPAREN);
+            List<Ast.Param> params = new ArrayList<>();
+            if (!check(TokenType.RPAREN)) {
+                params.add(parseParam());
+                while (match(TokenType.COMMA)) {
+                    params.add(parseParam());
+                }
+            }
+            expect(TokenType.RPAREN);
+            expect(TokenType.ARROW);
+            Ast.RetType ret = parseRetType();
+            // `constructs` and `requires` may appear in either order after the return type.
+            List<String> constructs = new ArrayList<>();
+            List<String> requires = new ArrayList<>();
+            boolean more = true;
+            while (more) {
+                if (match(TokenType.CONSTRUCTS)) {
+                    parseNameList(constructs);
+                } else if (match(TokenType.REQUIRES)) {
+                    parseNameList(requires);
+                } else {
+                    more = false;
+                }
+            }
+            return new Ast.SpecBehavior(name, params, ret, constructs, requires, kw.pos());
         }
         expect(TokenType.ASSIGN);
-        if (!check(TokenType.LPAREN)) {
-            List<String> stages = new ArrayList<>();
+        List<String> stages = new ArrayList<>();
+        stages.add(parseStage());
+        while (match(TokenType.PIPEFWD)) {
             stages.add(parseStage());
-            while (match(TokenType.PIPEFWD)) {
-                stages.add(parseStage());
-            }
-            // an optional trailing `-> arms` declares the composition's output (spec 14.5); the
-            // stages are behavior names, so this `->` reads unambiguously as the pipeline's own
-            Ast.RetType declaredOut = match(TokenType.ARROW) ? parseRetType() : null;
-            return new Ast.PipeBehavior(name, stages, declaredOut, kw.pos());
         }
-        expect(TokenType.LPAREN);
-        List<Ast.Param> params = new ArrayList<>();
-        if (!check(TokenType.RPAREN)) {
-            params.add(parseParam());
-            while (match(TokenType.COMMA)) {
-                params.add(parseParam());
-            }
-        }
-        expect(TokenType.RPAREN);
-        expect(TokenType.ARROW);
-        Ast.RetType ret = parseRetType();
-        // `constructs` and `requires` may appear in either order after the return type.
-        List<String> constructs = new ArrayList<>();
-        List<String> requires = new ArrayList<>();
-        boolean more = true;
-        while (more) {
-            if (match(TokenType.CONSTRUCTS)) {
-                parseNameList(constructs);
-            } else if (match(TokenType.REQUIRES)) {
-                parseNameList(requires);
-            } else {
-                more = false;
-            }
-        }
-        return new Ast.SpecBehavior(name, params, ret, constructs, requires, kw.pos());
+        // an optional trailing `-> arms` declares the composition's output (spec 14.5); the
+        // stages are behavior names, so this `->` reads unambiguously as the pipeline's own
+        Ast.RetType declaredOut = match(TokenType.ARROW) ? parseRetType() : null;
+        return new Ast.PipeBehavior(name, stages, declaredOut, kw.pos());
     }
 
     /** A comma-separated list of identifiers, appended to {@code out} (at least one). */
@@ -174,13 +177,14 @@ public final class Parser {
     }
 
     /**
-     * {@code fn name (a1, ...) = body} — a behavior's implementation (spec 13.1). Parameters are
-     * bare names when the {@code fn} implements a same-named behavior (types come from it), or
+     * {@code let name (a1, ...) = body} — a behavior's implementation (spec 13.1). Parameters are
+     * bare names when the definition implements a same-named behavior (types come from it), or
      * {@code name: type} when it is a helper. The body is a single expression; {@code { ... }} is a
-     * block expression (16.5).
+     * block expression (16.5). A top-level {@code let} always carries a {@code (params)} list, which
+     * distinguishes it from a block-local {@code let name = expr} binding.
      */
     private Ast.FnDef parseFn() {
-        Token kw = expect(TokenType.FN);
+        Token kw = expect(TokenType.LET);
         String name = expect(TokenType.IDENT).text();
         expect(TokenType.LPAREN);
         List<Ast.FnParam> params = new ArrayList<>();

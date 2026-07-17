@@ -12,10 +12,10 @@ data 通常 = { 件数: Int }
 data 要審査 = { 件数: Int }
 
 // 理由が1件以上、または高額なら要審査へ。そうでなければ通常。
-behavior 区分する = (a: 申請) -> 通常 | 要審査
+behavior 区分する : (a: 申請) -> 通常 | 要審査
     constructs 通常, 要審査
 
-fn 区分する (a) =
+let 区分する (a) =
     if length(a.理由リスト) >= 1 || a.予定費用 >= 100000
         then 要審査 { 件数: length(a.理由リスト) }
         else 通常 { 件数: length(a.理由リスト) }

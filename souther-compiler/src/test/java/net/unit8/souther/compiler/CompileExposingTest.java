@@ -42,8 +42,8 @@ class CompileExposingTest {
                 data Real = { v: Int }
                 data Out = { v: Int }
 
-                behavior greet = (r: Real) -> Out constructs Out
-                fn greet (r) = Out { v: r.v }
+                behavior greet : (r: Real) -> Out constructs Out
+                let greet (r) = Out { v: r.v }
                 """));
     }
 }

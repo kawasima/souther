@@ -26,13 +26,13 @@ class CompileCallTest {
             data Member = { id: Id }
             data Resp = { id: Id }
 
-            behavior findMember = (id: Id) -> Member
+            behavior findMember : (id: Id) -> Member
 
-            behavior handle = (id: Id) -> Resp
+            behavior handle : (id: Id) -> Resp
                 constructs Resp
                 requires findMember
 
-            fn handle (id, findMember) = {
+            let handle (id, findMember) = {
                 let m = findMember(id)
                 Resp { id: m.id }
             }

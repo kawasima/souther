@@ -12,7 +12,7 @@ the whole model in one sitting; Souther promotes each of those to something exec
 | --- | --- |
 | value constraints (`// 0 or greater`, `// approver is the manager`) | `invariant` |
 | "this value has been validated" (parse-don't-validate) | closed construction paths (derived `decoder` / `constructs`) |
-| `// depends on: catalog`, `// side effect: send mail` | a `behavior` with no `fn` (implementation injected from Java) |
+| `// depends on: catalog`, `// side effect: send mail` | a `behavior` with no `let` (implementation injected from Java) |
 
 Distinction, requiredness, multiplicity, state transitions, and totality map straight onto
 Souther's types. The value constraints and the outside-world dependencies move from comments to
@@ -48,20 +48,20 @@ data 提出済み = { include 出張申請共通項目  提出日時: DateTime }
 // "承認権限なし" is just a data — not an error type, not a Result.
 data 承認権限なし
 
-// A dependency: no `fn`, so the clock is injected from Java.
-behavior 現在時刻 = () -> DateTime
+// A dependency: no `let`, so the clock is injected from Java.
+behavior 現在時刻 : () -> DateTime
 
 // The output is an unmarked sum. Whether an arm is a "failure" is decided by composition,
 // not by this behavior. A simple behavior declares what it `requires` and `constructs`.
-behavior 事前承認する = (
+behavior 事前承認する : (
     申請:    事前承認待ち,
     承認者ID: 従業員ID
 ) -> 事前承認済み | 承認権限なし
     requires 現在時刻
     constructs 事前承認済み, 承認権限なし
 
-// The implementation is a separate `fn`; each `requires` name appears as a trailing argument.
-fn 事前承認する (申請, 承認者ID, 現在時刻) = {
+// The implementation is a separate `let`; each `requires` name appears as a trailing argument.
+let 事前承認する (申請, 承認者ID, 現在時刻) = {
     require 承認者ID == 申請.申請者.上長ID
         else 承認権限なし
 
@@ -106,10 +106,10 @@ rest flow straight through to the output. That is Railway-oriented programming w
 ### Outside-world dependencies are behaviors with no implementation
 
 DB, HTTP, files, the clock, ID generation — none are implemented in the language. You declare the
-behavior's type and write no `fn`; the implementation is injected from Java. Conceptually a
+behavior's type and write no `let`; the implementation is injected from Java. Conceptually a
 behavior has the type `Behavior<Requirements, Input, Output>`, where `Requirements` is the set of
 unimplemented behaviors it needs. A simple behavior declares its `requires` set and the compiler
-checks it against the `fn`; a `>->` composition infers it as the union over the stages. Binding the
+checks it against the `let`; a `>->` composition infers it as the union over the stages. Binding the
 implementations produces a callable behavior:
 
 ```java
@@ -136,11 +136,11 @@ the JVM level, not just at import resolution.
 
 ```text
 Java    -> Souther's generated output      allowed
-Souther -> arbitrary Java API              forbidden (the outside world is reached only through a behavior with no fn)
+Souther -> arbitrary Java API              forbidden (the outside world is reached only through a behavior with no `let`)
 ```
 
 Java calls the generated types and behaviors. Souther cannot call arbitrary Java. A behavior with
-no `fn` is generated as an abstract base class that a Java implementation `extends`; the
+no `let` is generated as an abstract base class that a Java implementation `extends`; the
 implementation may build only the arms that behavior declares, through `protected` factories, so
 closed construction is preserved across the boundary.
 
@@ -153,7 +153,7 @@ undercut one of the ideas above.
   in the output sum; absence is an optional field (`?`); everything is immutable. `null` and
   `throw` are compile errors that point you at the alternative.
 - **No arbitrary JVM calls from Souther.** The only door to the outside world is a behavior with
-  no `fn`, injected from Java. This keeps pure behaviors provably pure and keeps effects at the edges.
+  no `let`, injected from Java. This keeps pure behaviors provably pure and keeps effects at the edges.
 - **No structural intersection types (`A & B`).** Souther is nominal so that construction paths
   stay closed: an intersection value has no clear constructor and no clear invariant to check.
   The spec DSL's `AND` means "has all of A's fields, plus more", which is nominal field
@@ -178,11 +178,11 @@ undercut one of the ideas above.
 
 ### Deferred (not part of the MVP yet)
 
-These are not rejected on principle — they are simply out of scope for now: an `fn` that returns a
+These are not rejected on principle — they are simply out of scope for now: a `let` that returns a
 function, functions stored in a data field, a human-readable Java-source backend, incremental
 compilation, an LSP / IDE plugin, static invariant proofs, hand-written codec syntax, and `Decimal`
 division with an explicit rounding mode. (Blocks — `x -> ...` passed to `all` / `any` — and
-higher-order `fn` arguments are already supported.)
+higher-order function arguments are already supported.)
 
 ## Building and using
 
@@ -220,7 +220,7 @@ Implemented and covered by tests:
 - Types: all primitives (`Bool` / `Int` / `Decimal` / `String` / `Date` / `DateTime`), `List<T>`,
   `Map<String, T>`, optional fields (`?` → `Option`) with `Some`/`None` matching, and product /
   sum / unit data with `include` and `invariant`.
-- Behaviors: `behavior` and its separate `fn`, behaviors with no `fn` injected from Java,
+- Behaviors: `behavior` and its separate `let`, behaviors with no `let` injected from Java,
   `requires` sets (declared on simple behaviors, inferred over a `>->` pipeline), inline
   injected-behavior calls, `constructs`, unmarked sum outputs, and type-routed `>->`.
 - Terms: `match` / `let` / `if` / `require`, record literals with spread, union parameter types

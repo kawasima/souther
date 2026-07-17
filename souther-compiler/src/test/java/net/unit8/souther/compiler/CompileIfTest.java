@@ -21,9 +21,9 @@ class CompileIfTest {
             data In = Int
             data Out = String
 
-            behavior classify = (x: In) -> Out constructs Out
+            behavior classify : (x: In) -> Out constructs Out
 
-            fn classify (x) = Out { value: if x.value >= 100 then "high" else "low" }
+            let classify (x) = Out { value: if x.value >= 100 then "high" else "low" }
             """;
 
     @SuppressWarnings("unchecked")
@@ -49,9 +49,9 @@ class CompileIfTest {
         String src = """
                 module demo
                 data Out = Int
-                behavior bad = (x: Int) -> Out constructs Out
+                behavior bad : (x: Int) -> Out constructs Out
 
-                fn bad (x) = Out { value: if x >= 0 then 1 else "no" }
+                let bad (x) = Out { value: if x >= 0 then 1 else "no" }
                 """;
         assertThrows(CompileException.class, () -> Compiler.compile(src));
     }

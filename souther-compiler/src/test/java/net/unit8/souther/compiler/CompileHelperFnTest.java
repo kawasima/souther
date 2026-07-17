@@ -25,12 +25,12 @@ class CompileHelperFnTest {
             data Order = { price: Int  rate: Int }
             data Receipt = { subtotal: Int  total: Int }
 
-            behavior bill = (o: Order) -> Receipt
+            behavior bill : (o: Order) -> Receipt
                 constructs Receipt
 
-            fn bill (o) = Receipt { subtotal: o.price, total: discount(o.price, o.rate) }
+            let bill (o) = Receipt { subtotal: o.price, total: discount(o.price, o.rate) }
 
-            fn discount (price: Int, rate: Int) = price * rate
+            let discount (price: Int, rate: Int) = price * rate
             """;
 
     private BytesClassLoader loader() {
@@ -72,11 +72,11 @@ class CompileHelperFnTest {
                 data Tag = { a: String  b: String }
                 data Blank
 
-                behavior label = (id: Id) -> Tag | Blank constructs Blank
+                behavior label : (id: Id) -> Tag | Blank constructs Blank
 
-                fn label (id) = if length(id.value) > 0 then makeTag(id) else Blank
+                let label (id) = if length(id.value) > 0 then makeTag(id) else Blank
 
-                fn makeTag (id: Id) = Tag { a: id.value, b: id.value }
+                let makeTag (id: Id) = Tag { a: id.value, b: id.value }
                 """));
         assertEquals("E1002", e.code(), "the caller must declare `constructs Tag` for the helper's build");
     }
@@ -90,12 +90,12 @@ class CompileHelperFnTest {
                 data Id = String
                 data Tag = { a: String  b: String }
 
-                behavior label = (id: Id) -> Tag
+                behavior label : (id: Id) -> Tag
                     constructs Tag
 
-                fn label (id) = makeTag(id)
+                let label (id) = makeTag(id)
 
-                fn makeTag (id: Id) = Tag { a: id.value, b: id.value }
+                let makeTag (id: Id) = Tag { a: id.value, b: id.value }
                 """);
     }
 
@@ -107,12 +107,12 @@ class CompileHelperFnTest {
 
                 data Id = String
 
-                behavior noop = (id: Id) -> Id
+                behavior noop : (id: Id) -> Id
 
-                fn noop (id) = id
+                let noop (id) = id
 
-                fn ping (x: Int) = pong(x)
-                fn pong (x: Int) = ping(x)
+                let ping (x: Int) = pong(x)
+                let pong (x: Int) = ping(x)
                 """));
         assertEquals(null, e.code());
     }
@@ -126,13 +126,13 @@ class CompileHelperFnTest {
                 data Order = { price: Int  rate: Int }
                 data Receipt = { subtotal: Int  total: Int }
 
-                behavior bill = (o: Order) -> Receipt
+                behavior bill : (o: Order) -> Receipt
                     constructs Receipt
 
-                fn bill (o) = Receipt { subtotal: o.price, total: taxed(o.price, o.rate) }
+                let bill (o) = Receipt { subtotal: o.price, total: taxed(o.price, o.rate) }
 
-                fn taxed (price: Int, rate: Int) = price * withRate(rate)
-                fn withRate (rate: Int) = rate * rate
+                let taxed (price: Int, rate: Int) = price * withRate(rate)
+                let withRate (rate: Int) = rate * rate
                 """), getClass().getClassLoader());
         Object bill = loader.loadClass("demo.Bill").getDeclaredConstructor().newInstance();
         Object order = decode(loader, "Order", java.util.Map.of("price", 2L, "rate", 3L));

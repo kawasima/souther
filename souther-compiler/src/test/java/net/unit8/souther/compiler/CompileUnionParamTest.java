@@ -28,9 +28,9 @@ class CompileUnionParamTest {
             data SubPre = Sub | Pre
             data Done = Int
 
-            behavior finish = (app: SubPre) -> Done constructs Done
+            behavior finish : (app: SubPre) -> Done constructs Done
 
-            fn finish (app) =
+            let finish (app) =
                 match app with
                     | Sub as s -> Done { value: s.value }
                     | Pre as p -> Done { value: p.value }

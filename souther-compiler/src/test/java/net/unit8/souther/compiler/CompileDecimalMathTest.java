@@ -24,9 +24,9 @@ class CompileDecimalMathTest {
                 data Price = Decimal
                 data Quote = { subtotal: Decimal  doubled: Decimal }
 
-                behavior makeQuote = (a: Price, b: Price) -> Quote constructs Quote
+                behavior makeQuote : (a: Price, b: Price) -> Quote constructs Quote
 
-                fn makeQuote (a, b) = Quote {
+                let makeQuote (a, b) = Quote {
                     subtotal: add(a.value, b.value),
                     doubled: multiply(add(a.value, b.value), a.value)
                 }

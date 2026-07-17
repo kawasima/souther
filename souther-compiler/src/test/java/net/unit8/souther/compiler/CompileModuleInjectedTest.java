@@ -32,7 +32,7 @@ class CompileModuleInjectedTest {
 
             data N = Int
 
-            behavior produce = (n: N) -> N
+            behavior produce : (n: N) -> N
             """;
 
     private static final String B = """

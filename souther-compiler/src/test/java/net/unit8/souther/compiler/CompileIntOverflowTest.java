@@ -27,9 +27,9 @@ class CompileIntOverflowTest {
                 data In = Int
                 data Out = Int
 
-                behavior compute = (x: In) -> Out constructs Out
+                behavior compute : (x: In) -> Out constructs Out
 
-                fn compute (x) = Out { value: %s }
+                let compute (x) = Out { value: %s }
                 """.formatted(bodyExpr);
     }
 

@@ -22,9 +22,9 @@ class CompileDivideTest {
             data Pair = { a: Int  b: Int }
             data Outcome = { q: Int  ok: Bool }
 
-            behavior divideThem = (p: Pair) -> Outcome constructs Outcome
+            behavior divideThem : (p: Pair) -> Outcome constructs Outcome
 
-            fn divideThem (p) =
+            let divideThem (p) =
                 match divide(p.a, p.b) with
                     | Int as q -> Outcome { q: q, ok: true }
                     | DivisionByZero -> Outcome { q: 0, ok: false }

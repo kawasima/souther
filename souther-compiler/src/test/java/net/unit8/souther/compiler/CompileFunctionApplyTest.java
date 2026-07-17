@@ -14,7 +14,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * A helper's function-typed parameter may be applied directly: {@code fn applyTo (x: Int, f: (Int)
+ * A helper's function-typed parameter may be applied directly: {@code let applyTo (x: Int, f: (Int)
  * -> Int) = f(x)} (spec §fn-declaration). The application {@code f(x)} inlines to the passed fn's
  * body at the call site, so no runtime closure is built.
  */
@@ -26,13 +26,13 @@ class CompileFunctionApplyTest {
             data Order = { v: Int }
             data Result = { n: Int }
 
-            behavior check = (o: Order) -> Result
+            behavior check : (o: Order) -> Result
                 constructs Result
 
-            fn check (o) = Result { n: applyTo(o.v, inc) }
+            let check (o) = Result { n: applyTo(o.v, inc) }
 
-            fn applyTo (x: Int, f: (Int) -> Int) = f(x)
-            fn inc (x: Int) = x + 1
+            let applyTo (x: Int, f: (Int) -> Int) = f(x)
+            let inc (x: Int) = x + 1
             """;
 
     private BytesClassLoader loader() {

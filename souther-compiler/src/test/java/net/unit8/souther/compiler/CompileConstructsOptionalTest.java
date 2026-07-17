@@ -26,8 +26,8 @@ class CompileConstructsOptionalTest {
     void omittingConstructsInfersAndCompiles() {
         // no `constructs` clause, yet the body builds Member — inferred, so it compiles
         assertDoesNotThrow(() -> Compiler.compile(BASE + """
-                behavior make = (e: Email) -> Member
-                fn make (e) = Member { email: e }
+                behavior make : (e: Email) -> Member
+                let make (e) = Member { email: e }
                 """));
     }
 
@@ -35,8 +35,8 @@ class CompileConstructsOptionalTest {
     void aDeclaredConstructsMustBeComplete_E1002() {
         // builds Member and Audit but declares only Member — the missing Audit is E1002
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(BASE + """
-                behavior make = (e: Email) -> Member | Audit constructs Member
-                fn make (e) = if contains(e.value, "x") then Audit { at: "now" } else Member { email: e }
+                behavior make : (e: Email) -> Member | Audit constructs Member
+                let make (e) = if contains(e.value, "x") then Audit { at: "now" } else Member { email: e }
                 """));
         assertEquals("E1002", e.code());
     }
@@ -45,8 +45,8 @@ class CompileConstructsOptionalTest {
     void anOverDeclaredConstructsIs_E1006() {
         // passes its input Member through but declares `constructs Member` — over-declaration is E1006
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(BASE + """
-                behavior pass = (m: Member) -> Member constructs Member
-                fn pass (m) = m
+                behavior pass : (m: Member) -> Member constructs Member
+                let pass (m) = m
                 """));
         assertEquals("E1006", e.code());
     }
@@ -54,8 +54,8 @@ class CompileConstructsOptionalTest {
     @Test
     void anExactDeclarationCompiles() {
         assertDoesNotThrow(() -> Compiler.compile(BASE + """
-                behavior make = (e: Email) -> Member constructs Member
-                fn make (e) = Member { email: e }
+                behavior make : (e: Email) -> Member constructs Member
+                let make (e) = Member { email: e }
                 """));
     }
 }

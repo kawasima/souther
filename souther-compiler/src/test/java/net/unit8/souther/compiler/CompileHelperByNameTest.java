@@ -27,12 +27,12 @@ class CompileHelperByNameTest {
             data Order = { qtys: List<Int> }
             data Result = { ok: Bool  n: Int }
 
-            behavior check = (o: Order) -> Result
+            behavior check : (o: Order) -> Result
                 constructs Result
 
-            fn check (o) = Result { ok: all(o.qtys, positive), n: length(o.qtys) }
+            let check (o) = Result { ok: all(o.qtys, positive), n: length(o.qtys) }
 
-            fn positive (x: Int) = x > 0
+            let positive (x: Int) = x > 0
             """;
 
     private BytesClassLoader loader() {

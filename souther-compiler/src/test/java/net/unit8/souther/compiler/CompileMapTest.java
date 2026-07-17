@@ -46,9 +46,9 @@ class CompileMapTest {
                 data Scores = { byName: Map<String, Int> }
                 data Answer = { found: Bool  value: Int }
 
-                behavior lookupA = (s: Scores) -> Answer constructs Answer
+                behavior lookupA : (s: Scores) -> Answer constructs Answer
 
-                fn lookupA (s) =
+                let lookupA (s) =
                     match get(s.byName, "a") with
                         | Some as v -> Answer { found: containsKey(s.byName, "a"), value: v }
                         | None -> Answer { found: false, value: 0 }

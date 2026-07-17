@@ -33,8 +33,8 @@ class CompileOrPatternTest {
             data Lo = Int
             data Hi = Int
 
-            behavior classify = (x: Three) -> Lo | Hi constructs Lo, Hi
-            fn classify (x) =
+            behavior classify : (x: Three) -> Lo | Hi constructs Lo, Hi
+            let classify (x) =
                 match x with
                     | A | B -> Lo { value: 1 }
                     | C -> Hi { value: 2 }
@@ -75,8 +75,8 @@ class CompileOrPatternTest {
                 data C = { v: Int }
                 data Three = A | B | C
                 data Out = Int
-                behavior f = (x: Three) -> Out constructs Out
-                fn f (x) = match x with | A | B -> Out { value: 1 }
+                behavior f : (x: Three) -> Out constructs Out
+                let f (x) = match x with | A | B -> Out { value: 1 }
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(module));
         assertEquals("E1201", e.code());
@@ -90,8 +90,8 @@ class CompileOrPatternTest {
                 data B = { v: Int }
                 data Two = A | B
                 data Out = Int
-                behavior f = (x: Two) -> Out constructs Out
-                fn f (x) = match x with | A | B -> Out { value: 1 } | A -> Out { value: 2 }
+                behavior f : (x: Two) -> Out constructs Out
+                let f (x) = match x with | A | B -> Out { value: 1 } | A -> Out { value: 2 }
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(module));
         assertTrue(e.getMessage().contains("more than one"), e.getMessage());
@@ -109,10 +109,10 @@ class CompileOrPatternTest {
                 data Three = A | B | C
                 data Out = Int
 
-                fn describe (x: Three) = 0
+                let describe (x: Three) = 0
 
-                behavior tag = (x: Three) -> Out constructs Out
-                fn tag (x) =
+                behavior tag : (x: Three) -> Out constructs Out
+                let tag (x) =
                     match x with
                         | A | B as ab -> Out { value: describe(ab) }
                         | C -> Out { value: 9 }

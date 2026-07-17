@@ -26,8 +26,8 @@ class CompileModuleBehaviorTest {
 
             data N = Int
 
-            behavior inc = (n: N) -> N constructs N
-            fn inc (n) = N { value: n.value + 1 }
+            behavior inc : (n: N) -> N constructs N
+            let inc (n) = N { value: n.value + 1 }
             """;
 
     private static final String B = """

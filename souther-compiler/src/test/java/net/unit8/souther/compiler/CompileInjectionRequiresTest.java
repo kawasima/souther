@@ -19,9 +19,9 @@ class CompileInjectionRequiresTest {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile("""
                 module demo
                 data N = Int
-                behavior bar = (n: N) -> N
-                fn bar (n) = n
-                behavior foo = (n: N) -> N requires bar
+                behavior bar : (n: N) -> N
+                let bar (n) = n
+                behavior foo : (n: N) -> N requires bar
                 """));
         assertTrue(e.getMessage().contains("injection target"), e.getMessage());
         assertTrue(e.getMessage().contains("requires"), e.getMessage());
@@ -32,9 +32,9 @@ class CompileInjectionRequiresTest {
         assertDoesNotThrow(() -> Compiler.compile("""
                 module demo
                 data N = Int
-                behavior bar = (n: N) -> N
-                behavior foo = (n: N) -> N requires bar
-                fn foo (n, bar) = bar(n)
+                behavior bar : (n: N) -> N
+                behavior foo : (n: N) -> N requires bar
+                let foo (n, bar) = bar(n)
                 """));
     }
 }

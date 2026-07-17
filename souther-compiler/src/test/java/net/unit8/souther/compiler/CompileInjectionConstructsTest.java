@@ -26,7 +26,7 @@ class CompileInjectionConstructsTest {
                 data Member = { id: Id }
                 data 会員なし
 
-                behavior findMember = (id: Id) -> Member | 会員なし
+                behavior findMember : (id: Id) -> Member | 会員なし
                     constructs 会員なし
                 """));
     }
@@ -41,7 +41,7 @@ class CompileInjectionConstructsTest {
                 data Member = { id: Id }
                 data 保存データ不正 = { reason: String }
 
-                behavior findMember = (id: Id) -> Member | 保存データ不正
+                behavior findMember : (id: Id) -> Member | 保存データ不正
                     constructs 保存データ不正
                 """));
     }
@@ -56,7 +56,7 @@ class CompileInjectionConstructsTest {
                 data Member = { id: Id }
                 data 保存データ不正 = { reason: String }
 
-                behavior findMember = (id: Id) -> Member | 保存データ不正
+                behavior findMember : (id: Id) -> Member | 保存データ不正
                     constructs 保存データ不正
                 """));
         assertEquals("E1305", e.code());

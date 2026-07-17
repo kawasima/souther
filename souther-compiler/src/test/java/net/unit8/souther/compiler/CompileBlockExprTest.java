@@ -23,8 +23,8 @@ class CompileBlockExprTest {
 
             data N = Int
 
-            behavior f = (n: N) -> N constructs N
-            fn f (n) =
+            behavior f : (n: N) -> N constructs N
+            let f (n) =
                 if n.value > 0
                     then { let doubled = n.value + n.value  N { value: doubled } }
                     else n

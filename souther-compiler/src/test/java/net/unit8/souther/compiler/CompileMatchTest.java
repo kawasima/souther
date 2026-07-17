@@ -26,9 +26,9 @@ class CompileMatchTest {
             data PhoneContact = { phone: String }
             data Contact = EmailContact | PhoneContact
 
-            behavior contactValue = (c: Contact) -> Label constructs Label
+            behavior contactValue : (c: Contact) -> Label constructs Label
 
-            fn contactValue (c) =
+            let contactValue (c) =
                 match c with
                     | EmailContact as e -> Label { value: e.email }
                     | PhoneContact as p -> Label { value: p.phone }
@@ -73,9 +73,9 @@ class CompileMatchTest {
                 data B = { y: String }
                 data AB = A | B
                 data Label = String
-                behavior pick = (v: AB) -> Label constructs Label
+                behavior pick : (v: AB) -> Label constructs Label
 
-                fn pick (v) =
+                let pick (v) =
                     match v with
                         | A as a -> Label { value: a.x }
                 """;
@@ -102,9 +102,9 @@ class CompileMatchTest {
                 data B = { y: String }
                 data AB = A | B
                 data Label = String
-                behavior pick = (v: AB) -> Label constructs Label
+                behavior pick : (v: AB) -> Label constructs Label
 
-                fn pick (v) =
+                let pick (v) =
                     match v {
                         case A as a -> Label { value: a.x }
                         case B as b -> Label { value: b.y }

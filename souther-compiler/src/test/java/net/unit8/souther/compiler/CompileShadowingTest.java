@@ -18,8 +18,8 @@ class CompileShadowingTest {
                 module demo
                 data In = { v: Int }
                 data Out = { v: Int }
-                behavior check = (o: In) -> Out constructs Out
-                fn check (o) = {
+                behavior check : (o: In) -> Out constructs Out
+                let check (o) = {
                     let None = 99
                     Out { v: None }
                 }
@@ -33,9 +33,9 @@ class CompileShadowingTest {
         String src = """
                 module demo
                 data Out = { v: Int }
-                behavior check = (o: Out) -> Out constructs Out
-                fn check (o) = Out { v: twice(o.v) }
-                fn twice (HALF_UP: Int) = HALF_UP + HALF_UP
+                behavior check : (o: Out) -> Out constructs Out
+                let check (o) = Out { v: twice(o.v) }
+                let twice (HALF_UP: Int) = HALF_UP + HALF_UP
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertTrue(e.getMessage().contains("HALF_UP"), e.getMessage());

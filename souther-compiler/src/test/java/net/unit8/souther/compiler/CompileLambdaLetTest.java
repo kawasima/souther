@@ -29,10 +29,10 @@ class CompileLambdaLetTest {
             data Order = { v: Int }
             data Result = { n: Int }
 
-            behavior check = (o: Order) -> Result
+            behavior check : (o: Order) -> Result
                 constructs Result
 
-            fn check (o) = {
+            let check (o) = {
                 let inc = (x) -> x + 1
                 Result { n: inc(o.v) }
             }
@@ -69,10 +69,10 @@ class CompileLambdaLetTest {
                 data Order = { v: Int }
                 data Result = { n: Int }
 
-                behavior check = (o: Order) -> Result
+                behavior check : (o: Order) -> Result
                     constructs Result
 
-                fn check (o) = {
+                let check (o) = {
                     let inc = (x) -> x + 1
                     inc
                 }

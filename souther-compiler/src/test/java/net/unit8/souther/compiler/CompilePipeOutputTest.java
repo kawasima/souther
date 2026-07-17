@@ -24,14 +24,14 @@ class CompilePipeOutputTest {
                 data TooLarge = { limit: Int }
                 data Doubled = Int
 
-                behavior guard = (a: Amount) -> Amount | TooLarge constructs TooLarge
-                fn guard (a) = {
+                behavior guard : (a: Amount) -> Amount | TooLarge constructs TooLarge
+                let guard (a) = {
                     require a.value <= 100 else TooLarge { limit: 100 }
                     a
                 }
 
-                behavior toDoubled = (a: Amount) -> Doubled constructs Doubled
-                fn toDoubled (a) = Doubled { value: a.value }
+                behavior toDoubled : (a: Amount) -> Doubled constructs Doubled
+                let toDoubled (a) = Doubled { value: a.value }
 
                 """ + pipeline + "\n";
     }

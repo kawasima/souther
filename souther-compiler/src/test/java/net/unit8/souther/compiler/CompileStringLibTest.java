@@ -25,9 +25,9 @@ class CompileStringLibTest {
                 data Name = String
                 data Greeting = String
 
-                behavior greet = (n: Name) -> Greeting constructs Greeting
+                behavior greet : (n: Name) -> Greeting constructs Greeting
 
-                fn greet (n) = Greeting { value: concat(concat("hi ", uppercase(substring(n.value, 0, 3))), "!") }
+                let greet (n) = Greeting { value: concat(concat("hi ", uppercase(substring(n.value, 0, 3))), "!") }
                 """), getClass().getClassLoader());
 
         Decoder nameDec = (Decoder) loader.loadClass("demo.Name").getMethod("decoder").invoke(null);

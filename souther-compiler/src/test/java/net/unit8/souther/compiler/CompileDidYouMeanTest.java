@@ -31,8 +31,8 @@ class CompileDidYouMeanTest {
         CompileException e = compileFail("""
                 module demo
                 data N = Int
-                behavior inc = (n: N) -> N
-                fn inc (n) = n
+                behavior inc : (n: N) -> N
+                let inc (n) = n
                 behavior flow = inc >-> imc
                 """);
         assertTrue(e.getMessage().contains("did you mean `inc`?"), e.getMessage());
@@ -43,8 +43,8 @@ class CompileDidYouMeanTest {
         CompileException e = compileFail("""
                 module demo
                 data N = Int
-                behavior twice = (num: N) -> N constructs N
-                fn twice (num) = N { value: add(nums.value, num.value) }
+                behavior twice : (num: N) -> N constructs N
+                let twice (num) = N { value: add(nums.value, num.value) }
                 """);
         assertTrue(e.getMessage().contains("did you mean `num`?"), e.getMessage());
     }

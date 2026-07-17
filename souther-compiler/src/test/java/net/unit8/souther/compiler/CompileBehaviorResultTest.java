@@ -26,9 +26,9 @@ class CompileBehaviorResultTest {
             data Cheap = { cost: Int }
             data Pricey = { cost: Int }
 
-            behavior classify = (d: Draft) -> Cheap | Pricey constructs Cheap, Pricey
+            behavior classify : (d: Draft) -> Cheap | Pricey constructs Cheap, Pricey
 
-            fn classify (d) =
+            let classify (d) =
                 if d.value <= 100 then Cheap { cost: d.value } else Pricey { cost: d.value }
             """;
 
@@ -59,7 +59,7 @@ class CompileBehaviorResultTest {
             data Member = { id: Id }
             data 会員なし
 
-            behavior findMember = (id: Id) -> Member | 会員なし
+            behavior findMember : (id: Id) -> Member | 会員なし
                 constructs 会員なし
             """;
 

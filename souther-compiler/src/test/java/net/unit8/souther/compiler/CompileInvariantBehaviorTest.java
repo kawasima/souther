@@ -29,9 +29,9 @@ class CompileInvariantBehaviorTest {
             data Adjusted = Int
                 invariant value >= 0
 
-            behavior discount = (d: Draft) -> Adjusted constructs Adjusted
+            behavior discount : (d: Draft) -> Adjusted constructs Adjusted
 
-            fn discount (d) = Adjusted { value: d.value - 2000 }
+            let discount (d) = Adjusted { value: d.value - 2000 }
             """;
 
     private BytesClassLoader loader() {
@@ -83,11 +83,11 @@ class CompileInvariantBehaviorTest {
                 data Adjusted = { cost: Int  invariant cost >= 0 }
                 data Kept = { v: Int }
 
-                behavior adjust = (d: Draft) -> Kept | Adjusted
+                behavior adjust : (d: Draft) -> Kept | Adjusted
                     constructs Kept, Adjusted
 
-                fn adjust (d) = {
-                    require d.value != 999 else Adjusted { cost: d.value - 2000 }
+                let adjust (d) = {
+                    require d.value /= 999 else Adjusted { cost: d.value - 2000 }
                     Kept { v: d.value }
                 }
                 """;
@@ -115,9 +115,9 @@ class CompileInvariantBehaviorTest {
                 data Draft = { cost: Int }
                 data Rejected = { why: String }
                 data Flagged
-                behavior adjust = (d: Draft) -> Draft | Rejected | Flagged constructs Flagged
+                behavior adjust : (d: Draft) -> Draft | Rejected | Flagged constructs Flagged
 
-                fn adjust (d) = {
+                let adjust (d) = {
                     require d.cost > 0 else Rejected { why: "nonpositive" }
                     require d.cost < 1000 else Flagged
                     d
@@ -136,9 +136,9 @@ class CompileInvariantBehaviorTest {
         String src = """
                 module demo
                 data Positive = { value: Int  invariant value > 0 }
-                behavior make = (x: Int) -> Positive constructs Positive
+                behavior make : (x: Int) -> Positive constructs Positive
 
-                fn make (x) = Positive { value: x }
+                let make (x) = Positive { value: x }
                 """;
         // compiles without error (no E1003, which is retired)
         Compiler.compile(src);

@@ -25,9 +25,9 @@ class CompileMultiParamTest {
                 right: Int
             }
 
-            behavior mkPair = (a: A, b: B) -> Pair constructs Pair
+            behavior mkPair : (a: A, b: B) -> Pair constructs Pair
 
-            fn mkPair (a, b) = Pair { left: a.value, right: b.value }
+            let mkPair (a, b) = Pair { left: a.value, right: b.value }
             """;
 
     @Test

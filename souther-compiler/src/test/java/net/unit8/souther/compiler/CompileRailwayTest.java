@@ -26,17 +26,17 @@ class CompileRailwayTest {
 
             // over 100 leaves the main line as a TooLarge arm. `require ... else` mints the
             // TooLarge, so the behavior declares it (spec 12.3).
-            behavior guard = (a: Amount) -> Amount | TooLarge constructs TooLarge
+            behavior guard : (a: Amount) -> Amount | TooLarge constructs TooLarge
 
-            fn guard (a) = {
+            let guard (a) = {
                 require a.value <= 100 else TooLarge { limit: 100 }
                 a
             }
 
             // only accepts Amount; a TooLarge flowing in would bypass this stage
-            behavior toDoubled = (a: Amount) -> Doubled constructs Doubled
+            behavior toDoubled : (a: Amount) -> Doubled constructs Doubled
 
-            fn toDoubled (a) = Doubled { value: a.value }
+            let toDoubled (a) = Doubled { value: a.value }
 
             behavior process = guard >-> toDoubled
             """;
@@ -89,17 +89,17 @@ class CompileRailwayTest {
                 data OffOut = Off | Out
 
                 // over 100 leaves as Off
-                behavior 判定 = (i: In) -> Mid | Off constructs Mid, Off
-                fn 判定 (i) = {
+                behavior 判定 : (i: In) -> Mid | Off constructs Mid, Off
+                let 判定 (i) = {
                     require i.value <= 100 else Off { v: i.value }
                     Mid { v: i.value }
                 }
                 // takes Mid only — Off passes it by
-                behavior 加工 = (m: Mid) -> Out constructs Out
-                fn 加工 (m) = Out { v: m.v }
+                behavior 加工 : (m: Mid) -> Out constructs Out
+                let 加工 (m) = Out { v: m.v }
                 // would accept Off, but Off already left the main line at 加工
-                behavior 仕上げ = (x: OffOut) -> Out constructs Out
-                fn 仕上げ (x) = Out { v: 0 }
+                behavior 仕上げ : (x: OffOut) -> Out constructs Out
+                let 仕上げ (x) = Out { v: 0 }
 
                 behavior flow = 判定 >-> 加工 >-> 仕上げ
                 """;
@@ -122,9 +122,9 @@ class CompileRailwayTest {
                 module demo
                 data A = Int
                 data B = Int
-                behavior bad = (a: A, other: B) -> A
+                behavior bad : (a: A, other: B) -> A
 
-                fn bad (a, other) = {
+                let bad (a, other) = {
                     require a.value <= 1 else other
                     a
                 }

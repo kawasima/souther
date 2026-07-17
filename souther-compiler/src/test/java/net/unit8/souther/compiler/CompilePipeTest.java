@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** End-to-end test for {@code >->} composition and required-behavior injection = (spec 14, 13, 19.5). */
+/** End-to-end test for {@code >->} composition and required-behavior injection : (spec 14, 13, 19.5). */
 class CompilePipeTest {
 
     private static final String MODULE = """
@@ -23,13 +23,13 @@ class CompilePipeTest {
             data Mid = String
             data Out = String
 
-            behavior a = (w: Wrap) -> Mid constructs Mid
-            fn a (w) = Mid { value: w.value }
-            behavior b = (m: Mid) -> Out constructs Out
-            fn b (m) = Out { value: m.value }
+            behavior a : (w: Wrap) -> Mid constructs Mid
+            let a (w) = Mid { value: w.value }
+            behavior b : (m: Mid) -> Out constructs Out
+            let b (m) = Out { value: m.value }
             behavior ab = a >-> b
 
-            behavior fetch = (w: Wrap) -> Mid
+            behavior fetch : (w: Wrap) -> Mid
             behavior handle = fetch >-> b
             """;
 
@@ -80,8 +80,8 @@ class CompilePipeTest {
                 module demo
                 data Wrap = String
                 data Mid = String
-                behavior a = (w: Wrap) -> Mid constructs Mid
-                fn a (w) = Mid { value: w.value }
+                behavior a : (w: Wrap) -> Mid constructs Mid
+                let a (w) = Mid { value: w.value }
                 behavior bad = a >-> a
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
@@ -97,10 +97,10 @@ class CompilePipeTest {
                 module demo
                 data Wrap = String
                 data Mid = String
-                behavior a = (w: Wrap) -> Mid constructs Mid
-                fn a (w) = Mid { value: w.value }
-                behavior two = (m: Mid, k: String) -> Mid constructs Mid
-                fn two (m, k) = Mid { value: k }
+                behavior a : (w: Wrap) -> Mid constructs Mid
+                let a (w) = Mid { value: w.value }
+                behavior two : (m: Mid, k: String) -> Mid constructs Mid
+                let two (m, k) = Mid { value: k }
                 behavior bad = a >-> two
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
@@ -125,15 +125,15 @@ class CompilePipeTest {
                 data Draft = { v: Int }
                 data NoRight
 
-                behavior reject = (p: Pending, by: Id) -> Rejected | NoRight
+                behavior reject : (p: Pending, by: Id) -> Rejected | NoRight
                     constructs Rejected, NoRight
 
-                fn reject (p, by) = {
+                let reject (p, by) = {
                     require by == p.boss else NoRight
                     Rejected { v: 1 }
                 }
-                behavior sendBack = (r: Rejected) -> Draft constructs Draft
-                fn sendBack (r) = Draft { v: r.v }
+                behavior sendBack : (r: Rejected) -> Draft constructs Draft
+                let sendBack (r) = Draft { v: r.v }
 
                 behavior rejectAndSendBack = reject >-> sendBack
                 """;
@@ -161,8 +161,8 @@ class CompilePipeTest {
                 module demo
                 data Wrap = String
                 data Mid = String
-                behavior a = (w: Wrap) -> Mid constructs Mid
-                fn a (w) = Mid { value: w.value }
+                behavior a : (w: Wrap) -> Mid constructs Mid
+                let a (w) = Mid { value: w.value }
                 behavior bad = a >-> nosuch
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));

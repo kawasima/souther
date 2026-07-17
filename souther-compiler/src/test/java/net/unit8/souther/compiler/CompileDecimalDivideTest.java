@@ -31,8 +31,8 @@ class CompileDecimalDivideTest {
             data Pair = { a: Decimal  b: Decimal }
             data Out = { value: Decimal  ok: Bool }
 
-            behavior divv = (p: Pair) -> Out constructs Out
-            fn divv (p) =
+            behavior divv : (p: Pair) -> Out constructs Out
+            let divv (p) =
                 match divide(p.a, p.b, 2, HALF_UP) with
                     | Decimal as q -> Out { value: q, ok: true }
                     | DivisionByZero -> Out { value: p.a, ok: false }
@@ -74,8 +74,8 @@ class CompileDecimalDivideTest {
                 module demo
                 data Pair = { a: Decimal  b: Decimal }
                 data Out = Decimal
-                behavior divv = (p: Pair) -> Out constructs Out
-                fn divv (p) = Out { value: divide(p.a, p.b) }
+                behavior divv : (p: Pair) -> Out constructs Out
+                let divv (p) = Out { value: divide(p.a, p.b) }
                 """;
         assertThrows(CompileException.class, () -> Compiler.compile(src));
     }

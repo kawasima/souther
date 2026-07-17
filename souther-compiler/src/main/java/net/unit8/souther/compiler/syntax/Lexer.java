@@ -32,7 +32,6 @@ public final class Lexer {
             Map.entry("if", TokenType.IF),
             Map.entry("then", TokenType.THEN),
             Map.entry("behavior", TokenType.BEHAVIOR),
-            Map.entry("fn", TokenType.FN),
             Map.entry("requires", TokenType.REQUIRES),
             Map.entry("constructs", TokenType.CONSTRUCTS),
             Map.entry("match", TokenType.MATCH),
@@ -150,8 +149,12 @@ public final class Lexer {
                 if (match('=')) return new Token(TokenType.EQ, "==", start);
                 return new Token(TokenType.ASSIGN, "=", start);
             case '!':
-                if (match('=')) return new Token(TokenType.NE, "!=", start);
                 return new Token(TokenType.NOT, "!", start);
+            case '/':
+                // `/=` is inequality (Elm/Haskell form). There is no division operator,
+                // so a lone `/` is an error. (`//` is a comment, consumed in skipTrivia.)
+                if (match('=')) return new Token(TokenType.NE, "/=", start);
+                break;
             case '<':
                 if (match('=')) return new Token(TokenType.LE, "<=", start);
                 if (match('-')) return new Token(TokenType.LARROW, "<-", start);

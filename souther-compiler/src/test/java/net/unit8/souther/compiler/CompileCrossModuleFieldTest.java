@@ -35,8 +35,8 @@ class CompileCrossModuleFieldTest {
 
             data 申請 = { 申請者: 従業員 }
 
-            behavior 上長IDを得る = (req: 申請) -> 従業員ID
-            fn 上長IDを得る (req) = req.申請者.上長ID
+            behavior 上長IDを得る : (req: 申請) -> 従業員ID
+            let 上長IDを得る (req) = req.申請者.上長ID
             """;
 
     @Test
@@ -70,8 +70,8 @@ class CompileCrossModuleFieldTest {
 
             data Derived = { a: String  b: String  c: String }
 
-            behavior 拡張する = (base: Base) -> Derived constructs Derived
-            fn 拡張する (base) = Derived { ..base, c: "x" }
+            behavior 拡張する : (base: Base) -> Derived constructs Derived
+            let 拡張する (base) = Derived { ..base, c: "x" }
             """;
 
     @Test

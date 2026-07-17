@@ -9,9 +9,9 @@ data Contact = EmailContact | PhoneContact
 data Label = String
 
 // match でアームごとに値を取り出す
-behavior 連絡先の値 = (c: Contact) -> Label constructs Label
+behavior 連絡先の値 : (c: Contact) -> Label constructs Label
 
-fn 連絡先の値 (c) =
+let 連絡先の値 (c) =
     match c with
         | EmailContact as e -> Label { value: e.email }
         | PhoneContact as p -> Label { value: p.phone }

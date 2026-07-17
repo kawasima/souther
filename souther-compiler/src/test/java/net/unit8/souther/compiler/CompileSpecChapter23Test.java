@@ -85,16 +85,16 @@ class CompileSpecChapter23Test {
 
             data 承認権限なし
 
-            behavior 現在時刻 = () -> DateTime
+            behavior 現在時刻 : () -> DateTime
 
-            behavior 事前承認する = (
+            behavior 事前承認する : (
                 申請:    事前承認待ち,
                 承認者ID: 従業員ID
             ) -> 事前承認済み | 承認権限なし
                 constructs 事前承認済み, 承認権限なし
                 requires 現在時刻
 
-            fn 事前承認する (申請, 承認者ID, 現在時刻) = {
+            let 事前承認する (申請, 承認者ID, 現在時刻) = {
                 require 承認者ID == 申請.申請者.上長ID
                     else 承認権限なし
 
@@ -155,6 +155,6 @@ class CompileSpecChapter23Test {
         Object stranger = ((Ok<Object>) idDec.decode("someone", Path.ROOT)).value();
         assertEquals("example.businesstrip.承認権限なし",
                 apply.invoke(事前承認する, 事前承認待ち, stranger).getClass().getName(),
-                "承認者ID != 上長ID leaves via the guard");
+                "承認者ID /= 上長ID leaves via the guard");
     }
 }

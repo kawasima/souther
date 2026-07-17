@@ -48,7 +48,7 @@ public final class TypeChecker {
         Map<String, Ast.FnDef> fns = new HashMap<>();
         for (Ast.FnDef fn : module.fns()) {
             if (fns.put(fn.name(), fn) != null) {
-                throw new CompileException(fn.pos(), "duplicate `fn " + fn.name() + "`");
+                throw new CompileException(fn.pos(), "duplicate `let " + fn.name() + "`");
             }
         }
         Set<String> allBehaviors = new HashSet<>();
@@ -103,7 +103,7 @@ public final class TypeChecker {
                 // behavior that composes or calls this one carries the requirement instead (13.2).
                 if (!spec.requires().isEmpty()) {
                     throw new CompileException(spec.pos(), "behavior `" + spec.name()
-                            + "` has no `fn`, so it is an injection target (spec 13.2); it cannot"
+                            + "` has no `let`, so it is an injection target (spec 13.2); it cannot"
                             + " declare `requires` — the behavior that calls or composes it does");
                 }
                 reqSigs.put(spec.name(), new ReqSig(
@@ -129,7 +129,7 @@ public final class TypeChecker {
         // implementation (checked above); any other fn is a helper (checked by checkHelpers).
         for (Ast.FnDef fn : module.fns()) {
             if (!specNames.contains(fn.name()) && allBehaviors.contains(fn.name())) {
-                throw new CompileException(fn.pos(), "`fn " + fn.name()
+                throw new CompileException(fn.pos(), "`let " + fn.name()
                         + "` cannot implement the composition `behavior " + fn.name()
                         + "`, which is already its own implementation (spec 13.1)");
             }
@@ -210,7 +210,7 @@ public final class TypeChecker {
             Map<String, Type> env = new HashMap<>();
             for (Ast.FnParam p : h.params()) {
                 if (p.type() == null) {
-                    throw new CompileException(p.pos(), "helper `fn " + h.name() + "` must annotate "
+                    throw new CompileException(p.pos(), "helper `let " + h.name() + "` must annotate "
                             + "parameter `" + p.name() + "` with its type (spec 13.1)");
                 }
                 rejectBuiltinShadow(p.name(), p.pos());
@@ -218,7 +218,7 @@ public final class TypeChecker {
             }
             rejectBuiltinShadowing(h.body());
             Ast.Expr body = inliner.inline(h.body());
-            // a helper that returns a function (e.g. `fn adder (n) = (x) -> x + n`) has no application
+            // a helper that returns a function (e.g. `let adder (n) = (x) -> x + n`) has no application
             // here to infer the lambda's parameter types from; it is checked where it is inlined and
             // applied (spec §blocks).
             if (producesFunction(body)) {
@@ -234,13 +234,13 @@ public final class TypeChecker {
         int nBusiness = spec.params().size();
         int nReq = spec.requires().size();
         if (fn.params().size() != nBusiness + nReq) {
-            throw new CompileException(fn.pos(), "`fn " + fn.name() + "` takes " + fn.params().size()
+            throw new CompileException(fn.pos(), "`let " + fn.name() + "` takes " + fn.params().size()
                     + " parameter(s) but `behavior " + spec.name() + "` has " + nBusiness + " input(s)"
                     + (nReq == 0 ? "" : " plus " + nReq + " requires") + " (spec 13.1)");
         }
         for (Ast.FnParam p : fn.params()) {
             if (p.type() != null) {
-                throw new CompileException(p.pos(), "`fn " + fn.name() + "` implements `behavior "
+                throw new CompileException(p.pos(), "`let " + fn.name() + "` implements `behavior "
                         + spec.name() + "`, so its parameters take their types from it — do not annotate `"
                         + p.name() + "` (spec 13.1)");
             }
@@ -249,7 +249,7 @@ public final class TypeChecker {
             String got = fn.params().get(nBusiness + i).name();
             String want = spec.requires().get(i);
             if (!got.equals(want)) {
-                throw new CompileException(fn.pos(), "`fn " + fn.name() + "` parameter `" + got
+                throw new CompileException(fn.pos(), "`let " + fn.name() + "` parameter `" + got
                         + "` should be `" + want + "`: the `requires` become the trailing parameters "
                         + "in declared order (spec 12.6)");
             }
@@ -273,7 +273,7 @@ public final class TypeChecker {
         Type rt = typeOf(body, env, null, symbols, reqSigs);
         if (!assignable(rt, output, symbols)) {
             throw new CompileException(body.pos(),
-                    "behavior `" + spec.name() + "` returns " + output + " but its fn body is " + rt);
+                    "behavior `" + spec.name() + "` returns " + output + " but its `let` body is " + rt);
         }
 
         // One expression (spec 16.4): this single walk sees every construction, including under a
@@ -311,7 +311,7 @@ public final class TypeChecker {
         List<String> actual = requiredCalls(body, reqSigs.keySet());
         for (String call : actual) {
             if (!spec.requires().contains(call)) {
-                throw new CompileException(spec.pos(), "E1602", "`fn " + fn.name() + "` calls `" + call
+                throw new CompileException(spec.pos(), "E1602", "`let " + fn.name() + "` calls `" + call
                         + "`, which has no implementation, but `behavior " + spec.name()
                         + "` does not declare `requires " + call + "`.");
             }
@@ -319,7 +319,7 @@ public final class TypeChecker {
         for (String req : spec.requires()) {
             if (!actual.contains(req)) {
                 throw new CompileException(spec.pos(), "E1603", "`behavior " + spec.name()
-                        + "` declares `requires " + req + "`, but `fn " + fn.name()
+                        + "` declares `requires " + req + "`, but `let " + fn.name()
                         + "` never calls it. Remove it from the `requires` clause.");
             }
         }
@@ -1606,7 +1606,7 @@ public final class TypeChecker {
                             + "` is not a behavior or builtin"
                             + Suggest.hint(call.fn(), reqs.keySet())
                             + ". Calling arbitrary JVM methods is not "
-                            + "allowed; declare a behavior without an `fn` and implement it from Java.");
+                            + "allowed; declare a behavior without a `let` and implement it from Java.");
                 }
                 if (callee.param() == null) {
                     arity(call, 0);            // `() -> R`, e.g. 現在時刻() (spec 13.1)

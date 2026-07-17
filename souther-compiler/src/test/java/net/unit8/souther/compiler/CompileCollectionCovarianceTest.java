@@ -28,8 +28,8 @@ class CompileCollectionCovarianceTest {
         return BASE + """
                 data W1 = { x: %s }
                 data W2 = { y: %s }
-                behavior f = (w: W2) -> W1 constructs W1
-                fn f (w) = W1 { x: w.y }
+                behavior f : (w: W2) -> W1 constructs W1
+                let f (w) = W1 { x: w.y }
                 """.formatted(toType, fromType);
     }
 

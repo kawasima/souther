@@ -21,9 +21,9 @@ class CompileMultiSuccessTest {
             data Cheap = { cost: Int }
             data Pricey = { cost: Int }
 
-            behavior classify = (d: Draft) -> Cheap | Pricey constructs Cheap, Pricey
+            behavior classify : (d: Draft) -> Cheap | Pricey constructs Cheap, Pricey
 
-            fn classify (d) =
+            let classify (d) =
                 if d.value <= 100 then Cheap { cost: d.value } else Pricey { cost: d.value }
             """;
 
@@ -51,9 +51,9 @@ class CompileMultiSuccessTest {
                 data Cheap = { cost: Int }
                 data Pricey = { cost: Int }
                 data Other = { cost: Int }
-                behavior bad = (d: Draft) -> Cheap | Pricey constructs Other
+                behavior bad : (d: Draft) -> Cheap | Pricey constructs Other
 
-                fn bad (d) = Other { cost: d.cost }
+                let bad (d) = Other { cost: d.cost }
                 """;
         assertThrows(CompileException.class, () -> Compiler.compile(src));
     }

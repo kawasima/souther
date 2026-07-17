@@ -24,7 +24,7 @@ Souther -> arbitrary Java API              forbidden (only via a non-implemented
 
 Because Souther cannot reach into Java freely, it also ships no DB/HTTP/file APIs of its
 own — those live behind injected behaviors. Arbitrary JVM calls are a compile error
-(E1401), which points the modeler at declaring a behavior without an `fn` and providing
+(E1401), which points the modeler at declaring a behavior without a `let` and providing
 the implementation from Java.
 
 Keeping the arrow one-way is what preserves the closed construction paths (ADR-0002) and

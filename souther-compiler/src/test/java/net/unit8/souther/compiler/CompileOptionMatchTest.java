@@ -26,9 +26,9 @@ class CompileOptionMatchTest {
             data Trip = { id: Id  approver: Id? }
             data Label = String
 
-            behavior approverLabel = (t: Trip) -> Label constructs Label
+            behavior approverLabel : (t: Trip) -> Label constructs Label
 
-            fn approverLabel (t) =
+            let approverLabel (t) =
                 match t.approver with
                     | Some as a -> Label { value: a.value }
                     | None -> Label { value: "none" }

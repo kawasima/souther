@@ -26,8 +26,8 @@ class CompileModuleChainTest {
     private static final String A = """
             module a exposing { N, inc }
             data N = Int
-            behavior inc = (n: N) -> N
-            fn inc (n) = n
+            behavior inc : (n: N) -> N
+            let inc (n) = n
             """;
     private static final String B = """
             module b exposing { twice : N }

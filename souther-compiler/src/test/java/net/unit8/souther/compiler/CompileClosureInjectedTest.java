@@ -31,12 +31,12 @@ class CompileClosureInjectedTest {
             data In = { name: String  flag: Bool }
             data Out = { v: String }
 
-            behavior dep = (i: In) -> Out
+            behavior dep : (i: In) -> Out
 
-            behavior check = (o: In) -> Out
+            behavior check : (o: In) -> Out
                 requires dep
 
-            fn check (o, dep) = {
+            let check (o, dep) = {
                 let f = if o.flag then (x) -> dep(x) else (x) -> dep(x)
                 f(o)
             }

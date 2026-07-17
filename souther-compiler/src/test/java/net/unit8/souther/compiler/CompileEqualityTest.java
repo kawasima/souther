@@ -37,13 +37,15 @@ class CompileEqualityTest {
             data Answer = Yes | No
             data R = { v: Bool }
 
-            behavior 同じか = (p: Pair) -> R constructs R
-            behavior 金額が同じか = (x: Money, y: Money) -> R constructs R
-            behavior 答えが同じか = (x: Answer, y: Answer) -> R constructs R
+            behavior 同じか : (p: Pair) -> R constructs R
+            behavior 違うか : (p: Pair) -> R constructs R
+            behavior 金額が同じか : (x: Money, y: Money) -> R constructs R
+            behavior 答えが同じか : (x: Answer, y: Answer) -> R constructs R
 
-            fn 同じか (p) = R { v: p.a == p.b }
-            fn 金額が同じか (x, y) = R { v: x.amount == y.amount }
-            fn 答えが同じか (x, y) = R { v: x == y }
+            let 同じか (p) = R { v: p.a == p.b }
+            let 違うか (p) = R { v: p.a /= p.b }
+            let 金額が同じか (x, y) = R { v: x.amount == y.amount }
+            let 答えが同じか (x, y) = R { v: x == y }
             """;
 
     private BytesClassLoader loader() {
@@ -73,6 +75,25 @@ class CompileEqualityTest {
         Object b = make(loader, "Id", "e1");
         assertFalse(a == b, "distinct instances — a reference comparison would say not equal");
         assertTrue(run(loader, "同じか", make(loader, "Pair", a, b)));
+    }
+
+    /** {@code /=} is inequality (Elm/Haskell form; ADR-0028), the negation of {@code ==}. */
+    @Test
+    void slashEqualsIsInequality() throws Exception {
+        BytesClassLoader loader = loader();
+        Object a = make(loader, "Id", "e1");
+        Object b = make(loader, "Id", "e1");
+        Object c = make(loader, "Id", "e2");
+        assertFalse(run(loader, "違うか", make(loader, "Pair", a, b)), "e1 /= e1 is false");
+        assertTrue(run(loader, "違うか", make(loader, "Pair", a, c)), "e1 /= e2 is true");
+    }
+
+    /** The old {@code !=} inequality no longer lexes (ADR-0028 pairs {@code /=} with {@code ==}). */
+    @Test
+    void oldBangEqualsNoLongerParses() {
+        String src = MODULE.replace("p.a /= p.b", "p.a != p.b");
+        org.junit.jupiter.api.Assertions.assertThrows(
+                CompileException.class, () -> Compiler.compile(src));
     }
 
     @Test

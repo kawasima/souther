@@ -24,9 +24,9 @@ class CompileListGetTest {
             data Bag = { items: List<Item> }
             data Label = String
 
-            behavior firstValue = (b: Bag) -> Label constructs Label
+            behavior firstValue : (b: Bag) -> Label constructs Label
 
-            fn firstValue (b) =
+            let firstValue (b) =
                 match get(b.items, 0) with
                     | Some as x -> Label { value: x.value }
                     | None -> Label { value: "none" }

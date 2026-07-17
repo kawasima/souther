@@ -25,9 +25,9 @@ class CompileUnitValueTest {
             data Mark
             data Flag = Bool
 
-            behavior marks = (f: Flag) -> List<Mark> constructs Mark
+            behavior marks : (f: Flag) -> List<Mark> constructs Mark
 
-            fn marks (f) = [Mark | f.value]
+            let marks (f) = [Mark | f.value]
             """;
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -57,8 +57,8 @@ class CompileUnitValueTest {
                 data Mark
                 data Note
                 data Flag = Bool
-                behavior marks = (f: Flag) -> Mark | Note constructs Note
-                fn marks (f) = if f.value then Mark else Note
+                behavior marks : (f: Flag) -> Mark | Note constructs Note
+                let marks (f) = if f.value then Mark else Note
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1002", e.code());

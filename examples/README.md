@@ -70,7 +70,7 @@ HTTP → decode（Result<会員ID>）→ behavior >-> → 出力アームを mat
 `member.sou` の要点:
 
 ```text
-required behavior findMember = (id: 会員ID) -> 会員 | 会員なし | 保存データ不正 | DB不通
+behavior findMember : (id: 会員ID) -> 会員 | 会員なし | 保存データ不正 | DB不通    // 実装なし → Java 注入
 behavior 会員を照会し整形する = findMember >-> 会員を表示用に整形する
 // 会員を照会し整形する : 会員ID -> 会員表示 | 会員なし | 保存データ不正 | DB不通
 ```

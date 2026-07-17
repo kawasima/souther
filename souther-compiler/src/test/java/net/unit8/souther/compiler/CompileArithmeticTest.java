@@ -21,9 +21,9 @@ class CompileArithmeticTest {
             data Out = Int
 
             // * binds tighter than +, so this is (value * 2) + 10
-            behavior compute = (x: In) -> Out constructs Out
+            behavior compute : (x: In) -> Out constructs Out
 
-            fn compute (x) = Out { value: x.value * 2 + 10 }
+            let compute (x) = Out { value: x.value * 2 + 10 }
             """;
 
     @Test

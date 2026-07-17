@@ -10,12 +10,12 @@ The question is whether to make functions first-class, and if so, whether every 
 
 ## Decision
 
-Functions are first-class values. A lambda `(x) -> e` may be bound with `let`, applied `f(x)`, and returned. Function types `(A) -> B` are written on a helper `fn`'s parameters. A lambda's parameter types are not annotated; they are inferred from how it is applied.
+Functions are first-class values. A lambda `(x) -> e` may be bound with `let`, applied `f(x)`, and returned. Function types `(A) -> B` are written on a helper `let`'s parameters. A lambda's parameter types are not annotated; they are inferred from how it is applied.
 
 How a function is compiled depends on whether it escapes:
 
 - A function that does not escape — it is applied where it is bound, or passed to a combinator — is expanded inline. No runtime object exists.
-- A function that cannot be inlined — one chosen at runtime (`let f = if c then (x) -> ... else (x) -> ...`) or returned as a configured closure (`fn adder (n) = (x) -> x + n`) — compiles to a synthetic class implementing the runtime `Fn` interface. Its free variables are captured into `final` fields; the body compiles into `apply`.
+- A function that cannot be inlined — one chosen at runtime (`let f = if c then (x) -> ... else (x) -> ...`) or returned as a configured closure (`let adder (n) = (x) -> x + n`) — compiles to a synthetic class implementing the runtime `Fn` interface. Its free variables are captured into `final` fields; the body compiles into `apply`.
 
 A function still may not be stored in a `data` field or appear in a behavior's input or output. Those are not closure limits — a function has no external representation, so it cannot cross a decoder or encoder boundary (ADR-0004), and a behavior's output is a domain sum, not a function. This mirrors the spec DSL, which keeps a swappable rule as `data`, not as a function.
 
@@ -29,7 +29,7 @@ Because functions are monomorphic, this does not reintroduce user-defined generi
 
 ## References
 
-- Specification: §12.5 (blocks), §13.1 (fn declaration), §18.4 (combinators)
+- Specification: §12.5 (blocks), §13.1 (let declaration), §18.4 (combinators)
 - ADR-0004 (derived codecs — why a function has no representation)
 - ADR-0010 (no user generics — functions stay monomorphic)
 - ADR-0019 (the `->` arrow for lambdas)

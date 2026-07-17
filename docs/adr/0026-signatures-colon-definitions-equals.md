@@ -1,6 +1,6 @@
 # ADR-0026: Signatures use `:`, definitions use `=`; a function is defined with `let`
 
-Status: Accepted (decided 2026-07-18; not yet implemented)
+Status: Accepted (decided 2026-07-18; implemented)
 
 ## Context
 

@@ -28,10 +28,10 @@ class CompileClosureTest {
             data Order = { v: Int  spring: Bool }
             data Result = { n: Int }
 
-            behavior check = (o: Order) -> Result
+            behavior check : (o: Order) -> Result
                 constructs Result
 
-            fn check (o) = {
+            let check (o) = {
                 let f = if o.spring then (x) -> x + 100 else (x) -> x + 1
                 Result { n: f(o.v) }
             }
@@ -61,10 +61,10 @@ class CompileClosureTest {
             data Order = { v: Int  spring: Bool }
             data Result = { n: Int }
 
-            behavior check = (o: Order) -> Result
+            behavior check : (o: Order) -> Result
                 constructs Result
 
-            fn check (o) = {
+            let check (o) = {
                 let f = if o.spring then (x) -> x + o.v else (x) -> x - o.v
                 Result { n: f(100) }
             }
@@ -87,15 +87,15 @@ class CompileClosureTest {
             data Order = { v: Int }
             data Result = { n: Int }
 
-            behavior check = (o: Order) -> Result
+            behavior check : (o: Order) -> Result
                 constructs Result
 
-            fn check (o) = {
+            let check (o) = {
                 let add5 = adder(5)
                 Result { n: add5(o.v) }
             }
 
-            fn adder (n: Int) = (x) -> x + n
+            let adder (n: Int) = (x) -> x + n
             """;
 
     // a two-parameter closure chosen at runtime: apply passes both args through the Object[]
@@ -105,10 +105,10 @@ class CompileClosureTest {
             data Pair = { a: Int  b: Int  plus: Bool }
             data Out = { v: Int }
 
-            behavior check = (o: Pair) -> Out
+            behavior check : (o: Pair) -> Out
                 constructs Out
 
-            fn check (o) = {
+            let check (o) = {
                 let f = if o.plus then (x, y) -> x + y else (x, y) -> x - y
                 Out { v: f(o.a, o.b) }
             }
@@ -135,10 +135,10 @@ class CompileClosureTest {
             data In = { v: Int  up: Bool }
             data Out = { v: Int }
 
-            behavior check = (o: In) -> Out
+            behavior check : (o: In) -> Out
                 constructs Out
 
-            fn check (o) = {
+            let check (o) = {
                 let f = if o.up then (x) -> Out { v: x + 1 } else (x) -> Out { v: x - 1 }
                 f(o.v)
             }
@@ -169,10 +169,10 @@ class CompileClosureTest {
                 data Out = { v: Int }
                 data Extra = { w: Int }
 
-                behavior check = (o: In) -> Out
+                behavior check : (o: In) -> Out
                     constructs Out
 
-                fn check (o) = {
+                let check (o) = {
                     let f = if o.up then (x) -> Out { v: x + 1 } else (x) -> { let e = Extra { w: x }  Out { v: e.w } }
                     f(o.v)
                 }

@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Expands calls to helper {@code fn}s inline (spec 12.5: a named fn is the same as an inline block).
+ * Expands calls to helper {@code fn}s inline (spec 12.5: a named helper is the same as an inline block).
  *
  * <p>A helper fn is a {@code fn} with no matching behavior — it writes its own parameter types
  * (spec 13.1) and, unlike a behavior fn, is not lowered to a class of its own. Instead every call
@@ -73,7 +73,7 @@ public final class HelperInliner {
                     yield new Ast.Call(call.fn(), args, call.pos());   // builtin or injected behavior
                 }
                 if (args.size() != helper.params().size()) {
-                    throw new CompileException(call.pos(), "helper `fn " + helper.name() + "` takes "
+                    throw new CompileException(call.pos(), "helper `let " + helper.name() + "` takes "
                             + helper.params().size() + " argument(s) but is called with " + args.size());
                 }
                 int k = counter++;
@@ -90,7 +90,7 @@ public final class HelperInliner {
                         // rewritten wherever it is used as a value or applied — f(x) becomes inc(x).
                         if (!(arg instanceof Ast.Var fnName)) {
                             throw new CompileException(arg.pos(), "the function passed to `" + p.name()
-                                    + "` of `fn " + helper.name() + "` must be a named fn");
+                                    + "` of `let " + helper.name() + "` must be a named function");
                         }
                         subst.put(p.name(), fnName.name());
                         fnParams.add(p.name());
@@ -301,7 +301,7 @@ public final class HelperInliner {
 
     private void visit(String root, Ast.FnDef h, Set<String> onPath) {
         if (!onPath.add(h.name())) {
-            throw new CompileException(h.pos(), "helper `fn " + h.name()
+            throw new CompileException(h.pos(), "helper `let " + h.name()
                     + "` is recursive (directly or through other helpers), which is not allowed: "
                     + "a helper is expanded inline, so it must bottom out (spec 13.1)");
         }
