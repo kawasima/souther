@@ -1,0 +1,9 @@
+module souther.map
+
+// Map accessors (ADR-0028). `values` returns `List<'a>`: the checker unifies the argument's
+// `Map<String, 'a>` to learn `'a`, then resolves the result — so a generic intrinsic monomorphises
+// at the call site. `get` stays hard-coded for now: it is overloaded over List and Map, which a
+// single keyed intrinsic does not express.
+let containsKey (m: Map<String, 'a>, key: String) : Bool = intrinsic "map.containsKey"
+let keys (m: Map<String, 'a>) : List<String> = intrinsic "map.keys"
+let values (m: Map<String, 'a>) : List<'a> = intrinsic "map.values"

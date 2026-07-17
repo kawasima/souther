@@ -1449,16 +1449,13 @@ public final class TypeChecker {
                 throw new CompileException(call.pos(), call.fn() + " takes " + intrinsic.params().size()
                         + " argument(s) but is called with " + args.size());
             }
+            Map<String, Type> bindings = new HashMap<>();
             for (int i = 0; i < args.size(); i++) {
-                Type pt = intrinsic.params().get(i);
-                if (pt instanceof Type.Var) {
-                    typeOf(args.get(i), env, data, symbols, reqs);   // a type variable admits any argument
-                } else {
-                    requireType(args.get(i), pt, env, data, symbols, reqs,
-                            "argument " + (i + 1) + " of " + call.fn());
-                }
+                Type argType = typeOf(args.get(i), env, data, symbols, reqs);
+                unify(intrinsic.params().get(i), argType, bindings, symbols, call.pos(),
+                        "argument " + (i + 1) + " of " + call.fn());
             }
-            return intrinsic.result();
+            return substitute(intrinsic.result(), bindings);
         }
         return switch (call.fn()) {
             case "length" -> {
@@ -1516,28 +1513,6 @@ public final class TypeChecker {
                     yield Type.option(mo.value());
                 }
                 throw new CompileException(call.pos(), "get expects a List or Map, got " + first);
-            }
-            case "containsKey" -> {
-                arity(call, 2);
-                if (!(typeOf(args.get(0), env, data, symbols, reqs) instanceof Type.MapOf)) {
-                    throw new CompileException(call.pos(), "containsKey expects a Map");
-                }
-                requireType(args.get(1), Type.STRING, env, data, symbols, reqs, "key of containsKey");
-                yield Type.BOOL;
-            }
-            case "keys" -> {
-                arity(call, 1);
-                if (!(typeOf(args.get(0), env, data, symbols, reqs) instanceof Type.MapOf)) {
-                    throw new CompileException(call.pos(), "keys expects a Map");
-                }
-                yield Type.list(Type.STRING);
-            }
-            case "values" -> {
-                arity(call, 1);
-                if (!(typeOf(args.get(0), env, data, symbols, reqs) instanceof Type.MapOf mo)) {
-                    throw new CompileException(call.pos(), "values expects a Map");
-                }
-                yield Type.list(mo.value());
             }
             case "add", "subtract", "multiply" -> numericOp(call, env, data, symbols, reqs, false);
             case "compare" -> numericOp(call, env, data, symbols, reqs, true);
@@ -1970,6 +1945,56 @@ public final class TypeChecker {
         Set<String> fa = leafArms(from, symbols);
         Set<String> ta = leafArms(to, symbols);
         return !fa.isEmpty() && !ta.isEmpty() && ta.containsAll(fa);
+    }
+
+    /**
+     * Matches an intrinsic's declared parameter type against an actual argument type, binding any
+     * type variables it carries (spec §intrinsics). A variable binds on first sight and every later
+     * occurrence must agree; a composite ({@code List<'a>}, {@code Map<String, 'a>}) recurses into
+     * its element; a concrete parameter just requires the argument to be assignable. This is what
+     * monomorphises a generic intrinsic — {@code values(m: Map<String, 'a>): List<'a>} learns
+     * {@code 'a} from the map so {@link #substitute} can resolve the {@code List<'a>} result.
+     */
+    private static void unify(Type param, Type arg, Map<String, Type> bindings,
+                              Map<String, Ast.Def> symbols, SourcePos pos, String what) {
+        switch (param) {
+            case Type.Var v -> {
+                Type bound = bindings.get(v.name());
+                if (bound == null) {
+                    bindings.put(v.name(), arg);
+                } else if (!assignable(arg, bound, symbols) && !assignable(bound, arg, symbols)) {
+                    throw new CompileException(pos, what + ": expected " + bound + " but got " + arg);
+                }
+            }
+            case Type.ListOf p when arg instanceof Type.ListOf a ->
+                    unify(p.element(), a.element(), bindings, symbols, pos, what);
+            case Type.MapOf p when arg instanceof Type.MapOf a ->
+                    unify(p.value(), a.value(), bindings, symbols, pos, what);
+            case Type.OptionOf p when arg instanceof Type.OptionOf a ->
+                    unify(p.element(), a.element(), bindings, symbols, pos, what);
+            case Type.FnOf p when arg instanceof Type.FnOf a && p.params().size() == a.params().size() -> {
+                for (int i = 0; i < p.params().size(); i++) {
+                    unify(p.params().get(i), a.params().get(i), bindings, symbols, pos, what);
+                }
+                unify(p.result(), a.result(), bindings, symbols, pos, what);
+            }
+            default -> {
+                if (!assignable(arg, param, symbols)) {
+                    throw new CompileException(pos, what + ": expected " + param + " but got " + arg);
+                }
+            }
+        }
+    }
+
+    /** Replaces the type variables bound by {@link #unify} in an intrinsic's result type. */
+    private static Type substitute(Type t, Map<String, Type> bindings) {
+        return switch (t) {
+            case Type.Var v -> bindings.getOrDefault(v.name(), v);
+            case Type.ListOf l -> Type.list(substitute(l.element(), bindings));
+            case Type.MapOf m -> Type.map(substitute(m.value(), bindings));
+            case Type.OptionOf o -> Type.option(substitute(o.element(), bindings));
+            default -> t;
+        };
     }
 
     /** The set of leaf (non-sum) arm names a data-like type covers, flattening nested sums. */

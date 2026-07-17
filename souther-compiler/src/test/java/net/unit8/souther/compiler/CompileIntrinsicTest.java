@@ -54,6 +54,37 @@ class CompileIntrinsicTest {
         assertTrue(e.getMessage().contains("argument"), e.getMessage());
     }
 
+    /**
+     * A generic intrinsic monomorphises at the call site: {@code values(m: Map<String, 'a>):
+     * List<'a>} learns {@code 'a} from the argument, so the result's element type is concrete and
+     * an element read type-checks. If the result stayed {@code List<'a>}, {@code x.n} would not.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void aGenericIntrinsicResolvesItsResultElementType() throws Exception {
+        String src = """
+                module demo
+
+                data Item = { n: Int }
+                data Store = { byName: Map<String, Item> }
+                data Out = { n: Int }
+
+                behavior firstValue : (s: Store) -> Out constructs Out
+
+                let firstValue (s) =
+                    match get(values(s.byName), 0) with
+                        | Some as x -> Out { n: x.n }
+                        | None -> Out { n: 0 }
+                """;
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Decoder d = (Decoder) loader.loadClass("demo.Store").getMethod("decoder").invoke(null);
+        Object s = ((Ok) d.decode(Map.of("byName", Map.of("a", Map.of("n", 42L))), Path.ROOT)).value();
+        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.FirstValue")
+                .getConstructor().newInstance()).apply(s);
+        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
+        assertEquals(42L, ((Map<?, ?>) enc.encode(out)).get("n"), "values(m) is List<Item>, so x.n is an Int");
+    }
+
     /** A user module cannot write `intrinsic`; it is a core privilege. */
     @Test
     void aUserModuleCannotDeclareAnIntrinsic() {

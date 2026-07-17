@@ -30,7 +30,8 @@ import java.util.Map;
 public final class Prelude {
 
     /** The bundled prelude sources, in load order. */
-    private static final List<String> RESOURCES = List.of("/souther/bool.sou", "/souther/string.sou");
+    private static final List<String> RESOURCES =
+            List.of("/souther/bool.sou", "/souther/string.sou", "/souther/map.sou");
 
     /** A shipped primitive: its declared signature and the backend key naming its bytecode. */
     public record IntrinsicSig(String name, List<Type> params, Type result, String key) {

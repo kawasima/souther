@@ -2482,6 +2482,23 @@ public final class Backend {
                     code.invokevirtual(CD_String, "concat", MethodTypeDesc.of(CD_String, CD_String));
                     return Type.STRING;
                 }
+                case "map.containsKey" -> {
+                    expr(call.args().get(0));
+                    expr(call.args().get(1));
+                    code.invokestatic(CD_Maps, "containsKey",
+                            MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_Map, CD_String));
+                    return Type.BOOL;
+                }
+                case "map.keys" -> {
+                    expr(call.args().get(0));
+                    code.invokestatic(CD_Maps, "keys", MethodTypeDesc.of(CD_List, CD_Map));
+                    return Type.list(Type.STRING);
+                }
+                case "map.values" -> {
+                    Type mt = expr(call.args().get(0));
+                    code.invokestatic(CD_Maps, "values", MethodTypeDesc.of(CD_List, CD_Map));
+                    return Type.list(((Type.MapOf) mt).value());
+                }
                 default -> throw new CompileException(call.pos(), "unknown intrinsic `" + key + "`");
             }
         }
@@ -2516,23 +2533,6 @@ public final class Backend {
                     code.invokestatic(CD_Lists, "get",
                             MethodTypeDesc.of(CD_Option, CD_List, ConstantDescs.CD_long));
                     return Type.option(((Type.ListOf) ct).element());
-                }
-                case "containsKey" -> {
-                    expr(call.args().get(0));
-                    expr(call.args().get(1));
-                    code.invokestatic(CD_Maps, "containsKey",
-                            MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_Map, CD_String));
-                    return Type.BOOL;
-                }
-                case "keys" -> {
-                    expr(call.args().get(0));
-                    code.invokestatic(CD_Maps, "keys", MethodTypeDesc.of(CD_List, CD_Map));
-                    return Type.list(Type.STRING);
-                }
-                case "values" -> {
-                    Type mt = expr(call.args().get(0));
-                    code.invokestatic(CD_Maps, "values", MethodTypeDesc.of(CD_List, CD_Map));
-                    return Type.list(((Type.MapOf) mt).value());
                 }
                 case "add", "subtract", "multiply" -> {
                     Type t = expr(call.args().get(0));

@@ -274,7 +274,7 @@ public interface Ast {
     // --- expressions ---
 
     sealed interface Expr extends Ast
-            permits IntLit, DecimalLit, StringLit, BoolLit, Var, FieldAccess, Call, Binary, Not, Neg,
+            permits IntLit, DecimalLit, StringLit, BoolLit, Var, FieldAccess, Call, Binary, Neg,
                     NewData, Match, If, ListLit, ListComp, LetIn, Block {}
 
     /**
