@@ -93,6 +93,15 @@ public final class Lexer {
         while (!atEnd() && Character.isDigit(peek())) {
             sb.append(advance());
         }
+        // a `.` followed by a digit makes it a Decimal literal (spec 7.1); a `.` followed by
+        // anything else is a field access on an Int, left for the parser.
+        if (!atEnd() && peek() == '.' && Character.isDigit(peekNext())) {
+            sb.append(advance());                       // the dot
+            while (!atEnd() && Character.isDigit(peek())) {
+                sb.append(advance());
+            }
+            return new Token(TokenType.DECIMAL_LIT, sb.toString(), start);
+        }
         return new Token(TokenType.INT_LIT, sb.toString(), start);
     }
 
@@ -199,6 +208,10 @@ public final class Lexer {
 
     private char peek() {
         return src.charAt(pos);
+    }
+
+    private char peekNext() {
+        return pos + 1 < src.length() ? src.charAt(pos + 1) : '\0';
     }
 
     private char advance() {

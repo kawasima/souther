@@ -241,8 +241,8 @@ public interface Ast {
     // --- expressions ---
 
     sealed interface Expr extends Ast
-            permits IntLit, StringLit, BoolLit, Var, FieldAccess, Call, Binary, Not, NewData, Match, If,
-                    ListLit, ListComp, LetIn, Block {}
+            permits IntLit, DecimalLit, StringLit, BoolLit, Var, FieldAccess, Call, Binary, Not, Neg,
+                    NewData, Match, If, ListLit, ListComp, LetIn, Block {}
 
     /**
      * {@code x => expr}, or {@code (acc, x) => expr} — a block (spec 12.5).
@@ -280,6 +280,11 @@ public interface Ast {
             implements Expr {}
 
     record IntLit(long value, SourcePos pos) implements Expr {}
+
+    record DecimalLit(java.math.BigDecimal value, SourcePos pos) implements Expr {}
+
+    /** Unary minus {@code -operand} on an Int or Decimal (spec 18.1). */
+    record Neg(Expr operand, SourcePos pos) implements Expr {}
 
     record StringLit(String value, SourcePos pos) implements Expr {}
 

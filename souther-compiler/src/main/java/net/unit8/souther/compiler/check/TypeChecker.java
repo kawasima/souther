@@ -673,6 +673,7 @@ public final class TypeChecker {
                 collectConstructs(bin.right(), out, symbols, bound);
             }
             case Ast.Not not -> collectConstructs(not.operand(), out, symbols, bound);
+            case Ast.Neg neg -> collectConstructs(neg.operand(), out, symbols, bound);
             case Ast.Match m -> {
                 collectConstructs(m.scrutinee(), out, symbols, bound);
                 for (Ast.Case c : m.cases()) {
@@ -703,6 +704,7 @@ public final class TypeChecker {
             case Ast.Var v when !bound.contains(v.name())
                     && symbols.get(v.name()) instanceof Ast.UnitData -> out.add(v.name());
             case Ast.IntLit ignored -> { }
+            case Ast.DecimalLit ignored -> { }
             case Ast.StringLit ignored -> { }
             case Ast.BoolLit ignored -> { }
             case Ast.Var ignored -> { }
@@ -1051,8 +1053,16 @@ public final class TypeChecker {
                               Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
         return switch (e) {
             case Ast.IntLit ignored -> Type.INT;
+            case Ast.DecimalLit ignored -> Type.DECIMAL;
             case Ast.StringLit ignored -> Type.STRING;
             case Ast.BoolLit ignored -> Type.BOOL;
+            case Ast.Neg neg -> {
+                Type t = typeOf(neg.operand(), env, data, symbols, reqs);
+                if (t != Type.INT && t != Type.DECIMAL) {
+                    throw new CompileException(neg.pos(), "unary minus needs an Int or Decimal, got " + t);
+                }
+                yield t;
+            }
             case Ast.LetIn li -> {
                 // the binding is visible only inside the body, so a sibling branch cannot see it
                 Map<String, Type> inner = new HashMap<>(env);

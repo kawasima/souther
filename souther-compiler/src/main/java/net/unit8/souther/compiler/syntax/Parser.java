@@ -491,6 +491,10 @@ public final class Parser {
             Token op = advance();
             return new Ast.Not(parseUnary(), op.pos());
         }
+        if (check(TokenType.MINUS)) {
+            Token op = advance();
+            return new Ast.Neg(parseUnary(), op.pos());
+        }
         return parsePrimary();
     }
 
@@ -506,6 +510,10 @@ public final class Parser {
             case INT_LIT -> {
                 advance();
                 return new Ast.IntLit(Long.parseLong(t.text()), t.pos());
+            }
+            case DECIMAL_LIT -> {
+                advance();
+                return new Ast.DecimalLit(new java.math.BigDecimal(t.text()), t.pos());
             }
             case STRING_LIT -> {
                 advance();

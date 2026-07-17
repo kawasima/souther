@@ -1750,6 +1750,23 @@ public final class Backend {
                     code.loadConstant(lit.value());
                     yield Type.INT;
                 }
+                case Ast.DecimalLit lit -> {
+                    code.new_(CD_BigDecimal);
+                    code.dup();
+                    code.loadConstant(lit.value().toString());
+                    code.invokespecial(CD_BigDecimal, "<init>",
+                            MethodTypeDesc.of(ConstantDescs.CD_void, CD_String));
+                    yield Type.DECIMAL;
+                }
+                case Ast.Neg neg -> {
+                    Type t = expr(neg.operand());
+                    if (t == Type.DECIMAL) {
+                        code.invokevirtual(CD_BigDecimal, "negate", MethodTypeDesc.of(CD_BigDecimal));
+                    } else {
+                        code.lneg();               // Int is carried as a long
+                    }
+                    yield t;
+                }
                 case Ast.StringLit lit -> {
                     code.loadConstant(lit.value());
                     yield Type.STRING;

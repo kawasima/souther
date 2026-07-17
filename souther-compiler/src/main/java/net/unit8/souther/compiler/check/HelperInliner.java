@@ -94,6 +94,7 @@ public final class HelperInliner {
             case Ast.FieldAccess fa -> new Ast.FieldAccess(inline(fa.target()), fa.field(), fa.pos());
             case Ast.Binary bin -> new Ast.Binary(bin.op(), inline(bin.left()), inline(bin.right()), bin.pos());
             case Ast.Not not -> new Ast.Not(inline(not.operand()), not.pos());
+            case Ast.Neg neg -> new Ast.Neg(inline(neg.operand()), neg.pos());
             case Ast.NewData nd -> new Ast.NewData(nd.typeName(), inlineInits(nd.inits()), nd.spreads(), nd.pos());
             case Ast.Match m -> {
                 List<Ast.Case> cases = new ArrayList<>();
@@ -108,6 +109,7 @@ public final class HelperInliner {
             case Ast.ListComp comp -> new Ast.ListComp(inline(comp.element()), inlineList(comp.guards()), comp.pos());
             case Ast.Block block -> new Ast.Block(block.params(), inline(block.body()), block.pos());
             case Ast.IntLit ignored -> e;
+            case Ast.DecimalLit ignored -> e;
             case Ast.StringLit ignored -> e;
             case Ast.BoolLit ignored -> e;
             case Ast.Var ignored -> e;
@@ -176,6 +178,7 @@ public final class HelperInliner {
             case Ast.Call call -> new Ast.Call(call.fn(), renameList(call.args(), subst), call.pos());
             case Ast.Binary bin -> new Ast.Binary(bin.op(), rename(bin.left(), subst), rename(bin.right(), subst), bin.pos());
             case Ast.Not not -> new Ast.Not(rename(not.operand(), subst), not.pos());
+            case Ast.Neg neg -> new Ast.Neg(rename(neg.operand(), subst), neg.pos());
             case Ast.NewData nd -> {
                 List<Ast.FieldInit> inits = new ArrayList<>();
                 for (Ast.FieldInit i : nd.inits()) {
@@ -211,6 +214,7 @@ public final class HelperInliner {
                 yield new Ast.Block(block.params(), rename(block.body(), inner), block.pos());
             }
             case Ast.IntLit ignored -> e;
+            case Ast.DecimalLit ignored -> e;
             case Ast.StringLit ignored -> e;
             case Ast.BoolLit ignored -> e;
         };
@@ -274,6 +278,7 @@ public final class HelperInliner {
                 f.accept(bin.right());
             }
             case Ast.Not not -> f.accept(not.operand());
+            case Ast.Neg neg -> f.accept(neg.operand());
             case Ast.Match m -> {
                 f.accept(m.scrutinee());
                 m.cases().forEach(c -> f.accept(c.body()));
@@ -294,6 +299,7 @@ public final class HelperInliner {
             }
             case Ast.Block block -> f.accept(block.body());
             case Ast.IntLit ignored -> { }
+            case Ast.DecimalLit ignored -> { }
             case Ast.StringLit ignored -> { }
             case Ast.BoolLit ignored -> { }
             case Ast.Var ignored -> { }
