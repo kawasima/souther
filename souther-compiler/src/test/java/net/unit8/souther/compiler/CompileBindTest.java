@@ -54,9 +54,9 @@ class CompileBindTest {
             import net.unit8.raoh.decode.Decoder;
             import java.util.Map;
             public final class FindMemberImpl extends findMember {
-                public Object apply(Object in) {
+                public Member apply(Id in) {
                     Decoder d = Member.decoder();
-                    return ((Ok) d.decode(Map.of("id", "m-1"), Path.ROOT)).value();
+                    return (Member) ((Ok) d.decode(Map.of("id", "m-1"), Path.ROOT)).value();
                 }
             }
             """;

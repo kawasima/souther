@@ -46,27 +46,27 @@ class CompilePipeDepsTest {
             behavior handle = fetch >> enrich
             """;
 
-    private static String impl(String cls, String param, String midValue) {
+    private static String impl(String cls, String param, String inType, String midValue) {
         return """
                 package demo;
                 import net.unit8.raoh.Ok;
                 import net.unit8.raoh.Path;
                 import net.unit8.raoh.decode.Decoder;
                 public final class %s extends %s {
-                    public Object apply(Object in) {
+                    public Mid apply(%s in) {
                         Decoder d = Mid.decoder();
-                        return ((Ok) d.decode("%s", Path.ROOT)).value();
+                        return (Mid) ((Ok) d.decode("%s", Path.ROOT)).value();
                     }
                 }
-                """.formatted(cls, param, midValue);
+                """.formatted(cls, param, inType, midValue);
     }
 
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
     void pipelineCollectsEveryStagesRequirements() throws Exception {
         Map<String, byte[]> classes = new HashMap<>(Compiler.compile(MODULE));
-        classes.put("demo.FetchImpl", compileSubclass(classes, "demo.FetchImpl", impl("FetchImpl", "fetch", "m")));
-        classes.put("demo.TagImpl", compileSubclass(classes, "demo.TagImpl", impl("TagImpl", "tag", "T")));
+        classes.put("demo.FetchImpl", compileSubclass(classes, "demo.FetchImpl", impl("FetchImpl", "fetch", "In", "m")));
+        classes.put("demo.TagImpl", compileSubclass(classes, "demo.TagImpl", impl("TagImpl", "tag", "Mid", "T")));
 
         BytesClassLoader loader = new BytesClassLoader(classes, getClass().getClassLoader());
 
@@ -107,8 +107,8 @@ class CompilePipeDepsTest {
                 behavior outer = handle >> relabel
                 """;
         Map<String, byte[]> classes = new HashMap<>(Compiler.compile(src));
-        classes.put("demo.FetchImpl", compileSubclass(classes, "demo.FetchImpl", impl("FetchImpl", "fetch", "m")));
-        classes.put("demo.TagImpl", compileSubclass(classes, "demo.TagImpl", impl("TagImpl", "tag", "T")));
+        classes.put("demo.FetchImpl", compileSubclass(classes, "demo.FetchImpl", impl("FetchImpl", "fetch", "In", "m")));
+        classes.put("demo.TagImpl", compileSubclass(classes, "demo.TagImpl", impl("TagImpl", "tag", "Mid", "T")));
 
         BytesClassLoader loader = new BytesClassLoader(classes, getClass().getClassLoader());
         Class<?> outerClass = loader.loadClass("demo.outer");

@@ -8,6 +8,7 @@ import net.unit8.souther.compiler.check.TypeChecker;
 
 import java.lang.classfile.ClassBuilder;
 import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassSignature;
 import java.lang.classfile.ClassHierarchyResolver;
 import java.lang.classfile.CodeBuilder;
 import java.lang.classfile.Label;
@@ -292,7 +293,12 @@ public final class Backend {
                         unitArms.add(t.name());
                     }
                 }
-                out.put(module.name() + "." + spec.name(), b.generateRequiredBase(spec.name(), unitArms));
+                ClassDesc inputRef = spec.params().size() == 1
+                        ? b.refTypeOrNull(b.successType(spec.params().get(0).type()), spec.name())
+                        : null;
+                ClassDesc outputRef = b.refTypeOrNull(b.successType(spec.ret()), spec.name());
+                out.put(module.name() + "." + spec.name(),
+                        b.generateRequiredBase(spec.name(), unitArms, inputRef, outputRef));
             }
         }
         Map<String, TypeChecker.Sig> sigs = TypeChecker.signatures(module, b.symbols);
@@ -367,11 +373,25 @@ public final class Backend {
      * implementation to mint those arms (spec 2.1). The data constructors stay non-public, so
      * a subclass can build exactly this behavior's declared arms and nothing else, from any
      * package (no in-package placement required).
+     *
+     * <p>When both the input and output map to a concrete reference type, the base carries a
+     * generic {@code Behavior<In, Out>} signature (spec 19.8, 24) — {@code Out} is the {@code <名>結果}
+     * interface for an anonymous union output — so a Java author writes the real return type rather
+     * than {@code Object}. If either side is a list/option/map (no single reference class), the
+     * signature is omitted and the raw interface stands.
      */
-    private byte[] generateRequiredBase(String name, List<String> unitArms) {
+    private byte[] generateRequiredBase(String name, List<String> unitArms,
+                                        ClassDesc inputRef, ClassDesc outputRef) {
         ClassDesc cdR = cd(name);
         return build(cdR, cb -> {
             cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_ABSTRACT | ClassFile.ACC_SUPER);
+            if (inputRef != null && outputRef != null) {
+                String beh = CD_Behavior.descriptorString();
+                beh = beh.substring(0, beh.length() - 1); // drop trailing ';' to insert type args
+                String sig = CD_Object.descriptorString() + beh + "<"
+                        + inputRef.descriptorString() + outputRef.descriptorString() + ">;";
+                cb.with(SignatureAttribute.of(ClassSignature.parseFrom(sig)));
+            }
             cb.withInterfaceSymbols(CD_Behavior);
             // protected no-arg ctor so subclasses in any package can call super()
             cb.withMethodBody("<init>", MTD_void, ClassFile.ACC_PROTECTED, code -> {
@@ -429,6 +449,33 @@ public final class Backend {
             cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_INTERFACE | ClassFile.ACC_ABSTRACT);
             cb.with(PermittedSubclassesAttribute.ofSymbols(armCds));
         });
+    }
+
+    /**
+     * The single reference class a behavior's input or output success type maps to, for a generic
+     * {@code Behavior<In, Out>} signature: the {@code <名>結果} interface for an anonymous union, the
+     * named data/sum for a single arm, the boxed class for a primitive. Returns {@code null} for a
+     * list/option/map, which has no single reference class to name here.
+     */
+    private ClassDesc refTypeOrNull(Type t, String behaviorName) {
+        if (t instanceof Type.Union) {
+            return cd(behaviorName + "結果");
+        }
+        if (t instanceof Type.Ref r) {
+            return cd(r.name());
+        }
+        return boxedPrim(t);
+    }
+
+    /** The boxed JVM class for a primitive success type, or {@code null} for a non-primitive. */
+    private static ClassDesc boxedPrim(Type t) {
+        if (t == Type.INT) return CD_Long;
+        if (t == Type.BOOL) return CD_Boolean;
+        if (t == Type.DECIMAL) return CD_BigDecimal;
+        if (t == Type.STRING) return CD_String;
+        if (t == Type.DATE) return CD_LocalDate;
+        if (t == Type.DATETIME) return CD_LocalDateTime;
+        return null;
     }
 
     private Type resolveType(Ast.TypeRef ref) {

@@ -5,6 +5,7 @@
 package app.member;
 
 import example.member.findMember;
+import example.member.findMember結果;
 import example.member.会員;
 import example.member.会員ID;
 
@@ -41,8 +42,8 @@ public final class JooqFindMember extends findMember {
     }
 
     @Override
-    public Object apply(Object input) {
-        会員ID id = (会員ID) input;
+    public findMember結果 apply(会員ID id) {
+        // findMember結果 は生成された sealed interface（spec 19.8）で、宣言した4アームを permits する。
         // 値を data の外へ取り出すのは encoder を通す（spec 8.5）。会員ID は newtype なので
         // encoder() は Encoder<会員ID, String>、encode は裸の String を返す（キャスト不要）。
         String idStr = 会員ID.encoder().encode(id);

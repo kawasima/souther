@@ -1,7 +1,10 @@
 package net.unit8.souther.compiler;
 
+import net.unit8.souther.runtime.Behavior;
+
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.ParameterizedType;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -46,5 +49,32 @@ class CompileBehaviorResultTest {
         Class<?> result = loader.loadClass("demo.classify結果");
         assertTrue(result.isAssignableFrom(loader.loadClass("demo.Cheap")));
         assertTrue(result.isAssignableFrom(loader.loadClass("demo.Pricey")));
+    }
+
+    private static final String INJECTED = """
+            module demo
+            exposing { Member }
+
+            data Id = String
+            data Member = { id: Id }
+            data 会員なし
+
+            behavior findMember = (id: Id) -> Member | 会員なし
+                constructs 会員なし
+            """;
+
+    /** Spec 19.8/24: the abstract base a Java implementation extends declares the result interface
+     *  as its {@code Behavior} return type, so the author writes {@code findMember結果 apply(Id)}. */
+    @Test
+    void injectedBaseDeclaresTheResultInterfaceAsItsGenericReturnType() throws Exception {
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(INJECTED), getClass().getClassLoader());
+        Class<?> base = loader.loadClass("demo.findMember");
+        java.lang.reflect.Type[] ifaces = base.getGenericInterfaces();
+        assertEquals(1, ifaces.length);
+        ParameterizedType pt = (ParameterizedType) ifaces[0];
+        assertEquals(Behavior.class, pt.getRawType());
+        java.lang.reflect.Type[] args = pt.getActualTypeArguments();
+        assertEquals("demo.Id", ((Class<?>) args[0]).getName());
+        assertEquals("demo.findMember結果", ((Class<?>) args[1]).getName());
     }
 }
