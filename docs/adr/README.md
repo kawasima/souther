@@ -33,9 +33,10 @@ specification is in Japanese.
 | [0016](0016-requirements-as-arguments-not-effects.md) | The requirement set is injected constructor arguments, not an effect type | §12.5, §12.6, §13.6, §29 |
 | [0017](0017-declare-dont-infer-permissions-and-requirements.md) | Declare, don't infer: requirements and composed output; construction permission is optional | §12.3, §12.6, §14.5 |
 | [0018](0018-no-dedicated-update-syntax.md) | No dedicated update syntax; use a named record literal with spread | §12.4 |
-| [0019](0019-sml-style-named-vs-anonymous-binding.md) | `=` binds named definitions, `=>` introduces anonymous blocks (SML-style) | §5, §13.1 |
+| [0019](0019-one-arrow-for-types-and-terms.md) | One arrow `->` for types and terms (lambdas, match); `=` binds names | §5, §13.1, §16.3 |
 | [0020](0020-require-desugars-to-if.md) | `require ... else` is sugar for `if` | §16.4 |
 | [0021](0021-no-separate-ir-direct-bytecode.md) | No separate IR; the backend emits bytecode directly from the AST | §20, §21 |
 | [0022](0022-pin-classfile-version-to-java-21.md) | Pin the generated class-file version to Java 21 | §19.1 |
 | [0023](0023-capitalize-behavior-class-names.md) | Capitalize generated behavior class names; collisions with data are errors | §19.5 |
 | [0024](0024-exposed-composition-output-in-exposing.md) | An exposed composition declares its output signature in the exposing list | §4, §14.5, §19.8 |
+| [0025](0025-first-class-functions.md) | First-class functions: inline when they can't escape, close over the runtime `Fn` when they must | §12.5, §13.1, §18.4 |
