@@ -55,10 +55,15 @@ public final class HelperInliner {
         return helpers;
     }
 
+    /** The list combinators that take a block, and how many parameters that block has (spec 18.4). */
+    private static final Map<String, Integer> BLOCK_ARITY =
+            Map.of("map", 1, "filter", 1, "all", 1, "any", 1, "fold", 2);
+
     /** Rewrites every helper call in {@code e} to its inlined body. */
     public Ast.Expr inline(Ast.Expr e) {
         return switch (e) {
-            case Ast.Call call -> {
+            case Ast.Call rawCall -> {
+                Ast.Call call = desugarNamedBlock(rawCall);
                 List<Ast.Expr> args = new ArrayList<>();
                 for (Ast.Expr a : call.args()) {
                     args.add(inline(a));
@@ -123,6 +128,40 @@ public final class HelperInliner {
             out.add(new Ast.FieldInit(i.name(), inline(i.value()), i.pos()));
         }
         return out;
+    }
+
+    /**
+     * A helper fn passed to a list combinator by name is sugar for a block that wraps a call:
+     * {@code all(xs, positive)} becomes {@code all(xs, $b0 => positive($b0))} (spec 12.5, "名前で
+     * 直接渡す。同じこと"). The generated block has one parameter per helper parameter, so a later
+     * arity check against the combinator (e.g. {@code fold} wants two) still applies. The block is
+     * then expanded inline like any other helper call.
+     */
+    private Ast.Call desugarNamedBlock(Ast.Call call) {
+        Integer arity = BLOCK_ARITY.get(call.fn());
+        if (arity == null) {
+            return call;
+        }
+        int idx = call.args().size() - 1;   // the block is the last argument of every combinator
+        if (idx < 0 || !(call.args().get(idx) instanceof Ast.Var v)) {
+            return call;
+        }
+        Ast.FnDef helper = helpers.get(v.name());
+        if (helper == null) {
+            return call;   // a bare name that is not a helper is left for the type checker to report
+        }
+        int k = counter++;
+        List<String> params = new ArrayList<>();
+        List<Ast.Expr> callArgs = new ArrayList<>();
+        for (int i = 0; i < helper.params().size(); i++) {
+            String p = "$b" + k + "_" + i;
+            params.add(p);
+            callArgs.add(new Ast.Var(p, v.pos()));
+        }
+        Ast.Block block = new Ast.Block(params, new Ast.Call(v.name(), callArgs, v.pos()), v.pos());
+        List<Ast.Expr> args = new ArrayList<>(call.args());
+        args.set(idx, block);
+        return new Ast.Call(call.fn(), args, call.pos());
     }
 
     /**
