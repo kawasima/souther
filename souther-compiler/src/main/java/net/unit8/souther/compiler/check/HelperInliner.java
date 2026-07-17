@@ -180,7 +180,7 @@ public final class HelperInliner {
 
     /**
      * A helper fn passed to a list combinator by name is sugar for a block that wraps a call:
-     * {@code all(xs, positive)} becomes {@code all(xs, $b0 => positive($b0))} (spec 12.5, "名前で
+     * {@code all(xs, positive)} becomes {@code all(xs, $b0 -> positive($b0))} (spec 12.5, "名前で
      * 直接渡す。同じこと"). The generated block has one parameter per helper parameter, so a later
      * arity check against the combinator (e.g. {@code fold} wants two) still applies. The block is
      * then expanded inline like any other helper call.

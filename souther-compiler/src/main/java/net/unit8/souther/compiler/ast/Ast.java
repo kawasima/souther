@@ -132,7 +132,7 @@ public interface Ast {
                    Optional<SumEncoder> encoder,
                    SourcePos pos) implements Def {}
 
-    /** {@code encoder discriminate on "key" { Arm => "tag" ... }} — the inverse of discriminate. */
+    /** {@code encoder discriminate on "key" { Arm -> "tag" ... }} — the inverse of discriminate. */
     record SumEncoder(String key, List<EncVariant> variants, SourcePos pos) implements Ast {}
 
     record EncVariant(String armType, String tag, SourcePos pos) implements Ast {}
@@ -140,7 +140,7 @@ public interface Ast {
     /** A unit data definition {@code data U} with no fields. */
     record UnitData(String name, SourcePos pos) implements Def {}
 
-    /** {@code decoder from Object discriminate on "key" { "tag" => Arm.decoder ... }} */
+    /** {@code decoder from Object discriminate on "key" { "tag" -> Arm.decoder ... }} */
     record Discriminate(String key, List<Variant> variants, SourcePos pos) implements Ast {}
 
     record Variant(String tag, String armType, SourcePos pos) implements Ast {}
@@ -265,7 +265,7 @@ public interface Ast {
                     NewData, Match, If, ListLit, ListComp, LetIn, Block {}
 
     /**
-     * {@code x => expr}, or {@code (acc, x) => expr} — a block (spec 12.5).
+     * {@code x -> expr}, or {@code (acc, x) -> expr} — a block (spec 12.5).
      *
      * <p>Second-class: it may only be an argument, never a value that is returned, stored in a
      * field, or bound by {@code let}. The parser only accepts one in an argument position, and
@@ -290,11 +290,11 @@ public interface Ast {
     /** {@code if cond then a else b} — both branches must have the same type (spec 16.2). */
     record If(Expr cond, Expr then, Expr els, SourcePos pos) implements Expr {}
 
-    /** {@code match scrutinee { case Arm as x => body ... }} over a sum type. */
+    /** {@code match scrutinee { case Arm as x -> body ... }} over a sum type. */
     record Match(Expr scrutinee, List<Case> cases, SourcePos pos) implements Expr {}
 
     /**
-     * One {@code match} arm: {@code case A | B ... [as x] => body} (spec 16.3). {@code armTypes}
+     * One {@code match} arm: {@code case A | B ... [as x] -> body} (spec 16.3). {@code armTypes}
      * holds one arm name, or several joined by {@code |} (an or-pattern, spec 16.3). With one arm,
      * {@code x} binds that arm's type; with several, it binds the scrutinee's sum type, since no
      * single arm type fits all alternatives.

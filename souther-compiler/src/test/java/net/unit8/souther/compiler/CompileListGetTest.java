@@ -28,8 +28,8 @@ class CompileListGetTest {
 
             fn firstValue (b) =
                 match get(b.items, 0) {
-                    case Some as x => Label { value: x.value }
-                    case None => Label { value: "none" }
+                    case Some as x -> Label { value: x.value }
+                    case None -> Label { value: "none" }
                 }
             """;
 

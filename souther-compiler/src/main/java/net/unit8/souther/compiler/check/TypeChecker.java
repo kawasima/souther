@@ -1677,7 +1677,7 @@ public final class TypeChecker {
                 return fn.result();
             }
             throw new CompileException(arg.pos(),
-                    call.fn() + " expects a block, e.g. `" + call.fn() + "(xs, x => ...)` (spec 12.5)");
+                    call.fn() + " expects a block, e.g. `" + call.fn() + "(xs, x -> ...)` (spec 12.5)");
         }
         if (block.params().size() != paramTypes.size()) {
             throw new CompileException(block.pos(),

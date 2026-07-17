@@ -21,8 +21,8 @@ class CompileUnionParamRejectTest {
                 data Done = Int
                 behavior finish = (app: Sub | Pre) -> Done constructs Done
                 fn finish (app) = match app {
-                    case Sub as s => Done { value: s.value }
-                    case Pre as p => Done { value: p.value }
+                    case Sub as s -> Done { value: s.value }
+                    case Pre as p -> Done { value: p.value }
                 }
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
@@ -39,8 +39,8 @@ class CompileUnionParamRejectTest {
                 data Done = Int
                 behavior finish = (app: SubPre) -> Done constructs Done
                 fn finish (app) = match app {
-                    case Sub as s => Done { value: s.value }
-                    case Pre as p => Done { value: p.value }
+                    case Sub as s -> Done { value: s.value }
+                    case Pre as p -> Done { value: p.value }
                 }
                 """;
         assertTrue(Compiler.compile(src).containsKey("demo.Finish"),

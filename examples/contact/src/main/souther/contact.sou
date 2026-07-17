@@ -13,6 +13,6 @@ behavior 連絡先の値 = (c: Contact) -> Label constructs Label
 
 fn 連絡先の値 (c) =
     match c {
-        case EmailContact as e => Label { value: e.email }
-        case PhoneContact as p => Label { value: p.phone }
+        case EmailContact as e -> Label { value: e.email }
+        case PhoneContact as p -> Label { value: p.phone }
     }

@@ -30,8 +30,8 @@ class CompileMatchTest {
 
             fn contactValue (c) =
                 match c {
-                    case EmailContact as e => Label { value: e.email }
-                    case PhoneContact as p => Label { value: p.phone }
+                    case EmailContact as e -> Label { value: e.email }
+                    case PhoneContact as p -> Label { value: p.phone }
                 }
             """;
 
@@ -78,7 +78,7 @@ class CompileMatchTest {
 
                 fn pick (v) =
                     match v {
-                        case A as a => Label { value: a.x }
+                        case A as a -> Label { value: a.x }
                     }
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));

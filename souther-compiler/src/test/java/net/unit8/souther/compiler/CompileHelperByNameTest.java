@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * A named helper fn may be passed to a list combinator by name: {@code all(xs, positive)} is the
- * same as {@code all(xs, x => positive(x))} (spec 12.5, lines 918-921). The bare name is desugared
+ * same as {@code all(xs, x -> positive(x))} (spec 12.5, lines 918-921). The bare name is desugared
  * to a block wrapping the call, which is then expanded inline like any other helper call.
  */
 class CompileHelperByNameTest {

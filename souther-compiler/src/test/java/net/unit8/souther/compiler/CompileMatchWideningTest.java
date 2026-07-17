@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * A {@code match} whose arms yield different data types widens to the union of those types, the
  * same way an {@code if} does (spec 16.2, 16.3). Before, match required every branch to have the
- * identical type; now {@code case A => OutA} and {@code case B => OutB} give {@code OutA | OutB}.
+ * identical type; now {@code case A -> OutA} and {@code case B -> OutB} give {@code OutA | OutB}.
  */
 class CompileMatchWideningTest {
 
@@ -34,8 +34,8 @@ class CompileMatchWideningTest {
             behavior pick = (x: Both) -> OutA | OutB constructs OutA, OutB
             fn pick (x) =
                 match x {
-                    case A as a => OutA { value: a.v }
-                    case B as b => OutB { value: b.v }
+                    case A as a -> OutA { value: a.v }
+                    case B as b -> OutB { value: b.v }
                 }
             """;
 

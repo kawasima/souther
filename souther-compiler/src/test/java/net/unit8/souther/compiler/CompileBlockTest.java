@@ -29,11 +29,11 @@ class CompileBlockTest {
             behavior 全部正か   = (xs: List<Int>) -> Bool
             behavior どれか正か = (xs: List<Int>) -> Bool
 
-            fn 倍にする   (xs) = map(xs, x => x * 2)
-            fn 正だけ     (xs) = filter(xs, x => x > 0)
-            fn 合計       (xs) = fold(xs, 0, (acc, x) => acc + x)
-            fn 全部正か   (xs) = all(xs, x => x > 0)
-            fn どれか正か (xs) = any(xs, x => x > 0)
+            fn 倍にする   (xs) = map(xs, x -> x * 2)
+            fn 正だけ     (xs) = filter(xs, x -> x > 0)
+            fn 合計       (xs) = fold(xs, 0, (acc, x) -> acc + x)
+            fn 全部正か   (xs) = all(xs, x -> x > 0)
+            fn どれか正か (xs) = any(xs, x -> x > 0)
             """;
 
     @SuppressWarnings("unchecked")
@@ -74,7 +74,7 @@ class CompileBlockTest {
                 behavior 明細を検証する = (xs: List<未検証明細>) -> List<検証済み明細>
                     constructs 検証済み明細
 
-                fn 明細を検証する (xs) = map(xs, x => 検証済み明細 { コード: x.コード })
+                fn 明細を検証する (xs) = map(xs, x -> 検証済み明細 { コード: x.コード })
                 """;
         assertTrue(Compiler.compile(src).containsKey("demo.明細を検証する"));
     }
@@ -90,7 +90,7 @@ class CompileBlockTest {
                 data 補助
                 data 明細 = 検証済み明細 | 補助
                 behavior 明細を検証する = (xs: List<未検証明細>) -> List<明細> constructs 補助
-                fn 明細を検証する (xs) = map(xs, x => 検証済み明細 { コード: x.コード }) ++ [補助 | length(xs) > 0]
+                fn 明細を検証する (xs) = map(xs, x -> 検証済み明細 { コード: x.コード }) ++ [補助 | length(xs) > 0]
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1002", e.code());
@@ -105,7 +105,7 @@ class CompileBlockTest {
                 data Nm = { v: String }
                 behavior 名前を引く = (id: Id) -> Nm
                 behavior 全部引く = (xs: List<Id>) -> List<Nm> requires 名前を引く
-                fn 全部引く (xs, 名前を引く) = map(xs, x => 名前を引く(x))
+                fn 全部引く (xs, 名前を引く) = map(xs, x -> 名前を引く(x))
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
         Class<?> c = loader.loadClass("demo.全部引く");
@@ -128,7 +128,7 @@ class CompileBlockTest {
         String src = """
                 module demo
                 behavior f = (xs: List<Int>) -> List<Int>
-                fn f (xs) = filter(xs, x => x * 2)
+                fn f (xs) = filter(xs, x -> x * 2)
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertTrue(e.getMessage().contains("Bool"), e.getMessage());

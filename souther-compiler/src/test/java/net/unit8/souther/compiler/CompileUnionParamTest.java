@@ -32,8 +32,8 @@ class CompileUnionParamTest {
 
             fn finish (app) =
                 match app {
-                    case Sub as s => Done { value: s.value }
-                    case Pre as p => Done { value: p.value }
+                    case Sub as s -> Done { value: s.value }
+                    case Pre as p -> Done { value: p.value }
                 }
             """;
 

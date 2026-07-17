@@ -148,7 +148,6 @@ public final class Lexer {
                 return new Token(TokenType.DOT, ".", start);
             case '=':
                 if (match('=')) return new Token(TokenType.EQ, "==", start);
-                if (match('>')) return new Token(TokenType.FATARROW, "=>", start);
                 return new Token(TokenType.ASSIGN, "=", start);
             case '!':
                 if (match('=')) return new Token(TokenType.NE, "!=", start);

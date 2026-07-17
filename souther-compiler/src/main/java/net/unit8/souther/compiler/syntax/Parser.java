@@ -539,11 +539,11 @@ public final class Parser {
 
     private Ast.Expr parsePrimary() {
         Token t = peek();
-        // a lambda used as a value: `x => e` or `(x, ...) => e` (spec §blocks). The same block form
+        // a lambda used as a value: `x -> e` or `(x, ...) -> e` (spec §blocks). The same block form
         // that a combinator argument takes, now allowed anywhere an expression is.
-        if (t.type() == TokenType.IDENT && peekAt(1).type() == TokenType.FATARROW) {
+        if (t.type() == TokenType.IDENT && peekAt(1).type() == TokenType.ARROW) {
             advance();
-            expect(TokenType.FATARROW);
+            expect(TokenType.ARROW);
             return new Ast.Block(List.of(t.text()), parseExpr(), t.pos());
         }
         if (t.type() == TokenType.LPAREN && isBlockParams()) {
@@ -645,14 +645,14 @@ public final class Parser {
         while (check(TokenType.CASE)) {
             advance();
             Token arm = expect(TokenType.IDENT);
-            // `case A | B ... [as x] => body` — one arm, or several joined by `|` (spec 16.3)
+            // `case A | B ... [as x] -> body` — one arm, or several joined by `|` (spec 16.3)
             List<String> armTypes = new ArrayList<>();
             armTypes.add(arm.text());
             while (match(TokenType.PIPE)) {
                 armTypes.add(expect(TokenType.IDENT).text());
             }
             String binding = match(TokenType.AS) ? expect(TokenType.IDENT).text() : null;
-            expect(TokenType.FATARROW);
+            expect(TokenType.ARROW);
             Ast.Expr body = parseExpr();
             cases.add(new Ast.Case(armTypes, binding, body, arm.pos()));
         }
@@ -684,25 +684,25 @@ public final class Parser {
     }
 
     /**
-     * An argument: an expression, or a block (spec 12.5). Blocks are only parsed here, which is
-     * what makes them second-class — there is no other position in the grammar that accepts one,
-     * so a block cannot be returned, stored, or bound to a {@code let}.
+     * An argument: an expression, or a lambda block (spec 12.5). A lambda also parses as a primary
+     * expression (see {@link #parsePrimary}); this site just lets a bare {@code (a, b) -> ...} sit
+     * directly in an argument list without extra parentheses.
      */
     private Ast.Expr parseArg() {
-        // x => body
-        if (check(TokenType.IDENT) && peekAt(1).type() == TokenType.FATARROW) {
+        // x -> body
+        if (check(TokenType.IDENT) && peekAt(1).type() == TokenType.ARROW) {
             Token p = expect(TokenType.IDENT);
-            expect(TokenType.FATARROW);
+            expect(TokenType.ARROW);
             return new Ast.Block(List.of(p.text()), parseExpr(), p.pos());
         }
-        // (acc, x) => body
+        // (acc, x) -> body
         if (check(TokenType.LPAREN) && isBlockParams()) {
             return parseParenLambda();
         }
         return parseExpr();
     }
 
-    /** {@code (x, ...) => body} — a parenthesised lambda; the caller has confirmed the shape. */
+    /** {@code (x, ...) -> body} — a parenthesised lambda; the caller has confirmed the shape. */
     private Ast.Block parseParenLambda() {
         Token open = expect(TokenType.LPAREN);
         List<String> params = new ArrayList<>();
@@ -711,11 +711,11 @@ public final class Parser {
             params.add(expect(TokenType.IDENT).text());
         }
         expect(TokenType.RPAREN);
-        expect(TokenType.FATARROW);
+        expect(TokenType.ARROW);
         return new Ast.Block(params, parseExpr(), open.pos());
     }
 
-    /** Distinguishes {@code (a, b) =>} from a parenthesised expression by scanning to the `)`. */
+    /** Distinguishes {@code (a, b) ->} from a parenthesised expression by scanning to the `)`. */
     private boolean isBlockParams() {
         int i = 1;
         if (peekAt(i).type() != TokenType.IDENT) {
@@ -730,7 +730,7 @@ public final class Parser {
             i++;
         }
         return peekAt(i).type() == TokenType.RPAREN
-                && peekAt(i + 1).type() == TokenType.FATARROW;
+                && peekAt(i + 1).type() == TokenType.ARROW;
     }
 
     // --- token helpers ---

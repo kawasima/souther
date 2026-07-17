@@ -30,8 +30,8 @@ class CompileOptionMatchTest {
 
             fn approverLabel (t) =
                 match t.approver {
-                    case Some as a => Label { value: a.value }
-                    case None => Label { value: "none" }
+                    case Some as a -> Label { value: a.value }
+                    case None -> Label { value: "none" }
                 }
             """;
 

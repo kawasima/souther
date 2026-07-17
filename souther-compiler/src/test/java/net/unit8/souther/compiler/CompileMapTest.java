@@ -50,8 +50,8 @@ class CompileMapTest {
 
                 fn lookupA (s) =
                     match get(s.byName, "a") {
-                        case Some as v => Answer { found: containsKey(s.byName, "a"), value: v }
-                        case None => Answer { found: false, value: 0 }
+                        case Some as v -> Answer { found: containsKey(s.byName, "a"), value: v }
+                        case None -> Answer { found: false, value: 0 }
                     }
                 """), getClass().getClassLoader());
 
