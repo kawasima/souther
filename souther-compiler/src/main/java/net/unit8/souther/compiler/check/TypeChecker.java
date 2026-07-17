@@ -1745,7 +1745,17 @@ public final class TypeChecker {
         if (from.equals(to)) {
             return true;
         }
+        // immutable collections are element-covariant: A <: S makes a List/Map/Option of A
+        // assignable to one of S. Sound because they cannot be mutated (spec 6), so no write can
+        // smuggle a sibling arm in — the same reason Scala's immutable List and Kotlin's read-only
+        // List are covariant, and Java's mutable arrays are not.
         if (from instanceof Type.ListOf a && to instanceof Type.ListOf b) {
+            return assignable(a.element(), b.element(), symbols);
+        }
+        if (from instanceof Type.MapOf a && to instanceof Type.MapOf b) {
+            return assignable(a.value(), b.value(), symbols);
+        }
+        if (from instanceof Type.OptionOf a && to instanceof Type.OptionOf b) {
             return assignable(a.element(), b.element(), symbols);
         }
         Set<String> fa = leafArms(from, symbols);
