@@ -219,7 +219,9 @@ public final class Parser {
         return parseExpr();
     }
 
-    /** A pipeline stage: a behavior name, or {@code Type.decoder} / {@code Type.encoder}. */
+    /** A pipeline stage: a behavior name. A dotted {@code Type.decoder} / {@code Type.encoder} also
+     * parses here, only so {@link net.unit8.souther.compiler.check.TypeChecker#stageSig} can reject
+     * it with a clear message — {@code >>} composes behaviors, not boundary codecs (spec 14.1). */
     private String parseStage() {
         String s = expect(TokenType.IDENT).text();
         if (match(TokenType.DOT)) {

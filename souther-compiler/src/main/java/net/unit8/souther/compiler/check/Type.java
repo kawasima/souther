@@ -30,7 +30,9 @@ public sealed interface Type
     Type DECIMAL = Prim.DECIMAL;
     Type DATE = Prim.DATE;
     Type DATETIME = Prim.DATETIME;
-    /** The external representation type — a decoder-stage input / encoder-stage output (spec 14.1). */
+    /** The external (encoded) representation type: an encoder's raw output at a railway's edge,
+     * unioned with propagated error arms as the arm {@code "Raw"} (spec 24). Reserved — no stage
+     * produces it yet; {@code >>} composes behaviors, not codecs (spec 14.1). */
     Type RAW = Prim.RAW;
 
     static Type ref(String name) {
