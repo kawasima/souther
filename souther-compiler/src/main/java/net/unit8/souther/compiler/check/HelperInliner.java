@@ -1,6 +1,7 @@
 package net.unit8.souther.compiler.check;
 
 import net.unit8.souther.compiler.CompileException;
+import net.unit8.souther.compiler.Prelude;
 import net.unit8.souther.compiler.ast.Ast;
 
 import java.util.ArrayList;
@@ -26,33 +27,43 @@ import java.util.Set;
  */
 public final class HelperInliner {
 
-    private final Map<String, Ast.FnDef> helpers;
+    private final Map<String, Ast.FnDef> helpers;   // prelude + module-own, keyed by name (inlining)
+    private final Map<String, Ast.FnDef> own;       // the module's own helpers (standalone check)
     private int counter = 0;
 
-    private HelperInliner(Map<String, Ast.FnDef> helpers) {
+    private HelperInliner(Map<String, Ast.FnDef> helpers, Map<String, Ast.FnDef> own) {
         this.helpers = helpers;
+        this.own = own;
     }
 
-    /** A helper is a fn whose name is not a behavior's; behavior fns are lowered on their own. */
+    /** A helper is a fn whose name is not a behavior's; behavior fns are lowered on their own. The
+     * auto-imported prelude helpers (spec §reserved-namespace) join the inlining map so a bare
+     * {@code not(x)} expands at any call site; a module-own helper of the same name shadows one. */
     public static HelperInliner forModule(Ast.Module module) {
         Set<String> behaviorNames = new HashSet<>();
         for (Ast.BehaviorDef b : module.behaviors()) {
             behaviorNames.add(b.name());
         }
-        Map<String, Ast.FnDef> helpers = new HashMap<>();
+        Map<String, Ast.FnDef> own = new HashMap<>();
         for (Ast.FnDef fn : module.fns()) {
             if (!behaviorNames.contains(fn.name())) {
-                helpers.put(fn.name(), fn);
+                own.put(fn.name(), fn);
             }
         }
-        HelperInliner inliner = new HelperInliner(helpers);
+        Map<String, Ast.FnDef> helpers = new HashMap<>();
+        for (Ast.FnDef fn : Prelude.helpers()) {
+            helpers.put(fn.name(), fn);
+        }
+        helpers.putAll(own);
+        HelperInliner inliner = new HelperInliner(helpers, own);
         inliner.rejectRecursion();
         return inliner;
     }
 
-    /** The helper fns of the module, keyed by name (for the standalone signature check). */
+    /** The module's own helper fns, keyed by name (for the standalone signature check). The
+     * auto-imported prelude helpers are excluded — they are validated once, on their own. */
     public Map<String, Ast.FnDef> helpers() {
-        return helpers;
+        return own;
     }
 
     /** The list combinators that take a block, and how many parameters that block has (spec 18.4). */

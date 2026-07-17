@@ -1651,8 +1651,15 @@ get  containsKey  keys  values
 
 `+get+` は `+Option<V>+` を返す。
 
-[#stdlib-codecs]
-=== Decoders / Encoders
+[#stdlib-bool]
+=== Bool
+
+[,text]
+----
+not
+----
+
+`+not+` は `+souther.bool+` に置かれた**最初の self-host 関数**である。プリミティブでなく Souther で `+let not (b: Bool) = if b then false else true+` と書かれ、自動 import される。非再帰なので呼び出し位置に inline 展開され、専用のクラスは生成されない。前置 `+!+` は同じ否定だが、`+not+` が入ったことで冗長になる（<<delimiters>> の演算子表からいずれ外す）。
 
 Souther の構文には現れない。data の形状から導出された decoder / encoder は、Raoh の Decoder / Encoder として ClassFile backend が生成する（<<codec-generation>>、<<encoder>>）。プリミティブ解析・エラー集積・判別振り分け・エンコードは Raoh の combinator が担い、souther-runtime 側に facade は持たない。境界のカスタムコーデック（<<custom-codec>>）は Java 側から Raoh を直接使う。
 

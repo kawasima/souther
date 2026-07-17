@@ -1,0 +1,6 @@
+module souther.bool
+
+// The first self-hosted standard-library function (ADR-0028): logical negation, written in
+// Souther rather than as a primitive. `not` is auto-imported into every user module and, being a
+// non-recursive helper, is expanded inline at each call site — so no class is generated for it.
+let not (b: Bool) = if b then false else true
