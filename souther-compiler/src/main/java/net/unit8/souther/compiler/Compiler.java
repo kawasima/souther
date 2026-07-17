@@ -58,8 +58,9 @@ public final class Compiler {
             Ast.Module m = derived.get(original.name());
             Map<String, Ast.Def> symbols = visibleDefs(m, derived);
             Map<String, TypeChecker.Sig> importedSigs = importedBehaviorSigs(m, derived);
+            Set<String> importedInjected = importedInjectedBehaviors(m, derived);
             TypeChecker.check(m, symbols, importedSigs);
-            out.putAll(Backend.generate(m, symbols, importedPackages(m), importedSigs));
+            out.putAll(Backend.generate(m, symbols, importedPackages(m), importedSigs, importedInjected));
         }
         return out;
     }
@@ -96,6 +97,41 @@ public final class Compiler {
             names.add(b.name());
         }
         return names;
+    }
+
+    /** The behaviors {@code m} imports that are injection targets in their declaring module (a
+     * SpecBehavior with no fn — spec 13.2). A composition here that names one as a stage inherits
+     * it as an inferred requirement, so the consuming module injects and binds it (spec 14.3). */
+    private static Set<String> importedInjectedBehaviors(Ast.Module m, Map<String, Ast.Module> registry) {
+        Set<String> result = new HashSet<>();
+        for (Ast.Import imp : m.imports()) {
+            Ast.Module src = registry.get(imp.module());
+            if (src == null) {
+                continue;
+            }
+            Set<String> injected = injectedNames(src);
+            for (String name : imp.names()) {
+                if (injected.contains(name)) {
+                    result.add(name);
+                }
+            }
+        }
+        return result;
+    }
+
+    /** The injection-target behaviors of a module: a SpecBehavior with no matching fn (spec 13.2). */
+    private static Set<String> injectedNames(Ast.Module m) {
+        Set<String> fnNames = new HashSet<>();
+        for (Ast.FnDef f : m.fns()) {
+            fnNames.add(f.name());
+        }
+        Set<String> injected = new HashSet<>();
+        for (Ast.BehaviorDef b : m.behaviors()) {
+            if (b instanceof Ast.SpecBehavior && !fnNames.contains(b.name())) {
+                injected.add(b.name());
+            }
+        }
+        return injected;
     }
 
     /** Own definitions plus imported ones, validated against the source module's {@code exposing}. */

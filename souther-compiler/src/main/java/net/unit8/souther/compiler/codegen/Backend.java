@@ -235,16 +235,24 @@ public final class Backend {
 
     public static Map<String, byte[]> generate(Ast.Module module, Map<String, Ast.Def> symbols,
                                                Map<String, String> typePackage) {
-        return generate(module, symbols, typePackage, Map.of());
+        return generate(module, symbols, typePackage, Map.of(), Set.of());
+    }
+
+    public static Map<String, byte[]> generate(Ast.Module module, Map<String, Ast.Def> symbols,
+                                               Map<String, String> typePackage,
+                                               Map<String, TypeChecker.Sig> importedSigs) {
+        return generate(module, symbols, typePackage, importedSigs, Set.of());
     }
 
     /** Generates a module's classes. {@code symbols} covers own plus imported definitions;
      * {@code typePackage} maps an imported type or behavior name to its declaring module (spec 4);
      * {@code importedSigs} carries imported behaviors' signatures so a composition can name one as
-     * a stage (spec 14). */
+     * a stage (spec 14); {@code importedInjected} are imported injection-target behaviors, which a
+     * composition here inherits as requirements to inject and bind (spec 13.2, 14.3). */
     public static Map<String, byte[]> generate(Ast.Module module, Map<String, Ast.Def> symbols,
                                                Map<String, String> typePackage,
-                                               Map<String, TypeChecker.Sig> importedSigs) {
+                                               Map<String, TypeChecker.Sig> importedSigs,
+                                               Set<String> importedInjected) {
         Map<String, List<String>> armToSums = new HashMap<>();
         for (Ast.Def def : module.defs()) {
             if (def instanceof Ast.SumData sum) {
@@ -288,8 +296,10 @@ public final class Backend {
         // lowers a helper on its own.
         HelperInliner inliner = HelperInliner.forModule(module);
         // Injection targets (spec 13.2): a SpecBehavior with no matching fn. Each becomes an
-        // abstract base class a Java implementation extends (13.3).
-        Set<String> requiredNames = new HashSet<>();
+        // abstract base class a Java implementation extends (13.3). Imported injection targets
+        // (their base lives in the declaring module) are requirements too, so a composition here
+        // injects and binds them (spec 14.3) — but no base is generated for them here.
+        Set<String> requiredNames = new HashSet<>(importedInjected);
         Map<String, Type> requiredSuccess = new HashMap<>();
         for (Ast.BehaviorDef bd : module.behaviors()) {
             if (bd instanceof Ast.SpecBehavior spec && !fns.containsKey(spec.name())) {
