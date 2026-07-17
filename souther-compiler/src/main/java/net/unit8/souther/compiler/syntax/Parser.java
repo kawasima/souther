@@ -202,11 +202,31 @@ public final class Parser {
         return new Ast.FnDef(name, params, body, kw.pos());
     }
 
-    /** A {@code fn} parameter: {@code name} (type from the behavior) or {@code name: type} (helper). */
+    /** A {@code fn} parameter: {@code name} (type from the behavior) or {@code name: type} (helper).
+     * A helper's type may be a function type {@code (A, ...) -> B} (spec §fn-declaration). */
     private Ast.FnParam parseFnParam() {
         Token n = expect(TokenType.IDENT);
-        Ast.RetType type = match(TokenType.COLON) ? parseRetType() : null;
+        Ast.ParamType type = match(TokenType.COLON) ? parseParamType() : null;
         return new Ast.FnParam(n.text(), type, n.pos());
+    }
+
+    /** A helper parameter's written type: a function type when it opens with {@code (}, else an
+     * ordinary type. A function type is the only place a {@code (} may start a type (spec §fn-declaration). */
+    private Ast.ParamType parseParamType() {
+        if (check(TokenType.LPAREN)) {
+            Token open = expect(TokenType.LPAREN);
+            List<Ast.RetType> params = new ArrayList<>();
+            if (!check(TokenType.RPAREN)) {
+                params.add(parseRetType());
+                while (match(TokenType.COMMA)) {
+                    params.add(parseRetType());
+                }
+            }
+            expect(TokenType.RPAREN);
+            expect(TokenType.ARROW);
+            return new Ast.FnType(params, parseRetType(), open.pos());
+        }
+        return parseRetType();
     }
 
     /**

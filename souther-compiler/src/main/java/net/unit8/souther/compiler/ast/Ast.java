@@ -85,11 +85,22 @@ public interface Ast {
      */
     record FnDef(String name, List<FnParam> params, Expr body, SourcePos pos) implements Ast {}
 
-    /** A {@code fn} parameter: a name, and a type only when the {@code fn} is a helper (spec 13.1). */
-    record FnParam(String name, RetType type, SourcePos pos) implements Ast {}
+    /** A {@code fn} parameter: a name, and a type only when the {@code fn} is a helper (spec 13.1).
+     * A helper's parameter type may be a function type {@link FnType}; a behavior fn's parameter
+     * carries no type ({@code type} is null). */
+    record FnParam(String name, ParamType type, SourcePos pos) implements Ast {}
+
+    /** The written type of a helper {@code fn} parameter: an ordinary type ({@link RetType}) or a
+     * function type {@link FnType}. Function types appear only in {@code fn} parameter position
+     * (spec §fn-declaration); nowhere else in the grammar accepts one. */
+    sealed interface ParamType extends Ast permits RetType, FnType {}
+
+    /** A function type {@code (A, ...) -> B} written on a helper {@code fn} parameter. The
+     * parameters and result are ordinary types; a nested function type is not written. */
+    record FnType(List<RetType> params, RetType result, SourcePos pos) implements ParamType {}
 
     /** A behavior return type: the output sum — one or more unmarked domain arms (spec 12.2). */
-    record RetType(List<TypeRef> arms, SourcePos pos) implements Ast {}
+    record RetType(List<TypeRef> arms, SourcePos pos) implements ParamType {}
 
     /** A top-level data definition: product, sum, or unit. */
     sealed interface Def extends Ast permits Data, SumData, UnitData {

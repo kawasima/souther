@@ -78,16 +78,30 @@ public final class HelperInliner {
                 }
                 int k = counter++;
                 Map<String, String> subst = new HashMap<>();
-                List<String> fresh = new ArrayList<>();
-                for (Ast.FnParam p : helper.params()) {
-                    String f = "$" + k + "_" + p.name();
-                    subst.put(p.name(), f);
-                    fresh.add(f);
+                List<String> letNames = new ArrayList<>();
+                List<Ast.Expr> letValues = new ArrayList<>();
+                for (int i = 0; i < helper.params().size(); i++) {
+                    Ast.FnParam p = helper.params().get(i);
+                    Ast.Expr arg = args.get(i);
+                    if (p.type() instanceof Ast.FnType) {
+                        // a function argument is not a value, so it cannot be bound to a let;
+                        // substitute it into the body directly (the fn is passed by name).
+                        if (!(arg instanceof Ast.Var fnName)) {
+                            throw new CompileException(arg.pos(), "the function passed to `" + p.name()
+                                    + "` of `fn " + helper.name() + "` must be a named fn");
+                        }
+                        subst.put(p.name(), fnName.name());
+                    } else {
+                        String f = "$" + k + "_" + p.name();
+                        subst.put(p.name(), f);
+                        letNames.add(f);
+                        letValues.add(arg);
+                    }
                 }
                 Ast.Expr body = inline(rename(helper.body(), subst));   // expand nested helpers too
-                // wrap innermost-first so the parameters bind in declared order
-                for (int i = fresh.size() - 1; i >= 0; i--) {
-                    body = new Ast.LetIn(fresh.get(i), args.get(i), body, call.pos());
+                // wrap innermost-first so the value parameters bind in declared order
+                for (int i = letNames.size() - 1; i >= 0; i--) {
+                    body = new Ast.LetIn(letNames.get(i), letValues.get(i), body, call.pos());
                 }
                 yield body;
             }

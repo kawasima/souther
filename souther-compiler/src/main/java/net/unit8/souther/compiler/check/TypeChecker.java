@@ -213,7 +213,7 @@ public final class TypeChecker {
                     throw new CompileException(p.pos(), "helper `fn " + h.name() + "` must annotate "
                             + "parameter `" + p.name() + "` with its type (spec 13.1)");
                 }
-                env.put(p.name(), successType(p.type(), symbols));
+                env.put(p.name(), resolveParamType(p.type(), symbols));
             }
             typeOf(inliner.inline(h.body()), env, null, symbols, reqSigs);
         }
@@ -1646,6 +1646,22 @@ public final class TypeChecker {
                                   Map<String, Type> env, Ast.Data data,
                                   Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
         if (!(arg instanceof Ast.Block block)) {
+            // a function-typed value — a helper's function parameter (spec §fn-declaration) —
+            // stands in for a block: check its shape and yield its result type.
+            if (typeOf(arg, env, data, symbols, reqs) instanceof Type.FnOf fn) {
+                if (fn.params().size() != paramTypes.size()) {
+                    throw new CompileException(arg.pos(), call.fn() + " calls its function with "
+                            + paramTypes.size() + " argument(s), but it takes " + fn.params().size());
+                }
+                for (int i = 0; i < paramTypes.size(); i++) {
+                    if (!assignable(paramTypes.get(i), fn.params().get(i), symbols)) {
+                        throw new CompileException(arg.pos(), call.fn() + "'s element type "
+                                + paramTypes.get(i) + " is not acceptable to the function, which takes "
+                                + fn.params().get(i));
+                    }
+                }
+                return fn.result();
+            }
             throw new CompileException(arg.pos(),
                     call.fn() + " expects a block, e.g. `" + call.fn() + "(xs, x => ...)` (spec 12.5)");
         }
@@ -1695,6 +1711,20 @@ public final class TypeChecker {
         if (!assignable(actual, expected, symbols)) {   // an arm widens to its sum (spec 8.3)
             throw new CompileException(e.pos(), what + " must be " + expected + " but is " + actual);
         }
+    }
+
+    /** Resolves a helper parameter's written type: an ordinary type or a function type. */
+    public static Type resolveParamType(Ast.ParamType t, Map<String, Ast.Def> symbols) {
+        return switch (t) {
+            case Ast.RetType rt -> successType(rt, symbols);
+            case Ast.FnType ft -> {
+                List<Type> params = new ArrayList<>();
+                for (Ast.RetType p : ft.params()) {
+                    params.add(successType(p, symbols));
+                }
+                yield Type.fn(params, successType(ft.result(), symbols));
+            }
+        };
     }
 
     /** The output type of a behavior return: a single arm, or a union of two or more arms. */

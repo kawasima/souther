@@ -5,7 +5,7 @@ package net.unit8.souther.compiler.check;
  * or a reference to a named data type. {@code Type.INT} etc. remain usable as constants.
  */
 public sealed interface Type
-        permits Type.Prim, Type.Ref, Type.ListOf, Type.MapOf, Type.OptionOf, Type.Union {
+        permits Type.Prim, Type.Ref, Type.ListOf, Type.MapOf, Type.OptionOf, Type.Union, Type.FnOf {
 
     enum Prim implements Type { INT, STRING, BOOL, DECIMAL, DATE, DATETIME, RAW }
 
@@ -23,6 +23,11 @@ public sealed interface Type
 
     /** An anonymous union of data types (a behavior's multi-success output). */
     record Union(java.util.Set<String> members) implements Type {}
+
+    /** A function type {@code (params...) -> result}. Written only on a helper {@code fn}'s
+     * parameter (spec §fn-declaration); a value of this type is never stored in a data field, so it
+     * never crosses a codec boundary. */
+    record FnOf(java.util.List<Type> params, Type result) implements Type {}
 
     Type INT = Prim.INT;
     Type STRING = Prim.STRING;
@@ -53,5 +58,9 @@ public sealed interface Type
 
     static Type union(java.util.Set<String> members) {
         return new Union(members);
+    }
+
+    static Type fn(java.util.List<Type> params, Type result) {
+        return new FnOf(params, result);
     }
 }
