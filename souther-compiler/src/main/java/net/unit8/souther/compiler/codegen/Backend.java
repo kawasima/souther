@@ -1184,6 +1184,21 @@ public final class Backend {
         }
     }
 
+    /**
+     * Reads a field onto the stack. A local data's field is private but same-package, so a direct
+     * {@code getfield} works; an imported data's field is private across the module = package
+     * boundary, so the read goes through the public accessor the exposed data generates (spec 8.5,
+     * 19.2).
+     */
+    private void emitFieldRead(CodeBuilder code, String ownerName, String field, Type ft) {
+        ClassDesc ownerCd = cd(ownerName);
+        if (typePackage.containsKey(ownerName)) {
+            code.invokevirtual(ownerCd, field, MethodTypeDesc.of(jvmType(ft)));
+        } else {
+            code.getfield(ownerCd, field, jvmType(ft));
+        }
+    }
+
     private void emitCtor(ClassBuilder cb, ClassDesc cdName, Map<String, Type> fields) {
         cb.withMethodBody("<init>", MethodTypeDesc.of(ConstantDescs.CD_void, fieldDescs(fields)), 0, code -> {
             code.aload(0);
@@ -1943,7 +1958,7 @@ public final class Backend {
                     Type targetType = expr(fa.target());
                     Ast.Data owner = (Ast.Data) symbols.get(((Type.Ref) targetType).name());
                     Type ft = fieldTypes(owner).get(fa.field());
-                    code.getfield(cd(owner.name()), fa.field(), jvmType(ft));
+                    emitFieldRead(code, owner.name(), fa.field(), ft);
                     yield ft;
                 }
                 case Ast.Call call -> call(call);
@@ -2216,7 +2231,7 @@ public final class Backend {
             String srcName = ((Type.Ref) v.type()).name();
             Ast.Data src = (Ast.Data) symbols.get(srcName);
             load(code, v.slot(), v.type());
-            code.getfield(cd(srcName), field, jvmType(fieldTypes(src).get(field)));
+            emitFieldRead(code, srcName, field, fieldTypes(src).get(field));
         }
 
         private Type call(Ast.Call call) {
