@@ -2030,6 +2030,9 @@ public final class TypeChecker {
                 yield Type.map(resolveType(ref.arg(), symbols));
             }
             default -> {
+                if (ref.name().startsWith("'")) {
+                    yield Type.var(ref.name());   // a type variable, admitted only in the core
+                }
                 if (symbols.containsKey(ref.name())) {
                     yield Type.ref(ref.name());
                 }

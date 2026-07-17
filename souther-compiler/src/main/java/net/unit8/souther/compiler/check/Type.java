@@ -5,9 +5,15 @@ package net.unit8.souther.compiler.check;
  * or a reference to a named data type. {@code Type.INT} etc. remain usable as constants.
  */
 public sealed interface Type
-        permits Type.Prim, Type.Ref, Type.ListOf, Type.MapOf, Type.OptionOf, Type.Union, Type.FnOf {
+        permits Type.Prim, Type.Ref, Type.ListOf, Type.MapOf, Type.OptionOf, Type.Union, Type.FnOf,
+                Type.Var {
 
     enum Prim implements Type { INT, STRING, BOOL, DECIMAL, DATE, DATETIME, RAW }
+
+    /** A type variable ({@code 'a}), written only in the shipped core (ADR-0028). It stands for any
+     * type; a non-recursive core helper carrying one is monomorphised by inline expansion, so the
+     * variable is resolved to the concrete argument type at each call site. */
+    record Var(String name) implements Type {}
 
     /** A reference to a named data type (product or sum). */
     record Ref(String name) implements Type {}
@@ -62,5 +68,9 @@ public sealed interface Type
 
     static Type fn(java.util.List<Type> params, Type result) {
         return new FnOf(params, result);
+    }
+
+    static Type var(String name) {
+        return new Var(name);
     }
 }

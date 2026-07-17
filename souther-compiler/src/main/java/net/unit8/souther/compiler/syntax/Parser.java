@@ -20,6 +20,8 @@ public final class Parser {
     private int index = 0;
     /** When set, a bare {@code IDENT {} } is not read as a construction (used for match scrutinees). */
     private boolean noConstruct = false;
+    /** The module's name, known once its header is read; gates type-variable use to the core. */
+    private String moduleName = "";
 
     public Parser(List<Token> tokens) {
         this.tokens = tokens;
@@ -34,6 +36,7 @@ public final class Parser {
     public Ast.Module parseModule() {
         Token m = expect(TokenType.MODULE);
         String name = qualifiedName();
+        moduleName = name;
         Map<String, Ast.RetType> exposedOutputs = new HashMap<>();
         List<String> exposing = check(TokenType.EXPOSING) ? parseExposing(exposedOutputs) : new ArrayList<>();
         List<Ast.Import> imports = new ArrayList<>();
@@ -286,6 +289,13 @@ public final class Parser {
         return new Ast.RetType(arms, arms.get(0).pos());
     }
 
+    /** Whether {@code name} sits in the compiler-shipped {@code souther} namespace (ADR-0028). Only
+     * those modules may write type variables; {@link net.unit8.souther.compiler.Compiler} keeps user
+     * modules out of the namespace, so this is also what limits generics to the core. */
+    private static boolean isReservedNamespace(String name) {
+        return name.equals("souther") || name.startsWith("souther.");
+    }
+
     private String qualifiedName() {
         StringBuilder sb = new StringBuilder(expect(TokenType.IDENT).text());
         while (match(TokenType.DOT)) {
@@ -394,6 +404,14 @@ public final class Parser {
     }
 
     private Ast.TypeRef parseTypeRef() {
+        if (check(TokenType.TYPEVAR)) {
+            Token v = advance();
+            if (!isReservedNamespace(moduleName)) {
+                throw error(v, "type variable `" + v.text() + "` is only allowed in the core "
+                        + "(the reserved `souther` namespace); a user model stays bounded (ADR-0028)");
+            }
+            return new Ast.TypeRef(v.text(), null, v.pos());   // name begins with `'` → Type.Var
+        }
         Token n = expect(TokenType.IDENT);
         if (n.text().equals("List") && check(TokenType.LT)) {
             advance();

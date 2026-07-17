@@ -74,7 +74,24 @@ public final class Lexer {
         if (c == '"') {
             return string(start);
         }
+        if (c == '\'') {
+            return typeVar(start);
+        }
         return symbol(start);
+    }
+
+    /** A type variable {@code 'a}: an apostrophe (F#/OCaml) followed by an identifier. The core
+     * writes these; a user module is rejected in the parser (ADR-0028). */
+    private Token typeVar(SourcePos start) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(advance());   // the apostrophe
+        if (atEnd() || !Character.isJavaIdentifierStart(peek())) {
+            throw new CompileException(start, "a type variable needs a name after `'`, e.g. `'a`");
+        }
+        while (!atEnd() && Character.isJavaIdentifierPart(peek())) {
+            sb.append(advance());
+        }
+        return new Token(TokenType.TYPEVAR, sb.toString(), start);
     }
 
     private Token identifier(SourcePos start) {
