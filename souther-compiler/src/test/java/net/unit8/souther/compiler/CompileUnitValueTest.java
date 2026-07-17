@@ -50,12 +50,15 @@ class CompileUnitValueTest {
 
     @Test
     void constructingAUnitStillNeedsConstructs() {
+        // constructing the unit `Mark` (a bare name) counts: `Note` is declared but `Mark` is also
+        // built, so the undeclared `Mark` is E1002 (a declared `constructs` must list every build).
         String src = """
                 module demo
                 data Mark
+                data Note
                 data Flag = Bool
-                behavior marks = (f: Flag) -> List<Mark>
-                fn marks (f) = [Mark | f.value]
+                behavior marks = (f: Flag) -> Mark | Note constructs Note
+                fn marks (f) = if f.value then Mark else Note
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1002", e.code());

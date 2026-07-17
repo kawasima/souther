@@ -81,12 +81,16 @@ class CompileBlockTest {
 
     @Test
     void constructingInABlockStillNeedsTheDeclaration() {
+        // the block builds `検証済み明細` inside `map`: `補助` is declared but `検証済み明細` is also
+        // built, so the undeclared `検証済み明細` is E1002 (a declared clause must be complete).
         String src = """
                 module demo
                 data 未検証明細 = { コード: String }
                 data 検証済み明細 = { コード: String }
-                behavior 明細を検証する = (xs: List<未検証明細>) -> List<検証済み明細>
-                fn 明細を検証する (xs) = map(xs, x => 検証済み明細 { コード: x.コード })
+                data 補助
+                data 明細 = 検証済み明細 | 補助
+                behavior 明細を検証する = (xs: List<未検証明細>) -> List<明細> constructs 補助
+                fn 明細を検証する (xs) = map(xs, x => 検証済み明細 { コード: x.コード }) ++ [補助 | length(xs) > 0]
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1002", e.code());

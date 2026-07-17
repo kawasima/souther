@@ -108,14 +108,18 @@ class CompileInvariantBehaviorTest {
     /** The value a guard returns is constructed, so it needs declaring too (spec 12.3). */
     @Test
     void constructingTheGuardValueWithoutDeclaringItIsE1002() {
+        // the `require ... else Rejected` builds `Rejected`: `Flagged` is declared but `Rejected` is
+        // also built, so the undeclared guard value `Rejected` is E1002.
         String src = """
                 module demo
                 data Draft = { cost: Int }
                 data Rejected = { why: String }
-                behavior adjust = (d: Draft) -> Draft | Rejected
+                data Flagged
+                behavior adjust = (d: Draft) -> Draft | Rejected | Flagged constructs Flagged
 
                 fn adjust (d) = {
                     require d.cost > 0 else Rejected { why: "nonpositive" }
+                    require d.cost < 1000 else Flagged
                     d
                 }
                 """;

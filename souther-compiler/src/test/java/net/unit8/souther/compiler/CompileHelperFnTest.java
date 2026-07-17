@@ -63,19 +63,22 @@ class CompileHelperFnTest {
      */
     @Test
     void aHelpersConstructionCountsAgainstTheCallersPermission() {
+        // the helper `makeTag` builds `Tag`, attributed to the caller `label`: `Blank` is declared
+        // but `Tag` (via the helper) is also built, so the undeclared `Tag` is E1002.
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile("""
                 module demo
 
                 data Id = String
                 data Tag = { a: String  b: String }
+                data Blank
 
-                behavior label = (id: Id) -> Tag
+                behavior label = (id: Id) -> Tag | Blank constructs Blank
 
-                fn label (id) = makeTag(id)
+                fn label (id) = if length(id.value) > 0 then makeTag(id) else Blank
 
                 fn makeTag (id: Id) = Tag { a: id.value, b: id.value }
                 """));
-        assertEquals("E1002", e.code(), "the caller must declare `constructs Tag`");
+        assertEquals("E1002", e.code(), "the caller must declare `constructs Tag` for the helper's build");
     }
 
     /** Declaring the helper's construction lets the behavior compile (spec 12.5). */

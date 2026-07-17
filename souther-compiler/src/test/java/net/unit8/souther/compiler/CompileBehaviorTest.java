@@ -56,12 +56,15 @@ class CompileBehaviorTest {
 
     @Test
     void undeclaredConstructionIsE1002() {
+        // `constructs` may be omitted (then inferred), but a declared clause must be complete: here
+        // `Empty` is declared while `Response` is also built, so the undeclared `Response` is E1002.
         String src = """
                 module demo
                 data Response = { id: String }
-                behavior make = (x: String) -> Response
+                data Empty
+                behavior make = (x: String) -> Response | Empty constructs Empty
 
-                fn make (x) = Response { id: x }
+                fn make (x) = if x == "" then Empty else Response { id: x }
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1002", e.code());

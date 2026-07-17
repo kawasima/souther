@@ -44,11 +44,14 @@ class CompileBareIdentifierTest {
     /** With nothing bound, the same name is the unit's construction and needs declaring. */
     @Test
     void anUnboundNameConstructsTheUnitData() {
+        // the bare name `立替` resolves to a unit construction: `空` is declared but `立替` is also
+        // built, so the undeclared `立替` is E1002 — proving the bare name counts as a construction.
         String src = """
                 module demo
                 data 立替
-                behavior f = (x: Int) -> 立替
-                fn f (x) = 立替
+                data 空
+                behavior f = (x: Int) -> 立替 | 空 constructs 空
+                fn f (x) = if x > 0 then 立替 else 空
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1002", e.code());

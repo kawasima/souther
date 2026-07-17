@@ -31,7 +31,7 @@ specification is in Japanese.
 | [0014](0014-explicit-newtype-syntax.md) | newtype is declared explicitly by `data X = Y`, not inferred from shape | §8.7 |
 | [0015](0015-cross-module-field-read-construction-closed.md) | Field reads may cross module boundaries; only construction is closed | §8.5, §19.2 |
 | [0016](0016-requirements-as-arguments-not-effects.md) | The requirement set is injected constructor arguments, not an effect type | §12.5, §12.6, §13.6, §29 |
-| [0017](0017-declare-dont-infer-permissions-and-requirements.md) | Declare, don't infer: constructs, requires, and composed output | §12.3, §12.6, §14.5 |
+| [0017](0017-declare-dont-infer-permissions-and-requirements.md) | Declare, don't infer: requirements and composed output; construction permission is optional | §12.3, §12.6, §14.5 |
 | [0018](0018-no-dedicated-update-syntax.md) | No dedicated update syntax; use a named record literal with spread | §12.4 |
 | [0019](0019-sml-style-named-vs-anonymous-binding.md) | `=` binds named definitions, `=>` introduces anonymous blocks (SML-style) | §5, §13.1 |
 | [0020](0020-require-desugars-to-if.md) | `require ... else` is sugar for `if` | §16.4 |

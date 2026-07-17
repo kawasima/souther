@@ -267,11 +267,28 @@ public final class TypeChecker {
         // desugared `require`.
         Set<String> constructed = new HashSet<>();
         collectConstructs(body, constructed, symbols, new HashSet<>(env.keySet()));
-        for (String c : constructed) {
-            if (!spec.constructs().contains(c)) {
-                throw new CompileException(spec.pos(), "E1002",
-                        "Behavior `" + spec.name() + "` constructs `" + c
-                                + "` but does not declare `constructs " + c + "`.");
+        // `constructs` on an fn-backed behavior is optional: its construction permission is internal
+        // (invisible to callers, unlike `requires`), so with the body visible the set can be inferred
+        // (ADR-0002). Omit it and inference stands. Declare it and it must match the body exactly —
+        // under-declaration is E1002, over-declaration E1006 — so an explicit clause stays a checkable,
+        // readable record of what is newly built versus passed through (spec 12.3), the same exact
+        // match `requires` gets (E1602/E1603). Injected behaviors still declare it: no body to infer
+        // from, and it drives factory generation (spec 13.3).
+        if (!spec.constructs().isEmpty()) {
+            for (String c : constructed) {
+                if (!spec.constructs().contains(c)) {
+                    throw new CompileException(spec.pos(), "E1002",
+                            "Behavior `" + spec.name() + "` constructs `" + c
+                                    + "` but does not declare `constructs " + c + "`.");
+                }
+            }
+            for (String declared : spec.constructs()) {
+                if (!constructed.contains(declared)) {
+                    throw new CompileException(spec.pos(), "E1006",
+                            "Behavior `" + spec.name() + "` declares `constructs " + declared
+                                    + "` but never builds " + declared + " — it passes an existing"
+                                    + " value through. Remove it from the `constructs` clause.");
+                }
             }
         }
         checkInvariantConstructInTail(body, symbols);
