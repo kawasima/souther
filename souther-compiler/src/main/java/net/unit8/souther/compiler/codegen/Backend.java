@@ -1682,7 +1682,7 @@ public final class Backend {
         code.instanceOf(CD_ResultErr);
         Label okL = code.newLabel();
         code.ifeq(okL);
-        code.getstatic(CD_RPath, "ROOT", CD_RPath);
+        code.aload(2);   // the path this value was decoded at (spec 9.4, 15) — not the document root
         code.loadConstant("invariant_violation");
         code.aload(srSlot);
         code.checkcast(CD_ResultErr);
