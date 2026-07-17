@@ -36,7 +36,7 @@ public final class Lexer {
             Map.entry("requires", TokenType.REQUIRES),
             Map.entry("constructs", TokenType.CONSTRUCTS),
             Map.entry("match", TokenType.MATCH),
-            Map.entry("case", TokenType.CASE),
+            Map.entry("with", TokenType.WITH),
             Map.entry("include", TokenType.INCLUDE));
 
     private final String src;

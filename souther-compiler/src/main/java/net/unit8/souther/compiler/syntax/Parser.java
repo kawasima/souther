@@ -640,12 +640,16 @@ public final class Parser {
         noConstruct = true;
         Ast.Expr scrutinee = parseExpr();
         noConstruct = saved;
-        expect(TokenType.LBRACE);
+        expect(TokenType.WITH);
+        // F#-form arms: `| A [| B ...] [as x] -> body`, one arm per leading `|`
+        // (the leading `|` on the first arm is optional). The `->` delimits an arm's
+        // or-pattern alternatives from the arm separator, so the two uses of `|` never
+        // clash even though Souther is layout-independent.
         List<Ast.Case> cases = new ArrayList<>();
-        while (check(TokenType.CASE)) {
-            advance();
+        match(TokenType.PIPE); // optional leading `|` before the first arm
+        do {
             Token arm = expect(TokenType.IDENT);
-            // `case A | B ... [as x] -> body` — one arm, or several joined by `|` (spec 16.3)
+            // `A | B ... [as x] -> body` — one arm, or several joined by `|` (spec 16.3)
             List<String> armTypes = new ArrayList<>();
             armTypes.add(arm.text());
             while (match(TokenType.PIPE)) {
@@ -655,8 +659,7 @@ public final class Parser {
             expect(TokenType.ARROW);
             Ast.Expr body = parseExpr();
             cases.add(new Ast.Case(armTypes, binding, body, arm.pos()));
-        }
-        expect(TokenType.RBRACE);
+        } while (match(TokenType.PIPE)); // a leading `|` starts the next arm
         return new Ast.Match(scrutinee, cases, kw.pos());
     }
 

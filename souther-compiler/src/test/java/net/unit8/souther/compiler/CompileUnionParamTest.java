@@ -31,10 +31,9 @@ class CompileUnionParamTest {
             behavior finish = (app: SubPre) -> Done constructs Done
 
             fn finish (app) =
-                match app {
-                    case Sub as s -> Done { value: s.value }
-                    case Pre as p -> Done { value: p.value }
-                }
+                match app with
+                    | Sub as s -> Done { value: s.value }
+                    | Pre as p -> Done { value: p.value }
             """;
 
     @SuppressWarnings({"unchecked", "rawtypes"})

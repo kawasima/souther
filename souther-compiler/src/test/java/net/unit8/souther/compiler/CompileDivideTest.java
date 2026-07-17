@@ -25,10 +25,9 @@ class CompileDivideTest {
             behavior divideThem = (p: Pair) -> Outcome constructs Outcome
 
             fn divideThem (p) =
-                match divide(p.a, p.b) {
-                    case Int as q -> Outcome { q: q, ok: true }
-                    case DivisionByZero -> Outcome { q: 0, ok: false }
-                }
+                match divide(p.a, p.b) with
+                    | Int as q -> Outcome { q: q, ok: true }
+                    | DivisionByZero -> Outcome { q: 0, ok: false }
             """;
 
     @SuppressWarnings({"unchecked", "rawtypes"})

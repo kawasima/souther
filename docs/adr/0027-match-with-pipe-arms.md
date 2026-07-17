@@ -1,6 +1,6 @@
 # ADR-0027: match reads `match e with | arm -> ...`
 
-Status: Accepted (decided 2026-07-18; not yet implemented)
+Status: Accepted (decided 2026-07-18; implemented)
 
 ## Context
 

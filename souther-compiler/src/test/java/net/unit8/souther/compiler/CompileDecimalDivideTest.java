@@ -33,10 +33,9 @@ class CompileDecimalDivideTest {
 
             behavior divv = (p: Pair) -> Out constructs Out
             fn divv (p) =
-                match divide(p.a, p.b, 2, HALF_UP) {
-                    case Decimal as q -> Out { value: q, ok: true }
-                    case DivisionByZero -> Out { value: p.a, ok: false }
-                }
+                match divide(p.a, p.b, 2, HALF_UP) with
+                    | Decimal as q -> Out { value: q, ok: true }
+                    | DivisionByZero -> Out { value: p.a, ok: false }
             """;
 
     @SuppressWarnings("unchecked")

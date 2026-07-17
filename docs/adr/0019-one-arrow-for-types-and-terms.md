@@ -10,7 +10,7 @@ An earlier version split the arrows SML-style: `->` for type arrows and `=>` for
 
 ## Decision
 
-`=` binds a name to a right-hand side. A single arrow `->` serves everywhere else: the type arrow of a behavior declaration and a `fn` function-type argument (`(A) -> B`), the body of a lambda (`(x) -> e`), and a match arm (`case A -> body`). There is no `=>`.
+`=` binds a name to a right-hand side. A single arrow `->` serves everywhere else: the type arrow of a behavior declaration and a `fn` function-type argument (`(A) -> B`), the body of a lambda (`(x) -> e`), and a match arm (`| A -> body`). There is no `=>`.
 
 Binding a lambda to a named definition (`fn f = (x) -> ...`) is still not allowed.
 

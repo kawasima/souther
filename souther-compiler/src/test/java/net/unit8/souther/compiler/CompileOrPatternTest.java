@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * An or-pattern {@code case A | B -> body} runs one body for several arms (spec 16.3). Its arms
+ * An or-pattern {@code | A | B -> body} runs one body for several arms (spec 16.3). Its arms
  * count toward exhaustiveness; covering an arm twice is an overlap error; and with {@code as x} the
  * binding is the scrutinee's sum type, since no single arm type fits every alternative.
  */
@@ -35,10 +35,9 @@ class CompileOrPatternTest {
 
             behavior classify = (x: Three) -> Lo | Hi constructs Lo, Hi
             fn classify (x) =
-                match x {
-                    case A | B -> Lo { value: 1 }
-                    case C -> Hi { value: 2 }
-                }
+                match x with
+                    | A | B -> Lo { value: 1 }
+                    | C -> Hi { value: 2 }
             """;
 
     @Test
@@ -63,7 +62,7 @@ class CompileOrPatternTest {
 
     @Test
     void anOrPatternCountsTowardExhaustiveness() {
-        // case A | B plus case C covers all three arms
+        // arm A | B plus arm C covers all three arms
         assertDoesNotThrow(() -> Compiler.compile(ROUTING));
     }
 
@@ -77,7 +76,7 @@ class CompileOrPatternTest {
                 data Three = A | B | C
                 data Out = Int
                 behavior f = (x: Three) -> Out constructs Out
-                fn f (x) = match x { case A | B -> Out { value: 1 } }
+                fn f (x) = match x with | A | B -> Out { value: 1 }
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(module));
         assertEquals("E1201", e.code());
@@ -92,7 +91,7 @@ class CompileOrPatternTest {
                 data Two = A | B
                 data Out = Int
                 behavior f = (x: Two) -> Out constructs Out
-                fn f (x) = match x { case A | B -> Out { value: 1 } case A -> Out { value: 2 } }
+                fn f (x) = match x with | A | B -> Out { value: 1 } | A -> Out { value: 2 }
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(module));
         assertTrue(e.getMessage().contains("more than one"), e.getMessage());
@@ -114,10 +113,9 @@ class CompileOrPatternTest {
 
                 behavior tag = (x: Three) -> Out constructs Out
                 fn tag (x) =
-                    match x {
-                        case A | B as ab -> Out { value: describe(ab) }
-                        case C -> Out { value: 9 }
-                    }
+                    match x with
+                        | A | B as ab -> Out { value: describe(ab) }
+                        | C -> Out { value: 9 }
                 """;
         assertDoesNotThrow(() -> Compiler.compile(module));
     }

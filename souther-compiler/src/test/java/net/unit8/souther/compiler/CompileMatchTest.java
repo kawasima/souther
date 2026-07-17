@@ -29,10 +29,9 @@ class CompileMatchTest {
             behavior contactValue = (c: Contact) -> Label constructs Label
 
             fn contactValue (c) =
-                match c {
-                    case EmailContact as e -> Label { value: e.email }
-                    case PhoneContact as p -> Label { value: p.phone }
-                }
+                match c with
+                    | EmailContact as e -> Label { value: e.email }
+                    | PhoneContact as p -> Label { value: p.phone }
             """;
 
     private BytesClassLoader loader() {
@@ -77,11 +76,40 @@ class CompileMatchTest {
                 behavior pick = (v: AB) -> Label constructs Label
 
                 fn pick (v) =
-                    match v {
-                        case A as a -> Label { value: a.x }
-                    }
+                    match v with
+                        | A as a -> Label { value: a.x }
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1201", e.code());
+    }
+
+    /** The leading `|` on the first arm is optional (F# form). */
+    @Test
+    void firstArmPipeIsOptional() throws Exception {
+        String src = MODULE.replace("match c with\n                    | EmailContact",
+                "match c with\n                    EmailContact");
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Object out = run(loader, Map.of("type", "EmailContact", "email", "a@b"));
+        assertEquals("a@b", out);
+    }
+
+    /** The old braced `match e { case P -> ... }` form no longer parses (ADR-0027). */
+    @Test
+    void bracedCaseFormNoLongerParses() {
+        String src = """
+                module demo
+                data A = { x: String }
+                data B = { y: String }
+                data AB = A | B
+                data Label = String
+                behavior pick = (v: AB) -> Label constructs Label
+
+                fn pick (v) =
+                    match v {
+                        case A as a -> Label { value: a.x }
+                        case B as b -> Label { value: b.y }
+                    }
+                """;
+        assertThrows(CompileException.class, () -> Compiler.compile(src));
     }
 }

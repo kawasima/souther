@@ -14,7 +14,7 @@ Status: Accepted
 
 `Never` denotes an impossible arm (an empty sum); a single-arm output (`-> A`) reads as "the failure row is empty." `Unit` corresponds to the DSL's 単位型 but is always expressed as a field-less `data`, never as a written type. `Option` cannot appear in a behavior output because "might not be found" as a business result is a domain sum — `-> 会員 | 会員なし` — which reads closer to the DSL than `Option<会員>`. Allowing `Option` in output would also force `>->` routing to decide whether it consumes `Some` / `None` or treats `Option<会員>` as one arm; saying it in business vocabulary removes the question.
 
-`Some(T)` is the one exception to the rule that a sum arm carries no payload (see ADR-0013). Because `Option` is built in, users cannot imitate the form. Building a `?` field needs no `constructs`: `Option` is an auxiliary type with no invariant, so closed construction (ADR-0002) has nothing to protect there — and there is no way to write `constructs Some` anyway, since `Option` is not a writable type. The wrapped value is taken out with `match`, where `case Some as v` binds `v` to the contained value rather than to `Some`.
+`Some(T)` is the one exception to the rule that a sum arm carries no payload (see ADR-0013). Because `Option` is built in, users cannot imitate the form. Building a `?` field needs no `constructs`: `Option` is an auxiliary type with no invariant, so closed construction (ADR-0002) has nothing to protect there — and there is no way to write `constructs Some` anyway, since `Option` is not a writable type. The wrapped value is taken out with `match`, where `| Some as v` binds `v` to the contained value rather than to `Some`.
 
 ## References
 

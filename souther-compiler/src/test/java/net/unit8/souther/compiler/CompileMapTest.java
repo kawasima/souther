@@ -49,10 +49,9 @@ class CompileMapTest {
                 behavior lookupA = (s: Scores) -> Answer constructs Answer
 
                 fn lookupA (s) =
-                    match get(s.byName, "a") {
-                        case Some as v -> Answer { found: containsKey(s.byName, "a"), value: v }
-                        case None -> Answer { found: false, value: 0 }
-                    }
+                    match get(s.byName, "a") with
+                        | Some as v -> Answer { found: containsKey(s.byName, "a"), value: v }
+                        | None -> Answer { found: false, value: 0 }
                 """), getClass().getClassLoader());
 
         Decoder d = (Decoder) loader.loadClass("demo.Scores").getMethod("decoder").invoke(null);

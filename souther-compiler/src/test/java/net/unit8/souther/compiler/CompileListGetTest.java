@@ -27,10 +27,9 @@ class CompileListGetTest {
             behavior firstValue = (b: Bag) -> Label constructs Label
 
             fn firstValue (b) =
-                match get(b.items, 0) {
-                    case Some as x -> Label { value: x.value }
-                    case None -> Label { value: "none" }
-                }
+                match get(b.items, 0) with
+                    | Some as x -> Label { value: x.value }
+                    | None -> Label { value: "none" }
             """;
 
     @SuppressWarnings({"unchecked", "rawtypes"})
