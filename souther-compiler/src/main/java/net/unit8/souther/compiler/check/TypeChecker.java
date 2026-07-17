@@ -1562,6 +1562,19 @@ public final class TypeChecker {
                 yield Type.union(new java.util.LinkedHashSet<>(List.of("Int", "DivisionByZero")));
             }
             default -> {
+                // a function-typed value in scope (a helper's function parameter) applied to
+                // arguments — f(x) (spec §fn-declaration)
+                if (env.get(call.fn()) instanceof Type.FnOf fn) {
+                    if (args.size() != fn.params().size()) {
+                        throw new CompileException(call.pos(), "`" + call.fn() + "` takes "
+                                + fn.params().size() + " argument(s) but is applied to " + args.size());
+                    }
+                    for (int i = 0; i < args.size(); i++) {
+                        requireType(args.get(i), fn.params().get(i), env, data, symbols, reqs,
+                                "argument " + (i + 1) + " of " + call.fn());
+                    }
+                    yield fn.result();
+                }
                 // a required behavior called inline (spec 12.2, 13): type it as its success arm
                 ReqSig callee = reqs.get(call.fn());
                 if (callee == null) {

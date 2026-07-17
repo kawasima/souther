@@ -78,6 +78,7 @@ public final class HelperInliner {
                 }
                 int k = counter++;
                 Map<String, String> subst = new HashMap<>();
+                Set<String> fnParams = new HashSet<>();
                 List<String> letNames = new ArrayList<>();
                 List<Ast.Expr> letValues = new ArrayList<>();
                 for (int i = 0; i < helper.params().size(); i++) {
@@ -85,12 +86,14 @@ public final class HelperInliner {
                     Ast.Expr arg = args.get(i);
                     if (p.type() instanceof Ast.FnType) {
                         // a function argument is not a value, so it cannot be bound to a let;
-                        // substitute it into the body directly (the fn is passed by name).
+                        // substitute it into the body directly (the fn is passed by name). Its name is
+                        // rewritten wherever it is used as a value or applied — f(x) becomes inc(x).
                         if (!(arg instanceof Ast.Var fnName)) {
                             throw new CompileException(arg.pos(), "the function passed to `" + p.name()
                                     + "` of `fn " + helper.name() + "` must be a named fn");
                         }
                         subst.put(p.name(), fnName.name());
+                        fnParams.add(p.name());
                     } else {
                         String f = "$" + k + "_" + p.name();
                         subst.put(p.name(), f);
@@ -98,7 +101,7 @@ public final class HelperInliner {
                         letValues.add(arg);
                     }
                 }
-                Ast.Expr body = inline(rename(helper.body(), subst));   // expand nested helpers too
+                Ast.Expr body = inline(rename(helper.body(), subst, fnParams));   // expand nested helpers too
                 // wrap innermost-first so the value parameters bind in declared order
                 for (int i = letNames.size() - 1; i >= 0; i--) {
                     body = new Ast.LetIn(letNames.get(i), letValues.get(i), body, call.pos());
@@ -184,19 +187,28 @@ public final class HelperInliner {
      * Capture-avoiding renaming of the helper's free parameter references. A binder that shadows a
      * parameter name (a {@code let}, {@code match} binding, or block parameter of the same name)
      * drops that name from the substitution for its scope, so an inner rebinding is left untouched.
+     *
+     * <p>{@code fnParams} names the parameters bound to a function argument: those are also rewritten
+     * in call position, so an application {@code f(x)} of a function parameter becomes a call to the
+     * fn it was passed. A value parameter is never rewritten as a callee, so a parameter that happens
+     * to share a builtin's name still calls the builtin.
      */
-    private static Ast.Expr rename(Ast.Expr e, Map<String, String> subst) {
+    private static Ast.Expr rename(Ast.Expr e, Map<String, String> subst, Set<String> fnParams) {
         return switch (e) {
             case Ast.Var v -> subst.containsKey(v.name()) ? new Ast.Var(subst.get(v.name()), v.pos()) : e;
-            case Ast.FieldAccess fa -> new Ast.FieldAccess(rename(fa.target(), subst), fa.field(), fa.pos());
-            case Ast.Call call -> new Ast.Call(call.fn(), renameList(call.args(), subst), call.pos());
-            case Ast.Binary bin -> new Ast.Binary(bin.op(), rename(bin.left(), subst), rename(bin.right(), subst), bin.pos());
-            case Ast.Not not -> new Ast.Not(rename(not.operand(), subst), not.pos());
-            case Ast.Neg neg -> new Ast.Neg(rename(neg.operand(), subst), neg.pos());
+            case Ast.FieldAccess fa -> new Ast.FieldAccess(rename(fa.target(), subst, fnParams), fa.field(), fa.pos());
+            case Ast.Call call -> {
+                String callee = fnParams.contains(call.fn()) && subst.containsKey(call.fn())
+                        ? subst.get(call.fn()) : call.fn();
+                yield new Ast.Call(callee, renameList(call.args(), subst, fnParams), call.pos());
+            }
+            case Ast.Binary bin -> new Ast.Binary(bin.op(), rename(bin.left(), subst, fnParams), rename(bin.right(), subst, fnParams), bin.pos());
+            case Ast.Not not -> new Ast.Not(rename(not.operand(), subst, fnParams), not.pos());
+            case Ast.Neg neg -> new Ast.Neg(rename(neg.operand(), subst, fnParams), neg.pos());
             case Ast.NewData nd -> {
                 List<Ast.FieldInit> inits = new ArrayList<>();
                 for (Ast.FieldInit i : nd.inits()) {
-                    inits.add(new Ast.FieldInit(i.name(), rename(i.value(), subst), i.pos()));
+                    inits.add(new Ast.FieldInit(i.name(), rename(i.value(), subst, fnParams), i.pos()));
                 }
                 List<String> spreads = new ArrayList<>();
                 for (String s : nd.spreads()) {
@@ -208,24 +220,24 @@ public final class HelperInliner {
                 List<Ast.Case> cases = new ArrayList<>();
                 for (Ast.Case c : m.cases()) {
                     Map<String, String> inner = c.binding() == null ? subst : without(subst, c.binding());
-                    cases.add(new Ast.Case(c.armTypes(), c.binding(), rename(c.body(), inner), c.pos()));
+                    cases.add(new Ast.Case(c.armTypes(), c.binding(), rename(c.body(), inner, fnParams), c.pos()));
                 }
-                yield new Ast.Match(rename(m.scrutinee(), subst), cases, m.pos());
+                yield new Ast.Match(rename(m.scrutinee(), subst, fnParams), cases, m.pos());
             }
-            case Ast.If iff -> new Ast.If(rename(iff.cond(), subst), rename(iff.then(), subst), rename(iff.els(), subst), iff.pos());
+            case Ast.If iff -> new Ast.If(rename(iff.cond(), subst, fnParams), rename(iff.then(), subst, fnParams), rename(iff.els(), subst, fnParams), iff.pos());
             case Ast.LetIn li -> {
-                Ast.Expr value = rename(li.value(), subst);
-                Ast.Expr body = rename(li.body(), without(subst, li.name()));
+                Ast.Expr value = rename(li.value(), subst, fnParams);
+                Ast.Expr body = rename(li.body(), without(subst, li.name()), fnParams);
                 yield new Ast.LetIn(li.name(), value, body, li.pos());
             }
-            case Ast.ListLit lit -> new Ast.ListLit(renameList(lit.elements(), subst), lit.pos());
-            case Ast.ListComp comp -> new Ast.ListComp(rename(comp.element(), subst), renameList(comp.guards(), subst), comp.pos());
+            case Ast.ListLit lit -> new Ast.ListLit(renameList(lit.elements(), subst, fnParams), lit.pos());
+            case Ast.ListComp comp -> new Ast.ListComp(rename(comp.element(), subst, fnParams), renameList(comp.guards(), subst, fnParams), comp.pos());
             case Ast.Block block -> {
                 Map<String, String> inner = subst;
                 for (String p : block.params()) {
                     inner = without(inner, p);
                 }
-                yield new Ast.Block(block.params(), rename(block.body(), inner), block.pos());
+                yield new Ast.Block(block.params(), rename(block.body(), inner, fnParams), block.pos());
             }
             case Ast.IntLit ignored -> e;
             case Ast.DecimalLit ignored -> e;
@@ -234,10 +246,10 @@ public final class HelperInliner {
         };
     }
 
-    private static List<Ast.Expr> renameList(List<Ast.Expr> es, Map<String, String> subst) {
+    private static List<Ast.Expr> renameList(List<Ast.Expr> es, Map<String, String> subst, Set<String> fnParams) {
         List<Ast.Expr> out = new ArrayList<>();
         for (Ast.Expr e : es) {
-            out.add(rename(e, subst));
+            out.add(rename(e, subst, fnParams));
         }
         return out;
     }
