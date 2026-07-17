@@ -1,6 +1,14 @@
 module souther.string
 
 // String primitives (ADR-0028). Each names a JVM operation the backend emits; the compiler checks a
-// call against the declared signature, so `trim` is a shipped built-in whose signature lives here
-// rather than hard-coded in the checker. The rest of the String library moves here incrementally.
-let trim (s: String): String = intrinsic "string.trim"
+// call against the declared signature, so these are shipped built-ins whose signatures live here
+// rather than hard-coded in the checker. `length` is not here yet — it is overloaded over List and
+// String, which a single keyed intrinsic does not express.
+let trim (s: String) : String = intrinsic "string.trim"
+let lowercase (s: String) : String = intrinsic "string.lowercase"
+let uppercase (s: String) : String = intrinsic "string.uppercase"
+let contains (s: String, sub: String) : Bool = intrinsic "string.contains"
+let startsWith (s: String, prefix: String) : Bool = intrinsic "string.startsWith"
+let endsWith (s: String, suffix: String) : Bool = intrinsic "string.endsWith"
+let substring (s: String, from: Int, to: Int) : String = intrinsic "string.substring"
+let concat (a: String, b: String) : String = intrinsic "string.concat"

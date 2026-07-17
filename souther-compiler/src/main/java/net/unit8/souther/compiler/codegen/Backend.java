@@ -2435,6 +2435,53 @@ public final class Backend {
                     code.invokevirtual(CD_String, "trim", MethodTypeDesc.of(CD_String));
                     return Type.STRING;
                 }
+                case "string.lowercase" -> {
+                    expr(call.args().get(0));
+                    code.invokevirtual(CD_String, "toLowerCase", MethodTypeDesc.of(CD_String));
+                    return Type.STRING;
+                }
+                case "string.uppercase" -> {
+                    expr(call.args().get(0));
+                    code.invokevirtual(CD_String, "toUpperCase", MethodTypeDesc.of(CD_String));
+                    return Type.STRING;
+                }
+                case "string.contains" -> {
+                    expr(call.args().get(0));
+                    expr(call.args().get(1));
+                    code.invokevirtual(CD_String, "contains",
+                            MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_CharSequence));
+                    return Type.BOOL;
+                }
+                case "string.startsWith" -> {
+                    expr(call.args().get(0));
+                    expr(call.args().get(1));
+                    code.invokevirtual(CD_String, "startsWith",
+                            MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_String));
+                    return Type.BOOL;
+                }
+                case "string.endsWith" -> {
+                    expr(call.args().get(0));
+                    expr(call.args().get(1));
+                    code.invokevirtual(CD_String, "endsWith",
+                            MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_String));
+                    return Type.BOOL;
+                }
+                case "string.substring" -> {
+                    expr(call.args().get(0));
+                    expr(call.args().get(1));
+                    code.l2i();                          // Int is a long; substring takes int indices
+                    expr(call.args().get(2));
+                    code.l2i();
+                    code.invokevirtual(CD_String, "substring",
+                            MethodTypeDesc.of(CD_String, ConstantDescs.CD_int, ConstantDescs.CD_int));
+                    return Type.STRING;
+                }
+                case "string.concat" -> {
+                    expr(call.args().get(0));
+                    expr(call.args().get(1));
+                    code.invokevirtual(CD_String, "concat", MethodTypeDesc.of(CD_String, CD_String));
+                    return Type.STRING;
+                }
                 default -> throw new CompileException(call.pos(), "unknown intrinsic `" + key + "`");
             }
         }
@@ -2455,47 +2502,6 @@ public final class Backend {
                     }
                     code.i2l();
                     return Type.INT;
-                }
-                case "contains" -> {
-                    expr(call.args().get(0));
-                    expr(call.args().get(1));
-                    code.invokevirtual(CD_String, "contains",
-                            MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_CharSequence));
-                    return Type.BOOL;
-                }
-                case "lowercase" -> {
-                    expr(call.args().get(0));
-                    code.invokevirtual(CD_String, "toLowerCase", MethodTypeDesc.of(CD_String));
-                    return Type.STRING;
-                }
-                case "uppercase" -> {
-                    expr(call.args().get(0));
-                    code.invokevirtual(CD_String, "toUpperCase", MethodTypeDesc.of(CD_String));
-                    return Type.STRING;
-                }
-                case "concat" -> {
-                    expr(call.args().get(0));
-                    expr(call.args().get(1));
-                    code.invokevirtual(CD_String, "concat", MethodTypeDesc.of(CD_String, CD_String));
-                    return Type.STRING;
-                }
-                case "startsWith", "endsWith" -> {
-                    expr(call.args().get(0));
-                    expr(call.args().get(1));
-                    code.invokevirtual(CD_String,
-                            call.fn().equals("startsWith") ? "startsWith" : "endsWith",
-                            MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_String));
-                    return Type.BOOL;
-                }
-                case "substring" -> {
-                    expr(call.args().get(0));
-                    expr(call.args().get(1));
-                    code.l2i();                          // Int is a long; substring takes int indices
-                    expr(call.args().get(2));
-                    code.l2i();
-                    code.invokevirtual(CD_String, "substring",
-                            MethodTypeDesc.of(CD_String, ConstantDescs.CD_int, ConstantDescs.CD_int));
-                    return Type.STRING;
                 }
                 case "map", "filter", "fold", "all", "any" -> {
                     return listBlockOp(call);
