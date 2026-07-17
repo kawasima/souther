@@ -50,7 +50,7 @@ class CompileNamedSumStageTest {
         Decoder aDec = (Decoder) loader.loadClass("demo.A").getMethod("decoder").invoke(null);
         Object a = ((Ok) aDec.decode(java.util.Map.of("v", 5L), Path.ROOT)).value();
 
-        Object pipe = loader.loadClass("demo.pipe").getConstructor().newInstance();
+        Object pipe = loader.loadClass("demo.Pipe").getConstructor().newInstance();
         Object out = ((Behavior<Object, Object>) pipe).apply(a);
 
         // A routed into handleA, producing OutA { a: 5 }

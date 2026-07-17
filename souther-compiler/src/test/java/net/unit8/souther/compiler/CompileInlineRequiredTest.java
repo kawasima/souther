@@ -49,7 +49,7 @@ class CompileInlineRequiredTest {
             import net.unit8.raoh.Result;
             import net.unit8.raoh.decode.Decoder;
             import java.util.Map;
-            public final class FindMemberImpl extends findMember {
+            public final class FindMemberImpl extends FindMember {
                 public Member apply(Id in) {
                     Decoder d = Member.decoder();
                     Result r = d.decode(Map.of("id", "m-1"), Path.ROOT);
@@ -66,8 +66,8 @@ class CompileInlineRequiredTest {
 
         BytesClassLoader loader = new BytesClassLoader(classes, getClass().getClassLoader());
 
-        Class<?> findMember = loader.loadClass("demo.findMember");
-        Class<?> handleClass = loader.loadClass("demo.handle");
+        Class<?> findMember = loader.loadClass("demo.FindMember");
+        Class<?> handleClass = loader.loadClass("demo.Handle");
         var bind = handleClass.getMethod("bind", findMember);
         Object impl = loader.loadClass("demo.FindMemberImpl").getConstructor().newInstance();
         Object handle = bind.invoke(null, impl);

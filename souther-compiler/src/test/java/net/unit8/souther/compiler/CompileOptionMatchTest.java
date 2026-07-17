@@ -40,7 +40,7 @@ class CompileOptionMatchTest {
         Decoder cd = (Decoder) loader.loadClass("demo.Trip").getMethod("decoder").invoke(null);
         Object trip = ((Ok) cd.decode(tripObject, Path.ROOT)).value();
 
-        Object behavior = loader.loadClass("demo.approverLabel").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.ApproverLabel").getConstructor().newInstance();
         @SuppressWarnings("unchecked")
         Object label = ((Behavior<Object, Object>) behavior).apply(trip);
 

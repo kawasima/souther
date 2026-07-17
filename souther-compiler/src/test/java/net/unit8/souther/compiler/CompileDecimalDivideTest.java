@@ -43,7 +43,7 @@ class CompileDecimalDivideTest {
     private static Object apply(BigDecimal a, BigDecimal b, BytesClassLoader loader) throws Exception {
         Decoder pairDec = (Decoder) loader.loadClass("demo.Pair").getMethod("decoder").invoke(null);
         Object p = ((Ok) pairDec.decode(Map.of("a", a, "b", b), Path.ROOT)).value();
-        Object divv = loader.loadClass("demo.divv").getConstructor().newInstance();
+        Object divv = loader.loadClass("demo.Divv").getConstructor().newInstance();
         return ((Behavior<Object, Object>) divv).apply(p);
     }
 

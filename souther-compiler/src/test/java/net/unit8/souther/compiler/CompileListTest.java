@@ -53,7 +53,7 @@ class CompileListTest {
                 "reasons", List.of("high", "late")), Path.ROOT);
         assertTrue(r instanceof Ok);
         Object request = ((Ok) r).value();
-        Object count = loader.loadClass("demo.countReasons").getConstructor().newInstance();
+        Object count = loader.loadClass("demo.CountReasons").getConstructor().newInstance();
         Object out = ((Behavior<Object, Object>) count).apply(request);
 
         Encoder enc = (Encoder) loader.loadClass("demo.Count").getMethod("encoder").invoke(null);

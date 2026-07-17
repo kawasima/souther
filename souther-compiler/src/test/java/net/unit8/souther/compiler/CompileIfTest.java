@@ -30,7 +30,7 @@ class CompileIfTest {
     private String classify(BytesClassLoader loader, long n) throws Exception {
         Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
         Object in = ((Ok) inDec.decode(n, Path.ROOT)).value();
-        Object behavior = loader.loadClass("demo.classify").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Classify").getConstructor().newInstance();
         Object out = ((Behavior<Object, Object>) behavior).apply(in);
         // Out is a single-field newtype, so its encoder yields the bare String.
         Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);

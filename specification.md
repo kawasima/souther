@@ -1565,7 +1565,7 @@ public static Encoder<出張申請, Map<String,Object>> encoder()  // object/sum
 var handle = Handle.bind(new JdbcFindMember(dataSource));
 ```
 
-生成されるクラス名は behavior 名から導く（先頭を大文字化）。
+生成されるクラス名は behavior 名から導く（先頭を大文字化）。data 名はもともと大文字始まりなので、`quote` という behavior は `Quote` というクラスになり、同じモジュールの `data Quote` と衝突する。これはコンパイルエラーで、どちらかを改名して区別する（動詞の behavior と名詞の data は別語にするのが素直で、`会員を探す` と `会員` のように衝突しない）。
 
 ### 19.6 生成権限の露出防止
 

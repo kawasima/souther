@@ -23,7 +23,7 @@ class CompileBareIdentifierTest {
                 behavior f = (立替: Int) -> R constructs R
                 fn f (立替) = R { v: 立替 }
                 """;
-        assertTrue(Compiler.compile(src).containsKey("demo.f"), "立替 here is the parameter, not a construction");
+        assertTrue(Compiler.compile(src).containsKey("demo.F"), "立替 here is the parameter, not a construction");
     }
 
     @Test
@@ -38,7 +38,7 @@ class CompileBareIdentifierTest {
                     R { v: 立替 }
                 }
                 """;
-        assertTrue(Compiler.compile(src).containsKey("demo.f"));
+        assertTrue(Compiler.compile(src).containsKey("demo.F"));
     }
 
     /** With nothing bound, the same name is the unit's construction and needs declaring. */
@@ -62,6 +62,6 @@ class CompileBareIdentifierTest {
                 behavior f = (x: Int) -> 立替 constructs 立替
                 fn f (x) = 立替
                 """;
-        assertTrue(Compiler.compile(src).containsKey("demo.f"));
+        assertTrue(Compiler.compile(src).containsKey("demo.F"));
     }
 }

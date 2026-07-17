@@ -34,7 +34,7 @@ class CompileBlockExprTest {
     private long apply(BytesClassLoader loader, long in) throws Exception {
         Decoder dec = (Decoder) loader.loadClass("demo.N").getMethod("decoder").invoke(null);
         Object n = ((Ok) dec.decode(in, Path.ROOT)).value();
-        Object f = loader.loadClass("demo.f").getConstructor().newInstance();
+        Object f = loader.loadClass("demo.F").getConstructor().newInstance();
         Object r = ((Behavior) f).apply(n);
         Encoder enc = (Encoder) loader.loadClass("demo.N").getMethod("encoder").invoke(null);
         return (long) enc.encode(r);

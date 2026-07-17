@@ -33,7 +33,7 @@ class CompileListLiteralTest {
                 """), getClass().getClassLoader());
         Decoder d = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
         Object in = ((Ok) d.decode(Map.of("a", a, "b", b), Path.ROOT)).value();
-        return (List<?>) ((Behavior<Object, Object>) loader.loadClass("demo.pick")
+        return (List<?>) ((Behavior<Object, Object>) loader.loadClass("demo.Pick")
                 .getConstructor().newInstance()).apply(in);
     }
 
@@ -65,7 +65,7 @@ class CompileListLiteralTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(REASONS), getClass().getClassLoader());
         Decoder d = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
         Object in = ((Ok) d.decode(Map.of("cost", cost), Path.ROOT)).value();
-        return (List<?>) ((Behavior<Object, Object>) loader.loadClass("demo.reasons")
+        return (List<?>) ((Behavior<Object, Object>) loader.loadClass("demo.Reasons")
                 .getConstructor().newInstance()).apply(in);
     }
 

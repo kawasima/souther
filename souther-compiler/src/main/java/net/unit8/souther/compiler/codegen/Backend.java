@@ -268,6 +268,27 @@ public final class Backend {
         }
         Backend b = new Backend(module.name(), symbols, armToSums, typePackage,
                 module.exposing().isEmpty(), exposed);
+        // A behavior's class capitalizes its first letter (spec 19.5). Data names are already
+        // capitalized, so `behavior quote` producing `data Quote` would generate two classes named
+        // `Quote`. Reject the collision here rather than let one silently overwrite the other.
+        Set<String> localTypes = new HashSet<>();
+        for (Ast.Def d : module.defs()) {
+            localTypes.add(d.name());
+        }
+        Map<String, String> behaviorClassOwner = new HashMap<>();
+        for (Ast.BehaviorDef bd : module.behaviors()) {
+            String cls = behaviorClass(bd.name());
+            if (localTypes.contains(cls)) {
+                throw new CompileException(bd.pos(), "behavior `" + bd.name()
+                        + "` generates class `" + cls + "`, which collides with data `" + cls
+                        + "` (spec 19.5); rename one so their class names differ");
+            }
+            String prev = behaviorClassOwner.put(cls, bd.name());
+            if (prev != null) {
+                throw new CompileException(bd.pos(), "behaviors `" + prev + "` and `" + bd.name()
+                        + "` both generate class `" + cls + "` (spec 19.5); rename one");
+            }
+        }
         // A behavior whose output is an anonymous union gets a generated sealed interface
         // <behavior名>結果 that its arms implement (spec 19.8). Register those arm->interface links
         // in armToSums before the data classes are generated, so each arm class picks the interface
@@ -315,7 +336,7 @@ public final class Backend {
                         ? b.refTypeOrNull(b.successType(spec.params().get(0).type()), spec.name())
                         : null;
                 ClassDesc outputRef = b.refTypeOrNull(b.successType(spec.ret()), spec.name());
-                out.put(module.name() + "." + spec.name(),
+                out.put(module.name() + "." + behaviorClass(spec.name()),
                         b.generateRequiredBase(spec.name(), unitArms, inputRef, outputRef));
             }
         }
@@ -329,13 +350,13 @@ public final class Backend {
                     if (fn != null) {
                         Ast.FnDef inlined = new Ast.FnDef(
                                 fn.name(), fn.params(), inliner.inline(fn.body()), fn.pos());
-                        out.put(module.name() + "." + spec.name(),
+                        out.put(module.name() + "." + behaviorClass(spec.name()),
                                 b.generateSpecFn(spec, inlined, requiredNames, requiredSuccess));
                     }
                     // else: injection target — its abstract base was generated above (spec 13.3)
                 }
                 case Ast.PipeBehavior pipe ->
-                        out.put(module.name() + "." + pipe.name(),
+                        out.put(module.name() + "." + behaviorClass(pipe.name()),
                                 b.generatePipe(pipe, requiredNames, sigs, behaviorDeps, pipeStages));
             }
         }
@@ -370,7 +391,7 @@ public final class Backend {
         // bind(<named required interfaces>) -> this behavior (spec 19.5)
         ClassDesc[] bindParams = new ClassDesc[requireds.size()];
         for (int i = 0; i < requireds.size(); i++) {
-            bindParams[i] = cd(requireds.get(i));
+            bindParams[i] = cdBehavior(requireds.get(i));
         }
         cb.withMethodBody("bind", MethodTypeDesc.of(cdX, bindParams),
                 ClassFile.ACC_PUBLIC | ClassFile.ACC_STATIC, code -> {
@@ -400,7 +421,7 @@ public final class Backend {
      */
     private byte[] generateRequiredBase(String name, List<String> unitArms,
                                         ClassDesc inputRef, ClassDesc outputRef) {
-        ClassDesc cdR = cd(name);
+        ClassDesc cdR = cdBehavior(name);
         return build(cdR, cb -> {
             cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_ABSTRACT | ClassFile.ACC_SUPER);
             if (inputRef != null && outputRef != null) {
@@ -448,7 +469,7 @@ public final class Backend {
             }
             List<String> arms = new ArrayList<>(TypeChecker.leafArms(sig.out(), symbols));
             Collections.sort(arms);
-            results.put(bd.name() + "結果", arms);
+            results.put(behaviorClass(bd.name()) + "結果", arms);
         }
         return results;
     }
@@ -478,7 +499,7 @@ public final class Backend {
      */
     private ClassDesc refTypeOrNull(Type t, String behaviorName) {
         if (t instanceof Type.Union) {
-            return cd(behaviorName + "結果");
+            return cd(behaviorClass(behaviorName) + "結果");
         }
         if (t instanceof Type.Ref r) {
             return cd(r.name());
@@ -533,6 +554,25 @@ public final class Backend {
 
     private ClassDesc cd(String typeName) {
         return ClassDesc.of(typePackage.getOrDefault(typeName, pkg) + "." + typeName);
+    }
+
+    /**
+     * The generated class simple-name for a behavior: its name with the first letter capitalized
+     * (spec 19.5). A Japanese leading character has no upper-case form, so a Japanese-named behavior
+     * is emitted unchanged. The behavior's name stays lower-case wherever it is an identity — an
+     * injected field name, a requirement-set entry, a signature-map key — and only the emitted class
+     * name is capitalized.
+     */
+    static String behaviorClass(String name) {
+        if (name.isEmpty()) {
+            return name;
+        }
+        return Character.toUpperCase(name.charAt(0)) + name.substring(1);
+    }
+
+    /** The {@link ClassDesc} for a behavior's generated class, in its declaring package. */
+    private ClassDesc cdBehavior(String name) {
+        return ClassDesc.of(typePackage.getOrDefault(name, pkg) + "." + behaviorClass(name));
     }
 
     /** Invokes a type's static {@code decoder()}/{@code encoder()} factory, as an interface
@@ -770,7 +810,7 @@ public final class Backend {
      */
     private byte[] generateSpecFn(Ast.SpecBehavior spec, Ast.FnDef fn, Set<String> requiredNames,
                                   Map<String, Type> requiredSuccess) {
-        ClassDesc cdB = cd(spec.name());
+        ClassDesc cdB = cdBehavior(spec.name());
         int n = spec.params().size();
         // declared requires, validated to equal what the fn calls (E1602/E1603); the same order is
         // used by pipeline callers (requirementSets), so the injected fields line up.
@@ -922,7 +962,7 @@ public final class Backend {
     private byte[] generatePipe(Ast.PipeBehavior pipe, Set<String> requiredNames,
                                 Map<String, TypeChecker.Sig> sigs, Map<String, List<String>> behaviorDeps,
                                 Map<String, List<String>> pipeStages) {
-        ClassDesc cdP = cd(pipe.name());
+        ClassDesc cdP = cdBehavior(pipe.name());
         // Flatten nested pipeline stages so the routing is over leaf behaviors (spec 14.2): a named
         // intermediate `half = split >> work` inlines to `split, work`, which keeps a retired arm
         // retired across the composition, making `>>` associative.
@@ -999,7 +1039,7 @@ public final class Backend {
         }
         ClassDesc[] params = new ClassDesc[arity];
         java.util.Arrays.fill(params, CD_Object);
-        code.invokevirtual(cd(stage), "apply", MethodTypeDesc.of(CD_Object, params));
+        code.invokevirtual(cdBehavior(stage), "apply", MethodTypeDesc.of(CD_Object, params));
         code.astore(1);
     }
 
@@ -1024,7 +1064,7 @@ public final class Backend {
             code.getfield(cdP, stage, CD_Behavior);
             return;
         }
-        ClassDesc cdStage = cd(stage);
+        ClassDesc cdStage = cdBehavior(stage);
         code.new_(cdStage);
         code.dup();
         List<String> deps = behaviorDeps.getOrDefault(stage, List.of());

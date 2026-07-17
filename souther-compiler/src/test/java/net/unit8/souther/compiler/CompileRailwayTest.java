@@ -54,7 +54,7 @@ class CompileRailwayTest {
     @SuppressWarnings("unchecked")
     void amountFlowsThroughToDoubled() throws Exception {
         BytesClassLoader loader = loader();
-        Object process = loader.loadClass("demo.process").getConstructor().newInstance();
+        Object process = loader.loadClass("demo.Process").getConstructor().newInstance();
         Object r = ((Behavior<Object, Object>) process).apply(amount(loader, 42));
         // 42 <= 100, so guard yields Amount, which toDoubled consumes into a Doubled
         assertEquals("demo.Doubled", r.getClass().getName());
@@ -64,7 +64,7 @@ class CompileRailwayTest {
     @SuppressWarnings("unchecked")
     void tooLargeArmPropagatesPastToDoubled() throws Exception {
         BytesClassLoader loader = loader();
-        Object process = loader.loadClass("demo.process").getConstructor().newInstance();
+        Object process = loader.loadClass("demo.Process").getConstructor().newInstance();
         Object r = ((Behavior<Object, Object>) process).apply(amount(loader, 500));
         // 500 > 100, so guard yields TooLarge, which toDoubled does not accept: it propagates
         assertEquals("demo.TooLarge", r.getClass().getName());
@@ -103,7 +103,7 @@ class CompileRailwayTest {
                 behavior flow = 判定 >> 加工 >> 仕上げ
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
-        Object flow = loader.loadClass("demo.flow").getConstructor().newInstance();
+        Object flow = loader.loadClass("demo.Flow").getConstructor().newInstance();
         Decoder dec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
 
         Object off = ((Behavior<Object, Object>) flow).apply(((Ok) dec.decode(500L, Path.ROOT)).value());

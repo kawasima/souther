@@ -32,7 +32,7 @@ class CompileStringLibTest {
 
         Decoder nameDec = (Decoder) loader.loadClass("demo.Name").getMethod("decoder").invoke(null);
         Object name = ((Ok) nameDec.decode("robert", Path.ROOT)).value();
-        Object greeting = ((Behavior<Object, Object>) loader.loadClass("demo.greet")
+        Object greeting = ((Behavior<Object, Object>) loader.loadClass("demo.Greet")
                 .getConstructor().newInstance()).apply(name);
 
         Encoder enc = (Encoder) loader.loadClass("demo.Greeting").getMethod("encoder").invoke(null);

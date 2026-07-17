@@ -47,6 +47,8 @@ class CompilePipeDepsTest {
             """;
 
     private static String impl(String cls, String param, String inType, String midValue) {
+        // the generated behavior base class capitalizes its first letter (spec 19.5)
+        String base = Character.toUpperCase(param.charAt(0)) + param.substring(1);
         return """
                 package demo;
                 import net.unit8.raoh.Ok;
@@ -58,7 +60,7 @@ class CompilePipeDepsTest {
                         return (Mid) ((Ok) d.decode("%s", Path.ROOT)).value();
                     }
                 }
-                """.formatted(cls, param, inType, midValue);
+                """.formatted(cls, base, inType, midValue);
     }
 
     @Test
@@ -70,9 +72,9 @@ class CompilePipeDepsTest {
 
         BytesClassLoader loader = new BytesClassLoader(classes, getClass().getClassLoader());
 
-        Class<?> fetch = loader.loadClass("demo.fetch");
-        Class<?> tag = loader.loadClass("demo.tag");
-        Class<?> handleClass = loader.loadClass("demo.handle");
+        Class<?> fetch = loader.loadClass("demo.Fetch");
+        Class<?> tag = loader.loadClass("demo.Tag");
+        Class<?> handleClass = loader.loadClass("demo.Handle");
         var bind = handleClass.getMethod("bind", fetch, tag); // union of requirements, first-seen order
 
         Object handle = bind.invoke(null,
@@ -111,9 +113,9 @@ class CompilePipeDepsTest {
         classes.put("demo.TagImpl", compileSubclass(classes, "demo.TagImpl", impl("TagImpl", "tag", "Mid", "T")));
 
         BytesClassLoader loader = new BytesClassLoader(classes, getClass().getClassLoader());
-        Class<?> outerClass = loader.loadClass("demo.outer");
+        Class<?> outerClass = loader.loadClass("demo.Outer");
         // outer requires what handle requires, transitively — not nothing
-        var bind = outerClass.getMethod("bind", loader.loadClass("demo.fetch"), loader.loadClass("demo.tag"));
+        var bind = outerClass.getMethod("bind", loader.loadClass("demo.Fetch"), loader.loadClass("demo.Tag"));
 
         Object outer = bind.invoke(null,
                 loader.loadClass("demo.FetchImpl").getConstructor().newInstance(),

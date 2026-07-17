@@ -47,7 +47,7 @@ class CompileInvariantBehaviorTest {
     @SuppressWarnings("unchecked")
     void constructionSucceedsWhenInvariantHolds() throws Exception {
         BytesClassLoader loader = loader();
-        Object discount = loader.loadClass("demo.discount").getConstructor().newInstance();
+        Object discount = loader.loadClass("demo.Discount").getConstructor().newInstance();
         Object r = ((Behavior<Object, Object>) discount).apply(draft(loader, 3000));
         assertEquals("demo.Adjusted", r.getClass().getName(), "3000 - 2000 = 1000 >= 0");
 
@@ -59,7 +59,7 @@ class CompileInvariantBehaviorTest {
     @SuppressWarnings("unchecked")
     void invariantViolationAborts() throws Exception {
         BytesClassLoader loader = loader();
-        Object discount = loader.loadClass("demo.discount").getConstructor().newInstance();
+        Object discount = loader.loadClass("demo.Discount").getConstructor().newInstance();
         // 100 - 2000 = -1900 violates cost >= 0, so the construction aborts rather than returning
         ConstraintViolation v = assertThrows(ConstraintViolation.class,
                 () -> ((Behavior<Object, Object>) discount).apply(draft(loader, 100)));
@@ -92,7 +92,7 @@ class CompileInvariantBehaviorTest {
                 }
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
-        Object adjust = loader.loadClass("demo.adjust").getConstructor().newInstance();
+        Object adjust = loader.loadClass("demo.Adjust").getConstructor().newInstance();
         Decoder dec = (Decoder) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
 
         // the guard fails, so the else branch builds Adjusted { cost: 999 - 2000 = -1001 },

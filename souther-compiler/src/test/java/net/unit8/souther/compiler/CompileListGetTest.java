@@ -39,7 +39,7 @@ class CompileListGetTest {
         Decoder bagDec = (Decoder) loader.loadClass("demo.Bag").getMethod("decoder").invoke(null);
         Object bag = ((Ok) bagDec.decode(Map.of("items", List.of(items)), Path.ROOT)).value();
 
-        Object label = ((Behavior<Object, Object>) loader.loadClass("demo.firstValue")
+        Object label = ((Behavior<Object, Object>) loader.loadClass("demo.FirstValue")
                 .getConstructor().newInstance()).apply(bag);
 
         // Label is a single-field newtype, so its encoder yields the bare String.

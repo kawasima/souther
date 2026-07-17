@@ -24,7 +24,9 @@ class CompileNumericLiteralTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(module), getClass().getClassLoader());
         Decoder dec = (Decoder) loader.loadClass("demo." + type).getMethod("decoder").invoke(null);
         Object in = ((Ok) dec.decode(input, Path.ROOT)).value();
-        Object b = loader.loadClass("demo." + behavior).getDeclaredConstructor().newInstance();
+        // the generated behavior class capitalizes the behavior's first letter (spec 19.5)
+        String behaviorClass = Character.toUpperCase(behavior.charAt(0)) + behavior.substring(1);
+        Object b = loader.loadClass("demo." + behaviorClass).getDeclaredConstructor().newInstance();
         Object out = ((Behavior<Object, Object>) b).apply(in);
         Encoder enc = (Encoder) loader.loadClass("demo." + type).getMethod("encoder").invoke(null);
         return enc.encode(out);

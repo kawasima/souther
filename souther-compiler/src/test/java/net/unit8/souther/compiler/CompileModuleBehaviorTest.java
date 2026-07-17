@@ -47,7 +47,7 @@ class CompileModuleBehaviorTest {
         Decoder nDec = (Decoder) loader.loadClass("m.a.N").getMethod("decoder").invoke(null);
         Object five = ((Ok) nDec.decode(5L, Path.ROOT)).value();
 
-        Object twice = loader.loadClass("m.b.twice").getConstructor().newInstance();
+        Object twice = loader.loadClass("m.b.Twice").getConstructor().newInstance();
         Object r = ((Behavior) twice).apply(five);
 
         // inc twice: 5 -> 6 -> 7. N is a newtype, so its encoder yields the bare Long.

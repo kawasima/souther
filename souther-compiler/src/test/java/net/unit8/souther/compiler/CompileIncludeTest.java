@@ -49,7 +49,7 @@ class CompileIncludeTest {
         assertTrue(r instanceof Ok);
         Object draft = ((Ok) r).value();
 
-        Object submit = loader.loadClass("demo.submit").getConstructor().newInstance();
+        Object submit = loader.loadClass("demo.Submit").getConstructor().newInstance();
         Object submitted = submit.getClass()
                 .getMethod("apply", Object.class, Object.class)
                 .invoke(submit, draft, "2026");

@@ -28,9 +28,9 @@ class CompileArmWideningTest {
             data AB = A | B
             data Wrap = { it: AB }
 
-            behavior wrap = (a: A) -> Wrap constructs Wrap
+            behavior makeWrap = (a: A) -> Wrap constructs Wrap
 
-            fn wrap (a) = Wrap { it: a }
+            fn makeWrap (a) = Wrap { it: a }
             """;
 
     @Test
@@ -40,7 +40,7 @@ class CompileArmWideningTest {
         Decoder ad = (Decoder) loader.loadClass("demo.A").getMethod("decoder").invoke(null);
         Object a = ((Ok) ad.decode(Map.of("x", 5L, "tag", 1L), Path.ROOT)).value();
 
-        Object wrap = ((Behavior<Object, Object>) loader.loadClass("demo.wrap")
+        Object wrap = ((Behavior<Object, Object>) loader.loadClass("demo.MakeWrap")
                 .getConstructor().newInstance()).apply(a);
 
         Encoder enc = (Encoder) loader.loadClass("demo.Wrap").getMethod("encoder").invoke(null);

@@ -43,7 +43,7 @@ class CompileMatchTest {
         Decoder cd = (Decoder) loader.loadClass("demo.Contact").getMethod("decoder").invoke(null);
         Object contact = ((Ok) cd.decode(contactInput, Path.ROOT)).value();
 
-        Object behavior = loader.loadClass("demo.contactValue").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.ContactValue").getConstructor().newInstance();
         @SuppressWarnings("unchecked")
         Object label = ((Behavior<Object, Object>) behavior).apply(contact);
 

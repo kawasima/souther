@@ -46,7 +46,7 @@ class CompilePipeTest {
     @SuppressWarnings("unchecked")
     void composesDependencyFreeBehaviors() throws Exception {
         BytesClassLoader loader = loader();
-        Object ab = loader.loadClass("demo.ab").getConstructor().newInstance();
+        Object ab = loader.loadClass("demo.Ab").getConstructor().newInstance();
         // apply returns the output arm value directly
         Object out = ((Behavior<Object, Object>) ab).apply(decode(loader, "Wrap", "hi"));
 
@@ -65,7 +65,7 @@ class CompilePipeTest {
         // The Java-side implementation of `fetch` returns the Mid arm value directly.
         Behavior fetch = w -> ((Ok) midDecoder.decode("hello", Path.ROOT)).value();
 
-        Object handle = loader.loadClass("demo.handle")
+        Object handle = loader.loadClass("demo.Handle")
                 .getConstructor(Behavior.class).newInstance(fetch);
         Object out = ((Behavior) handle).apply(decode(loader, "Wrap", "ignored"));
 
@@ -138,7 +138,7 @@ class CompilePipeTest {
                 behavior rejectAndSendBack = reject >> sendBack
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
-        Class<?> flow = loader.loadClass("demo.rejectAndSendBack");
+        Class<?> flow = loader.loadClass("demo.RejectAndSendBack");
         // the pipeline takes what its first stage takes, so it is not a one-input Behavior
         var apply = flow.getMethod("apply", Object.class, Object.class);
 

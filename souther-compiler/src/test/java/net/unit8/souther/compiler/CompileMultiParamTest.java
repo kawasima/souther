@@ -37,7 +37,7 @@ class CompileMultiParamTest {
         Object a = decode(loader, "A", 3L);
         Object b = decode(loader, "B", 7L);
 
-        Object behavior = loader.loadClass("demo.mkPair").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.MkPair").getConstructor().newInstance();
         Object out = behavior.getClass()
                 .getMethod("apply", Object.class, Object.class)
                 .invoke(behavior, a, b);

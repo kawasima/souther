@@ -35,7 +35,7 @@ class CompileBehaviorResultTest {
     @Test
     void anonymousUnionOutputGeneratesASealedResultInterface() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        Class<?> result = loader.loadClass("demo.classify結果");
+        Class<?> result = loader.loadClass("demo.Classify結果");
         assertTrue(result.isInterface(), "結果 must be an interface");
         assertTrue(result.isSealed(), "結果 must be sealed");
         Set<String> permitted = Arrays.stream(result.getPermittedSubclasses())
@@ -46,7 +46,7 @@ class CompileBehaviorResultTest {
     @Test
     void eachArmImplementsTheResultInterface() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        Class<?> result = loader.loadClass("demo.classify結果");
+        Class<?> result = loader.loadClass("demo.Classify結果");
         assertTrue(result.isAssignableFrom(loader.loadClass("demo.Cheap")));
         assertTrue(result.isAssignableFrom(loader.loadClass("demo.Pricey")));
     }
@@ -68,13 +68,13 @@ class CompileBehaviorResultTest {
     @Test
     void injectedBaseDeclaresTheResultInterfaceAsItsGenericReturnType() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(INJECTED), getClass().getClassLoader());
-        Class<?> base = loader.loadClass("demo.findMember");
+        Class<?> base = loader.loadClass("demo.FindMember");
         java.lang.reflect.Type[] ifaces = base.getGenericInterfaces();
         assertEquals(1, ifaces.length);
         ParameterizedType pt = (ParameterizedType) ifaces[0];
         assertEquals(Behavior.class, pt.getRawType());
         java.lang.reflect.Type[] args = pt.getActualTypeArguments();
         assertEquals("demo.Id", ((Class<?>) args[0]).getName());
-        assertEquals("demo.findMember結果", ((Class<?>) args[1]).getName());
+        assertEquals("demo.FindMember結果", ((Class<?>) args[1]).getName());
     }
 }

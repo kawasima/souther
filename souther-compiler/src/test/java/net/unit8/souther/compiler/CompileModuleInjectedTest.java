@@ -46,7 +46,7 @@ class CompileModuleInjectedTest {
     // A Java implementation of module a's injected behavior base `a.produce` (Behavior<N, N>).
     private static final String IMPL = """
             package a;
-            public final class ProduceImpl extends produce {
+            public final class ProduceImpl extends Produce {
                 public N apply(N n) { return n; }
             }
             """;
@@ -59,8 +59,8 @@ class CompileModuleInjectedTest {
 
         BytesClassLoader loader = new BytesClassLoader(classes, getClass().getClassLoader());
 
-        Class<?> produce = loader.loadClass("a.produce");
-        var bind = loader.loadClass("b.flow").getMethod("bind", produce);
+        Class<?> produce = loader.loadClass("a.Produce");
+        var bind = loader.loadClass("b.Flow").getMethod("bind", produce);
         Object impl = loader.loadClass("a.ProduceImpl").getConstructor().newInstance();
         Object flow = bind.invoke(null, impl);
 

@@ -59,7 +59,7 @@ class CompileMapTest {
         Result r = d.decode(Map.of("byName", Map.of("a", 7L)), Path.ROOT);
         assertTrue(r instanceof Ok);
         Object scores = ((Ok) r).value();
-        Object answer = ((Behavior<Object, Object>) loader.loadClass("demo.lookupA")
+        Object answer = ((Behavior<Object, Object>) loader.loadClass("demo.LookupA")
                 .getConstructor().newInstance()).apply(scores);
 
         Encoder enc = (Encoder) loader.loadClass("demo.Answer").getMethod("encoder").invoke(null);

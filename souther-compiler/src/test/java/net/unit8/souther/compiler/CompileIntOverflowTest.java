@@ -39,7 +39,7 @@ class CompileIntOverflowTest {
                 CompileIntOverflowTest.class.getClassLoader());
         Decoder inDecoder = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
         Object in = ((Ok) inDecoder.decode(input, Path.ROOT)).value();
-        Object compute = loader.loadClass("demo.compute").getConstructor().newInstance();
+        Object compute = loader.loadClass("demo.Compute").getConstructor().newInstance();
         Object out = ((Behavior<Object, Object>) compute).apply(in);
         Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
         return enc.encode(out);

@@ -45,7 +45,7 @@ class CompileBehaviorTest {
         Object member = ((Ok) memberDecoder.decode(
                 Map.of("id", "m-1", "name", "bob"), Path.ROOT)).value();
 
-        Object behavior = loader.loadClass("demo.toResponse").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.ToResponse").getConstructor().newInstance();
         Object response = ((Behavior<Object, Object>) behavior).apply(member);
 
         Encoder responseEncoder = (Encoder) loader.loadClass("demo.Response")

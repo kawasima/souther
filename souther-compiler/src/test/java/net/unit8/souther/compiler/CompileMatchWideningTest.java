@@ -52,7 +52,7 @@ class CompileMatchWideningTest {
         Decoder bothDec = (Decoder) loader.loadClass("demo.Both").getMethod("decoder").invoke(null);
         Object b = ((Ok) bothDec.decode(Map.of("type", "B", "v", 7L), Path.ROOT)).value();
 
-        Object pick = loader.loadClass("demo.pick").getConstructor().newInstance();
+        Object pick = loader.loadClass("demo.Pick").getConstructor().newInstance();
         Object out = ((Behavior<Object, Object>) pick).apply(b);
 
         // the B arm produced an OutB { b: 7 }; OutB is a single-Int-field newtype, so it encodes bare

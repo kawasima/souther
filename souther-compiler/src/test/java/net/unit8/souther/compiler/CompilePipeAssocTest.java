@@ -46,7 +46,7 @@ class CompilePipeAssocTest {
     private String run(BytesClassLoader loader, long n) throws Exception {
         Decoder dec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
         Object in = ((Ok) dec.decode(n, Path.ROOT)).value();
-        Object flow = loader.loadClass("demo.flow").getConstructor().newInstance();
+        Object flow = loader.loadClass("demo.Flow").getConstructor().newInstance();
         return ((Behavior<Object, Object>) flow).apply(in).getClass().getName();
     }
 

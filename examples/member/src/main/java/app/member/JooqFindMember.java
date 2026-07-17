@@ -4,8 +4,8 @@
 // ままなので、この behavior が宣言した出力アーム以外は作れない——`new` の抜け道は無い。
 package app.member;
 
-import example.member.findMember;
-import example.member.findMember結果;
+import example.member.FindMember;
+import example.member.FindMember結果;
 import example.member.会員;
 import example.member.会員ID;
 
@@ -33,7 +33,7 @@ import static org.jooq.impl.DSL.table;
  * {@code DB不通} アームに畳み、言語側へ例外として漏らさない（spec 13.4）。decode の失敗は
  * Raoh の {@code Result} が運ぶ（spec 10）。ここでは失敗を {@code 保存データ不正} に翻訳する。
  */
-public final class JooqFindMember extends findMember {
+public final class JooqFindMember extends FindMember {
 
     private final DSLContext dsl;
 
@@ -42,7 +42,7 @@ public final class JooqFindMember extends findMember {
     }
 
     @Override
-    public findMember結果 apply(会員ID id) {
+    public FindMember結果 apply(会員ID id) {
         // findMember結果 は生成された sealed interface（spec 19.8）で、宣言した4アームを permits する。
         // 値を data の外へ取り出すのは encoder を通す（spec 8.5）。会員ID は newtype なので
         // encoder() は Encoder<会員ID, String>、encode は裸の String を返す（キャスト不要）。

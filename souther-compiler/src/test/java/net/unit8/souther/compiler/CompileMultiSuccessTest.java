@@ -31,7 +31,7 @@ class CompileMultiSuccessTest {
     private String classify(BytesClassLoader loader, long cost) throws Exception {
         Decoder dec = (Decoder) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
         Object draft = ((Ok) dec.decode(cost, Path.ROOT)).value();
-        Object behavior = loader.loadClass("demo.classify").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Classify").getConstructor().newInstance();
         Object r = ((Behavior<Object, Object>) behavior).apply(draft);
         return r.getClass().getName();
     }

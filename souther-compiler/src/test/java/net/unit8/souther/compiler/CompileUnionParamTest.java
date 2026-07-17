@@ -38,7 +38,7 @@ class CompileUnionParamTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
         Decoder d = (Decoder) loader.loadClass("demo." + armType).getMethod("decoder").invoke(null);
         Object arg = ((Ok) d.decode(n, Path.ROOT)).value();
-        Object done = ((Behavior<Object, Object>) loader.loadClass("demo.finish")
+        Object done = ((Behavior<Object, Object>) loader.loadClass("demo.Finish")
                 .getConstructor().newInstance()).apply(arg);
         // Done is a single-field newtype, so its encoder yields the bare Long.
         Encoder enc = (Encoder) loader.loadClass("demo.Done").getMethod("encoder").invoke(null);

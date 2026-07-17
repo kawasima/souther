@@ -36,7 +36,7 @@ class CompileDivideTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
         Decoder d = (Decoder) loader.loadClass("demo.Pair").getMethod("decoder").invoke(null);
         Object pair = ((Ok) d.decode(Map.of("a", a, "b", b), Path.ROOT)).value();
-        Object outcome = ((Behavior<Object, Object>) loader.loadClass("demo.divideThem")
+        Object outcome = ((Behavior<Object, Object>) loader.loadClass("demo.DivideThem")
                 .getConstructor().newInstance()).apply(pair);
         Encoder enc = (Encoder) loader.loadClass("demo.Outcome").getMethod("encoder").invoke(null);
         return (Map<?, ?>) enc.encode(outcome);

@@ -35,7 +35,7 @@ class CompileUnitValueTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
         Decoder d = (Decoder) loader.loadClass("demo.Flag").getMethod("decoder").invoke(null);
         Object flag = ((Ok) d.decode(on, Path.ROOT)).value();   // Flag is a single-Bool newtype: bare bool
-        return (List<?>) ((Behavior<Object, Object>) loader.loadClass("demo.marks")
+        return (List<?>) ((Behavior<Object, Object>) loader.loadClass("demo.Marks")
                 .getConstructor().newInstance()).apply(flag);
     }
 

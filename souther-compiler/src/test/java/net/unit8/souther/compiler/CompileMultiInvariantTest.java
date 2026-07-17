@@ -36,7 +36,7 @@ class CompileMultiInvariantTest {
     private static Object make(long v, BytesClassLoader loader) throws Exception {
         Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
         Object in = ((Ok) inDec.decode(v, Path.ROOT)).value();
-        Object make = loader.loadClass("demo.make").getConstructor().newInstance();
+        Object make = loader.loadClass("demo.Make").getConstructor().newInstance();
         return ((Behavior<Object, Object>) make).apply(in);
     }
 

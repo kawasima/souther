@@ -24,9 +24,9 @@ class CompileDecimalMathTest {
                 data Price = Decimal
                 data Quote = { subtotal: Decimal  doubled: Decimal }
 
-                behavior quote = (a: Price, b: Price) -> Quote constructs Quote
+                behavior makeQuote = (a: Price, b: Price) -> Quote constructs Quote
 
-                fn quote (a, b) = Quote {
+                fn makeQuote (a, b) = Quote {
                     subtotal: add(a.value, b.value),
                     doubled: multiply(add(a.value, b.value), a.value)
                 }
@@ -36,7 +36,7 @@ class CompileDecimalMathTest {
         Object a = ((Ok) priceDec.decode(new BigDecimal("1.5"), Path.ROOT)).value();
         Object b = ((Ok) priceDec.decode(new BigDecimal("2.25"), Path.ROOT)).value();
 
-        Object behavior = loader.loadClass("demo.quote").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.MakeQuote").getConstructor().newInstance();
         Object quote = behavior.getClass()
                 .getMethod("apply", Object.class, Object.class).invoke(behavior, a, b);
 

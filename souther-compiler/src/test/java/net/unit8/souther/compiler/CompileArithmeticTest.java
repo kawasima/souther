@@ -34,7 +34,7 @@ class CompileArithmeticTest {
         Decoder inDecoder = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
         Object in = ((Ok) inDecoder.decode(5L, Path.ROOT)).value();
 
-        Object compute = loader.loadClass("demo.compute").getConstructor().newInstance();
+        Object compute = loader.loadClass("demo.Compute").getConstructor().newInstance();
         // apply returns the output arm value directly (no Result wrapper)
         Object out = ((Behavior<Object, Object>) compute).apply(in);
 

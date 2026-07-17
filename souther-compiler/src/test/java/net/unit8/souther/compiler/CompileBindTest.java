@@ -53,7 +53,7 @@ class CompileBindTest {
             import net.unit8.raoh.Path;
             import net.unit8.raoh.decode.Decoder;
             import java.util.Map;
-            public final class FindMemberImpl extends findMember {
+            public final class FindMemberImpl extends FindMember {
                 public Member apply(Id in) {
                     Decoder d = Member.decoder();
                     return (Member) ((Ok) d.decode(Map.of("id", "m-1"), Path.ROOT)).value();
@@ -69,13 +69,13 @@ class CompileBindTest {
 
         BytesClassLoader loader = new BytesClassLoader(classes, getClass().getClassLoader());
 
-        Class<?> findMember = loader.loadClass("demo.findMember");
+        Class<?> findMember = loader.loadClass("demo.FindMember");
         assertTrue(Modifier.isAbstract(findMember.getModifiers()),
                 "the named required behavior is an abstract base class");
         assertTrue(Behavior.class.isAssignableFrom(findMember),
                 "the named required base is a Behavior");
 
-        Class<?> handleClass = loader.loadClass("demo.handle");
+        Class<?> handleClass = loader.loadClass("demo.Handle");
         var bind = handleClass.getMethod("bind", findMember); // bind(findMember) -> handle
 
         Object findMemberImpl = loader.loadClass("demo.FindMemberImpl").getConstructor().newInstance();
