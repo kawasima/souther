@@ -17,7 +17,7 @@ specification is in Japanese.
 | --- | --- | --- |
 | [0001](0001-one-to-one-with-spec-dsl.md) | The implementation model maps one-to-one onto the spec DSL | §1, §2, §12, §28, §29 |
 | [0002](0002-closed-construction-paths.md) | Close data construction paths; permission lives on the behavior | §2.1, §12.3, §13.3 |
-| [0003](0003-invariant-violations-abort-in-domain.md) | Invariant violations abort inside the domain; the boundary returns a Result | §2.2, §7.3, §9.4, §3, §18.2, §19.7 |
+| [0003](0003-invariant-violations-abort-in-domain.md) | Invariant violations abort; preconditions are business arms, not contracts | §2.2, §7.3, §9.4, §3, §18.2, §19.7 |
 | [0004](0004-derive-codecs-delegate-parsing-to-raoh.md) | Derive decoders/encoders from data shape; delegate external representation to Raoh | §2.3, §6, §10, §11 |
 | [0005](0005-behavior-as-membership-free-composition-unit.md) | behavior is a membership-free composition unit; spec and implementation are separate | §2.4, §12 |
 | [0006](0006-outside-world-via-missing-implementation.md) | Outside-world dependencies are behaviors with no implementation, injected from Java | §2.5, §13.2 |
