@@ -548,6 +548,11 @@ public final class Backend {
             emitCtor(cb, cdName, fields);
             emitValueEquality(cb, cdName, fields);
             emitConstructMethod(cb, cdName, data, fields);
+            // An exposed data gets public read accessors so its fields are readable across the
+            // module (package) boundary and from Java (spec 8.5, 19.2). The ctor stays non-public.
+            if (pub(data.name()) != 0) {
+                emitAccessors(cb, cdName, fields);
+            }
             data.decoder().ifPresent(d -> {
                 boolean mapInput = isMapInput(data.name());
                 emitFactory(cb, "decoder", CD_RDecoder, data, "$Dec");
@@ -1144,6 +1149,30 @@ public final class Backend {
                     }
                     code.ireturn();
                 });
+    }
+
+    /**
+     * Emits a public record-style read accessor {@code <field>()} for each field (spec 8.5, 19.2).
+     * Only called for exposed data; the constructor stays non-public, so a read never enables
+     * construction (spec 2.7).
+     */
+    private void emitAccessors(ClassBuilder cb, ClassDesc cdName, Map<String, Type> fields) {
+        for (Map.Entry<String, Type> f : fields.entrySet()) {
+            Type ft = f.getValue();
+            ClassDesc fd = jvmType(ft);
+            cb.withMethodBody(f.getKey(), MethodTypeDesc.of(fd),
+                    ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL, code -> {
+                        code.aload(0);
+                        code.getfield(cdName, f.getKey(), fd);
+                        if (ft == Type.INT) {
+                            code.lreturn();
+                        } else if (ft == Type.BOOL) {
+                            code.ireturn();
+                        } else {
+                            code.areturn();
+                        }
+                    });
+        }
     }
 
     private void emitCtor(ClassBuilder cb, ClassDesc cdName, Map<String, Type> fields) {
