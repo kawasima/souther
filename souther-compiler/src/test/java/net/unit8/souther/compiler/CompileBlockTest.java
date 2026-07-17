@@ -13,10 +13,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Blocks and the list combinators that take them (spec 12.5, 18.4).
  *
- * <p>A block is second-class: it may be passed, never returned, stored, or bound. That is what
- * keeps requirement sets inferable — a block's requirements float out to the behavior that passes
- * it, so nothing about them is written down (spec 29) — and it means the backend can inline the
- * block instead of building a closure.
+ * <p>A block's requirements float out to the behavior that passes it, so nothing about them is
+ * written down (spec 29), and the backend inlines the block instead of building a closure. A block
+ * may also be bound to a {@code let} and applied — see {@link CompileLambdaLetTest}; only a block
+ * that escapes (is used as a value, not just applied) is rejected, for want of a runtime closure.
  */
 class CompileBlockTest {
 
@@ -112,19 +112,6 @@ class CompileBlockTest {
         // the requirement became the behavior's own, so it is injected like any other
         assertEquals("demo.名前を引く", c.getMethod("bind", loader.loadClass("demo.名前を引く"))
                 .getParameterTypes()[0].getName());
-    }
-
-    @Test
-    void aBlockCannotBeBoundToALet() {
-        String src = """
-                module demo
-                behavior f = (xs: List<Int>) -> Int
-                fn f (xs) = {
-                    let g = x => x * 2
-                    1
-                }
-                """;
-        assertThrows(CompileException.class, () -> Compiler.compile(src));
     }
 
     @Test

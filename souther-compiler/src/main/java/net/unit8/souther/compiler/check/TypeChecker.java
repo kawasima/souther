@@ -1204,11 +1204,12 @@ public final class TypeChecker {
                 inner.put(li.name(), typeOf(li.value(), env, data, symbols, reqs));
                 yield typeOf(li.body(), inner, data, symbols, reqs);
             }
-            // reached only where a block is not an argument of a block-taking call: it has no
-            // type of its own, because it is not a value (spec 12.5)
+            // reached only where a block escapes: it may be passed as an argument, or bound to a
+            // `let` and applied, but it is not a value that can be returned or stored, because that
+            // would need a runtime closure (spec 12.5)
             case Ast.Block block -> throw new CompileException(block.pos(),
-                    "a block is not a value: it can only be passed as an argument, not returned, "
-                            + "stored in a data, or bound with `let` (spec 12.5)");
+                    "a block is not a value: it may be passed as an argument or bound to a `let` and "
+                            + "applied, but it cannot be returned or stored in a data (spec 12.5)");
             case Ast.Var v -> {
                 Type t = env.get(v.name());
                 if (t != null) {

@@ -539,6 +539,16 @@ public final class Parser {
 
     private Ast.Expr parsePrimary() {
         Token t = peek();
+        // a lambda used as a value: `x => e` or `(x, ...) => e` (spec §blocks). The same block form
+        // that a combinator argument takes, now allowed anywhere an expression is.
+        if (t.type() == TokenType.IDENT && peekAt(1).type() == TokenType.FATARROW) {
+            advance();
+            expect(TokenType.FATARROW);
+            return new Ast.Block(List.of(t.text()), parseExpr(), t.pos());
+        }
+        if (t.type() == TokenType.LPAREN && isBlockParams()) {
+            return parseParenLambda();
+        }
         switch (t.type()) {
             case MATCH -> {
                 return parseMatch();
@@ -687,17 +697,22 @@ public final class Parser {
         }
         // (acc, x) => body
         if (check(TokenType.LPAREN) && isBlockParams()) {
-            Token open = expect(TokenType.LPAREN);
-            List<String> params = new ArrayList<>();
-            params.add(expect(TokenType.IDENT).text());
-            while (match(TokenType.COMMA)) {
-                params.add(expect(TokenType.IDENT).text());
-            }
-            expect(TokenType.RPAREN);
-            expect(TokenType.FATARROW);
-            return new Ast.Block(params, parseExpr(), open.pos());
+            return parseParenLambda();
         }
         return parseExpr();
+    }
+
+    /** {@code (x, ...) => body} — a parenthesised lambda; the caller has confirmed the shape. */
+    private Ast.Block parseParenLambda() {
+        Token open = expect(TokenType.LPAREN);
+        List<String> params = new ArrayList<>();
+        params.add(expect(TokenType.IDENT).text());
+        while (match(TokenType.COMMA)) {
+            params.add(expect(TokenType.IDENT).text());
+        }
+        expect(TokenType.RPAREN);
+        expect(TokenType.FATARROW);
+        return new Ast.Block(params, parseExpr(), open.pos());
     }
 
     /** Distinguishes {@code (a, b) =>} from a parenthesised expression by scanning to the `)`. */

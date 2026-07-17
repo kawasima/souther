@@ -121,6 +121,35 @@ public final class HelperInliner {
                 yield new Ast.Match(inline(m.scrutinee()), cases, m.pos());
             }
             case Ast.If iff -> new Ast.If(inline(iff.cond()), inline(iff.then()), inline(iff.els()), iff.pos());
+            case Ast.LetIn li when li.value() instanceof Ast.Block lambda -> {
+                // a lambda bound to a local: register it as a scoped helper so each application in
+                // the body expands inline (β-reduction), exactly like a named helper. Its parameters
+                // are untyped, so their types flow in from the arguments at expansion. No runtime
+                // closure is built as long as the lambda does not escape.
+                if (mentions(lambda.body(), li.name())) {
+                    throw new CompileException(lambda.pos(), "the lambda bound to `" + li.name()
+                            + "` refers to itself; a recursive lambda would not bottom out when "
+                            + "expanded inline");
+                }
+                List<Ast.FnParam> params = new ArrayList<>();
+                for (String p : lambda.params()) {
+                    params.add(new Ast.FnParam(p, null, lambda.pos()));
+                }
+                Ast.FnDef synth = new Ast.FnDef(li.name(), params, lambda.body(), li.pos());
+                Ast.FnDef shadowed = helpers.put(li.name(), synth);
+                Ast.Expr body = inline(li.body());
+                if (shadowed == null) {
+                    helpers.remove(li.name());
+                } else {
+                    helpers.put(li.name(), shadowed);
+                }
+                // if the name still occurs, the lambda was used as a value, not just applied — it
+                // escapes, which needs a runtime closure. Keep the binding so the "a block is not a
+                // value" check reports it.
+                yield mentions(body, li.name())
+                        ? new Ast.LetIn(li.name(), inline(lambda), body, li.pos())
+                        : body;
+            }
             case Ast.LetIn li -> new Ast.LetIn(li.name(), inline(li.value()), inline(li.body()), li.pos());
             case Ast.ListLit lit -> new Ast.ListLit(inlineList(lit.elements()), lit.pos());
             case Ast.ListComp comp -> new Ast.ListComp(inline(comp.element()), inlineList(comp.guards()), comp.pos());
@@ -285,6 +314,21 @@ public final class HelperInliner {
             }
         }
         onPath.remove(h.name());
+    }
+
+    /** Whether {@code name} occurs as a variable or a call target anywhere in {@code e}. Used to
+     * spot a self-referencing lambda and to tell whether a let-bound lambda escapes (is used as a
+     * value) after its applications have been expanded away. */
+    private static boolean mentions(Ast.Expr e, String name) {
+        if (e instanceof Ast.Var v && v.name().equals(name)) {
+            return true;
+        }
+        if (e instanceof Ast.Call c && c.fn().equals(name)) {
+            return true;
+        }
+        boolean[] found = {false};
+        forEachChild(e, child -> found[0] |= mentions(child, name));
+        return found[0];
     }
 
     private void collectHelperCalls(Ast.Expr e, Set<String> out) {
