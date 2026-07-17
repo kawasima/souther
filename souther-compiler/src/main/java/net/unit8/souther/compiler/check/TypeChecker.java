@@ -213,8 +213,10 @@ public final class TypeChecker {
                     throw new CompileException(p.pos(), "helper `fn " + h.name() + "` must annotate "
                             + "parameter `" + p.name() + "` with its type (spec 13.1)");
                 }
+                rejectBuiltinShadow(p.name(), p.pos());
                 env.put(p.name(), resolveParamType(p.type(), symbols));
             }
+            rejectBuiltinShadowing(h.body());
             Ast.Expr body = inliner.inline(h.body());
             // a helper that returns a function (e.g. `fn adder (n) = (x) -> x + n`) has no application
             // here to infer the lambda's parameter types from; it is checked where it is inlined and
@@ -254,6 +256,10 @@ public final class TypeChecker {
         }
 
         Map<String, Type> env = new HashMap<>();
+        for (Ast.FnParam p : fn.params()) {
+            rejectBuiltinShadow(p.name(), p.pos());
+        }
+        rejectBuiltinShadowing(fn.body());
         for (int i = 0; i < nBusiness; i++) {
             env.put(fn.params().get(i).name(), successType(spec.params().get(i).type(), symbols));
         }
@@ -1822,6 +1828,51 @@ public final class TypeChecker {
      * {@code java.math.RoundingMode} — like {@code None}, a built-in value, not a data (spec 8.4). */
     public static final Set<String> ROUNDING_MODES = Set.of(
             "HALF_UP", "HALF_EVEN", "HALF_DOWN", "UP", "DOWN", "CEILING", "FLOOR");
+
+    /** Built-in values written as bare identifiers ({@code None}, the rounding modes): a binding may
+     * not take one of these names, because it would shadow the built-in and make it unreachable. */
+    private static final Set<String> BUILTIN_VALUES = builtinValues();
+
+    private static Set<String> builtinValues() {
+        Set<String> s = new HashSet<>(ROUNDING_MODES);
+        s.add("None");
+        return Set.copyOf(s);
+    }
+
+    private static void rejectBuiltinShadow(String name, SourcePos pos) {
+        if (BUILTIN_VALUES.contains(name)) {
+            throw new CompileException(pos, "`" + name + "` is a built-in value and cannot be used as "
+                    + "a binding name — it would shadow the built-in; choose another name");
+        }
+    }
+
+    /** Rejects any binder in {@code e} — a {@code let}, {@code match} binding, or lambda parameter —
+     * that takes a built-in value's name. */
+    private static void rejectBuiltinShadowing(Ast.Expr e) {
+        switch (e) {
+            case Ast.LetIn li -> {
+                rejectBuiltinShadow(li.name(), li.pos());
+                rejectBuiltinShadowing(li.value());
+                rejectBuiltinShadowing(li.body());
+            }
+            case Ast.Block b -> {
+                for (String p : b.params()) {
+                    rejectBuiltinShadow(p, b.pos());
+                }
+                rejectBuiltinShadowing(b.body());
+            }
+            case Ast.Match m -> {
+                rejectBuiltinShadowing(m.scrutinee());
+                for (Ast.Case c : m.cases()) {
+                    if (c.binding() != null) {
+                        rejectBuiltinShadow(c.binding(), c.pos());
+                    }
+                    rejectBuiltinShadowing(c.body());
+                }
+            }
+            default -> forEachChild(e, TypeChecker::rejectBuiltinShadowing);
+        }
+    }
 
     /** The rounding-mode argument of {@code divide} is one of the built-in identifiers, written
      * bare — not an ordinary expression (spec 18.3). */
