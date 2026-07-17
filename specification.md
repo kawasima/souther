@@ -673,7 +673,7 @@ data 一般社員              // 単位
 
 ### 10.4 カスタム境界コーデック
 
-既定の導出で足りないとき（別キー名、正規化、既定値補完、業務固有の判別子、永続表現のバージョン分岐）は、Java 側で外部表現を組み立て、data の（invariantを検査する）構築を呼ぶ Decoder を書く。24章の `JdbcFindMember` が `Member.decoder()` を呼ぶのがこの形である。外部表現の変換は境界に閉じ、ドメイン定義には持ち込まない。
+既定の導出で足りないとき（別キー名、正規化、既定値補完、業務固有の判別子、永続表現のバージョン分岐）は、Java 側で外部表現を組み立て、data の（invariantを検査する）構築を呼ぶ Decoder を書く。24章の `JdbcFindMember` が `会員.decoder()` を呼ぶのがこの形である。外部表現の変換は境界に閉じ、ドメイン定義には持ち込まない。
 
 ### 10.5 Decoderエラー
 
@@ -1130,7 +1130,7 @@ Java側はこれを `extends` して `apply` を実装する（24章）。成功
 
 ### 13.4 Java実装の規則
 
-Java実装は、宣言済みの失敗アームの値（例: `FindMemberError` のいずれか）を返す。DB例外、HTTP失敗などを言語側へ例外として漏らしてはならない。VM障害や実装バグは保証対象外とする。
+Java実装は、宣言済みの失敗アームの値（例: `会員なし` / `保存データ不正` / `DB不通` のいずれか）を返す。DB例外、HTTP失敗などを言語側へ例外として漏らしてはならない。VM障害や実装バグは保証対象外とする。
 
 ### 13.5 集合不変条件は入力データで渡す
 
@@ -1936,7 +1936,8 @@ fn 事前承認する (申請, 承認者ID, 現在時刻) = {
 ## 24. Java側実装例
 
 ```java
-public final class JdbcFindMember implements FindMember {
+// 13.3 の抽象基底 findMember を extends する（implements ではない）。
+public final class JdbcFindMember extends findMember {
     private final DataSource dataSource;
 
     public JdbcFindMember(DataSource dataSource) {
@@ -1944,30 +1945,31 @@ public final class JdbcFindMember implements FindMember {
     }
 
     @Override
-    public FindMemberResult apply(MemberId id) {   // sealed: Member | FindMemberError の直和
+    public findMember結果 apply(会員ID id) {   // 19.8 の sealed: 会員 | 会員なし | 保存データ不正 | DB不通
         try (var connection = dataSource.getConnection();
              var statement = connection.prepareStatement(
                  "select id, email, display_name from member where id = ?")) {
 
-            statement.setString(1, MemberId.text(id));
+            // 値の取り出しは encoder 経由（8.5）。会員ID は newtype なので encode は裸の String。
+            statement.setString(1, 会員ID.encoder().encode(id));
 
             try (var resultSet = statement.executeQuery()) {
                 if (!resultSet.next()) {
-                    return new FindMemberError.NotFound();        // 失敗アームをそのまま返す
+                    return 会員なし();                            // 継承した protected ファクトリ（13.3）
                 }
                 var raw = Map.<String, Object>of(
-                    "id",          resultSet.getString("id"),
-                    "email",       resultSet.getString("email"),
-                    "displayName", resultSet.getString("display_name"));
+                    "id",   resultSet.getString("id"),
+                    "メール", resultSet.getString("email"),
+                    "表示名", resultSet.getString("display_name"));
 
-                // decode は Raoh の Result<Member>。失敗は保存データ不正のアームへ写す
-                return switch (Member.decoder().decode(raw)) {
-                    case Ok<Member> ok   -> ok.value();
-                    case Err<Member> err -> new FindMemberError.InvalidStoredData();
+                // decode は Raoh の Result<会員>。invariant 違反は 保存データ不正 のアームへ写す
+                return switch (会員.decoder().decode(raw, Path.ROOT)) {
+                    case Ok<会員> ok   -> ok.value();              // 会員（本線）
+                    case Err<会員> err -> 保存データ不正();          // 継承した protected ファクトリ
                 };
             }
         } catch (SQLException e) {
-            return new FindMemberError.DatabaseUnavailable();     // 失敗アームをそのまま返す
+            return DB不通();                                 // 予期しない障害はアームに畳む
         }
     }
 }
