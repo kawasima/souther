@@ -85,10 +85,10 @@ public final class TypeChecker {
             // merely visible here is not re-exported — importers reach it from its declaring module.
             if (!ownTypes.contains(e) && !allBehaviors.contains(e)) {
                 String why = symbols.containsKey(e)
-                        ? "` is imported into this module, not defined here; `exposing` lists a"
+                        ? " is imported into this module, not defined here; `exposing` lists a"
                           + " module's own definitions and does not re-export imported names"
-                        : "`, which is not a data or behavior of this module";
-                throw new CompileException(module.pos(), "`exposing` names `" + e + why);
+                        : ", which is not a data or behavior of this module";
+                throw new CompileException(module.pos(), "`exposing` names `" + e + "`" + why);
             }
             exposed.add(e);
         }

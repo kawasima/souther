@@ -261,11 +261,9 @@ public final class Backend {
                 }
             }
         }
-        Set<String> exposed = new HashSet<>();
-        for (String e : module.exposing()) {
-            int dot = e.indexOf('.');
-            exposed.add(dot < 0 ? e : e.substring(0, dot));
-        }
+        // The checker has already run and rejects any dotted `A.decoder`/`.encoder` member
+        // (exposing is type-granular, spec 19.4), so every entry that reaches codegen is a bare name.
+        Set<String> exposed = new HashSet<>(module.exposing());
         Backend b = new Backend(module.name(), symbols, armToSums, typePackage,
                 module.exposing().isEmpty(), exposed);
         // A behavior's class capitalizes its first letter (spec 19.5). Data names are already
@@ -1710,6 +1708,13 @@ public final class Backend {
         code.labelBinding(cont);
     }
 
+    /**
+     * Emits the {@code __construct} call for a decoded value and maps an invariant failure to a Raoh
+     * failure at the value's path. Must be emitted inside a {@code decode(Object, RPath)} body: it
+     * reads the path from local slot 2 (the {@code RPath} parameter). Its three callers —
+     * {@code emitPrimDecode}, {@code emitNewtypeDecode}, {@code emitObjectDecode} — are all such
+     * bodies whose {@code Gen} locals start above slot 2, so slot 2 always holds the path.
+     */
     private void emitConstructCall(CodeBuilder code, Gen gen, ClassDesc cdName, Ast.Construct construct,
                                    Map<String, Type> fields) {
         emitFieldValues(gen, fields, construct.inits(), construct.spreads());
