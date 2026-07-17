@@ -83,7 +83,20 @@ public interface Ast {
      * desugared by the parser into {@link LetIn} and {@link If} (spec 16.4), so every later stage
      * sees one expression tree and has exactly one place where a value can be constructed.
      */
-    record FnDef(String name, List<FnParam> params, Expr body, SourcePos pos) implements Ast {}
+    /**
+     * A {@code let} definition. A behavior fn or a helper carries a {@code body} and no
+     * {@code declaredReturn}/{@code intrinsicKey}. A core intrinsic (spec §primitives) instead
+     * declares its return type and names a primitive: {@code let trim (s: String): String =
+     * intrinsic "string.trim"} — its {@code body} is null, {@code declaredReturn} its result type,
+     * and {@code intrinsicKey} the backend key. Intrinsics are written only in the {@code souther}
+     * namespace.
+     */
+    record FnDef(String name, List<FnParam> params, RetType declaredReturn, String intrinsicKey,
+                 Expr body, SourcePos pos) implements Ast {
+        public boolean isIntrinsic() {
+            return intrinsicKey != null;
+        }
+    }
 
     /** A {@code fn} parameter: a name, and a type only when the {@code fn} is a helper (spec 13.1).
      * A helper's parameter type may be a function type {@link FnType}; a behavior fn's parameter

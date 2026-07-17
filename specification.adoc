@@ -1555,6 +1555,18 @@ core の関数は型変数 `+'a+`（F#・OCaml と同じ先頭アポストロフ
 
 型変数を書けるのは予約名前空間の core だけで、ユーザーモジュールが `+'a+` を書くとコンパイルエラーとする。ユーザーモデルは有界のまま保つ（<<algebraic-types>>）。非再帰の core ヘルパーが `+'a+` を持つときは、呼び出し位置への inline 展開で単相化される——`+'a+` は各呼び出しの具体型に解決され、多相メソッドは生成されない。
 
+[#intrinsics]
+==== intrinsic
+
+プリミティブは core の関数として宣言し、本体に `+= intrinsic "key"+` と書く。`+key+` は Backend が吐く JVM 操作を指す名前で、`+"string.trim"+` のように*型ごとに前置*して一意にする（`+list.length+` と `+string.length+` を分ける）。
+
+[,text]
+----
+let trim (s: String) : String = intrinsic "string.trim"
+----
+
+intrinsic は戻り値型を必ず宣言する（`+intrinsic+` からは推論できない）。呼び出しは宣言シグネチャに対して型検査され——つまり `+trim+` は「シグネチャが core に置かれた組み込み関数」で、コンパイラのハードコードした表ではなくこの宣言が引数と戻り値を決める——Backend が `+key+` に対応するバイトコードを吐く。inline も lower もしない。書けるのは予約名前空間だけである。ユーザーは JVM を直接呼べず、blessed な関数を呼ぶだけになる（<<asymmetric-interop>>）。
+
 [#stdlib-string]
 === String
 

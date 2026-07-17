@@ -145,7 +145,7 @@ public final class HelperInliner {
                 for (String p : lambda.params()) {
                     params.add(new Ast.FnParam(p, null, lambda.pos()));
                 }
-                Ast.FnDef synth = new Ast.FnDef(li.name(), params, lambda.body(), li.pos());
+                Ast.FnDef synth = new Ast.FnDef(li.name(), params, null, null, lambda.body(), li.pos());
                 Ast.FnDef shadowed = helpers.put(li.name(), synth);
                 Ast.Expr body = inline(li.body());
                 if (shadowed == null) {

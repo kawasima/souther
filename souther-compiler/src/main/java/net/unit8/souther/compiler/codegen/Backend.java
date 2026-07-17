@@ -357,7 +357,7 @@ public final class Backend {
                     Ast.FnDef fn = fns.get(spec.name());
                     if (fn != null) {
                         Ast.FnDef inlined = new Ast.FnDef(
-                                fn.name(), fn.params(), inliner.inline(fn.body()), fn.pos());
+                                fn.name(), fn.params(), null, null, inliner.inline(fn.body()), fn.pos());
                         out.put(module.name() + "." + behaviorClass(spec.name()),
                                 b.generateSpecFn(spec, inlined, requiredNames, requiredSuccess, requiredParam));
                     }
@@ -2426,7 +2426,25 @@ public final class Backend {
             emitFieldRead(code, srcName, field, fieldTypes(src).get(field));
         }
 
+        /** Emits a shipped primitive (ADR-0028), dispatched on the intrinsic key its prelude
+         * declaration names. The signature was already checked, so only bytecode is emitted here. */
+        private Type intrinsicCall(String key, Ast.Call call) {
+            switch (key) {
+                case "string.trim" -> {
+                    expr(call.args().get(0));
+                    code.invokevirtual(CD_String, "trim", MethodTypeDesc.of(CD_String));
+                    return Type.STRING;
+                }
+                default -> throw new CompileException(call.pos(), "unknown intrinsic `" + key + "`");
+            }
+        }
+
         private Type call(Ast.Call call) {
+            net.unit8.souther.compiler.Prelude.IntrinsicSig intrinsic =
+                    net.unit8.souther.compiler.Prelude.intrinsics().get(call.fn());
+            if (intrinsic != null) {
+                return intrinsicCall(intrinsic.key(), call);
+            }
             switch (call.fn()) {
                 case "length" -> {
                     Type t = expr(call.args().get(0));
@@ -2444,11 +2462,6 @@ public final class Backend {
                     code.invokevirtual(CD_String, "contains",
                             MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_CharSequence));
                     return Type.BOOL;
-                }
-                case "trim" -> {
-                    expr(call.args().get(0));
-                    code.invokevirtual(CD_String, "trim", MethodTypeDesc.of(CD_String));
-                    return Type.STRING;
                 }
                 case "lowercase" -> {
                     expr(call.args().get(0));

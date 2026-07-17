@@ -198,7 +198,22 @@ public final class Parser {
             }
         }
         expect(TokenType.RPAREN);
+        // A core intrinsic declares its return type (it cannot be inferred from `intrinsic`).
+        Ast.RetType declaredReturn = match(TokenType.COLON) ? parseRetType() : null;
         expect(TokenType.ASSIGN);
+        // `= intrinsic "key"` names a primitive; only the core may write it (ADR-0028).
+        if (isReservedNamespace(moduleName) && check(TokenType.IDENT) && peek().text().equals("intrinsic")) {
+            advance();
+            String key = expect(TokenType.STRING_LIT).text();
+            if (declaredReturn == null) {
+                throw error(kw, "intrinsic `" + name + "` must declare its return type: "
+                        + "`let " + name + " (...) : <type> = intrinsic \"" + key + "\"`");
+            }
+            return new Ast.FnDef(name, params, declaredReturn, key, null, kw.pos());
+        }
+        if (declaredReturn != null) {
+            throw error(kw, "a `let` infers its return type; only a core intrinsic declares one");
+        }
         Ast.Expr body;
         if (match(TokenType.LBRACE)) {
             body = parseBody();
@@ -206,7 +221,7 @@ public final class Parser {
         } else {
             body = parseExpr();
         }
-        return new Ast.FnDef(name, params, body, kw.pos());
+        return new Ast.FnDef(name, params, null, null, body, kw.pos());
     }
 
     /** A {@code fn} parameter: {@code name} (type from the behavior) or {@code name: type} (helper).

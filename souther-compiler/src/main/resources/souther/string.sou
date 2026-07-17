@@ -1,0 +1,6 @@
+module souther.string
+
+// String primitives (ADR-0028). Each names a JVM operation the backend emits; the compiler checks a
+// call against the declared signature, so `trim` is a shipped built-in whose signature lives here
+// rather than hard-coded in the checker. The rest of the String library moves here incrementally.
+let trim (s: String): String = intrinsic "string.trim"

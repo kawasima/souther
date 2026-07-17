@@ -1440,6 +1440,26 @@ public final class TypeChecker {
     private static Type typeOfCall(Ast.Call call, Map<String, Type> env, Ast.Data data,
                                    Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
         List<Ast.Expr> args = call.args();
+        // A shipped intrinsic behaves like a built-in: check the call against its declared signature
+        // (from the prelude) and yield its result type; the backend emits the primitive for its key.
+        net.unit8.souther.compiler.Prelude.IntrinsicSig intrinsic =
+                net.unit8.souther.compiler.Prelude.intrinsics().get(call.fn());
+        if (intrinsic != null) {
+            if (args.size() != intrinsic.params().size()) {
+                throw new CompileException(call.pos(), call.fn() + " takes " + intrinsic.params().size()
+                        + " argument(s) but is called with " + args.size());
+            }
+            for (int i = 0; i < args.size(); i++) {
+                Type pt = intrinsic.params().get(i);
+                if (pt instanceof Type.Var) {
+                    typeOf(args.get(i), env, data, symbols, reqs);   // a type variable admits any argument
+                } else {
+                    requireType(args.get(i), pt, env, data, symbols, reqs,
+                            "argument " + (i + 1) + " of " + call.fn());
+                }
+            }
+            return intrinsic.result();
+        }
         return switch (call.fn()) {
             case "length" -> {
                 arity(call, 1);
@@ -1456,11 +1476,6 @@ public final class TypeChecker {
                 requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "argument 1 of contains");
                 requireType(args.get(1), Type.STRING, env, data, symbols, reqs, "argument 2 of contains");
                 yield Type.BOOL;
-            }
-            case "trim" -> {
-                arity(call, 1);
-                requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "argument of trim");
-                yield Type.STRING;
             }
             case "lowercase", "uppercase" -> {
                 arity(call, 1);
