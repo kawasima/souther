@@ -5,8 +5,8 @@ is to transcribe a *specification DSL* into an *executable implementation model*
 translation step in between.
 
 The specification DSL describes business rules with just `data` (AND / OR / List / `?`) and
-`behavior` (`->` / `>>`). It deliberately leaves three things in comments so a human or an LLM
-can still read the whole model in one sitting:
+`behavior` (`->` / `>->`). It leaves three things in comments so a human or an LLM can still read
+the whole model in one sitting; Souther promotes each of those to something executable:
 
 | The spec DSL leaves this in a comment | Souther makes it executable with |
 | --- | --- |
@@ -14,9 +14,9 @@ can still read the whole model in one sitting:
 | "this value has been validated" (parse-don't-validate) | closed construction paths (derived `decoder` / `constructs`) |
 | `// depends on: catalog`, `// side effect: send mail` | a `behavior` with no `fn` (implementation injected from Java) |
 
-The structure of the spec (distinction, requiredness, multiplicity, state transitions,
-totality) maps straight onto Souther's types. The value constraints and the outside-world
-dependencies get promoted from comments to types and injection. Nothing else is added.
+Distinction, requiredness, multiplicity, state transitions, and totality map straight onto
+Souther's types. The value constraints and the outside-world dependencies move from comments to
+types and injection. Nothing else is added.
 
 The full language specification lives in [`specification.adoc`](specification.adoc) (written in
 Japanese, since the source spec DSL is Japanese and user-defined identifiers may be Unicode). The
@@ -69,62 +69,68 @@ fn 事前承認する (申請, 承認者ID, 現在時刻) = {
 }
 ```
 
-Behaviors compose with `>>`, which routes the arms of one stage's output into the next and lets
+Behaviors compose with `>->`, which routes the arms of one stage's output into the next and lets
 the arms the next stage does not accept flow straight through:
 
 ```text
-behavior 会員を照会し整形する = findMember >> 会員を表示用に整形する
+behavior 会員を照会し整形する = findMember >-> 会員を表示用に整形する
 ```
 
-Decoding and encoding are not `>>` stages — they are the boundary. At the edge you decode the raw
+Decoding and encoding are not `>->` stages — they are the boundary. At the edge you decode the raw
 input, run the behavior pipeline over the domain values, then encode the result. Each exposed data
 gets a derived `decoder()` / `encoder()` for Java to call.
 
 ## Core ideas
 
-**Closed construction paths.** A value of `data T` can only be produced by `T`'s derived
-decoder, a behavior that declares `constructs T`, or compiler-generated code. Writing `T` as a
-return type is not enough. This is how parse-don't-validate ("a validated value is validated by
-its type") survives contact with an implementation. Constructors are non-public, so the rule
-holds even across the Java boundary.
+### Closed construction paths
 
-**Invariants checked at every construction path.** An `invariant` on a `data` runs wherever
-that data is built — decoders and behaviors alike, including invariants inherited through
-`include`. A behavior that constructs an invariant-bearing data must have an arm for the
-violation to go to, or it is a compile error.
+A value of `data T` can only be produced by `T`'s derived decoder, a behavior that declares
+`constructs T`, or compiler-generated code. Writing `T` as a return type is not enough. This is how
+parse-don't-validate ("a validated value is validated by its type") survives contact with an
+implementation. Constructors are non-public, so the rule holds even across the Java boundary.
 
-**Business results are unmarked sums.** There is no `Result`, no `Either`, no success/error
-tag. A behavior maps its input to one of several possible domain results. Which arm counts as
-"off the happy path" is decided *at composition time*: `f >> g` routes the arms of `f`'s output
-that `g`'s input accepts into `g`, and lets the rest flow straight through to the output. That
-is Railway-oriented programming without privileging "failure" — an arm that isn't consumed
-simply propagates.
+### Invariants checked at every construction path
 
-**Outside-world dependencies are behaviors with no implementation.** DB, HTTP, files, the clock,
-ID generation — none are implemented in the language. You declare the behavior's type and write no
-`fn`; the implementation is injected from Java. Conceptually a behavior has the type
-`Behavior<Requirements, Input, Output>`, where `Requirements` is the set of unimplemented behaviors
-it needs. A simple behavior declares its `requires` set, and the compiler checks it against the
-`fn`; a `>>` composition does not declare one — it is inferred as the union over the stages.
-Binding the implementations produces a callable behavior:
+An `invariant` on a `data` runs wherever that data is built — decoders and behaviors alike,
+including invariants inherited through `include`. A behavior that constructs an invariant-bearing
+data must have an arm for the violation to go to, or it is a compile error.
+
+### Business results are unmarked sums
+
+There is no `Result`, no `Either`, no success/error tag. A behavior maps its input to one of
+several possible domain results. Which arm counts as "off the happy path" is decided at composition
+time: `f >-> g` routes the arms of `f`'s output that `g`'s input accepts into `g`, and lets the
+rest flow straight through to the output. That is Railway-oriented programming without privileging
+"failure" — an arm that isn't consumed simply propagates.
+
+### Outside-world dependencies are behaviors with no implementation
+
+DB, HTTP, files, the clock, ID generation — none are implemented in the language. You declare the
+behavior's type and write no `fn`; the implementation is injected from Java. Conceptually a
+behavior has the type `Behavior<Requirements, Input, Output>`, where `Requirements` is the set of
+unimplemented behaviors it needs. A simple behavior declares its `requires` set and the compiler
+checks it against the `fn`; a `>->` composition infers it as the union over the stages. Binding the
+implementations produces a callable behavior:
 
 ```java
 var handle = Handle.bind(new JdbcFindMember(dataSource));
 var result = handle.apply(rawInput);
 ```
 
-**Boundary codecs are derived, not written.** Decoders and encoders never appear in the
-language syntax; they are derived from the shape of the data (JSON key = field name, a
-single-primitive-field data is a bare newtype, a sum discriminates on `"type"` with the arm name
-as the tag). When the default derivation isn't enough (renamed keys, normalization, a
-business-specific discriminator), you write a custom codec on the Java boundary that calls the
-data's invariant-checking construction.
+### Boundary codecs are derived, not written
 
-**Modules are explicit.** One module per file; a module lists its public surface with
-`exposing { ... }` and pulls specific names with `import <module> { ... }`. There are no
-wildcard imports, cyclic imports are a compile error, and anything not exposed is emitted as a
-package-private class — the boundary is enforced at the JVM level, not just at import
-resolution.
+Decoders and encoders never appear in the language syntax. They are derived from the shape of the
+data: a JSON key is the field name, a single-primitive-field data is a bare newtype, and a sum
+discriminates on `"type"` with the arm name as the tag. When the default derivation isn't enough
+(renamed keys, normalization, a business-specific discriminator), you write a custom codec on the
+Java boundary that calls the data's invariant-checking construction.
+
+### Modules are explicit
+
+One module per file. A module lists its public surface with `exposing { ... }` and pulls specific
+names with `import <module> { ... }`. There are no wildcard imports, cyclic imports are a compile
+error, and anything not exposed is emitted as a package-private class — the boundary is enforced at
+the JVM level, not just at import resolution.
 
 ## Java interop is asymmetric
 
@@ -162,7 +168,7 @@ undercut one of the ideas above.
   directly from the AST, generating the boundary library Raoh's combinators as bytecode.
   `souther-runtime` itself does not depend on Raoh; the Raoh dependency lives only in the
   generated code and the application that uses it.
-- **`>>` composes single-input stages only.** A pipeline threads one value from stage to stage;
+- **`>->` composes single-input stages only.** A pipeline threads one value from stage to stage;
   a multi-argument behavior is applied by call / `match`, not placed in a pipeline.
 - **`Never` and `Unit` are reading-level concepts, not surface-writable type names.** A unit is
   always a field-less `data`.
@@ -209,15 +215,18 @@ interop example live under [`examples/`](examples/).
 
 ## Status
 
-Implemented: all primitive types (`Bool` / `Int` / `Decimal` / `String` / `Date` / `DateTime`),
-`List<T>`, `Map<String, T>`, optional fields (`?` → `Option`) with `Some`/`None` matching,
-product / sum / unit data, `include`, `invariant`, derived decoders/encoders, `behavior`,
-behaviors with no `fn` injected from Java (requirement sets declared on simple behaviors and
-inferred / propagated through `>>`), inline injected-behavior calls, `constructs`, record literals
-with spread, unmarked sum outputs, type-routed `>>`, union parameter types and matching, `match` /
-`let` / `if` / `require`, the String / Int / Decimal / List / Map standard library, modules with
-`exposing` / `import` / cyclic detection, JVM visibility hardening, and direct ClassFile
-bytecode generation.
+Implemented and covered by tests:
+
+- Types: all primitives (`Bool` / `Int` / `Decimal` / `String` / `Date` / `DateTime`), `List<T>`,
+  `Map<String, T>`, optional fields (`?` → `Option`) with `Some`/`None` matching, and product /
+  sum / unit data with `include` and `invariant`.
+- Behaviors: `behavior` and its separate `fn`, behaviors with no `fn` injected from Java,
+  `requires` sets (declared on simple behaviors, inferred over a `>->` pipeline), inline
+  injected-behavior calls, `constructs`, unmarked sum outputs, and type-routed `>->`.
+- Terms: `match` / `let` / `if` / `require`, record literals with spread, union parameter types
+  and matching, and the String / Int / Decimal / List / Map standard library.
+- Boundary and packaging: derived decoders / encoders, modules with `exposing` / `import` and
+  cyclic-import detection, JVM visibility hardening, and direct ClassFile bytecode generation.
 
 ## License
 
