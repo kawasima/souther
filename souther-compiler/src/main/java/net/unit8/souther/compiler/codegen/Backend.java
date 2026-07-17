@@ -1264,6 +1264,7 @@ public final class Backend {
                 switch (dec) {
                     case Ast.PrimDecoder prim -> emitPrimDecode(code, gen, cdName, prim, fields, src);
                     case Ast.ObjectDecoder obj -> emitObjectDecode(code, gen, cdName, obj, fields, src);
+                    case Ast.NewtypeDecoder nt -> emitNewtypeDecode(code, gen, cdName, nt, fields, src);
                 }
             });
         });
@@ -1277,7 +1278,15 @@ public final class Backend {
             return true;
         }
         if (def instanceof Ast.Data data) {
-            return data.decoder().map(d -> d instanceof Ast.ObjectDecoder).orElse(false);
+            Ast.DecoderDef d = data.decoder().orElse(null);
+            if (d instanceof Ast.ObjectDecoder) {
+                return true;
+            }
+            // a newtype reads whatever its inner type reads: a Map for an object/sum inner, a bare
+            // value for a primitive one
+            if (d instanceof Ast.NewtypeDecoder nt && nt.inner() instanceof Ast.DataDecRef inner) {
+                return isMapInput(inner.typeName());
+            }
         }
         return false;
     }
@@ -1338,6 +1347,36 @@ public final class Backend {
             }
         }
         emitConstructCall(code, gen, cdName, prim.result(), fields);
+    }
+
+    /**
+     * A newtype over a non-primitive Y: decode the whole input with Y's decoder, then wrap the
+     * result in X (spec 8.7). Same Err short-circuit as {@link #emitPrimDecode}, but the leaf is
+     * Y's decoder rather than a primitive one.
+     */
+    private void emitNewtypeDecode(CodeBuilder code, Gen gen, ClassDesc cdName, Ast.NewtypeDecoder dec,
+                                   Map<String, Type> fields, Src src) {
+        emitDecoderObject(code, dec.inner(), src);                    // Y's decoder (for this source)
+        code.aload(1);                                               // in
+        code.aload(2);                                               // path
+        code.invokeinterface(CD_RDecoder, "decode", MTD_Rdecode);   // Result
+        int rSlot = gen.slot(Type.STRING);
+        code.astore(rSlot);
+        code.aload(rSlot);
+        code.instanceOf(CD_RErr);
+        Label notErr = code.newLabel();
+        code.ifeq(notErr);
+        code.aload(rSlot);                                          // Err -> return as-is
+        code.areturn();
+        code.labelBinding(notErr);
+        code.aload(rSlot);
+        code.checkcast(CD_ROk);
+        code.invokevirtual(CD_ROk, "value", MTD_Object);
+        Type innerType = bindType(dec.inner());
+        int inSlot = gen.slot(innerType);
+        unbox(code, innerType, inSlot);                             // cast Object -> Y, store
+        gen.bind(dec.inputName(), inSlot, innerType);
+        emitConstructCall(code, gen, cdName, dec.result(), fields);
     }
 
     private void emitObjectDecode(CodeBuilder code, Gen gen, ClassDesc cdName, Ast.ObjectDecoder obj,

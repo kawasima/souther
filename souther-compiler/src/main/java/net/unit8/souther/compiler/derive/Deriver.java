@@ -50,14 +50,6 @@ public final class Deriver {
 
     private static Ast.Data deriveData(Ast.Data d, Map<String, Ast.Def> symbols, boolean isArm) {
         Map<String, Type> fields = TypeChecker.fieldTypes(d, symbols);
-        // An explicit newtype `data X = Y` (spec 8.7) with a primitive Y rides the shape-based
-        // bare codec below. A newtype over a named data or sum is not derived yet — reject it
-        // rather than silently emit an object codec.
-        if (d.newtype() && !isPrim(fields.values().iterator().next())) {
-            throw new CompileException(d.pos(),
-                    "newtype over a non-primitive type (`" + d.name()
-                            + "`) is not yet implemented; use a primitive inner type for now (spec 8.7)");
-        }
         Optional<Ast.DecoderDef> decoder = d.decoder().isPresent()
                 ? d.decoder() : Optional.of(deriveDecoder(d, fields, isArm));
         Optional<Ast.EncoderDef> encoder = d.encoder().isPresent()
@@ -79,6 +71,14 @@ public final class Deriver {
                     List.of(new Ast.FieldInit(single.getKey(), new Ast.Var("__in", pos), pos)),
                     List.of(), pos);
             return new Ast.PrimDecoder(kind, "__in", List.of(), result, pos);
+        }
+        // a newtype over a non-primitive Y delegates the whole input to Y's decoder (spec 8.7)
+        if (d.newtype() && !isArm) {
+            Map.Entry<String, Type> only = fields.entrySet().iterator().next();
+            Ast.Construct result = new Ast.Construct(d.name(),
+                    List.of(new Ast.FieldInit(only.getKey(), new Ast.Var("__in", pos), pos)),
+                    List.of(), pos);
+            return new Ast.NewtypeDecoder(decRef(only.getValue(), d, pos), "__in", result, pos);
         }
         List<Ast.Bind> binds = new ArrayList<>();
         List<Ast.FieldInit> inits = new ArrayList<>();
@@ -156,6 +156,14 @@ public final class Deriver {
         if (single != null) {
             Ast.Expr access = new Ast.FieldAccess(new Ast.Var("self", pos), single.getKey(), pos);
             return new Ast.EncoderDef("self", primRaw(single.getValue(), access, pos), pos);
+        }
+        // a newtype over a non-primitive Y encodes self.value via Y's encoder — Y's representation,
+        // not `{value: ...}` (spec 8.7)
+        if (d.newtype() && !isArm) {
+            Map.Entry<String, Type> only = fields.entrySet().iterator().next();
+            Ast.Expr access = new Ast.FieldAccess(new Ast.Var("self", pos), only.getKey(), pos);
+            String inner = ((Type.Ref) only.getValue()).name();
+            return new Ast.EncoderDef("self", new Ast.EncodeRaw(inner, access, pos), pos);
         }
         List<Ast.RawEntry> entries = new ArrayList<>();
         for (Map.Entry<String, Type> f : fields.entrySet()) {

@@ -8,7 +8,6 @@ import net.unit8.raoh.encode.Encoder;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * The explicit newtype form {@code data X = Y} (spec 8.7): a single implicit field {@code value}
@@ -85,18 +84,41 @@ class CompileNewtypeTest {
     }
 
     @Test
-    void newtypeOverNonPrimitiveIsDeferred() {
-        // spec 8.7 allows a newtype over a named data or sum, but the deriver does not yet handle
-        // it — it reports the boundary rather than silently emitting an object codec.
+    @SuppressWarnings("unchecked")
+    void newtypeOverANamedDataDelegatesToItsCodec() throws Exception {
+        // spec 8.7: `data X = Y` with a named-data Y wraps Y and reads/writes Y's representation.
         String src = """
                 module demo
-                data 役職 = 管理職 | 一般社員
+                data Inner = { a: Int  b: Int }
+                data Wrap = Inner
+                """;
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Decoder dec = (Decoder) loader.loadClass("demo.Wrap").getMethod("decoder").invoke(null);
+        Encoder enc = (Encoder) loader.loadClass("demo.Wrap").getMethod("encoder").invoke(null);
+
+        Object v = ((Ok) dec.decode(java.util.Map.of("a", 1L, "b", 2L), Path.ROOT)).value();
+        assertEquals("demo.Wrap", v.getClass().getName());
+        assertEquals(java.util.Map.of("a", 1L, "b", 2L), enc.encode(v),
+                "the newtype reads and writes the inner object's representation, not `{value: ...}`");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void newtypeOverASumDelegatesToItsDiscriminator() throws Exception {
+        // spec 8.7: when Y is a sum, X's representation is Y's discriminated form.
+        String src = """
+                module demo
                 data 管理職
                 data 一般社員
+                data 役職 = 管理職 | 一般社員
                 data 権限不足 = 役職
                 """;
-        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
-        org.junit.jupiter.api.Assertions.assertTrue(
-                e.getMessage().contains("newtype"), e.getMessage());
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Decoder dec = (Decoder) loader.loadClass("demo.権限不足").getMethod("decoder").invoke(null);
+        Encoder enc = (Encoder) loader.loadClass("demo.権限不足").getMethod("encoder").invoke(null);
+
+        Object v = ((Ok) dec.decode(java.util.Map.of("type", "管理職"), Path.ROOT)).value();
+        assertEquals("demo.権限不足", v.getClass().getName());
+        assertEquals(java.util.Map.of("type", "管理職"), enc.encode(v));
     }
 }

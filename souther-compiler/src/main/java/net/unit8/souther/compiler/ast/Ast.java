@@ -136,7 +136,7 @@ public interface Ast {
 
     // --- decoders ---
 
-    sealed interface DecoderDef extends Ast permits PrimDecoder, ObjectDecoder {}
+    sealed interface DecoderDef extends Ast permits PrimDecoder, ObjectDecoder, NewtypeDecoder {}
 
     /** {@code decoder from Text|Int as <input> { <stmts> <construct> }} (single value). */
     record PrimDecoder(RawKind from,
@@ -147,6 +147,15 @@ public interface Ast {
 
     /** {@code decoder from Object { <binds> <construct> }} (multi-field, accumulating). */
     record ObjectDecoder(List<Bind> binds, Construct result, SourcePos pos) implements DecoderDef {}
+
+    /**
+     * A newtype {@code data X = Y} over a non-primitive {@code Y} (spec 8.7): the whole input is
+     * decoded by {@code inner} (a reference to {@code Y}'s decoder), and the result wrapped in
+     * {@code X}. {@code X}'s external representation is {@code Y}'s — an object or a discriminated
+     * sum, not {@code {value: ...}}.
+     */
+    record NewtypeDecoder(DecRef inner, String inputName, Construct result, SourcePos pos)
+            implements DecoderDef {}
 
     /** {@code name <- field("key", <decRef>)} inside an object decoder. */
     record Bind(String name, String key, DecRef ref, SourcePos pos) implements Ast {}

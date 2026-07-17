@@ -796,6 +796,11 @@ public final class TypeChecker {
                 }
                 checkConstruct(obj.result(), data, fields, env, symbols);
             }
+            case Ast.NewtypeDecoder nt -> {
+                Map<String, Type> env = new HashMap<>();
+                env.put(nt.inputName(), decRefType(nt.inner(), symbols));
+                checkConstruct(nt.result(), data, fields, env, symbols);
+            }
         }
     }
 
