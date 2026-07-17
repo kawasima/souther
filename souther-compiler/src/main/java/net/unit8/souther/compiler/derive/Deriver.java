@@ -220,11 +220,8 @@ public final class Deriver {
     }
 
     private static Ast.EncElem encElem(Type t, Ast.Data d, SourcePos pos) {
-        if (t == Type.STRING) {
-            return new Ast.PrimEnc(Ast.PrimKind.STRING, pos);
-        }
-        if (t == Type.INT) {
-            return new Ast.PrimEnc(Ast.PrimKind.INT, pos);
+        if (isPrim(t)) {
+            return new Ast.PrimEnc(primKind(t), pos);   // every primitive has a leaf encoder
         }
         if (t instanceof Type.Ref r) {
             return new Ast.DataEnc(r.name(), pos);

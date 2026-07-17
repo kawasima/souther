@@ -1020,8 +1020,7 @@ public final class TypeChecker {
                                      Map<String, Ast.Def> symbols) {
         switch (elem) {
             case Ast.PrimEnc p -> {
-                Type expected = p.kind() == Ast.PrimKind.STRING ? Type.STRING : Type.INT;
-                if (!elemType.equals(expected)) {
+                if (!elemType.equals(primType(p.kind()))) {
                     throw new CompileException(pos,
                             "element encoder " + p.kind() + " does not match " + elemType);
                 }

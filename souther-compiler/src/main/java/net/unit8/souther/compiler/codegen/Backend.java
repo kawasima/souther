@@ -1685,10 +1685,22 @@ public final class Backend {
     /** Pushes a Raoh {@link net.unit8.raoh.encode.Encoder} for a list/map element. */
     private void pushElemEncoder(CodeBuilder code, Ast.EncElem elem) {
         switch (elem) {
-            case Ast.PrimEnc p -> code.invokestatic(CD_ObjectEncoders,
-                    p.kind() == Ast.PrimKind.STRING ? "string" : "long_", MTD_Rencode_leaf);
+            case Ast.PrimEnc p -> code.invokestatic(CD_ObjectEncoders, leafEncoderName(p.kind()),
+                    MTD_Rencode_leaf);
             case Ast.DataEnc d -> invokeCodec(code, d.typeName(), "encoder", MTD_Rencoder);
         }
+    }
+
+    /** The Raoh {@code ObjectEncoders} leaf method for each primitive (matches the leaf decoders). */
+    private static String leafEncoderName(Ast.PrimKind kind) {
+        return switch (kind) {
+            case STRING -> "string";
+            case INT -> "long_";
+            case BOOL -> "bool";
+            case DECIMAL -> "decimal";
+            case DATE -> "date";
+            case DATETIME -> "dateTime";
+        };
     }
 
     private void emitDefaultCtor(ClassBuilder cb) {
