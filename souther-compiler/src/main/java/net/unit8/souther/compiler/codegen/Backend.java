@@ -327,10 +327,13 @@ public final class Backend {
         // injects and binds them (spec 14.3) — but no base is generated for them here.
         Set<String> requiredNames = new HashSet<>(importedInjected);
         Map<String, Type> requiredSuccess = new HashMap<>();
+        Map<String, Type> requiredParam = new HashMap<>();
         for (Ast.BehaviorDef bd : module.behaviors()) {
             if (bd instanceof Ast.SpecBehavior spec && !fns.containsKey(spec.name())) {
                 requiredNames.add(spec.name());
                 requiredSuccess.put(spec.name(), b.successType(spec.ret()));
+                requiredParam.put(spec.name(),
+                        spec.params().size() == 1 ? b.successType(spec.params().get(0).type()) : null);
                 List<String> unitArms = new ArrayList<>();
                 for (Ast.TypeRef t : spec.ret().arms()) {
                     if (b.symbols.get(t.name()) instanceof Ast.UnitData) {
@@ -356,7 +359,7 @@ public final class Backend {
                         Ast.FnDef inlined = new Ast.FnDef(
                                 fn.name(), fn.params(), inliner.inline(fn.body()), fn.pos());
                         out.put(module.name() + "." + behaviorClass(spec.name()),
-                                b.generateSpecFn(spec, inlined, requiredNames, requiredSuccess));
+                                b.generateSpecFn(spec, inlined, requiredNames, requiredSuccess, requiredParam));
                     }
                     // else: injection target — its abstract base was generated above (spec 13.3)
                 }
@@ -815,7 +818,7 @@ public final class Backend {
      * name the injected behaviors and are resolved as inline calls, not bound as locals.
      */
     private byte[] generateSpecFn(Ast.SpecBehavior spec, Ast.FnDef fn, Set<String> requiredNames,
-                                  Map<String, Type> requiredSuccess) {
+                                  Map<String, Type> requiredSuccess, Map<String, Type> requiredParam) {
         ClassDesc cdB = cdBehavior(spec.name());
         int n = spec.params().size();
         // declared requires, validated to equal what the fn calls (E1602/E1603); the same order is
@@ -834,7 +837,7 @@ public final class Backend {
             emitInjection(cb, cdB, injected);
             cb.withMethodBody("apply", mtdApply, ClassFile.ACC_PUBLIC, code -> {
                 Gen gen = new Gen(code, null, cdB, n + 1);
-                gen.requireds(requiredNames, requiredSuccess);
+                gen.requireds(requiredNames, requiredSuccess, requiredParam);
                 for (int i = 0; i < n; i++) {
                     // the fn's leading param names the input; its type comes from the behavior
                     Type pt = successType(spec.params().get(i).type());
@@ -1942,34 +1945,58 @@ public final class Backend {
      * {@code final} fields set by the constructor, and the body compiles into {@code apply}, which
      * unboxes its arguments from the {@code Object[]} and boxes its result (spec §blocks). */
     private byte[] generateLambdaClass(ClassDesc cd, Ast.Block block, List<Type> paramTypes,
-                                       Type resultType, List<String> captureNames,
-                                       List<Type> captureTypes) {
+                                       Type resultType, List<String> valueNames, List<Type> valueTypes,
+                                       List<String> injectedNames, Map<String, Type> reqSuccess,
+                                       Map<String, Type> reqParam) {
         return build(cd, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_Fn);
-            for (int i = 0; i < captureNames.size(); i++) {
-                cb.withField(captureField(i), jvmType(captureTypes.get(i)),
+            for (int i = 0; i < valueNames.size(); i++) {
+                cb.withField(captureField(i), jvmType(valueTypes.get(i)),
                         ClassFile.ACC_PRIVATE | ClassFile.ACC_FINAL);
             }
-            ClassDesc[] ctorDescs = new ClassDesc[captureTypes.size()];
-            for (int i = 0; i < captureTypes.size(); i++) {
-                ctorDescs[i] = jvmType(captureTypes.get(i));
+            for (String inj : injectedNames) {   // named after the behavior so requiredCall reads it
+                cb.withField(inj, CD_Behavior, ClassFile.ACC_PRIVATE | ClassFile.ACC_FINAL);
             }
-            cb.withMethodBody("<init>", MethodTypeDesc.of(ConstantDescs.CD_void, ctorDescs),
+            List<ClassDesc> ctor = new ArrayList<>();
+            for (Type t : valueTypes) {
+                ctor.add(jvmType(t));
+            }
+            for (String ignored : injectedNames) {
+                ctor.add(CD_Behavior);
+            }
+            cb.withMethodBody("<init>", MethodTypeDesc.of(ConstantDescs.CD_void, ctor.toArray(new ClassDesc[0])),
                     ClassFile.ACC_PUBLIC, code -> {
                 code.aload(0);
                 code.invokespecial(CD_Object, "<init>", MTD_void);
                 int slot = 1;
-                for (int i = 0; i < captureNames.size(); i++) {
+                for (int i = 0; i < valueNames.size(); i++) {
                     code.aload(0);
-                    load(code, slot, captureTypes.get(i));
-                    code.putfield(cd, captureField(i), jvmType(captureTypes.get(i)));
-                    slot += width(captureTypes.get(i));
+                    load(code, slot, valueTypes.get(i));
+                    code.putfield(cd, captureField(i), jvmType(valueTypes.get(i)));
+                    slot += width(valueTypes.get(i));
+                }
+                for (String inj : injectedNames) {
+                    code.aload(0);
+                    code.aload(slot);
+                    code.putfield(cd, inj, CD_Behavior);
+                    slot += 1;
                 }
                 code.return_();
             });
             cb.withMethodBody("apply", MTD_Fn_apply, ClassFile.ACC_PUBLIC, code -> {
                 Gen g = new Gen(code, null, cd, 2);   // slot 0 = this, slot 1 = the Object[] args
+                if (!injectedNames.isEmpty()) {
+                    // the captured behaviors live in this closure's own fields; requiredCall reads
+                    // `this.<name>`, so route them the same way the enclosing behavior does
+                    Map<String, Type> succ = new HashMap<>();
+                    Map<String, Type> parm = new HashMap<>();
+                    for (String inj : injectedNames) {
+                        succ.put(inj, reqSuccess.get(inj));
+                        parm.put(inj, reqParam.get(inj));
+                    }
+                    g.requireds(new HashSet<>(injectedNames), succ, parm);
+                }
                 for (int i = 0; i < paramTypes.size(); i++) {
                     Type pt = paramTypes.get(i);
                     int s = g.slot(pt);
@@ -1979,13 +2006,13 @@ public final class Backend {
                     unbox(code, pt, s);
                     g.bind(block.params().get(i), s, pt);
                 }
-                for (int i = 0; i < captureNames.size(); i++) {
-                    Type ct = captureTypes.get(i);
+                for (int i = 0; i < valueNames.size(); i++) {
+                    Type ct = valueTypes.get(i);
                     int s = g.slot(ct);
                     code.aload(0);
                     code.getfield(cd, captureField(i), jvmType(ct));
                     store(code, s, ct);
-                    g.bind(captureNames.get(i), s, ct);
+                    g.bind(valueNames.get(i), s, ct);
                 }
                 Type rt = g.expr(block.body());
                 box(code, rt);
@@ -2004,6 +2031,7 @@ public final class Backend {
         private int nextSlot;
         private Set<String> reqNames = Set.of();
         private Map<String, Type> reqSuccess = Map.of();
+        private Map<String, Type> reqParam = Map.of();
 
         Gen(CodeBuilder code, Ast.Data data, ClassDesc cdName, int firstSlot) {
             this.code = code;
@@ -2013,9 +2041,19 @@ public final class Backend {
         }
 
         /** Makes injected required behaviors callable inline from this body (spec 12.2, 13). */
-        void requireds(Set<String> names, Map<String, Type> success) {
+        void requireds(Set<String> names, Map<String, Type> success, Map<String, Type> param) {
             this.reqNames = names;
             this.reqSuccess = success;
+            this.reqParam = param;
+        }
+
+        /** A {@code ReqSig} view of the injected behaviors in scope, for re-typing a closure body. */
+        private Map<String, TypeChecker.ReqSig> reqSigs() {
+            Map<String, TypeChecker.ReqSig> sigs = new HashMap<>();
+            for (String n : reqNames) {
+                sigs.put(n, new TypeChecker.ReqSig(reqParam.get(n), reqSuccess.get(n)));
+            }
+            return sigs;
         }
 
         void bind(String name, int slot, Type type) {
@@ -2769,34 +2807,44 @@ public final class Backend {
         }
 
         /** Compiles a lambda to a synthetic {@code Fn} class and emits {@code new} of it, passing the
-         * captured free variables to its constructor. */
+         * captured free variables (and any injected behaviors it calls) to its constructor. */
         private Type emitLambda(Ast.Block block, List<Type> paramTypes) {
             Map<String, Type> inner = typesEnv();
             for (int i = 0; i < paramTypes.size(); i++) {
                 inner.put(block.params().get(i), paramTypes.get(i));
             }
-            Type resultType = TypeChecker.typeOf(block.body(), inner, data, symbols);
-            List<String> captureNames = freeVars(block);
-            List<Type> captureTypes = new ArrayList<>();
-            for (String c : captureNames) {
-                captureTypes.add(env.get(c).type());
+            Type resultType = TypeChecker.typeOf(block.body(), inner, data, symbols, reqSigs());
+
+            List<String> valueNames = new ArrayList<>();
+            List<Type> valueTypes = new ArrayList<>();
+            List<String> injectedNames = new ArrayList<>();
+            for (String c : freeVars(block)) {
+                if (env.containsKey(c)) {
+                    valueNames.add(c);
+                    valueTypes.add(env.get(c).type());
+                } else {
+                    injectedNames.add(c);   // an injected behavior the closure calls (spec 13.2)
+                }
             }
             String className = pkg + ".$Fn" + (lambdaCounter++);
             ClassDesc cd = ClassDesc.of(className);
-            synthClasses.put(className,
-                    generateLambdaClass(cd, block, paramTypes, resultType, captureNames, captureTypes));
+            synthClasses.put(className, generateLambdaClass(cd, block, paramTypes, resultType,
+                    valueNames, valueTypes, injectedNames, reqSuccess, reqParam));
 
             code.new_(cd);
             code.dup();
-            for (int i = 0; i < captureNames.size(); i++) {
-                Var v = env.get(captureNames.get(i));
-                load(code, v.slot(), v.type());
+            List<ClassDesc> ctorDescs = new ArrayList<>();
+            for (int i = 0; i < valueNames.size(); i++) {
+                load(code, env.get(valueNames.get(i)).slot(), valueTypes.get(i));
+                ctorDescs.add(jvmType(valueTypes.get(i)));
             }
-            ClassDesc[] ctorDescs = new ClassDesc[captureTypes.size()];
-            for (int i = 0; i < captureTypes.size(); i++) {
-                ctorDescs[i] = jvmType(captureTypes.get(i));
+            for (String inj : injectedNames) {
+                code.aload(0);                              // the enclosing behavior instance
+                code.getfield(cdName, inj, CD_Behavior);    // its injected field
+                ctorDescs.add(CD_Behavior);
             }
-            code.invokespecial(cd, "<init>", MethodTypeDesc.of(ConstantDescs.CD_void, ctorDescs));
+            code.invokespecial(cd, "<init>",
+                    MethodTypeDesc.of(ConstantDescs.CD_void, ctorDescs.toArray(new ClassDesc[0])));
             return Type.fn(paramTypes, resultType);
         }
 
@@ -2897,7 +2945,7 @@ public final class Backend {
         }
 
         private void maybeFree(String name, Set<String> bound, LinkedHashSet<String> free) {
-            if (!bound.contains(name) && env.containsKey(name)) {
+            if (!bound.contains(name) && (env.containsKey(name) || reqNames.contains(name))) {
                 free.add(name);
             }
         }

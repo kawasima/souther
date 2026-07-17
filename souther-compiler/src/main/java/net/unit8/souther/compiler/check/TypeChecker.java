@@ -401,7 +401,9 @@ public final class TypeChecker {
     }
 
     /** A required behavior's input and success types (for typing calls). */
-    private record ReqSig(Type param, Type success) {}
+    /** The input and success types of a required (injected) behavior, for typing an inline call to
+     * it. Public so the backend can build the same view when it re-types a closure body. */
+    public record ReqSig(Type param, Type success) {}
 
     /** The distinct injection targets a fn body calls, in first-seen order. Calls may appear
      * anywhere in an expression (e.g. inline in a record literal), not only bound to a let. */
