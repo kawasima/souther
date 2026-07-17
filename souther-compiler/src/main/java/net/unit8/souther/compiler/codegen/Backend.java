@@ -2862,21 +2862,8 @@ public final class Backend {
                 code.aastore();
             }
             code.invokeinterface(CD_Fn, "apply", MTD_Fn_apply);
-            castResult(fnType.result());
+            stackCast(fnType.result());   // Object result -> the function's result type
             return fnType.result();
-        }
-
-        /** Casts/unboxes an {@code Object} on the stack to {@code t} (the inverse of {@link #box}). */
-        private void castResult(Type t) {
-            if (t == Type.INT) {
-                code.checkcast(CD_Long);
-                code.invokevirtual(CD_Long, "longValue", MethodTypeDesc.of(ConstantDescs.CD_long));
-            } else if (t == Type.BOOL) {
-                code.checkcast(CD_Boolean);
-                code.invokevirtual(CD_Boolean, "booleanValue", MethodTypeDesc.of(ConstantDescs.CD_boolean));
-            } else {
-                code.checkcast(jvmType(t));
-            }
         }
 
         /** The free variables of a lambda: names its body reads that are bound in the enclosing
