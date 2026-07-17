@@ -66,14 +66,22 @@ public final class TypeChecker {
         Set<String> exposed = new HashSet<>();
         for (String e : module.exposing()) {
             int dot = e.indexOf('.');
-            String base = dot < 0 ? e : e.substring(0, dot);
+            // `exposing` is type-granular: a data's decoder/encoder are always public API once the
+            // data itself is exposed (spec 19.4), so there is nothing a `.decoder`/`.encoder` member
+            // could narrow. Reject it rather than accept a form that reads as a granularity that
+            // does not exist.
+            if (dot >= 0) {
+                throw new CompileException(module.pos(), "`exposing` is type-granular: a data's "
+                        + "`decoder`/`encoder` are always public once the data is exposed (spec 19.4)."
+                        + " Write `" + e.substring(0, dot) + "`, not `" + e + "`");
+            }
             // an exposed name must resolve to a data or behavior; a typo would otherwise expose
             // nothing and silently leave the intended type package-private (spec 4)
-            if (!symbols.containsKey(base) && !allBehaviors.contains(base)) {
+            if (!symbols.containsKey(e) && !allBehaviors.contains(e)) {
                 throw new CompileException(module.pos(),
-                        "`exposing` names `" + base + "`, which is not a data or behavior of this module");
+                        "`exposing` names `" + e + "`, which is not a data or behavior of this module");
             }
-            exposed.add(base);
+            exposed.add(e);
         }
         // Injection targets (spec 13.2): a SpecBehavior with no matching fn. Its name and success
         // type let a fn call it inline (spec 12.2); it is the "required" behavior of the old form.

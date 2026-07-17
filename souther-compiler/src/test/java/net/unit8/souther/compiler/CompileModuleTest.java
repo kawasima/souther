@@ -21,8 +21,7 @@ class CompileModuleTest {
 
     private static final String EMPLOYEE = """
             module example.employee exposing {
-                従業員ID,
-                従業員ID.decoder
+                従業員ID
             }
 
             data 従業員ID = String
@@ -31,8 +30,7 @@ class CompileModuleTest {
 
     private static final String TRIP = """
             module example.trip exposing {
-                Trip,
-                Trip.decoder
+                Trip
             }
 
             import example.employee {

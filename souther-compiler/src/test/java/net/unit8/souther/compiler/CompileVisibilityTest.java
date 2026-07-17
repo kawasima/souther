@@ -42,7 +42,7 @@ class CompileVisibilityTest {
     @Test
     void exposedSumWithHiddenArmsStillDecodes() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
-                module demo exposing { Contact, Contact.decoder }
+                module demo exposing { Contact }
 
                 data EmailC = { email: String }
                 data PhoneC = { phone: String }

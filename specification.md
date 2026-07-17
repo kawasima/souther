@@ -162,11 +162,12 @@ data 出張申請 = 申請準備中 | 提出済み | 事前承認待ち | 事前
 ```text
 module example.businesstrip exposing {
     出張申請,
-    出張申請.decoder,
     出張申請を提出する,
     事前承認する
 }
 ```
+
+`exposing` は型の粒度で公開する。公開した data の `decoder()` / `encoder()` は常に公開 API なので（19.4）、`出張申請.decoder` のように member を絞る書き方はしない——絞れるものが無いからである。
 
 import は明示的に列挙する。ワイルドカードimportは禁止する。循環importはコンパイルエラーとする。
 
@@ -1800,7 +1801,6 @@ Expose 保存データ, or make it a unit data.
 ```text
 module example.businesstrip exposing {
     出張申請,
-    出張申請.decoder,
     出張申請を提出する,
     事前承認する
 }

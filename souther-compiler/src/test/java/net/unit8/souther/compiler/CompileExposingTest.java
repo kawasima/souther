@@ -4,11 +4,13 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Every name in an {@code exposing} clause must resolve to a data or behavior of the module
- * (spec 4). A typo used to be accepted silently — exposing nothing — which quietly left a type
- * package-private. It is now a compile error.
+ * Every name in an {@code exposing} clause must resolve to a data or behavior of the module, and
+ * the clause is type-granular: a data's {@code decoder}/{@code encoder} are always public once the
+ * data is exposed (spec 4, 19.4), so a {@code A.decoder} member is rejected. A typo used to be
+ * accepted silently — exposing nothing — which quietly left a type package-private.
  */
 class CompileExposingTest {
 
@@ -22,19 +24,20 @@ class CompileExposingTest {
     }
 
     @Test
-    void aMisspelledDecoderMemberIsRejected() {
-        assertThrows(CompileException.class, () -> Compiler.compile("""
+    void aDecoderMemberInExposingIsRejected() {
+        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile("""
                 module demo
-                exposing { Reol.decoder }
+                exposing { Real.decoder }
                 data Real = { v: Int }
                 """));
+        assertTrue(e.getMessage().contains("type-granular"), e.getMessage());
     }
 
     @Test
     void realExposedNamesAreAccepted() {
         assertDoesNotThrow(() -> Compiler.compile("""
                 module demo
-                exposing { Real, Real.decoder, greet }
+                exposing { Real, greet }
 
                 data Real = { v: Int }
                 data Out = { v: Int }
