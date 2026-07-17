@@ -1,6 +1,8 @@
 # ADR-0010: Polymorphism is limited to stdlib types; no user-defined generics
 
-Status: Accepted
+Status: Accepted. Amended by ADR-0028 (decided 2026-07-18, not yet implemented): the
+user-facing restriction stands, but the stdlib generics move from compiler machinery into a
+privileged `core` written in Souther.
 
 ## Context
 
