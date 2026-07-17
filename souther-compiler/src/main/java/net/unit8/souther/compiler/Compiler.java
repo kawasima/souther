@@ -83,7 +83,12 @@ public final class Compiler {
                     continue;
                 }
                 if (srcSigs == null) {
-                    srcSigs = TypeChecker.signatures(src, visibleDefs(src, registry));
+                    // The declaring module may itself import the behaviors its definitions compose
+                    // (an import chain deeper than one hop), so seed its own imported signatures
+                    // when computing its signatures — recursively, up the import graph. Cycles are
+                    // already rejected by detectCycles, so this terminates.
+                    srcSigs = TypeChecker.signatures(src, visibleDefs(src, registry),
+                            importedBehaviorSigs(src, registry));
                 }
                 result.put(name, srcSigs.get(name));
             }
