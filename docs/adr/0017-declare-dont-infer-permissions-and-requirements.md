@@ -8,7 +8,7 @@ A behavior is a specification. Its construction permission (`constructs`), its d
 
 ## Decision
 
-Permissions and requirements are declared on the behavior and checked against the implementation, with exact match required — even an over-broad, safe-side declaration is rejected. Only `>>` composition is inferred, from the union over its stages, because the stages carry their own declarations; and even there the output may be optionally declared to pin the blame for far-away changes to that definition.
+Permissions and requirements are declared on the behavior and checked against the implementation, with exact match required — even an over-broad, safe-side declaration is rejected. Only `>->` composition is inferred, from the union over its stages, because the stages carry their own declarations; and even there the output may be optionally declared to pin the blame for far-away changes to that definition.
 
 ## Consequences
 

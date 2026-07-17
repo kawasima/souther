@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Spec 4 / 13.2 / 14.3: a module can import an injected behavior (one another module declares
- * without a fn) and compose it with {@code >>}. The composition's inferred requirement is the
+ * without a fn) and compose it with {@code >->}. The composition's inferred requirement is the
  * imported behavior, so its generated {@code bind(...)} injects the Java implementation of the
  * declaring module's abstract base.
  */
@@ -40,7 +40,7 @@ class CompileModuleInjectedTest {
 
             import a { N, produce }
 
-            behavior flow = produce >> produce
+            behavior flow = produce >-> produce
             """;
 
     // A Java implementation of module a's injected behavior base `a.produce` (Behavior<N, N>).

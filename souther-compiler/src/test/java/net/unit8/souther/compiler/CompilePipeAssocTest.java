@@ -11,10 +11,10 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * {@code >>} is associative: naming an intermediate composition does not change the result (spec
- * 14.2). {@code half = split >> work} remembers that {@code Off} left the main line at {@code work};
- * {@code half >> finish} must therefore keep {@code Off} retired, exactly as the flat
- * {@code split >> work >> finish} would, even though {@code finish} could accept an {@code Off}.
+ * {@code >->} is associative: naming an intermediate composition does not change the result (spec
+ * 14.2). {@code half = split >-> work} remembers that {@code Off} left the main line at {@code work};
+ * {@code half >-> finish} must therefore keep {@code Off} retired, exactly as the flat
+ * {@code split >-> work >-> finish} would, even though {@code finish} could accept an {@code Off}.
  */
 class CompilePipeAssocTest {
 
@@ -39,8 +39,8 @@ class CompilePipeAssocTest {
             behavior finish = (x: OffOut) -> Out constructs Out
             fn finish (x) = Out { value: 0 }
 
-            behavior half = split >> work
-            behavior flow = half >> finish
+            behavior half = split >-> work
+            behavior flow = half >-> finish
             """;
 
     @SuppressWarnings("unchecked")
@@ -56,7 +56,7 @@ class CompilePipeAssocTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
         // 500 > 100: split yields Off, which left the main line at work — finish must not pick it up
         assertEquals("demo.Off", run(loader, 500),
-                "half >> finish must equal split >> work >> finish; Off stays retired");
+                "half >-> finish must equal split >-> work >-> finish; Off stays retired");
         // 50 <= 100: split yields Mid, work makes Out, finish consumes it
         assertEquals("demo.Out", run(loader, 50));
     }

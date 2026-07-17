@@ -32,7 +32,7 @@ class CompileModuleChainTest {
     private static final String B = """
             module b exposing { twice }
             import a { N, inc }
-            behavior twice = inc >> inc
+            behavior twice = inc >-> inc
             """;
     // c imports N as well: its generated `quad` carries a `Behavior<N, N>` signature (spec 19.8,
     // 24), so N's class must be nameable here — the same reason Java code importing a generic method
@@ -41,7 +41,7 @@ class CompileModuleChainTest {
             module c
             import a { N }
             import b { twice }
-            behavior quad = twice >> twice
+            behavior quad = twice >-> twice
             """;
 
     @Test

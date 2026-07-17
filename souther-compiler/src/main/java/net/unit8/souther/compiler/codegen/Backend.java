@@ -821,7 +821,7 @@ public final class Backend {
         return build(cdB, cb -> {
             cb.withFlags(pub(spec.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             if (n == 1) {
-                cb.withInterfaceSymbols(CD_Behavior); // single-input behaviors compose with >>
+                cb.withInterfaceSymbols(CD_Behavior); // single-input behaviors compose with >->
             }
             emitInjection(cb, cdB, injected);
             cb.withMethodBody("apply", mtdApply, ClassFile.ACC_PUBLIC, code -> {
@@ -938,7 +938,7 @@ public final class Backend {
         }
         if (!inProgress.add(name)) {
             throw new CompileException(bd.pos(),
-                    "cyclic behavior composition: " + String.join(" >> ", inProgress) + " >> " + name);
+                    "cyclic behavior composition: " + String.join(" >-> ", inProgress) + " >-> " + name);
         }
         LinkedHashSet<String> deps = new LinkedHashSet<>();
         switch (bd) {
@@ -962,8 +962,8 @@ public final class Backend {
                                 Map<String, List<String>> pipeStages) {
         ClassDesc cdP = cdBehavior(pipe.name());
         // Flatten nested pipeline stages so the routing is over leaf behaviors (spec 14.2): a named
-        // intermediate `half = split >> work` inlines to `split, work`, which keeps a retired arm
-        // retired across the composition, making `>>` associative.
+        // intermediate `half = split >-> work` inlines to `split, work`, which keeps a retired arm
+        // retired across the composition, making `>->` associative.
         List<String> flat = TypeChecker.flattenStages(pipe.stages(), pipeStages, pipe.pos());
         // the pipeline's injected fields are the union of its stages' requirements (spec 14.3)
         List<String> reqStages = behaviorDeps.getOrDefault(pipe.name(), List.of());
@@ -1045,7 +1045,7 @@ public final class Backend {
      * is a behavior, or a {@code Type.decoder}/{@code Type.encoder} boundary codec (spec 14.1). */
     private void applyStage(CodeBuilder code, ClassDesc cdP, String stage, Set<String> requiredNames,
                             Map<String, List<String>> behaviorDeps) {
-        // decode/encode are boundary edges, not pipeline stages (spec 14.1): `>>` composes
+        // decode/encode are boundary edges, not pipeline stages (spec 14.1): `>->` composes
         // behaviors only.
         pushStage(code, cdP, stage, requiredNames, behaviorDeps);
         code.aload(1);

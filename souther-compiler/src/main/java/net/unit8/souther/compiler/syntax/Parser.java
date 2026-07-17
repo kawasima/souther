@@ -97,10 +97,10 @@ public final class Parser {
     }
 
     /**
-     * {@code behavior name = <rhs>} where the rhs is either a pipeline ({@code a >> b}) or a
+     * {@code behavior name = <rhs>} where the rhs is either a pipeline ({@code a >-> b}) or a
      * signature ({@code (params) -> ret [constructs ...] [requires ...]}). One token after {@code =}
      * tells them apart: {@code (} is a signature. A behavior has no body — the implementation is a
-     * same-named {@code fn} (13.1), a {@code >>} composition, or Java injection (12, 13.2).
+     * same-named {@code fn} (13.1), a {@code >->} composition, or Java injection (12, 13.2).
      */
     private Ast.BehaviorDef parseBehavior() {
         Token kw = expect(TokenType.BEHAVIOR);
@@ -113,7 +113,7 @@ public final class Parser {
         if (!check(TokenType.LPAREN)) {
             List<String> stages = new ArrayList<>();
             stages.add(parseStage());
-            while (match(TokenType.GTGT)) {
+            while (match(TokenType.PIPEFWD)) {
                 stages.add(parseStage());
             }
             // an optional trailing `-> arms` declares the composition's output (spec 14.5); the
@@ -221,7 +221,7 @@ public final class Parser {
 
     /** A pipeline stage: a behavior name. A dotted {@code Type.decoder} / {@code Type.encoder} also
      * parses here, only so {@link net.unit8.souther.compiler.check.TypeChecker#stageSig} can reject
-     * it with a clear message — {@code >>} composes behaviors, not boundary codecs (spec 14.1). */
+     * it with a clear message — {@code >->} composes behaviors, not boundary codecs (spec 14.1). */
     private String parseStage() {
         String s = expect(TokenType.IDENT).text();
         if (match(TokenType.DOT)) {

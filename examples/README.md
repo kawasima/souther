@@ -41,7 +41,7 @@ Gradle なら同じプロセッサを `annotationProcessor` 依存＋`-Asouther.
 | `contact` | 直和 data（sealed）＋ 判別デコーダ（判別子 `"type"`／タグ＝アーム名） |
 | `expense` | `List<T>`／ネストした newtype／直積の decode・encode 往復 |
 | `businesstrip` | include（フィールド合成）＋ ネストした newtype invariant |
-| `member` | 会員照会。`required behavior findMember`（外界依存）＋ 型ルーティング `>>`。Spring MVC + jOOQ の境界コードを実際にコンパイルする（下記） |
+| `member` | 会員照会。`required behavior findMember`（外界依存）＋ 型ルーティング `>->`。Spring MVC + jOOQ の境界コードを実際にコンパイルする（下記） |
 
 `.sou` だけで手書き Java の無いモジュール（email/contact/expense/businesstrip）には、プロセッサを起動する
 ための最小の `package-info.java` を1つ置いています（javac はソースが1つ以上ないとアノテーション処理を
@@ -64,14 +64,14 @@ mvn -o -f examples/pom.xml verify       # 全例を生成→コンパイル→sm
 流れは一方向です。
 
 ```text
-HTTP → decode（Result<会員ID>）→ behavior >> → 出力アームを match → encode → HTTP
+HTTP → decode（Result<会員ID>）→ behavior >-> → 出力アームを match → encode → HTTP
 ```
 
 `member.sou` の要点:
 
 ```text
 required behavior findMember = (id: 会員ID) -> 会員 | 会員なし | 保存データ不正 | DB不通
-behavior 会員を照会し整形する = findMember >> 会員を表示用に整形する
+behavior 会員を照会し整形する = findMember >-> 会員を表示用に整形する
 // 会員を照会し整形する : 会員ID -> 会員表示 | 会員なし | 保存データ不正 | DB不通
 ```
 

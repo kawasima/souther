@@ -15,7 +15,7 @@ results without prejudging which is a failure.
 
 A behavior's output is an *unmarked* domain sum — no success/failure marker, no `error`
 tag, no `Result`/`Either`, no fourth slot for failure. It is a function from input to "one
-of the possible business results." Which arm leaves the mainline is decided by `>>`
+of the possible business results." Which arm leaves the mainline is decided by `>->`
 composition, not by the behavior alone: the arm the *immediately next stage* does not
 consume leaves the mainline (Railway); every remaining arm rides to the next stage.
 
@@ -34,12 +34,23 @@ are accumulated inside the Decoder (§15), which is a boundary concern, not a do
 
 The mainline/off-ramp split is carried as composition *plumbing*, not as a mark on the
 value. Because the split is remembered by the composition and folds back into a plain sum
-at the pipeline's ends, `>>` is associative: pulling a sub-pipeline out under a name, or
-re-associating the stages, does not change the result (`f >> g >> h` equals `(f >> g) >>
+at the pipeline's ends, `>->` is associative: pulling a sub-pipeline out under a name, or
+re-associating the stages, does not change the result (`f >-> g >-> h` equals `(f >-> g) >->
 h` including the off-ramped arms). That associativity is what lets a name be an
-abstraction boundary — renaming a sub-pipeline preserves meaning. `>>` is therefore not
+abstraction boundary — renaming a sub-pipeline preserves meaning. `>->` is therefore not
 plain function composition: it threads the mainline through each stage while off-ramping
 the arms no stage consumed, and carries that off-ramp so the whole stays associative.
+
+The operator is spelled `>->`, and the spec DSL adopts the same spelling so the one-to-one
+correspondence (ADR-0001) is preserved. An earlier spelling was `>>`, but `>>` reads as
+sequencing (Haskell's `Control.Monad.>>`) or as plain forward function composition (F#,
+`Control.Category.>>>`), and this operator is neither. `>=>` (Kleisli composition) is closer
+in lineage — Railway-Oriented Programming spells its `Result` composition `>=>` — but it
+implies a fixed monad with a privileged success track, and this operator has neither: the
+off-ramp row is open and accumulates over the pipeline, and no arm is privileged as the
+success. `>->` follows Haskell's `pipes`, whose `>->` composes pipeline stages by matching
+one stage's output interface to the next stage's input, carrying no success/failure
+connotation — the same shape as stage routing here.
 
 ## References
 

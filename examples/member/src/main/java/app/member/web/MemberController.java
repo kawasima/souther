@@ -25,8 +25,8 @@ import java.util.Map;
 
 /**
  * 会員照会の HTTP 境界。流れは
- * {@code HTTP → decode → behavior(>>) → 出力アームを match → encode → HTTP}。
- * decode / encode は behavior ではなく境界の縁で、{@code >>} には乗らない（spec 14.1）。
+ * {@code HTTP → decode → behavior(>->) → 出力アームを match → encode → HTTP}。
+ * decode / encode は behavior ではなく境界の縁で、{@code >->} には乗らない（spec 14.1）。
  *
  * <p>{@code 照会} は findMember を jOOQ 実装で束縛したパイプライン（{@link SoutherBeans} で
  * Bean 化）。その出力 {@code 会員表示 | 会員なし | 保存データ不正 | DB不通} を switch で

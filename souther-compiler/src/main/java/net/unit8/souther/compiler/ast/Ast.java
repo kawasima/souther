@@ -31,7 +31,7 @@ public interface Ast {
     /**
      * A behavior definition — a specification, not an implementation (spec 12, 21.1). It is either
      * a {@link SpecBehavior} (an input/output signature, with the body left to a matching
-     * {@link FnDef} or to Java injection) or a {@link PipeBehavior} (a {@code >>} composition, which
+     * {@link FnDef} or to Java injection) or a {@link PipeBehavior} (a {@code >->} composition, which
      * is itself the implementation).
      */
     sealed interface BehaviorDef extends Ast permits SpecBehavior, PipeBehavior {
@@ -57,7 +57,7 @@ public interface Ast {
     record Param(String name, RetType type, SourcePos pos) implements Ast {}
 
     /**
-     * {@code behavior name = f >> g >> ... [-> A | B]} — a composition (spec 14.1). {@code declaredOut}
+     * {@code behavior name = f >-> g >-> ... [-> A | B]} — a composition (spec 14.1). {@code declaredOut}
      * is the optional trailing output declaration (14.5): null when absent (output is inferred), else
      * the declared arms, which must match the inferred output exactly (E1604).
      */

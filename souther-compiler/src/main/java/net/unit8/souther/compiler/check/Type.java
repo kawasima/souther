@@ -32,7 +32,7 @@ public sealed interface Type
     Type DATETIME = Prim.DATETIME;
     /** The external (encoded) representation type: an encoder's raw output at a railway's edge,
      * unioned with propagated error arms as the arm {@code "Raw"} (spec 24). Reserved — no stage
-     * produces it yet; {@code >>} composes behaviors, not codecs (spec 14.1). */
+     * produces it yet; {@code >->} composes behaviors, not codecs (spec 14.1). */
     Type RAW = Prim.RAW;
 
     static Type ref(String name) {

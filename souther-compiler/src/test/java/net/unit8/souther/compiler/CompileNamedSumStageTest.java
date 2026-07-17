@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * When a pipeline stage outputs a named sum, {@code >>} routes over that sum's leaf arms, not the
+ * When a pipeline stage outputs a named sum, {@code >->} routes over that sum's leaf arms, not the
  * sum as one opaque arm (spec 8.3, 14.2). A downstream stage that accepts one arm consumes it and
  * the rest retire; before, the whole sum failed to match and the composition was wrongly E1701.
  */
@@ -33,7 +33,7 @@ class CompileNamedSumStageTest {
             fn handleA (a) = OutA { a: a.v }
 
             // classify outputs AB (= A | B); handleA accepts A, so A routes in and B retires.
-            behavior pipe = classify >> handleA
+            behavior pipe = classify >-> handleA
             """;
 
     @Test

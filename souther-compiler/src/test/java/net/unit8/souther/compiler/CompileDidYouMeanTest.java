@@ -33,7 +33,7 @@ class CompileDidYouMeanTest {
                 data N = Int
                 behavior inc = (n: N) -> N
                 fn inc (n) = n
-                behavior flow = inc >> imc
+                behavior flow = inc >-> imc
                 """);
         assertTrue(e.getMessage().contains("did you mean `inc`?"), e.getMessage());
     }

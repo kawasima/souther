@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * A pipeline stage may be a body behavior that has its own required dependency (spec 14.3):
  * the pipeline collects the union of every stage's requirements and injects them via bind().
- * Here {@code handle = fetch >> enrich}, where {@code fetch} is required and {@code enrich}
+ * Here {@code handle = fetch >-> enrich}, where {@code fetch} is required and {@code enrich}
  * internally calls the required {@code tag}.
  */
 class CompilePipeDepsTest {
@@ -43,7 +43,7 @@ class CompilePipeDepsTest {
                 Out { a: m.value, b: t.value }
             }
 
-            behavior handle = fetch >> enrich
+            behavior handle = fetch >-> enrich
             """;
 
     private static String impl(String cls, String param, String inType, String midValue) {
@@ -106,7 +106,7 @@ class CompilePipeDepsTest {
 
                 fn relabel (o) = Out { a: o.b, b: o.a }
 
-                behavior outer = handle >> relabel
+                behavior outer = handle >-> relabel
                 """;
         Map<String, byte[]> classes = new HashMap<>(Compiler.compile(src));
         classes.put("demo.FetchImpl", compileSubclass(classes, "demo.FetchImpl", impl("FetchImpl", "fetch", "In", "m")));

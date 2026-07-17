@@ -286,12 +286,12 @@ public final class TypeChecker {
     }
 
     /**
-     * Every stage after the first takes exactly one input (spec 14.1): {@code >>} hands a single
+     * Every stage after the first takes exactly one input (spec 14.1): {@code >->} hands a single
      * value along.
      *
      * <p>The first stage is not restricted — it consumes the pipeline's own arguments, and the
      * pipeline simply takes what it takes. The spec DSL relies on this
-     * (`behavior 却下して差し戻す = 却下する >> 差し戻す`, where `却下する` reads
+     * (`behavior 却下して差し戻す = 却下する >-> 差し戻す`, where `却下する` reads
      * `事前承認待ち AND 却下者ID`); requiring the whole chain to be single-input would reject the
      * very line 14.1 cites.
      */
@@ -308,14 +308,14 @@ public final class TypeChecker {
                 continue;
             }
             // check the flattened stages: a named intermediate splices in its own first stage, which
-            // then sits after `>>` and so must be single-input too (spec 14.1, 14.2)
+            // then sits after `>->` and so must be single-input too (spec 14.1, 14.2)
             List<String> stages = flattenStages(pipe.stages(), pipeStages, pipe.pos());
             for (int i = 1; i < stages.size(); i++) {
                 String stage = stages.get(i);
                 Integer n = arity.get(stage);
                 if (n != null && n != 1) {
                     throw new CompileException(pipe.pos(),
-                            "`" + stage + "` takes " + n + " inputs, so it cannot follow `>>` in `"
+                            "`" + stage + "` takes " + n + " inputs, so it cannot follow `>->` in `"
                                     + pipe.name() + "`. Every stage after the first takes one input: "
                                     + "call it inline or open the branches with `match` instead "
                                     + "(spec 14.1). Only the first stage may take several.");
@@ -378,7 +378,7 @@ public final class TypeChecker {
      * A behavior's input and output types.
      *
      * <p>{@code ins} is the whole parameter list. Only the first stage of a pipeline may have more
-     * than one: {@code >>} hands a single value along, so every stage after the first takes one
+     * than one: {@code >->} hands a single value along, so every stage after the first takes one
      * input (spec 14.1). {@link #in} is for those.
      */
     public record Sig(List<Type> ins, Type out) {
@@ -447,8 +447,8 @@ public final class TypeChecker {
 
     /**
      * Flattens a pipeline's stage list, splicing any stage that is itself a pipeline into its own
-     * (recursively flattened) stages (spec 14.2). This is what makes {@code >>} associative:
-     * {@code half >> finish} with {@code half = split >> work} routes over {@code split, work,
+     * (recursively flattened) stages (spec 14.2). This is what makes {@code >->} associative:
+     * {@code half >-> finish} with {@code half = split >-> work} routes over {@code split, work,
      * finish}, exactly as the flat form would, so a retired arm stays retired across a named
      * intermediate. A pipeline viewed on its own still has the merged output its own stages produce.
      */
@@ -475,13 +475,13 @@ public final class TypeChecker {
         }
     }
 
-    /** The signature of a pipeline stage. Only behaviors compose with {@code >>}; decode/encode
+    /** The signature of a pipeline stage. Only behaviors compose with {@code >->}; decode/encode
      * are boundary edges, not stages (spec 14.1). */
     public static Sig stageSig(String stage, Map<String, Sig> sigs, Map<String, Ast.Def> symbols,
                                SourcePos pos) {
         if (stage.endsWith(".decoder") || stage.endsWith(".encoder")) {
             throw new CompileException(pos, "decode/encode are boundary edges, not pipeline stages; "
-                    + "`>>` composes behaviors only (spec 14.1)");
+                    + "`>->` composes behaviors only (spec 14.1)");
         }
         Sig s = sigs.get(stage);
         if (s == null) {
@@ -493,7 +493,7 @@ public final class TypeChecker {
 
     private static Sig pipeSig(Ast.PipeBehavior pipe, Map<String, Sig> sigs, Map<String, Ast.Def> symbols,
                                Map<String, List<String>> pipeStages) {
-        // flatten nested pipeline stages so `>>` is associative (spec 14.2)
+        // flatten nested pipeline stages so `>->` is associative (spec 14.2)
         List<String> stages = flattenStages(pipe.stages(), pipeStages, pipe.pos());
         Sig first = stageSig(stages.get(0), sigs, symbols, pipe.pos());
         Type mainline = first.out();
@@ -562,9 +562,9 @@ public final class TypeChecker {
      * meaning of a pipeline depending on where it is split.
      *
      * <p>Naming an intermediate does not lose the split (spec 14.2): a pipeline stage is flattened
-     * into its own stages before routing ({@link #flattenStages}), so `fg >> h` with
-     * `fg = f >> g` routes over `f, g, h` — a retired arm stays retired, exactly as in the flat
-     * `f >> g >> h`. That flattening is what makes `>>` associative; a value never carries a mark
+     * into its own stages before routing ({@link #flattenStages}), so `fg >-> h` with
+     * `fg = f >-> g` routes over `f, g, h` — a retired arm stays retired, exactly as in the flat
+     * `f >-> g >-> h`. That flattening is what makes `>->` associative; a value never carries a mark
      * saying it once left a main line (2.6), the plumbing is structural. Viewed on its own, `fg`
      * still has the merged sum `f`+`g` produce as its output.
      */
@@ -628,7 +628,7 @@ public final class TypeChecker {
     }
 
     /**
-     * Only required behaviors may be called from a body; other behaviors compose with {@code >>}
+     * Only required behaviors may be called from a body; other behaviors compose with {@code >->}
      * (spec 14.1). Checked up front so the diagnostic names the rule rather than reporting the
      * behavior as an unknown function.
      */
@@ -637,7 +637,7 @@ public final class TypeChecker {
         if (e instanceof Ast.Call call && allBehaviors.contains(call.fn())
                 && !reqSigs.containsKey(call.fn())) {
             throw new CompileException(call.pos(),
-                    "only required behaviors can be called from a body; compose others with `>>`");
+                    "only required behaviors can be called from a body; compose others with `>->`");
         }
         forEachChild(e, c -> rejectNonRequiredCalls(c, allBehaviors, reqSigs));
     }

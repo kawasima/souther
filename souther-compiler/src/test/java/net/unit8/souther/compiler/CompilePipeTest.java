@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** End-to-end test for {@code >>} composition and required-behavior injection = (spec 14, 13, 19.5). */
+/** End-to-end test for {@code >->} composition and required-behavior injection = (spec 14, 13, 19.5). */
 class CompilePipeTest {
 
     private static final String MODULE = """
@@ -27,10 +27,10 @@ class CompilePipeTest {
             fn a (w) = Mid { value: w.value }
             behavior b = (m: Mid) -> Out constructs Out
             fn b (m) = Out { value: m.value }
-            behavior ab = a >> b
+            behavior ab = a >-> b
 
             behavior fetch = (w: Wrap) -> Mid
-            behavior handle = fetch >> b
+            behavior handle = fetch >-> b
             """;
 
     private BytesClassLoader loader() {
@@ -82,14 +82,14 @@ class CompilePipeTest {
                 data Mid = String
                 behavior a = (w: Wrap) -> Mid constructs Mid
                 fn a (w) = Mid { value: w.value }
-                behavior bad = a >> a
+                behavior bad = a >-> a
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1701", e.code());
     }
 
     /**
-     * Only stages after the first take one input (spec 14.1): {@code >>} hands one value along.
+     * Only stages after the first take one input (spec 14.1): {@code >->} hands one value along.
      */
     @Test
     void aMultiInputBehaviorCannotFollowAnArrow() {
@@ -101,7 +101,7 @@ class CompilePipeTest {
                 fn a (w) = Mid { value: w.value }
                 behavior two = (m: Mid, k: String) -> Mid constructs Mid
                 fn two (m, k) = Mid { value: k }
-                behavior bad = a >> two
+                behavior bad = a >-> two
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertTrue(e.getMessage().contains("takes 2 inputs"), e.getMessage());
@@ -111,7 +111,7 @@ class CompilePipeTest {
     /**
      * The first stage may take several — the pipeline then takes them too. 14.1 restricted the
      * whole chain, which rejected the spec DSL line it cited as its own justification:
-     * `behavior 却下して差し戻す = 却下する >> 差し戻す`, where `却下する` reads
+     * `behavior 却下して差し戻す = 却下する >-> 差し戻す`, where `却下する` reads
      * `事前承認待ち AND 却下者ID`. Nothing in the routing rule needs the left operand to be unary.
      */
     @Test
@@ -135,7 +135,7 @@ class CompilePipeTest {
                 behavior sendBack = (r: Rejected) -> Draft constructs Draft
                 fn sendBack (r) = Draft { v: r.v }
 
-                behavior rejectAndSendBack = reject >> sendBack
+                behavior rejectAndSendBack = reject >-> sendBack
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
         Class<?> flow = loader.loadClass("demo.RejectAndSendBack");
@@ -163,7 +163,7 @@ class CompilePipeTest {
                 data Mid = String
                 behavior a = (w: Wrap) -> Mid constructs Mid
                 fn a (w) = Mid { value: w.value }
-                behavior bad = a >> nosuch
+                behavior bad = a >-> nosuch
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertTrue(e.getMessage().contains("unknown behavior"), e.getMessage());

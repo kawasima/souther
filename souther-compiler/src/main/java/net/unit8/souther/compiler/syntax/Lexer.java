@@ -159,7 +159,13 @@ public final class Lexer {
                 return new Token(TokenType.LT, "<", start);
             case '>':
                 if (match('=')) return new Token(TokenType.GE, ">=", start);
-                if (match('>')) return new Token(TokenType.GTGT, ">>", start);
+                // `>->` is the pipeline composition operator (spec 14). `>>` is no longer a token,
+                // so nested generics like `Map<String, List<T>>` lex as two `>` naturally.
+                if (!atEnd() && peek() == '-' && peekNext() == '>') {
+                    advance();  // '-'
+                    advance();  // '>'
+                    return new Token(TokenType.PIPEFWD, ">->", start);
+                }
                 return new Token(TokenType.GT, ">", start);
             case '&':
                 if (match('&')) return new Token(TokenType.AND, "&&", start);

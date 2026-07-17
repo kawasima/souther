@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * A {@code >>} composition may optionally declare its output with a trailing {@code -> arms}
+ * A {@code >->} composition may optionally declare its output with a trailing {@code -> arms}
  * (spec 14.5). When declared, it must match the inferred output exactly — neither too narrow
  * (an arm the pipeline produces is missing) nor too wide (a declared arm the pipeline never
  * produces) is accepted (E1604). Without the declaration, inference stands and the check is off.
@@ -39,25 +39,25 @@ class CompilePipeOutputTest {
     @Test
     void declaredOutputMatchingInferenceCompiles() {
         assertDoesNotThrow(() ->
-                Compiler.compile(module("behavior process = guard >> toDoubled -> Doubled | TooLarge")));
+                Compiler.compile(module("behavior process = guard >-> toDoubled -> Doubled | TooLarge")));
     }
 
     @Test
     void anUndeclaredCompositionStillCompiles() {
-        assertDoesNotThrow(() -> Compiler.compile(module("behavior process = guard >> toDoubled")));
+        assertDoesNotThrow(() -> Compiler.compile(module("behavior process = guard >-> toDoubled")));
     }
 
     @Test
     void aTooNarrowDeclaredOutputIsE1604() {
         CompileException e = assertThrows(CompileException.class, () ->
-                Compiler.compile(module("behavior process = guard >> toDoubled -> Doubled")));
+                Compiler.compile(module("behavior process = guard >-> toDoubled -> Doubled")));
         assertEquals("E1604", e.code());
     }
 
     @Test
     void aTooWideDeclaredOutputIsE1604() {
         CompileException e = assertThrows(CompileException.class, () ->
-                Compiler.compile(module("behavior process = guard >> toDoubled -> Doubled | TooLarge | Amount")));
+                Compiler.compile(module("behavior process = guard >-> toDoubled -> Doubled | TooLarge | Amount")));
         assertEquals("E1604", e.code());
     }
 }

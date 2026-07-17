@@ -16,7 +16,7 @@ have.
 A behavior whose type is declared but that has no implementation is an outside-world
 dependency: its implementation is injected from Java. There is no keyword — the *absence*
 of an implementation is what means "supply this from outside." An implementation is
-either a same-named `fn` (§13.1) or a `>>` composition on the right-hand side (§14); a
+either a same-named `fn` (§13.1) or a `>->` composition on the right-hand side (§14); a
 behavior with neither is the injection target.
 
 ## Consequences
@@ -38,7 +38,7 @@ Java base class (§13.3) hands out factories for the declared unit arms from her
 Which behaviors get an `fn` and which are injected is not mechanically derivable from the
 DSL: `// 依存:` is a note, not an obligation, so its absence does not prove a behavior is
 internal. The one-to-one correspondence (ADR-0001) is therefore at the level of the
-*declaration*, not the implementation form (`fn` / injection / `>>`); the modeler chooses
+*declaration*, not the implementation form (`fn` / injection / `>->`); the modeler chooses
 the form using the `// 依存:` / `// 副作用:` notes as a guide.
 
 ## References

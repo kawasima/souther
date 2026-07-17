@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Spec 4 / 14: a behavior exposed by one module can be imported and composed in another. Here
- * {@code m.b} imports {@code m.a}'s {@code inc} and builds {@code twice = inc >> inc}; the stage
+ * {@code m.b} imports {@code m.a}'s {@code inc} and builds {@code twice = inc >-> inc}; the stage
  * resolves to {@code m.a.inc} in the declaring module's package.
  */
 class CompileModuleBehaviorTest {
@@ -35,7 +35,7 @@ class CompileModuleBehaviorTest {
 
             import m.a { N, inc }
 
-            behavior twice = inc >> inc
+            behavior twice = inc >-> inc
             """;
 
     @Test

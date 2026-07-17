@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * End-to-end test for {@code require ... else} and type-routed {@code >>} composition: an arm
+ * End-to-end test for {@code require ... else} and type-routed {@code >->} composition: an arm
  * the next stage does not accept propagates through unchanged (spec 12.2, 14.2).
  */
 class CompileRailwayTest {
@@ -38,7 +38,7 @@ class CompileRailwayTest {
 
             fn toDoubled (a) = Doubled { value: a.value }
 
-            behavior process = guard >> toDoubled
+            behavior process = guard >-> toDoubled
             """;
 
     private BytesClassLoader loader() {
@@ -73,7 +73,7 @@ class CompileRailwayTest {
     /**
      * Regression: an arm that leaves the main line must stay off it. The router kept the passed
      * arm in the running union and offered it to every later stage, so a stage that happened to
-     * accept it pulled it back in — `A >> B >> C` returned C's output for a value B had already
+     * accept it pulled it back in — `A >-> B >-> C` returned C's output for a value B had already
      * dropped. That is not Railway (spec 14.2), and it made the meaning of a pipeline depend on
      * where it was split.
      */
@@ -101,7 +101,7 @@ class CompileRailwayTest {
                 behavior 仕上げ = (x: OffOut) -> Out constructs Out
                 fn 仕上げ (x) = Out { v: 0 }
 
-                behavior flow = 判定 >> 加工 >> 仕上げ
+                behavior flow = 判定 >-> 加工 >-> 仕上げ
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
         Object flow = loader.loadClass("demo.Flow").getConstructor().newInstance();
