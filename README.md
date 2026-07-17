@@ -181,7 +181,7 @@ undercut one of the ideas above.
 These are not rejected on principle — they are simply out of scope for now: an `fn` that returns a
 function, functions stored in a data field, a human-readable Java-source backend, incremental
 compilation, an LSP / IDE plugin, static invariant proofs, hand-written codec syntax, and `Decimal`
-division with an explicit rounding mode. (Blocks — `x => ...` passed to `all` / `any` — and
+division with an explicit rounding mode. (Blocks — `x -> ...` passed to `all` / `any` — and
 higher-order `fn` arguments are already supported.)
 
 ## Building and using
