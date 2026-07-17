@@ -538,6 +538,14 @@ public final class Parser {
             case LBRACKET -> {
                 return parseList();
             }
+            case LBRACE -> {
+                // a bare `{` is a block expression (spec 16.5); it desugars via parseBody. A record
+                // literal is never bare — it is prefixed by a type name (12.4), handled under IDENT.
+                advance();
+                Ast.Expr e = parseBody();
+                expect(TokenType.RBRACE);
+                return e;
+            }
             case IDENT -> {
                 advance();
                 if (check(TokenType.LPAREN)) {
