@@ -63,6 +63,12 @@ public final class TypeChecker {
         // A data is Java-buildable from outside iff the whole module is public (no `exposing`) or
         // its name is exposed. Used by the injection constructs check (E1305).
         boolean exposeAll = module.exposing().isEmpty();
+        // `exposing` lists a module's own public surface. A module's own type names, as opposed to
+        // `symbols`, which also holds the data it imports — an imported name is not re-exported.
+        Set<String> ownTypes = new HashSet<>();
+        for (Ast.Def d : module.defs()) {
+            ownTypes.add(d.name());
+        }
         Set<String> exposed = new HashSet<>();
         for (String e : module.exposing()) {
             int dot = e.indexOf('.');
@@ -75,11 +81,14 @@ public final class TypeChecker {
                         + "`decoder`/`encoder` are always public once the data is exposed (spec 19.4)."
                         + " Write `" + e.substring(0, dot) + "`, not `" + e + "`");
             }
-            // an exposed name must resolve to a data or behavior; a typo would otherwise expose
-            // nothing and silently leave the intended type package-private (spec 4)
-            if (!symbols.containsKey(e) && !allBehaviors.contains(e)) {
-                throw new CompileException(module.pos(),
-                        "`exposing` names `" + e + "`, which is not a data or behavior of this module");
+            // an exposed name must be one of this module's own definitions. An imported name that is
+            // merely visible here is not re-exported — importers reach it from its declaring module.
+            if (!ownTypes.contains(e) && !allBehaviors.contains(e)) {
+                String why = symbols.containsKey(e)
+                        ? "` is imported into this module, not defined here; `exposing` lists a"
+                          + " module's own definitions and does not re-export imported names"
+                        : "`, which is not a data or behavior of this module";
+                throw new CompileException(module.pos(), "`exposing` names `" + e + why);
             }
             exposed.add(e);
         }
@@ -88,6 +97,15 @@ public final class TypeChecker {
         Map<String, ReqSig> reqSigs = new HashMap<>();
         for (Ast.BehaviorDef b : module.behaviors()) {
             if (b instanceof Ast.SpecBehavior spec && !fns.containsKey(spec.name())) {
+                // `requires` names what an implementation calls (12.6), and an injection target has
+                // no implementation here — the Java side provides it (13.2). Declaring `requires` on
+                // one is meaningless: nothing calls those behaviors, and nothing injects them. The
+                // behavior that composes or calls this one carries the requirement instead (13.2).
+                if (!spec.requires().isEmpty()) {
+                    throw new CompileException(spec.pos(), "behavior `" + spec.name()
+                            + "` has no `fn`, so it is an injection target (spec 13.2); it cannot"
+                            + " declare `requires` — the behavior that calls or composes it does");
+                }
                 reqSigs.put(spec.name(), new ReqSig(
                         spec.params().isEmpty() ? null : successType(spec.params().get(0).type(), symbols),
                         successType(spec.ret(), symbols)));
