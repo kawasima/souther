@@ -67,6 +67,7 @@ class CompileHelperFnTest {
         // but `Tag` (via the helper) is also built, so the undeclared `Tag` is E1002.
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile("""
                 module demo
+                import String { length }
 
                 data Id = String
                 data Tag = { a: String  b: String }

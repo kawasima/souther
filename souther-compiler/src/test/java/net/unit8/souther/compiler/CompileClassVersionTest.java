@@ -17,6 +17,7 @@ class CompileClassVersionTest {
 
     private static final String MODULE = """
             module demo
+            import String { length }
 
             data 会員ID = { value: String  invariant length(value) > 0 }
             data Contact = EmailContact | PhoneContact

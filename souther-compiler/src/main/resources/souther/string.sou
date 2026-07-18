@@ -12,3 +12,12 @@ let startsWith (s: String, prefix: String) : Bool = intrinsic "string.startsWith
 let endsWith (s: String, suffix: String) : Bool = intrinsic "string.endsWith"
 let substring (s: String, from: Int, to: Int) : String = intrinsic "string.substring"
 let concat (a: String, b: String) : String = intrinsic "string.concat"
+
+// Split / join / replace and rendering an Int, ported from Elm's String module (the subset that
+// fits Souther's types — the Char/Maybe/Float-shaped functions do not). `split` keeps empty pieces;
+// `words` splits on whitespace runs and drops them.
+let split (s: String, sep: String) : List<String> = intrinsic "string.split"
+let join (xs: List<String>, sep: String) : String = intrinsic "string.join"
+let replace (s: String, target: String, replacement: String) : String = intrinsic "string.replace"
+let words (s: String) : List<String> = intrinsic "string.words"
+let fromInt (n: Int) : String = intrinsic "string.fromInt"

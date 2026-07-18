@@ -19,6 +19,8 @@ class MainTest {
         Files.writeString(a, """
                 module a exposing { 従業員ID }
 
+                import String { length }
+
                 data 従業員ID = String
                     invariant length(value) > 0
                 """);

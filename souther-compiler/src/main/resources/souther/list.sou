@@ -1,11 +1,31 @@
 module souther.list
 
-// The list combinators (ADR-0028), derived from the one privileged loop primitive `fold`. Each is
-// an auto-imported helper expanded inline at its call site, where the type variables resolve to the
-// concrete argument types — no polymorphic method is emitted. `map`/`filter` seed the empty list
-// `[]` and grow it as the block runs; `all`/`any` fold a `Bool`. Passing a lambda to the `f`/`p`
-// parameter is fine: it is β-reduced inside the fold, so `map(xs, x -> ...)` reads as it always did.
-let map (xs: List<'a>, f: ('a) -> 'b) = fold(xs, [], (acc, x) -> acc ++ [f(x)])
-let filter (xs: List<'a>, keep: ('a) -> Bool) = fold(xs, [], (acc, x) -> if keep(x) then acc ++ [x] else acc)
-let all (xs: List<'a>, p: ('a) -> Bool) = fold(xs, true, (acc, x) -> acc && p(x))
-let any (xs: List<'a>, p: ('a) -> Bool) = fold(xs, false, (acc, x) -> acc || p(x))
+// The list combinators (ADR-0028), derived from the one privileged loop primitive `List.fold`. Each
+// is a helper expanded inline at its call site, where the type variables resolve to the concrete
+// argument types — no polymorphic method is emitted. `map`/`filter` seed the empty list `[]` and
+// grow it as the block runs; `all`/`any` fold a `Bool`. Passing a lambda to the `f`/`p` parameter is
+// fine: it is β-reduced inside the fold, so `List.map(xs, x -> ...)` reads as a loop would.
+//
+// Names are qualified (`List.fold`, `List.length`): the standard library carries no bare names — you
+// reach it through `List.`/`String.`/`Map.`/`Bool.` (spec §stdlib). `++` and `==` are operators, so
+// they stay bare, and `f(x)` calls a parameter, not the library.
+let map (xs: List<'a>, f: ('a) -> 'b) = List.fold(xs, [], (acc, x) -> acc ++ [f(x)])
+let filter (xs: List<'a>, keep: ('a) -> Bool) = List.fold(xs, [], (acc, x) -> if keep(x) then acc ++ [x] else acc)
+let all (xs: List<'a>, p: ('a) -> Bool) = List.fold(xs, true, (acc, x) -> acc && p(x))
+let any (xs: List<'a>, p: ('a) -> Bool) = List.fold(xs, false, (acc, x) -> acc || p(x))
+
+// More of Elm's List module, still derived from `List.fold`. `reverse` grows the accumulator
+// front-first; `sum`/`product` fold a number; `concat` folds with `++`; `member` folds a Bool using
+// `==` (so it works over any comparable element); `isEmpty` reads the length. `List.concat` and
+// `String.concat` are distinct now that names are qualified.
+let reverse (xs: List<'a>) = List.fold(xs, [], (acc, x) -> [x] ++ acc)
+let sum (xs: List<Int>) = List.fold(xs, 0, (acc, x) -> acc + x)
+let product (xs: List<Int>) = List.fold(xs, 1, (acc, x) -> acc * x)
+let concat (xss: List<List<'a>>) = List.fold(xss, [], (acc, xs) -> acc ++ xs)
+let member (xs: List<'a>, e: 'a) = List.fold(xs, false, (acc, x) -> acc || x == e)
+let isEmpty (xs: List<'a>) = List.length(xs) == 0
+
+// `sort` orders by the elements' natural order (Elm `List.sort`). Like Elm it is a native
+// primitive, not a fold: an in-language sort needs comparison plus a place to remember the
+// half-built result, which `fold` alone does not give.
+let sort (xs: List<'a>) : List<'a> = intrinsic "list.sort"

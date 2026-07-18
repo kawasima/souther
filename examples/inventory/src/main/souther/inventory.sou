@@ -1,0 +1,48 @@
+// リスト操作のショーケース: cart が map/filter/all/any/fold を見せたのに続き、fold から導いた
+// もう一段のコンビネータ——sum / sort / member / isEmpty——をドメインの上で走らせる。いずれも
+// Elm の List モジュールから移植した中核で、sort だけが（Elm 同様）ネイティブのプリミティブ。
+module example.inventory
+import List { map, filter, sort, sum, member, isEmpty, length }
+
+data 品目コード = String
+    invariant String.length(value) >= 1
+
+data 品目 = {
+    コード: 品目コード
+    数量: Int
+    単価: Int
+}
+
+data 在庫 = { 品目リスト: List<品目> }
+
+// 棚卸の結果: 総額・辞書順のコード一覧・品切れ品目が無いか。
+data 棚卸 = {
+    総額: Int
+    コード一覧: List<String>
+    品切れなし: Bool
+}
+// 品目が1件も無い在庫の失敗アーム。
+data 空在庫
+
+behavior 棚卸する : (在: 在庫) -> 棚卸 | 空在庫
+    constructs 棚卸, 空在庫
+
+// 品目1件の金額。map に名前で渡す純粋ヘルパ（cart の 金額 と同じ渡し方）。
+let 金額 (p: 品目) = p.数量 * p.単価
+
+let 棚卸する (在) = {
+    require length(在.品目リスト) >= 1 else 空在庫
+    棚卸 {
+        総額: sum(map(在.品目リスト, 金額)),
+        コード一覧: sort(map(在.品目リスト, p -> p.コード.value)),
+        品切れなし: isEmpty(filter(在.品目リスト, p -> p.数量 == 0))
+    }
+}
+
+// 指定コードをこの在庫が扱っているか。member はコード列に照会値が含まれるかを == で畳む。
+data 取扱 = { あり: Bool }
+
+behavior 取扱う : (在: 在庫, 照会: 品目コード) -> 取扱
+    constructs 取扱
+
+let 取扱う (在, 照会) = 取扱 { あり: member(map(在.品目リスト, p -> p.コード.value), 照会.value) }

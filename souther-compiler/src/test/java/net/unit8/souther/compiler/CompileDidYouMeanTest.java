@@ -42,6 +42,7 @@ class CompileDidYouMeanTest {
     void suggestsANearbyIdentifier() {
         CompileException e = compileFail("""
                 module demo
+                import Int { add }
                 data N = Int
                 behavior twice : (num: N) -> N constructs N
                 let twice (num) = N { value: add(nums.value, num.value) }

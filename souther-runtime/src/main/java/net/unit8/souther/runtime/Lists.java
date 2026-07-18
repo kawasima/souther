@@ -23,4 +23,14 @@ public final class Lists {
         out.addAll(b);
         return List.copyOf(out);
     }
+
+    /** Sorts by the elements' natural order (Elm {@code List.sort}). The element type is a
+     *  {@link Comparable} — {@code String} and the {@code Int}/{@code Decimal} carriers all are —
+     *  and the input is left untouched. */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static <T> List<T> sort(List<? extends T> xs) {
+        List<T> out = new ArrayList<>(xs);
+        out.sort((a, b) -> ((Comparable) a).compareTo(b));
+        return List.copyOf(out);
+    }
 }

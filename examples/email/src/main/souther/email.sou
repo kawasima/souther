@@ -1,6 +1,7 @@
 // newtype data（`data X = Y`）＋ invariant（最小例）。
 // decoder/encoder は書かない — 導出される（`data X = Y` は裸の文字列として読み書きする）。
 module example.email
+import String { contains }
 
 data Email = String
     invariant contains(value, "@")

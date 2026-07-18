@@ -22,6 +22,7 @@ class CompileBlockTest {
 
     private static final String MODULE = """
             module demo
+            import List { map, filter, fold, all, any }
 
             behavior 倍にする : (xs: List<Int>) -> List<Int>
             behavior 正だけ : (xs: List<Int>) -> List<Int>
@@ -69,6 +70,7 @@ class CompileBlockTest {
     void aBlockMayConstructUnderTheBehaviorsPermission() {
         String src = """
                 module demo
+                import List { map }
                 data 未検証明細 = { コード: String }
                 data 検証済み明細 = { コード: String }
                 behavior 明細を検証する : (xs: List<未検証明細>) -> List<検証済み明細>
@@ -85,6 +87,7 @@ class CompileBlockTest {
         // built, so the undeclared `検証済み明細` is E1002 (a declared clause must be complete).
         String src = """
                 module demo
+                import List { map, length }
                 data 未検証明細 = { コード: String }
                 data 検証済み明細 = { コード: String }
                 data 補助
@@ -101,6 +104,7 @@ class CompileBlockTest {
     void aBlocksRequirementsFloatOutToTheEnclosingBehavior() throws Exception {
         String src = """
                 module demo
+                import List { map }
                 data Id = { v: String }
                 data Nm = { v: String }
                 behavior 名前を引く : (id: Id) -> Nm
@@ -132,7 +136,7 @@ class CompileBlockTest {
         String src = """
                 module demo
                 behavior f : (xs: List<Int>) -> List<Int>
-                let f (xs) = filter(xs, x -> x * 2)
+                let f (xs) = List.filter(xs, x -> x * 2)
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertTrue(e.getMessage().contains("filter"), e.getMessage());
@@ -148,7 +152,7 @@ class CompileBlockTest {
         String src = """
                 module demo
                 behavior f : (xs: List<Int>) -> List<Int>
-                let f (xs) = map(xs, xs)
+                let f (xs) = List.map(xs, xs)
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertTrue(e.getMessage().contains("expects a function"), e.getMessage());

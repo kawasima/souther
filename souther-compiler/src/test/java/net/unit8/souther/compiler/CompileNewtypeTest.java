@@ -53,6 +53,7 @@ class CompileNewtypeTest {
     void stringNewtypeRoundTripsBare() throws Exception {
         String src = """
                 module demo
+                import String { length }
                 data 会員ID = String
                     invariant length(value) > 0
                 """;

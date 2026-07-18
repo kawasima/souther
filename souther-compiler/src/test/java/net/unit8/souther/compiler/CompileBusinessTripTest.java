@@ -22,6 +22,7 @@ class CompileBusinessTripTest {
 
     private static final String MODEL = """
             module example.businesstrip
+            import String { length }
 
             data 従業員ID = String
                 invariant length(value) > 0

@@ -26,6 +26,7 @@ class CompileObjectTest {
 
     private static final String ACCOUNT = """
             module demo
+            import String { length }
 
             data Account = {
                 id: String

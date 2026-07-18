@@ -23,6 +23,7 @@ class CompileHelperByNameTest {
 
     private static final String MODULE = """
             module demo
+            import List { all, length }
 
             data Order = { qtys: List<Int> }
             data Result = { ok: Bool  n: Int }

@@ -21,6 +21,8 @@ class CompileDecimalMathTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
+                import Decimal { add, multiply }
+
                 data Price = Decimal
                 data Quote = { subtotal: Decimal  doubled: Decimal }
 
@@ -51,6 +53,8 @@ class CompileDecimalMathTest {
         // compare(a, b) yields -1/0/1; usable with the existing Int comparison operators
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
+
+                import Int { compare }
 
                 data Ordered = {
                     lo: Int

@@ -23,6 +23,7 @@ class CompileIntOverflowTest {
     private static String module(String bodyExpr) {
         return """
                 module demo
+                import Int { multiply }
 
                 data In = Int
                 data Out = Int

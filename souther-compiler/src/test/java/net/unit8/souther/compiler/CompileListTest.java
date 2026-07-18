@@ -24,6 +24,8 @@ class CompileListTest {
     private static final String MODULE = """
             module demo
 
+            import List { length }
+
             data Reason = String
 
             data Request = {

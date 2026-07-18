@@ -1,6 +1,7 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.compiler.ast.Ast;
+import net.unit8.souther.compiler.check.Exposing;
 import net.unit8.souther.compiler.check.TypeChecker;
 import net.unit8.souther.compiler.codegen.Backend;
 import net.unit8.souther.compiler.derive.Deriver;
@@ -28,9 +29,9 @@ public final class Compiler {
 
     /** Compiles a single self-contained module (no imports) into binary class name → bytecode. */
     public static Map<String, byte[]> compile(String source) {
-        Ast.Module parsed = Parser.parse(source);
-        rejectReservedNamespace(parsed);
-        Ast.Module module = Deriver.derive(parsed);
+        Ast.Module raw = Parser.parse(source);
+        rejectReservedNamespace(raw);
+        Ast.Module module = Deriver.derive(Exposing.rewrite(raw));
         TypeChecker.check(module);
         return Backend.generate(module);
     }
@@ -47,15 +48,22 @@ public final class Compiler {
                     + "souther.list / souther.map / souther.bool, and a user module cannot take a "
                     + "reserved name.");
         }
+        // The short qualifiers are how the standard library is reached (`List.map`, `import String`);
+        // a user module by one of these names would shadow the library and could not be imported.
+        if (Prelude.isQualifier(n)) {
+            throw new CompileException(m.pos(), "module `" + n + "` uses a name reserved for the "
+                    + "standard-library qualifier `" + n + "` (as in `" + n + ".…` / `import " + n
+                    + " { … }`); pick another module name.");
+        }
     }
 
     /** Compiles a set of modules together, resolving explicit imports and rejecting cycles. */
     public static Map<String, byte[]> compileModules(List<String> sources) {
         List<Ast.Module> parsed = new ArrayList<>();
         for (String s : sources) {
-            Ast.Module m = Parser.parse(s);
-            rejectReservedNamespace(m);
-            parsed.add(m);
+            Ast.Module raw = Parser.parse(s);
+            rejectReservedNamespace(raw);
+            parsed.add(Exposing.rewrite(raw));
         }
         Map<String, Ast.Module> byName = new LinkedHashMap<>();
         for (Ast.Module m : parsed) {

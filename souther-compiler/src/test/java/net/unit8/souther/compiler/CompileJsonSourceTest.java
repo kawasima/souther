@@ -27,6 +27,7 @@ class CompileJsonSourceTest {
 
     private static final String MODULE = """
             module demo
+            import String { length }
 
             data Account = {
                 id: String

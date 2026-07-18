@@ -1,4 +1,5 @@
 module example.ordering
+import String { length }
 // exposing 句を省いたモジュールは生成クラスがすべて public になる（4章）。
 // この例は全型を Java（Spring Boot の境界コード）から使うので、あえて全公開にしている。
 

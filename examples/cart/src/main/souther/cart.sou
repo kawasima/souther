@@ -2,6 +2,7 @@
 // これらは組み込みではなく souther.list が fold から導く自言語の関数（ADR-0028）。
 // fold だけが唯一の特権ループで、残りはそこから畳んで作られる。decoder/encoder は導出。
 module example.cart
+import List { map, filter, fold, all, any, length }
 
 data 明細 = {
     名前: String

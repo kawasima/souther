@@ -1,6 +1,7 @@
 package net.unit8.souther.compiler.check;
 
 import net.unit8.souther.compiler.CompileException;
+import net.unit8.souther.compiler.Prelude;
 import net.unit8.souther.compiler.SourcePos;
 import net.unit8.souther.compiler.ast.Ast;
 
@@ -1568,8 +1569,7 @@ public final class TypeChecker {
         List<Ast.Expr> args = call.args();
         // A shipped intrinsic behaves like a built-in: check the call against its declared signature
         // (from the prelude) and yield its result type; the backend emits the primitive for its key.
-        net.unit8.souther.compiler.Prelude.IntrinsicSig intrinsic =
-                net.unit8.souther.compiler.Prelude.intrinsics().get(call.fn());
+        Prelude.IntrinsicSig intrinsic = Prelude.intrinsics().get(call.fn());
         if (intrinsic != null) {
             if (args.size() != intrinsic.params().size()) {
                 throw new CompileException(call.pos(), call.fn() + " takes " + intrinsic.params().size()
@@ -1581,22 +1581,37 @@ public final class TypeChecker {
                 unify(intrinsic.params().get(i), argType, bindings, symbols, call.pos(),
                         "argument " + (i + 1) + " of " + call.fn());
             }
-            return substitute(intrinsic.result(), bindings);
+            Type result = substitute(intrinsic.result(), bindings);
+            // `sort` carries no `comparable` constraint in its `List<'a>` signature (Souther has no
+            // type classes), so guard here: only the ordered primitives sort. A data or a newtype
+            // carries as a non-Comparable object, which would throw at runtime — reject it now. The
+            // empty-list literal (element `Nothing`) is fine: it sorts to itself, so let it through.
+            if (intrinsic.key().equals("list.sort") && result instanceof Type.ListOf lo
+                    && !(lo.element() instanceof Type.Nothing) && !isOrdered(lo.element())) {
+                throw new CompileException(call.pos(), "sort needs a list of ordered values "
+                        + "(Int, String, Decimal, Date, or DateTime), but the element is " + lo.element()
+                        + " — sort its ordered field instead (e.g. map to `.value` first)");
+            }
+            return result;
         }
         return switch (call.fn()) {
-            case "length" -> {
+            case "String.length" -> {
                 arity(call, 1);
-                // one name for both, as spec 18.1 and 18.4 both call it `length`
+                requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "argument of String.length");
+                yield Type.INT;
+            }
+            case "List.length" -> {
+                arity(call, 1);
                 Type t = typeOf(args.get(0), env, data, symbols, reqs);
-                if (!(t instanceof Type.ListOf) && t != Type.STRING) {
+                if (!(t instanceof Type.ListOf)) {
                     throw new CompileException(call.pos(),
-                            "argument of length must be a String or a List but is " + t);
+                            "argument of List.length must be a List but is " + t);
                 }
                 yield Type.INT;
             }
             // map/filter/all/any are no longer built in: they are prelude helpers derived from fold
             // (ADR-0028, souther.list), so a call to one is expanded inline before it reaches here.
-            case "fold" -> {
+            case "List.fold" -> {
                 arity(call, 3);
                 Type src = typeOf(args.get(0), env, data, symbols, reqs);
                 if (!(src instanceof Type.ListOf lo)) {
@@ -1618,29 +1633,36 @@ public final class TypeChecker {
                 }
                 yield acc;
             }
-            case "get" -> {
+            case "List.get" -> {
                 arity(call, 2);
                 Type first = typeOf(args.get(0), env, data, symbols, reqs);
-                if (first instanceof Type.ListOf lo) {
-                    requireType(args.get(1), Type.INT, env, data, symbols, reqs, "index of get");
-                    yield Type.option(lo.element());
+                if (!(first instanceof Type.ListOf lo)) {
+                    throw new CompileException(call.pos(), "List.get expects a List, got " + first);
                 }
-                if (first instanceof Type.MapOf mo) {
-                    requireType(args.get(1), Type.STRING, env, data, symbols, reqs, "key of get");
-                    yield Type.option(mo.value());
-                }
-                throw new CompileException(call.pos(), "get expects a List or Map, got " + first);
+                requireType(args.get(1), Type.INT, env, data, symbols, reqs, "index of List.get");
+                yield Type.option(lo.element());
             }
-            case "add", "subtract", "multiply" -> numericOp(call, env, data, symbols, reqs, false);
-            case "compare" -> numericOp(call, env, data, symbols, reqs, true);
-            case "remainder" -> {
+            case "Map.get" -> {
+                arity(call, 2);
+                Type first = typeOf(args.get(0), env, data, symbols, reqs);
+                if (!(first instanceof Type.MapOf mo)) {
+                    throw new CompileException(call.pos(), "Map.get expects a Map, got " + first);
+                }
+                requireType(args.get(1), Type.STRING, env, data, symbols, reqs, "key of Map.get");
+                yield Type.option(mo.value());
+            }
+            case "Int.add", "Int.subtract", "Int.multiply",
+                 "Decimal.add", "Decimal.subtract", "Decimal.multiply" ->
+                    numericOp(call, env, data, symbols, reqs, false);
+            case "Int.compare", "Decimal.compare" -> numericOp(call, env, data, symbols, reqs, true);
+            case "Int.remainder" -> {
                 arity(call, 2);
                 requireType(args.get(0), Type.INT, env, data, symbols, reqs, "argument 1 of remainder");
                 requireType(args.get(1), Type.INT, env, data, symbols, reqs, "argument 2 of remainder");
                 // partial: a zero divisor produces the DivisionByZero arm (spec 18.2)
                 yield Type.union(new java.util.LinkedHashSet<>(List.of("Int", "DivisionByZero")));
             }
-            case "divide" -> {
+            case "Int.divide", "Decimal.divide" -> {
                 if (args.size() == 4) {
                     // Decimal divide states its rounding: divide(a, b, scale, mode) (spec 18.3)
                     requireType(args.get(0), Type.DECIMAL, env, data, symbols, reqs, "argument 1 of divide");
@@ -1668,9 +1690,20 @@ public final class TypeChecker {
                     }
                     yield fn.result();
                 }
+                // a qualified name that matched no stdlib builtin/intrinsic above is a wrong stdlib
+                // call (spec §stdlib) — report it as such, not as a missing behavior.
+                if (call.fn().indexOf('.') >= 0) {
+                    throw new CompileException(call.pos(), "`" + call.fn()
+                            + "` is not a standard-library function.");
+                }
                 // a required behavior called inline (spec 12.2, 13): type it as its success arm
                 ReqSig callee = reqs.get(call.fn());
                 if (callee == null) {
+                    String qualified = Prelude.qualifiedFor(call.fn());
+                    if (qualified != null) {
+                        throw new CompileException(call.pos(), "`" + call.fn() + "` is a standard-library "
+                                + "function and must be called qualified, as `" + qualified + "` (spec §stdlib).");
+                    }
                     throw new CompileException(call.pos(), "E1401", "`" + call.fn()
                             + "` is not a behavior or builtin"
                             + Suggest.hint(call.fn(), reqs.keySet())
@@ -1698,8 +1731,17 @@ public final class TypeChecker {
                 yield Type.BOOL;
             }
             case LT, LE, GT, GE -> {
-                requireType(bin.left(), Type.INT, env, data, symbols, reqs, "operand of comparison");
-                requireType(bin.right(), Type.INT, env, data, symbols, reqs, "operand of comparison");
+                // The ordered primitives: Int numerically, String lexicographically, Decimal by
+                // value, Date/DateTime in time. Unlike Elm (which orders only Int/Float/Char/String
+                // because it rides JavaScript), Souther sits on the JVM where BigDecimal/LocalDate/
+                // LocalDateTime are Comparable, so it orders them too. Both operands share the type.
+                Type lt = typeOf(bin.left(), env, data, symbols, reqs);
+                Type rt = typeOf(bin.right(), env, data, symbols, reqs);
+                if (!(lt == rt && isOrdered(lt))) {
+                    throw new CompileException(bin.pos(), "operand of comparison must be two ordered "
+                            + "values of the same type (Int, String, Decimal, Date, or DateTime), got "
+                            + lt + " and " + rt);
+                }
                 yield Type.BOOL;
             }
             case ADD, SUB, MUL -> {
@@ -1726,6 +1768,14 @@ public final class TypeChecker {
                 yield Type.BOOL;
             }
         };
+    }
+
+    /** The ordered primitives: the ones the JVM carries as {@link Comparable}, so {@code <}/{@code >}
+     * and {@code sort} work on them (spec §primitives, §stdlib-list). A newtype over one of these is
+     * a wrapper object, not itself Comparable, so it does not count. */
+    private static boolean isOrdered(Type t) {
+        return t == Type.INT || t == Type.STRING || t == Type.DECIMAL
+                || t == Type.DATE || t == Type.DATETIME;
     }
 
     /** A binary numeric op over two Int or two Decimal operands (spec 18.2, 18.3). {@code compare}

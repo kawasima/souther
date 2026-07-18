@@ -1,5 +1,6 @@
 // List<T> ／ size ／ 算術 ／ 多分岐成功。decoder/encoder は導出される。
 module example.expense
+import List { length }
 
 data 理由 = { コード: String }
 

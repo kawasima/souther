@@ -25,6 +25,8 @@ class CompileFunctionParamTest {
     private static final String MODULE = """
             module demo
 
+            import List { all }
+
             data Order = { qtys: List<Int> }
             data Result = { ok: Bool }
 

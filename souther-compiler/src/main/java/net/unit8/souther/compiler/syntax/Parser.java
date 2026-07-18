@@ -1,6 +1,7 @@
 package net.unit8.souther.compiler.syntax;
 
 import net.unit8.souther.compiler.CompileException;
+import net.unit8.souther.compiler.SourcePos;
 import net.unit8.souther.compiler.ast.Ast;
 
 import java.util.ArrayList;
@@ -629,10 +630,20 @@ public final class Parser {
             case IDENT -> {
                 advance();
                 if (check(TokenType.LPAREN)) {
-                    return call(t);
+                    return call(t.text(), t.pos());
                 }
                 if (!noConstruct && check(TokenType.LBRACE)) {
                     return newData(t);
+                }
+                // A qualified stdlib call `Module.name(args)` — e.g. `List.map(...)`, `String.trim(...)`.
+                // The module qualifier is folded into the call's function name as `Module.name`, since
+                // an identifier never contains a dot (spec §stdlib). A dotted chain that is NOT followed
+                // by `(` is an ordinary field access (`会員.id.value`), handled below.
+                if (check(TokenType.DOT) && peekAt(1).type() == TokenType.IDENT
+                        && peekAt(2).type() == TokenType.LPAREN) {
+                    expect(TokenType.DOT);
+                    Token name = expect(TokenType.IDENT);
+                    return call(t.text() + "." + name.text(), t.pos());
                 }
                 Ast.Expr base = new Ast.Var(t.text(), t.pos());
                 while (match(TokenType.DOT)) {
@@ -710,7 +721,7 @@ public final class Parser {
         return new Ast.If(cond, then, els, kw.pos());
     }
 
-    private Ast.Expr call(Token name) {
+    private Ast.Expr call(String fn, SourcePos pos) {
         expect(TokenType.LPAREN);
         List<Ast.Expr> args = new ArrayList<>();
         if (!check(TokenType.RPAREN)) {
@@ -720,7 +731,7 @@ public final class Parser {
             }
         }
         expect(TokenType.RPAREN);
-        return new Ast.Call(name.text(), args, name.pos());
+        return new Ast.Call(fn, args, pos);
     }
 
     /**

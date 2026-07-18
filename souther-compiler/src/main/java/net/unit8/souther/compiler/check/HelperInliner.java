@@ -51,10 +51,10 @@ public final class HelperInliner {
                 own.put(fn.name(), fn);
             }
         }
-        Map<String, Ast.FnDef> helpers = new HashMap<>();
-        for (Ast.FnDef fn : Prelude.helpers()) {
-            helpers.put(fn.name(), fn);
-        }
+        // prelude helpers are keyed by their qualified name (`List.map`); a module's own helpers by
+        // their bare name (`対象明細`). A qualified call resolves to the prelude, a bare call to the
+        // module's own — the standard library has no bare names (spec §stdlib).
+        Map<String, Ast.FnDef> helpers = new HashMap<>(Prelude.helpers());
         helpers.putAll(own);
         HelperInliner inliner = new HelperInliner(helpers, own);
         inliner.rejectRecursion();
@@ -78,7 +78,7 @@ public final class HelperInliner {
      * two parameters. A bare name passed in its place is sugar for a block that wraps a call. The
      * other combinators (map/filter/all/any) are ordinary prelude helpers derived from fold
      * (ADR-0028), so they need no such desugaring — a name reaches their function parameter directly. */
-    private static final Map<String, Integer> BLOCK_ARITY = Map.of("fold", 2);
+    private static final Map<String, Integer> BLOCK_ARITY = Map.of("List.fold", 2);
 
     /** Rewrites every helper call in {@code e} to its inlined body. */
     public Ast.Expr inline(Ast.Expr e) {

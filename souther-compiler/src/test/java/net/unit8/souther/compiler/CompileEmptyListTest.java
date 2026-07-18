@@ -43,6 +43,8 @@ class CompileEmptyListTest {
         String module = """
                 module demo
 
+                import List { fold }
+
                 data In = { xs: List<Int> }
                 data Out = { ys: List<Int> }
 
@@ -84,6 +86,8 @@ class CompileEmptyListTest {
     void anEmptySeededFoldResultFeedsAnotherFold() throws Exception {
         String module = """
                 module demo
+
+                import List { fold, map }
 
                 data In = { xs: List<Int> }
                 data Out = { total: Int }

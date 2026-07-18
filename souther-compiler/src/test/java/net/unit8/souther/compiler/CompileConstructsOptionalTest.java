@@ -16,6 +16,7 @@ class CompileConstructsOptionalTest {
 
     private static final String BASE = """
             module demo
+            import String { contains }
             data Email = String
                 invariant contains(value, "@")
             data Member = { email: Email }

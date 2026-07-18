@@ -20,6 +20,8 @@
         <module>contact</module>
         <module>expense</module>
         <module>cart</module>
+        <module>tagging</module>
+        <module>inventory</module>
         <module>businesstrip</module>
         <module>member</module>
         <module>ordering</module>

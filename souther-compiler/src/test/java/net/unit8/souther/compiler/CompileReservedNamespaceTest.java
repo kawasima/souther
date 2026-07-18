@@ -34,6 +34,18 @@ class CompileReservedNamespaceTest {
     }
 
     @Test
+    void aModuleNamedAfterAStdlibQualifierIsRejected() {
+        // `List` is the qualifier the standard library is reached through (`List.map`,
+        // `import List { ... }`); a user module by that name would shadow it and be unimportable.
+        String src = """
+                module List
+                data X = Int
+                """;
+        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
+        assertTrue(e.getMessage().contains("qualifier"), e.getMessage());
+    }
+
+    @Test
     void aNameThatMerelyStartsWithSoutherIsAllowed() {
         // `southernmost` is not under the `souther.` namespace — it is an ordinary user module.
         String src = """

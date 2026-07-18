@@ -1,6 +1,7 @@
 package net.unit8.souther.compiler.codegen;
 
 import net.unit8.souther.compiler.CompileException;
+import net.unit8.souther.compiler.Prelude;
 import net.unit8.souther.compiler.ast.Ast;
 import net.unit8.souther.compiler.check.HelperInliner;
 import net.unit8.souther.compiler.check.Type;
@@ -68,6 +69,7 @@ public final class Backend {
     private static final ClassDesc CD_LocalDate = ClassDesc.of("java.time.LocalDate");
     private static final ClassDesc CD_LocalDateTime = ClassDesc.of("java.time.LocalDateTime");
     private static final ClassDesc CD_Lists = ClassDesc.of("net.unit8.souther.runtime.Lists");
+    private static final ClassDesc CD_Strings = ClassDesc.of("net.unit8.souther.runtime.Strings");
     private static final ClassDesc CD_Maps = ClassDesc.of("net.unit8.souther.runtime.Maps");
     private static final ClassDesc CD_Option = ClassDesc.of("net.unit8.souther.runtime.Option");
     private static final ClassDesc CD_OptionSome = CD_Option.nested("Some");
@@ -81,6 +83,15 @@ public final class Backend {
     private static final MethodTypeDesc MTD_ArrayList_add = MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_Object);
     private static final MethodTypeDesc MTD_List_copyOf = MethodTypeDesc.of(CD_List, CD_Collection);
     private static final MethodTypeDesc MTD_Lists_concat = MethodTypeDesc.of(CD_List, CD_List, CD_List);
+    private static final MethodTypeDesc MTD_Lists_sort = MethodTypeDesc.of(CD_List, CD_List);
+    private static final MethodTypeDesc MTD_Strings_split = MethodTypeDesc.of(CD_List, CD_String, CD_String);
+    private static final MethodTypeDesc MTD_Strings_join = MethodTypeDesc.of(CD_String, CD_List, CD_String);
+    private static final MethodTypeDesc MTD_Strings_replace =
+            MethodTypeDesc.of(CD_String, CD_String, CD_String, CD_String);
+    private static final MethodTypeDesc MTD_Strings_words = MethodTypeDesc.of(CD_List, CD_String);
+    private static final MethodTypeDesc MTD_Strings_fromInt = MethodTypeDesc.of(CD_String, ConstantDescs.CD_long);
+    private static final ClassDesc CD_Comparable = ClassDesc.of("java.lang.Comparable");
+    private static final MethodTypeDesc MTD_compareTo_Object = MethodTypeDesc.of(ConstantDescs.CD_int, CD_Object);
     private static final MethodTypeDesc MTD_Map_put = MethodTypeDesc.of(CD_Object, CD_Object, CD_Object);
     private static final MethodTypeDesc MTD_apply = MethodTypeDesc.of(CD_Object, CD_Object);
     private static final MethodTypeDesc MTD_orThrow = MethodTypeDesc.of(CD_Object, CD_Result);
@@ -2412,6 +2423,40 @@ public final class Backend {
                     code.invokevirtual(CD_String, "concat", MethodTypeDesc.of(CD_String, CD_String));
                     return Type.STRING;
                 }
+                case "string.split" -> {
+                    expr(call.args().get(0));
+                    expr(call.args().get(1));
+                    code.invokestatic(CD_Strings, "split", MTD_Strings_split);
+                    return Type.list(Type.STRING);
+                }
+                case "string.join" -> {
+                    expr(call.args().get(0));
+                    expr(call.args().get(1));
+                    code.invokestatic(CD_Strings, "join", MTD_Strings_join);
+                    return Type.STRING;
+                }
+                case "string.replace" -> {
+                    expr(call.args().get(0));
+                    expr(call.args().get(1));
+                    expr(call.args().get(2));
+                    code.invokestatic(CD_Strings, "replace", MTD_Strings_replace);
+                    return Type.STRING;
+                }
+                case "string.words" -> {
+                    expr(call.args().get(0));
+                    code.invokestatic(CD_Strings, "words", MTD_Strings_words);
+                    return Type.list(Type.STRING);
+                }
+                case "string.fromInt" -> {
+                    expr(call.args().get(0));
+                    code.invokestatic(CD_Strings, "fromInt", MTD_Strings_fromInt);
+                    return Type.STRING;
+                }
+                case "list.sort" -> {
+                    Type at = expr(call.args().get(0));
+                    code.invokestatic(CD_Lists, "sort", MTD_Lists_sort);
+                    return at;
+                }
                 case "map.containsKey" -> {
                     expr(call.args().get(0));
                     expr(call.args().get(1));
@@ -2434,45 +2479,50 @@ public final class Backend {
         }
 
         private Type call(Ast.Call call) {
-            net.unit8.souther.compiler.Prelude.IntrinsicSig intrinsic =
-                    net.unit8.souther.compiler.Prelude.intrinsics().get(call.fn());
+            Prelude.IntrinsicSig intrinsic = Prelude.intrinsics().get(call.fn());
             if (intrinsic != null) {
                 return intrinsicCall(intrinsic.key(), call);
             }
             switch (call.fn()) {
-                case "length" -> {
-                    Type t = expr(call.args().get(0));
-                    if (t instanceof Type.ListOf) {
-                        code.invokeinterface(CD_List, "size", MTD_size);
-                    } else {
-                        code.invokevirtual(CD_String, "length", MethodTypeDesc.of(ConstantDescs.CD_int));
-                    }
+                case "String.length" -> {
+                    expr(call.args().get(0));
+                    code.invokevirtual(CD_String, "length", MethodTypeDesc.of(ConstantDescs.CD_int));
                     code.i2l();
                     return Type.INT;
                 }
-                case "fold" -> {
+                case "List.length" -> {
+                    expr(call.args().get(0));
+                    code.invokeinterface(CD_List, "size", MTD_size);
+                    code.i2l();
+                    return Type.INT;
+                }
+                case "List.fold" -> {
                     return foldOp(call);   // the one privileged loop; the rest derive from it (ADR-0028)
                 }
-                case "get" -> {
-                    Type ct = expr(call.args().get(0));      // List or Map on stack
-                    expr(call.args().get(1));                // long index / String key
-                    if (ct instanceof Type.MapOf mo) {
-                        code.invokestatic(CD_Maps, "get", MethodTypeDesc.of(CD_Option, CD_Map, CD_String));
-                        return Type.option(mo.value());
-                    }
+                case "List.get" -> {
+                    Type ct = expr(call.args().get(0));
+                    expr(call.args().get(1));                // long index
                     code.invokestatic(CD_Lists, "get",
                             MethodTypeDesc.of(CD_Option, CD_List, ConstantDescs.CD_long));
                     return Type.option(((Type.ListOf) ct).element());
                 }
-                case "add", "subtract", "multiply" -> {
+                case "Map.get" -> {
+                    Type ct = expr(call.args().get(0));
+                    expr(call.args().get(1));                // String key
+                    code.invokestatic(CD_Maps, "get", MethodTypeDesc.of(CD_Option, CD_Map, CD_String));
+                    return Type.option(((Type.MapOf) ct).value());
+                }
+                case "Int.add", "Int.subtract", "Int.multiply",
+                     "Decimal.add", "Decimal.subtract", "Decimal.multiply" -> {
+                    String op = bareOp(call.fn());
                     Type t = expr(call.args().get(0));
                     expr(call.args().get(1));
                     if (t == Type.DECIMAL) {
-                        code.invokevirtual(CD_BigDecimal, call.fn(),
+                        code.invokevirtual(CD_BigDecimal, op,
                                 MethodTypeDesc.of(CD_BigDecimal, CD_BigDecimal));
                     } else {
                         // Int arithmetic aborts on overflow rather than wrapping (spec 18.2)
-                        String exact = switch (call.fn()) {
+                        String exact = switch (op) {
                             case "add" -> "addExact";
                             case "subtract" -> "subtractExact";
                             default -> "multiplyExact";
@@ -2481,7 +2531,7 @@ public final class Backend {
                     }
                     return t;
                 }
-                case "compare" -> {
+                case "Int.compare", "Decimal.compare" -> {
                     Type t = expr(call.args().get(0));
                     expr(call.args().get(1));
                     if (t == Type.DECIMAL) {
@@ -2495,13 +2545,13 @@ public final class Backend {
                     code.i2l();
                     return Type.INT;
                 }
-                case "divide" -> {
+                case "Int.divide", "Decimal.divide" -> {
                     if (call.args().size() == 4) {
                         return decimalDivide(call);
                     }
                     return intDivide(call, true);
                 }
-                case "remainder" -> {
+                case "Int.remainder" -> {
                     return intDivide(call, false);
                 }
                 default -> {
@@ -2515,6 +2565,12 @@ public final class Backend {
                     throw new CompileException(call.pos(), "unknown function `" + call.fn() + "`");
                 }
             }
+        }
+
+        /** The operation name from a qualified builtin call ({@code "Decimal.add"} → {@code "add"}). */
+        private static String bareOp(String fn) {
+            int dot = fn.indexOf('.');
+            return dot < 0 ? fn : fn.substring(dot + 1);
         }
 
         /** {@code divide}/{@code remainder} on Int: a zero divisor takes the DivisionByZero arm,
@@ -2653,6 +2709,21 @@ public final class Backend {
                 default -> {
                     Type lt = expr(bin.left());
                     expr(bin.right());
+                    boolean ordering = switch (bin.op()) {
+                        case LT, LE, GT, GE -> true;
+                        default -> false;
+                    };
+                    if (ordering && (lt == Type.STRING || lt == Type.DECIMAL
+                            || lt == Type.DATE || lt == Type.DATETIME)) {
+                        // String, Decimal, Date, DateTime all carry as Comparable — String,
+                        // BigDecimal, LocalDate, LocalDateTime — so one compareTo reduces the order
+                        // to its sign against 0. BigDecimal.compareTo ignores scale, which matches
+                        // Decimal equality (spec 7.1); the others order lexicographically / in time.
+                        code.invokeinterface(CD_Comparable, "compareTo", MTD_compareTo_Object);
+                        code.iconst_0();
+                        comparisonMaterialize(bin.op(), false);
+                        return Type.BOOL;
+                    }
                     if (lt == Type.STRING) {
                         code.invokevirtual(CD_String, "equals",
                                 MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_Object));

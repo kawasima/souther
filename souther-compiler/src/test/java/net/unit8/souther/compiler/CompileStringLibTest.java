@@ -22,6 +22,8 @@ class CompileStringLibTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
+                import String { concat, uppercase, substring }
+
                 data Name = String
                 data Greeting = String
 
@@ -41,9 +43,83 @@ class CompileStringLibTest {
     }
 
     @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void splitJoinAndReplace() throws Exception {
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
+                module demo
+
+                import String { split, join, replace }
+
+                data Raw = String
+                data Out = {
+                    parts: List<String>
+                    joined: String
+                    swapped: String
+                }
+
+                behavior run : (r: Raw) -> Out constructs Out
+
+                let run (r) = Out {
+                    parts: split(r.value, ","),
+                    joined: join(split(r.value, ","), "|"),
+                    swapped: replace(r.value, ",", ";")
+                }
+                """), getClass().getClassLoader());
+
+        Decoder rawDec = (Decoder) loader.loadClass("demo.Raw").getMethod("decoder").invoke(null);
+        Object raw = ((Ok) rawDec.decode("a,b,,c", Path.ROOT)).value();
+        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run")
+                .getConstructor().newInstance()).apply(raw);
+
+        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
+        java.util.Map<?, ?> m = (java.util.Map<?, ?>) enc.encode(out);
+        assertEquals(java.util.List.of("a", "b", "", "c"), m.get("parts"), "split keeps empty pieces");
+        assertEquals("a|b||c", m.get("joined"));
+        assertEquals("a;b;;c", m.get("swapped"));
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void wordsAndFromInt() throws Exception {
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
+                module demo
+
+                import String { words, concat, fromInt }
+
+                data In = {
+                    text: String
+                    n: Int
+                }
+                data Out = {
+                    tokens: List<String>
+                    label: String
+                }
+
+                behavior run : (i: In) -> Out constructs Out
+
+                let run (i) = Out {
+                    tokens: words(i.text),
+                    label: concat("item-", fromInt(i.n))
+                }
+                """), getClass().getClassLoader());
+
+        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
+        Object in = ((Ok) inDec.decode(java.util.Map.of("text", "  the  quick fox ", "n", 42L), Path.ROOT)).value();
+        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run")
+                .getConstructor().newInstance()).apply(in);
+
+        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
+        java.util.Map<?, ?> m = (java.util.Map<?, ?>) enc.encode(out);
+        assertEquals(java.util.List.of("the", "quick", "fox"), m.get("tokens"), "words splits on whitespace runs");
+        assertEquals("item-42", m.get("label"));
+    }
+
+    @Test
     void startsWithAndEndsWithInAnInvariant() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
+
+                import String { startsWith, endsWith }
 
                 data Sku = String
                     invariant startsWith(value, "X") && endsWith(value, "Z")

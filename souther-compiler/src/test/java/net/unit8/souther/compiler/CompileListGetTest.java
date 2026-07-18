@@ -20,6 +20,8 @@ class CompileListGetTest {
     private static final String MODULE = """
             module demo
 
+            import List { get }
+
             data Item = String
             data Bag = { items: List<Item> }
             data Label = String

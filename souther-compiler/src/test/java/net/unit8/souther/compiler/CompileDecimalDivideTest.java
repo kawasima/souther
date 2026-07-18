@@ -28,6 +28,8 @@ class CompileDecimalDivideTest {
     private static final String MODULE = """
             module demo
 
+            import Decimal { divide }
+
             data Pair = { a: Decimal  b: Decimal }
             data Out = { value: Decimal  ok: Bool }
 
@@ -72,6 +74,7 @@ class CompileDecimalDivideTest {
     void twoArgDivideOnDecimalIsRejected() {
         String src = """
                 module demo
+                import Int { divide }
                 data Pair = { a: Decimal  b: Decimal }
                 data Out = Decimal
                 behavior divv : (p: Pair) -> Out constructs Out
