@@ -23,7 +23,7 @@ class CompileVisibilityTest {
     @Test
     void unexposedTypeIsPackagePrivate() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
-                module demo exposing { Public }
+                module demo exposing ( Public )
 
                 data Internal = Int
                 data Public = { inner: Internal }
@@ -42,7 +42,7 @@ class CompileVisibilityTest {
     @Test
     void exposedSumWithHiddenCasesStillDecodes() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
-                module demo exposing { Contact }
+                module demo exposing ( Contact )
 
                 data EmailC = { email: String }
                 data PhoneC = { phone: String }

@@ -48,6 +48,8 @@ public sealed interface Core {
             case LetIn li -> new Ast.LetIn(li.name(), li.value().toAst(), li.body().toAst(), li.pos());
             case Block bl -> new Ast.Block(bl.params(), bl.body().toAst(), bl.pos());
             case ListLit l -> new Ast.ListLit(toAstAll(l.elements()), l.pos());
+            case Tuple t -> new Ast.Tuple(toAstAll(t.elements()), t.pos());
+            case TupleGet tg -> new Ast.TupleGet(tg.tuple().toAst(), tg.index(), tg.arity(), tg.pos());
             case NewData nd -> {
                 List<Ast.FieldInit> inits = new ArrayList<>();
                 for (FieldInit i : nd.inits()) {
@@ -104,6 +106,13 @@ public sealed interface Core {
 
     record ListLit(List<Core> elements, SourcePos pos) implements Core {}
 
+    /** A tuple {@code (e1, e2, ...)} (ADR-0036); the backend emits it as an {@code Object[]}. */
+    record Tuple(List<Core> elements, SourcePos pos) implements Core {}
+
+    /** Reads a tuple element by index (a {@code let (x, y) = t} destructure); {@code arity} is the
+     * pattern's name count, checked against the tuple's size (ADR-0036). */
+    record TupleGet(Core tuple, int index, int arity, SourcePos pos) implements Core {}
+
     record FieldInit(String name, Core value, SourcePos pos) {}
 
     record NewData(String typeName, List<FieldInit> inits, List<String> spreads, SourcePos pos)
@@ -139,6 +148,8 @@ public sealed interface Core {
             case Ast.LetIn li -> new LetIn(li.name(), of(li.value()), of(li.body()), li.pos());
             case Ast.Block bl -> new Block(bl.params(), of(bl.body()), bl.pos());
             case Ast.ListLit l -> new ListLit(ofAll(l.elements()), l.pos());
+            case Ast.Tuple t -> new Tuple(ofAll(t.elements()), t.pos());
+            case Ast.TupleGet tg -> new TupleGet(of(tg.tuple()), tg.index(), tg.arity(), tg.pos());
             case Ast.NewData nd -> ofNewData(nd);
             case Ast.Match m -> ofMatch(m);
             case Ast.Call c -> ofCall(c);

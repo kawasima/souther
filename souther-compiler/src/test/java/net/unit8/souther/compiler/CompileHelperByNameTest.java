@@ -23,7 +23,7 @@ class CompileHelperByNameTest {
 
     private static final String MODULE = """
             module demo
-            import List { all, length }
+            import List ( all, length )
 
             data Order = { qtys: List<Int> }
             data Result = { ok: Bool, n: Int }
@@ -68,7 +68,7 @@ class CompileHelperByNameTest {
         // desugars to `($b0, $b1) -> add($b0, $b1)`, which the inliner then expands.
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
-                import List { fold }
+                import List ( fold )
 
                 data In = { ns: List<Int> }
                 data Out = { total: Int }

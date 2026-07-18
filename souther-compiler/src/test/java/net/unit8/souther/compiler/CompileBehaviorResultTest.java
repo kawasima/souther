@@ -53,7 +53,7 @@ class CompileBehaviorResultTest {
 
     private static final String INJECTED = """
             module demo
-            exposing { Member }
+            exposing ( Member )
 
             data Id = String
             data Member = { id: Id }

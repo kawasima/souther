@@ -22,7 +22,7 @@ class CompileStringLibTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                import String { concat, uppercase, substring }
+                import String ( concat, uppercase, substring )
 
                 data Name = String
                 data Greeting = String
@@ -48,7 +48,7 @@ class CompileStringLibTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                import String { split, join, replace }
+                import String ( split, join, replace )
 
                 data Raw = String
                 data Out = {
@@ -84,7 +84,7 @@ class CompileStringLibTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                import String { words, concat, fromInt }
+                import String ( words, concat, fromInt )
 
                 data In = {
                     text: String
@@ -119,7 +119,7 @@ class CompileStringLibTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                import String { startsWith, endsWith }
+                import String ( startsWith, endsWith )
 
                 data Sku = String
                     invariant startsWith("X", value) && endsWith("Z", value)

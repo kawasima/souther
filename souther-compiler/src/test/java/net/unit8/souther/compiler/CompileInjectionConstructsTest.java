@@ -20,7 +20,7 @@ class CompileInjectionConstructsTest {
         // 会員なし is a unit: the base class gets a protected factory for it, so no exposure is needed.
         assertDoesNotThrow(() -> Compiler.compile("""
                 module demo
-                exposing { Member }
+                exposing ( Member )
 
                 data Id = String
                 data Member = { id: Id }
@@ -35,7 +35,7 @@ class CompileInjectionConstructsTest {
     void anExposedNonUnitCaseIsAllowed() {
         assertDoesNotThrow(() -> Compiler.compile("""
                 module demo
-                exposing { Member, 保存データ不正 }
+                exposing ( Member, 保存データ不正 )
 
                 data Id = String
                 data Member = { id: Id }
@@ -50,7 +50,7 @@ class CompileInjectionConstructsTest {
     void aNonUnitUnexposedCaseIsE1305() {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile("""
                 module demo
-                exposing { Member }
+                exposing ( Member )
 
                 data Id = String
                 data Member = { id: Id }

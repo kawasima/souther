@@ -214,6 +214,8 @@ public final class HelperInliner {
             }
             case Ast.LetIn li -> new Ast.LetIn(li.name(), inline(li.value()), inline(li.body()), li.pos());
             case Ast.ListLit lit -> new Ast.ListLit(inlineList(lit.elements()), lit.pos());
+            case Ast.Tuple tup -> new Ast.Tuple(inlineList(tup.elements()), tup.pos());
+            case Ast.TupleGet tg -> new Ast.TupleGet(inline(tg.tuple()), tg.index(), tg.arity(), tg.pos());
             case Ast.ListComp comp -> new Ast.ListComp(inline(comp.element()), inlineList(comp.guards()), comp.pos());
             case Ast.Block block -> new Ast.Block(block.params(), inline(block.body()), block.pos());
             case Ast.IntLit ignored -> e;
@@ -326,6 +328,8 @@ public final class HelperInliner {
                 yield new Ast.LetIn(li.name(), value, body, at(at, li.pos()));
             }
             case Ast.ListLit lit -> new Ast.ListLit(renameList(lit.elements(), subst, fnParams, at), at(at, lit.pos()));
+            case Ast.Tuple tup -> new Ast.Tuple(renameList(tup.elements(), subst, fnParams, at), at(at, tup.pos()));
+            case Ast.TupleGet tg -> new Ast.TupleGet(rename(tg.tuple(), subst, fnParams, at), tg.index(), tg.arity(), at(at, tg.pos()));
             case Ast.ListComp comp -> new Ast.ListComp(rename(comp.element(), subst, fnParams, at), renameList(comp.guards(), subst, fnParams, at), at(at, comp.pos()));
             case Ast.Block block -> {
                 Map<String, String> inner = subst;
@@ -430,6 +434,8 @@ public final class HelperInliner {
                 f.accept(iff.els());
             }
             case Ast.ListLit lit -> lit.elements().forEach(f);
+            case Ast.Tuple tup -> tup.elements().forEach(f);
+            case Ast.TupleGet tg -> f.accept(tg.tuple());
             case Ast.ListComp comp -> {
                 f.accept(comp.element());
                 comp.guards().forEach(f);

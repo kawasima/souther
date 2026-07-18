@@ -26,11 +26,11 @@ and the prior art — is recorded as ADRs under [`docs/adr/`](docs/adr/).
 ## A taste
 
 ```text
-module example.businesstrip exposing {
+module example.businesstrip exposing (
     出張申請,
     出張申請を提出する,
     事前承認する
-}
+)
 
 // A value type. `data X = Y` (a single type on the right) is a newtype with Y's bare
 // representation; the spec DSL's "// not empty" comment becomes an invariant.
@@ -128,8 +128,8 @@ Java boundary that calls the data's invariant-checking construction.
 
 ### Modules are explicit
 
-One module per file. A module lists its public surface with `exposing { ... }` and pulls specific
-names with `import <module> { ... }`. There are no wildcard imports, cyclic imports are a compile
+One module per file. A module lists its public surface with `exposing ( ... )` and pulls specific
+names with `import <module> ( ... )`. There are no wildcard imports, cyclic imports are a compile
 error, and anything not exposed is emitted as a package-private class — the boundary is enforced at
 the JVM level, not just at import resolution.
 

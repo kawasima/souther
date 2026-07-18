@@ -20,24 +20,24 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CompileModuleTest {
 
     private static final String EMPLOYEE = """
-            module example.employee exposing {
+            module example.employee exposing (
                 従業員ID
-            }
+            )
 
-            import String { length }
+            import String ( length )
 
             data 従業員ID = String
                 invariant length(value) > 0
             """;
 
     private static final String TRIP = """
-            module example.trip exposing {
+            module example.trip exposing (
                 Trip
-            }
+            )
 
-            import example.employee {
+            import example.employee (
                 従業員ID
-            }
+            )
 
             data Trip = { who: 従業員ID }
             """;
@@ -66,13 +66,13 @@ class CompileModuleTest {
     @Test
     void cyclicImportIsE1501() {
         String a = """
-                module m.a exposing { A }
-                import m.b { B }
+                module m.a exposing ( A )
+                import m.b ( B )
                 data A = { b: B }
                 """;
         String b = """
-                module m.b exposing { B }
-                import m.a { A }
+                module m.b exposing ( B )
+                import m.a ( A )
                 data B = String
                 """;
         CompileException e = assertThrows(CompileException.class,

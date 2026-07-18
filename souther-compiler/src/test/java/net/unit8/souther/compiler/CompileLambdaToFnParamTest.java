@@ -25,8 +25,8 @@ class CompileLambdaToFnParamTest {
 
     private static final String MODULE = """
             module demo
-            import List { all }
-            import Bool { not }
+            import List ( all )
+            import Bool ( not )
 
             data Order = { qtys: List<Int> }
             data Result = { ok: Bool }

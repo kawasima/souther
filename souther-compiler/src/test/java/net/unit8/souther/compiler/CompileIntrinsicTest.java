@@ -25,7 +25,7 @@ class CompileIntrinsicTest {
 
     private static final String MODULE = """
             module demo
-            import String { trim }
+            import String ( trim )
 
             data In = { s: String }
             data Out = { s: String }
@@ -65,8 +65,8 @@ class CompileIntrinsicTest {
     void aGenericIntrinsicResolvesItsResultElementType() throws Exception {
         String src = """
                 module demo
-                import List { get }
-                import Map { values }
+                import List ( get )
+                import Map ( values )
 
                 data Item = { n: Int }
                 data Store = { byName: Map<String, Item> }

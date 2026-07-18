@@ -24,7 +24,7 @@ class CompileListLibTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                import List { reverse, sum, product, member, isEmpty }
+                import List ( reverse, sum, product, member, isEmpty )
 
                 data In = { ns: List<Int> }
                 data Out = {
@@ -65,7 +65,7 @@ class CompileListLibTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                import List { sort }
+                import List ( sort )
 
                 data In = { ns: List<Int> }
                 data Out = { xs: List<Int> }
@@ -87,7 +87,7 @@ class CompileListLibTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                import List { sort, concat }
+                import List ( sort, concat )
 
                 data In = { tags: List<String> }
                 data Out = {

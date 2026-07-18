@@ -17,9 +17,9 @@ class MainTest {
         Path a = dir.resolve("a.sou");
         Path b = dir.resolve("b.sou");
         Files.writeString(a, """
-                module a exposing { 従業員ID }
+                module a exposing ( 従業員ID )
 
-                import String { length }
+                import String ( length )
 
                 data 従業員ID = String
                     invariant length(value) > 0
@@ -27,7 +27,7 @@ class MainTest {
         Files.writeString(b, """
                 module b
 
-                import a { 従業員ID }
+                import a ( 従業員ID )
 
                 data Trip = { who: 従業員ID }
                 """);

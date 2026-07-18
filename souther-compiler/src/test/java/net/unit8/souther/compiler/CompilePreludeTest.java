@@ -23,7 +23,7 @@ class CompilePreludeTest {
 
     private static final String MODULE = """
             module demo
-            import Bool { not }
+            import Bool ( not )
 
             data In = { flag: Bool }
             data Out = { flag: Bool }

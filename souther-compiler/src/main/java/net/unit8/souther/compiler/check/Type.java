@@ -6,7 +6,7 @@ package net.unit8.souther.compiler.check;
  */
 public sealed interface Type
         permits Type.Prim, Type.Ref, Type.ListOf, Type.MapOf, Type.OptionOf, Type.Union, Type.FnOf,
-                Type.Var, Type.Nothing {
+                Type.Var, Type.Nothing, Type.TupleOf {
 
     enum Prim implements Type { INT, STRING, BOOL, DECIMAL, DATE, DATETIME, RAW }
 
@@ -41,6 +41,11 @@ public sealed interface Type
      * parameter (spec §fn-declaration); a value of this type is never stored in a data field, so it
      * never crosses a codec boundary. */
     record FnOf(java.util.List<Type> params, Type result) implements Type {}
+
+    /** A tuple {@code (A, B, ...)} of two or more element types (ADR-0036). Expression-level only —
+     * like {@link FnOf}, a tuple is never stored in a data field or a behavior's I/O, so it never
+     * crosses a codec boundary; it only carries several values through a computation. */
+    record TupleOf(java.util.List<Type> elements) implements Type {}
 
     Type INT = Prim.INT;
     Type STRING = Prim.STRING;
@@ -79,6 +84,10 @@ public sealed interface Type
 
     static Type fn(java.util.List<Type> params, Type result) {
         return new FnOf(params, result);
+    }
+
+    static Type tuple(java.util.List<Type> elements) {
+        return new TupleOf(elements);
     }
 
     static Type var(String name) {

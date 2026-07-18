@@ -79,7 +79,7 @@ class CompileOrderingTest {
         // rather than let it throw. The ordered field must be extracted first.
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile("""
                 module demo
-                import List { sort }
+                import List ( sort )
 
                 data 品目 = { コード: String }
                 data In = { xs: List<品目> }

@@ -13,9 +13,9 @@ That optional declaration is weakest exactly where a change is least visible: th
 A composition (Pipe) behavior listed in `exposing` must declare its output, and the declaration is written in the `exposing` list, not on the definition line:
 
 ```
-module example.order exposing {
+module example.order exposing (
     注文を確定する : 確定注文 | 在庫不足
-}
+)
 ```
 
 The definition stays point-free. The declared signature is checked against the inferred output with the exact-match rule of ADR-0017 (E1604): a mismatch in either direction is a compile error. Non-composition behaviors already carry their full type at the definition, so their exposing entry is just the name; only compositions — whose type is not written at the definition — carry a signature in exposing. Internal, non-exposed compositions keep ADR-0017's optional declaration.

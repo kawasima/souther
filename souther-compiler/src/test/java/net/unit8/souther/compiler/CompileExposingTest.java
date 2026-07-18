@@ -18,7 +18,7 @@ class CompileExposingTest {
     void anExposedNameThatDoesNotExistIsRejected() {
         assertThrows(CompileException.class, () -> Compiler.compile("""
                 module demo
-                exposing { NoSuchType }
+                exposing ( NoSuchType )
                 data Real = { v: Int }
                 """));
     }
@@ -27,7 +27,7 @@ class CompileExposingTest {
     void aDecoderMemberInExposingIsRejected() {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile("""
                 module demo
-                exposing { Real.decoder }
+                exposing ( Real.decoder )
                 data Real = { v: Int }
                 """));
         assertTrue(e.getMessage().contains("type-granular"), e.getMessage());
@@ -37,7 +37,7 @@ class CompileExposingTest {
     void realExposedNamesAreAccepted() {
         assertDoesNotThrow(() -> Compiler.compile("""
                 module demo
-                exposing { Real, greet }
+                exposing ( Real, greet )
 
                 data Real = { v: Int }
                 data Out = { v: Int }

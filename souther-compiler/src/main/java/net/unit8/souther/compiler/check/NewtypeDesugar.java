@@ -64,6 +64,8 @@ public final class NewtypeDesugar {
             case Ast.If iff ->
                     new Ast.If(go(iff.cond(), symbols), go(iff.then(), symbols), go(iff.els(), symbols), iff.pos());
             case Ast.Block b -> new Ast.Block(b.params(), go(b.body(), symbols), b.pos());
+            case Ast.Tuple tup -> new Ast.Tuple(mapExprs(tup.elements(), symbols), tup.pos());
+            case Ast.TupleGet tg -> new Ast.TupleGet(go(tg.tuple(), symbols), tg.index(), tg.arity(), tg.pos());
             case Ast.Match mt -> {
                 List<Ast.Case> cases = new ArrayList<>();
                 for (Ast.Case c : mt.cases()) {

@@ -24,14 +24,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CompileModuleChainTest {
 
     private static final String A = """
-            module a exposing { N, inc }
+            module a exposing ( N, inc )
             data N = Int
             behavior inc : (n: N) -> N
             let inc (n) = n
             """;
     private static final String B = """
-            module b exposing { twice : N }
-            import a { N, inc }
+            module b exposing ( twice : N )
+            import a ( N, inc )
             behavior twice = inc >-> inc
             """;
     // c imports N as well: its generated `quad` carries a `Behavior<N, N>` signature (spec 19.8,
@@ -39,8 +39,8 @@ class CompileModuleChainTest {
     // imports its type arguments.
     private static final String C = """
             module c
-            import a { N }
-            import b { twice }
+            import a ( N )
+            import b ( twice )
             behavior quad = twice >-> twice
             """;
 

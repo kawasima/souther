@@ -23,7 +23,7 @@ public interface Ast {
      * A whole source file: its public surface, imports, and definitions.
      *
      * <p>{@code exposedOutputs} maps an exposed composition behavior's name to the output signature
-     * written in the {@code exposing} list ({@code exposing { name : A | B }}, spec 14.5). An exposed
+     * written in the {@code exposing} list ({@code exposing ( name : A | B )}, spec 14.5). An exposed
      * {@code >->} composition must have one, checked to match its inferred output (ADR-0024); other
      * exposed names carry no signature (their type is at the definition).
      */
@@ -36,7 +36,7 @@ public interface Ast {
                   List<FnDef> fns,
                   SourcePos pos) implements Ast {}
 
-    /** {@code import <module> { name, ... }} — an explicit, non-wildcard import (spec 4). */
+    /** {@code import <module> ( name, ... )} — an explicit, non-wildcard import (spec 4). */
     record Import(String module, List<String> names, SourcePos pos) implements Ast {}
 
     /**
@@ -277,7 +277,7 @@ public interface Ast {
 
     sealed interface Expr extends Ast
             permits IntLit, DecimalLit, StringLit, BoolLit, Var, FieldAccess, Call, Binary, Neg,
-                    NewData, Match, If, ListLit, ListComp, LetIn, Block {}
+                    NewData, Match, If, ListLit, ListComp, LetIn, Block, Tuple, TupleGet {}
 
     /**
      * {@code x -> expr}, or {@code (acc, x) -> expr} — a block (spec 12.5).
@@ -301,6 +301,15 @@ public interface Ast {
     /** A guard-only comprehension {@code [element | guard, ...]}: the element is included when
      * every guard holds, giving a 0-or-1 element list (spec 18.4, conditional accumulation). */
     record ListComp(Expr element, List<Expr> guards, SourcePos pos) implements Expr {}
+
+    /** A tuple {@code (e1, e2, ...)} of two or more values (ADR-0036), an expression-level value
+     * that never crosses the data/behavior boundary. Opened with a {@code let (x, y) = t} destructure. */
+    record Tuple(List<Expr> elements, SourcePos pos) implements Expr {}
+
+    /** Reads the {@code index}-th element of a tuple; what a {@code let (x, y) = t} destructure lowers
+     * a field read to. Not written in source — the parser produces it from a tuple pattern. {@code arity}
+     * is the pattern's name count, so the checker rejects a tuple of a different size (ADR-0036). */
+    record TupleGet(Expr tuple, int index, int arity, SourcePos pos) implements Expr {}
 
     /** {@code if cond then a else b} — both branches must have the same type (spec 16.2). */
     record If(Expr cond, Expr then, Expr els, SourcePos pos) implements Expr {}
@@ -364,6 +373,8 @@ public interface Ast {
             case Block bl -> new Block(bl.params(), f.apply(bl.body()), bl.pos());
             case ListLit l -> new ListLit(mapExprs(l.elements(), f), l.pos());
             case ListComp comp -> new ListComp(f.apply(comp.element()), mapExprs(comp.guards(), f), comp.pos());
+            case Tuple tup -> new Tuple(mapExprs(tup.elements(), f), tup.pos());
+            case TupleGet tg -> new TupleGet(f.apply(tg.tuple()), tg.index(), tg.arity(), tg.pos());
             case NewData nd -> {
                 List<FieldInit> inits = new ArrayList<>();
                 for (FieldInit i : nd.inits()) {

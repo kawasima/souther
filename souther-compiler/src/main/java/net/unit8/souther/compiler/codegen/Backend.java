@@ -1153,6 +1153,20 @@ public final class Backend {
         }
     }
 
+    /** Casts the {@code Object} on the stack to {@code type}'s JVM form, unboxing Int/Bool — the
+     * stack-only counterpart of {@link #unbox}, used to read a boxed tuple element (ADR-0036). */
+    private void castFromObject(CodeBuilder code, Type type) {
+        if (type == Type.INT) {
+            code.checkcast(CD_Long);
+            code.invokevirtual(CD_Long, "longValue", MethodTypeDesc.of(ConstantDescs.CD_long));
+        } else if (type == Type.BOOL) {
+            code.checkcast(CD_Boolean);
+            code.invokevirtual(CD_Boolean, "booleanValue", MethodTypeDesc.of(ConstantDescs.CD_boolean));
+        } else {
+            code.checkcast(jvmType(type));
+        }
+    }
+
     private void emitPublicCtor(ClassBuilder cb) {
         cb.withMethodBody("<init>", MTD_void, ClassFile.ACC_PUBLIC, code -> {
             code.aload(0);
@@ -2151,6 +2165,32 @@ public final class Backend {
             return elem == null ? Type.EMPTY_LIST : Type.list(elem);   // `[]` is the empty list (ADR-0028)
         }
 
+        /** Builds a tuple {@code (e1, e2, ...)} as an {@code Object[]}, boxing each element (ADR-0036). */
+        private Type tuple(Core.Tuple t) {
+            List<Type> elems = new ArrayList<>();
+            pushInt(code, t.elements().size());
+            code.anewarray(CD_Object);
+            for (int i = 0; i < t.elements().size(); i++) {
+                code.dup();
+                pushInt(code, i);
+                Type et = genExpr(t.elements().get(i));
+                box(code, et);
+                code.aastore();
+                elems.add(et);
+            }
+            return Type.tuple(elems);
+        }
+
+        /** Reads a tuple element by index: {@code arr[i]}, cast back to the element's type. */
+        private Type tupleGet(Core.TupleGet tg) {
+            Type tt = genExpr(tg.tuple());
+            Type et = ((Type.TupleOf) tt).elements().get(tg.index());
+            pushInt(code, tg.index());
+            code.aaload();
+            castFromObject(code, et);
+            return et;
+        }
+
         /**
          * Emits {@code fold} (spec 18.4) — the one privileged list loop — inlining the block's body
          * into an index loop that threads the accumulator. Every other combinator (map/filter/all/any)
@@ -2289,6 +2329,8 @@ public final class Backend {
                 }
                 case Core.Fold f -> fold(f);
                 case Core.ListLit lit -> listLit(lit);
+                case Core.Tuple t -> tuple(t);
+                case Core.TupleGet tg -> tupleGet(tg);
                 case Core.Binary bin -> binary(bin);
                 case Core.NewData nd -> newData(nd);
                 case Core.Match m -> match(m);
@@ -2982,6 +3024,8 @@ public final class Backend {
                     collectFree(b.body(), inner, free);
                 }
                 case Ast.ListLit lit -> lit.elements().forEach(x -> collectFree(x, bound, free));
+                case Ast.Tuple tup -> tup.elements().forEach(x -> collectFree(x, bound, free));
+                case Ast.TupleGet tg -> collectFree(tg.tuple(), bound, free);
                 case Ast.ListComp comp -> {
                     collectFree(comp.element(), bound, free);
                     comp.guards().forEach(g -> collectFree(g, bound, free));
@@ -3031,6 +3075,7 @@ public final class Backend {
         if (type instanceof Type.MapOf) return CD_Map;
         if (type instanceof Type.Union) return CD_Object;
         if (type instanceof Type.FnOf) return CD_Fn;
+        if (type instanceof Type.TupleOf) return CD_Object.arrayType();   // a tuple is an Object[]
         return caseClass(((Type.Ref) type).name());
     }
 

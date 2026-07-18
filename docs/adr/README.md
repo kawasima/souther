@@ -50,3 +50,4 @@ specification is in Japanese.
 | [0033](0033-numeric-literals-and-arithmetic-operators.md) | Decimal literals carry an `m` suffix; `+ - * /` work on Int and Decimal | `[#primitives]`, `[#stdlib-int]`, `[#stdlib-decimal]` |
 | [0034](0034-value-pipe-and-argument-order.md) | The value pipe `\|>` threads a value through calls; the stdlib takes its main object last | `[#pipe]`, `[#stdlib]`, `[#delimiters]` |
 | [0035](0035-match-destructures-fields-as-binds-the-whole.md) | A match case destructures a case's fields; `as` binds the whole; Option binds positionally (`\| Some v`) | `[#match]`, `[#algebraic-types]` |
+| [0036](0036-tuples-and-exposing-parentheses.md) | Tuples `(a, b)` are expression-level first-class values; a module's `exposing`/`import` lists use parentheses | `[#tuple]`, `[#modules]`, `[#delimiters]` |

@@ -23,6 +23,8 @@ public final class Parser {
     private boolean noConstruct = false;
     /** Counter for the synthetic whole-case binding a field-destructuring match case desugars to. */
     private int matchWholeCounter = 0;
+    /** Counter for the synthetic whole-tuple binding a {@code let (x, y) = t} destructure desugars to. */
+    private int tupleCounter = 0;
     /** The module's name, known once its header is read; gates type-variable use to the core. */
     private String moduleName = "";
 
@@ -64,22 +66,22 @@ public final class Parser {
     }
 
     /**
-     * {@code exposing { name, name : A | B, ... }} — the module's public surface (spec 4). An
+     * {@code exposing ( name, name : A | B, ... )} — the module's public surface (spec 4). An
      * exposed composition behavior carries its output signature here ({@code name : A | B}, spec
      * 14.5); it is collected into {@code outputs} keyed by name. Other entries are bare names.
      */
     private List<String> parseExposing(Map<String, Ast.RetType> outputs) {
         expect(TokenType.EXPOSING);
-        expect(TokenType.LBRACE);
+        expect(TokenType.LPAREN);   // `exposing ( a, b )` — parentheses, as Elm does (ADR-0036)
         List<String> names = new ArrayList<>();
         parseExposedEntry(names, outputs);
         while (match(TokenType.COMMA)) {
-            if (check(TokenType.RBRACE)) {
+            if (check(TokenType.RPAREN)) {
                 break;
             }
             parseExposedEntry(names, outputs);
         }
-        expect(TokenType.RBRACE);
+        expect(TokenType.RPAREN);
         return names;
     }
 
@@ -93,20 +95,20 @@ public final class Parser {
         }
     }
 
-    /** {@code import <module> { name, ... }} — explicit imports only (no wildcards, spec 4). */
+    /** {@code import <module> ( name, ... )} — explicit imports only (no wildcards, spec 4). */
     private Ast.Import parseImport() {
         Token kw = expect(TokenType.IMPORT);
         String module = qualifiedName();
-        expect(TokenType.LBRACE);
+        expect(TokenType.LPAREN);   // `import M ( a, b )` — parentheses, as Elm does (ADR-0036)
         List<String> names = new ArrayList<>();
         names.add(expect(TokenType.IDENT).text());
         while (match(TokenType.COMMA)) {
-            if (check(TokenType.RBRACE)) {
+            if (check(TokenType.RPAREN)) {
                 break;
             }
             names.add(expect(TokenType.IDENT).text());
         }
-        expect(TokenType.RBRACE);
+        expect(TokenType.RPAREN);
         return new Ast.Import(module, names, kw.pos());
     }
 
@@ -268,6 +270,9 @@ public final class Parser {
      */
     private Ast.Expr parseBody() {
         if (check(TokenType.LET)) {
+            if (peekAt(1).type() == TokenType.LPAREN) {
+                return parseTupleDestructure();
+            }
             Ast.Let let = parseLet();
             return new Ast.LetIn(let.name(), let.value(), parseBody(), let.pos());
         }
@@ -471,6 +476,31 @@ public final class Parser {
         return new Ast.Let(name, value, kw.pos());
     }
 
+    /** {@code let (x, y) = t <rest>} desugars to a whole binding plus positional element reads
+     * (ADR-0036): {@code let $t = t in let x = $t.0 in let y = $t.1 in <rest>}. */
+    private Ast.Expr parseTupleDestructure() {
+        Token kw = expect(TokenType.LET);
+        expect(TokenType.LPAREN);
+        List<String> names = new ArrayList<>();
+        names.add(expect(TokenType.IDENT).text());
+        while (match(TokenType.COMMA)) {
+            names.add(expect(TokenType.IDENT).text());
+        }
+        expect(TokenType.RPAREN);
+        expect(TokenType.ASSIGN);
+        Ast.Expr value = parseExpr();
+        Ast.Expr body = parseBody();
+        if (names.size() == 1) {
+            return new Ast.LetIn(names.get(0), value, body, kw.pos());   // `let (x) = e` is `let x = e`
+        }
+        String whole = "$t" + (tupleCounter++);
+        for (int i = names.size() - 1; i >= 0; i--) {
+            body = new Ast.LetIn(names.get(i),
+                    new Ast.TupleGet(new Ast.Var(whole, kw.pos()), i, names.size(), kw.pos()), body, kw.pos());
+        }
+        return new Ast.LetIn(whole, value, body, kw.pos());
+    }
+
     private Ast.Expr newData(Token type) {
         expect(TokenType.LBRACE);
         Inits in = parseInits();
@@ -657,9 +687,20 @@ public final class Parser {
             }
             case LPAREN -> {
                 advance();
-                Ast.Expr e = parseExpr();
+                Ast.Expr first = parseExpr();
+                if (check(TokenType.COMMA)) {
+                    // a tuple `(e1, e2, ...)` of two or more values (ADR-0036). A lambda `(a, b) -> ...`
+                    // is taken earlier by isBlockParams, so a comma here starts a tuple, not params.
+                    List<Ast.Expr> elements = new ArrayList<>();
+                    elements.add(first);
+                    while (match(TokenType.COMMA)) {
+                        elements.add(parseExpr());
+                    }
+                    expect(TokenType.RPAREN);
+                    return new Ast.Tuple(elements, t.pos());
+                }
                 expect(TokenType.RPAREN);
-                return e;
+                return first;
             }
             case LBRACKET -> {
                 return parseList();

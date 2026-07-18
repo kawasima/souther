@@ -25,7 +25,7 @@ class CompileNewtypeConstructTest {
 
     private static final String MODULE = """
             module demo
-            import String { length }
+            import String ( length )
             data 金額 = Int
                 invariant value >= 0
             data 会員ID = String
@@ -94,7 +94,7 @@ class CompileNewtypeConstructTest {
         // argument (spec §pipe). A constant that satisfies the invariant compiles and encodes.
         String ok = """
                 module demo
-                import String { contains }
+                import String ( contains )
                 data Email = String
                     invariant contains("@", value)
                 behavior make : (x: Int) -> Email constructs Email
@@ -135,7 +135,7 @@ class CompileNewtypeConstructTest {
     void emptyStringViolatingLengthInvariantIsACompileError() {
         String src = """
                 module demo
-                import String { length }
+                import String ( length )
                 data 会員ID = String
                     invariant length(value) > 0
                 behavior make : (x: Int) -> 会員ID constructs 会員ID
@@ -180,7 +180,7 @@ class CompileNewtypeConstructTest {
         // the collector traverses lambda/block bodies (forEachChild covers Ast.Block)
         String src = """
                 module demo
-                import List { map }
+                import List ( map )
                 data 金額 = Int
                     invariant value >= 0
                 data 袋 = { xs: List<金額> }

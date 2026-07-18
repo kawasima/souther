@@ -36,7 +36,7 @@ class CompileReservedNamespaceTest {
     @Test
     void aModuleNamedAfterAStdlibQualifierIsRejected() {
         // `List` is the qualifier the standard library is reached through (`List.map`,
-        // `import List { ... }`); a user module by that name would shadow it and be unimportable.
+        // `import List ( ... )`); a user module by that name would shadow it and be unimportable.
         String src = """
                 module List
                 data X = Int

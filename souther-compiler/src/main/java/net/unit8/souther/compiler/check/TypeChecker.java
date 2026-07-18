@@ -164,7 +164,7 @@ public final class TypeChecker {
 
     /**
      * An exposed composition ({@code >->}) behavior must declare its output in the {@code exposing}
-     * list ({@code exposing { name : A | B }}, spec 14.5, ADR-0024), and the declaration must match
+     * list ({@code exposing ( name : A | B )}, spec 14.5, ADR-0024), and the declaration must match
      * the inferred output exactly. A far-away change that grows the output then fails here, at the
      * module boundary, instead of reaching separately-compiled consumers unannounced.
      *
@@ -199,7 +199,7 @@ public final class TypeChecker {
             if (declared == null) {
                 throw new CompileException(pipe.pos(), "E1605", "exposed composition `" + pipe.name()
                         + "` must declare its output in `exposing` (spec 14.5): write "
-                        + "`exposing { " + pipe.name() + " : " + caseList(inferred) + " }`");
+                        + "`exposing ( " + pipe.name() + " : " + caseList(inferred) + " )`");
             }
             Set<String> declaredCases = leafCases(successType(declared, symbols), symbols);
             if (!inferred.equals(declaredCases)) {
@@ -869,6 +869,8 @@ public final class TypeChecker {
                 f.accept(li.body());
             }
             case Ast.Block b -> f.accept(b.body());   // a lambda / block body
+            case Ast.Tuple tup -> tup.elements().forEach(f);
+            case Ast.TupleGet tg -> f.accept(tg.tuple());
             default -> { }
         }
     }
@@ -933,6 +935,8 @@ public final class TypeChecker {
                 comp.guards().forEach(g -> forbidInvariantConstruct(g, symbols));
             }
             case Ast.Block b -> forbidInvariantConstruct(b.body(), symbols);   // a lambda / block body
+            case Ast.Tuple tup -> tup.elements().forEach(el -> forbidInvariantConstruct(el, symbols));
+            case Ast.TupleGet tg -> forbidInvariantConstruct(tg.tuple(), symbols);
             default -> { }
         }
     }
@@ -960,6 +964,8 @@ public final class TypeChecker {
                 }
             }
             case Ast.FieldAccess fa -> collectConstructs(fa.target(), out, symbols, bound);
+            case Ast.Tuple tup -> tup.elements().forEach(el -> collectConstructs(el, out, symbols, bound));
+            case Ast.TupleGet tg -> collectConstructs(tg.tuple(), out, symbols, bound);
             case Ast.Call call -> call.args().forEach(a -> collectConstructs(a, out, symbols, bound));
             case Ast.Binary bin -> {
                 collectConstructs(bin.left(), out, symbols, bound);
@@ -1354,6 +1360,24 @@ public final class TypeChecker {
             case Ast.DecimalLit ignored -> Type.DECIMAL;
             case Ast.StringLit ignored -> Type.STRING;
             case Ast.BoolLit ignored -> Type.BOOL;
+            case Ast.Tuple tup -> {
+                List<Type> elems = new ArrayList<>();
+                for (Ast.Expr el : tup.elements()) {
+                    elems.add(typeOf(el, env, data, symbols, reqs));
+                }
+                yield Type.tuple(elems);
+            }
+            case Ast.TupleGet tg -> {
+                Type tt = typeOf(tg.tuple(), env, data, symbols, reqs);
+                if (!(tt instanceof Type.TupleOf to)) {
+                    throw new CompileException(tg.pos(), "a tuple pattern needs a tuple, got " + tt);
+                }
+                if (to.elements().size() != tg.arity()) {   // exact arity, in either direction (Elm)
+                    throw new CompileException(tg.pos(), "this pattern binds " + tg.arity()
+                            + " name(s) but the tuple has " + to.elements().size() + " element(s)");
+                }
+                yield to.elements().get(tg.index());
+            }
             case Ast.Neg neg -> {
                 Type t = typeOf(neg.operand(), env, data, symbols, reqs);
                 if (t != Type.INT && t != Type.DECIMAL) {

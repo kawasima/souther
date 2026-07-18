@@ -8,8 +8,8 @@
 // 重複除去は入れていない。Elm でも core の List には無く、list-extra 側の関数だから。代わりに
 // sort が同じタグを隣り合わせる（辞書順の正規形）。
 module example.tagging
-import String { split, trim, lowercase, join }
-import List { map, filter, sort, length }
+import String ( split, trim, lowercase, join )
+import List ( map, filter, sort, length )
 
 data タグ入力 = { 生: String }
 

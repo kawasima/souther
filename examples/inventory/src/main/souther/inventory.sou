@@ -2,7 +2,7 @@
 // もう一段のコンビネータ——sum / sort / member / isEmpty——をドメインの上で走らせる。いずれも
 // Elm の List モジュールから移植した中核で、sort だけが（Elm 同様）ネイティブのプリミティブ。
 module example.inventory
-import List { map, filter, sort, sum, member, isEmpty, length }
+import List ( map, filter, sort, sum, member, isEmpty, length )
 
 data 品目コード = String
     invariant String.length(value) >= 1

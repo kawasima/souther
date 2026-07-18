@@ -15,9 +15,9 @@ import java.util.Set;
 /**
  * Resolves standard-library {@code exposing} imports (spec §stdlib). Souther auto-imports nothing:
  * a module reaches the library either qualified ({@code List.map}) or by importing the names it
- * wants — {@code import List { map, filter }} — after which it may write them bare. This pass turns
+ * wants — {@code import List ( map, filter )} — after which it may write them bare. This pass turns
  * each such bare call into its qualified form up front, so the rest of the compiler only ever sees
- * qualified library calls; the {@code import List { ... }} lines are then dropped from the module.
+ * qualified library calls; the {@code import List ( ... )} lines are then dropped from the module.
  *
  * <p>It mirrors Elm's {@code import List exposing (map)}: the qualified access always works, and the
  * import merely lets a name be written without its qualifier. A name exposed from two libraries at
@@ -32,7 +32,7 @@ public final class Exposing {
     }
 
     /** Rewrites {@code module}'s exposed bare library calls to qualified form and strips its
-     *  {@code import List { ... }} lines. User-module imports are left untouched. */
+     *  {@code import List ( ... )} lines. User-module imports are left untouched. */
     public static Ast.Module rewrite(Ast.Module module) {
         Set<String> ownNames = new HashSet<>();
         for (Ast.FnDef fn : module.fns()) {
@@ -143,6 +143,14 @@ public final class Exposing {
                 yield new Ast.ListComp(rw(lc.element()), guards, lc.pos());
             }
             case Ast.Neg n -> new Ast.Neg(rw(n.operand()), n.pos());
+            case Ast.Tuple tup -> {
+                List<Ast.Expr> els = new ArrayList<>();
+                for (Ast.Expr x : tup.elements()) {
+                    els.add(rw(x));
+                }
+                yield new Ast.Tuple(els, tup.pos());
+            }
+            case Ast.TupleGet tg -> new Ast.TupleGet(rw(tg.tuple()), tg.index(), tg.arity(), tg.pos());
             default -> e;   // Var and the literals carry no nested calls
         };
     }

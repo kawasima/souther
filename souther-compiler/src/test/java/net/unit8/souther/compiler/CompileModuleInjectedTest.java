@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class CompileModuleInjectedTest {
 
     private static final String A = """
-            module a exposing { N, produce }
+            module a exposing ( N, produce )
 
             data N = Int
 
@@ -38,7 +38,7 @@ class CompileModuleInjectedTest {
     private static final String B = """
             module b
 
-            import a { N, produce }
+            import a ( N, produce )
 
             behavior flow = produce >-> produce
             """;

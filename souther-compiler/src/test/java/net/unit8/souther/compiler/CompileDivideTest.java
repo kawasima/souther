@@ -19,7 +19,7 @@ class CompileDivideTest {
     private static final String MODULE = """
             module demo
 
-            import Int { divide }
+            import Int ( divide )
 
             data Pair = { a: Int, b: Int }
             data Outcome = { q: Int, ok: Bool }

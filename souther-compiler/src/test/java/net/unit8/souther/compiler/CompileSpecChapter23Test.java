@@ -27,7 +27,7 @@ class CompileSpecChapter23Test {
     private static final String MODULE = """
             module example.businesstrip
 
-            import String { length }
+            import String ( length )
 
             data 金額 = Int
                 invariant value >= 0

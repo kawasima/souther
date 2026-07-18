@@ -43,7 +43,7 @@ class CompileMapTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                import Map { get, containsKey }
+                import Map ( get, containsKey )
 
                 data Scores = { byName: Map<String, Int> }
                 data Answer = { found: Bool, value: Int }

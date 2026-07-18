@@ -32,7 +32,7 @@ class CompileFieldAccessorTest {
     void exposedDataGetsPublicFieldAccessors() throws Exception {
         String src = """
                 module demo
-                exposing { Member }
+                exposing ( Member )
 
                 data Id = String
                 data Member = { id: Id, age: Int }
@@ -53,7 +53,7 @@ class CompileFieldAccessorTest {
     void nonExposedDataHasNoAccessors() {
         String src = """
                 module demo
-                exposing { Member }
+                exposing ( Member )
 
                 data Id = String
                 data Member = { id: Id }

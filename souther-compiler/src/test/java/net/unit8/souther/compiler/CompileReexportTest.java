@@ -18,12 +18,12 @@ class CompileReexportTest {
     @Test
     void exposingAnImportedNameIsRejected() {
         String a = """
-                module a exposing { N }
+                module a exposing ( N )
                 data N = Int
                 """;
         String b = """
-                module b exposing { N }
-                import a { N }
+                module b exposing ( N )
+                import a ( N )
                 """;
         CompileException e = assertThrows(CompileException.class,
                 () -> Compiler.compileModules(List.of(a, b)));
@@ -33,12 +33,12 @@ class CompileReexportTest {
     @Test
     void exposingOwnDefinitionsIsAccepted() {
         String a = """
-                module a exposing { N }
+                module a exposing ( N )
                 data N = Int
                 """;
         String b = """
-                module b exposing { M }
-                import a { N }
+                module b exposing ( M )
+                import a ( N )
                 data M = { n: N }
                 """;
         // b exposes its own M — which references the imported N — and that compiles.

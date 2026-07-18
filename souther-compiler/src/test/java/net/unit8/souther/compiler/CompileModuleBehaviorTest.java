@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class CompileModuleBehaviorTest {
 
     private static final String A = """
-            module m.a exposing { N, inc }
+            module m.a exposing ( N, inc )
 
             data N = Int
 
@@ -33,7 +33,7 @@ class CompileModuleBehaviorTest {
     private static final String B = """
             module m.b
 
-            import m.a { N, inc }
+            import m.a ( N, inc )
 
             behavior twice = inc >-> inc
             """;

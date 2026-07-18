@@ -1,5 +1,5 @@
 module example.member
-import String { length, contains }
+import String ( length, contains )
 // exposing 句を省いたモジュールは生成クラスがすべて public になる（4章）。
 // この例は全型を Java から使うので、あえて exposing を書かず全公開にしている。
 
