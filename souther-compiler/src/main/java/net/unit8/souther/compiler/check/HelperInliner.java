@@ -2,6 +2,7 @@ package net.unit8.souther.compiler.check;
 
 import net.unit8.souther.compiler.CompileException;
 import net.unit8.souther.compiler.Prelude;
+import net.unit8.souther.compiler.SourcePos;
 import net.unit8.souther.compiler.ast.Ast;
 
 import java.util.ArrayList;
@@ -129,7 +130,11 @@ public final class HelperInliner {
                     }
                 }
                 scopedLambdas.forEach(helpers::put);
-                Ast.Expr body = inline(rename(helper.body(), subst, fnParams));   // expand nested helpers too
+                // a prelude helper's body is stamped with the call site, so errors inside it point at
+                // the user's call, not at the shipped source of souther.* (a module-own helper keeps
+                // its own positions, which already lie in the user's file).
+                SourcePos at = own.containsKey(helper.name()) ? null : call.pos();
+                Ast.Expr body = inline(rename(helper.body(), subst, fnParams, at));   // expand nested helpers too
                 scopedLambdas.keySet().forEach(helpers::remove);
                 // wrap innermost-first so the value parameters bind in declared order
                 for (int i = letNames.size() - 1; i >= 0; i--) {
@@ -249,51 +254,57 @@ public final class HelperInliner {
      * in call position, so an application {@code f(x)} of a function parameter becomes a call to the
      * fn it was passed. A value parameter is never rewritten as a callee, so a parameter that happens
      * to share a builtin's name still calls the builtin.
+     *
+     * <p>{@code at}, when non-null, is stamped onto every rebuilt node in place of its own position.
+     * A prelude helper is expanded with the call site as {@code at}, so a type error inside its body
+     * points at the user's call — {@code filter(xs, x -> x * 2)} — not at a line of {@code souther.list}
+     * the user never wrote. A module-own helper passes {@code null} and keeps its own positions. The
+     * caller's argument expressions, spliced in separately, keep their own positions either way.
      */
-    private static Ast.Expr rename(Ast.Expr e, Map<String, String> subst, Set<String> fnParams) {
+    private static Ast.Expr rename(Ast.Expr e, Map<String, String> subst, Set<String> fnParams, SourcePos at) {
         return switch (e) {
-            case Ast.Var v -> subst.containsKey(v.name()) ? new Ast.Var(subst.get(v.name()), v.pos()) : e;
-            case Ast.FieldAccess fa -> new Ast.FieldAccess(rename(fa.target(), subst, fnParams), fa.field(), fa.pos());
+            case Ast.Var v -> subst.containsKey(v.name()) ? new Ast.Var(subst.get(v.name()), at(at, v.pos())) : e;
+            case Ast.FieldAccess fa -> new Ast.FieldAccess(rename(fa.target(), subst, fnParams, at), fa.field(), at(at, fa.pos()));
             case Ast.Call call -> {
                 String callee = fnParams.contains(call.fn()) && subst.containsKey(call.fn())
                         ? subst.get(call.fn()) : call.fn();
-                yield new Ast.Call(callee, renameList(call.args(), subst, fnParams), call.pos());
+                yield new Ast.Call(callee, renameList(call.args(), subst, fnParams, at), at(at, call.pos()));
             }
-            case Ast.Binary bin -> new Ast.Binary(bin.op(), rename(bin.left(), subst, fnParams), rename(bin.right(), subst, fnParams), bin.pos());
-            case Ast.Neg neg -> new Ast.Neg(rename(neg.operand(), subst, fnParams), neg.pos());
+            case Ast.Binary bin -> new Ast.Binary(bin.op(), rename(bin.left(), subst, fnParams, at), rename(bin.right(), subst, fnParams, at), at(at, bin.pos()));
+            case Ast.Neg neg -> new Ast.Neg(rename(neg.operand(), subst, fnParams, at), at(at, neg.pos()));
             case Ast.NewData nd -> {
                 List<Ast.FieldInit> inits = new ArrayList<>();
                 for (Ast.FieldInit i : nd.inits()) {
-                    inits.add(new Ast.FieldInit(i.name(), rename(i.value(), subst, fnParams), i.pos()));
+                    inits.add(new Ast.FieldInit(i.name(), rename(i.value(), subst, fnParams, at), at(at, i.pos())));
                 }
                 List<String> spreads = new ArrayList<>();
                 for (String s : nd.spreads()) {
                     spreads.add(subst.getOrDefault(s, s));   // `..param` copies the renamed binding
                 }
-                yield new Ast.NewData(nd.typeName(), inits, spreads, nd.pos());
+                yield new Ast.NewData(nd.typeName(), inits, spreads, at(at, nd.pos()));
             }
             case Ast.Match m -> {
                 List<Ast.Case> cases = new ArrayList<>();
                 for (Ast.Case c : m.cases()) {
                     Map<String, String> inner = c.binding() == null ? subst : without(subst, c.binding());
-                    cases.add(new Ast.Case(c.armTypes(), c.binding(), rename(c.body(), inner, fnParams), c.pos()));
+                    cases.add(new Ast.Case(c.armTypes(), c.binding(), rename(c.body(), inner, fnParams, at), at(at, c.pos())));
                 }
-                yield new Ast.Match(rename(m.scrutinee(), subst, fnParams), cases, m.pos());
+                yield new Ast.Match(rename(m.scrutinee(), subst, fnParams, at), cases, at(at, m.pos()));
             }
-            case Ast.If iff -> new Ast.If(rename(iff.cond(), subst, fnParams), rename(iff.then(), subst, fnParams), rename(iff.els(), subst, fnParams), iff.pos());
+            case Ast.If iff -> new Ast.If(rename(iff.cond(), subst, fnParams, at), rename(iff.then(), subst, fnParams, at), rename(iff.els(), subst, fnParams, at), at(at, iff.pos()));
             case Ast.LetIn li -> {
-                Ast.Expr value = rename(li.value(), subst, fnParams);
-                Ast.Expr body = rename(li.body(), without(subst, li.name()), fnParams);
-                yield new Ast.LetIn(li.name(), value, body, li.pos());
+                Ast.Expr value = rename(li.value(), subst, fnParams, at);
+                Ast.Expr body = rename(li.body(), without(subst, li.name()), fnParams, at);
+                yield new Ast.LetIn(li.name(), value, body, at(at, li.pos()));
             }
-            case Ast.ListLit lit -> new Ast.ListLit(renameList(lit.elements(), subst, fnParams), lit.pos());
-            case Ast.ListComp comp -> new Ast.ListComp(rename(comp.element(), subst, fnParams), renameList(comp.guards(), subst, fnParams), comp.pos());
+            case Ast.ListLit lit -> new Ast.ListLit(renameList(lit.elements(), subst, fnParams, at), at(at, lit.pos()));
+            case Ast.ListComp comp -> new Ast.ListComp(rename(comp.element(), subst, fnParams, at), renameList(comp.guards(), subst, fnParams, at), at(at, comp.pos()));
             case Ast.Block block -> {
                 Map<String, String> inner = subst;
                 for (String p : block.params()) {
                     inner = without(inner, p);
                 }
-                yield new Ast.Block(block.params(), rename(block.body(), inner, fnParams), block.pos());
+                yield new Ast.Block(block.params(), rename(block.body(), inner, fnParams, at), at(at, block.pos()));
             }
             case Ast.IntLit ignored -> e;
             case Ast.DecimalLit ignored -> e;
@@ -302,10 +313,16 @@ public final class HelperInliner {
         };
     }
 
-    private static List<Ast.Expr> renameList(List<Ast.Expr> es, Map<String, String> subst, Set<String> fnParams) {
+    /** The position to stamp on a rebuilt node: the override {@code at} for a prelude helper, or the
+     * node's own position when {@code at} is null (a module-own helper keeps its positions). */
+    private static SourcePos at(SourcePos at, SourcePos own) {
+        return at != null ? at : own;
+    }
+
+    private static List<Ast.Expr> renameList(List<Ast.Expr> es, Map<String, String> subst, Set<String> fnParams, SourcePos at) {
         List<Ast.Expr> out = new ArrayList<>();
         for (Ast.Expr e : es) {
-            out.add(rename(e, subst, fnParams));
+            out.add(rename(e, subst, fnParams, at));
         }
         return out;
     }

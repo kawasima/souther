@@ -125,7 +125,8 @@ class CompileBlockTest {
 
     // filter's predicate must return Bool. Since filter is now a prelude helper derived from fold
     // (ADR-0028), a non-Bool predicate is caught inside the derivation — the `if keep(x)` it expands
-    // to — rather than by a hard-coded combinator check, so the message speaks of the condition.
+    // to — rather than by a hard-coded combinator check, so the message speaks of the condition. The
+    // error must still point at the user's `filter` call (line 3), not at a line of souther.list.
     @Test
     void theBlockMustReturnBoolForFilter() {
         String src = """
@@ -135,6 +136,7 @@ class CompileBlockTest {
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertTrue(e.getMessage().contains("BOOL"), e.getMessage());
+        assertTrue(e.getMessage().startsWith("3:"), "points at the user's call, not the prelude: " + e.getMessage());
     }
 
     // Passing a non-function where a combinator wants one is still rejected: `map` is a helper whose
