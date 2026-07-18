@@ -27,10 +27,11 @@ public sealed interface Core {
     SourcePos pos();
 
     /**
-     * Rebuilds the equivalent surface expression. The bridge that lets an emitter consume Core one
-     * node type at a time: a node whose native Core emission is not written yet is turned back into
-     * AST and handed to the existing emitter, so the migration stays green. {@code of} and
-     * {@code toAst} round-trip (a fold call becomes {@link Fold} and back).
+     * Rebuilds the equivalent surface expression. Two callers need AST rather than Core: the codec
+     * emitter, which is AST-level, reaches the shared value emitter through {@code Core.of} then here;
+     * and the backend's closure path, which asks the type checker (AST-based) about a runtime-selected
+     * function, since Core is untyped. {@code of} and {@code toAst} round-trip (a fold call becomes
+     * {@link Fold} and back).
      */
     default Ast.Expr toAst() {
         return switch (this) {

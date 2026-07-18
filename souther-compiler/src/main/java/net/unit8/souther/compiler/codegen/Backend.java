@@ -924,7 +924,9 @@ public final class Backend {
                     unbox(code, letType, vSlot);
                     gen.bind(li.name(), vSlot, letType);
                 } else if (TypeChecker.isFunctionSelection(li.value().toAst())) {
-                    // a lambda chosen at runtime (e.g. by an `if`) — a first-class Fn (spec §blocks)
+                    // a lambda chosen at runtime (e.g. by an `if`) — a first-class Fn (spec §blocks).
+                    // Its type inference lives in the checker (AST); Core is untyped, so the backend
+                    // reaches it through toAst rather than re-deriving types.
                     List<Type> paramTypes = TypeChecker.inferFnParamTypes(
                             li.name(), li.body().toAst(), gen.typesEnv(), gen.data, symbols);
                     Type ft = gen.emitFunctionValue(li.value().toAst(), paramTypes);
@@ -2207,10 +2209,11 @@ public final class Backend {
         }
 
         /**
-         * Emits a Core expression. The strangler entry point for migrating the emitter off the AST:
-         * a node whose native Core emission is written goes through here; the rest fall back to the
-         * AST emitter via {@link Core#toAst()}. Sub-expressions of a migrated node route back here, so
-         * a nested {@code fold} still emits natively even inside an un-migrated parent.
+         * Emits a Core expression — the single expression emitter (ADR-0021); every node kind is
+         * handled here. A {@code let} whose value is a runtime-selected function still asks the
+         * type checker (which works on the AST) whether the value is such a function and for its
+         * parameter types, so those calls go through {@link Core#toAst()}: Core is untyped and type
+         * inference lives in the checker, so the backend reuses it rather than re-deriving types.
          */
         Type genExpr(Core e) {
             return switch (e) {
@@ -2288,7 +2291,8 @@ public final class Backend {
                     Type vt;
                     if (TypeChecker.isFunctionSelection(li.value().toAst())) {
                         // a lambda chosen at runtime (e.g. by an `if`): a first-class Fn (spec §blocks).
-                        // Closure conversion is still AST-based, so it goes through toAst for now.
+                        // Type inference for the closure lives in the checker (AST); Core is untyped,
+                        // so we reach it through toAst rather than re-deriving types in the backend.
                         List<Type> paramTypes = TypeChecker.inferFnParamTypes(
                                 li.name(), li.body().toAst(), typesEnv(), data, symbols);
                         vt = emitFunctionValue(li.value().toAst(), paramTypes);

@@ -1,16 +1,27 @@
 # ADR-0021: Compiler layers — a typed Core IR between type-checking and code generation
 
-Status: Accepted; partially implemented (supersedes the MVP "no separate IR" stance recorded under History)
+Status: Accepted; implemented (supersedes the MVP "no separate IR" stance recorded under History)
 
-Implemented so far: the **Lower** stage exists (`check/Lower.java`) and inlines each
-behavior body once, which both the type checker's body check and the backend consume —
-the backend no longer inlines. Pending: a distinct typed **Core IR** (Lower currently
-produces an inlined AST, not a separate IR type), moving `fold`/`match`/closure/intrinsic
-lowering out of the backend into Lower, the Optimize pass, and monomorphization.
+Implemented: the **Lower** stage (`check/Lower.java`) inlines each behavior body once —
+both the type checker's body check and the backend consume it, so the backend no longer
+inlines — and desugars list comprehensions. A structural **Core IR** (`core/Core.java`)
+carries the lowered behavior-body language, with `fold` made an explicit node; the backend
+emits every expression from Core (`genExpr`), and the AST `expr` is a thin `Core.of`
+adapter kept for the codec paths, which are still AST-level.
 
-The normative specification (`<<compiler-pipeline>>`, `<<ast-tracking>>`) still holds:
-Lower is an AST-to-AST inlining pass, so there is still no separate IR type, and the
-pipeline description is revised only when the typed Core IR actually lands, not ahead of it.
+Core is **structural, not typed**: the backend infers types as it emits. One consequence
+is that the closure path (a runtime-selected function) asks the type checker — which works
+on the AST — whether a `let` value is such a function and for its parameter types, reaching
+it through `Core.toAst()`. This is a genuine dependency of the untyped design, not an
+unfinished migration: current generics are monomorphized by inline expansion (no typed IR
+needed), and the JVM erases generics and boxes collection elements regardless, so a typed
+Core buys little for them. A typed Core IR is deferred until a real need appears — recursive
+generics lowered to shared methods, or an optimization that needs types on nodes.
+
+The normative specification (`<<compiler-pipeline>>`, `<<ast-tracking>>`) still holds: Core
+is a structural lowering of behavior bodies with no type reification, so "no separate IR" in
+the sense of a typed/reified representation remains accurate; the pipeline text is revised
+when a typed Core lands, not ahead of it.
 
 ## Context
 
