@@ -852,6 +852,7 @@ public final class TypeChecker {
                 f.accept(li.value());
                 f.accept(li.body());
             }
+            case Ast.Block b -> f.accept(b.body());   // a lambda / block body
             default -> { }
         }
     }
@@ -875,7 +876,7 @@ public final class TypeChecker {
     private static void collectConstChecks(Ast.Expr e, Map<String, Ast.Def> symbols, List<ConstCheck> out) {
         if (e instanceof Ast.Call call && symbols.get(call.fn()) instanceof Ast.Data nt && nt.newtype()
                 && isInvariantBearing(call.fn(), symbols) && call.args().size() == 1) {
-            ConstEval.eval(call.args().get(0), Map.of())
+            ConstEval.eval(call.args().get(0))
                     .ifPresent(v -> out.add(new ConstCheck(call.fn(), v, call.pos())));
         }
         forEachChild(e, c -> collectConstChecks(c, symbols, out));
@@ -920,6 +921,7 @@ public final class TypeChecker {
                 forbidInvariantConstruct(comp.element(), symbols);
                 comp.guards().forEach(g -> forbidInvariantConstruct(g, symbols));
             }
+            case Ast.Block b -> forbidInvariantConstruct(b.body(), symbols);   // a lambda / block body
             default -> { }
         }
     }
@@ -1799,7 +1801,7 @@ public final class TypeChecker {
      */
     private static boolean isConstantNewtypeConstruct(Ast.Call call, Map<String, Ast.Def> symbols) {
         return symbols.get(call.fn()) instanceof Ast.Data nt && nt.newtype() && call.args().size() == 1
-                && ConstEval.eval(call.args().get(0), Map.of()).isPresent();
+                && ConstEval.eval(call.args().get(0)).isPresent();
     }
 
     private static Type typeOfBinary(Ast.Binary bin, Map<String, Type> env, Ast.Data data,

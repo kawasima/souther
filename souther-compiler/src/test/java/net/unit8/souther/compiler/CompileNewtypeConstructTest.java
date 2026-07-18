@@ -154,6 +154,22 @@ class CompileNewtypeConstructTest {
     }
 
     @Test
+    void aConstantConstructionInsideALambdaIsStillCtfeChecked() {
+        // a violating constant newtype construction inside a lambda body must not slip past CTFE —
+        // the collector traverses lambda/block bodies (forEachChild covers Ast.Block)
+        String src = """
+                module demo
+                import List { map }
+                data 金額 = Int
+                    invariant value >= 0
+                data 袋 = { xs: List<金額> }
+                behavior make : (raw: List<Int>) -> 袋 constructs 金額, 袋
+                let make (raw) = 袋 { xs = map(raw, x -> 金額(-5)) }
+                """;
+        assertThrows(CompileException.class, () -> Compiler.compile(src));
+    }
+
+    @Test
     void runtimeInvariantConstructionOutsideTailIsForbidden() {
         // a runtime-argument invariant construction may only be the behavior's result (its abort is
         // the outcome); in a non-tail let binding it is a compile error

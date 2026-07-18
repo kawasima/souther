@@ -4,7 +4,6 @@ import net.unit8.souther.compiler.ast.Ast;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -24,17 +23,16 @@ import java.util.Optional;
 final class ConstEval {
     private ConstEval() {}
 
-    /** Folds {@code e} under {@code env} (e.g. {@code value} bound to a constructor's argument). */
-    static Optional<Object> eval(Ast.Expr e, Map<String, Object> env) {
+    /** Folds {@code e} to its constant value, or empty when it is not a compile-time constant. */
+    static Optional<Object> eval(Ast.Expr e) {
         return switch (e) {
             case Ast.IntLit i -> Optional.of(i.value());
             case Ast.DecimalLit d -> Optional.of(d.value());
             case Ast.StringLit s -> Optional.of(s.value());
             case Ast.BoolLit b -> Optional.of(b.value());
-            case Ast.Var v -> Optional.ofNullable(env.get(v.name()));
-            case Ast.Neg neg -> negate(eval(neg.operand(), env).orElse(null));
-            case Ast.Binary bin -> binary(bin, env);
-            case Ast.Call call -> call(call, env);
+            case Ast.Neg neg -> negate(eval(neg.operand()).orElse(null));
+            case Ast.Binary bin -> binary(bin);
+            case Ast.Call call -> call(call);
             default -> Optional.empty();
         };
     }
@@ -49,9 +47,9 @@ final class ConstEval {
         return Optional.empty();
     }
 
-    private static Optional<Object> binary(Ast.Binary bin, Map<String, Object> env) {
-        Optional<Object> l = eval(bin.left(), env);
-        Optional<Object> r = eval(bin.right(), env);
+    private static Optional<Object> binary(Ast.Binary bin) {
+        Optional<Object> l = eval(bin.left());
+        Optional<Object> r = eval(bin.right());
         if (l.isEmpty() || r.isEmpty()) {
             return Optional.empty();
         }
@@ -118,18 +116,18 @@ final class ConstEval {
         return Optional.empty();
     }
 
-    private static Optional<Object> call(Ast.Call call, Map<String, Object> env) {
+    private static Optional<Object> call(Ast.Call call) {
         List<Ast.Expr> args = call.args();
         switch (call.fn()) {
             case "length", "String.length" -> {
-                if (args.size() == 1 && eval(args.get(0), env).orElse(null) instanceof String s) {
+                if (args.size() == 1 && eval(args.get(0)).orElse(null) instanceof String s) {
                     return Optional.of((long) s.length());
                 }
             }
             case "contains", "String.contains" -> {
                 if (args.size() == 2
-                        && eval(args.get(0), env).orElse(null) instanceof String s
-                        && eval(args.get(1), env).orElse(null) instanceof String sub) {
+                        && eval(args.get(0)).orElse(null) instanceof String s
+                        && eval(args.get(1)).orElse(null) instanceof String sub) {
                     return Optional.of(s.contains(sub));
                 }
             }
