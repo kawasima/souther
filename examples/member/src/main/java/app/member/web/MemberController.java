@@ -4,18 +4,19 @@
 // これがドメインとの境界になる（spec 8.5, 2.1）。
 package app.member.web;
 
-import example.member.DB不通;
 import example.member.会員ID;
 import example.member.会員なし;
 import example.member.会員を照会し整形する;
+import example.member.会員を照会し整形する結果;
 import example.member.会員表示;
 import example.member.保存データ不正;
 
-import net.unit8.raoh.Err;
 import net.unit8.raoh.Ok;
 import net.unit8.raoh.Path;
 
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,9 +30,9 @@ import java.util.Map;
  * decode / encode は behavior ではなく境界の縁で、{@code >->} には乗らない（spec 14.1）。
  *
  * <p>{@code 照会} は findMember を jOOQ 実装で束縛したパイプライン（{@link SoutherBeans} で
- * Bean 化）。その出力 {@code 会員表示 | 会員なし | 保存データ不正 | DB不通} を switch で
- * 畳んで HTTP ステータスへ写す。decode 失敗は Raoh の {@code Result} が運び、behavior 出力は
- * 素の直和のアーム。前者は {@code Ok/Err} を見分け、後者はアームを見分ける。
+ * Bean 化）。その出力はドメインの帰結の直和 {@code 会員表示 | 会員なし | 保存データ不正} で、switch で
+ * HTTP ステータスへ畳む（200 / 404 / 500）。DB ダウンのようなプラットフォーム障害はアームでなく
+ * 例外として素通りしてくるので、{@link #onPlatformFailure} が 503 に写す（spec 13.4 / ADR-0029）。
  */
 @RestController
 @RequestMapping("/members")
@@ -46,30 +47,39 @@ public final class MemberController {
     @GetMapping("/{id}")
     public ResponseEntity<Object> get(@PathVariable String id) {
         // 1. 入力を境界で decode する。会員ID は newtype なので裸の String から読む。
-        //    decoder() は Decoder<Object, 会員ID> なので decode は Result<会員ID> を返す。
-        //    その Ok / Err をパターンマッチで見分ける（生成物の外では data を作れない。spec 8.5）。
-        会員ID memberId;
-        switch (会員ID.decoder().decode(id, Path.ROOT)) {
-            case Ok<会員ID> ok -> memberId = ok.value();
-            case Err<会員ID> ignored -> {
-                return ResponseEntity.badRequest().body(Map.of("error", "invalid_member_id"));
-            }
+        //    decoder() は Decoder<Object, 会員ID> なので decode は Result<会員ID>。Ok を record パターンで
+        //    分解し、Err なら 400 で早期に返す（生成物の外では data を作れない。spec 8.5）。
+        if (!(会員ID.decoder().decode(id, Path.ROOT) instanceof Ok<会員ID>(var memberId))) {
+            return ResponseEntity.badRequest().body(Map.of("error", "invalid_member_id"));
         }
 
-        // 2. パイプラインを走らせ、出力アームを畳んで HTTP へ。
-        //    会員なし/保存データ不正/DB不通 は findMember から整形段を素通りしてここへ届く。
-        return switch (照会.apply(memberId)) {
+        // 2. パイプラインを走らせ、ドメインの出力アームを畳んで HTTP へ。
+        //    会員なし/保存データ不正 は findMember から整形段を素通りしてここへ届く（sealed で網羅的）。
+        //    DB ダウン等のプラットフォーム障害はここに来ず、例外として抜ける（onPlatformFailure が受ける）。
+        //    束縛済みパイプラインは型消去のため apply(Object):Object。出力は 会員を照会し整形する結果。
+        return switch ((会員を照会し整形する結果) 照会.apply(memberId)) {
             case 会員表示 v ->
                     // encode は素の Map（外部表現。spec 6）を返す。Spring/Jackson がそのまま JSON 化する。
                     ResponseEntity.ok(会員表示.encoder().encode(v));
-            case 会員なし ignored ->
+            case 会員なし _ ->
                     ResponseEntity.notFound().build();
-            case 保存データ不正 ignored ->
+            case 保存データ不正 _ ->
                     ResponseEntity.status(500).body(Map.of("error", "corrupt_stored_data"));
-            case DB不通 ignored ->
-                    ResponseEntity.status(503).body(Map.of("error", "database_unavailable"));
-            default ->
-                    ResponseEntity.status(500).build();
         };
+    }
+
+    /**
+     * プラットフォーム障害（DB ダウン等）。Java Binding が投げ Souther が素通しした例外を 503 に写す
+     * （spec 13.4 / ADR-0029）。ドメインの帰結でないものはアームでなく例外で扱う。
+     *
+     * <p>捕まえるのは Spring の {@link DataAccessException}。jOOQ 自身の
+     * {@code org.jooq.exception.DataAccessException} はこの型のサブクラスではないので、注入する
+     * {@code DSLContext} は Spring の例外変換を効かせておく必要がある（Spring Boot の jOOQ
+     * auto-config が既定で入れる）。素の {@code DSLContext} だと jOOQ の型で投げられ、ここを
+     * 素通りして 500 になる。
+     */
+    @ExceptionHandler(DataAccessException.class)
+    public ResponseEntity<Object> onPlatformFailure(DataAccessException e) {
+        return ResponseEntity.status(503).body(Map.of("error", "database_unavailable"));
     }
 }

@@ -43,3 +43,4 @@ specification is in Japanese.
 | [0026](0026-signatures-colon-definitions-equals.md) | Signatures use `:`, definitions use `=`; a function is defined with `let` | `[#delimiters]`, `[#behavior]`, `[#fn]` |
 | [0027](0027-match-with-pipe-arms.md) | match reads `match e with \| arm -> ...` (F# form) | `[#match]` |
 | [0028](0028-stdlib-privileged-core-over-intrinsic-kernel.md) | The stdlib is a privileged core written in Souther over an intrinsic kernel | `[#stdlib]`, `[#primitives]` |
+| [0029](0029-platform-failures-are-exceptions-not-arms.md) | Platform failures propagate as exceptions; only domain outcomes are arms | `[#java-impl-rules]`, `[#mvp-scope]` |

@@ -1,6 +1,6 @@
 # ADR-0007: Business results are an unmarked sum; the off-ramp is decided by composition
 
-Status: Accepted
+Status: Accepted. Refined by ADR-0029 (the sum carries domain outcomes only; platform failures are exceptions).
 
 ## Context
 

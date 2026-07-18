@@ -1,0 +1,57 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>example.souther</groupId>
+        <artifactId>souther-examples</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>ordering</artifactId>
+
+    <description>
+        注文＋在庫引当の例。ordering.sou から生成した型を Spring Boot + jOOQ の境界コードから使い、
+        実際に Boot を起動し H2 に接続してトランザクション制御を見せる。パイプライン
+        注文を記録する >-> 在庫を引き当てる の後段が 在庫不足 アームを返したら、前段で INSERT 済みの
+        注文行をトランザクションで巻き戻す（プログラマティックに setRollbackOnly）。失敗はアーム、
+        巻き戻しは境界の判断であって例外ではない。他の example と違い provided ではなく実行する。
+    </description>
+
+    <!-- この例は「実行する」ので、Spring Boot 4 系（Spring 7）を実バージョンで解決する。
+         初回ビルドは Boot のスターターを取りに行くため、他の例と違いネットワークが要る
+         （2 回目以降は ~/.m2 に載るので -o でも回る）。親が spring-web/webmvc/context/tx を
+         5.3.15 に固定しているので、重なる座標だけ子で Boot 版に明示上書きする（子の明示 > 親の明示）。 -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>4.0.7</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency><groupId>org.springframework</groupId><artifactId>spring-context</artifactId><version>7.0.8</version></dependency>
+            <dependency><groupId>org.springframework</groupId><artifactId>spring-tx</artifactId><version>7.0.8</version></dependency>
+            <dependency><groupId>org.springframework</groupId><artifactId>spring-web</artifactId><version>7.0.8</version></dependency>
+            <dependency><groupId>org.springframework</groupId><artifactId>spring-webmvc</artifactId><version>7.0.8</version></dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- Souther 生成物のランタイム（decoder/encoder。jOOQ Record 源は raoh-jooq） -->
+        <dependency><groupId>net.unit8.souther</groupId><artifactId>souther-runtime</artifactId></dependency>
+        <dependency><groupId>net.unit8.raoh</groupId><artifactId>raoh</artifactId></dependency>
+        <dependency><groupId>net.unit8.raoh</groupId><artifactId>raoh-jooq</artifactId></dependency>
+
+        <!-- 実行する境界：Spring Boot の標準スターター。DataSource / DSLContext / TransactionManager /
+             schema.sql 実行はすべて autoconfig に任せる（member と違い実際に起動・接続するため）。 -->
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-jooq</artifactId></dependency>
+        <dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId><scope>runtime</scope></dependency>
+
+        <!-- テスト：@SpringBootTest で実際に Boot を起動し、MockMvc で本物の HTTP を通す -->
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
+    </dependencies>
+</project>

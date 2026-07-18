@@ -22,6 +22,7 @@
         <module>cart</module>
         <module>businesstrip</module>
         <module>member</module>
+        <module>ordering</module>
     </modules>
 
     <properties>
