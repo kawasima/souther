@@ -23,15 +23,15 @@ class CompileOptionMatchTest {
             module demo
 
             data Id = String
-            data Trip = { id: Id  approver: Id? }
+            data Trip = { id: Id, approver: Id? }
             data Label = String
 
             behavior approverLabel : (t: Trip) -> Label constructs Label
 
             let approverLabel (t) =
                 match t.approver with
-                    | Some as a -> Label { value: a.value }
-                    | None -> Label { value: "none" }
+                    | Some as a -> Label { value = a.value }
+                    | None -> Label { value = "none" }
             """;
 
     private String run(Map<String, Object> tripObject) throws Exception {

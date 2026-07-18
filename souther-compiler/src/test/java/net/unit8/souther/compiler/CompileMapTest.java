@@ -46,14 +46,14 @@ class CompileMapTest {
                 import Map { get, containsKey }
 
                 data Scores = { byName: Map<String, Int> }
-                data Answer = { found: Bool  value: Int }
+                data Answer = { found: Bool, value: Int }
 
                 behavior lookupA : (s: Scores) -> Answer constructs Answer
 
                 let lookupA (s) =
                     match get(s.byName, "a") with
-                        | Some as v -> Answer { found: containsKey(s.byName, "a"), value: v }
-                        | None -> Answer { found: false, value: 0 }
+                        | Some as v -> Answer { found = containsKey(s.byName, "a"), value = v }
+                        | None -> Answer { found = false, value = 0 }
                 """), getClass().getClassLoader());
 
         Decoder d = (Decoder) loader.loadClass("demo.Scores").getMethod("decoder").invoke(null);

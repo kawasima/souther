@@ -45,7 +45,7 @@ class CompileDidYouMeanTest {
                 import Int { add }
                 data N = Int
                 behavior twice : (num: N) -> N constructs N
-                let twice (num) = N { value: add(nums.value, num.value) }
+                let twice (num) = N { value = add(nums.value, num.value) }
                 """);
         assertTrue(e.getMessage().contains("did you mean `num`?"), e.getMessage());
     }

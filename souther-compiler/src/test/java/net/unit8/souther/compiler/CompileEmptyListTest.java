@@ -50,7 +50,7 @@ class CompileEmptyListTest {
 
                 behavior work : (i: In) -> Out constructs Out
 
-                let work (i) = Out { ys: copy(i.xs) }
+                let work (i) = Out { ys = copy(i.xs) }
                 let copy (xs: List<Int>) = fold(xs, [], (acc, x) -> acc ++ [x])
                 """;
         BytesClassLoader loader = loader(module);
@@ -64,12 +64,12 @@ class CompileEmptyListTest {
         String module = """
                 module demo
 
-                data In = { keep: Bool  x: Int }
+                data In = { keep: Bool, x: Int }
                 data Out = { ys: List<Int> }
 
                 behavior work : (i: In) -> Out constructs Out
 
-                let work (i) = Out { ys: if i.keep then [i.x] else [] }
+                let work (i) = Out { ys = if i.keep then [i.x] else [] }
                 """;
         BytesClassLoader loader = loader(module);
         assertEquals(List.of(9L), run(loader, decode(loader, "In", Map.of("keep", true, "x", 9L))).get("ys"));
@@ -94,7 +94,7 @@ class CompileEmptyListTest {
 
                 behavior work : (i: In) -> Out constructs Out
 
-                let work (i) = Out { total: fold(map(i.xs, dbl), 0, (acc, x) -> acc + x) }
+                let work (i) = Out { total = fold(map(i.xs, dbl), 0, (acc, x) -> acc + x) }
                 let dbl (n: Int) = n * 2
                 """;
         BytesClassLoader loader = loader(module);
@@ -113,7 +113,7 @@ class CompileEmptyListTest {
 
                 behavior work : (i: In) -> Out constructs Out
 
-                let work (i) = Out { ys: [] }
+                let work (i) = Out { ys = [] }
                 """;
         BytesClassLoader loader = loader(module);
         assertEquals(List.of(), run(loader, decode(loader, "In", Map.of("x", 1L))).get("ys"));

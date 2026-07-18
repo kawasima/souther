@@ -35,7 +35,7 @@ class CompileFieldAccessorTest {
                 exposing { Member }
 
                 data Id = String
-                data Member = { id: Id  age: Int }
+                data Member = { id: Id, age: Int }
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
         Class<?> member = loader.loadClass("demo.Member");

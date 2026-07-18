@@ -33,7 +33,7 @@ class CompileFunctionParamTest {
             behavior check : (o: Order) -> Result
                 constructs Result
 
-            let check (o) = Result { ok: applyAll(o.qtys, positive) }
+            let check (o) = Result { ok = applyAll(o.qtys, positive) }
 
             let applyAll (xs: List<Int>, p: (Int) -> Bool) = all(xs, p)
             let positive (x: Int) = x > 0

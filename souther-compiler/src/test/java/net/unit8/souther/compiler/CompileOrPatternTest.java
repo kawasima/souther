@@ -36,8 +36,8 @@ class CompileOrPatternTest {
             behavior classify : (x: Three) -> Lo | Hi constructs Lo, Hi
             let classify (x) =
                 match x with
-                    | A | B -> Lo { value: 1 }
-                    | C -> Hi { value: 2 }
+                    | A | B -> Lo { value = 1 }
+                    | C -> Hi { value = 2 }
             """;
 
     @Test
@@ -76,7 +76,7 @@ class CompileOrPatternTest {
                 data Three = A | B | C
                 data Out = Int
                 behavior f : (x: Three) -> Out constructs Out
-                let f (x) = match x with | A | B -> Out { value: 1 }
+                let f (x) = match x with | A | B -> Out { value = 1 }
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(module));
         assertEquals("E1201", e.code());
@@ -91,7 +91,7 @@ class CompileOrPatternTest {
                 data Two = A | B
                 data Out = Int
                 behavior f : (x: Two) -> Out constructs Out
-                let f (x) = match x with | A | B -> Out { value: 1 } | A -> Out { value: 2 }
+                let f (x) = match x with | A | B -> Out { value = 1 } | A -> Out { value = 2 }
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(module));
         assertTrue(e.getMessage().contains("more than one"), e.getMessage());
@@ -114,8 +114,8 @@ class CompileOrPatternTest {
                 behavior tag : (x: Three) -> Out constructs Out
                 let tag (x) =
                     match x with
-                        | A | B as ab -> Out { value: describe(ab) }
-                        | C -> Out { value: 9 }
+                        | A | B as ab -> Out { value = describe(ab) }
+                        | C -> Out { value = 9 }
                 """;
         assertDoesNotThrow(() -> Compiler.compile(module));
     }

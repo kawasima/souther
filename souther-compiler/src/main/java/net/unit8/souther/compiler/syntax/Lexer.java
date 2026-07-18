@@ -35,8 +35,7 @@ public final class Lexer {
             Map.entry("requires", TokenType.REQUIRES),
             Map.entry("constructs", TokenType.CONSTRUCTS),
             Map.entry("match", TokenType.MATCH),
-            Map.entry("with", TokenType.WITH),
-            Map.entry("include", TokenType.INCLUDE));
+            Map.entry("with", TokenType.WITH));
 
     private final String src;
     private int pos = 0;
@@ -160,7 +159,10 @@ public final class Lexer {
             case ':': return new Token(TokenType.COLON, ":", start);
             case ',': return new Token(TokenType.COMMA, ",", start);
             case '.':
-                if (match('.')) return new Token(TokenType.DOTDOT, "..", start);
+                if (match('.')) {
+                    if (match('.')) return new Token(TokenType.SPREAD, "...", start);
+                    throw new CompileException(start, "spread is written `...` (three dots)");
+                }
                 return new Token(TokenType.DOT, ".", start);
             case '=':
                 if (match('=')) return new Token(TokenType.EQ, "==", start);

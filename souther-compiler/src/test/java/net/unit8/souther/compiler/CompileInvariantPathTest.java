@@ -33,7 +33,7 @@ class CompileInvariantPathTest {
 
             data Order = {
                 first: Amount
-                second: Amount
+                , second: Amount
             }
             """;
 

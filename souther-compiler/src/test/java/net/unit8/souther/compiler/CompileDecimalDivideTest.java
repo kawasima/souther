@@ -30,14 +30,14 @@ class CompileDecimalDivideTest {
 
             import Decimal { divide }
 
-            data Pair = { a: Decimal  b: Decimal }
-            data Out = { value: Decimal  ok: Bool }
+            data Pair = { a: Decimal, b: Decimal }
+            data Out = { value: Decimal, ok: Bool }
 
             behavior divv : (p: Pair) -> Out constructs Out
             let divv (p) =
                 match divide(p.a, p.b, 2, HALF_UP) with
-                    | Decimal as q -> Out { value: q, ok: true }
-                    | DivisionByZero -> Out { value: p.a, ok: false }
+                    | Decimal as q -> Out { value = q, ok = true }
+                    | DivisionByZero -> Out { value = p.a, ok = false }
             """;
 
     @SuppressWarnings("unchecked")
@@ -75,10 +75,10 @@ class CompileDecimalDivideTest {
         String src = """
                 module demo
                 import Int { divide }
-                data Pair = { a: Decimal  b: Decimal }
+                data Pair = { a: Decimal, b: Decimal }
                 data Out = Decimal
                 behavior divv : (p: Pair) -> Out constructs Out
-                let divv (p) = Out { value: divide(p.a, p.b) }
+                let divv (p) = Out { value = divide(p.a, p.b) }
                 """;
         assertThrows(CompileException.class, () -> Compiler.compile(src));
     }

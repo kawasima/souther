@@ -23,7 +23,7 @@ class CompileArithmeticTest {
             // * binds tighter than +, so this is (value * 2) + 10
             behavior compute : (x: In) -> Out constructs Out
 
-            let compute (x) = Out { value: x.value * 2 + 10 }
+            let compute (x) = Out { value = x.value * 2 + 10 }
             """;
 
     @Test

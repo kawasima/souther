@@ -24,7 +24,7 @@ class CompileMultiSuccessTest {
             behavior classify : (d: Draft) -> Cheap | Pricey constructs Cheap, Pricey
 
             let classify (d) =
-                if d.value <= 100 then Cheap { cost: d.value } else Pricey { cost: d.value }
+                if d.value <= 100 then Cheap { cost = d.value } else Pricey { cost = d.value }
             """;
 
     @SuppressWarnings("unchecked")
@@ -53,7 +53,7 @@ class CompileMultiSuccessTest {
                 data Other = { cost: Int }
                 behavior bad : (d: Draft) -> Cheap | Pricey constructs Other
 
-                let bad (d) = Other { cost: d.cost }
+                let bad (d) = Other { cost = d.cost }
                 """;
         assertThrows(CompileException.class, () -> Compiler.compile(src));
     }

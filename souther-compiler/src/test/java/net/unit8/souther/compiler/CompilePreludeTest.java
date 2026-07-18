@@ -30,7 +30,7 @@ class CompilePreludeTest {
 
             behavior flip : (i: In) -> Out constructs Out
 
-            let flip (i) = Out { flag: not(i.flag) }
+            let flip (i) = Out { flag = not(i.flag) }
             """;
 
     @SuppressWarnings("unchecked")

@@ -27,10 +27,10 @@ class CompileNamedSumStageTest {
             data OutA = { a: Int }
 
             behavior classify : (a: A) -> AB constructs B
-            let classify (a) = if a.v > 0 then a else B { v: 0 }
+            let classify (a) = if a.v > 0 then a else B { v = 0 }
 
             behavior handleA : (a: A) -> OutA constructs OutA
-            let handleA (a) = OutA { a: a.v }
+            let handleA (a) = OutA { a = a.v }
 
             // classify outputs AB (= A | B); handleA accepts A, so A routes in and B retires.
             behavior pipe = classify >-> handleA

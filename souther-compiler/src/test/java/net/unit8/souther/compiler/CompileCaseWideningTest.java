@@ -23,14 +23,14 @@ class CompileCaseWideningTest {
     private static final String MODULE = """
             module demo
 
-            data A = { x: Int  tag: Int }
+            data A = { x: Int, tag: Int }
             data B = { y: Int }
             data AB = A | B
             data Wrap = { it: AB }
 
             behavior makeWrap : (a: A) -> Wrap constructs Wrap
 
-            let makeWrap (a) = Wrap { it: a }
+            let makeWrap (a) = Wrap { it = a }
             """;
 
     @Test

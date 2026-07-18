@@ -28,7 +28,7 @@ class CompileConstructsOptionalTest {
         // no `constructs` clause, yet the body builds Member — inferred, so it compiles
         assertDoesNotThrow(() -> Compiler.compile(BASE + """
                 behavior make : (e: Email) -> Member
-                let make (e) = Member { email: e }
+                let make (e) = Member { email = e }
                 """));
     }
 
@@ -37,7 +37,7 @@ class CompileConstructsOptionalTest {
         // builds Member and Audit but declares only Member — the missing Audit is E1002
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(BASE + """
                 behavior make : (e: Email) -> Member | Audit constructs Member
-                let make (e) = if contains(e.value, "x") then Audit { at: "now" } else Member { email: e }
+                let make (e) = if contains(e.value, "x") then Audit { at = "now" } else Member { email = e }
                 """));
         assertEquals("E1002", e.code());
     }
@@ -56,7 +56,7 @@ class CompileConstructsOptionalTest {
     void anExactDeclarationCompiles() {
         assertDoesNotThrow(() -> Compiler.compile(BASE + """
                 behavior make : (e: Email) -> Member constructs Member
-                let make (e) = Member { email: e }
+                let make (e) = Member { email = e }
                 """));
     }
 }

@@ -40,10 +40,11 @@ data 従業員ID = String
 data 金額 = Int
     invariant value >= 0
 
-// A state machine as a sum of named states; the common fields are flattened with `include`.
+// A state machine as a sum of named states; the common fields are flattened with a `...` spread.
 data 出張申請 = 申請準備中 | 提出済み | 事前承認待ち | 事前承認済み
-data 申請準備中 = { include 出張申請共通項目 }
-data 提出済み = { include 出張申請共通項目  提出日時: DateTime }
+data 申請準備中 = { ...出張申請共通項目 }
+data 提出済み = { ...出張申請共通項目, 提出日時: DateTime }
+
 
 // "承認権限なし" is just a data — not an error type, not a Result.
 data 承認権限なし
@@ -65,7 +66,7 @@ let 事前承認する (申請, 承認者ID, 現在時刻) = {
     require 承認者ID == 申請.申請者.上長ID
         else 承認権限なし
 
-    事前承認済み { ..申請, 事前承認日時: 現在時刻(), 事前承認者: 承認者ID }
+    事前承認済み { ...申請, 事前承認日時 = 現在時刻(), 事前承認者 = 承認者ID }
 }
 ```
 
@@ -92,7 +93,7 @@ implementation. Constructors are non-public, so the rule holds even across the J
 ### Invariants checked at every construction path
 
 An `invariant` on a `data` runs wherever that data is built — decoders and behaviors alike,
-including invariants inherited through `include`. A behavior that constructs an invariant-bearing
+including invariants inherited through a `...` spread. A behavior that constructs an invariant-bearing
 data must have a case for the violation to go to, or it is a compile error.
 
 ### Business results are unmarked sums
@@ -157,7 +158,7 @@ undercut one of the ideas above.
 - **No structural intersection types (`A & B`).** Souther is nominal so that construction paths
   stay closed: an intersection value has no clear constructor and no clear invariant to check.
   The spec DSL's `AND` means "has all of A's fields, plus more", which is nominal field
-  composition — `include` — not "is both A and B".
+  composition — the `...` spread — not "is both A and B".
 - **No `Result` / `Either`, no dedicated success/failure slot.** Outputs are unmarked domain
   sums; the happy-path/off-path split is a property of a *composition*, not of a value.
 - **No type classes / traits, higher-kinded types, dependent types, SMT or termination proofs.**
@@ -219,7 +220,7 @@ Implemented and covered by tests:
 
 - Types: all primitives (`Bool` / `Int` / `Decimal` / `String` / `Date` / `DateTime`), `List<T>`,
   `Map<String, T>`, optional fields (`?` → `Option`) with `Some`/`None` matching, and product /
-  sum / unit data with `include` and `invariant`.
+  sum / unit data with `...` spread and `invariant`.
 - Behaviors: `behavior` and its separate `let`, behaviors with no `let` injected from Java,
   `requires` sets (declared on simple behaviors, inferred over a `>->` pipeline), inline
   injected-behavior calls, `constructs`, unmarked sum outputs, and type-routed `>->`.

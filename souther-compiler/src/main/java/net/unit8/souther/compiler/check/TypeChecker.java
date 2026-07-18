@@ -1024,12 +1024,12 @@ public final class TypeChecker {
         for (String inc : data.includes()) {
             if (!(symbols.get(inc) instanceof Ast.Data id)) {
                 throw new CompileException(data.pos(),
-                        "cannot `include " + inc + "` (not a product data)");
+                        "cannot spread `..." + inc + "` (not a product data)");
             }
             for (Map.Entry<String, Type> e : fieldTypes(id, symbols).entrySet()) {
                 if (types.put(e.getKey(), e.getValue()) != null) {
                     throw new CompileException(data.pos(), "E1004", "Field `" + e.getKey()
-                            + "` from `include " + inc + "` conflicts with a field of `" + data.name() + "`.");
+                            + "` from `..." + inc + "` conflicts with a field of `" + data.name() + "`.");
                 }
             }
         }

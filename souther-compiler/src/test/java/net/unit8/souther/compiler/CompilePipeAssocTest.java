@@ -29,15 +29,15 @@ class CompilePipeAssocTest {
 
             behavior split : (i: In) -> Mid | Off constructs Mid, Off
             let split (i) = {
-                require i.value <= 100 else Off { value: i.value }
-                Mid { value: i.value }
+                require i.value <= 100 else Off { value = i.value }
+                Mid { value = i.value }
             }
 
             behavior work : (m: Mid) -> Out constructs Out
-            let work (m) = Out { value: m.value }
+            let work (m) = Out { value = m.value }
 
             behavior finish : (x: OffOut) -> Out constructs Out
-            let finish (x) = Out { value: 0 }
+            let finish (x) = Out { value = 0 }
 
             behavior half = split >-> work
             behavior flow = half >-> finish

@@ -34,7 +34,7 @@ class CompileCallTest {
 
             let handle (id, findMember) = {
                 let m = findMember(id)
-                Resp { id: m.id }
+                Resp { id = m.id }
             }
             """;
 

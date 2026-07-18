@@ -26,7 +26,7 @@ class CompileBlockExprTest {
             behavior f : (n: N) -> N constructs N
             let f (n) =
                 if n.value > 0
-                    then { let doubled = n.value + n.value  N { value: doubled } }
+                    then { let doubled = n.value + n.value  N { value = doubled } }
                     else n
             """;
 

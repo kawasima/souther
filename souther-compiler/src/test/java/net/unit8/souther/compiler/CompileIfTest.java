@@ -23,7 +23,7 @@ class CompileIfTest {
 
             behavior classify : (x: In) -> Out constructs Out
 
-            let classify (x) = Out { value: if x.value >= 100 then "high" else "low" }
+            let classify (x) = Out { value = if x.value >= 100 then "high" else "low" }
             """;
 
     @SuppressWarnings("unchecked")
@@ -51,7 +51,7 @@ class CompileIfTest {
                 data Out = Int
                 behavior bad : (x: Int) -> Out constructs Out
 
-                let bad (x) = Out { value: if x >= 0 then 1 else "no" }
+                let bad (x) = Out { value = if x >= 0 then 1 else "no" }
                 """;
         assertThrows(CompileException.class, () -> Compiler.compile(src));
     }

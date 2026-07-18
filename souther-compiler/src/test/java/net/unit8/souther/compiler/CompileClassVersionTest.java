@@ -19,7 +19,7 @@ class CompileClassVersionTest {
             module demo
             import String { length }
 
-            data 会員ID = { value: String  invariant length(value) > 0 }
+            data 会員ID = { value: String } invariant length(value) > 0
             data Contact = EmailContact | PhoneContact
             data EmailContact = { email: String }
             data PhoneContact = { phone: String }
@@ -27,7 +27,7 @@ class CompileClassVersionTest {
 
             behavior 名を取る : (c: EmailContact) -> 会員ID constructs 会員ID
 
-            let 名を取る (c) = 会員ID { value: c.email }
+            let 名を取る (c) = 会員ID { value = c.email }
             """;
 
     /** major 65 is Java 21; the JDK running this test is newer, so a default would not match. */

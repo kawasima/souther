@@ -29,7 +29,7 @@ class CompileFunctionApplyTest {
             behavior check : (o: Order) -> Result
                 constructs Result
 
-            let check (o) = Result { n: applyTo(o.v, inc) }
+            let check (o) = Result { n = applyTo(o.v, inc) }
 
             let applyTo (x: Int, f: (Int) -> Int) = f(x)
             let inc (x: Int) = x + 1

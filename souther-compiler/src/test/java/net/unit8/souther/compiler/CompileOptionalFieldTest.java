@@ -25,7 +25,7 @@ class CompileOptionalFieldTest {
             module demo
 
             data Id = String
-            data Trip = { id: Id  approver: Id? }
+            data Trip = { id: Id, approver: Id? }
             """;
 
     private BytesClassLoader loader() {

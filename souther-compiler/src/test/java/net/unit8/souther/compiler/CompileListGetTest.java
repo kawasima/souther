@@ -30,8 +30,8 @@ class CompileListGetTest {
 
             let firstValue (b) =
                 match get(b.items, 0) with
-                    | Some as x -> Label { value: x.value }
-                    | None -> Label { value: "none" }
+                    | Some as x -> Label { value = x.value }
+                    | None -> Label { value = "none" }
             """;
 
     @SuppressWarnings({"unchecked", "rawtypes"})

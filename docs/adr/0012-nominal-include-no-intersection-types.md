@@ -1,6 +1,8 @@
 # ADR-0012: Field composition is nominal `include`; no structural intersection types
 
-Status: Accepted
+Status: Accepted. Surface syntax superseded by ADR-0030 — the `include X` keyword became a
+`...X` spread. The semantics below (nominal, flattened fields, inherited invariants, no
+intersection types) are unchanged.
 
 ## Context
 

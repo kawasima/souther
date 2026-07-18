@@ -30,7 +30,7 @@ class CompileDeriveTest {
 
             data Member = {
                 cost: 金額
-                name: String
+                , name: String
             }
 
             data EmailC = { email: String }

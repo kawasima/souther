@@ -22,13 +22,13 @@ class CompileHelperFnTest {
     private static final String MODULE = """
             module demo
 
-            data Order = { price: Int  rate: Int }
-            data Receipt = { subtotal: Int  total: Int }
+            data Order = { price: Int, rate: Int }
+            data Receipt = { subtotal: Int, total: Int }
 
             behavior bill : (o: Order) -> Receipt
                 constructs Receipt
 
-            let bill (o) = Receipt { subtotal: o.price, total: discount(o.price, o.rate) }
+            let bill (o) = Receipt { subtotal = o.price, total = discount(o.price, o.rate) }
 
             let discount (price: Int, rate: Int) = price * rate
             """;
@@ -70,14 +70,14 @@ class CompileHelperFnTest {
                 import String { length }
 
                 data Id = String
-                data Tag = { a: String  b: String }
+                data Tag = { a: String, b: String }
                 data Blank
 
                 behavior label : (id: Id) -> Tag | Blank constructs Blank
 
                 let label (id) = if length(id.value) > 0 then makeTag(id) else Blank
 
-                let makeTag (id: Id) = Tag { a: id.value, b: id.value }
+                let makeTag (id: Id) = Tag { a = id.value, b = id.value }
                 """));
         assertEquals("E1002", e.code(), "the caller must declare `constructs Tag` for the helper's build");
     }
@@ -89,14 +89,14 @@ class CompileHelperFnTest {
                 module demo
 
                 data Id = String
-                data Tag = { a: String  b: String }
+                data Tag = { a: String, b: String }
 
                 behavior label : (id: Id) -> Tag
                     constructs Tag
 
                 let label (id) = makeTag(id)
 
-                let makeTag (id: Id) = Tag { a: id.value, b: id.value }
+                let makeTag (id: Id) = Tag { a = id.value, b = id.value }
                 """);
     }
 
@@ -124,13 +124,13 @@ class CompileHelperFnTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                data Order = { price: Int  rate: Int }
-                data Receipt = { subtotal: Int  total: Int }
+                data Order = { price: Int, rate: Int }
+                data Receipt = { subtotal: Int, total: Int }
 
                 behavior bill : (o: Order) -> Receipt
                     constructs Receipt
 
-                let bill (o) = Receipt { subtotal: o.price, total: taxed(o.price, o.rate) }
+                let bill (o) = Receipt { subtotal = o.price, total = taxed(o.price, o.rate) }
 
                 let taxed (price: Int, rate: Int) = price * withRate(rate)
                 let withRate (rate: Int) = rate * rate

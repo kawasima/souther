@@ -30,14 +30,14 @@ class CompileListTest {
 
             data Request = {
                 nums: List<Int>
-                reasons: List<Reason>
+                , reasons: List<Reason>
             }
 
             data Count = Int
 
             behavior countReasons : (r: Request) -> Count constructs Count
 
-            let countReasons (r) = Count { value: length(r.reasons) }
+            let countReasons (r) = Count { value = length(r.reasons) }
             """;
 
     private BytesClassLoader loader() {

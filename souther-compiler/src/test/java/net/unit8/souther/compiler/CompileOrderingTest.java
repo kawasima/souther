@@ -31,26 +31,26 @@ class CompileOrderingTest {
 
                 data In = {
                     a: Decimal
-                    b: Decimal
-                    d1: Date
-                    d2: Date
-                    t1: DateTime
-                    t2: DateTime
+                    , b: Decimal
+                    , d1: Date
+                    , d2: Date
+                    , t1: DateTime
+                    , t2: DateTime
                 }
                 data Out = {
                     decEqByValue: Bool
-                    decLt: Bool
-                    dateBefore: Bool
-                    timeAfter: Bool
+                    , decLt: Bool
+                    , dateBefore: Bool
+                    , timeAfter: Bool
                 }
 
                 behavior run : (i: In) -> Out constructs Out
 
                 let run (i) = Out {
-                    decEqByValue: i.a >= i.b,
-                    decLt: i.a < i.b,
-                    dateBefore: i.d1 < i.d2,
-                    timeAfter: i.t1 > i.t2
+                    decEqByValue = i.a >= i.b,
+                    decLt = i.a < i.b,
+                    dateBefore = i.d1 < i.d2,
+                    timeAfter = i.t1 > i.t2
                 }
                 """), getClass().getClassLoader());
 
@@ -87,7 +87,7 @@ class CompileOrderingTest {
 
                 behavior run : (i: In) -> Out constructs Out
 
-                let run (i) = Out { ys: sort(i.xs) }
+                let run (i) = Out { ys = sort(i.xs) }
                 """));
         assertTrue(e.getMessage().contains("sort needs a list of ordered values"), e.getMessage());
     }

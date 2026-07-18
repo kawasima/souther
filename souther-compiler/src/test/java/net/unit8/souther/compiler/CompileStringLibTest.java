@@ -29,7 +29,7 @@ class CompileStringLibTest {
 
                 behavior greet : (n: Name) -> Greeting constructs Greeting
 
-                let greet (n) = Greeting { value: concat(concat("hi ", uppercase(substring(n.value, 0, 3))), "!") }
+                let greet (n) = Greeting { value = concat(concat("hi ", uppercase(substring(n.value, 0, 3))), "!") }
                 """), getClass().getClassLoader());
 
         Decoder nameDec = (Decoder) loader.loadClass("demo.Name").getMethod("decoder").invoke(null);
@@ -53,16 +53,16 @@ class CompileStringLibTest {
                 data Raw = String
                 data Out = {
                     parts: List<String>
-                    joined: String
-                    swapped: String
+                    , joined: String
+                    , swapped: String
                 }
 
                 behavior run : (r: Raw) -> Out constructs Out
 
                 let run (r) = Out {
-                    parts: split(r.value, ","),
-                    joined: join(split(r.value, ","), "|"),
-                    swapped: replace(r.value, ",", ";")
+                    parts = split(r.value, ","),
+                    joined = join(split(r.value, ","), "|"),
+                    swapped = replace(r.value, ",", ";")
                 }
                 """), getClass().getClassLoader());
 
@@ -88,18 +88,18 @@ class CompileStringLibTest {
 
                 data In = {
                     text: String
-                    n: Int
+                    , n: Int
                 }
                 data Out = {
                     tokens: List<String>
-                    label: String
+                    , label: String
                 }
 
                 behavior run : (i: In) -> Out constructs Out
 
                 let run (i) = Out {
-                    tokens: words(i.text),
-                    label: concat("item-", fromInt(i.n))
+                    tokens = words(i.text),
+                    label = concat("item-", fromInt(i.n))
                 }
                 """), getClass().getClassLoader());
 

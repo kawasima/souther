@@ -54,7 +54,7 @@ class CompilePrimitiveTypesTest {
         BytesClassLoader loader = loader("""
                 module demo
 
-                data Account = { name: String  active: Bool }
+                data Account = { name: String, active: Bool }
                 """);
         Result r = decoder(loader, "demo.Account")
                 .decode(Map.of("name", "a", "active", false), Path.ROOT);

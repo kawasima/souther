@@ -24,13 +24,13 @@ class CompileDecimalMathTest {
                 import Decimal { add, multiply }
 
                 data Price = Decimal
-                data Quote = { subtotal: Decimal  doubled: Decimal }
+                data Quote = { subtotal: Decimal, doubled: Decimal }
 
                 behavior makeQuote : (a: Price, b: Price) -> Quote constructs Quote
 
                 let makeQuote (a, b) = Quote {
-                    subtotal: add(a.value, b.value),
-                    doubled: multiply(add(a.value, b.value), a.value)
+                    subtotal = add(a.value, b.value),
+                    doubled = multiply(add(a.value, b.value), a.value)
                 }
                 """), getClass().getClassLoader());
 
@@ -58,9 +58,8 @@ class CompileDecimalMathTest {
 
                 data Ordered = {
                     lo: Int
-                    hi: Int
-                    invariant compare(lo, hi) <= 0
-                }
+                    , hi: Int
+                } invariant compare(lo, hi) <= 0
                 """), getClass().getClassLoader());
         Decoder d = (Decoder) loader.loadClass("demo.Ordered").getMethod("decoder").invoke(null);
         assertEquals(false, d.decode(java.util.Map.of("lo", 1L, "hi", 2L), Path.ROOT) instanceof Err);

@@ -34,7 +34,7 @@ class CompileLambdaLetTest {
 
             let check (o) = {
                 let inc = (x) -> x + 1
-                Result { n: inc(o.v) }
+                Result { n = inc(o.v) }
             }
             """;
 

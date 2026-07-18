@@ -375,31 +375,43 @@ public final class Parser {
 
         List<String> includes = new ArrayList<>();
         List<Ast.Field> fields = new ArrayList<>();
-        while (check(TokenType.INCLUDE) || check(TokenType.IDENT)) {
-            if (match(TokenType.INCLUDE)) {
-                includes.add(expect(TokenType.IDENT).text());
-            } else {
-                fields.add(parseField());
+        // The brace holds a `,`-separated list of members: a field `name: Type`, or a `...Type`
+        // spread that flattens another data's fields and inherits its invariants (ADR-0012; the
+        // notation follows ReScript's record type spread). A spread is not a field but sits in the
+        // same comma list, conventionally leading. The `invariant` clause is not a member — it
+        // follows the `}` (the type body), like a newtype's invariant follows its `= Y`.
+        if (!check(TokenType.RBRACE)) {
+            parseProductMember(includes, fields);
+            while (match(TokenType.COMMA)) {
+                if (check(TokenType.RBRACE)) {
+                    break; // trailing comma before the close
+                }
+                parseProductMember(includes, fields);
             }
         }
         if (includes.isEmpty() && fields.isEmpty()) {
-            throw error(peek(), "data `" + name + "` must declare at least one field or include");
-        }
-
-        Optional<Ast.Expr> invariant = Optional.empty();
-        while (!check(TokenType.RBRACE)) {
-            if (check(TokenType.INVARIANT)) {
-                advance();
-                // several `invariant` lines all apply: conjoin them so none is silently dropped
-                invariant = Optional.of(conjoin(invariant, parseExpr()));
-            } else {
-                throw error(peek(), "expected invariant or '}'");
-            }
+            throw error(peek(), "data `" + name + "` must declare at least one field or spread");
         }
         expect(TokenType.RBRACE);
+
+        // an `invariant` clause follows the `}` (the type body); several lines all apply,
+        // conjoined so none is silently dropped
+        Optional<Ast.Expr> invariant = Optional.empty();
+        while (match(TokenType.INVARIANT)) {
+            invariant = Optional.of(conjoin(invariant, parseExpr()));
+        }
         // decoders/encoders are derived, not written
         return new Ast.Data(name, false, includes, fields, invariant,
                 Optional.empty(), Optional.empty(), kw.pos());
+    }
+
+    /** A product member: a `...Type` spread (flattened into {@code includes}) or a field. */
+    private void parseProductMember(List<String> includes, List<Ast.Field> fields) {
+        if (match(TokenType.SPREAD)) {
+            includes.add(expect(TokenType.IDENT).text());
+        } else {
+            fields.add(parseField());
+        }
     }
 
     /** Combines an accumulated invariant with the next one under {@code &&}; every line must hold. */
@@ -482,7 +494,7 @@ public final class Parser {
     }
 
     private void parseInitElem(List<Ast.FieldInit> fields, List<String> spreads) {
-        if (match(TokenType.DOTDOT)) {
+        if (match(TokenType.SPREAD)) {
             spreads.add(expect(TokenType.IDENT).text());
         } else {
             fields.add(parseFieldInit());
@@ -491,10 +503,12 @@ public final class Parser {
 
     private Ast.FieldInit parseFieldInit() {
         Token n = expect(TokenType.IDENT);
-        if (match(TokenType.COLON)) {
+        if (match(TokenType.ASSIGN)) {
+            // a literal binds a value to a field, so it is `=` (a definition), not `:` (a type) —
+            // ADR-0026. The field's type lives in the `data` declaration (spec 12.4).
             return new Ast.FieldInit(n.text(), parseExpr(), n.pos());
         }
-        // shorthand: `field` means `field: field`
+        // shorthand: `field` means `field = field`
         return new Ast.FieldInit(n.text(), new Ast.Var(n.text(), n.pos()), n.pos());
     }
 

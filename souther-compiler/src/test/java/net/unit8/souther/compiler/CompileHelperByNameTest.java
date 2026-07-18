@@ -26,12 +26,12 @@ class CompileHelperByNameTest {
             import List { all, length }
 
             data Order = { qtys: List<Int> }
-            data Result = { ok: Bool  n: Int }
+            data Result = { ok: Bool, n: Int }
 
             behavior check : (o: Order) -> Result
                 constructs Result
 
-            let check (o) = Result { ok: all(o.qtys, positive), n: length(o.qtys) }
+            let check (o) = Result { ok = all(o.qtys, positive), n = length(o.qtys) }
 
             let positive (x: Int) = x > 0
             """;

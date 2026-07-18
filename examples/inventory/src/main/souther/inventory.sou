@@ -9,8 +9,8 @@ data 品目コード = String
 
 data 品目 = {
     コード: 品目コード
-    数量: Int
-    単価: Int
+    , 数量: Int
+    , 単価: Int
 }
 
 data 在庫 = { 品目リスト: List<品目> }
@@ -18,8 +18,8 @@ data 在庫 = { 品目リスト: List<品目> }
 // 棚卸の結果: 総額・辞書順のコード一覧・品切れ品目が無いか。
 data 棚卸 = {
     総額: Int
-    コード一覧: List<String>
-    品切れなし: Bool
+    , コード一覧: List<String>
+    , 品切れなし: Bool
 }
 // 品目が1件も無い在庫の失敗ケース。
 data 空在庫
@@ -33,9 +33,9 @@ let 金額 (p: 品目) = p.数量 * p.単価
 let 棚卸する (在) = {
     require length(在.品目リスト) >= 1 else 空在庫
     棚卸 {
-        総額: sum(map(在.品目リスト, 金額)),
-        コード一覧: sort(map(在.品目リスト, p -> p.コード.value)),
-        品切れなし: isEmpty(filter(在.品目リスト, p -> p.数量 == 0))
+        総額 = sum(map(在.品目リスト, 金額)),
+        コード一覧 = sort(map(在.品目リスト, p -> p.コード.value)),
+        品切れなし = isEmpty(filter(在.品目リスト, p -> p.数量 == 0))
     }
 }
 
@@ -45,4 +45,4 @@ data 取扱 = { あり: Bool }
 behavior 取扱う : (在: 在庫, 照会: 品目コード) -> 取扱
     constructs 取扱
 
-let 取扱う (在, 照会) = 取扱 { あり: member(map(在.品目リスト, p -> p.コード.value), 照会.value) }
+let 取扱う (在, 照会) = 取扱 { あり = member(map(在.品目リスト, p -> p.コード.value), 照会.value) }

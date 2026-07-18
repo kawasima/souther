@@ -1,6 +1,22 @@
 # ADR-0026: Signatures use `:`, definitions use `=`; a function is defined with `let`
 
-Status: Accepted (decided 2026-07-18; implemented)
+Status: Accepted (decided 2026-07-18; implemented). Revised 2026-07-18 — see *Revision*.
+
+## Revision (2026-07-18)
+
+The original Decision said `:` applies "on record fields" without splitting the two places
+a field name appears: a `data` **declaration** (`{ id : 会員ID }`), where the field is given
+a *type*, and a record **literal** (`会員 { id : x.id }`), where the field is bound to a
+*value*. It left the literal on `:`, and — separately — left a declaration's fields
+whitespace-separated while a literal's were `,`-separated. Both were too loose: by this
+ADR's own principle a value binding is `=`, not `:`, and the declaration/literal split in
+delimiters had no reason behind it beyond "one `:` looked uniform".
+
+The correction: a record literal's fields use `=` (a value binding), and a `data`
+declaration's fields are `,`-separated like a literal's. Amending an accepted ADR in place
+(rather than superseding it with a new one) is a deliberate exception to ADR immutability,
+made because the prior wording was under-specified rather than a genuine alternative worth
+preserving as history. The Decision text below reflects the corrected rule.
 
 ## Context
 
@@ -35,11 +51,25 @@ let      提出する (申請, 提出日時) = { ... }                     // va
 behavior 会員照会 = findMember >-> 整形する                      // a composition is a definition
 ```
 
-`:` now means "has this type" uniformly — on record fields, on parameters, and on a
-behavior's signature. `=` means "is defined as" uniformly — a data's type definition, a
-`let`'s body, and a behavior defined as a composition. A behavior appears in two forms:
+`:` now means "has this type" uniformly — on a `data` declaration's fields, on parameters,
+and on a behavior's signature, i.e. wherever a name is given a *type*. `=` means "is defined
+as" uniformly — a data's type definition, a record literal's field (which binds a *value*),
+a `let`'s body, and a behavior defined as a composition. A behavior appears in two forms:
 `behavior f : T` states a type whose implementation is a separate `let` or is injected, and
 `behavior g = a >-> b` defines `g` as a composition.
+
+```text
+data 会員 = { id : 会員ID, メール : メールアドレス }   // declaration fields: `:` (a type)
+let f (x) = 会員 { id = x.id, メール = x.メール }       // literal fields: `=` (a value)
+```
+
+A `data` declaration's fields and a record literal's fields are both `,`-separated, so the
+only difference between the two is exactly the `:`/`=` distinction: a declaration ascribes
+a type, a literal binds a value. (`include` is a type-composition clause, not a field — like
+`invariant` it stands alone and takes no comma, ADR-0012; only the fields it leads are
+comma-separated.) Elm draws the same line — `{ x : Int }` is a record type,
+`{ x = 1 }` a record value (and `{ r | x = 2 }` an update, which Souther writes as a
+type-named spread `会員 { ..r, x = 2 }`, ADR-0018).
 
 Parameters stay on the left of `=` (`let f (x) = e`), not bound as a lambda
 (`let f = (x) -> e`). F#, OCaml, and Haskell all write the named form and treat the

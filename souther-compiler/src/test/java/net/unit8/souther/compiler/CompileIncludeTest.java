@@ -14,30 +14,30 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** End-to-end test for {@code include} (flattened fields + inherited invariants) and spread {@code ..src} (spec 8.2, 12.4). */
+/** End-to-end test for the {@code ...} spread (flattened fields + inherited invariants) and value spread {@code ...src} (spec 8.2, 12.4). */
 class CompileIncludeTest {
 
-    // include flattens Common's fields into each state; a behavior transitions Draft -> Submitted by spreading it.
+    // the ... spread flattens Common's fields into each state; a behavior transitions Draft -> Submitted by spreading it.
     private static final String FLOW = """
             module demo
 
             data Common = {
                 applicant: String
-                cost: Int
+                , cost: Int
             }
 
             data Draft = {
-                include Common
+                ...Common
             }
 
             data Submitted = {
-                include Common
-                submittedAt: String
+                ...Common
+                , submittedAt: String
             }
 
             behavior submit : (d: Draft, at: String) -> Submitted constructs Submitted
 
-            let submit (d, at) = Submitted { ..d, submittedAt: at }
+            let submit (d, at) = Submitted { ...d, submittedAt = at }
             """;
 
     @Test
@@ -56,8 +56,8 @@ class CompileIncludeTest {
 
         Encoder enc = (Encoder) loader.loadClass("demo.Submitted").getMethod("encoder").invoke(null);
         Map<?, ?> out = (Map<?, ?>) enc.encode(submitted);
-        assertEquals("bob", out.get("applicant"));  // from ..d (included field)
-        assertEquals(100L, out.get("cost"));         // from ..d (included field)
+        assertEquals("bob", out.get("applicant"));  // from ...d (included field)
+        assertEquals(100L, out.get("cost"));         // from ...d (included field)
         assertEquals("2026", out.get("submittedAt"));
     }
 
@@ -65,8 +65,8 @@ class CompileIncludeTest {
     void includedInvariantRunsOnConstruction() throws Exception {
         String src = """
                 module demo
-                data Common = { applicant: String  cost: Int  invariant cost >= 0 }
-                data Draft = { include Common }
+                data Common = { applicant: String, cost: Int } invariant cost >= 0
+                data Draft = { ...Common }
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
         Decoder decoder = (Decoder) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);

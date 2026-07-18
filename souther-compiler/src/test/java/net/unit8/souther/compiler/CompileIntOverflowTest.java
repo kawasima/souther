@@ -30,7 +30,7 @@ class CompileIntOverflowTest {
 
                 behavior compute : (x: In) -> Out constructs Out
 
-                let compute (x) = Out { value: %s }
+                let compute (x) = Out { value = %s }
                 """.formatted(bodyExpr);
     }
 

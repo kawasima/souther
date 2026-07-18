@@ -25,7 +25,7 @@ class CompileClosureTest {
     private static final String MODULE = """
             module demo
 
-            data Order = { v: Int  spring: Bool }
+            data Order = { v: Int, spring: Bool }
             data Result = { n: Int }
 
             behavior check : (o: Order) -> Result
@@ -33,7 +33,7 @@ class CompileClosureTest {
 
             let check (o) = {
                 let f = if o.spring then (x) -> x + 100 else (x) -> x + 1
-                Result { n: f(o.v) }
+                Result { n = f(o.v) }
             }
             """;
 
@@ -58,7 +58,7 @@ class CompileClosureTest {
     private static final String CAPTURING = """
             module demo
 
-            data Order = { v: Int  spring: Bool }
+            data Order = { v: Int, spring: Bool }
             data Result = { n: Int }
 
             behavior check : (o: Order) -> Result
@@ -66,7 +66,7 @@ class CompileClosureTest {
 
             let check (o) = {
                 let f = if o.spring then (x) -> x + o.v else (x) -> x - o.v
-                Result { n: f(100) }
+                Result { n = f(100) }
             }
             """;
 
@@ -92,7 +92,7 @@ class CompileClosureTest {
 
             let check (o) = {
                 let add5 = adder(5)
-                Result { n: add5(o.v) }
+                Result { n = add5(o.v) }
             }
 
             let adder (n: Int) = (x) -> x + n
@@ -102,7 +102,7 @@ class CompileClosureTest {
     private static final String MULTIARG = """
             module demo
 
-            data Pair = { a: Int  b: Int  plus: Bool }
+            data Pair = { a: Int, b: Int, plus: Bool }
             data Out = { v: Int }
 
             behavior check : (o: Pair) -> Out
@@ -110,7 +110,7 @@ class CompileClosureTest {
 
             let check (o) = {
                 let f = if o.plus then (x, y) -> x + y else (x, y) -> x - y
-                Out { v: f(o.a, o.b) }
+                Out { v = f(o.a, o.b) }
             }
             """;
 
@@ -132,14 +132,14 @@ class CompileClosureTest {
     private static final String CONSTRUCTING = """
             module demo
 
-            data In = { v: Int  up: Bool }
+            data In = { v: Int, up: Bool }
             data Out = { v: Int }
 
             behavior check : (o: In) -> Out
                 constructs Out
 
             let check (o) = {
-                let f = if o.up then (x) -> Out { v: x + 1 } else (x) -> Out { v: x - 1 }
+                let f = if o.up then (x) -> Out { v = x + 1 } else (x) -> Out { v = x - 1 }
                 f(o.v)
             }
             """;
@@ -165,7 +165,7 @@ class CompileClosureTest {
         String src = """
                 module demo
 
-                data In = { v: Int  up: Bool }
+                data In = { v: Int, up: Bool }
                 data Out = { v: Int }
                 data Extra = { w: Int }
 
@@ -173,7 +173,7 @@ class CompileClosureTest {
                     constructs Out
 
                 let check (o) = {
-                    let f = if o.up then (x) -> Out { v: x + 1 } else (x) -> { let e = Extra { w: x }  Out { v: e.w } }
+                    let f = if o.up then (x) -> Out { v = x + 1 } else (x) -> { let e = Extra { w = x }  Out { v = e.w } }
                     f(o.v)
                 }
                 """;

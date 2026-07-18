@@ -29,7 +29,7 @@ class CompileMultiInvariantTest {
                 invariant value < 100
 
             behavior make : (i: In) -> Amount constructs Amount
-            let make (i) = Amount { value: i.value }
+            let make (i) = Amount { value = i.value }
             """;
 
     @SuppressWarnings("unchecked")

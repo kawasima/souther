@@ -29,7 +29,7 @@ class CompileCollectionCovarianceTest {
                 data W1 = { x: %s }
                 data W2 = { y: %s }
                 behavior f : (w: W2) -> W1 constructs W1
-                let f (w) = W1 { x: w.y }
+                let f (w) = W1 { x = w.y }
                 """.formatted(toType, fromType);
     }
 

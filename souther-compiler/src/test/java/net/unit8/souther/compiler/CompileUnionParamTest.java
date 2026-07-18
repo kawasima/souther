@@ -32,8 +32,8 @@ class CompileUnionParamTest {
 
             let finish (app) =
                 match app with
-                    | Sub as s -> Done { value: s.value }
-                    | Pre as p -> Done { value: p.value }
+                    | Sub as s -> Done { value = s.value }
+                    | Pre as p -> Done { value = p.value }
             """;
 
     @SuppressWarnings({"unchecked", "rawtypes"})

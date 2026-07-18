@@ -31,7 +31,7 @@ class CompilePipeDepsTest {
 
             data In = String
             data Mid = String
-            data Out = { a: String  b: String }
+            data Out = { a: String, b: String }
 
             behavior fetch : (input: In) -> Mid
             behavior tag : (m: Mid) -> Mid
@@ -40,7 +40,7 @@ class CompilePipeDepsTest {
 
             let enrich (m, tag) = {
                 let t = tag(m)
-                Out { a: m.value, b: t.value }
+                Out { a = m.value, b = t.value }
             }
 
             behavior handle = fetch >-> enrich
@@ -104,7 +104,7 @@ class CompilePipeDepsTest {
 
                 behavior relabel : (o: Out) -> Out constructs Out
 
-                let relabel (o) = Out { a: o.b, b: o.a }
+                let relabel (o) = Out { a = o.b, b = o.a }
 
                 behavior outer = handle >-> relabel
                 """;

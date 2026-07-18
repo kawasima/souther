@@ -29,7 +29,7 @@ class CompileBehaviorResultTest {
             behavior classify : (d: Draft) -> Cheap | Pricey constructs Cheap, Pricey
 
             let classify (d) =
-                if d.value <= 100 then Cheap { cost: d.value } else Pricey { cost: d.value }
+                if d.value <= 100 then Cheap { cost = d.value } else Pricey { cost = d.value }
             """;
 
     @Test

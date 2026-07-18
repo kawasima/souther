@@ -22,12 +22,12 @@ class CompileMultiParamTest {
 
             data Pair = {
                 left: Int
-                right: Int
+                , right: Int
             }
 
             behavior mkPair : (a: A, b: B) -> Pair constructs Pair
 
-            let mkPair (a, b) = Pair { left: a.value, right: b.value }
+            let mkPair (a, b) = Pair { left = a.value, right = b.value }
             """;
 
     @Test

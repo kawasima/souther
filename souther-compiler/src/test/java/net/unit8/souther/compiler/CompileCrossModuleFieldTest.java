@@ -25,7 +25,7 @@ class CompileCrossModuleFieldTest {
             module a exposing { 従業員, 従業員ID }
 
             data 従業員ID = String
-            data 従業員 = { id: 従業員ID  上長ID: 従業員ID }
+            data 従業員 = { id: 従業員ID, 上長ID: 従業員ID }
             """;
 
     private static final String B = """
@@ -60,7 +60,7 @@ class CompileCrossModuleFieldTest {
     private static final String BASE = """
             module base_m exposing { Base }
 
-            data Base = { a: String  b: String }
+            data Base = { a: String, b: String }
             """;
 
     private static final String DERIVED = """
@@ -68,10 +68,10 @@ class CompileCrossModuleFieldTest {
 
             import base_m { Base }
 
-            data Derived = { a: String  b: String  c: String }
+            data Derived = { a: String, b: String, c: String }
 
             behavior 拡張する : (base: Base) -> Derived constructs Derived
-            let 拡張する (base) = Derived { ..base, c: "x" }
+            let 拡張する (base) = Derived { ...base, c = "x" }
             """;
 
     @Test

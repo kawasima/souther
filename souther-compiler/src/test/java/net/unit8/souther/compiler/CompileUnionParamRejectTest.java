@@ -21,8 +21,8 @@ class CompileUnionParamRejectTest {
                 data Done = Int
                 behavior finish : (app: Sub | Pre) -> Done constructs Done
                 let finish (app) = match app with
-                    | Sub as s -> Done { value: s.value }
-                    | Pre as p -> Done { value: p.value }
+                    | Sub as s -> Done { value = s.value }
+                    | Pre as p -> Done { value = p.value }
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertTrue(e.getMessage().contains("app"), e.getMessage());
@@ -38,8 +38,8 @@ class CompileUnionParamRejectTest {
                 data Done = Int
                 behavior finish : (app: SubPre) -> Done constructs Done
                 let finish (app) = match app with
-                    | Sub as s -> Done { value: s.value }
-                    | Pre as p -> Done { value: p.value }
+                    | Sub as s -> Done { value = s.value }
+                    | Pre as p -> Done { value = p.value }
                 """;
         assertTrue(Compiler.compile(src).containsKey("demo.Finish"),
                 "a named sum parameter is the sanctioned form");

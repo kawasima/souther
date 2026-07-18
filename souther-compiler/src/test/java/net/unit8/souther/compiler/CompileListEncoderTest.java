@@ -31,8 +31,8 @@ class CompileListEncoderTest {
 
                 data Bag = {
                     prices: List<Decimal>
-                    flags:  List<Bool>
-                    days:   List<Date>
+                    , flags:  List<Bool>
+                    , days:   List<Date>
                 }
                 """), getClass().getClassLoader());
         Decoder dec = (Decoder) loader.loadClass("demo.Bag").getMethod("decoder").invoke(null);

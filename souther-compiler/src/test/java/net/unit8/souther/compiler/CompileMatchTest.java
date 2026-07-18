@@ -30,8 +30,8 @@ class CompileMatchTest {
 
             let contactValue (c) =
                 match c with
-                    | EmailContact as e -> Label { value: e.email }
-                    | PhoneContact as p -> Label { value: p.phone }
+                    | EmailContact as e -> Label { value = e.email }
+                    | PhoneContact as p -> Label { value = p.phone }
             """;
 
     private BytesClassLoader loader() {
@@ -77,7 +77,7 @@ class CompileMatchTest {
 
                 let pick (v) =
                     match v with
-                        | A as a -> Label { value: a.x }
+                        | A as a -> Label { value = a.x }
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1201", e.code());
@@ -106,8 +106,8 @@ class CompileMatchTest {
 
                 let pick (v) =
                     match v {
-                        case A as a -> Label { value: a.x }
-                        case B as b -> Label { value: b.y }
+                        case A as a -> Label { value = a.x }
+                        case B as b -> Label { value = b.y }
                     }
                 """;
         assertThrows(CompileException.class, () -> Compiler.compile(src));

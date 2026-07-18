@@ -90,7 +90,7 @@ class CompileNewtypeTest {
         // spec 8.7: `data X = Y` with a named-data Y wraps Y and reads/writes Y's representation.
         String src = """
                 module demo
-                data Inner = { a: Int  b: Int }
+                data Inner = { a: Int, b: Int }
                 data Wrap = Inner
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());

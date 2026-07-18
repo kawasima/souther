@@ -30,11 +30,9 @@ class CompileObjectTest {
 
             data Account = {
                 id: String
-                balance: Int
-                owner: String
-
-                invariant length(id) > 0
-            }
+                , balance: Int
+                , owner: String
+            } invariant length(id) > 0
             """;
 
     private Class<?> compileAccount() throws Exception {

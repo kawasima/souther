@@ -31,11 +31,9 @@ class CompileJsonSourceTest {
 
             data Account = {
                 id: String
-                balance: Int
-                owner: String
-
-                invariant length(id) > 0
-            }
+                , balance: Int
+                , owner: String
+            } invariant length(id) > 0
 
             data Submitted = { note: String }
             data Rejected = { reason: String }

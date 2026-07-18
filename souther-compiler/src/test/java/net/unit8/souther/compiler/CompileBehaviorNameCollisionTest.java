@@ -20,7 +20,7 @@ class CompileBehaviorNameCollisionTest {
                 data Price = Decimal
                 data Quote = { subtotal: Decimal }
                 behavior quote : (p: Price) -> Quote constructs Quote
-                let quote (p) = Quote { subtotal: p.value }
+                let quote (p) = Quote { subtotal = p.value }
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertTrue(e.getMessage().contains("Quote"), e.getMessage());
@@ -48,7 +48,7 @@ class CompileBehaviorNameCollisionTest {
                 data Price = Decimal
                 data Quote = { subtotal: Decimal }
                 behavior makeQuote : (p: Price) -> Quote constructs Quote
-                let makeQuote (p) = Quote { subtotal: p.value }
+                let makeQuote (p) = Quote { subtotal = p.value }
                 """;
         assertTrue(Compiler.compile(src).containsKey("demo.MakeQuote"),
                 "the behavior class is MakeQuote, distinct from data Quote");

@@ -36,7 +36,7 @@ class CompileSpecChapter23Test {
                 invariant length(value) > 0
 
             data 役職 = 管理職 | 一般社員
-            data 管理職 = { level: Int  invariant level >= 1 && level <= 5 }
+            data 管理職 = { level: Int } invariant level >= 1 && level <= 5
             data 一般社員
 
             data 費用負担区分 = 自社負担 | 先方負担
@@ -48,24 +48,24 @@ class CompileSpecChapter23Test {
 
             data 従業員 = {
                 id:    従業員ID
-                役職:   役職
-                上長ID: 従業員ID
+                , 役職:   役職
+                , 上長ID: 従業員ID
             }
 
             data 出張申請共通項目 = {
                 申請者:    従業員
-                予定費用:   金額
-                出張先:    String
-                出張目的:   String
-                出張開始日: Date
-                出張終了日: Date
+                , 予定費用:   金額
+                , 出張先:    String
+                , 出張目的:   String
+                , 出張開始日: Date
+                , 出張終了日: Date
             }
 
             data 出張申請 =
                 申請準備中 | 提出済み | 事前承認待ち | 事前承認済み
 
-            data 申請準備中 = { include 出張申請共通項目 }
-            data 提出済み = { include 出張申請共通項目  提出日時: DateTime }
+            data 申請準備中 = { ...出張申請共通項目 }
+            data 提出済み = { ...出張申請共通項目, 提出日時: DateTime }
 
             data 事前承認理由 = 高額出張 | 権限不足 | 先方費用負担
             data 高額出張 = { 基準金額: 金額 }
@@ -73,16 +73,16 @@ class CompileSpecChapter23Test {
             data 先方費用負担
 
             data 事前承認待ち = {
-                include 出張申請共通項目
-                提出日時:         DateTime
-                事前承認理由リスト: List<事前承認理由>
+                ...出張申請共通項目
+                , 提出日時:         DateTime
+                , 事前承認理由リスト: List<事前承認理由>
             }
 
             data 事前承認済み = {
-                include 出張申請共通項目
-                提出日時:    DateTime
-                事前承認日時: DateTime
-                事前承認者:  従業員ID
+                ...出張申請共通項目
+                , 提出日時:    DateTime
+                , 事前承認日時: DateTime
+                , 事前承認者:  従業員ID
             }
 
             data 承認権限なし
@@ -100,7 +100,7 @@ class CompileSpecChapter23Test {
                 require 承認者ID == 申請.申請者.上長ID
                     else 承認権限なし
 
-                事前承認済み { ..申請, 事前承認日時: 現在時刻(), 事前承認者: 承認者ID }
+                事前承認済み { ...申請, 事前承認日時 = 現在時刻(), 事前承認者 = 承認者ID }
             }
             """;
 

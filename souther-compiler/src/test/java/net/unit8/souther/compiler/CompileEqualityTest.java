@@ -31,7 +31,7 @@ class CompileEqualityTest {
 
             data Money = { amount: Decimal }
             data Id = String
-            data Pair = { a: Id  b: Id }
+            data Pair = { a: Id, b: Id }
             data Yes
             data No
             data Answer = Yes | No
@@ -42,10 +42,10 @@ class CompileEqualityTest {
             behavior 金額が同じか : (x: Money, y: Money) -> R constructs R
             behavior 答えが同じか : (x: Answer, y: Answer) -> R constructs R
 
-            let 同じか (p) = R { v: p.a == p.b }
-            let 違うか (p) = R { v: p.a /= p.b }
-            let 金額が同じか (x, y) = R { v: x.amount == y.amount }
-            let 答えが同じか (x, y) = R { v: x == y }
+            let 同じか (p) = R { v = p.a == p.b }
+            let 違うか (p) = R { v = p.a /= p.b }
+            let 金額が同じか (x, y) = R { v = x.amount == y.amount }
+            let 答えが同じか (x, y) = R { v = x == y }
             """;
 
     private BytesClassLoader loader() {

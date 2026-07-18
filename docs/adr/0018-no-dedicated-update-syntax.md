@@ -1,6 +1,7 @@
 # ADR-0018: No dedicated update syntax; use a named record literal with spread
 
-Status: Accepted
+Status: Accepted. The spread is spelled `...` (three dots), not `..`, since ADR-0030 unified
+the spread spelling across type and value level.
 
 ## Context
 
@@ -8,7 +9,7 @@ Many languages provide a functional-update form (`{ x with 住所 = 新住所 }`
 
 ## Decision
 
-To replace some fields of a value of the same type, write the type name plus spread: `Member { ..x, 住所: 新住所 }`. There is no dedicated update syntax.
+To replace some fields of a value of the same type, write the type name plus spread: `Member { ..x, 住所 = 新住所 }`. There is no dedicated update syntax.
 
 ## Consequences
 

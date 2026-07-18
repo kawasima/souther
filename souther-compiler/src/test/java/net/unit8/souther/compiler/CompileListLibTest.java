@@ -29,20 +29,20 @@ class CompileListLibTest {
                 data In = { ns: List<Int> }
                 data Out = {
                     reversed: List<Int>
-                    total: Int
-                    prod: Int
-                    hasTwo: Bool
-                    none: Bool
+                    , total: Int
+                    , prod: Int
+                    , hasTwo: Bool
+                    , none: Bool
                 }
 
                 behavior run : (i: In) -> Out constructs Out
 
                 let run (i) = Out {
-                    reversed: reverse(i.ns),
-                    total: sum(i.ns),
-                    prod: product(i.ns),
-                    hasTwo: member(i.ns, 2),
-                    none: isEmpty(i.ns)
+                    reversed = reverse(i.ns),
+                    total = sum(i.ns),
+                    prod = product(i.ns),
+                    hasTwo = member(i.ns, 2),
+                    none = isEmpty(i.ns)
                 }
                 """), getClass().getClassLoader());
 
@@ -72,7 +72,7 @@ class CompileListLibTest {
 
                 behavior run : (i: In) -> Out constructs Out
 
-                let run (i) = Out { xs: sort([]) }
+                let run (i) = Out { xs = sort([]) }
                 """), getClass().getClassLoader());
 
         Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run").getConstructor().newInstance())
@@ -92,16 +92,16 @@ class CompileListLibTest {
                 data In = { tags: List<String> }
                 data Out = {
                     sorted: List<String>
-                    joinedNested: List<Int>
-                    ascending: Bool
+                    , joinedNested: List<Int>
+                    , ascending: Bool
                 }
 
                 behavior run : (i: In) -> Out constructs Out
 
                 let run (i) = Out {
-                    sorted: sort(i.tags),
-                    joinedNested: concat([[1, 2], [3]]),
-                    ascending: "alpha" < "beta"
+                    sorted = sort(i.tags),
+                    joinedNested = concat([[1, 2], [3]]),
+                    ascending = "alpha" < "beta"
                 }
                 """), getClass().getClassLoader());
 

@@ -32,7 +32,7 @@ class CompileIntrinsicTest {
 
             behavior clean : (i: In) -> Out constructs Out
 
-            let clean (i) = Out { s: trim(i.s) }
+            let clean (i) = Out { s = trim(i.s) }
             """;
 
     @Test
@@ -76,8 +76,8 @@ class CompileIntrinsicTest {
 
                 let firstValue (s) =
                     match get(values(s.byName), 0) with
-                        | Some as x -> Out { n: x.n }
-                        | None -> Out { n: 0 }
+                        | Some as x -> Out { n = x.n }
+                        | None -> Out { n = 0 }
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
         Decoder d = (Decoder) loader.loadClass("demo.Store").getMethod("decoder").invoke(null);

@@ -29,14 +29,14 @@ class CompileRailwayTest {
             behavior guard : (a: Amount) -> Amount | TooLarge constructs TooLarge
 
             let guard (a) = {
-                require a.value <= 100 else TooLarge { limit: 100 }
+                require a.value <= 100 else TooLarge { limit = 100 }
                 a
             }
 
             // only accepts Amount; a TooLarge flowing in would bypass this stage
             behavior toDoubled : (a: Amount) -> Doubled constructs Doubled
 
-            let toDoubled (a) = Doubled { value: a.value }
+            let toDoubled (a) = Doubled { value = a.value }
 
             behavior process = guard >-> toDoubled
             """;
@@ -91,15 +91,15 @@ class CompileRailwayTest {
                 // over 100 leaves as Off
                 behavior 判定 : (i: In) -> Mid | Off constructs Mid, Off
                 let 判定 (i) = {
-                    require i.value <= 100 else Off { v: i.value }
-                    Mid { v: i.value }
+                    require i.value <= 100 else Off { v = i.value }
+                    Mid { v = i.value }
                 }
                 // takes Mid only — Off passes it by
                 behavior 加工 : (m: Mid) -> Out constructs Out
-                let 加工 (m) = Out { v: m.v }
+                let 加工 (m) = Out { v = m.v }
                 // would accept Off, but Off already left the main line at 加工
                 behavior 仕上げ : (x: OffOut) -> Out constructs Out
-                let 仕上げ (x) = Out { v: 0 }
+                let 仕上げ (x) = Out { v = 0 }
 
                 behavior flow = 判定 >-> 加工 >-> 仕上げ
                 """;

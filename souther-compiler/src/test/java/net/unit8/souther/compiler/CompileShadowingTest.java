@@ -21,7 +21,7 @@ class CompileShadowingTest {
                 behavior check : (o: In) -> Out constructs Out
                 let check (o) = {
                     let None = 99
-                    Out { v: None }
+                    Out { v = None }
                 }
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
@@ -34,7 +34,7 @@ class CompileShadowingTest {
                 module demo
                 data Out = { v: Int }
                 behavior check : (o: Out) -> Out constructs Out
-                let check (o) = Out { v: twice(o.v) }
+                let check (o) = Out { v = twice(o.v) }
                 let twice (HALF_UP: Int) = HALF_UP + HALF_UP
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));

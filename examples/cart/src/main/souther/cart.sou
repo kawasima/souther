@@ -6,20 +6,20 @@ import List { map, filter, fold, all, any, length }
 
 data 明細 = {
     名前: String
-    数量: Int
-    単価: Int
+    , 数量: Int
+    , 単価: Int
 }
 
 data カート = {
     受付中: Bool
-    明細リスト: List<明細>
+    , 明細リスト: List<明細>
 }
 
 // 見積結果は3ケースの直和。空・数量不正は本線から外れる失敗ケース。
 data 見積 = {
     合計金額: Int
-    品目数: Int
-    高額あり: Bool
+    , 品目数: Int
+    , 高額あり: Bool
 }
 data 空カート
 data 数量不正 = { 不正件数: Int }
@@ -30,11 +30,11 @@ behavior 見積る : (c: カート) -> 見積 | 空カート | 数量不正
 let 見積る (c) = {
     require length(対象明細(c)) >= 1 else 空カート
     require all(対象明細(c), m -> m.数量 >= 1)
-        else 数量不正 { 不正件数: length(filter(対象明細(c), m -> m.数量 < 1)) }
+        else 数量不正 { 不正件数 = length(filter(対象明細(c), m -> m.数量 < 1)) }
     見積 {
-        合計金額: 合計(対象明細(c)),
-        品目数: length(対象明細(c)),
-        高額あり: any(対象明細(c), m -> m.単価 >= 100000)
+        合計金額 = 合計(対象明細(c)),
+        品目数 = length(対象明細(c)),
+        高額あり = any(対象明細(c), m -> m.単価 >= 100000)
     }
 }
 

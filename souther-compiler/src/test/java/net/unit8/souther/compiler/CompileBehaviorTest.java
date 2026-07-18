@@ -24,7 +24,7 @@ class CompileBehaviorTest {
 
             data Member = {
                 id: MemberId
-                name: String
+                , name: String
             }
 
             data Response = { id: MemberId }
@@ -32,7 +32,7 @@ class CompileBehaviorTest {
             behavior toResponse : (m: Member) -> Response
                 constructs Response
 
-            let toResponse (m) = Response { id: m.id }
+            let toResponse (m) = Response { id = m.id }
             """;
 
     @Test
@@ -64,7 +64,7 @@ class CompileBehaviorTest {
                 data Empty
                 behavior make : (x: String) -> Response | Empty constructs Empty
 
-                let make (x) = if x == "" then Empty else Response { id: x }
+                let make (x) = if x == "" then Empty else Response { id = x }
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1002", e.code());
@@ -90,11 +90,11 @@ class CompileBehaviorTest {
         // A violation aborts (spec 7.3, 9.4), so the output needs no 制約違反 case — this compiles.
         String src = """
                 module demo
-                data Positive = { value: Int  invariant value > 0 }
+                data Positive = { value: Int } invariant value > 0
                 behavior make : (x: Int) -> Positive
                     constructs Positive
 
-                let make (x) = Positive { value: x }
+                let make (x) = Positive { value = x }
                 """;
         Compiler.compile(src);
     }

@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * Integration test: a slice of the SMDD travel-expense model written in Japanese. The domain
  * declares only data + invariant + behavior; decoders/encoders are derived (JSON key = the
  * Japanese field name, single-primitive-field data is a newtype). It exercises value types
- * with invariants, {@code include} for common fields, and a state-transition behavior whose
+ * with invariants, {@code ...} spread for common fields, and a state-transition behavior whose
  * output is an unmarked sum (提出済み | 却下) guarded with {@code require}.
  */
 class CompileBusinessTripTest {
@@ -32,16 +32,16 @@ class CompileBusinessTripTest {
 
             data 出張申請共通項目 = {
                 申請者: 従業員ID
-                予定費用: 金額
+                , 予定費用: 金額
             }
 
             data 申請準備中 = {
-                include 出張申請共通項目
+                ...出張申請共通項目
             }
 
             data 提出済み = {
-                include 出張申請共通項目
-                提出日時: String
+                ...出張申請共通項目
+                , 提出日時: String
             }
 
             data 却下 = { 理由: String }
@@ -51,8 +51,8 @@ class CompileBusinessTripTest {
                 constructs 提出済み, 却下
 
             let 提出する (申請, 提出日時) = {
-                require 申請.予定費用.value <= 100000 else 却下 { 理由: "high_cost" }
-                提出済み { ..申請, 提出日時: 提出日時 }
+                require 申請.予定費用.value <= 100000 else 却下 { 理由 = "high_cost" }
+                提出済み { ...申請, 提出日時 = 提出日時 }
             }
             """;
 
@@ -84,8 +84,8 @@ class CompileBusinessTripTest {
         Encoder enc = (Encoder) loader.loadClass("example.businesstrip.提出済み")
                 .getMethod("encoder").invoke(null);
         Map<?, ?> out = (Map<?, ?>) enc.encode(r);
-        assertEquals("emp-1", out.get("申請者"));        // carried via ..申請
-        assertEquals(50000L, out.get("予定費用"));        // carried via ..申請
+        assertEquals("emp-1", out.get("申請者"));        // carried via ...申請
+        assertEquals(50000L, out.get("予定費用"));        // carried via ...申請
         assertEquals("2026-07-14", out.get("提出日時"));
     }
 

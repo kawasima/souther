@@ -76,7 +76,7 @@ class CompileBlockTest {
                 behavior 明細を検証する : (xs: List<未検証明細>) -> List<検証済み明細>
                     constructs 検証済み明細
 
-                let 明細を検証する (xs) = map(xs, x -> 検証済み明細 { コード: x.コード })
+                let 明細を検証する (xs) = map(xs, x -> 検証済み明細 { コード = x.コード })
                 """;
         assertTrue(Compiler.compile(src).containsKey("demo.明細を検証する"));
     }
@@ -93,7 +93,7 @@ class CompileBlockTest {
                 data 補助
                 data 明細 = 検証済み明細 | 補助
                 behavior 明細を検証する : (xs: List<未検証明細>) -> List<明細> constructs 補助
-                let 明細を検証する (xs) = map(xs, x -> 検証済み明細 { コード: x.コード }) ++ [補助 | length(xs) > 0]
+                let 明細を検証する (xs) = map(xs, x -> 検証済み明細 { コード = x.コード }) ++ [補助 | length(xs) > 0]
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
         assertEquals("E1002", e.code());

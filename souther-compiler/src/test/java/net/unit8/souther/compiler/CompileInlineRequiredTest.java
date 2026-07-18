@@ -38,7 +38,7 @@ class CompileInlineRequiredTest {
             behavior handle : (id: Id) -> Resp constructs Resp requires findMember
 
             let handle (id, findMember) = {
-                Resp { m: findMember(id) }
+                Resp { m = findMember(id) }
             }
             """;
 

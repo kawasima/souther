@@ -24,9 +24,9 @@ class CompilePipeTest {
             data Out = String
 
             behavior a : (w: Wrap) -> Mid constructs Mid
-            let a (w) = Mid { value: w.value }
+            let a (w) = Mid { value = w.value }
             behavior b : (m: Mid) -> Out constructs Out
-            let b (m) = Out { value: m.value }
+            let b (m) = Out { value = m.value }
             behavior ab = a >-> b
 
             behavior fetch : (w: Wrap) -> Mid
@@ -81,7 +81,7 @@ class CompilePipeTest {
                 data Wrap = String
                 data Mid = String
                 behavior a : (w: Wrap) -> Mid constructs Mid
-                let a (w) = Mid { value: w.value }
+                let a (w) = Mid { value = w.value }
                 behavior bad = a >-> a
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
@@ -98,9 +98,9 @@ class CompilePipeTest {
                 data Wrap = String
                 data Mid = String
                 behavior a : (w: Wrap) -> Mid constructs Mid
-                let a (w) = Mid { value: w.value }
+                let a (w) = Mid { value = w.value }
                 behavior two : (m: Mid, k: String) -> Mid constructs Mid
-                let two (m, k) = Mid { value: k }
+                let two (m, k) = Mid { value = k }
                 behavior bad = a >-> two
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
@@ -130,10 +130,10 @@ class CompilePipeTest {
 
                 let reject (p, by) = {
                     require by == p.boss else NoRight
-                    Rejected { v: 1 }
+                    Rejected { v = 1 }
                 }
                 behavior sendBack : (r: Rejected) -> Draft constructs Draft
-                let sendBack (r) = Draft { v: r.v }
+                let sendBack (r) = Draft { v = r.v }
 
                 behavior rejectAndSendBack = reject >-> sendBack
                 """;
@@ -162,7 +162,7 @@ class CompilePipeTest {
                 data Wrap = String
                 data Mid = String
                 behavior a : (w: Wrap) -> Mid constructs Mid
-                let a (w) = Mid { value: w.value }
+                let a (w) = Mid { value = w.value }
                 behavior bad = a >-> nosuch
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));

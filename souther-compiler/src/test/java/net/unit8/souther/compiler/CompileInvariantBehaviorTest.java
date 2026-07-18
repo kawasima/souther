@@ -31,7 +31,7 @@ class CompileInvariantBehaviorTest {
 
             behavior discount : (d: Draft) -> Adjusted constructs Adjusted
 
-            let discount (d) = Adjusted { value: d.value - 2000 }
+            let discount (d) = Adjusted { value = d.value - 2000 }
             """;
 
     private BytesClassLoader loader() {
@@ -80,15 +80,15 @@ class CompileInvariantBehaviorTest {
         String src = """
                 module demo
                 data Draft = Int
-                data Adjusted = { cost: Int  invariant cost >= 0 }
+                data Adjusted = { cost: Int } invariant cost >= 0
                 data Kept = { v: Int }
 
                 behavior adjust : (d: Draft) -> Kept | Adjusted
                     constructs Kept, Adjusted
 
                 let adjust (d) = {
-                    require d.value /= 999 else Adjusted { cost: d.value - 2000 }
-                    Kept { v: d.value }
+                    require d.value /= 999 else Adjusted { cost = d.value - 2000 }
+                    Kept { v = d.value }
                 }
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
@@ -118,7 +118,7 @@ class CompileInvariantBehaviorTest {
                 behavior adjust : (d: Draft) -> Draft | Rejected | Flagged constructs Flagged
 
                 let adjust (d) = {
-                    require d.cost > 0 else Rejected { why: "nonpositive" }
+                    require d.cost > 0 else Rejected { why = "nonpositive" }
                     require d.cost < 1000 else Flagged
                     d
                 }
@@ -135,10 +135,10 @@ class CompileInvariantBehaviorTest {
     void constructingInvariantDataNeedsNoViolationCase() {
         String src = """
                 module demo
-                data Positive = { value: Int  invariant value > 0 }
+                data Positive = { value: Int } invariant value > 0
                 behavior make : (x: Int) -> Positive constructs Positive
 
-                let make (x) = Positive { value: x }
+                let make (x) = Positive { value = x }
                 """;
         // compiles without error (no E1003, which is retired)
         Compiler.compile(src);

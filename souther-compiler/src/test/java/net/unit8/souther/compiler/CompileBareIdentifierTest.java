@@ -21,7 +21,7 @@ class CompileBareIdentifierTest {
                 data 立替
                 data R = { v: Int }
                 behavior f : (立替: Int) -> R constructs R
-                let f (立替) = R { v: 立替 }
+                let f (立替) = R { v = 立替 }
                 """;
         assertTrue(Compiler.compile(src).containsKey("demo.F"), "立替 here is the parameter, not a construction");
     }
@@ -35,7 +35,7 @@ class CompileBareIdentifierTest {
                 behavior f : (x: Int) -> R constructs R
                 let f (x) = {
                     let 立替 = x
-                    R { v: 立替 }
+                    R { v = 立替 }
                 }
                 """;
         assertTrue(Compiler.compile(src).containsKey("demo.F"));

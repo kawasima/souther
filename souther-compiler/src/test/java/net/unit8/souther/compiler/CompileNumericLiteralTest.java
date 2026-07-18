@@ -38,7 +38,7 @@ class CompileNumericLiteralTest {
                 module demo
                 data Rate = Decimal
                 behavior fixed : (r: Rate) -> Rate constructs Rate
-                let fixed (r) = Rate { value: 0.08 }
+                let fixed (r) = Rate { value = 0.08 }
                 """;
         assertEquals(new BigDecimal("0.08"), run(module, "fixed", "Rate", new BigDecimal("1.00")));
     }
@@ -49,7 +49,7 @@ class CompileNumericLiteralTest {
                 module demo
                 data N = Int
                 behavior flip : (n: N) -> N constructs N
-                let flip (n) = N { value: -n.value }
+                let flip (n) = N { value = -n.value }
                 """;
         assertEquals(-7L, run(module, "flip", "N", 7L));
         assertEquals(5L, run(module, "flip", "N", -5L));
@@ -61,7 +61,7 @@ class CompileNumericLiteralTest {
                 module demo
                 data N = Int
                 behavior zero : (n: N) -> N constructs N
-                let zero (n) = N { value: -5 }
+                let zero (n) = N { value = -5 }
                 """;
         assertEquals(-5L, run(module, "zero", "N", 0L));
     }

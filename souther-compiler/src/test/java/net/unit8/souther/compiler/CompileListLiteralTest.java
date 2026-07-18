@@ -25,7 +25,7 @@ class CompileListLiteralTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                data In = { a: Int  b: Int }
+                data In = { a: Int, b: Int }
 
                 behavior pick : (x: In) -> List<Int>
 
@@ -57,7 +57,7 @@ class CompileListLiteralTest {
                 constructs High, LowRole
 
             let reasons (x) =
-                [High { threshold: x.cost } | x.cost.value > 100] ++ [LowRole { note: "role" }]
+                [High { threshold = x.cost } | x.cost.value > 100] ++ [LowRole { note = "role" }]
             """;
 
     @SuppressWarnings({"unchecked", "rawtypes"})

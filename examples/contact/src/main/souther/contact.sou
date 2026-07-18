@@ -13,5 +13,5 @@ behavior 連絡先の値 : (c: Contact) -> Label constructs Label
 
 let 連絡先の値 (c) =
     match c with
-        | EmailContact as e -> Label { value: e.email }
-        | PhoneContact as p -> Label { value: p.phone }
+        | EmailContact as e -> Label { value = e.email }
+        | PhoneContact as p -> Label { value = p.phone }

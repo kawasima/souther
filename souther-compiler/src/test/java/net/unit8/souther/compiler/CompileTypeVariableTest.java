@@ -48,7 +48,7 @@ class CompileTypeVariableTest {
                 behavior echo : (i: In) -> Out constructs Out
 
                 let identity (x: 'a) = x
-                let echo (i) = Out { v: identity(i.v) }
+                let echo (i) = Out { v = identity(i.v) }
                 """;
         BytesClassLoader loader = new BytesClassLoader(compileCore(core), getClass().getClassLoader());
         Decoder d = (Decoder) loader.loadClass("souther.gen.In").getMethod("decoder").invoke(null);

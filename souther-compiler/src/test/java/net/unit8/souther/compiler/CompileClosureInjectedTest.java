@@ -28,7 +28,7 @@ class CompileClosureInjectedTest {
     private static final String MODULE = """
             module demo
 
-            data In = { name: String  flag: Bool }
+            data In = { name: String, flag: Bool }
             data Out = { v: String }
 
             behavior dep : (i: In) -> Out
