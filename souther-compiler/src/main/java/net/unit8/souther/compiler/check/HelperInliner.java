@@ -66,9 +66,11 @@ public final class HelperInliner {
         return own;
     }
 
-    /** The list combinators that take a block, and how many parameters that block has (spec 18.4). */
-    private static final Map<String, Integer> BLOCK_ARITY =
-            Map.of("map", 1, "filter", 1, "all", 1, "any", 1, "fold", 2);
+    /** {@code fold} is the one privileged loop primitive that takes a block (spec 18.4); its block has
+     * two parameters. A bare name passed in its place is sugar for a block that wraps a call. The
+     * other combinators (map/filter/all/any) are ordinary prelude helpers derived from fold
+     * (ADR-0028), so they need no such desugaring — a name reaches their function parameter directly. */
+    private static final Map<String, Integer> BLOCK_ARITY = Map.of("fold", 2);
 
     /** Rewrites every helper call in {@code e} to its inlined body. */
     public Ast.Expr inline(Ast.Expr e) {

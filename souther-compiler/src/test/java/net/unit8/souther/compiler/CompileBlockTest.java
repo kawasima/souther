@@ -123,6 +123,9 @@ class CompileBlockTest {
         assertThrows(CompileException.class, () -> Compiler.compile(src));
     }
 
+    // filter's predicate must return Bool. Since filter is now a prelude helper derived from fold
+    // (ADR-0028), a non-Bool predicate is caught inside the derivation — the `if keep(x)` it expands
+    // to — rather than by a hard-coded combinator check, so the message speaks of the condition.
     @Test
     void theBlockMustReturnBoolForFilter() {
         String src = """
@@ -131,17 +134,19 @@ class CompileBlockTest {
                 let f (xs) = filter(xs, x -> x * 2)
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
-        assertTrue(e.getMessage().contains("Bool"), e.getMessage());
+        assertTrue(e.getMessage().contains("BOOL"), e.getMessage());
     }
 
+    // Passing a non-function where a combinator wants one is still rejected: `map` is a helper whose
+    // second parameter is applied as `f(x)`, so a value there is called as a function and fails.
     @Test
-    void mapWithoutABlockIsRejected() {
+    void mapWithoutAFunctionIsRejected() {
         String src = """
                 module demo
                 behavior f : (xs: List<Int>) -> List<Int>
                 let f (xs) = map(xs, xs)
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
-        assertTrue(e.getMessage().contains("block"), e.getMessage());
+        assertTrue(e.getMessage().contains("not a behavior or builtin"), e.getMessage());
     }
 }

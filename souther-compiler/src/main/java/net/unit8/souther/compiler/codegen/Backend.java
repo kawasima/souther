@@ -2178,47 +2178,27 @@ public final class Backend {
         }
 
         /**
-         * Emits a list combinator that takes a block (spec 18.4), inlining the block's body into
-         * an index loop.
+         * Emits {@code fold} (spec 18.4) — the one privileged list loop — inlining the block's body
+         * into an index loop that threads the accumulator. Every other combinator (map/filter/all/any)
+         * is a prelude helper written in terms of this (ADR-0028, souther.list), so it arrives here
+         * already expanded into a fold.
          *
-         * <p>No closure is built: a block is second-class (spec 12.5), so it cannot outlive the
-         * call and there is nothing to capture it into. A required behavior called from the body
-         * reads the enclosing behavior's injected field, which is why the requirement simply
-         * belongs to that behavior.
+         * <p>No closure is built: a block is second-class (spec 12.5), so it cannot outlive the call
+         * and there is nothing to capture it into. A required behavior called from the body reads the
+         * enclosing behavior's injected field, which is why the requirement belongs to that behavior.
          */
-        private Type listBlockOp(Ast.Call call) {
-            String op = call.fn();
-            boolean folding = op.equals("fold");
-            Ast.Block block = (Ast.Block) call.args().get(folding ? 2 : 1);
+        private Type foldOp(Ast.Call call) {
+            Ast.Block block = (Ast.Block) call.args().get(2);
 
             Type srcType = expr(call.args().get(0));
             Type elemType = ((Type.ListOf) srcType).element();
             int srcSlot = slot(Type.STRING);
             code.astore(srcSlot);
 
-            // acc: the growing list (map/filter), the running value (fold), or the answer (all/any)
-            Type accType = null;
-            int accSlot;
-            switch (op) {
-                case "map", "filter" -> {
-                    code.new_(CD_ArrayList);
-                    code.dup();
-                    code.invokespecial(CD_ArrayList, "<init>", MTD_void);
-                    accSlot = slot(Type.STRING);
-                    code.astore(accSlot);
-                }
-                case "fold" -> {
-                    accType = expr(call.args().get(1));
-                    box(code, accType);
-                    accSlot = slot(Type.STRING);
-                    code.astore(accSlot);
-                }
-                default -> {                       // all starts true, any starts false
-                    code.loadConstant(op.equals("all") ? 1 : 0);
-                    accSlot = slot(Type.BOOL);
-                    code.istore(accSlot);
-                }
-            }
+            Type accType = expr(call.args().get(1));   // the seed; its type is the accumulator's
+            box(code, accType);
+            int accSlot = slot(Type.STRING);
+            code.astore(accSlot);
             Type resultType = accType;
 
             int iSlot = slot(Type.BOOL);
@@ -2232,86 +2212,33 @@ public final class Backend {
             code.invokeinterface(CD_List, "size", MTD_size);
             code.if_icmpge(done);
 
-            // bind the block's parameters for this element
+            // bind the block's parameters — the accumulator and this element — for this iteration
             code.aload(srcSlot);
             code.iload(iSlot);
             code.invokeinterface(CD_List, "get", MethodTypeDesc.of(CD_Object, ConstantDescs.CD_int));
             int elemSlot = slot(elemType);
             unbox(code, elemType, elemSlot);
-            if (folding) {
-                int fAccSlot = slot(accType);
-                code.aload(accSlot);
-                unbox(code, accType, fAccSlot);
-                bind(block.params().get(0), fAccSlot, accType);
-                bind(block.params().get(1), elemSlot, elemType);
-                Type bt = expr(block.body());
-                if (accType.equals(Type.EMPTY_LIST)) {
-                    resultType = bt;   // an empty-list seed takes the list the block grows (ADR-0028)
-                }
-                box(code, bt);
-                code.astore(accSlot);
-            } else {
-                bind(block.params().get(0), elemSlot, elemType);
-                switch (op) {
-                    case "map" -> {
-                        code.aload(accSlot);
-                        Type bt = expr(block.body());
-                        resultType = bt;
-                        box(code, bt);
-                        code.invokevirtual(CD_ArrayList, "add", MTD_ArrayList_add);
-                        code.pop();
-                    }
-                    case "filter" -> {
-                        expr(block.body());
-                        Label skip = code.newLabel();
-                        code.ifeq(skip);
-                        code.aload(accSlot);
-                        load(code, elemSlot, elemType);
-                        box(code, elemType);
-                        code.invokevirtual(CD_ArrayList, "add", MTD_ArrayList_add);
-                        code.pop();
-                        code.labelBinding(skip);
-                    }
-                    default -> {
-                        // all: a false answer ends it; any: a true one does
-                        expr(block.body());
-                        Label keepGoing = code.newLabel();
-                        if (op.equals("all")) {
-                            code.ifne(keepGoing);
-                            code.iconst_0();
-                        } else {
-                            code.ifeq(keepGoing);
-                            code.iconst_1();
-                        }
-                        code.istore(accSlot);
-                        code.goto_(done);
-                        code.labelBinding(keepGoing);
-                    }
-                }
+            int fAccSlot = slot(accType);
+            code.aload(accSlot);
+            unbox(code, accType, fAccSlot);
+            bind(block.params().get(0), fAccSlot, accType);
+            bind(block.params().get(1), elemSlot, elemType);
+            Type bt = expr(block.body());
+            if (accType.equals(Type.EMPTY_LIST)) {
+                resultType = bt;   // an empty-list seed takes the list the block grows (ADR-0028)
             }
+            box(code, bt);
+            code.astore(accSlot);
+
             code.iinc(iSlot, 1);
             code.goto_(test);
             code.labelBinding(done);
 
-            switch (op) {
-                case "map", "filter" -> {
-                    code.aload(accSlot);
-                    code.invokestatic(CD_List, "copyOf", MTD_List_copyOf, true);
-                }
-                case "fold" -> {
-                    code.aload(accSlot);
-                    int outSlot = slot(accType);
-                    unbox(code, accType, outSlot);
-                    load(code, outSlot, accType);
-                }
-                default -> code.iload(accSlot);
-            }
-            return switch (op) {
-                case "map" -> Type.list(resultType);
-                case "filter" -> srcType;
-                case "fold" -> resultType;
-                default -> Type.BOOL;
-            };
+            code.aload(accSlot);
+            int outSlot = slot(accType);
+            unbox(code, accType, outSlot);
+            load(code, outSlot, accType);
+            return resultType;
         }
 
         /** Adds the comprehension's element once, only if every guard holds; returns an
@@ -2523,8 +2450,8 @@ public final class Backend {
                     code.i2l();
                     return Type.INT;
                 }
-                case "map", "filter", "fold", "all", "any" -> {
-                    return listBlockOp(call);
+                case "fold" -> {
+                    return foldOp(call);   // the one privileged loop; the rest derive from it (ADR-0028)
                 }
                 case "get" -> {
                     Type ct = expr(call.args().get(0));      // List or Map on stack

@@ -1499,25 +1499,8 @@ public final class TypeChecker {
                 }
                 yield Type.INT;
             }
-            case "map", "filter", "all", "any" -> {
-                arity(call, 2);
-                Type src = typeOf(args.get(0), env, data, symbols, reqs);
-                if (!(src instanceof Type.ListOf lo)) {
-                    throw new CompileException(call.pos(), call.fn() + " expects a List, got " + src);
-                }
-                Type bt = blockType(call, args.get(1), List.of(lo.element()), env, data, symbols, reqs);
-                yield switch (call.fn()) {
-                    case "map" -> Type.list(bt);
-                    case "filter" -> {
-                        requireBlockBool(call, bt);
-                        yield src;
-                    }
-                    default -> {
-                        requireBlockBool(call, bt);
-                        yield Type.BOOL;
-                    }
-                };
-            }
+            // map/filter/all/any are no longer built in: they are prelude helpers derived from fold
+            // (ADR-0028, souther.list), so a call to one is expanded inline before it reaches here.
             case "fold" -> {
                 arity(call, 3);
                 Type src = typeOf(args.get(0), env, data, symbols, reqs);
@@ -1806,13 +1789,6 @@ public final class TypeChecker {
             }
             default -> typeOf(value, env, data, symbols, reqs);
         };
-    }
-
-    private static void requireBlockBool(Ast.Call call, Type bt) {
-        if (bt != Type.BOOL) {
-            throw new CompileException(call.pos(),
-                    call.fn() + "'s block must return Bool, got " + bt);
-        }
     }
 
     /** The built-in rounding modes (spec 18.3), each a bare identifier resolving to a
