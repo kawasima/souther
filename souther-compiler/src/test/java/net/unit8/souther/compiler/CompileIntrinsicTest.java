@@ -76,7 +76,7 @@ class CompileIntrinsicTest {
 
                 let firstValue (s) =
                     match get(0, values(s.byName)) with
-                        | Some as x -> Out { n = x.n }
+                        | Some x -> Out { n = x.n }
                         | None -> Out { n = 0 }
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());

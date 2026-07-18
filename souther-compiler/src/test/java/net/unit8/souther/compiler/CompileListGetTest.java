@@ -30,7 +30,7 @@ class CompileListGetTest {
 
             let firstValue (b) =
                 match get(0, b.items) with
-                    | Some as x -> Label { value = x.value }
+                    | Some x -> Label { value = x.value }
                     | None -> Label { value = "none" }
             """;
 

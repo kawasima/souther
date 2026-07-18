@@ -1007,6 +1007,13 @@ public final class TypeChecker {
     public static Map<String, Ast.Def> symbols(Ast.Module module) {
         Map<String, Ast.Def> symbols = new HashMap<>();
         for (Ast.Def def : module.defs()) {
+            if (def.name().equals("Some") || def.name().equals("None")) {
+                // Some/None are the built-in Option cases (ADR-0011); a user data of the same name
+                // would make a `| Some v` pattern ambiguous between Option and the user case, so the
+                // declaration is rejected here rather than allowed to collide (ADR-0035).
+                throw new CompileException(def.pos(), "`" + def.name()
+                        + "` is a built-in Option case and cannot be declared as a data type");
+            }
             if (symbols.put(def.name(), def) != null) {
                 throw new CompileException(def.pos(), "duplicate data `" + def.name() + "`");
             }

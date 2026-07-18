@@ -52,7 +52,7 @@ class CompileMapTest {
 
                 let lookupA (s) =
                     match get("a", s.byName) with
-                        | Some as v -> Answer { found = containsKey("a", s.byName), value = v }
+                        | Some v -> Answer { found = containsKey("a", s.byName), value = v }
                         | None -> Answer { found = false, value = 0 }
                 """), getClass().getClassLoader());
 

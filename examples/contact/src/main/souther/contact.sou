@@ -8,10 +8,10 @@ data Contact = EmailContact | PhoneContact
 
 data Label = String
 
-// match でケースごとに値を取り出す
+// match でケースごとにフィールドを分解束縛する（{ f } は f を同名変数に。構築の逆向き）
 behavior 連絡先の値 : (c: Contact) -> Label constructs Label
 
 let 連絡先の値 (c) =
     match c with
-        | EmailContact as e -> Label { value = e.email }
-        | PhoneContact as p -> Label { value = p.phone }
+        | EmailContact { email } -> Label { value = email }
+        | PhoneContact { phone } -> Label { value = phone }

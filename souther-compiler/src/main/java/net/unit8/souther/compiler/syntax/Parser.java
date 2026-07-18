@@ -21,6 +21,8 @@ public final class Parser {
     private int index = 0;
     /** When set, a bare {@code IDENT {} } is not read as a construction (used for match scrutinees). */
     private boolean noConstruct = false;
+    /** Counter for the synthetic whole-case binding a field-destructuring match case desugars to. */
+    private int matchWholeCounter = 0;
     /** The module's name, known once its header is read; gates type-variable use to the core. */
     private String moduleName = "";
 
@@ -746,9 +748,52 @@ public final class Parser {
             while (match(TokenType.PIPE)) {
                 caseTypes.add(expect(TokenType.IDENT).text());
             }
-            String binding = match(TokenType.AS) ? expect(TokenType.IDENT).text() : null;
+            // `Some v` binds Option's wrapped value positionally (F#/Elm; spec §match). Option is the
+            // one built-in case with an anonymous payload, so `as` — which binds the whole matched
+            // value everywhere else — is not how you reach it.
+            boolean isSome = caseTypes.size() == 1 && caseTypes.get(0).equals("Some");
+            String someBinding = isSome && check(TokenType.IDENT) ? advance().text() : null;
+            // field destructuring: `Case { field [= var], ... }`, mirroring record construction and
+            // reusing the record literal's `,`/`=`/`{ f }` shorthand. Only a single named case can be
+            // destructured — an or-pattern binds the sum type and has no case fields (spec §match).
+            List<String> fieldNames = new ArrayList<>();
+            List<String> fieldVars = new ArrayList<>();
+            if (check(TokenType.LBRACE)) {
+                if (caseTypes.size() > 1) {
+                    throw error(peek(), "an or-pattern binds the sum type and cannot destructure a case's fields");
+                }
+                advance();  // `{`
+                if (!check(TokenType.RBRACE)) {
+                    do {
+                        Token field = expect(TokenType.IDENT);
+                        fieldNames.add(field.text());
+                        fieldVars.add(match(TokenType.ASSIGN) ? expect(TokenType.IDENT).text() : field.text());
+                    } while (match(TokenType.COMMA));
+                }
+                expect(TokenType.RBRACE);
+            }
+            String binding;
+            if (someBinding != null) {
+                binding = someBinding;
+            } else if (isSome && check(TokenType.AS)) {
+                throw error(peek(), "Option's wrapped value is bound positionally: write `| Some v`, not `| Some as v`");
+            } else {
+                binding = match(TokenType.AS) ? expect(TokenType.IDENT).text() : null;
+            }
             expect(TokenType.ARROW);
             Ast.Expr body = parseExpr();
+            // desugar the destructuring: bind the whole case (the `as` name, or a fresh synthetic),
+            // then read each field into its variable with a `let` wrapping the body. The type checker
+            // then validates the field reads and the backend needs no match-specific handling.
+            if (!fieldNames.isEmpty()) {
+                String whole = binding != null ? binding : "$m" + (matchWholeCounter++);
+                for (int i = fieldNames.size() - 1; i >= 0; i--) {
+                    body = new Ast.LetIn(fieldVars.get(i),
+                            new Ast.FieldAccess(new Ast.Var(whole, caseName.pos()), fieldNames.get(i), caseName.pos()),
+                            body, caseName.pos());
+                }
+                binding = whole;
+            }
             cases.add(new Ast.Case(caseTypes, binding, body, caseName.pos()));
         } while (match(TokenType.PIPE)); // a leading `|` starts the next case
         return new Ast.Match(scrutinee, cases, kw.pos());
