@@ -67,6 +67,26 @@ public final class HelperInliner {
         return own;
     }
 
+    /**
+     * Inlines helper calls inside every data's {@code invariant}, so a rule named with a {@code let}
+     * (e.g. {@code invariant 正の数(value)}) expands to its body before the invariant is type-checked
+     * or emitted — the same lowering a behavior body gets (spec 12.5, §invariant-expressions).
+     */
+    public Ast.Module withInlinedInvariants(Ast.Module m) {
+        List<Ast.Def> defs = new ArrayList<>();
+        for (Ast.Def def : m.defs()) {
+            if (def instanceof Ast.Data d && d.invariant().isPresent()) {
+                defs.add(new Ast.Data(d.name(), d.newtype(), d.includes(), d.fields(),
+                        java.util.Optional.of(inline(d.invariant().get())),
+                        d.decoder(), d.encoder(), d.pos()));
+            } else {
+                defs.add(def);
+            }
+        }
+        return new Ast.Module(m.name(), m.exposing(), m.exposedOutputs(), m.imports(),
+                defs, m.behaviors(), m.fns(), m.pos());
+    }
+
     /** Looks up a helper by name across the prelude and the module's own helpers, or null if the
      * name is not a helper (a builtin, injected behavior, or unknown). Used to type-check a function
      * passed to a helper's function parameter against the declared type, at the call site. */

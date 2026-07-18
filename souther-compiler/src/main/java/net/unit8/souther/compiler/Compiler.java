@@ -2,6 +2,7 @@ package net.unit8.souther.compiler;
 
 import net.unit8.souther.compiler.ast.Ast;
 import net.unit8.souther.compiler.check.Exposing;
+import net.unit8.souther.compiler.check.HelperInliner;
 import net.unit8.souther.compiler.check.TypeChecker;
 import net.unit8.souther.compiler.codegen.Backend;
 import net.unit8.souther.compiler.derive.Deriver;
@@ -32,6 +33,7 @@ public final class Compiler {
         Ast.Module raw = Parser.parse(source);
         rejectReservedNamespace(raw);
         Ast.Module module = Deriver.derive(Exposing.rewrite(raw));
+        module = HelperInliner.forModule(module).withInlinedInvariants(module);
         TypeChecker.check(module);
         Map<String, byte[]> out = Backend.generate(module);
         verifyConstConstructions(module, TypeChecker.symbols(module), out);
@@ -137,7 +139,8 @@ public final class Compiler {
         // pass 1: derive each module's codecs, resolving imported types against the original defs
         Map<String, Ast.Module> derived = new LinkedHashMap<>();
         for (Ast.Module m : parsed) {
-            derived.put(m.name(), Deriver.derive(m, visibleDefs(m, byName)));
+            Ast.Module d = Deriver.derive(m, visibleDefs(m, byName));
+            derived.put(m.name(), HelperInliner.forModule(d).withInlinedInvariants(d));
         }
         // pass 2: type-check and generate against the derived (codec-bearing) defs
         Map<String, byte[]> out = new LinkedHashMap<>();

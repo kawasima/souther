@@ -136,6 +136,24 @@ class CompileNewtypeConstructTest {
     }
 
     @Test
+    void aHelperCallingInvariantIsInlinedAndCtfeChecksIt() {
+        // an invariant may name a rule with a `let`; it is inlined before checking and emission, so
+        // it type-checks and CTFE runs the real compiled rule against a constant argument
+        String src = """
+                module demo
+                data 金額 = Int
+                    invariant 正の数(value)
+                let 正の数 (v: Int) = v >= 0
+                behavior make : (x: Int) -> 金額 constructs 金額
+                let make (x) = 金額(-5)
+                """;
+        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
+        assertTrue(e.getMessage().contains("金額"), e.getMessage());
+        // the same rule holds for 500, so it compiles
+        Compiler.compile(src.replace("金額(-5)", "金額(500)"));
+    }
+
+    @Test
     void runtimeInvariantConstructionOutsideTailIsForbidden() {
         // a runtime-argument invariant construction may only be the behavior's result (its abort is
         // the outcome); in a non-tail let binding it is a compile error
