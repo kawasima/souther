@@ -2130,73 +2130,20 @@ public final class Backend {
                 }
                 // a block has no value of its own; it is inlined by the call it is passed to
                 case Ast.Block b -> throw new CompileException(b.pos(), "a block is not a value");
-                case Ast.IntLit lit -> {
-                    code.loadConstant(lit.value());
-                    yield Type.INT;
-                }
-                case Ast.DecimalLit lit -> {
-                    code.new_(CD_BigDecimal);
-                    code.dup();
-                    code.loadConstant(lit.value().toString());
-                    code.invokespecial(CD_BigDecimal, "<init>",
-                            MethodTypeDesc.of(ConstantDescs.CD_void, CD_String));
-                    yield Type.DECIMAL;
-                }
-                case Ast.Neg neg -> {
-                    Type t = expr(neg.operand());
-                    if (t == Type.DECIMAL) {
-                        code.invokevirtual(CD_BigDecimal, "negate", MethodTypeDesc.of(CD_BigDecimal));
-                    } else {
-                        code.lneg();               // Int is carried as a long
-                    }
-                    yield t;
-                }
-                case Ast.StringLit lit -> {
-                    code.loadConstant(lit.value());
-                    yield Type.STRING;
-                }
-                case Ast.BoolLit lit -> {
-                    if (lit.value()) code.iconst_1(); else code.iconst_0();
-                    yield Type.BOOL;
-                }
-                case Ast.Var v -> {
-                    Var var = env.get(v.name());
-                    if (var != null) {
-                        load(code, var.slot(), var.type());
-                        yield var.type();
-                    }
-                    if (symbols.get(v.name()) instanceof Ast.UnitData) {
-                        ClassDesc cdU = cd(v.name());
-                        code.new_(cdU);
-                        code.dup();
-                        code.invokespecial(cdU, "<init>", MTD_void);
-                        yield Type.ref(v.name());
-                    }
-                    throw new CompileException(v.pos(), "unbound identifier `" + v.name() + "`");
-                }
-                case Ast.FieldAccess fa -> {
-                    Type targetType = expr(fa.target());
-                    Ast.Data owner = (Ast.Data) symbols.get(((Type.Ref) targetType).name());
-                    Type ft = fieldTypes(owner).get(fa.field());
-                    emitFieldRead(code, owner.name(), fa.field(), ft);
-                    yield ft;
-                }
+                // These node kinds are emitted natively from Core; route them through the one Core
+                // emitter (ADR-0021) instead of keeping a parallel AST emitter for each.
+                case Ast.IntLit lit -> genExpr(Core.of(lit));
+                case Ast.DecimalLit lit -> genExpr(Core.of(lit));
+                case Ast.Neg neg -> genExpr(Core.of(neg));
+                case Ast.StringLit lit -> genExpr(Core.of(lit));
+                case Ast.BoolLit lit -> genExpr(Core.of(lit));
+                case Ast.Var v -> genExpr(Core.of(v));
+                case Ast.FieldAccess fa -> genExpr(Core.of(fa));
                 case Ast.Call call -> call(call);
                 case Ast.Binary bin -> genExpr(Core.of(bin));
                 case Ast.NewData nd -> newData(nd);
                 case Ast.Match m -> match(m);
-                case Ast.If iff -> {
-                    expr(iff.cond());
-                    Label elseL = code.newLabel();
-                    Label end = code.newLabel();
-                    code.ifeq(elseL);
-                    Type tt = expr(iff.then());
-                    code.goto_(end);
-                    code.labelBinding(elseL);
-                    expr(iff.els());
-                    code.labelBinding(end);
-                    yield tt;
-                }
+                case Ast.If iff -> genExpr(Core.of(iff));
                 case Ast.ListLit lit -> genExpr(Core.of(lit));
                 // The Lower stage (ADR-0021) desugars a comprehension to an `if`, so one never
                 // reaches emission.
@@ -2358,26 +2305,15 @@ public final class Backend {
                     code.labelBinding(end);
                     yield tt;
                 }
-                // a `let` outside tail position: bind, then value the body. A let whose value is a
-                // runtime-selected function (a closure) is left to the AST emitter for now.
-                case Core.LetIn li when !TypeChecker.isFunctionSelection(li.value().toAst()) -> {
-                    Type vt = genExpr(li.value());
-                    int s = slot(vt);
-                    store(code, s, vt);
-                    bind(li.name(), s, vt);
-                    yield genExpr(li.body());
-                }
                 case Core.Fold f -> fold(f);
                 case Core.ListLit lit -> listLit(lit);
                 case Core.Binary bin -> binary(bin);
-                // Call, NewData, Match, a closure `let`, and a bare block are not migrated yet:
-                // hand them back to the AST emitter (ADR-0021 strangler).
+                // Call, NewData, Match, `let` (its closure case is still AST-only), and a bare block
+                // are not migrated yet: hand them back to the AST emitter (ADR-0021 strangler).
                 default -> expr(e.toAst());
             };
         }
 
-        /** Adds the comprehension's element once, only if every guard holds; returns an
-         * immutable 0-or-1 element list. */
         private Type match(Ast.Match m) {
             Type st = expr(m.scrutinee());
             int sSlot = slot(st);
@@ -2598,7 +2534,7 @@ public final class Backend {
                     code.i2l();
                     return Type.INT;
                 }
-                case "List.fold" -> {
+                case Core.FOLD -> {
                     // the one privileged loop; the rest derive from it (ADR-0028). Emitted through the
                     // Core `Fold` node, the same path a natively-lowered fold takes.
                     return fold((Core.Fold) Core.of(call));

@@ -4,6 +4,7 @@ import net.unit8.souther.compiler.CompileException;
 import net.unit8.souther.compiler.Prelude;
 import net.unit8.souther.compiler.SourcePos;
 import net.unit8.souther.compiler.ast.Ast;
+import net.unit8.souther.compiler.core.Core;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -1659,7 +1660,7 @@ public final class TypeChecker {
             }
             // map/filter/all/any are no longer built in: they are prelude helpers derived from fold
             // (ADR-0028, souther.list), so a call to one is expanded inline before it reaches here.
-            case "List.fold" -> {
+            case Core.FOLD -> {
                 arity(call, 3);
                 Type src = typeOf(args.get(0), env, data, symbols, reqs);
                 if (!(src instanceof Type.ListOf lo)) {

@@ -9,8 +9,10 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * The Lower stage (ADR-0021): rewrites the type-checked surface AST toward the form the backend
- * emits, so the backend only emits and never rewrites.
+ * The Lower stage (ADR-0021): rewrites the surface AST toward the form the backend emits, so the
+ * backend only emits and never rewrites. It runs before the type checker, whose body check consumes
+ * the lowered form (a behavior's permission and {@code requires} are defined on the inlined body,
+ * spec 12.5).
  *
  * <p>It inlines every behavior-implementing {@code fn} body once (spec 12.5) and desugars the
  * body-level constructs that have a plain-AST equivalent — currently the guard-only list
