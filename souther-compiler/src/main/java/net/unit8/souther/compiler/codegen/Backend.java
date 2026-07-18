@@ -2641,8 +2641,13 @@ public final class Backend {
                 }
                 case CONCAT -> {
                     Type lt = expr(bin.left());
-                    expr(bin.right());
+                    Type rt = expr(bin.right());
                     code.invokestatic(CD_Lists, "concat", MTD_Lists_concat);
+                    // the empty list contributes no element type; take the result's from the other
+                    // side, so a `[] ++ [x]` chain does not leave the element as `Nothing` (ADR-0028)
+                    if (lt.equals(Type.EMPTY_LIST)) {
+                        return rt;
+                    }
                     return lt;
                 }
                 default -> {

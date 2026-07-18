@@ -74,6 +74,30 @@ class CompileEmptyListTest {
         assertEquals(List.of(), run(loader, decode(loader, "In", Map.of("keep", false, "x", 9L))).get("ys"));
     }
 
+    /**
+     * A {@code map} result — an empty-seeded fold that grows {@code [] ++ [f(x)]} — feeding another
+     * combinator. The grown list's element type must survive the concat, or the outer fold reads a
+     * {@code Nothing} element and codegen crashes. Regression for the nested-combinator case the unit
+     * tests missed until an example exercised it.
+     */
+    @Test
+    void anEmptySeededFoldResultFeedsAnotherFold() throws Exception {
+        String module = """
+                module demo
+
+                data In = { xs: List<Int> }
+                data Out = { total: Int }
+
+                behavior work : (i: In) -> Out constructs Out
+
+                let work (i) = Out { total: fold(map(i.xs, dbl), 0, (acc, x) -> acc + x) }
+                let dbl (n: Int) = n * 2
+                """;
+        BytesClassLoader loader = loader(module);
+        Object in = decode(loader, "In", Map.of("xs", List.of(1L, 2L, 3L)));
+        assertEquals(12L, run(loader, in).get("total"));   // (1 + 2 + 3) * 2
+    }
+
     /** {@code []} straight into a {@code List<T>} field: an empty list of that type. */
     @Test
     void emptyListIntoField() throws Exception {
