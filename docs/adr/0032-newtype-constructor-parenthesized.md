@@ -37,10 +37,20 @@ position (its abort is the outcome), like any invariant-bearing construction.
 ## Consequences
 
 The parser is unchanged: `金額(500)` already parses as a call. The checker routes a call
-whose name is a newtype to construction, folds a constant argument against the invariant
-(a small constant evaluator over the fragment invariants use), and the backend emits the
-wrapper — a plain construction when the value is verified or the newtype has no invariant,
-the checked `__construct` (which aborts on violation) in tail position.
+whose name is a newtype to construction and, when the argument folds to a constant, records
+it. The constant argument is verified by **compile-time function evaluation**: the backend
+emits, per invariant-bearing newtype, a Raoh-free `$Ctfe.check(value)` that runs the *same*
+invariant bytecode `__construct` runs, and after codegen the compiler loads it and runs each
+recorded constant. A violation is a compile error, with no second evaluator that could
+disagree with run time. The backend emits a plain construction when the newtype has no
+invariant, and the checked `__construct` (which aborts on violation) for a runtime argument
+in tail position.
+
+CTFE couples the compiler to `souther-runtime` (a `provided` dependency): it loads generated
+code, and a lambda-bearing invariant's bytecode references the runtime `Fn`. When the class
+cannot be loaded or run at compile time, CTFE degrades to the run-time check. The compiler
+still does not depend on Raoh — CTFE runs the bare boolean invariant, not the
+Raoh-returning decoder or `__construct`.
 
 Two alternatives were rejected. A capitalization convention marking constructors (which
 would enable `金額 500`) is incompatible with free Japanese naming. Type-ascription

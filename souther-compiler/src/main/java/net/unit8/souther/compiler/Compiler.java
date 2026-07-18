@@ -33,7 +33,68 @@ public final class Compiler {
         rejectReservedNamespace(raw);
         Ast.Module module = Deriver.derive(Exposing.rewrite(raw));
         TypeChecker.check(module);
-        return Backend.generate(module);
+        Map<String, byte[]> out = Backend.generate(module);
+        verifyConstConstructions(module, TypeChecker.symbols(module), out);
+        return out;
+    }
+
+    /**
+     * Runs each constant newtype construction ({@code 金額(500)}) through its generated
+     * {@code $Ctfe.check} (compile-time function evaluation): the same invariant bytecode that
+     * {@code __construct} runs, so a violation becomes a compile error instead of a run-time abort
+     * (ADR-0032). A check that cannot be loaded or run here — e.g. a lambda-bearing invariant whose
+     * runtime class is absent from this classpath — is left to the run-time check.
+     */
+    private static void verifyConstConstructions(Ast.Module module, Map<String, Ast.Def> symbols,
+                                                 Map<String, byte[]> classes) {
+        List<TypeChecker.ConstCheck> checks = TypeChecker.constNewtypeChecks(module, symbols);
+        if (checks.isEmpty()) {
+            return;
+        }
+        MemoryClassLoader loader = new MemoryClassLoader(classes, Compiler.class.getClassLoader());
+        for (TypeChecker.ConstCheck c : checks) {
+            boolean holds;
+            try {
+                Class<?> ctfe = Class.forName(module.name() + "." + c.typeName() + "$Ctfe", true, loader);
+                holds = (boolean) ctfe.getMethod("check", paramClass(c.value())).invoke(null, c.value());
+            } catch (ReflectiveOperationException | LinkageError ex) {
+                continue;   // cannot evaluate at compile time; the run-time check still applies
+            }
+            if (!holds) {
+                throw new CompileException(c.pos(), "`" + c.typeName() + "("
+                        + (c.value() instanceof String s ? "\"" + s + "\"" : c.value())
+                        + ")` violates its invariant.");
+            }
+        }
+    }
+
+    private static Class<?> paramClass(Object v) {
+        if (v instanceof Long) {
+            return long.class;
+        }
+        if (v instanceof Boolean) {
+            return boolean.class;
+        }
+        return v.getClass();   // String, BigDecimal
+    }
+
+    /** Loads the freshly generated classes so their {@code $Ctfe.check} can run at compile time. */
+    private static final class MemoryClassLoader extends ClassLoader {
+        private final Map<String, byte[]> classes;
+
+        MemoryClassLoader(Map<String, byte[]> classes, ClassLoader parent) {
+            super(parent);
+            this.classes = classes;
+        }
+
+        @Override
+        protected Class<?> findClass(String name) throws ClassNotFoundException {
+            byte[] b = classes.get(name);
+            if (b == null) {
+                throw new ClassNotFoundException(name);
+            }
+            return defineClass(name, b, 0, b.length);
+        }
     }
 
     /** The namespace the compiler ships (souther.string/list/map/bool); a user module may not
@@ -87,6 +148,11 @@ public final class Compiler {
             Set<String> importedInjected = importedInjectedBehaviors(m, derived);
             TypeChecker.check(m, symbols, importedSigs);
             out.putAll(Backend.generate(m, symbols, importedPackages(m), importedSigs, importedInjected));
+        }
+        // every module's classes are now present, so CTFE can resolve cross-module references
+        for (Ast.Module original : parsed) {
+            Ast.Module m = derived.get(original.name());
+            verifyConstConstructions(m, visibleDefs(m, derived), out);
         }
         return out;
     }

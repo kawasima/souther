@@ -655,6 +655,40 @@ public final class Backend {
         });
         data.encoder().ifPresent(enc ->
                 out.put(pkg + "." + data.name() + "$Enc", generateEncoderClass(cdName, data, enc)));
+
+        // A CTFE helper for an invariant-bearing newtype: a Raoh-free `boolean check(value)` that
+        // runs the same invariant bytecode as __construct (via gen.expr), so a constant construction
+        // can be verified at compile time — 金額(-5) is a compile error, not a runtime abort (ADR-0032).
+        if (data.newtype() && !TypeChecker.effectiveInvariants(data, symbols).isEmpty()) {
+            emitCtfeCheck(data, fields, out);
+        }
+    }
+
+    private void emitCtfeCheck(Ast.Data data, Map<String, Type> fields, Map<String, byte[]> out) {
+        ClassDesc cdName = cd(data.name());
+        ClassDesc cdCtfe = cd(data.name() + "$Ctfe");
+        out.put(pkg + "." + data.name() + "$Ctfe", build(cdCtfe, cb -> {
+            cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
+            cb.withMethodBody("check", MethodTypeDesc.of(ConstantDescs.CD_boolean, fieldDescs(fields)),
+                    ClassFile.ACC_STATIC | ClassFile.ACC_PUBLIC, code -> {
+                        Gen gen = new Gen(code, data, cdName, 0);
+                        int slot = 0;
+                        for (Map.Entry<String, Type> f : fields.entrySet()) {
+                            gen.bind(f.getKey(), slot, f.getValue());
+                            slot += width(f.getValue());
+                        }
+                        for (Ast.Expr inv : TypeChecker.effectiveInvariants(data, symbols)) {
+                            gen.expr(inv);                 // the same boolean __construct checks
+                            Label ok = code.newLabel();
+                            code.ifne(ok);
+                            code.iconst_0();
+                            code.ireturn();                // an invariant is false
+                            code.labelBinding(ok);
+                        }
+                        code.iconst_1();
+                        code.ireturn();                    // all held
+                    });
+        }));
     }
 
     // --- sum data (sealed interface) ---

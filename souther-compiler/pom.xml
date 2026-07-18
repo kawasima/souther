@@ -18,13 +18,15 @@
     </description>
 
     <dependencies>
-        <!-- Test scope only. The compiler drives generated classes that reference
-             souther-runtime and Raoh (decode/encode target Raoh directly), so both are on
-             the test classpath (spec 10.6). -->
+        <!-- souther-runtime is `provided`: the compiler loads a generated `$Ctfe.check` class to
+             verify a constant newtype construction at compile time (CTFE, ADR-0032), and a
+             lambda-bearing invariant's bytecode references the runtime `Fn`. It is not bundled;
+             CTFE degrades gracefully to the run-time check if it is absent. Raoh stays test-only —
+             CTFE runs the bare invariant, not the Raoh-returning decoder/__construct. -->
         <dependency>
             <groupId>net.unit8.souther</groupId>
             <artifactId>souther-runtime</artifactId>
-            <scope>test</scope>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>net.unit8.raoh</groupId>
