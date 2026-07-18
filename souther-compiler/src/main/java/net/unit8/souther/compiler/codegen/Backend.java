@@ -3,9 +3,9 @@ package net.unit8.souther.compiler.codegen;
 import net.unit8.souther.compiler.CompileException;
 import net.unit8.souther.compiler.Prelude;
 import net.unit8.souther.compiler.ast.Ast;
-import net.unit8.souther.compiler.check.HelperInliner;
 import net.unit8.souther.compiler.check.Type;
 import net.unit8.souther.compiler.check.TypeChecker;
+import net.unit8.souther.compiler.core.Core;
 
 import java.lang.classfile.ClassBuilder;
 import java.lang.classfile.ClassFile;
@@ -325,13 +325,12 @@ public final class Backend {
                 case Ast.UnitData unit -> b.generateUnit(unit, out);
             }
         }
+        // Behavior fn bodies arrive with their helper calls already inlined (the Lower stage,
+        // ADR-0021); the backend emits them as-is and never lowers a helper on its own.
         Map<String, Ast.FnDef> fns = new HashMap<>();
         for (Ast.FnDef fn : module.fns()) {
             fns.put(fn.name(), fn);
         }
-        // Helper fns are expanded inline into each behavior body (spec 12.5); the backend never
-        // lowers a helper on its own.
-        HelperInliner inliner = HelperInliner.forModule(module);
         // Injection targets (spec 13.2): a SpecBehavior with no matching fn. Each becomes an
         // abstract base class a Java implementation extends (13.3). Imported injection targets
         // (their base lives in the declaring module) are requirements too, so a composition here
@@ -367,10 +366,8 @@ public final class Backend {
                 case Ast.SpecBehavior spec -> {
                     Ast.FnDef fn = fns.get(spec.name());
                     if (fn != null) {
-                        Ast.FnDef inlined = new Ast.FnDef(
-                                fn.name(), fn.params(), null, null, inliner.inline(fn.body()), fn.pos());
                         out.put(module.name() + "." + behaviorClass(spec.name()),
-                                b.generateSpecFn(spec, inlined, requiredNames, requiredSuccess, requiredParam));
+                                b.generateSpecFn(spec, fn, requiredNames, requiredSuccess, requiredParam));
                     }
                     // else: injection target — its abstract base was generated above (spec 13.3)
                 }
@@ -891,7 +888,7 @@ public final class Backend {
                     unbox(code, pt, slot);
                     gen.bind(fn.params().get(i).name(), slot, pt);
                 }
-                emitBodyTail(gen, code, fn.body(), cdB, requiredNames, requiredSuccess);
+                emitBodyTail(gen, code, Core.of(fn.body()), cdB, requiredNames, requiredSuccess);
             });
         });
     }
@@ -907,18 +904,18 @@ public final class Backend {
      * this is reached for constructions on both sides of a guard — there is no second, unchecked
      * construction path.
      */
-    private void emitBodyTail(Gen gen, CodeBuilder code, Ast.Expr e, ClassDesc cdB,
+    private void emitBodyTail(Gen gen, CodeBuilder code, Core e, ClassDesc cdB,
                               Set<String> requiredNames, Map<String, Type> requiredSuccess) {
         switch (e) {
-            case Ast.LetIn li -> {
-                if (li.value() instanceof Ast.Call call && requiredNames.contains(call.fn())) {
+            case Core.LetIn li -> {
+                if (li.value() instanceof Core.Call call && requiredNames.contains(call.fn())) {
                     // call an injected required behavior; its apply returns the value directly
                     code.aload(0);
                     code.getfield(cdB, call.fn(), CD_Behavior);
                     if (call.args().isEmpty()) {
                         code.aconst_null();    // `() -> R` (spec 13.1)
                     } else {
-                        Type at = gen.expr(call.args().get(0));
+                        Type at = gen.genExpr(call.args().get(0));
                         box(code, at);
                     }
                     code.invokeinterface(CD_Behavior, "apply", MTD_apply);
@@ -926,40 +923,41 @@ public final class Backend {
                     int vSlot = gen.slot(letType);
                     unbox(code, letType, vSlot);
                     gen.bind(li.name(), vSlot, letType);
-                } else if (TypeChecker.isFunctionSelection(li.value())) {
+                } else if (TypeChecker.isFunctionSelection(li.value().toAst())) {
                     // a lambda chosen at runtime (e.g. by an `if`) — a first-class Fn (spec §blocks)
                     List<Type> paramTypes = TypeChecker.inferFnParamTypes(
-                            li.name(), li.body(), gen.typesEnv(), gen.data, symbols);
-                    Type ft = gen.emitFunctionValue(li.value(), paramTypes);
+                            li.name(), li.body().toAst(), gen.typesEnv(), gen.data, symbols);
+                    Type ft = gen.emitFunctionValue(li.value().toAst(), paramTypes);
                     int slot = gen.slot(ft);
                     store(code, slot, ft);
                     gen.bind(li.name(), slot, ft);
                 } else {
-                    Type t = gen.expr(li.value());
+                    Type t = gen.genExpr(li.value());
                     int slot = gen.slot(t);
                     store(code, slot, t);
                     gen.bind(li.name(), slot, t);
                 }
                 emitBodyTail(gen, code, li.body(), cdB, requiredNames, requiredSuccess);
             }
-            case Ast.If iff -> {
-                gen.expr(iff.cond());
+            case Core.If iff -> {
+                gen.genExpr(iff.cond());
                 Label elseL = code.newLabel();
                 code.ifeq(elseL);
                 emitBodyTail(gen, code, iff.then(), cdB, requiredNames, requiredSuccess);
                 code.labelBinding(elseL);
                 emitBodyTail(gen, code, iff.els(), cdB, requiredNames, requiredSuccess);
             }
-            case Ast.NewData nd when TypeChecker.isInvariantBearing(nd.typeName(), symbols) -> {
+            case Core.NewData nd when TypeChecker.isInvariantBearing(nd.typeName(), symbols) -> {
+                Ast.NewData ndAst = (Ast.NewData) nd.toAst();
                 ClassDesc cdType = cd(nd.typeName());
                 Map<String, Type> flds = fieldTypes((Ast.Data) symbols.get(nd.typeName()));
-                emitFieldValues(gen, flds, nd.inits(), nd.spreads());
+                emitFieldValues(gen, flds, ndAst.inits(), ndAst.spreads());
                 code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(flds)));
                 code.invokestatic(CD_ConstraintViolation, "orThrow", MTD_orThrow);
                 code.areturn();
             }
             default -> {
-                Type rt = gen.expr(e);
+                Type rt = gen.genExpr(e);
                 box(code, rt);
                 code.areturn();
             }
@@ -2184,7 +2182,7 @@ public final class Backend {
                     yield ft;
                 }
                 case Ast.Call call -> call(call);
-                case Ast.Binary bin -> binary(bin);
+                case Ast.Binary bin -> genExpr(Core.of(bin));
                 case Ast.NewData nd -> newData(nd);
                 case Ast.Match m -> match(m);
                 case Ast.If iff -> {
@@ -2199,20 +2197,23 @@ public final class Backend {
                     code.labelBinding(end);
                     yield tt;
                 }
-                case Ast.ListLit lit -> listLit(lit);
-                case Ast.ListComp comp -> listComp(comp);
+                case Ast.ListLit lit -> genExpr(Core.of(lit));
+                // The Lower stage (ADR-0021) desugars a comprehension to an `if`, so one never
+                // reaches emission.
+                case Ast.ListComp comp -> throw new IllegalStateException(
+                        "list comprehension should have been lowered to an `if` before codegen");
             };
         }
 
         /** Builds an ArrayList of the literal's elements and returns it immutably. */
-        private Type listLit(Ast.ListLit lit) {
+        private Type listLit(Core.ListLit lit) {
             code.new_(CD_ArrayList);
             code.dup();
             code.invokespecial(CD_ArrayList, "<init>", MTD_void);
             Type elem = null;
-            for (Ast.Expr el : lit.elements()) {
+            for (Core el : lit.elements()) {
                 code.dup();
-                Type t = expr(el);
+                Type t = genExpr(el);
                 box(code, t);
                 code.invokevirtual(CD_ArrayList, "add", MTD_ArrayList_add);
                 code.pop();
@@ -2232,18 +2233,24 @@ public final class Backend {
          * and there is nothing to capture it into. A required behavior called from the body reads the
          * enclosing behavior's injected field, which is why the requirement belongs to that behavior.
          */
-        private Type foldOp(Ast.Call call) {
-            Ast.Block block = (Ast.Block) call.args().get(2);
-
-            Type srcType = expr(call.args().get(0));
+        private Type fold(Core.Fold f) {
+            Type srcType = genExpr(f.source());
             Type elemType = ((Type.ListOf) srcType).element();
             int srcSlot = slot(Type.STRING);
             code.astore(srcSlot);
 
-            Type accType = expr(call.args().get(1));   // the seed; its type is the accumulator's
-            box(code, accType);
-            int accSlot = slot(Type.STRING);
-            code.astore(accSlot);
+            // The source is an immutable list, so its length is loop-invariant — read it once.
+            int sizeSlot = slot(Type.BOOL);
+            code.aload(srcSlot);
+            code.invokeinterface(CD_List, "size", MTD_size);
+            code.istore(sizeSlot);
+
+            // The accumulator lives in a slot typed to the seed (a long for Int, an int for Bool,
+            // a reference otherwise), so it stays unboxed across iterations — no Long.valueOf /
+            // longValue round-trip per element, which keeps the loop friendly to the JIT.
+            Type accType = genExpr(f.seed());   // the seed; its type is the accumulator's
+            int accSlot = slot(accType);
+            store(code, accSlot, accType);
             Type resultType = accType;
 
             int iSlot = slot(Type.BOOL);
@@ -2253,63 +2260,124 @@ public final class Backend {
             Label done = code.newLabel();
             code.labelBinding(test);
             code.iload(iSlot);
-            code.aload(srcSlot);
-            code.invokeinterface(CD_List, "size", MTD_size);
+            code.iload(sizeSlot);
             code.if_icmpge(done);
 
-            // bind the block's parameters — the accumulator and this element — for this iteration
+            // bind the block's parameters — the accumulator and this element — for this iteration.
+            // The accumulator param reads straight from its typed slot; the block never writes the
+            // slot, so binding the param to it directly is safe (the new value is stored below).
             code.aload(srcSlot);
             code.iload(iSlot);
             code.invokeinterface(CD_List, "get", MethodTypeDesc.of(CD_Object, ConstantDescs.CD_int));
             int elemSlot = slot(elemType);
             unbox(code, elemType, elemSlot);
-            int fAccSlot = slot(accType);
-            code.aload(accSlot);
-            unbox(code, accType, fAccSlot);
-            bind(block.params().get(0), fAccSlot, accType);
-            bind(block.params().get(1), elemSlot, elemType);
-            Type bt = expr(block.body());
+            bind(f.params().get(0), accSlot, accType);
+            bind(f.params().get(1), elemSlot, elemType);
+            Type bt = genExpr(f.body());
             if (accType.equals(Type.EMPTY_LIST)) {
                 resultType = bt;   // an empty-list seed takes the list the block grows (ADR-0028)
             }
-            box(code, bt);
-            code.astore(accSlot);
+            store(code, accSlot, accType);
 
             code.iinc(iSlot, 1);
             code.goto_(test);
             code.labelBinding(done);
 
-            code.aload(accSlot);
-            int outSlot = slot(accType);
-            unbox(code, accType, outSlot);
-            load(code, outSlot, accType);
+            load(code, accSlot, accType);
             return resultType;
+        }
+
+        /**
+         * Emits a Core expression. The strangler entry point for migrating the emitter off the AST:
+         * a node whose native Core emission is written goes through here; the rest fall back to the
+         * AST emitter via {@link Core#toAst()}. Sub-expressions of a migrated node route back here, so
+         * a nested {@code fold} still emits natively even inside an un-migrated parent.
+         */
+        Type genExpr(Core e) {
+            return switch (e) {
+                case Core.Int x -> {
+                    code.loadConstant(x.value());
+                    yield Type.INT;
+                }
+                case Core.Decimal x -> {
+                    code.new_(CD_BigDecimal);
+                    code.dup();
+                    code.loadConstant(x.value().toString());
+                    code.invokespecial(CD_BigDecimal, "<init>",
+                            MethodTypeDesc.of(ConstantDescs.CD_void, CD_String));
+                    yield Type.DECIMAL;
+                }
+                case Core.Str x -> {
+                    code.loadConstant(x.value());
+                    yield Type.STRING;
+                }
+                case Core.Bool x -> {
+                    if (x.value()) code.iconst_1(); else code.iconst_0();
+                    yield Type.BOOL;
+                }
+                case Core.Var v -> {
+                    Var var = env.get(v.name());
+                    if (var != null) {
+                        load(code, var.slot(), var.type());
+                        yield var.type();
+                    }
+                    if (symbols.get(v.name()) instanceof Ast.UnitData) {
+                        ClassDesc cdU = cd(v.name());
+                        code.new_(cdU);
+                        code.dup();
+                        code.invokespecial(cdU, "<init>", MTD_void);
+                        yield Type.ref(v.name());
+                    }
+                    throw new CompileException(v.pos(), "unbound identifier `" + v.name() + "`");
+                }
+                case Core.Neg n -> {
+                    Type t = genExpr(n.operand());
+                    if (t == Type.DECIMAL) {
+                        code.invokevirtual(CD_BigDecimal, "negate", MethodTypeDesc.of(CD_BigDecimal));
+                    } else {
+                        code.lneg();               // Int is carried as a long
+                    }
+                    yield t;
+                }
+                case Core.FieldAccess fa -> {
+                    Type targetType = genExpr(fa.target());
+                    Ast.Data owner = (Ast.Data) symbols.get(((Type.Ref) targetType).name());
+                    Type ft = fieldTypes(owner).get(fa.field());
+                    emitFieldRead(code, owner.name(), fa.field(), ft);
+                    yield ft;
+                }
+                case Core.If iff -> {
+                    genExpr(iff.cond());
+                    Label elseL = code.newLabel();
+                    Label end = code.newLabel();
+                    code.ifeq(elseL);
+                    Type tt = genExpr(iff.then());
+                    code.goto_(end);
+                    code.labelBinding(elseL);
+                    genExpr(iff.els());
+                    code.labelBinding(end);
+                    yield tt;
+                }
+                // a `let` outside tail position: bind, then value the body. A let whose value is a
+                // runtime-selected function (a closure) is left to the AST emitter for now.
+                case Core.LetIn li when !TypeChecker.isFunctionSelection(li.value().toAst()) -> {
+                    Type vt = genExpr(li.value());
+                    int s = slot(vt);
+                    store(code, s, vt);
+                    bind(li.name(), s, vt);
+                    yield genExpr(li.body());
+                }
+                case Core.Fold f -> fold(f);
+                case Core.ListLit lit -> listLit(lit);
+                case Core.Binary bin -> binary(bin);
+                // Call, NewData, Match, a closure `let`, and a bare block are not migrated yet:
+                // hand them back to the AST emitter (ADR-0021 strangler).
+                default -> expr(e.toAst());
+            };
         }
 
         /** Adds the comprehension's element once, only if every guard holds; returns an
          * immutable 0-or-1 element list. */
-        private Type listComp(Ast.ListComp comp) {
-            code.new_(CD_ArrayList);
-            code.dup();
-            code.invokespecial(CD_ArrayList, "<init>", MTD_void);
-            int listSlot = slot(Type.STRING);          // holds the ArrayList (a reference)
-            code.astore(listSlot);
-            Label skip = code.newLabel();
-            for (Ast.Expr g : comp.guards()) {
-                expr(g);
-                code.ifeq(skip);                       // a false guard skips the add
-            }
-            code.aload(listSlot);
-            Type elem = expr(comp.element());
-            box(code, elem);
-            code.invokevirtual(CD_ArrayList, "add", MTD_ArrayList_add);
-            code.pop();
-            code.labelBinding(skip);
-            code.aload(listSlot);
-            code.invokestatic(CD_List, "copyOf", MTD_List_copyOf, true);
-            return Type.list(elem);
-        }
-
         private Type match(Ast.Match m) {
             Type st = expr(m.scrutinee());
             int sSlot = slot(st);
@@ -2531,7 +2599,9 @@ public final class Backend {
                     return Type.INT;
                 }
                 case "List.fold" -> {
-                    return foldOp(call);   // the one privileged loop; the rest derive from it (ADR-0028)
+                    // the one privileged loop; the rest derive from it (ADR-0028). Emitted through the
+                    // Core `Fold` node, the same path a natively-lowered fold takes.
+                    return fold((Core.Fold) Core.of(call));
                 }
                 case "List.get" -> {
                     Type ct = expr(call.args().get(0));
@@ -2695,43 +2765,43 @@ public final class Backend {
             }
         }
 
-        private Type binary(Ast.Binary bin) {
+        private Type binary(Core.Binary bin) {
             switch (bin.op()) {
                 case AND -> {
-                    expr(bin.left());
-                    expr(bin.right());
+                    genExpr(bin.left());
+                    genExpr(bin.right());
                     code.iand();
                     return Type.BOOL;
                 }
                 case OR -> {
-                    expr(bin.left());
-                    expr(bin.right());
+                    genExpr(bin.left());
+                    genExpr(bin.right());
                     code.ior();
                     return Type.BOOL;
                 }
                 // +, -, * are Int-only (Decimal uses the add/subtract/multiply calls) and abort on
                 // overflow rather than wrapping (spec 18.2).
                 case ADD -> {
-                    expr(bin.left());
-                    expr(bin.right());
+                    genExpr(bin.left());
+                    genExpr(bin.right());
                     code.invokestatic(CD_IntMath, "addExact", MTD_intExact);
                     return Type.INT;
                 }
                 case SUB -> {
-                    expr(bin.left());
-                    expr(bin.right());
+                    genExpr(bin.left());
+                    genExpr(bin.right());
                     code.invokestatic(CD_IntMath, "subtractExact", MTD_intExact);
                     return Type.INT;
                 }
                 case MUL -> {
-                    expr(bin.left());
-                    expr(bin.right());
+                    genExpr(bin.left());
+                    genExpr(bin.right());
                     code.invokestatic(CD_IntMath, "multiplyExact", MTD_intExact);
                     return Type.INT;
                 }
                 case CONCAT -> {
-                    Type lt = expr(bin.left());
-                    Type rt = expr(bin.right());
+                    Type lt = genExpr(bin.left());
+                    Type rt = genExpr(bin.right());
                     code.invokestatic(CD_Lists, "concat", MTD_Lists_concat);
                     // the empty list contributes no element type; take the result's from the other
                     // side, so a `[] ++ [x]` chain does not leave the element as `Nothing` (ADR-0028)
@@ -2741,8 +2811,8 @@ public final class Backend {
                     return lt;
                 }
                 default -> {
-                    Type lt = expr(bin.left());
-                    expr(bin.right());
+                    Type lt = genExpr(bin.left());
+                    genExpr(bin.right());
                     boolean ordering = switch (bin.op()) {
                         case LT, LE, GT, GE -> true;
                         default -> false;

@@ -3,6 +3,7 @@ package net.unit8.souther.compiler;
 import net.unit8.souther.compiler.ast.Ast;
 import net.unit8.souther.compiler.check.Exposing;
 import net.unit8.souther.compiler.check.HelperInliner;
+import net.unit8.souther.compiler.check.Lower;
 import net.unit8.souther.compiler.check.NewtypeDesugar;
 import net.unit8.souther.compiler.check.TypeChecker;
 import net.unit8.souther.compiler.codegen.Backend;
@@ -36,8 +37,9 @@ public final class Compiler {
         Ast.Module module = Deriver.derive(Exposing.rewrite(raw));
         module = HelperInliner.forModule(module).withInlinedInvariants(module);
         module = NewtypeDesugar.rewrite(module, TypeChecker.symbols(module));
-        TypeChecker.check(module);
-        Map<String, byte[]> out = Backend.generate(module);
+        Ast.Module lowered = Lower.run(module);
+        TypeChecker.check(module, TypeChecker.symbols(module), Map.of(), lowered);
+        Map<String, byte[]> out = Backend.generate(lowered);
         verifyConstConstructions(module, TypeChecker.symbols(module), out);
         return out;
     }
@@ -157,8 +159,9 @@ public final class Compiler {
             Map<String, Ast.Def> symbols = visibleDefs(m, derived);
             Map<String, TypeChecker.Sig> importedSigs = importedBehaviorSigs(m, derived);
             Set<String> importedInjected = importedInjectedBehaviors(m, derived);
-            TypeChecker.check(m, symbols, importedSigs);
-            out.putAll(Backend.generate(m, symbols, importedPackages(m), importedSigs, importedInjected));
+            Ast.Module lowered = Lower.run(m);
+            TypeChecker.check(m, symbols, importedSigs, lowered);
+            out.putAll(Backend.generate(lowered, symbols, importedPackages(m), importedSigs, importedInjected));
         }
         // every module's classes are now present, so CTFE can resolve cross-module references
         for (Ast.Module original : parsed) {

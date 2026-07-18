@@ -40,6 +40,22 @@ public final class TypeChecker {
      */
     public static void check(Ast.Module module, Map<String, Ast.Def> symbols,
                              Map<String, Sig> importedSigs) {
+        check(module, symbols, importedSigs, Lower.run(module));
+    }
+
+    /**
+     * Type-checks a module whose behavior fn bodies have already been inlined by the {@link Lower}
+     * stage (ADR-0021), so the inlining is computed once and shared with the backend rather than the
+     * checker inlining a second time. The main body check reads {@code lowered}; the standalone
+     * helper check and the function-argument check still read the original bodies, which carry the
+     * un-inlined helper calls they inspect.
+     */
+    public static void check(Ast.Module module, Map<String, Ast.Def> symbols,
+                             Map<String, Sig> importedSigs, Ast.Module lowered) {
+        Map<String, Ast.Expr> loweredBodies = new HashMap<>();
+        for (Ast.FnDef fn : lowered.fns()) {
+            loweredBodies.put(fn.name(), fn.body());
+        }
         for (Ast.Def def : module.defs()) {
             switch (def) {
                 case Ast.Data data -> checkData(data, symbols);
@@ -122,7 +138,8 @@ public final class TypeChecker {
             if (b instanceof Ast.SpecBehavior spec) {
                 Ast.FnDef fn = fns.get(spec.name());
                 if (fn != null) {
-                    checkSpecFn(spec, fn, symbols, allBehaviors, reqSigs, inliner);
+                    checkSpecFn(spec, fn, loweredBodies.get(spec.name()), symbols, allBehaviors,
+                            reqSigs, inliner);
                 }
             }
         }
@@ -322,9 +339,9 @@ public final class TypeChecker {
         }
     }
 
-    private static void checkSpecFn(Ast.SpecBehavior spec, Ast.FnDef fn, Map<String, Ast.Def> symbols,
-                                    Set<String> allBehaviors, Map<String, ReqSig> reqSigs,
-                                    HelperInliner inliner) {
+    private static void checkSpecFn(Ast.SpecBehavior spec, Ast.FnDef fn, Ast.Expr inlinedBody,
+                                    Map<String, Ast.Def> symbols, Set<String> allBehaviors,
+                                    Map<String, ReqSig> reqSigs, HelperInliner inliner) {
         int nBusiness = spec.params().size();
         int nReq = spec.requires().size();
         if (fn.params().size() != nBusiness + nReq) {
@@ -361,10 +378,10 @@ public final class TypeChecker {
         // Check functions passed to helper parameters (e.g. a combinator's predicate) against their
         // declared types first, so a mismatch names the parameter, not the derivation it expands to.
         checkFunctionArgs(fn.body(), env, symbols, reqSigs, inliner);
-        // Expand helper calls inline (spec 12.5): the whole body is then checked as one expression,
-        // so a helper's constructions and injected calls count toward this behavior's permission and
-        // requires — exactly as if the code had been written inline.
-        Ast.Expr body = inliner.inline(fn.body());
+        // The body arrives with helper calls already expanded (the Lower stage, ADR-0021): it is
+        // checked as one expression, so a helper's constructions and injected calls count toward this
+        // behavior's permission and requires — exactly as if the code had been written inline (12.5).
+        Ast.Expr body = inlinedBody;
         rejectNonRequiredCalls(body, allBehaviors, reqSigs);
 
         Type rt = typeOf(body, env, null, symbols, reqSigs);

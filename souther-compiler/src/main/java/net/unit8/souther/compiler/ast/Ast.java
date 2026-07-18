@@ -2,9 +2,11 @@ package net.unit8.souther.compiler.ast;
 
 import net.unit8.souther.compiler.SourcePos;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.UnaryOperator;
 
 /**
  * The slice-2 abstract syntax: a module of product {@code data} definitions with one or
@@ -339,4 +341,51 @@ public interface Ast {
 
 
     enum BinOp { EQ, NE, LT, LE, GT, GE, AND, OR, ADD, SUB, MUL, CONCAT }
+
+    /**
+     * Rebuilds {@code e} with each direct child expression replaced by {@code f} applied to it; a
+     * leaf (a literal or a variable) is returned unchanged. The single authoritative walk over the
+     * expression tree, so an AST-to-AST pass (a Lower desugar, an optimization) writes only the
+     * cases it rewrites and delegates the rest here, instead of hand-copying every node type.
+     */
+    static Expr mapChildren(Expr e, UnaryOperator<Expr> f) {
+        return switch (e) {
+            case IntLit x -> x;
+            case DecimalLit x -> x;
+            case StringLit x -> x;
+            case BoolLit x -> x;
+            case Var x -> x;
+            case Neg n -> new Neg(f.apply(n.operand()), n.pos());
+            case FieldAccess fa -> new FieldAccess(f.apply(fa.target()), fa.field(), fa.pos());
+            case Binary b -> new Binary(b.op(), f.apply(b.left()), f.apply(b.right()), b.pos());
+            case Call c -> new Call(c.fn(), mapExprs(c.args(), f), c.pos());
+            case If iff -> new If(f.apply(iff.cond()), f.apply(iff.then()), f.apply(iff.els()), iff.pos());
+            case LetIn li -> new LetIn(li.name(), f.apply(li.value()), f.apply(li.body()), li.pos());
+            case Block bl -> new Block(bl.params(), f.apply(bl.body()), bl.pos());
+            case ListLit l -> new ListLit(mapExprs(l.elements(), f), l.pos());
+            case ListComp comp -> new ListComp(f.apply(comp.element()), mapExprs(comp.guards(), f), comp.pos());
+            case NewData nd -> {
+                List<FieldInit> inits = new ArrayList<>();
+                for (FieldInit i : nd.inits()) {
+                    inits.add(new FieldInit(i.name(), f.apply(i.value()), i.pos()));
+                }
+                yield new NewData(nd.typeName(), inits, nd.spreads(), nd.pos());
+            }
+            case Match m -> {
+                List<Case> cases = new ArrayList<>();
+                for (Case c : m.cases()) {
+                    cases.add(new Case(c.caseTypes(), c.binding(), f.apply(c.body()), c.pos()));
+                }
+                yield new Match(f.apply(m.scrutinee()), cases, m.pos());
+            }
+        };
+    }
+
+    private static List<Expr> mapExprs(List<Expr> es, UnaryOperator<Expr> f) {
+        List<Expr> out = new ArrayList<>();
+        for (Expr e : es) {
+            out.add(f.apply(e));
+        }
+        return out;
+    }
 }

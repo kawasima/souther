@@ -1,6 +1,7 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.compiler.ast.Ast;
+import net.unit8.souther.compiler.check.Lower;
 import net.unit8.souther.compiler.check.TypeChecker;
 import net.unit8.souther.compiler.codegen.Backend;
 import net.unit8.souther.compiler.derive.Deriver;
@@ -32,7 +33,7 @@ class CompileTypeVariableTest {
     private static Map<String, byte[]> compileCore(String src) {
         Ast.Module m = Deriver.derive(Parser.parse(src));
         TypeChecker.check(m);
-        return Backend.generate(m);
+        return Backend.generate(Lower.run(m));
     }
 
     @Test

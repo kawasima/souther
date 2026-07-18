@@ -1,0 +1,77 @@
+package net.unit8.souther.compiler.check;
+
+import net.unit8.souther.compiler.ast.Ast;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
+/**
+ * The Lower stage (ADR-0021): rewrites the type-checked surface AST toward the form the backend
+ * emits, so the backend only emits and never rewrites.
+ *
+ * <p>It inlines every behavior-implementing {@code fn} body once (spec 12.5) and desugars the
+ * body-level constructs that have a plain-AST equivalent — currently the guard-only list
+ * comprehension {@code [e | g]}, which becomes {@code if g then [e] else []}. The backend then
+ * emits from the lowered module instead of re-running the inliner or shaping these constructs
+ * itself, and the type checker's body check consumes the same lowered form. Helper fns are left
+ * untouched — they are inlined at their call sites, so a comprehension inside one is desugared once
+ * it lands in a behavior body. Later slices grow this stage into a typed Core IR and move the
+ * remaining backend-side rewrites (fold shaping, {@code match} lowering, closure conversion) here.
+ */
+public final class Lower {
+
+    private Lower() {}
+
+    /** Returns {@code module} with each behavior-implementing fn body inlined and every list
+     * comprehension (in a body or a data invariant) desugared to an {@code if}. */
+    public static Ast.Module run(Ast.Module module) {
+        HelperInliner inliner = HelperInliner.forModule(module);
+        Set<String> behaviorNames = new HashSet<>();
+        for (Ast.BehaviorDef b : module.behaviors()) {
+            behaviorNames.add(b.name());
+        }
+        List<Ast.FnDef> fns = new ArrayList<>();
+        for (Ast.FnDef fn : module.fns()) {
+            if (behaviorNames.contains(fn.name())) {
+                fns.add(new Ast.FnDef(fn.name(), fn.params(), fn.declaredReturn(), fn.intrinsicKey(),
+                        desugar(inliner.inline(fn.body())), fn.pos()));
+            } else {
+                fns.add(fn);   // a helper fn: inlined at its call sites, never emitted on its own
+            }
+        }
+        List<Ast.Def> defs = new ArrayList<>();
+        for (Ast.Def def : module.defs()) {
+            if (def instanceof Ast.Data d && d.invariant().isPresent()) {
+                defs.add(new Ast.Data(d.name(), d.newtype(), d.includes(), d.fields(),
+                        Optional.of(desugar(d.invariant().get())), d.decoder(), d.encoder(), d.pos()));
+            } else {
+                defs.add(def);
+            }
+        }
+        return new Ast.Module(module.name(), module.exposing(), module.exposedOutputs(),
+                module.imports(), defs, module.behaviors(), fns, module.pos());
+    }
+
+    /** Post-order rewrite: desugar the children first, then the node itself if it is a comprehension. */
+    private static Ast.Expr desugar(Ast.Expr e) {
+        Ast.Expr mapped = Ast.mapChildren(e, Lower::desugar);
+        return mapped instanceof Ast.ListComp comp ? listCompToIf(comp) : mapped;
+    }
+
+    /** {@code [element | g1, g2]} is {@code if g1 && g2 then [element] else []}: the element is
+     * included exactly when every guard holds, giving a 0-or-1 element list (spec 18.4). */
+    private static Ast.Expr listCompToIf(Ast.ListComp comp) {
+        Ast.Expr then = new Ast.ListLit(List.of(comp.element()), comp.pos());
+        if (comp.guards().isEmpty()) {
+            return then;
+        }
+        Ast.Expr cond = comp.guards().get(0);
+        for (int i = 1; i < comp.guards().size(); i++) {
+            cond = new Ast.Binary(Ast.BinOp.AND, cond, comp.guards().get(i), comp.pos());
+        }
+        return new Ast.If(cond, then, new Ast.ListLit(List.of(), comp.pos()), comp.pos());
+    }
+}
