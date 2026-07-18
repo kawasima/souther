@@ -62,6 +62,12 @@ public final class Backend {
     private static final ClassDesc CD_DivisionByZero = ClassDesc.of("net.unit8.souther.runtime.DivisionByZero");
     private static final ClassDesc CD_Boolean = ClassDesc.of("java.lang.Boolean");
     private static final ClassDesc CD_BigDecimal = ClassDesc.of("java.math.BigDecimal");
+    private static final ClassDesc CD_DecimalMath = ClassDesc.of("net.unit8.souther.runtime.DecimalMath");
+    /** {@code BigDecimal add/subtract/multiply(BigDecimal) -> BigDecimal}: the Decimal `+ - *` ops. */
+    private static final MethodTypeDesc MTD_bdArith = MethodTypeDesc.of(CD_BigDecimal, CD_BigDecimal);
+    /** {@code DecimalMath.divide(BigDecimal, BigDecimal) -> BigDecimal}: the Decimal `/` operator. */
+    private static final MethodTypeDesc MTD_bdDivideOp =
+            MethodTypeDesc.of(CD_BigDecimal, CD_BigDecimal, CD_BigDecimal);
     private static final ClassDesc CD_RoundingMode = ClassDesc.of("java.math.RoundingMode");
     /** {@code BigDecimal.divide(BigDecimal, int, RoundingMode)} (spec 18.3). */
     private static final MethodTypeDesc MTD_bdDivide =
@@ -2708,25 +2714,30 @@ public final class Backend {
                     code.ior();
                     return Type.BOOL;
                 }
-                // +, -, * are Int-only (Decimal uses the add/subtract/multiply calls) and abort on
-                // overflow rather than wrapping (spec 18.2).
-                case ADD -> {
-                    genExpr(bin.left());
+                // `+ - * /` work on two Int or two Decimal operands (spec 18.1). Int aborts on
+                // overflow, and `/` aborts on a zero divisor; Decimal does not overflow, and its `/`
+                // rounds by the default scale/mode. Case handling for a zero divisor is the
+                // divide/remainder functions, not the operator.
+                case ADD, SUB, MUL, DIV -> {
+                    Type t = genExpr(bin.left());
                     genExpr(bin.right());
-                    code.invokestatic(CD_IntMath, "addExact", MTD_intExact);
-                    return Type.INT;
-                }
-                case SUB -> {
-                    genExpr(bin.left());
-                    genExpr(bin.right());
-                    code.invokestatic(CD_IntMath, "subtractExact", MTD_intExact);
-                    return Type.INT;
-                }
-                case MUL -> {
-                    genExpr(bin.left());
-                    genExpr(bin.right());
-                    code.invokestatic(CD_IntMath, "multiplyExact", MTD_intExact);
-                    return Type.INT;
+                    if (t == Type.DECIMAL) {
+                        switch (bin.op()) {
+                            case ADD -> code.invokevirtual(CD_BigDecimal, "add", MTD_bdArith);
+                            case SUB -> code.invokevirtual(CD_BigDecimal, "subtract", MTD_bdArith);
+                            case MUL -> code.invokevirtual(CD_BigDecimal, "multiply", MTD_bdArith);
+                            default  -> code.invokestatic(CD_DecimalMath, "divide", MTD_bdDivideOp);
+                        }
+                    } else {
+                        String m = switch (bin.op()) {
+                            case ADD -> "addExact";
+                            case SUB -> "subtractExact";
+                            case MUL -> "multiplyExact";
+                            default  -> "divideExact";
+                        };
+                        code.invokestatic(CD_IntMath, m, MTD_intExact);
+                    }
+                    return t;
                 }
                 case CONCAT -> {
                     Type lt = genExpr(bin.left());

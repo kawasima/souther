@@ -36,4 +36,21 @@ public final class IntMath {
             throw new ConstraintViolation("Int overflow: " + a + " * " + b);
         }
     }
+
+    /**
+     * The {@code /} operator on Int: truncating division that aborts on a zero divisor (and on the
+     * {@code Long.MIN_VALUE / -1} overflow), like the other arithmetic operators (spec 18.1). Code
+     * that wants a zero divisor as a case uses the {@code Int.divide} function, which returns
+     * {@code Int | DivisionByZero} instead.
+     */
+    public static long divideExact(long a, long b) {
+        if (b == 0) {
+            throw new ConstraintViolation("division by zero: " + a + " / 0");
+        }
+        try {
+            return Math.divideExact(a, b);
+        } catch (ArithmeticException e) {
+            throw new ConstraintViolation("Int overflow: " + a + " / " + b);
+        }
+    }
 }

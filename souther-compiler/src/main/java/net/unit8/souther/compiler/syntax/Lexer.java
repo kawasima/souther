@@ -108,14 +108,27 @@ public final class Lexer {
         while (!atEnd() && Character.isDigit(peek())) {
             sb.append(advance());
         }
-        // a `.` followed by a digit makes it a Decimal literal (spec 7.1); a `.` followed by
-        // anything else is a field access on an Int, left for the parser.
+        // a `.` followed by a digit is the fractional part of a Decimal; a `.` followed by anything
+        // else is a field access on an Int, left for the parser.
+        boolean fractional = false;
         if (!atEnd() && peek() == '.' && Character.isDigit(peekNext())) {
+            fractional = true;
             sb.append(advance());                       // the dot
             while (!atEnd() && Character.isDigit(peek())) {
                 sb.append(advance());
             }
+        }
+        // A Decimal literal carries the `m` suffix (F# form): `500m`, `1.5m`. Bare digits are an Int.
+        // A fractional literal without `m` is not a Decimal and there is no floating-point type,
+        // so it is rejected. The `m` only counts as the suffix when it ends the literal — a following
+        // letter or digit means it is an identifier (`500money`), not a suffix.
+        if (!atEnd() && peek() == 'm' && !Character.isLetterOrDigit(peekNext())) {
+            advance();                                  // consume the suffix; the value text drops it
             return new Token(TokenType.DECIMAL_LIT, sb.toString(), start);
+        }
+        if (fractional) {
+            throw new CompileException(start, "a fractional literal is a Decimal and needs the `m` "
+                    + "suffix (write `" + sb + "m`); Souther has no floating-point type");
         }
         return new Token(TokenType.INT_LIT, sb.toString(), start);
     }
@@ -168,10 +181,10 @@ public final class Lexer {
                 if (match('=')) return new Token(TokenType.EQ, "==", start);
                 return new Token(TokenType.ASSIGN, "=", start);
             case '/':
-                // `/=` is inequality (Elm/Haskell form). There is no division operator,
-                // so a lone `/` is an error. (`//` is a comment, consumed in skipTrivia.)
+                // `/=` is inequality (Elm/Haskell form); a lone `/` is the division operator.
+                // (`//` is a comment, consumed in skipTrivia.)
                 if (match('=')) return new Token(TokenType.NE, "/=", start);
-                break;
+                return new Token(TokenType.SLASH, "/", start);
             case '<':
                 if (match('=')) return new Token(TokenType.LE, "<=", start);
                 if (match('-')) return new Token(TokenType.LARROW, "<-", start);

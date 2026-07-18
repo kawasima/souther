@@ -47,3 +47,4 @@ specification is in Japanese.
 | [0030](0030-spread-not-include-keyword.md) | Record composition and update use a `...` spread, not an `include` keyword | `[#product-data]`, `[#field-spread]`, `[#record-literal]` |
 | [0031](0031-invariant-follows-the-type-body.md) | A data's `invariant` clause follows the type body, not the record's braces | `[#invariant]`, `[#product-data]` |
 | [0032](0032-newtype-constructor-parenthesized.md) | A newtype is constructed by applying its name, parenthesized: `金額(500)` | `[#newtype]`, `[#violation-destination]` |
+| [0033](0033-numeric-literals-and-arithmetic-operators.md) | Decimal literals carry an `m` suffix; `+ - * /` work on Int and Decimal | `[#primitives]`, `[#stdlib-int]`, `[#stdlib-decimal]` |

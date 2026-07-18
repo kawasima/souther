@@ -340,7 +340,7 @@ public interface Ast {
     record Binary(BinOp op, Expr left, Expr right, SourcePos pos) implements Expr {}
 
 
-    enum BinOp { EQ, NE, LT, LE, GT, GE, AND, OR, ADD, SUB, MUL, CONCAT }
+    enum BinOp { EQ, NE, LT, LE, GT, GE, AND, OR, ADD, SUB, MUL, DIV, CONCAT }
 
     /**
      * Rebuilds {@code e} with each direct child expression replaced by {@code f} applied to it; a

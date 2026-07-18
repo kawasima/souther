@@ -1819,10 +1819,17 @@ public final class TypeChecker {
                 }
                 yield Type.BOOL;
             }
-            case ADD, SUB, MUL -> {
-                requireType(bin.left(), Type.INT, env, data, symbols, reqs, "operand of arithmetic");
-                requireType(bin.right(), Type.INT, env, data, symbols, reqs, "operand of arithmetic");
-                yield Type.INT;
+            case ADD, SUB, MUL, DIV -> {
+                // `+ - * /` work on two Int or two Decimal operands (spec 18.1). Int aborts on
+                // overflow and `/` aborts on a zero divisor; Decimal `/` rounds by the default
+                // scale/mode. Case handling for a zero divisor is the `divide`/`remainder` functions.
+                Type lt = typeOf(bin.left(), env, data, symbols, reqs);
+                if (lt != Type.INT && lt != Type.DECIMAL) {
+                    throw new CompileException(bin.pos(),
+                            "operand of arithmetic must be Int or Decimal, got " + lt);
+                }
+                requireType(bin.right(), lt, env, data, symbols, reqs, "operand of arithmetic");
+                yield lt;
             }
             case CONCAT -> {
                 Type lt = typeOf(bin.left(), env, data, symbols, reqs);

@@ -64,7 +64,9 @@ final class ConstEval {
             case NE -> Optional.of(!a.equals(b));
             case LT, LE, GT, GE -> compare(bin.op(), a, b);
             case ADD, SUB, MUL -> arith(bin.op(), a, b);
-            case CONCAT -> Optional.empty();   // lists are not folded
+            // `/` is left to the run-time check (it aborts on a zero divisor, and Decimal `/` rounds);
+            // lists are not folded either.
+            case DIV, CONCAT -> Optional.empty();
         };
     }
 

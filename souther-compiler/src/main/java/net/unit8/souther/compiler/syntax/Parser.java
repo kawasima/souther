@@ -570,9 +570,10 @@ public final class Parser {
 
     private Ast.Expr parseMul() {
         Ast.Expr left = parseUnary();
-        while (check(TokenType.STAR)) {
+        while (check(TokenType.STAR) || check(TokenType.SLASH)) {
             Token op = advance();
-            left = new Ast.Binary(Ast.BinOp.MUL, left, parseUnary(), op.pos());
+            Ast.BinOp binOp = op.type() == TokenType.STAR ? Ast.BinOp.MUL : Ast.BinOp.DIV;
+            left = new Ast.Binary(binOp, left, parseUnary(), op.pos());
         }
         return left;
     }
