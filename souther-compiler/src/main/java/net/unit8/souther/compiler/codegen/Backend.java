@@ -923,21 +923,22 @@ public final class Backend {
                     int vSlot = gen.slot(letType);
                     unbox(code, letType, vSlot);
                     gen.bind(li.name(), vSlot, letType);
-                } else if (TypeChecker.isFunctionSelection(li.value().toAst())) {
-                    // a lambda chosen at runtime (e.g. by an `if`) — a first-class Fn (spec §blocks).
-                    // Its type inference lives in the checker (AST); Core is untyped, so the backend
-                    // reaches it through toAst rather than re-deriving types.
-                    List<Type> paramTypes = TypeChecker.inferFnParamTypes(
-                            li.name(), li.body().toAst(), gen.typesEnv(), gen.data, symbols);
-                    Type ft = gen.emitFunctionValue(li.value().toAst(), paramTypes);
-                    int slot = gen.slot(ft);
-                    store(code, slot, ft);
-                    gen.bind(li.name(), slot, ft);
                 } else {
-                    Type t = gen.genExpr(li.value());
-                    int slot = gen.slot(t);
-                    store(code, slot, t);
-                    gen.bind(li.name(), slot, t);
+                    // Type inference for a closure lives in the checker (AST); Core is untyped, so
+                    // the backend reaches it through toAst rather than re-deriving types.
+                    Ast.Expr valueAst = li.value().toAst();
+                    Type vt;
+                    if (TypeChecker.isFunctionSelection(valueAst)) {
+                        // a lambda chosen at runtime (e.g. by an `if`) — a first-class Fn (spec §blocks)
+                        List<Type> paramTypes = TypeChecker.inferFnParamTypes(
+                                li.name(), li.body().toAst(), gen.typesEnv(), gen.data, symbols);
+                        vt = gen.emitFunctionValue(valueAst, paramTypes);
+                    } else {
+                        vt = gen.genExpr(li.value());
+                    }
+                    int slot = gen.slot(vt);
+                    store(code, slot, vt);
+                    gen.bind(li.name(), slot, vt);
                 }
                 emitBodyTail(gen, code, li.body(), cdB, requiredNames, requiredSuccess);
             }
@@ -2289,13 +2290,14 @@ public final class Backend {
                 case Core.LetIn li -> {
                     // a `let` outside tail position: bind, then value the body
                     Type vt;
-                    if (TypeChecker.isFunctionSelection(li.value().toAst())) {
-                        // a lambda chosen at runtime (e.g. by an `if`): a first-class Fn (spec §blocks).
-                        // Type inference for the closure lives in the checker (AST); Core is untyped,
-                        // so we reach it through toAst rather than re-deriving types in the backend.
+                    // Type inference for a closure lives in the checker (AST); Core is untyped, so
+                    // the backend reaches it through toAst rather than re-deriving types.
+                    Ast.Expr valueAst = li.value().toAst();
+                    if (TypeChecker.isFunctionSelection(valueAst)) {
+                        // a lambda chosen at runtime (e.g. by an `if`): a first-class Fn (spec §blocks)
                         List<Type> paramTypes = TypeChecker.inferFnParamTypes(
                                 li.name(), li.body().toAst(), typesEnv(), data, symbols);
-                        vt = emitFunctionValue(li.value().toAst(), paramTypes);
+                        vt = emitFunctionValue(valueAst, paramTypes);
                     } else {
                         vt = genExpr(li.value());
                     }
