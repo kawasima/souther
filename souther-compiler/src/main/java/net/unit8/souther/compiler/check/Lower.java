@@ -63,17 +63,19 @@ public final class Lower {
         return mapped instanceof Ast.ListComp comp ? listCompToIf(comp) : mapped;
     }
 
-    /** {@code [element | g1, g2]} is {@code if g1 && g2 then [element] else []}: the element is
-     * included exactly when every guard holds, giving a 0-or-1 element list (spec 18.4). */
+    /**
+     * {@code [element | g1, g2]} is {@code if g1 then (if g2 then [element] else []) else []}: the
+     * element is included exactly when every guard holds, giving a 0-or-1 element list (spec 18.4).
+     * The guards nest rather than joining with {@code &&} so a later guard is not evaluated once an
+     * earlier one is false — {@code &&} evaluates both sides (spec 18.1), which would run (and could
+     * abort in) a guard the original comprehension short-circuited past.
+     */
     private static Ast.Expr listCompToIf(Ast.ListComp comp) {
-        Ast.Expr then = new Ast.ListLit(List.of(comp.element()), comp.pos());
-        if (comp.guards().isEmpty()) {
-            return then;
+        Ast.Expr result = new Ast.ListLit(List.of(comp.element()), comp.pos());
+        List<Ast.Expr> guards = comp.guards();
+        for (int i = guards.size() - 1; i >= 0; i--) {
+            result = new Ast.If(guards.get(i), result, new Ast.ListLit(List.of(), comp.pos()), comp.pos());
         }
-        Ast.Expr cond = comp.guards().get(0);
-        for (int i = 1; i < comp.guards().size(); i++) {
-            cond = new Ast.Binary(Ast.BinOp.AND, cond, comp.guards().get(i), comp.pos());
-        }
-        return new Ast.If(cond, then, new Ast.ListLit(List.of(), comp.pos()), comp.pos());
+        return result;
     }
 }
