@@ -948,10 +948,9 @@ public final class Backend {
                 emitBodyTail(gen, code, iff.els(), cdB, requiredNames, requiredSuccess);
             }
             case Core.NewData nd when TypeChecker.isInvariantBearing(nd.typeName(), symbols) -> {
-                Ast.NewData ndAst = (Ast.NewData) nd.toAst();
                 ClassDesc cdType = cd(nd.typeName());
                 Map<String, Type> flds = fieldTypes((Ast.Data) symbols.get(nd.typeName()));
-                emitFieldValues(gen, flds, ndAst.inits(), ndAst.spreads());
+                emitFieldValues(gen, flds, nd.inits(), nd.spreads());
                 code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(flds)));
                 code.invokestatic(CD_ConstraintViolation, "orThrow", MTD_orThrow);
                 code.areturn();
@@ -1779,7 +1778,13 @@ public final class Backend {
      */
     private void emitConstructCall(CodeBuilder code, Gen gen, ClassDesc cdName, Ast.Construct construct,
                                    Map<String, Type> fields) {
-        emitFieldValues(gen, fields, construct.inits(), construct.spreads());
+        // The decoder is still AST-level; translate its field inits to Core so the shared
+        // emitFieldValues consumes one representation (ADR-0021).
+        List<Core.FieldInit> inits = new ArrayList<>();
+        for (Ast.FieldInit init : construct.inits()) {
+            inits.add(new Core.FieldInit(init.name(), Core.of(init.value()), init.pos()));
+        }
+        emitFieldValues(gen, fields, inits, construct.spreads());
         code.invokestatic(cdName, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(fields)));
         // Souther construction Result -> Raoh boundary Result. An invariant failure becomes a
         // Raoh failure (spec 9.4, 10.1); success wraps the constructed value.
@@ -1806,16 +1811,16 @@ public final class Backend {
     }
 
     /** Pushes each field value in declaration order, sourced from an explicit init or a spread. */
-    private void emitFieldValues(Gen gen, Map<String, Type> fields, List<Ast.FieldInit> inits,
+    private void emitFieldValues(Gen gen, Map<String, Type> fields, List<Core.FieldInit> inits,
                                  List<String> spreads) {
-        Map<String, Ast.FieldInit> byName = new HashMap<>();
-        for (Ast.FieldInit init : inits) {
+        Map<String, Core.FieldInit> byName = new HashMap<>();
+        for (Core.FieldInit init : inits) {
             byName.put(init.name(), init);
         }
         for (String field : fields.keySet()) {
-            Ast.FieldInit init = byName.get(field);
+            Core.FieldInit init = byName.get(field);
             if (init != null) {
-                gen.expr(init.value());
+                gen.genExpr(init.value());
                 continue;
             }
             for (String sp : spreads) {
@@ -2141,8 +2146,8 @@ public final class Backend {
                 case Ast.FieldAccess fa -> genExpr(Core.of(fa));
                 case Ast.Call call -> call(call);
                 case Ast.Binary bin -> genExpr(Core.of(bin));
-                case Ast.NewData nd -> newData(nd);
-                case Ast.Match m -> match(m);
+                case Ast.NewData nd -> genExpr(Core.of(nd));
+                case Ast.Match m -> genExpr(Core.of(m));
                 case Ast.If iff -> genExpr(Core.of(iff));
                 case Ast.ListLit lit -> genExpr(Core.of(lit));
                 // The Lower stage (ADR-0021) desugars a comprehension to an `if`, so one never
@@ -2308,20 +2313,22 @@ public final class Backend {
                 case Core.Fold f -> fold(f);
                 case Core.ListLit lit -> listLit(lit);
                 case Core.Binary bin -> binary(bin);
-                // Call, NewData, Match, `let` (its closure case is still AST-only), and a bare block
-                // are not migrated yet: hand them back to the AST emitter (ADR-0021 strangler).
+                case Core.NewData nd -> newData(nd);
+                case Core.Match m -> match(m);
+                // Call, `let` (its closure case is still AST-only), and a bare block are not migrated
+                // yet: hand them back to the AST emitter (ADR-0021 strangler).
                 default -> expr(e.toAst());
             };
         }
 
-        private Type match(Ast.Match m) {
-            Type st = expr(m.scrutinee());
+        private Type match(Core.Match m) {
+            Type st = genExpr(m.scrutinee());
             int sSlot = slot(st);
             store(code, sSlot, st);
             Type element = st instanceof Type.OptionOf oo ? oo.element() : null;
             Label end = code.newLabel();
             Type branchType = null;
-            for (Ast.Case c : m.cases()) {
+            for (Core.Case c : m.cases()) {
                 Label nextCase = code.newLabel();
                 List<String> cases = c.caseTypes();
                 if (element != null) {
@@ -2368,7 +2375,7 @@ public final class Backend {
                         bind(c.binding(), sSlot, st);
                     }
                 }
-                branchType = expr(c.body());
+                branchType = genExpr(c.body());
                 code.goto_(end);
                 code.labelBinding(nextCase);
             }
@@ -2381,7 +2388,7 @@ public final class Backend {
             return branchType;
         }
 
-        private Type newData(Ast.NewData nd) {
+        private Type newData(Core.NewData nd) {
             Ast.Data owner = (Ast.Data) symbols.get(nd.typeName());
             Map<String, Type> flds = fieldTypes(owner);
             ClassDesc cdType = cd(nd.typeName());
