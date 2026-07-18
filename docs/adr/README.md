@@ -17,7 +17,7 @@ specification is in Japanese.
 | --- | --- | --- |
 | [0001](0001-one-to-one-with-spec-dsl.md) | The implementation model maps one-to-one onto the spec DSL | §1, §2, §12, §28, §29 |
 | [0002](0002-closed-construction-paths.md) | Close data construction paths; permission lives on the behavior | §2.1, §12.3, §13.3 |
-| [0003](0003-invariant-violations-abort-in-domain.md) | Invariant violations abort; preconditions are business arms, not contracts | §2.2, §7.3, §9.4, §3, §18.2, §19.7 |
+| [0003](0003-invariant-violations-abort-in-domain.md) | Invariant violations abort; preconditions are business cases, not contracts | §2.2, §7.3, §9.4, §3, §18.2, §19.7 |
 | [0004](0004-derive-codecs-delegate-parsing-to-raoh.md) | Derive decoders/encoders from data shape; delegate external representation to Raoh | §2.3, §6, §10, §11 |
 | [0005](0005-behavior-as-membership-free-composition-unit.md) | behavior is a membership-free composition unit; spec and implementation are separate | §2.4, §12 |
 | [0006](0006-outside-world-via-missing-implementation.md) | Outside-world dependencies are behaviors with no implementation, injected from Java | §2.5, §13.2 |
@@ -27,7 +27,7 @@ specification is in Japanese.
 | [0010](0010-polymorphism-limited-to-stdlib.md) | Polymorphism is limited to stdlib types; no user-defined generics | §7.3 |
 | [0011](0011-option-never-unit-not-surface-types.md) | Option, Never, and Unit are not surface-writable types | §7.3, §7.4 |
 | [0012](0012-nominal-include-no-intersection-types.md) | Field composition is nominal `include`; no structural intersection types | §8.2, §8.6 |
-| [0013](0013-sum-arms-are-named-data-references.md) | Sum-data arms are references to already-declared named data | §8.3 |
+| [0013](0013-sum-cases-are-named-data-references.md) | Sum-data cases are references to already-declared named data | §8.3 |
 | [0014](0014-explicit-newtype-syntax.md) | newtype is declared explicitly by `data X = Y`, not inferred from shape | §8.7 |
 | [0015](0015-cross-module-field-read-construction-closed.md) | Field reads may cross module boundaries; only construction is closed | §8.5, §19.2 |
 | [0016](0016-requirements-as-arguments-not-effects.md) | The requirement set is injected constructor arguments, not an effect type | §12.5, §12.6, §13.6, §29 |
@@ -41,6 +41,6 @@ specification is in Japanese.
 | [0024](0024-exposed-composition-output-in-exposing.md) | An exposed composition declares its output signature in the exposing list | §4, §14.5, §19.8 |
 | [0025](0025-first-class-functions.md) | First-class functions: inline when they can't escape, close over the runtime `Fn` when they must | §12.5, §13.1, §18.4 |
 | [0026](0026-signatures-colon-definitions-equals.md) | Signatures use `:`, definitions use `=`; a function is defined with `let` | `[#delimiters]`, `[#behavior]`, `[#fn]` |
-| [0027](0027-match-with-pipe-arms.md) | match reads `match e with \| arm -> ...` (F# form) | `[#match]` |
+| [0027](0027-match-with-pipe-cases.md) | match reads `match e with \| case -> ...` (F# form) | `[#match]` |
 | [0028](0028-stdlib-privileged-core-over-intrinsic-kernel.md) | The stdlib is a privileged core written in Souther over an intrinsic kernel | `[#stdlib]`, `[#primitives]` |
-| [0029](0029-platform-failures-are-exceptions-not-arms.md) | Platform failures propagate as exceptions; only domain outcomes are arms | `[#java-impl-rules]`, `[#mvp-scope]` |
+| [0029](0029-platform-failures-are-exceptions-not-cases.md) | Platform failures propagate as exceptions; only domain outcomes are cases | `[#java-impl-rules]`, `[#mvp-scope]` |

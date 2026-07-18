@@ -4,13 +4,13 @@ Status: Accepted (revised — was SML-style `=>`/`->` split)
 
 ## Context
 
-Souther has named definitions (`data`, `behavior`, `let`), anonymous forms (match arms, lambdas), and type arrows. It needs a consistent assignment of `=` and the arrow across all three, and a decision on whether a named definition may bind a lambda.
+Souther has named definitions (`data`, `behavior`, `let`), anonymous forms (match cases, lambdas), and type arrows. It needs a consistent assignment of `=` and the arrow across all three, and a decision on whether a named definition may bind a lambda.
 
 An earlier version split the arrows SML-style: `->` for type arrows and `=>` for the anonymous forms. That split is dropped.
 
 ## Decision
 
-`=` binds a name to a right-hand side. A single arrow `->` serves everywhere else: the type arrow of a behavior declaration and a `let` function-type argument (`(A) -> B`), the body of a lambda (`(x) -> e`), and a match arm (`| A -> body`). There is no `=>`.
+`=` binds a name to a right-hand side. A single arrow `->` serves everywhere else: the type arrow of a behavior declaration and a `let` function-type argument (`(A) -> B`), the body of a lambda (`(x) -> e`), and a match case (`| A -> body`). There is no `=>`.
 
 Binding a lambda to a named definition (`let f = (x) -> ...`) is still not allowed.
 

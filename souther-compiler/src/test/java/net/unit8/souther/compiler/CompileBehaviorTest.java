@@ -86,8 +86,8 @@ class CompileBehaviorTest {
     }
 
     @Test
-    void constructingInvariantDataNeedsNoViolationArm() {
-        // A violation aborts (spec 7.3, 9.4), so the output needs no 制約違反 arm — this compiles.
+    void constructingInvariantDataNeedsNoViolationCase() {
+        // A violation aborts (spec 7.3, 9.4), so the output needs no 制約違反 case — this compiles.
         String src = """
                 module demo
                 data Positive = { value: Int  invariant value > 0 }

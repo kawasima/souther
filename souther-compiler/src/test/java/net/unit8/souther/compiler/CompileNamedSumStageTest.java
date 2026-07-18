@@ -12,8 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * When a pipeline stage outputs a named sum, {@code >->} routes over that sum's leaf arms, not the
- * sum as one opaque arm (spec 8.3, 14.2). A downstream stage that accepts one arm consumes it and
+ * When a pipeline stage outputs a named sum, {@code >->} routes over that sum's leaf cases, not the
+ * sum as one opaque case (spec 8.3, 14.2). A downstream stage that accepts one case consumes it and
  * the rest retire; before, the whole sum failed to match and the composition was wrongly E1701.
  */
 class CompileNamedSumStageTest {
@@ -37,16 +37,16 @@ class CompileNamedSumStageTest {
             """;
 
     @Test
-    void aNamedSumStageOutputRoutesOverItsArms() {
+    void aNamedSumStageOutputRoutesOverItsCases() {
         assertDoesNotThrow(() -> Compiler.compile(MODULE));
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void theAcceptedArmRoutesIntoTheNextStage() throws Exception {
+    void theAcceptedCaseRoutesIntoTheNextStage() throws Exception {
         BytesClassLoader loader =
                 new BytesClassLoader(Compiler.compile(MODULE), CompileNamedSumStageTest.class.getClassLoader());
-        // A is an arm of AB, so it decodes from an object; v > 0 makes classify pass it through
+        // A is a case of AB, so it decodes from an object; v > 0 makes classify pass it through
         Decoder aDec = (Decoder) loader.loadClass("demo.A").getMethod("decoder").invoke(null);
         Object a = ((Ok) aDec.decode(java.util.Map.of("v", 5L), Path.ROOT)).value();
 

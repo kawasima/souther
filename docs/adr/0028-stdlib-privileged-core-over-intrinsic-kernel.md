@@ -76,7 +76,7 @@ ADR-0010 makes for the absence of user generics.
 Deriving `map`/`filter` from `fold` forced one language relaxation: the empty-list literal
 `[]`, which `[#stdlib-list]` had forbidden because its element type could not be determined.
 It is now admitted with its type fixed by context — the accumulator a `fold` seed grows into,
-the other operand of `++`, an `if`/`match` arm, or the `List<T>` a position expects — which is
+the other operand of `++`, an `if`/`match` case, or the `List<T>` a position expects — which is
 sound because an empty list is element-agnostic at runtime. Without it, no list-producing
 combinator could start from an empty accumulator in Souther.
 

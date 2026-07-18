@@ -15,10 +15,10 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * A value of an arm type is a value of its sum (spec 8.3): it can be assigned to a sum-typed
+ * A value of a case type is a value of its sum (spec 8.3): it can be assigned to a sum-typed
  * field and passed to a sum-typed parameter, not only returned. The functional-language norm.
  */
-class CompileArmWideningTest {
+class CompileCaseWideningTest {
 
     private static final String MODULE = """
             module demo
@@ -35,7 +35,7 @@ class CompileArmWideningTest {
 
     @Test
     @SuppressWarnings({"unchecked", "rawtypes"})
-    void anArmAssignsToASumField() throws Exception {
+    void anCaseAssignsToASumField() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
         Decoder ad = (Decoder) loader.loadClass("demo.A").getMethod("decoder").invoke(null);
         Object a = ((Ok) ad.decode(Map.of("x", 5L, "tag", 1L), Path.ROOT)).value();
@@ -46,13 +46,13 @@ class CompileArmWideningTest {
         Encoder enc = (Encoder) loader.loadClass("demo.Wrap").getMethod("encoder").invoke(null);
         Map<?, ?> out = (Map<?, ?>) enc.encode(wrap);
         Map<?, ?> it = (Map<?, ?>) out.get("it");
-        assertEquals("A", it.get("type"), "the arm is tagged as its sum's arm");
+        assertEquals("A", it.get("type"), "the case is tagged as its sum's case");
         assertEquals(5L, it.get("x"));
     }
 
     @Test
-    void anArmPassesToASumParameter() {
-        // store expects the sum AB; use passes an A (an arm) — must type-check
+    void anCasePassesToASumParameter() {
+        // store expects the sum AB; use passes an A (a case) — must type-check
         String src = """
                 module demo
                 data A = { x: Int }

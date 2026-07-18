@@ -7,9 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * A {@code >->} composition may optionally declare its output with a trailing {@code -> arms}
+ * A {@code >->} composition may optionally declare its output with a trailing {@code -> cases}
  * (spec 14.5). When declared, it must match the inferred output exactly — neither too narrow
- * (an arm the pipeline produces is missing) nor too wide (a declared arm the pipeline never
+ * (a case the pipeline produces is missing) nor too wide (a declared case the pipeline never
  * produces) is accepted (E1604). Without the declaration, inference stands and the check is off.
  */
 class CompilePipeOutputTest {

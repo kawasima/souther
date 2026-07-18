@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
- * End-to-end test for {@code require ... else} and type-routed {@code >->} composition: an arm
+ * End-to-end test for {@code require ... else} and type-routed {@code >->} composition: a case
  * the next stage does not accept propagates through unchanged (spec 12.2, 14.2).
  */
 class CompileRailwayTest {
@@ -24,7 +24,7 @@ class CompileRailwayTest {
             data TooLarge = { limit: Int }
             data Doubled = Int
 
-            // over 100 leaves the main line as a TooLarge arm. `require ... else` mints the
+            // over 100 leaves the main line as a TooLarge case. `require ... else` mints the
             // TooLarge, so the behavior declares it (spec 12.3).
             behavior guard : (a: Amount) -> Amount | TooLarge constructs TooLarge
 
@@ -62,7 +62,7 @@ class CompileRailwayTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void tooLargeArmPropagatesPastToDoubled() throws Exception {
+    void tooLargeCasePropagatesPastToDoubled() throws Exception {
         BytesClassLoader loader = loader();
         Object process = loader.loadClass("demo.Process").getConstructor().newInstance();
         Object r = ((Behavior<Object, Object>) process).apply(amount(loader, 500));
@@ -71,15 +71,15 @@ class CompileRailwayTest {
     }
 
     /**
-     * Regression: an arm that leaves the main line must stay off it. The router kept the passed
-     * arm in the running union and offered it to every later stage, so a stage that happened to
+     * Regression: a case that leaves the main line must stay off it. The router kept the passed
+     * case in the running union and offered it to every later stage, so a stage that happened to
      * accept it pulled it back in — `A >-> B >-> C` returned C's output for a value B had already
      * dropped. That is not Railway (spec 14.2), and it made the meaning of a pipeline depend on
      * where it was split.
      */
     @Test
     @SuppressWarnings("unchecked")
-    void anArmThatLeftTheMainLineIsNotOfferedToLaterStages() throws Exception {
+    void anCaseThatLeftTheMainLineIsNotOfferedToLaterStages() throws Exception {
         String src = """
                 module demo
                 data In = Int
@@ -116,8 +116,8 @@ class CompileRailwayTest {
     }
 
     @Test
-    void requireElseValueMustBeAnOutputArm() {
-        // `other` is a B, which is not one of `bad`'s output arms (just A), so this is rejected.
+    void requireElseValueMustBeAnOutputCase() {
+        // `other` is a B, which is not one of `bad`'s output cases (just A), so this is rejected.
         String src = """
                 module demo
                 data A = Int

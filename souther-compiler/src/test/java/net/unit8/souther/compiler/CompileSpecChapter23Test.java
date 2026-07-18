@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>It had failed on four counts at once — a zero-argument required behavior would not parse,
  * a {@code List} of a sum could not derive an encoder, {@code ==} between two data was rejected,
- * and a sum with a sum as an arm was refused — so the language's own worked example was not a
+ * and a sum with a sum as a case was refused — so the language's own worked example was not a
  * program. Kept verbatim from the spec so drift shows up here.
  */
 class CompileSpecChapter23Test {

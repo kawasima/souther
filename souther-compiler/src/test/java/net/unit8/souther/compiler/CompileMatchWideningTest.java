@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * A {@code match} whose arms yield different data types widens to the union of those types, the
+ * A {@code match} whose cases yield different data types widens to the union of those types, the
  * same way an {@code if} does (spec 16.2, 16.3). Before, match required every branch to have the
  * identical type; now {@code | A -> OutA} and {@code | B -> OutB} give {@code OutA | OutB}.
  */
@@ -39,13 +39,13 @@ class CompileMatchWideningTest {
             """;
 
     @Test
-    void divergentMatchArmsWidenToAUnion() {
+    void divergentMatchCasesWidenToAUnion() {
         assertDoesNotThrow(() -> Compiler.compile(MODULE));
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void theWidenedMatchRunsAndPicksTheRightArm() throws Exception {
+    void theWidenedMatchRunsAndPicksTheRightCase() throws Exception {
         BytesClassLoader loader =
                 new BytesClassLoader(Compiler.compile(MODULE), CompileMatchWideningTest.class.getClassLoader());
         Decoder bothDec = (Decoder) loader.loadClass("demo.Both").getMethod("decoder").invoke(null);
@@ -54,7 +54,7 @@ class CompileMatchWideningTest {
         Object pick = loader.loadClass("demo.Pick").getConstructor().newInstance();
         Object out = ((Behavior<Object, Object>) pick).apply(b);
 
-        // the B arm produced an OutB { b: 7 }; OutB is a single-Int-field newtype, so it encodes bare
+        // the B case produced an OutB { b: 7 }; OutB is a single-Int-field newtype, so it encodes bare
         assertEquals("demo.OutB", out.getClass().getName());
         Encoder enc = (Encoder) loader.loadClass("demo.OutB").getMethod("encoder").invoke(null);
         assertEquals(7L, enc.encode(out));

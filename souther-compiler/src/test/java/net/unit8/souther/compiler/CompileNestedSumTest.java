@@ -13,8 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 /**
- * A sum may have a sum as an arm — spec 8.3's 費用負担区分 = 自社負担 | 先方負担, where 自社負担 is
- * itself 立替 | 仮払い | 会社カード. The derived codecs used to reject that: an arm had to be a
+ * A sum may have a sum as a case — spec 8.3's 費用負担区分 = 自社負担 | 先方負担, where 自社負担 is
+ * itself 立替 | 仮払い | 会社カード. The derived codecs used to reject that: a case had to be a
  * product or a unit, so the spec's own model would not compile.
  */
 class CompileNestedSumTest {
@@ -35,8 +35,8 @@ class CompileNestedSumTest {
     }
 
     /**
-     * The derived codec dispatches over the leaves, so a nested arm is tagged directly. Tagging
-     * the direct arm instead put two levels on one "type" key: the encoder wrote
+     * The derived codec dispatches over the leaves, so a nested case is tagged directly. Tagging
+     * the direct case instead put two levels on one "type" key: the encoder wrote
      * {@code {type: 自社負担}}, which lost the leaf and which the decoder then rejected.
      */
     @Test
@@ -68,7 +68,7 @@ class CompileNestedSumTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void aDirectArmOfTheOuterSumStillDecodes() throws Exception {
+    void aDirectCaseOfTheOuterSumStillDecodes() throws Exception {
         BytesClassLoader loader = loader();
         Decoder<Map<String, Object>, Object> dec =
                 (Decoder<Map<String, Object>, Object>) loader.loadClass("demo.費用負担区分")

@@ -12,7 +12,7 @@ public sealed interface Type
 
     /** The element type of the empty-list literal {@code []} (ADR-0028): a bottom that unifies with
      * any element type. It only ever appears as {@code ListOf(NOTHING)} — the empty list — whose type
-     * is fixed by context ({@code ++}, an {@code if}/{@code match} arm, a {@code fold} seed, or the
+     * is fixed by context ({@code ++}, an {@code if}/{@code match} case, a {@code fold} seed, or the
      * {@code List<T>} a position expects). It never reaches codegen: an empty list is element-agnostic
      * at runtime. */
     record Nothing() implements Type {}
@@ -49,7 +49,7 @@ public sealed interface Type
     Type DATE = Prim.DATE;
     Type DATETIME = Prim.DATETIME;
     /** The external (encoded) representation type: an encoder's raw output at a railway's edge,
-     * unioned with propagated error arms as the arm {@code "Raw"} (spec 24). Reserved — no stage
+     * unioned with propagated error cases as the case {@code "Raw"} (spec 24). Reserved — no stage
      * produces it yet; {@code >->} composes behaviors, not codecs (spec 14.1). */
     Type RAW = Prim.RAW;
     /** The bottom element type of the empty-list literal (see {@link Nothing}). */

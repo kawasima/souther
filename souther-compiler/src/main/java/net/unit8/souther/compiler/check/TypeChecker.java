@@ -175,19 +175,19 @@ public final class TypeChecker {
             if (!(b instanceof Ast.PipeBehavior pipe) || !exposed.contains(pipe.name())) {
                 continue;
             }
-            Set<String> inferred = leafArms(sigs.get(pipe.name()).out(), symbols);
+            Set<String> inferred = leafCases(sigs.get(pipe.name()).out(), symbols);
             Ast.RetType declared = module.exposedOutputs().get(pipe.name());
             if (declared == null) {
                 throw new CompileException(pipe.pos(), "E1605", "exposed composition `" + pipe.name()
                         + "` must declare its output in `exposing` (spec 14.5): write "
-                        + "`exposing { " + pipe.name() + " : " + armList(inferred) + " }`");
+                        + "`exposing { " + pipe.name() + " : " + caseList(inferred) + " }`");
             }
-            Set<String> declaredArms = leafArms(successType(declared, symbols), symbols);
-            if (!inferred.equals(declaredArms)) {
+            Set<String> declaredCases = leafCases(successType(declared, symbols), symbols);
+            if (!inferred.equals(declaredCases)) {
                 throw new CompileException(pipe.pos(), "E1604", "exposed composition `" + pipe.name()
-                        + "` declares -> " + armList(declaredArms) + " in `exposing`, but the pipeline"
-                        + " produces " + armList(inferred) + ". Update the declared output or handle"
-                        + " the arm.");
+                        + "` declares -> " + caseList(declaredCases) + " in `exposing`, but the pipeline"
+                        + " produces " + caseList(inferred) + ". Update the declared output or handle"
+                        + " the case.");
             }
         }
     }
@@ -430,13 +430,13 @@ public final class TypeChecker {
     /**
      * An anonymous union appears only in a behavior's output; a parameter type is always a single
      * named type, a named sum included (spec 8.6, 12.2). A parameter written as {@code A | B} — a
-     * {@code RetType} with more than one arm — is rejected: declare {@code data AB = A | B} and take
+     * {@code RetType} with more than one case — is rejected: declare {@code data AB = A | B} and take
      * {@code (x: AB)}, so the input has a name the reader and the JVM can hold onto.
      */
     private static void rejectAnonymousUnionParams(Ast.SpecBehavior spec) {
         for (Ast.Param p : spec.params()) {
-            if (p.type().arms().size() > 1) {
-                String union = p.type().arms().stream()
+            if (p.type().cases().size() > 1) {
+                String union = p.type().cases().stream()
                         .map(Ast.TypeRef::name)
                         .collect(java.util.stream.Collectors.joining(" | "));
                 throw new CompileException(p.pos(), "parameter `" + p.name()
@@ -628,7 +628,7 @@ public final class TypeChecker {
      * Flattens a pipeline's stage list, splicing any stage that is itself a pipeline into its own
      * (recursively flattened) stages (spec 14.2). This is what makes {@code >->} associative:
      * {@code half >-> finish} with {@code half = split >-> work} routes over {@code split, work,
-     * finish}, exactly as the flat form would, so a retired arm stays retired across a named
+     * finish}, exactly as the flat form would, so a retired case stays retired across a named
      * intermediate. A pipeline viewed on its own still has the merged output its own stages produce.
      */
     public static List<String> flattenStages(List<String> stages, Map<String, List<String>> pipeStages,
@@ -683,23 +683,23 @@ public final class TypeChecker {
         }
         Type out = withRetired(mainline, retired);
         // an optional declared output must match the inferred one exactly (spec 14.5): neither a
-        // missing arm (too narrow) nor an extra one (too wide) is accepted.
+        // missing case (too narrow) nor an extra one (too wide) is accepted.
         if (pipe.declaredOut() != null) {
-            Set<String> inferred = leafArms(out, symbols);
-            Set<String> declared = leafArms(successType(pipe.declaredOut(), symbols), symbols);
+            Set<String> inferred = leafCases(out, symbols);
+            Set<String> declared = leafCases(successType(pipe.declaredOut(), symbols), symbols);
             if (!inferred.equals(declared)) {
                 throw new CompileException(pipe.pos(), "E1604", "behavior " + pipe.name()
-                        + " declares -> " + armList(declared) + ", but the pipeline produces "
-                        + armList(inferred) + ". Update the declared output or handle the arm.");
+                        + " declares -> " + caseList(declared) + ", but the pipeline produces "
+                        + caseList(inferred) + ". Update the declared output or handle the case.");
             }
         }
         // the pipeline takes whatever its first stage takes (spec 14.1)
         return new Sig(first.ins(), out);
     }
 
-    /** Formats a set of arm names as {@code A | B} (sorted, for a stable diagnostic). */
-    private static String armList(Set<String> arms) {
-        return String.join(" | ", new java.util.TreeSet<>(arms));
+    /** Formats a set of case names as {@code A | B} (sorted, for a stable diagnostic). */
+    private static String caseList(Set<String> cases) {
+        return String.join(" | ", new java.util.TreeSet<>(cases));
     }
 
     /** The pipeline's output: what the last stage yields, plus everything that left the main line. */
@@ -707,20 +707,20 @@ public final class TypeChecker {
         if (retired.isEmpty()) {
             return mainline;
         }
-        Set<String> all = new LinkedHashSet<>(armNamesOf(mainline));
+        Set<String> all = new LinkedHashSet<>(caseNamesOf(mainline));
         if (all.isEmpty()) {
-            throw new IllegalStateException("cannot merge non-data stage output with retired arms");
+            throw new IllegalStateException("cannot merge non-data stage output with retired cases");
         }
         all.addAll(retired);
-        return armSetType(all);
+        return caseSetType(all);
     }
 
-    /** The main-line leaf arms {@code g} accepts — the ones the backend routes into it (spec 14.2). */
-    public static List<String> mainlineArms(Type mainline, Sig g, Map<String, Ast.Def> symbols) {
+    /** The main-line leaf cases {@code g} accepts — the ones the backend routes into it (spec 14.2). */
+    public static List<String> mainlineCases(Type mainline, Sig g, Map<String, Ast.Def> symbols) {
         List<String> accepted = new ArrayList<>();
-        for (String arm : leafArms(mainline, symbols)) {
-            if (assignable(Type.ref(arm), g.in(), symbols)) {
-                accepted.add(arm);
+        for (String caseName : leafCases(mainline, symbols)) {
+            if (assignable(Type.ref(caseName), g.in(), symbols)) {
+                accepted.add(caseName);
             }
         }
         return accepted;
@@ -733,16 +733,16 @@ public final class TypeChecker {
 
     /**
      * One step of type-routed composition (spec 14.2). Returns the new main line — what {@code g}
-     * yields — and adds the arms {@code g} did not accept to {@code retired}.
+     * yields — and adds the cases {@code g} did not accept to {@code retired}.
      *
-     * <p>An arm that leaves the main line does not come back: later stages are only offered the
-     * main line. That is what makes this Railway (14.2). Feeding the retired arms onward instead
+     * <p>A case that leaves the main line does not come back: later stages are only offered the
+     * main line. That is what makes this Railway (14.2). Feeding the retired cases onward instead
      * would let a stage pick up something an earlier stage had already dropped, which changes the
      * meaning of a pipeline depending on where it is split.
      *
      * <p>Naming an intermediate does not lose the split (spec 14.2): a pipeline stage is flattened
      * into its own stages before routing ({@link #flattenStages}), so `fg >-> h` with
-     * `fg = f >-> g` routes over `f, g, h` — a retired arm stays retired, exactly as in the flat
+     * `fg = f >-> g` routes over `f, g, h` — a retired case stays retired, exactly as in the flat
      * `f >-> g >-> h`. That flattening is what makes `>->` associative; a value never carries a mark
      * saying it once left a main line (2.6), the plumbing is structural. Viewed on its own, `fg`
      * still has the merged sum `f`+`g` produce as its output.
@@ -753,18 +753,18 @@ public final class TypeChecker {
         if (isDataLike(mainline)) {
             Set<String> consumed = new LinkedHashSet<>();
             Set<String> passed = new LinkedHashSet<>();
-            // route over the leaf arms: a named sum output splits into its members, so a stage that
+            // route over the leaf cases: a named sum output splits into its members, so a stage that
             // accepts one of them consumes it while the rest retire (spec 8.3, 14.2)
-            for (String arm : leafArms(mainline, symbols)) {
-                if (assignable(Type.ref(arm), in, symbols)) {
-                    consumed.add(arm);
+            for (String caseName : leafCases(mainline, symbols)) {
+                if (assignable(Type.ref(caseName), in, symbols)) {
+                    consumed.add(caseName);
                 } else {
-                    passed.add(arm);
+                    passed.add(caseName);
                 }
             }
             if (consumed.isEmpty()) {
                 throw new CompileException(pos, "E1701",
-                        "Cannot compose behaviors: no output arm of the left behavior is accepted by "
+                        "Cannot compose behaviors: no output case of the left behavior is accepted by "
                                 + "the right behavior's input. Left output: " + mainline + ", right input: " + in);
             }
             retired.addAll(passed);
@@ -785,7 +785,7 @@ public final class TypeChecker {
      *
      * <p>{@code e} is in tail position, as are the branches of an {@code if} and the body of a
      * {@code let}. A desugared {@code require} (spec 16.4) is an {@code if}, so the construction
-     * after a guard stays in tail position. {@code match} arms are not treated as tail: the
+     * after a guard stays in tail position. {@code match} cases are not treated as tail: the
      * backend emits a match as a value-producing expression, which does not yet route the checked
      * construction.
      */
@@ -966,53 +966,53 @@ public final class TypeChecker {
     }
 
     private static void checkSum(Ast.SumData sum, Map<String, Ast.Def> symbols) {
-        for (String arm : sum.arms()) {
-            if (!symbols.containsKey(arm)) {
+        for (String caseName : sum.cases()) {
+            if (!symbols.containsKey(caseName)) {
                 throw new CompileException(sum.pos(),
-                        "unknown arm `" + arm + "` in sum `" + sum.name() + "`");
+                        "unknown case `" + caseName + "` in sum `" + sum.name() + "`");
             }
         }
         sum.decoder().ifPresent(disc -> {
-            // a derived codec dispatches over the leaves, so a nested sum's arms count too (8.3, 10.3)
-            Set<String> dispatchable = leafArms(Type.ref(sum.name()), symbols);
+            // a derived codec dispatches over the leaves, so a nested sum's cases count too (8.3, 10.3)
+            Set<String> dispatchable = leafCases(Type.ref(sum.name()), symbols);
             for (Ast.Variant v : disc.variants()) {
-                Ast.Def armDef = symbols.get(v.armType());
-                if (armDef == null || !dispatchable.contains(v.armType())) {
+                Ast.Def caseDef = symbols.get(v.caseType());
+                if (caseDef == null || !dispatchable.contains(v.caseType())) {
                     throw new CompileException(v.pos(),
-                            "variant `" + v.armType() + "` is not an arm of `" + sum.name() + "`");
+                            "variant `" + v.caseType() + "` is not a case of `" + sum.name() + "`");
                 }
-                // a unit-data arm has an implicit (field-less) decoder generated on its class;
-                // an arm may itself be a sum (spec 8.3's nested `自社負担 | 先方負担`)
-                boolean armDecodes = armDef instanceof Ast.UnitData
-                        || (armDef instanceof Ast.Data d && d.decoder().isPresent())
-                        || (armDef instanceof Ast.SumData s && s.decoder().isPresent());
-                if (!armDecodes) {
+                // a unit-data case has an implicit (field-less) decoder generated on its class;
+                // a case may itself be a sum (spec 8.3's nested `自社負担 | 先方負担`)
+                boolean caseDecodes = caseDef instanceof Ast.UnitData
+                        || (caseDef instanceof Ast.Data d && d.decoder().isPresent())
+                        || (caseDef instanceof Ast.SumData s && s.decoder().isPresent());
+                if (!caseDecodes) {
                     throw new CompileException(v.pos(),
-                            "variant `" + v.armType() + "` needs a decoder");
+                            "variant `" + v.caseType() + "` needs a decoder");
                 }
             }
         });
         sum.encoder().ifPresent(enc -> {
             Set<String> covered = new HashSet<>();
-            Set<String> encodable = leafArms(Type.ref(sum.name()), symbols);
+            Set<String> encodable = leafCases(Type.ref(sum.name()), symbols);
             for (Ast.EncVariant v : enc.variants()) {
-                if (!encodable.contains(v.armType())) {
+                if (!encodable.contains(v.caseType())) {
                     throw new CompileException(v.pos(),
-                            "`" + v.armType() + "` is not an arm of `" + sum.name() + "`");
+                            "`" + v.caseType() + "` is not a case of `" + sum.name() + "`");
                 }
-                Ast.Def armDef = symbols.get(v.armType());
-                boolean armEncodes = armDef instanceof Ast.UnitData
-                        || (armDef instanceof Ast.Data d && d.encoder().isPresent())
-                        || (armDef instanceof Ast.SumData s && s.encoder().isPresent());
-                if (!armEncodes) {
-                    throw new CompileException(v.pos(), "arm `" + v.armType() + "` needs an encoder");
+                Ast.Def caseDef = symbols.get(v.caseType());
+                boolean caseEncodes = caseDef instanceof Ast.UnitData
+                        || (caseDef instanceof Ast.Data d && d.encoder().isPresent())
+                        || (caseDef instanceof Ast.SumData s && s.encoder().isPresent());
+                if (!caseEncodes) {
+                    throw new CompileException(v.pos(), "case `" + v.caseType() + "` needs an encoder");
                 }
-                covered.add(v.armType());
+                covered.add(v.caseType());
             }
-            for (String arm : encodable) {
-                if (!covered.contains(arm)) {
+            for (String caseName : encodable) {
+                if (!covered.contains(caseName)) {
                     throw new CompileException(enc.pos(),
-                            "encoder for `" + sum.name() + "` is missing arm `" + arm + "`");
+                            "encoder for `" + sum.name() + "` is missing case `" + caseName + "`");
                 }
             }
         });
@@ -1166,7 +1166,7 @@ public final class TypeChecker {
                         "`" + init.name() + "` is not a field of `" + typeName + "`");
             }
             Type vt = typeOf(init.value(), env, data, symbols, reqs);
-            if (!assignable(vt, ft, symbols)) {   // an arm value widens to its sum-typed field (spec 8.3)
+            if (!assignable(vt, ft, symbols)) {   // a case value widens to its sum-typed field (spec 8.3)
                 throw new CompileException(init.pos(),
                         "field `" + init.name() + "` expects " + ft + " but got " + vt);
             }
@@ -1357,7 +1357,7 @@ public final class TypeChecker {
                 requireType(iff.cond(), Type.BOOL, env, data, symbols, reqs, "if condition");
                 Type tt = typeOf(iff.then(), env, data, symbols, reqs);
                 Type et = typeOf(iff.els(), env, data, symbols, reqs);
-                Type empty = absorbEmptyList(tt, et);   // one arm may be `[]` (ADR-0028)
+                Type empty = absorbEmptyList(tt, et);   // one case may be `[]` (ADR-0028)
                 if (empty != null) {
                     yield empty;
                 }
@@ -1392,8 +1392,8 @@ public final class TypeChecker {
     }
 
     /** The common element type of two list positions: identical types collapse; two data-like
-     * types widen to the union of their arms (so {@code [High] ++ [LowRole]} is a list of both). */
-    /** When one of two joined positions ({@code if}/{@code match} arms) is the empty list {@code []}
+     * types widen to the union of their cases (so {@code [High] ++ [LowRole]} is a list of both). */
+    /** When one of two joined positions ({@code if}/{@code match} cases) is the empty list {@code []}
      * and the other is a concrete list, the join is that concrete list — the empty list takes on its
      * type (ADR-0028). Returns {@code null} when neither is empty, so the caller falls through to its
      * ordinary rules. Two empty lists stay empty. */
@@ -1432,41 +1432,41 @@ public final class TypeChecker {
             return typeOfOptionMatch(m, oo.element(), env, data, symbols, reqs);
         }
         if (st instanceof Type.Union union) {
-            return typeOfArmsMatch(m, union.members(), "union " + union, st, env, data, symbols, reqs);
+            return typeOfCasesMatch(m, union.members(), "union " + union, st, env, data, symbols, reqs);
         }
         if (!(st instanceof Type.Ref ref) || !(symbols.get(ref.name()) instanceof Ast.SumData sum)) {
             throw new CompileException(m.pos(), "match requires a sum-typed value, got " + st);
         }
-        return typeOfArmsMatch(m, new HashSet<>(sum.arms()), "data `" + sum.name() + "`",
+        return typeOfCasesMatch(m, new HashSet<>(sum.cases()), "data `" + sum.name() + "`",
                 st, env, data, symbols, reqs);
     }
 
-    /** Match over a fixed set of data arms (a named sum's arms, or an anonymous union's members).
-     * A single-arm case binds that arm's type; an or-pattern ({@code A | B}) binds {@code scrutinee}
-     * (the sum type), since no one arm type fits all its alternatives. Every arm must be covered
+    /** Match over a fixed set of data cases (a named sum's cases, or an anonymous union's members).
+     * A single-case case binds that case's type; an or-pattern ({@code A | B}) binds {@code scrutinee}
+     * (the sum type), since no one case type fits all its alternatives. Every case must be covered
      * exactly once (E1201; a second cover is an overlap error). */
-    private static Type typeOfArmsMatch(Ast.Match m, Set<String> arms, String what, Type scrutinee,
+    private static Type typeOfCasesMatch(Ast.Match m, Set<String> cases, String what, Type scrutinee,
                                         Map<String, Type> env, Ast.Data data, Map<String, Ast.Def> symbols,
                                         Map<String, ReqSig> reqs) {
         Set<String> covered = new HashSet<>();
         Type branchType = null;
         for (Ast.Case c : m.cases()) {
-            for (String arm : c.armTypes()) {
-                if (!arms.contains(arm)) {
-                    throw new CompileException(c.pos(), "`" + arm + "` is not an arm of " + what);
+            for (String caseName : c.caseTypes()) {
+                if (!cases.contains(caseName)) {
+                    throw new CompileException(c.pos(), "`" + caseName + "` is not a case of " + what);
                 }
-                if (!covered.add(arm)) {
-                    throw new CompileException(c.pos(), "`" + arm + "` is matched by more than one case");
+                if (!covered.add(caseName)) {
+                    throw new CompileException(c.pos(), "`" + caseName + "` is matched by more than one case");
                 }
             }
-            Type bindType = c.armTypes().size() == 1 ? armBindType(c.armTypes().get(0)) : scrutinee;
+            Type bindType = c.caseTypes().size() == 1 ? caseBindType(c.caseTypes().get(0)) : scrutinee;
             branchType = mergeBranch(m, branchType,
                     typeOf(c.body(), bound(env, c.binding(), bindType), data, symbols, reqs), c);
         }
-        for (String arm : arms) {
-            if (!covered.contains(arm)) {
+        for (String caseName : cases) {
+            if (!covered.contains(caseName)) {
                 throw new CompileException(m.pos(), "E1201",
-                        "Non-exhaustive match for " + what + ". Missing case: " + arm);
+                        "Non-exhaustive match for " + what + ". Missing case: " + caseName);
             }
         }
         if (branchType == null) {
@@ -1475,48 +1475,48 @@ public final class TypeChecker {
         return branchType;
     }
 
-    /** Match over {@code Option<element>}: arms are {@code Some} (binds the element) and
+    /** Match over {@code Option<element>}: cases are {@code Some} (binds the element) and
      * {@code None}; both must be present (spec 16.3). */
     private static Type typeOfOptionMatch(Ast.Match m, Type element, Map<String, Type> env, Ast.Data data,
                                           Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
         Set<String> covered = new HashSet<>();
         Type branchType = null;
         for (Ast.Case c : m.cases()) {
-            if (c.armTypes().size() != 1) {
+            if (c.caseTypes().size() != 1) {
                 throw new CompileException(c.pos(), "or-patterns are not allowed in an Option match;"
                         + " use separate Some and None cases");
             }
-            String armType = c.armTypes().get(0);
-            Type bind = switch (armType) {
+            String caseType = c.caseTypes().get(0);
+            Type bind = switch (caseType) {
                 case "Some" -> element;
                 case "None" -> null;
                 default -> throw new CompileException(c.pos(),
-                        "`" + armType + "` is not an arm of Option; use Some or None");
+                        "`" + caseType + "` is not a case of Option; use Some or None");
             };
-            covered.add(armType);
+            covered.add(caseType);
             branchType = mergeBranch(m, branchType,
                     typeOf(c.body(), bound(env, c.binding(), bind), data, symbols, reqs), c);
         }
-        for (String arm : List.of("Some", "None")) {
-            if (!covered.contains(arm)) {
+        for (String caseName : List.of("Some", "None")) {
+            if (!covered.contains(caseName)) {
                 throw new CompileException(m.pos(), "E1201",
-                        "Non-exhaustive match for Option. Missing case: " + arm);
+                        "Non-exhaustive match for Option. Missing case: " + caseName);
             }
         }
         return branchType;
     }
 
-    /** The type a match arm binds. A primitive-named arm (e.g. {@code Int} in {@code Int |
-     * DivisionByZero}) binds that primitive; a data-named arm binds its data type. */
-    public static Type armBindType(String armName) {
-        return switch (armName) {
+    /** The type a match case binds. A primitive-named case (e.g. {@code Int} in {@code Int |
+     * DivisionByZero}) binds that primitive; a data-named case binds its data type. */
+    public static Type caseBindType(String caseName) {
+        return switch (caseName) {
             case "Int" -> Type.INT;
             case "String" -> Type.STRING;
             case "Bool" -> Type.BOOL;
             case "Decimal" -> Type.DECIMAL;
             case "Date" -> Type.DATE;
             case "DateTime" -> Type.DATETIME;
-            default -> Type.ref(armName);
+            default -> Type.ref(caseName);
         };
     }
 
@@ -1537,11 +1537,11 @@ public final class TypeChecker {
         if (branchType.equals(bt)) {
             return branchType;
         }
-        Type empty = absorbEmptyList(branchType, bt);   // one arm may be `[]` (ADR-0028)
+        Type empty = absorbEmptyList(branchType, bt);   // one case may be `[]` (ADR-0028)
         if (empty != null) {
             return empty;
         }
-        // arms yielding different data types widen to their union, as `if` branches do (spec 16.2)
+        // cases yielding different data types widen to their union, as `if` branches do (spec 16.2)
         if (isDataLike(branchType) && isDataLike(bt)) {
             Set<String> names = new HashSet<>(namesOf(branchType));
             names.addAll(namesOf(bt));
@@ -1659,7 +1659,7 @@ public final class TypeChecker {
                 arity(call, 2);
                 requireType(args.get(0), Type.INT, env, data, symbols, reqs, "argument 1 of remainder");
                 requireType(args.get(1), Type.INT, env, data, symbols, reqs, "argument 2 of remainder");
-                // partial: a zero divisor produces the DivisionByZero arm (spec 18.2)
+                // partial: a zero divisor produces the DivisionByZero case (spec 18.2)
                 yield Type.union(new java.util.LinkedHashSet<>(List.of("Int", "DivisionByZero")));
             }
             case "Int.divide", "Decimal.divide" -> {
@@ -1696,7 +1696,7 @@ public final class TypeChecker {
                     throw new CompileException(call.pos(), "`" + call.fn()
                             + "` is not a standard-library function.");
                 }
-                // a required behavior called inline (spec 12.2, 13): type it as its success arm
+                // a required behavior called inline (spec 12.2, 13): type it as its success case
                 ReqSig callee = reqs.get(call.fn());
                 if (callee == null) {
                     String qualified = Prelude.qualifiedFor(call.fn());
@@ -2005,7 +2005,7 @@ public final class TypeChecker {
     private static void requireType(Ast.Expr e, Type expected, Map<String, Type> env, Ast.Data data,
                                     Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs, String what) {
         Type actual = typeOf(e, env, data, symbols, reqs);
-        if (!assignable(actual, expected, symbols)) {   // an arm widens to its sum (spec 8.3)
+        if (!assignable(actual, expected, symbols)) {   // a case widens to its sum (spec 8.3)
             throw new CompileException(e.pos(), what + " must be " + expected + " but is " + actual);
         }
     }
@@ -2024,10 +2024,10 @@ public final class TypeChecker {
         };
     }
 
-    /** The output type of a behavior return: a single arm, or a union of two or more arms. */
+    /** The output type of a behavior return: a single case, or a union of two or more cases. */
     public static Type successType(Ast.RetType ret, Map<String, Ast.Def> symbols) {
         List<Type> members = new ArrayList<>();
-        for (Ast.TypeRef t : ret.arms()) {
+        for (Ast.TypeRef t : ret.cases()) {
             members.add(resolveType(t, symbols));
         }
         if (members.size() == 1) {
@@ -2043,8 +2043,8 @@ public final class TypeChecker {
         return Type.union(names);
     }
 
-    /** Builds a Ref (one name) or Union (two or more) from a set of arm names. */
-    static Type armSetType(Set<String> names) {
+    /** Builds a Ref (one name) or Union (two or more) from a set of case names. */
+    static Type caseSetType(Set<String> names) {
         if (names.size() == 1) {
             return Type.ref(names.iterator().next());
         }
@@ -2065,9 +2065,9 @@ public final class TypeChecker {
         return Set.of();
     }
 
-    /** Arm names of a stage output, treating a {@code Raw} encoder output as the arm {@code "Raw"}
-     * so it can be unioned with propagated error arms (spec 14.1, 24). */
-    private static Set<String> armNamesOf(Type t) {
+    /** Case names of a stage output, treating a {@code Raw} encoder output as the case {@code "Raw"}
+     * so it can be unioned with propagated error cases (spec 14.1, 24). */
+    private static Set<String> caseNamesOf(Type t) {
         if (t == Type.RAW) {
             return Set.of("Raw");
         }
@@ -2083,8 +2083,8 @@ public final class TypeChecker {
     }
 
     /** Whether a {@code from} value can be assigned where {@code to} is expected. Lists are
-     * covariant, and a data-like type widens to the set of leaf arms it can be — so a list of
-     * a sum's arms is assignable to a list of the sum (spec 8.3, 12.2). */
+     * covariant, and a data-like type widens to the set of leaf cases it can be — so a list of
+     * a sum's cases is assignable to a list of the sum (spec 8.3, 12.2). */
     public static boolean assignable(Type from, Type to, Map<String, Ast.Def> symbols) {
         if (from.equals(to)) {
             return true;
@@ -2094,7 +2094,7 @@ public final class TypeChecker {
         }
         // immutable collections are element-covariant: A <: S makes a List/Map/Option of A
         // assignable to one of S. Sound because they cannot be mutated (spec 6), so no write can
-        // smuggle a sibling arm in — the same reason Scala's immutable List and Kotlin's read-only
+        // smuggle a sibling case in — the same reason Scala's immutable List and Kotlin's read-only
         // List are covariant, and Java's mutable arrays are not.
         if (from instanceof Type.ListOf a && to instanceof Type.ListOf b) {
             return assignable(a.element(), b.element(), symbols);
@@ -2105,8 +2105,8 @@ public final class TypeChecker {
         if (from instanceof Type.OptionOf a && to instanceof Type.OptionOf b) {
             return assignable(a.element(), b.element(), symbols);
         }
-        Set<String> fa = leafArms(from, symbols);
-        Set<String> ta = leafArms(to, symbols);
+        Set<String> fa = leafCases(from, symbols);
+        Set<String> ta = leafCases(to, symbols);
         return !fa.isEmpty() && !ta.isEmpty() && ta.containsAll(fa);
     }
 
@@ -2167,13 +2167,13 @@ public final class TypeChecker {
         };
     }
 
-    /** The set of leaf (non-sum) arm names a data-like type covers, flattening nested sums. */
-    public static Set<String> leafArms(Type t, Map<String, Ast.Def> symbols) {
+    /** The set of leaf (non-sum) case names a data-like type covers, flattening nested sums. */
+    public static Set<String> leafCases(Type t, Map<String, Ast.Def> symbols) {
         Set<String> out = new HashSet<>();
         for (String name : namesOf(t)) {
             if (symbols.get(name) instanceof Ast.SumData s) {
-                for (String arm : s.arms()) {
-                    out.addAll(leafArms(Type.ref(arm), symbols));
+                for (String caseName : s.cases()) {
+                    out.addAll(leafCases(Type.ref(caseName), symbols));
                 }
             } else {
                 out.add(name);
@@ -2190,7 +2190,7 @@ public final class TypeChecker {
             case "Decimal" -> Type.DECIMAL;
             case "Date" -> Type.DATE;
             case "DateTime" -> Type.DATETIME;
-            // 制約違反 is no longer a writable arm: an invariant violation aborts (spec 7.3, 9.4).
+            // 制約違反 is no longer a writable case: an invariant violation aborts (spec 7.3, 9.4).
             case "List" -> {
                 if (ref.arg() == null) {
                     throw new CompileException(ref.pos(), "List needs a type argument, e.g. List<Int>");

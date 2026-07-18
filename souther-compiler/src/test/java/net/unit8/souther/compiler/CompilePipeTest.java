@@ -47,7 +47,7 @@ class CompilePipeTest {
     void composesDependencyFreeBehaviors() throws Exception {
         BytesClassLoader loader = loader();
         Object ab = loader.loadClass("demo.Ab").getConstructor().newInstance();
-        // apply returns the output arm value directly
+        // apply returns the output case value directly
         Object out = ((Behavior<Object, Object>) ab).apply(decode(loader, "Wrap", "hi"));
 
         // Out is a single-field newtype, so its encoder yields the bare String value.
@@ -62,7 +62,7 @@ class CompilePipeTest {
         Decoder midDecoder = (Decoder) loader.loadClass("demo.Mid")
                 .getMethod("decoder").invoke(null);
 
-        // The Java-side implementation of `fetch` returns the Mid arm value directly.
+        // The Java-side implementation of `fetch` returns the Mid case value directly.
         Behavior fetch = w -> ((Ok) midDecoder.decode("hello", Path.ROOT)).value();
 
         Object handle = loader.loadClass("demo.Handle")
@@ -75,7 +75,7 @@ class CompilePipeTest {
 
     @Test
     void mismatchedCompositionIsE1701() {
-        // a: Wrap -> Mid; feeding Mid into a second `a` (which wants Wrap) accepts no arm.
+        // a: Wrap -> Mid; feeding Mid into a second `a` (which wants Wrap) accepts no case.
         String src = """
                 module demo
                 data Wrap = String

@@ -54,7 +54,7 @@ class CompileOptionMatchTest {
     }
 
     @Test
-    void noneTakesTheNoneArm() throws Exception {
+    void noneTakesTheNoneCase() throws Exception {
         assertEquals("none", run(Map.of("id", "t-1")));
     }
 }

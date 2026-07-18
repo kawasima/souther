@@ -17,7 +17,7 @@ import java.util.Optional;
  * boundary concern); this pass fills them in from field names and types so a domain
  * definition needs only {@code data}/{@code invariant}/{@code behavior}. Conventions:
  * JSON key = field name; single-primitive-field data is a newtype (bare primitive);
- * sum discriminator field = "type", tag = arm name.
+ * sum discriminator field = "type", tag = case name.
  */
 public final class Deriver {
 
@@ -30,16 +30,16 @@ public final class Deriver {
     /** Derives codecs using {@code symbols} for type resolution (own definitions plus any
      * imported ones, for cross-module fields — spec 4). */
     public static Ast.Module derive(Ast.Module module, Map<String, Ast.Def> symbols) {
-        java.util.Set<String> armNames = new java.util.HashSet<>();
+        java.util.Set<String> caseNames = new java.util.HashSet<>();
         for (Ast.Def def : symbols.values()) {
             if (def instanceof Ast.SumData s) {
-                armNames.addAll(s.arms());
+                caseNames.addAll(s.cases());
             }
         }
         List<Ast.Def> defs = new ArrayList<>();
         for (Ast.Def def : module.defs()) {
             defs.add(switch (def) {
-                case Ast.Data d -> deriveData(d, symbols, armNames.contains(d.name()));
+                case Ast.Data d -> deriveData(d, symbols, caseNames.contains(d.name()));
                 case Ast.SumData s -> deriveSum(s, symbols);
                 case Ast.UnitData u -> u;
             });
@@ -48,23 +48,23 @@ public final class Deriver {
                 module.imports(), defs, module.behaviors(), module.fns(), module.pos());
     }
 
-    private static Ast.Data deriveData(Ast.Data d, Map<String, Ast.Def> symbols, boolean isArm) {
+    private static Ast.Data deriveData(Ast.Data d, Map<String, Ast.Def> symbols, boolean isCase) {
         Map<String, Type> fields = TypeChecker.fieldTypes(d, symbols);
         Optional<Ast.DecoderDef> decoder = d.decoder().isPresent()
-                ? d.decoder() : Optional.of(deriveDecoder(d, fields, isArm));
+                ? d.decoder() : Optional.of(deriveDecoder(d, fields, isCase));
         Optional<Ast.EncoderDef> encoder = d.encoder().isPresent()
-                ? d.encoder() : Optional.of(deriveEncoder(d, fields, isArm));
+                ? d.encoder() : Optional.of(deriveEncoder(d, fields, isCase));
         return new Ast.Data(d.name(), d.newtype(), d.includes(), d.fields(), d.invariant(),
                 decoder, encoder, d.pos());
     }
 
     // --- decoder derivation ---
 
-    private static Ast.DecoderDef deriveDecoder(Ast.Data d, Map<String, Type> fields, boolean isArm) {
+    private static Ast.DecoderDef deriveDecoder(Ast.Data d, Map<String, Type> fields, boolean isCase) {
         SourcePos pos = d.pos();
         // only an explicit newtype `data X = Y` is bare; a braced record is always an object, even
-        // with one field (spec 8.7). A sum arm is embedded in the discriminated object, never bare.
-        Map.Entry<String, Type> single = bareField(d, fields, isArm);
+        // with one field (spec 8.7). A sum case is embedded in the discriminated object, never bare.
+        Map.Entry<String, Type> single = bareField(d, fields, isCase);
         if (single != null) {
             Ast.RawKind kind = rawKind(single.getValue());
             Ast.Construct result = new Ast.Construct(d.name(),
@@ -73,7 +73,7 @@ public final class Deriver {
             return new Ast.PrimDecoder(kind, "__in", List.of(), result, pos);
         }
         // a newtype over a non-primitive Y delegates the whole input to Y's decoder (spec 8.7)
-        if (d.newtype() && !isArm) {
+        if (d.newtype() && !isCase) {
             Map.Entry<String, Type> only = fields.entrySet().iterator().next();
             Ast.Construct result = new Ast.Construct(d.name(),
                     List.of(new Ast.FieldInit(only.getKey(), new Ast.Var("__in", pos), pos)),
@@ -150,16 +150,16 @@ public final class Deriver {
 
     // --- encoder derivation ---
 
-    private static Ast.EncoderDef deriveEncoder(Ast.Data d, Map<String, Type> fields, boolean isArm) {
+    private static Ast.EncoderDef deriveEncoder(Ast.Data d, Map<String, Type> fields, boolean isCase) {
         SourcePos pos = d.pos();
-        Map.Entry<String, Type> single = bareField(d, fields, isArm);
+        Map.Entry<String, Type> single = bareField(d, fields, isCase);
         if (single != null) {
             Ast.Expr access = new Ast.FieldAccess(new Ast.Var("self", pos), single.getKey(), pos);
             return new Ast.EncoderDef("self", primRaw(single.getValue(), access, pos), pos);
         }
         // a newtype over a non-primitive Y encodes self.value via Y's encoder — Y's representation,
         // not `{value: ...}` (spec 8.7)
-        if (d.newtype() && !isArm) {
+        if (d.newtype() && !isCase) {
             Map.Entry<String, Type> only = fields.entrySet().iterator().next();
             Ast.Expr access = new Ast.FieldAccess(new Ast.Var("self", pos), only.getKey(), pos);
             String inner = ((Type.Ref) only.getValue()).name();
@@ -233,53 +233,53 @@ public final class Deriver {
     // --- sum derivation ---
 
     private static Ast.SumData deriveSum(Ast.SumData s, Map<String, Ast.Def> symbols) {
-        List<String> leaves = leafArms(s, symbols);
+        List<String> leaves = leafCases(s, symbols);
         Optional<Ast.Discriminate> decoder = s.decoder().isPresent()
                 ? s.decoder()
                 : Optional.of(new Ast.Discriminate("type", tagVariants(s, leaves), s.pos()));
         Optional<Ast.SumEncoder> encoder = s.encoder().isPresent()
                 ? s.encoder()
                 : Optional.of(new Ast.SumEncoder("type", encVariants(s, leaves), s.pos()));
-        return new Ast.SumData(s.name(), s.arms(), decoder, encoder, s.pos());
+        return new Ast.SumData(s.name(), s.cases(), decoder, encoder, s.pos());
     }
 
     /**
-     * The arms a derived codec dispatches over, with nested sums folded to their leaves —
+     * The cases a derived codec dispatches over, with nested sums folded to their leaves —
      * `費用負担区分 = 自社負担 | 先方負担` where `自社負担 = 立替 | 仮払い | 会社カード` dispatches over
      * 立替 / 仮払い / 会社カード / 先方負担 (spec 8.3, 10.3).
      *
-     * <p>Folding is what makes a nested sum round-trip. Tagging the direct arm instead would put
+     * <p>Folding is what makes a nested sum round-trip. Tagging the direct case instead would put
      * two levels on one `"type"` key: the outer encoder wrote {@code {type: 自社負担}}, losing
      * which leaf it was, and the inner decoder then rejected that same tag.
      */
-    private static List<String> leafArms(Ast.SumData s, Map<String, Ast.Def> symbols) {
+    private static List<String> leafCases(Ast.SumData s, Map<String, Ast.Def> symbols) {
         List<String> leaves = new ArrayList<>();
-        collectLeafArms(s, symbols, leaves);
+        collectLeafCases(s, symbols, leaves);
         return leaves;
     }
 
-    private static void collectLeafArms(Ast.SumData s, Map<String, Ast.Def> symbols, List<String> out) {
-        for (String arm : s.arms()) {
-            if (symbols.get(arm) instanceof Ast.SumData nested) {
-                collectLeafArms(nested, symbols, out);
-            } else if (!out.contains(arm)) {
-                out.add(arm);
+    private static void collectLeafCases(Ast.SumData s, Map<String, Ast.Def> symbols, List<String> out) {
+        for (String caseName : s.cases()) {
+            if (symbols.get(caseName) instanceof Ast.SumData nested) {
+                collectLeafCases(nested, symbols, out);
+            } else if (!out.contains(caseName)) {
+                out.add(caseName);
             }
         }
     }
 
-    private static List<Ast.Variant> tagVariants(Ast.SumData s, List<String> arms) {
+    private static List<Ast.Variant> tagVariants(Ast.SumData s, List<String> cases) {
         List<Ast.Variant> variants = new ArrayList<>();
-        for (String arm : arms) {
-            variants.add(new Ast.Variant(arm, arm, s.pos()));
+        for (String caseName : cases) {
+            variants.add(new Ast.Variant(caseName, caseName, s.pos()));
         }
         return variants;
     }
 
-    private static List<Ast.EncVariant> encVariants(Ast.SumData s, List<String> arms) {
+    private static List<Ast.EncVariant> encVariants(Ast.SumData s, List<String> cases) {
         List<Ast.EncVariant> variants = new ArrayList<>();
-        for (String arm : arms) {
-            variants.add(new Ast.EncVariant(arm, arm, s.pos()));
+        for (String caseName : cases) {
+            variants.add(new Ast.EncVariant(caseName, caseName, s.pos()));
         }
         return variants;
     }
@@ -287,10 +287,10 @@ public final class Deriver {
     /**
      * The bare inner field of an explicit newtype {@code data X = Y} whose {@code Y} is primitive
      * (spec 8.7). A braced record is always an object — even a single-field one — so newtype-ness
-     * is decided by the {@code = Y} syntax, not the shape; a sum arm is never bare either.
+     * is decided by the {@code = Y} syntax, not the shape; a sum case is never bare either.
      */
-    private static Map.Entry<String, Type> bareField(Ast.Data d, Map<String, Type> fields, boolean isArm) {
-        if (!d.newtype() || isArm) {
+    private static Map.Entry<String, Type> bareField(Ast.Data d, Map<String, Type> fields, boolean isCase) {
+        if (!d.newtype() || isCase) {
             return null;
         }
         Map.Entry<String, Type> only = fields.entrySet().iterator().next();

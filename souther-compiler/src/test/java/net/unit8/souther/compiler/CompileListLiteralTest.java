@@ -43,7 +43,7 @@ class CompileListLiteralTest {
         assertEquals(List.of(5L), pick(5, -1));      // guard fails: only the literal
     }
 
-    // spec 23 shape: a List<sum> built from conditionally-included arm values.
+    // spec 23 shape: a List<sum> built from conditionally-included case values.
     private static final String REASONS = """
             module demo
 
@@ -70,7 +70,7 @@ class CompileListLiteralTest {
     }
 
     @Test
-    void buildsAListOfSumArms() throws Exception {
+    void buildsAListOfSumCases() throws Exception {
         List<?> high = reasons(150);
         assertEquals(2, high.size());
         assertEquals("demo.High", high.get(0).getClass().getName());

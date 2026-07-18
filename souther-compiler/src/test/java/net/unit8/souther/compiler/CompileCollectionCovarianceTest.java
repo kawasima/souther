@@ -7,10 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Immutable collections are element-covariant (spec 6): with {@code A} an arm of the sum {@code S}
+ * Immutable collections are element-covariant (spec 6): with {@code A} a case of the sum {@code S}
  * ({@code A <: S}), a {@code List}/{@code Map}/{@code Option} of {@code A} is assignable where one
  * of {@code S} is expected. This is sound because the collections cannot be mutated, so no write
- * can smuggle a sibling arm in. Covariance follows the arm→sum relation only; two sibling arms stay
+ * can smuggle a sibling case in. Covariance follows the case→sum relation only; two sibling cases stay
  * unrelated.
  */
 class CompileCollectionCovarianceTest {
@@ -49,8 +49,8 @@ class CompileCollectionCovarianceTest {
     }
 
     @Test
-    void covarianceDoesNotRelateSiblingArms() {
-        // A and B are both arms of S, but unrelated to each other: List<A> is not a List<B>
+    void covarianceDoesNotRelateSiblingCases() {
+        // A and B are both cases of S, but unrelated to each other: List<A> is not a List<B>
         CompileException e = assertThrows(CompileException.class,
                 () -> Compiler.compile(mod("List<B>", "List<A>")));
         assertTrue(e.getMessage().contains("expects"), e.getMessage());

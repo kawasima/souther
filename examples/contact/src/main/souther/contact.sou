@@ -1,5 +1,5 @@
 // 直和 data(sealed) ＋ match 分岐。
-// 判別デコーダ/エンコーダは導出される（判別子フィールド "type"、タグ＝アーム名）。
+// 判別デコーダ/エンコーダは導出される（判別子フィールド "type"、タグ＝ケース名）。
 module example.contact
 
 data EmailContact = { email: String }
@@ -8,7 +8,7 @@ data Contact = EmailContact | PhoneContact
 
 data Label = String
 
-// match でアームごとに値を取り出す
+// match でケースごとに値を取り出す
 behavior 連絡先の値 : (c: Contact) -> Label constructs Label
 
 let 連絡先の値 (c) =

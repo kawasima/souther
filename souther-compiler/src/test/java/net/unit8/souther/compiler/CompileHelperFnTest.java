@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * A helper {@code fn} — one with no matching behavior — writes its own parameter types (spec 13.1)
  * and is expanded inline at each call site (spec 12.5: a named fn is the same as an inline block).
- * This first case is a pure computation: it constructs no data and calls no injected behavior.
+ * This first caseName is a pure computation: it constructs no data and calls no injected behavior.
  */
 class CompileHelperFnTest {
 

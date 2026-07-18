@@ -52,14 +52,14 @@ class CompileMatchTest {
     }
 
     @Test
-    void matchSelectsTheEmailArm() throws Exception {
+    void matchSelectsTheEmailCase() throws Exception {
         BytesClassLoader loader = loader();
         Object out = run(loader, Map.of("type", "EmailContact", "email", "a@b"));
         assertEquals("a@b", out);
     }
 
     @Test
-    void matchSelectsThePhoneArm() throws Exception {
+    void matchSelectsThePhoneCase() throws Exception {
         BytesClassLoader loader = loader();
         Object out = run(loader, Map.of("type", "PhoneContact", "phone", "123"));
         assertEquals("123", out);
@@ -83,9 +83,9 @@ class CompileMatchTest {
         assertEquals("E1201", e.code());
     }
 
-    /** The leading `|` on the first arm is optional (F# form). */
+    /** The leading `|` on the first case is optional (F# form). */
     @Test
-    void firstArmPipeIsOptional() throws Exception {
+    void firstCasePipeIsOptional() throws Exception {
         String src = MODULE.replace("match c with\n                    | EmailContact",
                 "match c with\n                    EmailContact");
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());

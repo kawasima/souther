@@ -46,7 +46,7 @@ class CompileBusinessTripTest {
 
             data 却下 = { 理由: String }
 
-            // 提出する: 予定費用が上限内なら提出済みへ遷移、超過なら却下（失敗も普通の data アーム）
+            // 提出する: 予定費用が上限内なら提出済みへ遷移、超過なら却下（失敗も普通の data ケース）
             behavior 提出する : (申請: 申請準備中, 提出日時: String) -> 提出済み | 却下
                 constructs 提出済み, 却下
 
@@ -93,7 +93,7 @@ class CompileBusinessTripTest {
     void submittingOverBudgetIsRejected() throws Exception {
         BytesClassLoader loader = loader();
         Object r = submit(loader, draft(loader, 200000), "2026-07-14");
-        // 200000 exceeds the budget, so the request yields the 却下 arm
+        // 200000 exceeds the budget, so the request yields the 却下 case
         assertEquals("example.businesstrip.却下", r.getClass().getName());
     }
 }

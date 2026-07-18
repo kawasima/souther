@@ -97,7 +97,7 @@ class CompileEqualityTest {
     }
 
     @Test
-    void aSumComparesByArmAndContents() throws Exception {
+    void aSumComparesByCaseAndContents() throws Exception {
         BytesClassLoader loader = loader();
         assertTrue(run(loader, "答えが同じか", make(loader, "Yes"), make(loader, "Yes")));
         assertFalse(run(loader, "答えが同じか", make(loader, "Yes"), make(loader, "No")));

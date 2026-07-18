@@ -1,9 +1,9 @@
 // 注入 behavior 注文を記録する の jOOQ 実装。生成された抽象基底 注文を記録する（Behavior を継承）を
-// extends する。入力は 注文、出力は 注文受付。成功アーム 注文受付 は field を持つので decoder で
+// extends する。入力は 注文、出力は 注文受付。成功ケース 注文受付 は field を持つので decoder で
 // 組み立てる（spec 8.5）。data のコンストラクタは非公開のままなので、生成物の外ではこの経路でしか
 // 値を作れない。
 //
-// プラットフォーム障害（DB ダウン等）はアームに畳まず、例外として投げる。Souther（言語）に例外は
+// プラットフォーム障害（DB ダウン等）はケースに畳まず、例外として投げる。Souther（言語）に例外は
 // 無いが、境界の Java Binding は投げてよく、Souther はそれを素通しする（生成された >-> パイプラインは
 // 例外を握り潰さない）。伝播した例外は境界で 503／トランザクションの自動ロールバックになる。
 package app.ordering;
@@ -59,7 +59,7 @@ public final class JooqRecordOrder extends 注文を記録する {
                 .values(注文番号, 商品, 個数)
                 .execute();
 
-        // 注文受付 は field を持つ成功アーム。生成物の外では data を作れないので decoder に通す。
+        // 注文受付 は field を持つ成功ケース。生成物の外では data を作れないので decoder に通す。
         // 中立な Map（外部表現。spec 6）から組み立て、invariant（注文ID/商品ID の長さ・数量>0）を再検査する。
         Map<String, Object> raw = Map.of("注文番号", 注文番号, "商品", 商品, "個数", 個数);
         return switch (注文受付.decoder().decode(raw, Path.ROOT)) {

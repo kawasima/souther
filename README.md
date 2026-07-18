@@ -51,7 +51,7 @@ data 承認権限なし
 // A dependency: no `let`, so the clock is injected from Java.
 behavior 現在時刻 : () -> DateTime
 
-// The output is an unmarked sum. Whether an arm is a "failure" is decided by composition,
+// The output is an unmarked sum. Whether a case is a "failure" is decided by composition,
 // not by this behavior. A simple behavior declares what it `requires` and `constructs`.
 behavior 事前承認する : (
     申請:    事前承認待ち,
@@ -69,8 +69,8 @@ let 事前承認する (申請, 承認者ID, 現在時刻) = {
 }
 ```
 
-Behaviors compose with `>->`, which routes the arms of one stage's output into the next and lets
-the arms the next stage does not accept flow straight through:
+Behaviors compose with `>->`, which routes the cases of one stage's output into the next and lets
+the cases the next stage does not accept flow straight through:
 
 ```text
 behavior 会員を照会し整形する = findMember >-> 会員を表示用に整形する
@@ -93,15 +93,15 @@ implementation. Constructors are non-public, so the rule holds even across the J
 
 An `invariant` on a `data` runs wherever that data is built — decoders and behaviors alike,
 including invariants inherited through `include`. A behavior that constructs an invariant-bearing
-data must have an arm for the violation to go to, or it is a compile error.
+data must have a case for the violation to go to, or it is a compile error.
 
 ### Business results are unmarked sums
 
 There is no `Result`, no `Either`, no success/error tag. A behavior maps its input to one of
-several possible domain results. Which arm counts as "off the happy path" is decided at composition
-time: `f >-> g` routes the arms of `f`'s output that `g`'s input accepts into `g`, and lets the
+several possible domain results. Which case counts as "off the happy path" is decided at composition
+time: `f >-> g` routes the cases of `f`'s output that `g`'s input accepts into `g`, and lets the
 rest flow straight through to the output. That is Railway-oriented programming without privileging
-"failure" — an arm that isn't consumed simply propagates.
+"failure" — a case that isn't consumed simply propagates.
 
 ### Outside-world dependencies are behaviors with no implementation
 
@@ -121,7 +121,7 @@ var result = handle.apply(rawInput);
 
 Decoders and encoders never appear in the language syntax. They are derived from the shape of the
 data: a JSON key is the field name, a single-primitive-field data is a bare newtype, and a sum
-discriminates on `"type"` with the arm name as the tag. When the default derivation isn't enough
+discriminates on `"type"` with the case name as the tag. When the default derivation isn't enough
 (renamed keys, normalization, a business-specific discriminator), you write a custom codec on the
 Java boundary that calls the data's invariant-checking construction.
 
@@ -141,7 +141,7 @@ Souther -> arbitrary Java API              forbidden (the outside world is reach
 
 Java calls the generated types and behaviors. Souther cannot call arbitrary Java. A behavior with
 no `let` is generated as an abstract base class that a Java implementation `extends`; the
-implementation may build only the arms that behavior declares, through `protected` factories, so
+implementation may build only the cases that behavior declares, through `protected` factories, so
 closed construction is preserved across the boundary.
 
 ## What Souther deliberately does not have
@@ -149,7 +149,7 @@ closed construction is preserved across the boundary.
 Souther is opinionated. The following are left out *by design*, not by omission — each would
 undercut one of the ideas above.
 
-- **No exceptions, no `null`, no mutable state, no threads, no async.** Failure is a domain arm
+- **No exceptions, no `null`, no mutable state, no threads, no async.** Failure is a domain case
   in the output sum; absence is an optional field (`?`); everything is immutable. `null` and
   `throw` are compile errors that point you at the alternative.
 - **No arbitrary JVM calls from Souther.** The only door to the outside world is a behavior with

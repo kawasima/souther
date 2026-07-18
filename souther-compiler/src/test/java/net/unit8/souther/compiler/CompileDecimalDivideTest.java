@@ -18,13 +18,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * Decimal division states its rounding as a domain decision: {@code divide(a, b, scale, mode)}
  * gives a Decimal rounded to {@code scale} places by {@code mode} (spec 18.3). A zero divisor is a
- * possible input, so it returns a {@code DivisionByZero} arm rather than aborting. The 2-argument
+ * possible input, so it returns a {@code DivisionByZero} case rather than aborting. The 2-argument
  * {@code divide} stays Int-only.
  */
 class CompileDecimalDivideTest {
 
-    // Both match arms yield Out (as the Int divide test does): match requires the branches to agree
-    // on type, so the DivisionByZero arm reuses p.a as a placeholder value and flags ok: false.
+    // Both match cases yield Out (as the Int divide test does): match requires the branches to agree
+    // on type, so the DivisionByZero case reuses p.a as a placeholder value and flags ok: false.
     private static final String MODULE = """
             module demo
 
@@ -61,7 +61,7 @@ class CompileDecimalDivideTest {
     }
 
     @Test
-    void aZeroDivisorTakesTheDivisionByZeroArm() throws Exception {
+    void aZeroDivisorTakesTheDivisionByZeroCase() throws Exception {
         BytesClassLoader loader =
                 new BytesClassLoader(Compiler.compile(MODULE), CompileDecimalDivideTest.class.getClassLoader());
         Object out = apply(new BigDecimal("7"), new BigDecimal("0"), loader);

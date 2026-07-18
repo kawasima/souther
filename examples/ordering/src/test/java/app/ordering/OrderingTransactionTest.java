@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * 実際に Spring Boot を起動し（{@code @SpringBootTest}、RANDOM_PORT で組み込み Tomcat を上げる）、
  * H2 に接続してトランザクション制御を検証する。主眼は「後段 在庫を引き当てる が 在庫不足 を返したら、
- * 前段 注文を記録する の INSERT ごと巻き戻る」こと ── 失敗アームが setRollbackOnly を駆動し、DB に
+ * 前段 注文を記録する の INSERT ごと巻き戻る」こと ── 失敗ケースが setRollbackOnly を駆動し、DB に
  * 注文行が残らないことを実 DB で確かめる。
  *
  * <p>{@code POST /orders} は JDK の {@link HttpClient} で本物の HTTP を投げ、実サーバの JSON 応答と
@@ -114,7 +114,7 @@ class OrderingTransactionTest {
     @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
     @Test
     void POST注文_プラットフォーム障害は例外で素通りし503_注文行は巻き戻る() throws Exception {
-        // 後段 在庫を引き当てる の UPDATE が例外を投げ、それはアームに畳まれず Souther を素通りして
+        // 後段 在庫を引き当てる の UPDATE が例外を投げ、それはケースに畳まれず Souther を素通りして
         // 境界へ届く（言語に例外は無いが Java Binding は投げる）。境界の @ExceptionHandler が 503 に写す。
         dsl.execute("DROP TABLE stock");
 

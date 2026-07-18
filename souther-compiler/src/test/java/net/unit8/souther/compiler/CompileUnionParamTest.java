@@ -14,7 +14,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * A behavior takes a named-sum parameter and consumes it by matching each arm (spec 12.2, 16.3):
+ * A behavior takes a named-sum parameter and consumes it by matching each case (spec 12.2, 16.3):
  * {@code data SubPre = Sub | Pre} taken as {@code (app: SubPre) -> ...} with a `match app`. An
  * anonymous union may not sit in a parameter (spec 8.6) — see {@link CompileUnionParamRejectTest}.
  */
@@ -37,12 +37,12 @@ class CompileUnionParamTest {
             """;
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private long finish(String armType, long n) throws Exception {
+    private long finish(String caseType, long n) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        // SubPre is a named sum; its arms are adjacently tagged ({type, value}), so the input to
-        // finish is decoded through the sum decoder rather than a bare arm value (spec 10.3, 12.2).
+        // SubPre is a named sum; its cases are adjacently tagged ({type, value}), so the input to
+        // finish is decoded through the sum decoder rather than a bare case value (spec 10.3, 12.2).
         Decoder d = (Decoder) loader.loadClass("demo.SubPre").getMethod("decoder").invoke(null);
-        Object arg = ((Ok) d.decode(Map.of("type", armType, "value", n), Path.ROOT)).value();
+        Object arg = ((Ok) d.decode(Map.of("type", caseType, "value", n), Path.ROOT)).value();
         Object done = ((Behavior<Object, Object>) loader.loadClass("demo.Finish")
                 .getConstructor().newInstance()).apply(arg);
         // Done is a single-field newtype, so its encoder yields the bare Long.
@@ -51,12 +51,12 @@ class CompileUnionParamTest {
     }
 
     @Test
-    void matchesTheSubArm() throws Exception {
+    void matchesTheSubCase() throws Exception {
         assertEquals(3, finish("Sub", 3));
     }
 
     @Test
-    void matchesThePreArm() throws Exception {
+    void matchesThePreCase() throws Exception {
         assertEquals(7, finish("Pre", 7));
     }
 }

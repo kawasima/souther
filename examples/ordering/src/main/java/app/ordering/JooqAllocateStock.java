@@ -3,8 +3,8 @@
 // jOOQ Record として読み直し、注文確定.recordDecoder() で組み立てる ── raoh-jooq の Record 源
 // decoder のショーケース（member は Map 源しか使っていなかった。spec 10.6）。
 //
-// プラットフォーム障害（DB ダウン等）はアームに畳まず例外で抜ける。Souther はそれを素通しし、
-// トランザクションは自動ロールバック、境界は 503 に写す。ドメインの失敗（在庫不足）だけがアーム。
+// プラットフォーム障害（DB ダウン等）はケースに畳まず例外で抜ける。Souther はそれを素通しし、
+// トランザクションは自動ロールバック、境界は 503 に写す。ドメインの失敗（在庫不足）だけがケース。
 package app.ordering;
 
 import example.ordering.在庫を引き当てる;
@@ -31,7 +31,7 @@ import static org.jooq.impl.DSL.val;
  * qty >= ?} が 1 行更新すれば確定、0 行なら在庫不足 ── 引き算と在庫チェックを 1 文で原子的に行う。
  *
  * <p>在庫不足のときは何も書かずに {@code 在庫不足()}（継承した protected ファクトリ）を返す。
- * このアームを見た境界（{@link app.ordering.web.OrderService}）がトランザクションを
+ * このケースを見た境界（{@link app.ordering.web.OrderService}）がトランザクションを
  * {@code setRollbackOnly} するので、前段 {@link JooqRecordOrder} の INSERT ごと巻き戻る。
  *
  * <p>確定時の残在庫は、採番済みの注文番号（入力の 注文受付 から encoder で取り出す）を列に混ぜた

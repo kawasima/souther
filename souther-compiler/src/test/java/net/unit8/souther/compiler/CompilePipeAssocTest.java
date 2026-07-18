@@ -52,7 +52,7 @@ class CompilePipeAssocTest {
     }
 
     @Test
-    void aRetiredArmStaysRetiredAcrossANamedIntermediate() throws Exception {
+    void aRetiredCaseStaysRetiredAcrossANamedIntermediate() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
         // 500 > 100: split yields Off, which left the main line at work — finish must not pick it up
         assertEquals("demo.Off", run(loader, 500),

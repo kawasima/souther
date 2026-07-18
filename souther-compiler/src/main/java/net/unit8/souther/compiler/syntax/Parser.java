@@ -166,7 +166,7 @@ public final class Parser {
         while (match(TokenType.PIPEFWD)) {
             stages.add(parseStage());
         }
-        // an optional trailing `-> arms` declares the composition's output (spec 14.5); the
+        // an optional trailing `-> cases` declares the composition's output (spec 14.5); the
         // stages are behavior names, so this `->` reads unambiguously as the pipeline's own
         Ast.RetType declaredOut = match(TokenType.ARROW) ? parseRetType() : null;
         return new Ast.PipeBehavior(name, stages, declaredOut, kw.pos());
@@ -297,12 +297,12 @@ public final class Parser {
     }
 
     private Ast.RetType parseRetType() {
-        List<Ast.TypeRef> arms = new ArrayList<>();
-        arms.add(parseTypeRef());
+        List<Ast.TypeRef> cases = new ArrayList<>();
+        cases.add(parseTypeRef());
         while (match(TokenType.PIPE)) {
-            arms.add(parseTypeRef());
+            cases.add(parseTypeRef());
         }
-        return new Ast.RetType(arms, arms.get(0).pos());
+        return new Ast.RetType(cases, cases.get(0).pos());
     }
 
     /** Whether {@code name} sits in the compiler-shipped {@code souther} namespace (ADR-0028). Only
@@ -324,7 +324,7 @@ public final class Parser {
 
     /**
      * {@code data name = <rhs>} where the rhs is either a product body ({@code { ... }}) or a sum's
-     * arms ({@code A | B}); a name with no rhs is a unit. One token after {@code =} tells the
+     * cases ({@code A | B}); a name with no rhs is a unit. One token after {@code =} tells the
      * product from the sum.
      */
     private Ast.Def parseDef() {
@@ -346,18 +346,18 @@ public final class Parser {
     /**
      * {@code data X = A | B ...} is a sum; {@code data X = Y} (a single name, no {@code |}) is a
      * newtype over {@code Y} (spec 8.7). A sum always has a {@code |}, so a lone name can only be a
-     * newtype — there is no one-arm sum.
+     * newtype — there is no one-case sum.
      */
     private Ast.Def parseSumOrNewtype(Token kw, String name) {
         Token first = expect(TokenType.IDENT);
         if (check(TokenType.PIPE)) {
-            List<String> arms = new ArrayList<>();
-            arms.add(first.text());
+            List<String> cases = new ArrayList<>();
+            cases.add(first.text());
             while (match(TokenType.PIPE)) {
-                arms.add(expect(TokenType.IDENT).text());
+                cases.add(expect(TokenType.IDENT).text());
             }
             // decoders/encoders (incl. the sum discriminator) are derived, not written
-            return new Ast.SumData(name, arms, Optional.empty(), Optional.empty(), kw.pos());
+            return new Ast.SumData(name, cases, Optional.empty(), Optional.empty(), kw.pos());
         }
         // newtype: one implicit field `value` of type Y, encoded bare (spec 8.7)
         Ast.TypeRef inner = new Ast.TypeRef(first.text(), null, first.pos());
@@ -689,25 +689,25 @@ public final class Parser {
         Ast.Expr scrutinee = parseExpr();
         noConstruct = saved;
         expect(TokenType.WITH);
-        // F#-form arms: `| A [| B ...] [as x] -> body`, one arm per leading `|`
-        // (the leading `|` on the first arm is optional). The `->` delimits an arm's
-        // or-pattern alternatives from the arm separator, so the two uses of `|` never
+        // F#-form cases: `| A [| B ...] [as x] -> body`, one case per leading `|`
+        // (the leading `|` on the first case is optional). The `->` delimits a case's
+        // or-pattern alternatives from the case separator, so the two uses of `|` never
         // clash even though Souther is layout-independent.
         List<Ast.Case> cases = new ArrayList<>();
-        match(TokenType.PIPE); // optional leading `|` before the first arm
+        match(TokenType.PIPE); // optional leading `|` before the first case
         do {
-            Token arm = expect(TokenType.IDENT);
-            // `A | B ... [as x] -> body` — one arm, or several joined by `|` (spec 16.3)
-            List<String> armTypes = new ArrayList<>();
-            armTypes.add(arm.text());
+            Token caseName = expect(TokenType.IDENT);
+            // `A | B ... [as x] -> body` — one case, or several joined by `|` (spec 16.3)
+            List<String> caseTypes = new ArrayList<>();
+            caseTypes.add(caseName.text());
             while (match(TokenType.PIPE)) {
-                armTypes.add(expect(TokenType.IDENT).text());
+                caseTypes.add(expect(TokenType.IDENT).text());
             }
             String binding = match(TokenType.AS) ? expect(TokenType.IDENT).text() : null;
             expect(TokenType.ARROW);
             Ast.Expr body = parseExpr();
-            cases.add(new Ast.Case(armTypes, binding, body, arm.pos()));
-        } while (match(TokenType.PIPE)); // a leading `|` starts the next arm
+            cases.add(new Ast.Case(caseTypes, binding, body, caseName.pos()));
+        } while (match(TokenType.PIPE)); // a leading `|` starts the next case
         return new Ast.Match(scrutinee, cases, kw.pos());
     }
 

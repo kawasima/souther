@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * A bare identifier is a local if one is bound, and otherwise the construction of the unit data
- * of that name (spec 8.4). Souther does not distinguish the two by case — business vocabulary is
+ * of that name (spec 8.4). Souther does not distinguish the two by caseName — business vocabulary is
  * written in Japanese, which has none — so the scope decides.
  */
 class CompileBareIdentifierTest {

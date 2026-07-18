@@ -31,9 +31,9 @@ argument of the using `let` (see ADR-0016). The read-only "// 依存" versus mut
 composition rules.
 
 `constructs` is still required on a non-implemented behavior (§12.3): the declaration
-reads the same as if it were implemented in Souther — `findMember` mints its failure arms
+reads the same as if it were implemented in Souther — `findMember` mints its failure cases
 but does *not* mint `会員` (it reads an outside value through a decoder). The generated
-Java base class (§13.3) hands out factories for the declared unit arms from here.
+Java base class (§13.3) hands out factories for the declared unit cases from here.
 
 Which behaviors get a `let` and which are injected is not mechanically derivable from the
 DSL: `// 依存:` is a note, not an obligation, so its absence does not prove a behavior is

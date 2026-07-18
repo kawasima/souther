@@ -221,7 +221,7 @@ public final class Backend {
 
     private final String pkg;
     private final Map<String, Ast.Def> symbols;
-    private final Map<String, List<String>> armToSums;
+    private final Map<String, List<String>> caseToSums;
     private final Map<String, String> typePackage;
     /** True when the module has no {@code exposing} clause: everything stays public. */
     private final boolean exposeAll;
@@ -232,11 +232,11 @@ public final class Backend {
     private final Map<String, byte[]> synthClasses = new LinkedHashMap<>();
     private int lambdaCounter = 0;
 
-    private Backend(String pkg, Map<String, Ast.Def> symbols, Map<String, List<String>> armToSums,
+    private Backend(String pkg, Map<String, Ast.Def> symbols, Map<String, List<String>> caseToSums,
                     Map<String, String> typePackage, boolean exposeAll, Set<String> exposed) {
         this.pkg = pkg;
         this.symbols = symbols;
-        this.armToSums = armToSums;
+        this.caseToSums = caseToSums;
         this.typePackage = typePackage;
         this.exposeAll = exposeAll;
         this.exposed = exposed;
@@ -271,18 +271,18 @@ public final class Backend {
                                                Map<String, String> typePackage,
                                                Map<String, TypeChecker.Sig> importedSigs,
                                                Set<String> importedInjected) {
-        Map<String, List<String>> armToSums = new HashMap<>();
+        Map<String, List<String>> caseToSums = new HashMap<>();
         for (Ast.Def def : module.defs()) {
             if (def instanceof Ast.SumData sum) {
-                for (String arm : sum.arms()) {
-                    armToSums.computeIfAbsent(arm, k -> new ArrayList<>()).add(sum.name());
+                for (String caseName : sum.cases()) {
+                    caseToSums.computeIfAbsent(caseName, k -> new ArrayList<>()).add(sum.name());
                 }
             }
         }
         // The checker has already run and rejects any dotted `A.decoder`/`.encoder` member
         // (exposing is type-granular, spec 19.4), so every entry that reaches codegen is a bare name.
         Set<String> exposed = new HashSet<>(module.exposing());
-        Backend b = new Backend(module.name(), symbols, armToSums, typePackage,
+        Backend b = new Backend(module.name(), symbols, caseToSums, typePackage,
                 module.exposing().isEmpty(), exposed);
         // A behavior's class capitalizes its first letter (spec 19.5). Data names are already
         // capitalized, so `behavior quote` producing `data Quote` would generate two classes named
@@ -306,18 +306,18 @@ public final class Backend {
             }
         }
         // A behavior whose output is an anonymous union gets a generated sealed interface
-        // <behavior名>結果 that its arms implement (spec 19.8). Register those arm->interface links
-        // in armToSums before the data classes are generated, so each arm class picks the interface
+        // <behavior名>結果 that its cases implement (spec 19.8). Register those case->interface links
+        // in caseToSums before the data classes are generated, so each case class picks the interface
         // up in withInterfaceSymbols. The interface classes themselves are emitted below.
         Map<String, List<String>> behaviorResults = b.behaviorResultInterfaces(module, importedSigs);
-        behaviorResults.forEach((resultName, arms) -> {
-            for (String arm : arms) {
-                armToSums.computeIfAbsent(arm, k -> new ArrayList<>()).add(resultName);
+        behaviorResults.forEach((resultName, cases) -> {
+            for (String caseName : cases) {
+                caseToSums.computeIfAbsent(caseName, k -> new ArrayList<>()).add(resultName);
             }
         });
         Map<String, byte[]> out = new LinkedHashMap<>();
-        behaviorResults.forEach((resultName, arms) ->
-                out.put(module.name() + "." + resultName, b.generateBehaviorResult(resultName, arms)));
+        behaviorResults.forEach((resultName, cases) ->
+                out.put(module.name() + "." + resultName, b.generateBehaviorResult(resultName, cases)));
         for (Ast.Def def : module.defs()) {
             switch (def) {
                 case Ast.Data data -> b.generateData(data, out);
@@ -345,10 +345,10 @@ public final class Backend {
                 requiredSuccess.put(spec.name(), b.successType(spec.ret()));
                 requiredParam.put(spec.name(),
                         spec.params().size() == 1 ? b.successType(spec.params().get(0).type()) : null);
-                List<String> unitArms = new ArrayList<>();
-                for (Ast.TypeRef t : spec.ret().arms()) {
+                List<String> unitCases = new ArrayList<>();
+                for (Ast.TypeRef t : spec.ret().cases()) {
                     if (b.symbols.get(t.name()) instanceof Ast.UnitData) {
-                        unitArms.add(t.name());
+                        unitCases.add(t.name());
                     }
                 }
                 ClassDesc inputRef = spec.params().size() == 1
@@ -356,7 +356,7 @@ public final class Backend {
                         : null;
                 ClassDesc outputRef = b.refTypeOrNull(b.successType(spec.ret()), spec.name());
                 out.put(module.name() + "." + behaviorClass(spec.name()),
-                        b.generateRequiredBase(spec.name(), unitArms, inputRef, outputRef));
+                        b.generateRequiredBase(spec.name(), unitCases, inputRef, outputRef));
             }
         }
         Map<String, TypeChecker.Sig> sigs = TypeChecker.signatures(module, b.symbols, importedSigs);
@@ -428,9 +428,9 @@ public final class Backend {
     /**
      * Generates the abstract base class for a required behavior (spec 13.3): an abstract
      * {@code Behavior} that a Java implementation extends. The base exposes a {@code protected}
-     * factory for each declared unit-data output arm — the only sanctioned way for the
-     * implementation to mint those arms (spec 2.1). The data constructors stay non-public, so
-     * a subclass can build exactly this behavior's declared arms and nothing else, from any
+     * factory for each declared unit-data output case — the only sanctioned way for the
+     * implementation to mint those cases (spec 2.1). The data constructors stay non-public, so
+     * a subclass can build exactly this behavior's declared cases and nothing else, from any
      * package (no in-package placement required).
      *
      * <p>When both the input and output map to a concrete reference type, the base carries a
@@ -439,7 +439,7 @@ public final class Backend {
      * than {@code Object}. If either side is a list/option/map (no single reference class), the
      * signature is omitted and the raw interface stands.
      */
-    private byte[] generateRequiredBase(String name, List<String> unitArms,
+    private byte[] generateRequiredBase(String name, List<String> unitCases,
                                         ClassDesc inputRef, ClassDesc outputRef) {
         ClassDesc cdR = cdBehavior(name);
         return build(cdR, cb -> {
@@ -458,13 +458,13 @@ public final class Backend {
                 code.invokespecial(CD_Object, "<init>", MTD_void);
                 code.return_();
             });
-            for (String arm : unitArms) {
-                ClassDesc armCd = cd(arm);
-                cb.withMethodBody(arm, MethodTypeDesc.of(armCd),
+            for (String caseName : unitCases) {
+                ClassDesc caseCd = cd(caseName);
+                cb.withMethodBody(caseName, MethodTypeDesc.of(caseCd),
                         ClassFile.ACC_PROTECTED | ClassFile.ACC_FINAL, code -> {
-                            code.new_(armCd);
+                            code.new_(caseCd);
                             code.dup();
-                            code.invokespecial(armCd, "<init>", MTD_void);
+                            code.invokespecial(caseCd, "<init>", MTD_void);
                             code.areturn();
                         });
             }
@@ -473,9 +473,9 @@ public final class Backend {
 
     /**
      * Behavior-result interfaces to generate (spec 19.8): for each behavior whose output is an
-     * anonymous union, maps {@code <behavior名>結果} to its leaf arms — the {@code permits} list and
-     * the set of arm classes that {@code implements} it. A named-sum output is already a sealed
-     * interface (19.3) and a single-arm output uses that arm's own type, so neither gets one. Arm
+     * anonymous union, maps {@code <behavior名>結果} to its leaf cases — the {@code permits} list and
+     * the set of case classes that {@code implements} it. A named-sum output is already a sealed
+     * interface (19.3) and a single-case output uses that case's own type, so neither gets one. Case
      * order is sorted for deterministic bytecode.
      */
     private Map<String, List<String>> behaviorResultInterfaces(Ast.Module module,
@@ -487,34 +487,34 @@ public final class Backend {
             if (sig == null || !(sig.out() instanceof Type.Union)) {
                 continue;
             }
-            List<String> arms = new ArrayList<>(TypeChecker.leafArms(sig.out(), symbols));
-            Collections.sort(arms);
-            results.put(behaviorClass(bd.name()) + "結果", arms);
+            List<String> cases = new ArrayList<>(TypeChecker.leafCases(sig.out(), symbols));
+            Collections.sort(cases);
+            results.put(behaviorClass(bd.name()) + "結果", cases);
         }
         return results;
     }
 
     /**
      * Generates the sealed interface for a behavior's anonymous union output (spec 19.8). The body
-     * is empty: Java consumers receive a value and {@code switch} over the permitted arms, each of
+     * is empty: Java consumers receive a value and {@code switch} over the permitted cases, each of
      * which carries its own codec, so the interface itself needs no members.
      */
-    private byte[] generateBehaviorResult(String resultName, List<String> arms) {
+    private byte[] generateBehaviorResult(String resultName, List<String> cases) {
         ClassDesc cdR = cd(resultName);
-        List<ClassDesc> armCds = new ArrayList<>();
-        for (String arm : arms) {
-            armCds.add(cd(arm));
+        List<ClassDesc> caseCds = new ArrayList<>();
+        for (String caseName : cases) {
+            caseCds.add(cd(caseName));
         }
         return build(cdR, cb -> {
             cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_INTERFACE | ClassFile.ACC_ABSTRACT);
-            cb.with(PermittedSubclassesAttribute.ofSymbols(armCds));
+            cb.with(PermittedSubclassesAttribute.ofSymbols(caseCds));
         });
     }
 
     /**
      * The single reference class a behavior's input or output success type maps to, for a generic
      * {@code Behavior<In, Out>} signature: the {@code <名>結果} interface for an anonymous union, the
-     * named data/sum for a single arm, the boxed class for a primitive. Returns {@code null} for a
+     * named data/sum for a single case, the boxed class for a primitive. Returns {@code null} for a
      * list/option/map, which has no single reference class to name here.
      */
     private ClassDesc refTypeOrNull(Type t, String behaviorName) {
@@ -546,25 +546,25 @@ public final class Backend {
         return TypeChecker.successType(ret, symbols);
     }
 
-    private ClassDesc[] armInterfaces(String name) {
+    private ClassDesc[] caseInterfaces(String name) {
         List<ClassDesc> ifaces = new ArrayList<>();
-        for (String sum : armToSums.getOrDefault(name, List.of())) {
+        for (String sum : caseToSums.getOrDefault(name, List.of())) {
             ifaces.add(cd(sum));
         }
         return ifaces.toArray(new ClassDesc[0]);
     }
 
-    /** The class a match arm is tested against: a boxed/reference class for a primitive arm,
-     * otherwise the arm's data or built-in class. */
-    private ClassDesc matchArmClass(String armName) {
-        return switch (armName) {
+    /** The class a match case is tested against: a boxed/reference class for a primitive case,
+     * otherwise the case's data or built-in class. */
+    private ClassDesc matchCaseClass(String caseName) {
+        return switch (caseName) {
             case "Int" -> CD_Long;
             case "Bool" -> CD_Boolean;
             case "Decimal" -> CD_BigDecimal;
             case "String" -> CD_String;
             case "Date" -> CD_LocalDate;
             case "DateTime" -> CD_LocalDateTime;
-            default -> armClass(armName);
+            default -> caseClass(caseName);
         };
     }
 
@@ -601,10 +601,10 @@ public final class Backend {
         code.invokestatic(cd(typeName), method, mtd, symbols.get(typeName) instanceof Ast.SumData);
     }
 
-    /** The JVM class for an output arm: the built-in {@code DivisionByZero}, otherwise the
-     * generated data class in this module. An invariant violation is no longer an arm — it aborts
+    /** The JVM class for an output case: the built-in {@code DivisionByZero}, otherwise the
+     * generated data class in this module. An invariant violation is no longer a case — it aborts
      * (spec 7.3, 9.4) — so there is no 制約違反 case here. */
-    private ClassDesc armClass(String typeName) {
+    private ClassDesc caseClass(String typeName) {
         return switch (typeName) {
             case "DivisionByZero" -> CD_DivisionByZero;
             default -> cd(typeName);
@@ -617,7 +617,7 @@ public final class Backend {
 
         out.put(pkg + "." + data.name(), build(cdName, cb -> {
             cb.withFlags(pub(data.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
-            ClassDesc[] ifaces = armInterfaces(data.name());
+            ClassDesc[] ifaces = caseInterfaces(data.name());
             if (ifaces.length > 0) {
                 cb.withInterfaceSymbols(ifaces);
             }
@@ -661,13 +661,13 @@ public final class Backend {
 
     private void generateSum(Ast.SumData sum, Map<String, byte[]> out) {
         ClassDesc cdX = cd(sum.name());
-        List<ClassDesc> armCds = new ArrayList<>();
-        for (String arm : sum.arms()) {
-            armCds.add(cd(arm));
+        List<ClassDesc> caseCds = new ArrayList<>();
+        for (String caseName : sum.cases()) {
+            caseCds.add(cd(caseName));
         }
         out.put(pkg + "." + sum.name(), build(cdX, cb -> {
             cb.withFlags(pub(sum.name()) | ClassFile.ACC_INTERFACE | ClassFile.ACC_ABSTRACT);
-            cb.with(PermittedSubclassesAttribute.ofSymbols(armCds));
+            cb.with(PermittedSubclassesAttribute.ofSymbols(caseCds));
             sum.decoder().ifPresent(disc -> {
                 emitCodecFactory(cb, "decoder", CD_RDecoder, cd(sum.name() + "$Dec"), decoderSig(cdX, true));
                 if (jsonCompatible(sum.name())) emitSourceFactory(cb, sum.name(), Src.JSON, true);
@@ -696,16 +696,16 @@ public final class Backend {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_REncoder);
             emitDefaultCtor(cb);
-            // Dispatch on the runtime arm type, encode that arm to a Map, then inject the
-            // discriminator key = arm tag (spec 11.2).
+            // Dispatch on the runtime case type, encode that case to a Map, then inject the
+            // discriminator key = case tag (spec 11.2).
             cb.withMethodBody("encode", MTD_Rencode, ClassFile.ACC_PUBLIC, code -> {
                 for (Ast.EncVariant v : enc.variants()) {
-                    ClassDesc armCd = cd(v.armType());
+                    ClassDesc caseCd = cd(v.caseType());
                     code.aload(1);
-                    code.instanceOf(armCd);
+                    code.instanceOf(caseCd);
                     Label next = code.newLabel();
                     code.ifeq(next);
-                    invokeCodec(code, v.armType(), "encoder", MTD_Rencoder);
+                    invokeCodec(code, v.caseType(), "encoder", MTD_Rencoder);
                     code.aload(1);
                     code.invokeinterface(CD_REncoder, "encode", MTD_Rencode);
                     code.checkcast(CD_Map);
@@ -732,7 +732,7 @@ public final class Backend {
             cb.withInterfaceSymbols(CD_RDecoder);
             emitDefaultCtor(cb);
             // Build a Raoh discriminate decoder and delegate: the tag is read from the
-            // discriminator key of the source, each arm dispatches to that arm's decoder for the
+            // discriminator key of the source, each case dispatches to that case's decoder for the
             // same source (spec 10.3). discriminate/variant are the core (input-generic) combinators.
             cb.withMethodBody("decode", MTD_Rdecode, ClassFile.ACC_PUBLIC, code -> {
                 code.loadConstant(disc.key());
@@ -746,7 +746,7 @@ public final class Backend {
                     code.dup();
                     pushInt(code, i);
                     code.loadConstant(v.tag());
-                    invokeCodec(code, v.armType(), srcFactory(src), MTD_Rdecoder);
+                    invokeCodec(code, v.caseType(), srcFactory(src), MTD_Rdecoder);
                     code.invokestatic(CD_RDecoders, "variant", MTD_Rvariant);
                     code.aastore();
                     i++;
@@ -766,7 +766,7 @@ public final class Backend {
         ClassDesc cdEnc = cd(unit.name() + "$Enc");
         out.put(pkg + "." + unit.name(), build(cdU, cb -> {
             cb.withFlags(pub(unit.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
-            ClassDesc[] ifaces = armInterfaces(unit.name());
+            ClassDesc[] ifaces = caseInterfaces(unit.name());
             if (ifaces.length > 0) {
                 cb.withInterfaceSymbols(ifaces);
             }
@@ -774,7 +774,7 @@ public final class Backend {
             emitValueEquality(cb, cdU, Map.of());   // all units of a type are the same value
             // a unit is a field-less data: its codec reads/writes nothing but the tag the sum adds
             // A unit ignores its input, so it decodes from every source. Generate all three so
-            // unit arms of a JSON/record sum have a matching decoder to dispatch to.
+            // unit cases of a JSON/record sum have a matching decoder to dispatch to.
             emitCodecFactory(cb, "decoder", CD_RDecoder, cdDec, decoderSig(cdU, false));
             emitCodecFactory(cb, "jsonDecoder", CD_RDecoder, cd(unit.name() + "$DecJson"),
                     decoderSigFor(Src.JSON, cdU, false));
@@ -868,7 +868,7 @@ public final class Backend {
      * <p>Constructing an invariant-bearing data goes through {@code __construct}, which checks the
      * invariant and returns a {@code Result}; {@code ConstraintViolation.orThrow} turns that into
      * either the value (returned) or a thrown {@code ConstraintViolation} — an invariant violation
-     * aborts rather than riding an output arm (spec 7.3, 9.4).
+     * aborts rather than riding an output case (spec 7.3, 9.4).
      * Because a desugared {@code require} (spec 16.4) is an {@code if} whose branches are tail,
      * this is reached for constructions on both sides of a guard — there is no second, unchecked
      * construction path.
@@ -992,7 +992,7 @@ public final class Backend {
                                 Map<String, List<String>> pipeStages) {
         ClassDesc cdP = cdBehavior(pipe.name());
         // Flatten nested pipeline stages so the routing is over leaf behaviors (spec 14.2): a named
-        // intermediate `half = split >-> work` inlines to `split, work`, which keeps a retired arm
+        // intermediate `half = split >-> work` inlines to `split, work`, which keeps a retired case
         // retired across the composition, making `>->` associative.
         List<String> flat = TypeChecker.flattenStages(pipe.stages(), pipeStages, pipe.pos());
         // the pipeline's injected fields are the union of its stages' requirements (spec 14.3)
@@ -1011,7 +1011,7 @@ public final class Backend {
             emitInjection(cb, cdP, reqStages);
 
             cb.withMethodBody("apply", mtdApply, ClassFile.ACC_PUBLIC, code -> {
-                // slot 1 always holds the running value (an output arm, as an Object).
+                // slot 1 always holds the running value (an output case, as an Object).
                 List<String> stages = flat;
                 // stage 0 consumes the pipeline's arguments unconditionally
                 applyFirstStage(code, cdP, stages.get(0), arity, requiredNames, behaviorDeps);
@@ -1021,16 +1021,16 @@ public final class Backend {
                     String stage = stages.get(i);
                     TypeChecker.Sig g = TypeChecker.stageSig(stage, sigs, symbols, pipe.pos());
                     if (TypeChecker.isDataLike(mainline)) {
-                        // Apply g only when the running value is one of the main-line arms it
+                        // Apply g only when the running value is one of the main-line cases it
                         // accepts. Anything else has left the main line: jump to the end rather
                         // than offering it to the stages after this one (spec 14.2). Branching to
-                        // the end is what makes a retired arm unreachable without tagging it — the
-                        // same arm type may legitimately reappear on the main line downstream.
-                        List<String> accepted = TypeChecker.mainlineArms(mainline, g, symbols);
+                        // the end is what makes a retired case unreachable without tagging it — the
+                        // same case type may legitimately reappear on the main line downstream.
+                        List<String> accepted = TypeChecker.mainlineCases(mainline, g, symbols);
                         Label doApply = code.newLabel();
-                        for (String arm : accepted) {
+                        for (String caseName : accepted) {
                             code.aload(1);
-                            code.instanceOf(armClass(arm));
+                            code.instanceOf(caseClass(caseName));
                             code.ifne(doApply);
                         }
                         code.goto_(end);
@@ -1427,8 +1427,8 @@ public final class Backend {
         }
         Ast.Def def = symbols.get(typeName);
         if (def instanceof Ast.SumData sum) {
-            for (String arm : sum.arms()) {
-                if (!jsonOk(arm, seen)) return false;
+            for (String caseName : sum.cases()) {
+                if (!jsonOk(caseName, seen)) return false;
             }
             return true;
         }
@@ -1455,10 +1455,10 @@ public final class Backend {
     private boolean recordCompatible(String typeName) {
         Ast.Def def = symbols.get(typeName);
         if (def instanceof Ast.SumData sum) {
-            for (String arm : sum.arms()) {
-                Ast.Def armDef = symbols.get(arm);
-                if (armDef instanceof Ast.UnitData) continue;
-                if (!(armDef instanceof Ast.Data d) || !isFlatObject(d)) return false;
+            for (String caseName : sum.cases()) {
+                Ast.Def caseDef = symbols.get(caseName);
+                if (caseDef instanceof Ast.UnitData) continue;
+                if (!(caseDef instanceof Ast.Data d) || !isFlatObject(d)) return false;
             }
             return true;
         }
@@ -2285,14 +2285,14 @@ public final class Backend {
             Type branchType = null;
             for (Ast.Case c : m.cases()) {
                 Label nextCase = code.newLabel();
-                List<String> arms = c.armTypes();
+                List<String> cases = c.caseTypes();
                 if (element != null) {
-                    // Option match: a single Some/None arm (or-patterns are rejected by the checker)
-                    String arm = arms.get(0);
+                    // Option match: a single Some/None case (or-patterns are rejected by the checker)
+                    String caseName = cases.get(0);
                     code.aload(sSlot);
-                    code.instanceOf(arm.equals("Some") ? CD_OptionSome : CD_OptionNone);
+                    code.instanceOf(caseName.equals("Some") ? CD_OptionSome : CD_OptionNone);
                     code.ifeq(nextCase);
-                    if (arm.equals("Some")) {
+                    if (caseName.equals("Some")) {
                         // unwrap Some(v) -> v, bound to the element type
                         code.aload(sSlot);
                         code.checkcast(CD_OptionSome);
@@ -2303,25 +2303,25 @@ public final class Backend {
                             bind(c.binding(), bslot, element);
                         }
                     }
-                } else if (arms.size() == 1) {
+                } else if (cases.size() == 1) {
                     code.aload(sSlot);
-                    code.instanceOf(matchArmClass(arms.get(0)));
+                    code.instanceOf(matchCaseClass(cases.get(0)));
                     code.ifeq(nextCase);
                     if (c.binding() != null) {
-                        // a data arm binds the instance; a primitive arm (e.g. Int) unboxes the value
-                        Type bt = TypeChecker.armBindType(arms.get(0));
+                        // a data case binds the instance; a primitive case (e.g. Int) unboxes the value
+                        Type bt = TypeChecker.caseBindType(cases.get(0));
                         code.aload(sSlot);
                         int bslot = slot(bt);
                         unbox(code, bt, bslot);
                         bind(c.binding(), bslot, bt);
                     }
                 } else {
-                    // or-pattern: run the body if the value is any of the arms; the binding (if any)
+                    // or-pattern: run the body if the value is any of the cases; the binding (if any)
                     // is the scrutinee's sum type, which every alternative already is
                     Label body = code.newLabel();
-                    for (String arm : arms) {
+                    for (String caseName : cases) {
                         code.aload(sSlot);
-                        code.instanceOf(matchArmClass(arm));
+                        code.instanceOf(matchCaseClass(caseName));
                         code.ifne(body);
                     }
                     code.goto_(nextCase);
@@ -2573,7 +2573,7 @@ public final class Backend {
             return dot < 0 ? fn : fn.substring(dot + 1);
         }
 
-        /** {@code divide}/{@code remainder} on Int: a zero divisor takes the DivisionByZero arm,
+        /** {@code divide}/{@code remainder} on Int: a zero divisor takes the DivisionByZero case,
          * otherwise the quotient/remainder is boxed (spec 18.2). */
         private Type intDivide(Ast.Call call, boolean divide) {
             expr(call.args().get(0));
@@ -2587,7 +2587,7 @@ public final class Backend {
             code.lcmp();
             Label zero = code.newLabel();
             Label end = code.newLabel();
-            code.ifeq(zero);                       // b == 0 -> DivisionByZero arm
+            code.ifeq(zero);                       // b == 0 -> DivisionByZero case
             code.lload(aSlot);
             code.lload(bSlot);
             if (divide) {
@@ -2604,7 +2604,7 @@ public final class Backend {
         }
 
         /** {@code divide(a, b, scale, mode)} on Decimal: a zero divisor takes the DivisionByZero
-         * arm, otherwise {@code a.divide(b, scale, RoundingMode.mode)} (spec 18.3). */
+         * case, otherwise {@code a.divide(b, scale, RoundingMode.mode)} (spec 18.3). */
         private Type decimalDivide(Ast.Call call) {
             expr(call.args().get(0));
             int aSlot = slot(Type.DECIMAL);
@@ -2616,7 +2616,7 @@ public final class Backend {
             code.invokevirtual(CD_BigDecimal, "signum", MethodTypeDesc.of(ConstantDescs.CD_int));
             Label zero = code.newLabel();
             Label end = code.newLabel();
-            code.ifeq(zero);                       // signum == 0 -> DivisionByZero arm
+            code.ifeq(zero);                       // signum == 0 -> DivisionByZero case
             code.aload(aSlot);
             code.aload(bSlot);
             expr(call.args().get(2));              // scale (Int, a long)
@@ -2987,7 +2987,7 @@ public final class Backend {
         if (type instanceof Type.MapOf) return CD_Map;
         if (type instanceof Type.Union) return CD_Object;
         if (type instanceof Type.FnOf) return CD_Fn;
-        return armClass(((Type.Ref) type).name());
+        return caseClass(((Type.Ref) type).name());
     }
 
     private ClassDesc[] fieldDescs(Map<String, Type> fields) {

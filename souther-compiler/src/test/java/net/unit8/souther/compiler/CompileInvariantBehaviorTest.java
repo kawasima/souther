@@ -16,8 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * A behavior may construct an invariant-bearing data as its result. When the invariant holds the
  * value is returned; when it is violated the computation aborts by throwing a runtime
- * {@link ConstraintViolation} — a violation is a model bug, not a business arm (spec 7.3, 9.4).
- * The output type carries no 制約違反 arm.
+ * {@link ConstraintViolation} — a violation is a model bug, not a business case (spec 7.3, 9.4).
+ * The output type carries no 制約違反 case.
  */
 class CompileInvariantBehaviorTest {
 
@@ -128,11 +128,11 @@ class CompileInvariantBehaviorTest {
     }
 
     /**
-     * Constructing invariant-bearing data no longer requires a 制約違反 output arm — the
+     * Constructing invariant-bearing data no longer requires a 制約違反 output case — the
      * declaration below compiles, and a violation would abort at run time (spec 7.3, 9.4).
      */
     @Test
-    void constructingInvariantDataNeedsNoViolationArm() {
+    void constructingInvariantDataNeedsNoViolationCase() {
         String src = """
                 module demo
                 data Positive = { value: Int  invariant value > 0 }

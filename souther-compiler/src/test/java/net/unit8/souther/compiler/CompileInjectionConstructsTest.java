@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * An injected behavior (a signature with no fn — spec 13.2) hands its Java implementation a
- * {@code protected} factory for every declared unit-data arm, and nothing else. A non-unit arm
+ * {@code protected} factory for every declared unit-data case, and nothing else. A non-unit case
  * it declares in {@code constructs} must therefore be reachable another way: as an exposed data
  * whose {@code decoder} is public (spec 13.3). One that is neither a unit nor exposed cannot be
  * built by the Java side at all — E1305.
@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class CompileInjectionConstructsTest {
 
     @Test
-    void aUnitArmNeedsNoExposure() {
+    void aUnitCaseNeedsNoExposure() {
         // 会員なし is a unit: the base class gets a protected factory for it, so no exposure is needed.
         assertDoesNotThrow(() -> Compiler.compile("""
                 module demo
@@ -32,7 +32,7 @@ class CompileInjectionConstructsTest {
     }
 
     @Test
-    void anExposedNonUnitArmIsAllowed() {
+    void anExposedNonUnitCaseIsAllowed() {
         assertDoesNotThrow(() -> Compiler.compile("""
                 module demo
                 exposing { Member, 保存データ不正 }
@@ -47,7 +47,7 @@ class CompileInjectionConstructsTest {
     }
 
     @Test
-    void aNonUnitUnexposedArmIsE1305() {
+    void aNonUnitUnexposedCaseIsE1305() {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile("""
                 module demo
                 exposing { Member }

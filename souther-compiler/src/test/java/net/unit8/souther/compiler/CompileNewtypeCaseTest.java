@@ -12,11 +12,11 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * A newtype arm of a sum uses adjacent tagging: its inner value sits under {@code "value"} next to
+ * A newtype case of a sum uses adjacent tagging: its inner value sits under {@code "value"} next to
  * the {@code "type"} discriminator (spec 10.3, A.10) — {@code {"type": "管理職", "value": 3}} —
- * while a unit arm is just its tag and a product arm stays flat.
+ * while a unit case is just its tag and a product case stays flat.
  */
-class CompileNewtypeArmTest {
+class CompileNewtypeCaseTest {
 
     private static final String MODULE = """
             module demo
@@ -39,16 +39,16 @@ class CompileNewtypeArmTest {
     }
 
     @Test
-    void newtypeArmUsesAdjacentValueTag() throws Exception {
+    void newtypeCaseUsesAdjacentValueTag() throws Exception {
         BytesClassLoader loader = loader();
         Object v = ((Ok) dec(loader).decode(Map.of("type", "管理職", "value", 3L), Path.ROOT)).value();
         assertEquals("demo.管理職", v.getClass().getName());
         assertEquals(Map.of("type", "管理職", "value", 3L), enc(loader).encode(v),
-                "a newtype arm's inner goes under `value`, adjacent to `type`");
+                "a newtype case's inner goes under `value`, adjacent to `type`");
     }
 
     @Test
-    void unitArmIsJustItsTag() throws Exception {
+    void unitCaseIsJustItsTag() throws Exception {
         BytesClassLoader loader = loader();
         Object v = ((Ok) dec(loader).decode(Map.of("type", "一般社員"), Path.ROOT)).value();
         assertEquals("demo.一般社員", v.getClass().getName());

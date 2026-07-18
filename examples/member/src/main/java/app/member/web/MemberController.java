@@ -1,6 +1,6 @@
 // 配置: 任意のアプリ側パッケージ（生成パッケージの外）。
 // コントローラは data を構築できない（コンストラクタは非公開）。できるのは
-// 「出力アームを型で見分ける（instanceof / switch）」ことと「encoder で外へ出す」ことだけ。
+// 「出力ケースを型で見分ける（instanceof / switch）」ことと「encoder で外へ出す」ことだけ。
 // これがドメインとの境界になる（spec 8.5, 2.1）。
 package app.member.web;
 
@@ -26,12 +26,12 @@ import java.util.Map;
 
 /**
  * 会員照会の HTTP 境界。流れは
- * {@code HTTP → decode → behavior(>->) → 出力アームを match → encode → HTTP}。
+ * {@code HTTP → decode → behavior(>->) → 出力ケースを match → encode → HTTP}。
  * decode / encode は behavior ではなく境界の縁で、{@code >->} には乗らない（spec 14.1）。
  *
  * <p>{@code 照会} は findMember を jOOQ 実装で束縛したパイプライン（{@link SoutherBeans} で
  * Bean 化）。その出力はドメインの帰結の直和 {@code 会員表示 | 会員なし | 保存データ不正} で、switch で
- * HTTP ステータスへ畳む（200 / 404 / 500）。DB ダウンのようなプラットフォーム障害はアームでなく
+ * HTTP ステータスへ畳む（200 / 404 / 500）。DB ダウンのようなプラットフォーム障害はケースでなく
  * 例外として素通りしてくるので、{@link #onPlatformFailure} が 503 に写す（spec 13.4 / ADR-0029）。
  */
 @RestController
@@ -53,7 +53,7 @@ public final class MemberController {
             return ResponseEntity.badRequest().body(Map.of("error", "invalid_member_id"));
         }
 
-        // 2. パイプラインを走らせ、ドメインの出力アームを畳んで HTTP へ。
+        // 2. パイプラインを走らせ、ドメインの出力ケースを畳んで HTTP へ。
         //    会員なし/保存データ不正 は findMember から整形段を素通りしてここへ届く（sealed で網羅的）。
         //    DB ダウン等のプラットフォーム障害はここに来ず、例外として抜ける（onPlatformFailure が受ける）。
         //    束縛済みパイプラインは型消去のため apply(Object):Object。出力は 会員を照会し整形する結果。
@@ -70,7 +70,7 @@ public final class MemberController {
 
     /**
      * プラットフォーム障害（DB ダウン等）。Java Binding が投げ Souther が素通しした例外を 503 に写す
-     * （spec 13.4 / ADR-0029）。ドメインの帰結でないものはアームでなく例外で扱う。
+     * （spec 13.4 / ADR-0029）。ドメインの帰結でないものはケースでなく例外で扱う。
      *
      * <p>捕まえるのは Spring の {@link DataAccessException}。jOOQ 自身の
      * {@code org.jooq.exception.DataAccessException} はこの型のサブクラスではないので、注入する

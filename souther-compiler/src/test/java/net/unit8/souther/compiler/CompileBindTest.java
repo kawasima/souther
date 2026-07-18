@@ -46,7 +46,7 @@ class CompileBindTest {
             """;
 
     // A Java-side implementation of the generated abstract base `demo.findMember`.
-    // Member is decode-sourced, so no arm factory is needed.
+    // Member is decode-sourced, so no case factory is needed.
     private static final String IMPL_SRC = """
             package demo;
             import net.unit8.raoh.Ok;

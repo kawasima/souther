@@ -7,7 +7,7 @@ package net.unit8.souther.runtime;
  * {@link ConstraintViolation} (spec 7.3, 9.4, 19.7), which Souther code cannot catch.
  *
  * <p>Zero division is different: it is a possible input (the divisor is 0), so it returns a
- * {@code DivisionByZero} arm rather than aborting (spec 18.2). It is not handled here.
+ * {@code DivisionByZero} case rather than aborting (spec 18.2). It is not handled here.
  */
 public final class IntMath {
 

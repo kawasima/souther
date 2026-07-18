@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 class ContactTest {
 
     @Test
-    void 直和は判別子typeでアームへ振り分けられencodeで往復する() {
+    void 直和は判別子typeでケースへ振り分けられencodeで往復する() {
         Map<String, Object> raw = Map.of("type", "EmailContact", "email", "a@example.com");
         Result<Contact> decoded = Contact.decoder().decode(raw, Path.ROOT);
 

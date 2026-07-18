@@ -16,9 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * An or-pattern {@code | A | B -> body} runs one body for several arms (spec 16.3). Its arms
- * count toward exhaustiveness; covering an arm twice is an overlap error; and with {@code as x} the
- * binding is the scrutinee's sum type, since no single arm type fits every alternative.
+ * An or-pattern {@code | A | B -> body} runs one body for several cases (spec 16.3). Its cases
+ * count toward exhaustiveness; covering a case twice is an overlap error; and with {@code as x} the
+ * binding is the scrutinee's sum type, since no single case type fits every alternative.
  */
 class CompileOrPatternTest {
 
@@ -48,7 +48,7 @@ class CompileOrPatternTest {
         Decoder three = (Decoder) loader.loadClass("demo.Three").getMethod("decoder").invoke(null);
         Object classify = loader.loadClass("demo.Classify").getConstructor().newInstance();
 
-        // A and B take the same (Lo) arm; C takes the other (Hi) — the or-pattern fires for both A and B
+        // A and B take the same (Lo) case; C takes the other (Hi) — the or-pattern fires for both A and B
         assertEquals("demo.Lo", apply(classify, three, "A").getClass().getName());
         assertEquals("demo.Lo", apply(classify, three, "B").getClass().getName());
         assertEquals("demo.Hi", apply(classify, three, "C").getClass().getName());
@@ -62,12 +62,12 @@ class CompileOrPatternTest {
 
     @Test
     void anOrPatternCountsTowardExhaustiveness() {
-        // arm A | B plus arm C covers all three arms
+        // case A | B plus case C covers all three cases
         assertDoesNotThrow(() -> Compiler.compile(ROUTING));
     }
 
     @Test
-    void aMissingArmIsStillNonExhaustive() {
+    void aMissingCaseIsStillNonExhaustive() {
         String module = """
                 module demo
                 data A = { v: Int }
@@ -83,7 +83,7 @@ class CompileOrPatternTest {
     }
 
     @Test
-    void coveringAnArmTwiceIsAnOverlapError() {
+    void coveringAnCaseTwiceIsAnOverlapError() {
         String module = """
                 module demo
                 data A = { v: Int }
@@ -100,7 +100,7 @@ class CompileOrPatternTest {
     @Test
     void anOrPatternBindingHasTheScrutineeSumType() {
         // `ab` binds the sum type Three, so it can be passed where Three is expected (a helper that
-        // takes Three) — but not have an arm-specific field read off it.
+        // takes Three) — but not have a case-specific field read off it.
         String module = """
                 module demo
                 data A = { v: Int }

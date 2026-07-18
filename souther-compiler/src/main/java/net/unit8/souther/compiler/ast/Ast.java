@@ -62,13 +62,13 @@ public interface Ast {
                         List<String> requires,
                         SourcePos pos) implements BehaviorDef {}
 
-    /** A behavior parameter. Its type may be an anonymous union of arms (spec 12.2). */
+    /** A behavior parameter. Its type may be an anonymous union of cases (spec 12.2). */
     record Param(String name, RetType type, SourcePos pos) implements Ast {}
 
     /**
      * {@code behavior name = f >-> g >-> ... [-> A | B]} — a composition (spec 14.1). {@code declaredOut}
      * is the optional trailing output declaration (14.5): null when absent (output is inferred), else
-     * the declared arms, which must match the inferred output exactly (E1604).
+     * the declared cases, which must match the inferred output exactly (E1604).
      */
     record PipeBehavior(String name, List<String> stages, RetType declaredOut, SourcePos pos)
             implements BehaviorDef {}
@@ -112,8 +112,8 @@ public interface Ast {
      * parameters and result are ordinary types; a nested function type is not written. */
     record FnType(List<RetType> params, RetType result, SourcePos pos) implements ParamType {}
 
-    /** A behavior return type: the output sum — one or more unmarked domain arms (spec 12.2). */
-    record RetType(List<TypeRef> arms, SourcePos pos) implements ParamType {}
+    /** A behavior return type: the output sum — one or more unmarked domain cases (spec 12.2). */
+    record RetType(List<TypeRef> cases, SourcePos pos) implements ParamType {}
 
     /** A top-level data definition: product, sum, or unit. */
     sealed interface Def extends Ast permits Data, SumData, UnitData {
@@ -140,23 +140,23 @@ public interface Ast {
 
     /** A sum data definition {@code data X = A | B | ...} with optional discriminate decoder/encoder. */
     record SumData(String name,
-                   List<String> arms,
+                   List<String> cases,
                    Optional<Discriminate> decoder,
                    Optional<SumEncoder> encoder,
                    SourcePos pos) implements Def {}
 
-    /** {@code encoder discriminate on "key" { Arm -> "tag" ... }} — the inverse of discriminate. */
+    /** {@code encoder discriminate on "key" { Case -> "tag" ... }} — the inverse of discriminate. */
     record SumEncoder(String key, List<EncVariant> variants, SourcePos pos) implements Ast {}
 
-    record EncVariant(String armType, String tag, SourcePos pos) implements Ast {}
+    record EncVariant(String caseType, String tag, SourcePos pos) implements Ast {}
 
     /** A unit data definition {@code data U} with no fields. */
     record UnitData(String name, SourcePos pos) implements Def {}
 
-    /** {@code decoder from Object discriminate on "key" { "tag" -> Arm.decoder ... }} */
+    /** {@code decoder from Object discriminate on "key" { "tag" -> Case.decoder ... }} */
     record Discriminate(String key, List<Variant> variants, SourcePos pos) implements Ast {}
 
-    record Variant(String tag, String armType, SourcePos pos) implements Ast {}
+    record Variant(String tag, String caseType, SourcePos pos) implements Ast {}
 
     /** A field: a role name and its type. */
     record Field(String name, TypeRef type, SourcePos pos) implements Ast {}
@@ -303,16 +303,16 @@ public interface Ast {
     /** {@code if cond then a else b} — both branches must have the same type (spec 16.2). */
     record If(Expr cond, Expr then, Expr els, SourcePos pos) implements Expr {}
 
-    /** {@code match scrutinee { case Arm as x -> body ... }} over a sum type. */
+    /** {@code match scrutinee { case Case as x -> body ... }} over a sum type. */
     record Match(Expr scrutinee, List<Case> cases, SourcePos pos) implements Expr {}
 
     /**
-     * One {@code match} arm: {@code case A | B ... [as x] -> body} (spec 16.3). {@code armTypes}
-     * holds one arm name, or several joined by {@code |} (an or-pattern, spec 16.3). With one arm,
-     * {@code x} binds that arm's type; with several, it binds the scrutinee's sum type, since no
-     * single arm type fits all alternatives.
+     * One {@code match} case: {@code case A | B ... [as x] -> body} (spec 16.3). {@code caseTypes}
+     * holds one case name, or several joined by {@code |} (an or-pattern, spec 16.3). With one case,
+     * {@code x} binds that case's type; with several, it binds the scrutinee's sum type, since no
+     * single case type fits all alternatives.
      */
-    record Case(List<String> armTypes, String binding, Expr body, SourcePos pos) implements Ast {}
+    record Case(List<String> caseTypes, String binding, Expr body, SourcePos pos) implements Ast {}
 
     /** {@code TypeName { ..src, field: expr, ... }} used as an expression (construction in a behavior). */
     record NewData(String typeName, List<FieldInit> inits, List<String> spreads, SourcePos pos)

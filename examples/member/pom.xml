@@ -13,8 +13,8 @@
 
     <description>
         会員照会の例。member.sou から生成した型を、Spring MVC + jOOQ の境界コードから型付きで使う
-        （HTTP → decode → behavior >-> → 出力アームを match → encode → HTTP）。境界コードは data を
-        構築できず、出力アームを見分けて encode するだけ（spec 2.1, 8.5）。
+        （HTTP → decode → behavior >-> → 出力ケースを match → encode → HTTP）。境界コードは data を
+        構築できず、出力ケースを見分けて encode するだけ（spec 2.1, 8.5）。
     </description>
 
     <dependencies>

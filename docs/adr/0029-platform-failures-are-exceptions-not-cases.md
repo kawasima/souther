@@ -1,18 +1,18 @@
-# ADR-0029: Platform failures propagate as exceptions; only domain outcomes are arms
+# ADR-0029: Platform failures propagate as exceptions; only domain outcomes are cases
 
 Status: Accepted (decided 2026-07-18). Amends ADR-0007; revises `[#java-impl-rules]` (§13.4).
 
 ## Context
 
 Souther has no exceptions in the language. Business results are an unmarked sum, and the
-off-ramp is decided by composition (ADR-0007): expected failures are *arms*, returned as
+off-ramp is decided by composition (ADR-0007): expected failures are *cases*, returned as
 values, and `.sou` code can neither `throw` nor `catch` (E1302). This is deliberate — it
 keeps failure handling in the type and under exhaustiveness checking.
 
 External-world dependencies are behaviors with no implementation, injected from Java
 (ADR-0006). The original rule for those Java implementations (§13.4) said: *return one of the
-declared failure arms; do not let DB exceptions or HTTP failures leak to the language side.*
-Its worked example, `findMember`, therefore declared a `DB不通` (database-unavailable) arm and
+declared failure cases; do not let DB exceptions or HTTP failures leak to the language side.*
+Its worked example, `findMember`, therefore declared a `DB不通` (database-unavailable) case and
 folded any `DataAccessException` into it.
 
 That conflates two different kinds of failure:
@@ -25,20 +25,20 @@ That conflates two different kinds of failure:
   are not a decision the model makes; they are an abnormal condition that happened *to* it.
 
 Forcing platform failures into the output sum has real costs. Every DB-touching behavior's
-domain type must then carry an infrastructure arm (`DB不通`), polluting the signature and the
+domain type must then carry an infrastructure case (`DB不通`), polluting the signature and the
 exhaustiveness check with something that is not a domain outcome. Worse, when the database is
-genuinely down there is no honest arm value to return — the implementation must either invent
-an infrastructure arm or lie (fold it into `在庫不足` / "insufficient", which it wasn't).
+genuinely down there is no honest case value to return — the implementation must either invent
+an infrastructure case or lie (fold it into `在庫不足` / "insufficient", which it wasn't).
 
 ## Decision
 
 Split the two kinds of failure by channel:
 
-- **Domain outcomes are arms.** Success values and declared failure arms (`会員なし`,
+- **Domain outcomes are cases.** Success values and declared failure cases (`会員なし`,
   `在庫不足`, `保存データ不正`, …) are returned as values, exactly as before.
 - **Platform failures are exceptions.** The Java binding — the injected implementation of a
   behavior — *may throw* for platform/infrastructure failures. Souther does not fold them into
-  arms; it propagates them transparently. The generated `>->` pipeline and `Behavior.apply`
+  cases; it propagates them transparently. The generated `>->` pipeline and `Behavior.apply`
   contain no exception handling, so a thrown exception passes straight through to the boundary.
 
 The language (`.sou`) still has no exceptions — E1302 stands, and it bans exceptions for
@@ -51,11 +51,11 @@ is: an HTTP 503, a retry, a transaction rollback.
 The dividing test is: **is this a domain outcome or a platform failure?** A domain outcome is
 a meaningful business result (not found, insufficient stock, stored data breaks a domain
 rule). A platform failure is infrastructure being unavailable or unresponsive. The former is
-an arm and shows up in the domain type; the latter is an exception and stays out of the domain
+a case and shows up in the domain type; the latter is an exception and stays out of the domain
 type.
 
 `保存データ不正` (the stored value violates a domain invariant when decoded) stays a domain
-arm. The infrastructure worked and handed back data; that the data breaks a domain rule is a
+case. The infrastructure worked and handed back data; that the data breaks a domain rule is a
 statement about the *domain*, and the model may legitimately name it as an outcome. Whether a
 given corrupt-data case is worth naming is a modeling choice; classifying it is the author's
 call, and this ADR does not force it either way.
@@ -87,18 +87,18 @@ not a 503.
 
 ## Consequences
 
-- Injected behaviors no longer declare a `DB不通`-style arm for infrastructure availability.
+- Injected behaviors no longer declare a `DB不通`-style case for infrastructure availability.
   The `ordering` example (`注文を記録する >-> 在庫を引き当てる`) demonstrates this: a DB outage
   is thrown by the jOOQ implementation, passes through Souther untouched, is auto-rolled-back
   by the transaction boundary, and mapped to 503 by a boundary exception handler — while the
   domain type stays `注文確定 | 在庫不足`.
 - The `findMember` example (spec and the `member` module) drops `DB不通`; a DB-down there is a
-  thrown platform failure. `会員なし` and `保存データ不正` remain domain arms.
+  thrown platform failure. `会員なし` and `保存データ不正` remain domain cases.
 - Callers of injected behaviors must expect that a platform failure surfaces as an exception at
-  the boundary, not as an arm, and handle it there.
+  the boundary, not as a case, and handle it there.
 - The most important reason for writing this ADR: the previous §13.4 text stated the opposite
   ("do not let DB exceptions leak"), which actively misled readers into modeling `DB不通` as a
-  domain arm. The principle was load-bearing but undocumented; this records it.
+  domain case. The principle was load-bearing but undocumented; this records it.
 
 ## Relationship to other decisions
 

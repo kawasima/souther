@@ -40,7 +40,7 @@ class CompileVisibilityTest {
     }
 
     @Test
-    void exposedSumWithHiddenArmsStillDecodes() throws Exception {
+    void exposedSumWithHiddenCasesStillDecodes() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo exposing { Contact }
 
@@ -51,7 +51,7 @@ class CompileVisibilityTest {
 
         assertTrue(Modifier.isPublic(loader.loadClass("demo.Contact").getModifiers()));
         assertFalse(Modifier.isPublic(loader.loadClass("demo.EmailC").getModifiers()),
-                "a non-exposed arm of a public sealed sum is package-private");
+                "a non-exposed case of a public sealed sum is package-private");
 
         // a public sealed interface with package-private permitted subclasses still verifies and decodes
         Decoder d = (Decoder) loader.loadClass("demo.Contact").getMethod("decoder").invoke(null);

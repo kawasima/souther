@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Decoders/encoders are not written in the domain; they are derived from the data shape
  * (spec responsibility split). This module declares only data + invariant, yet decode/encode
  * work with default conventions (key = field name, {@code data X = Y} = bare newtype,
- * sum discriminator = "type"/arm name).
+ * sum discriminator = "type"/case name).
  */
 class CompileDeriveTest {
 

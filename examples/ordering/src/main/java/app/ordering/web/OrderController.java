@@ -1,6 +1,6 @@
-// 注文受付の HTTP 境界。流れは HTTP → decode → トランザクション付きパイプライン → 出力アームを
+// 注文受付の HTTP 境界。流れは HTTP → decode → トランザクション付きパイプライン → 出力ケースを
 // match → encode / HTTP ステータス。コントローラは data を構築できない（コンストラクタは非公開）。
-// できるのは入力を decoder に通すことと、出力アームを型で見分けて encode / ステータス / 巻き戻しに
+// できるのは入力を decoder に通すことと、出力ケースを型で見分けて encode / ステータス / 巻き戻しに
 // 畳むことだけ ── これが境界（spec 8.5, 2.1）。トランザクション制御もここに置く。
 package app.ordering.web;
 
@@ -32,11 +32,11 @@ import java.util.Map;
  * decode し（invariant 検査）、束縛済みパイプライン {@code 注文を処理する}（= 注文を記録する
  * {@code >->} 在庫を引き当てる）を 1 つのトランザクションの中で走らせる。
  *
- * <p>ロールバックは 2 通り。<b>ドメインの失敗（在庫不足）</b>はアーム＝値として届くので、その arm で
+ * <p>ロールバックは 2 通り。<b>ドメインの失敗（在庫不足）</b>はケース＝値として届くので、その case で
  * {@code setRollbackOnly()} を呼び前段 INSERT を巻き戻す（失敗は値、巻き戻しは境界の判断）。
- * <b>プラットフォーム障害</b>（DB ダウン等）はアームでなく例外として Souther を素通りして来るので、
+ * <b>プラットフォーム障害</b>（DB ダウン等）はケースでなく例外として Souther を素通りして来るので、
  * {@code TransactionTemplate} が自動ロールバックし、{@link #onPlatformFailure} が 503 に写す
- * （spec 13.4 / ADR-0029）。出力アームの HTTP ステータス：確定=201 / 在庫不足=409 / decode 失敗=400。
+ * （spec 13.4 / ADR-0029）。出力ケースの HTTP ステータス：確定=201 / 在庫不足=409 / decode 失敗=400。
  */
 @RestController
 @RequestMapping("/orders")
@@ -60,7 +60,7 @@ public final class OrderController {
                     "error", "invalid_order",
                     "issues", issues.asList().stream().map(OrderController::describe).toList()));
 
-            // decode 成功：トランザクションの中でパイプラインを走らせ、出力アームで巻き戻しと HTTP を
+            // decode 成功：トランザクションの中でパイプラインを走らせ、出力ケースで巻き戻しと HTTP を
             // 同時に畳む。プラットフォーム障害の例外はここを素通りし、TransactionTemplate が自動
             // ロールバックして onPlatformFailure が受ける。
             case Ok<注文>(var order) -> tx.execute(status -> switch ((注文を処理する結果) pipeline.apply(order)) {

@@ -14,11 +14,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * A sum whose arms include a unit data (no fields) derives a decoder/encoder: the unit arm
- * decodes from the discriminated object and encodes back to {@code {"type": "<arm>"}}
- * (spec 8.3, 8.4, 10.3, 11.2). Previously the derived sum decoder rejected unit arms.
+ * A sum whose cases include a unit data (no fields) derives a decoder/encoder: the unit case
+ * decodes from the discriminated object and encodes back to {@code {"type": "<case>"}}
+ * (spec 8.3, 8.4, 10.3, 11.2). Previously the derived sum decoder rejected unit cases.
  */
-class CompileUnitArmTest {
+class CompileUnitCaseTest {
 
     private static final String MODULE = """
             module demo
@@ -38,7 +38,7 @@ class CompileUnitArmTest {
     }
 
     @Test
-    void decodesAUnitArm() throws Exception {
+    void decodesAUnitCase() throws Exception {
         BytesClassLoader loader = loader();
         Result low = reasonDecoder(loader).decode(Map.of("type", "LowRole"), Path.ROOT);
         assertTrue(low instanceof Ok);
@@ -51,13 +51,13 @@ class CompileUnitArmTest {
     }
 
     @Test
-    void encodesAUnitArmWithItsTag() throws Exception {
+    void encodesAUnitCaseWithItsTag() throws Exception {
         BytesClassLoader loader = loader();
         Result low = reasonDecoder(loader).decode(Map.of("type", "LowRole"), Path.ROOT);
 
         Encoder enc = (Encoder) loader.loadClass("demo.Reason").getMethod("encoder").invoke(null);
         Map<?, ?> out = (Map<?, ?>) enc.encode(((Ok) low).value());
         assertEquals("LowRole", out.get("type"));
-        assertEquals(1, out.size(), "a unit arm encodes to just its tag");
+        assertEquals(1, out.size(), "a unit case encodes to just its tag");
     }
 }
