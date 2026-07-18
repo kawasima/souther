@@ -2115,46 +2115,13 @@ public final class Backend {
             return s;
         }
 
+        /**
+         * Emits an AST expression by lowering it to Core and emitting that (ADR-0021). The behavior
+         * body is already Core by the time it reaches the backend; this adapter remains for the codec
+         * paths (encoder/decoder), which still hold AST expressions.
+         */
         Type expr(Ast.Expr e) {
-            return switch (e) {
-                case Ast.LetIn li -> {
-                    // a `let` reached outside tail position: bind, then value the body
-                    Type vt;
-                    if (TypeChecker.isFunctionSelection(li.value())) {
-                        // a lambda that could not be inlined (chosen by an `if`): a first-class Fn
-                        List<Type> paramTypes = TypeChecker.inferFnParamTypes(
-                                li.name(), li.body(), typesEnv(), data, symbols);
-                        vt = emitFunctionValue(li.value(), paramTypes);
-                    } else {
-                        vt = expr(li.value());
-                    }
-                    int s = slot(vt);
-                    store(code, s, vt);
-                    bind(li.name(), s, vt);
-                    yield expr(li.body());
-                }
-                // a block has no value of its own; it is inlined by the call it is passed to
-                case Ast.Block b -> throw new CompileException(b.pos(), "a block is not a value");
-                // These node kinds are emitted natively from Core; route them through the one Core
-                // emitter (ADR-0021) instead of keeping a parallel AST emitter for each.
-                case Ast.IntLit lit -> genExpr(Core.of(lit));
-                case Ast.DecimalLit lit -> genExpr(Core.of(lit));
-                case Ast.Neg neg -> genExpr(Core.of(neg));
-                case Ast.StringLit lit -> genExpr(Core.of(lit));
-                case Ast.BoolLit lit -> genExpr(Core.of(lit));
-                case Ast.Var v -> genExpr(Core.of(v));
-                case Ast.FieldAccess fa -> genExpr(Core.of(fa));
-                case Ast.Call call -> call(call);
-                case Ast.Binary bin -> genExpr(Core.of(bin));
-                case Ast.NewData nd -> genExpr(Core.of(nd));
-                case Ast.Match m -> genExpr(Core.of(m));
-                case Ast.If iff -> genExpr(Core.of(iff));
-                case Ast.ListLit lit -> genExpr(Core.of(lit));
-                // The Lower stage (ADR-0021) desugars a comprehension to an `if`, so one never
-                // reaches emission.
-                case Ast.ListComp comp -> throw new IllegalStateException(
-                        "list comprehension should have been lowered to an `if` before codegen");
-            };
+            return genExpr(Core.of(e));
         }
 
         /** Builds an ArrayList of the literal's elements and returns it immutably. */
@@ -2315,9 +2282,26 @@ public final class Backend {
                 case Core.Binary bin -> binary(bin);
                 case Core.NewData nd -> newData(nd);
                 case Core.Match m -> match(m);
-                // Call, `let` (its closure case is still AST-only), and a bare block are not migrated
-                // yet: hand them back to the AST emitter (ADR-0021 strangler).
-                default -> expr(e.toAst());
+                case Core.Call c -> call(c);
+                case Core.LetIn li -> {
+                    // a `let` outside tail position: bind, then value the body
+                    Type vt;
+                    if (TypeChecker.isFunctionSelection(li.value().toAst())) {
+                        // a lambda chosen at runtime (e.g. by an `if`): a first-class Fn (spec §blocks).
+                        // Closure conversion is still AST-based, so it goes through toAst for now.
+                        List<Type> paramTypes = TypeChecker.inferFnParamTypes(
+                                li.name(), li.body().toAst(), typesEnv(), data, symbols);
+                        vt = emitFunctionValue(li.value().toAst(), paramTypes);
+                    } else {
+                        vt = genExpr(li.value());
+                    }
+                    int s = slot(vt);
+                    store(code, s, vt);
+                    bind(li.name(), s, vt);
+                    yield genExpr(li.body());
+                }
+                // a block has no value of its own; it is inlined by the call it is passed to
+                case Core.Block b -> throw new CompileException(b.pos(), "a block is not a value");
             };
         }
 
@@ -2414,108 +2398,108 @@ public final class Backend {
 
         /** Emits a shipped primitive (ADR-0028), dispatched on the intrinsic key its prelude
          * declaration names. The signature was already checked, so only bytecode is emitted here. */
-        private Type intrinsicCall(String key, Ast.Call call) {
+        private Type intrinsicCall(String key, Core.Call call) {
             switch (key) {
                 case "string.trim" -> {
-                    expr(call.args().get(0));
+                    genExpr(call.args().get(0));
                     code.invokevirtual(CD_String, "trim", MethodTypeDesc.of(CD_String));
                     return Type.STRING;
                 }
                 case "string.lowercase" -> {
-                    expr(call.args().get(0));
+                    genExpr(call.args().get(0));
                     code.invokevirtual(CD_String, "toLowerCase", MethodTypeDesc.of(CD_String));
                     return Type.STRING;
                 }
                 case "string.uppercase" -> {
-                    expr(call.args().get(0));
+                    genExpr(call.args().get(0));
                     code.invokevirtual(CD_String, "toUpperCase", MethodTypeDesc.of(CD_String));
                     return Type.STRING;
                 }
                 case "string.contains" -> {
-                    expr(call.args().get(0));
-                    expr(call.args().get(1));
+                    genExpr(call.args().get(0));
+                    genExpr(call.args().get(1));
                     code.invokevirtual(CD_String, "contains",
                             MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_CharSequence));
                     return Type.BOOL;
                 }
                 case "string.startsWith" -> {
-                    expr(call.args().get(0));
-                    expr(call.args().get(1));
+                    genExpr(call.args().get(0));
+                    genExpr(call.args().get(1));
                     code.invokevirtual(CD_String, "startsWith",
                             MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_String));
                     return Type.BOOL;
                 }
                 case "string.endsWith" -> {
-                    expr(call.args().get(0));
-                    expr(call.args().get(1));
+                    genExpr(call.args().get(0));
+                    genExpr(call.args().get(1));
                     code.invokevirtual(CD_String, "endsWith",
                             MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_String));
                     return Type.BOOL;
                 }
                 case "string.substring" -> {
-                    expr(call.args().get(0));
-                    expr(call.args().get(1));
+                    genExpr(call.args().get(0));
+                    genExpr(call.args().get(1));
                     code.l2i();                          // Int is a long; substring takes int indices
-                    expr(call.args().get(2));
+                    genExpr(call.args().get(2));
                     code.l2i();
                     code.invokevirtual(CD_String, "substring",
                             MethodTypeDesc.of(CD_String, ConstantDescs.CD_int, ConstantDescs.CD_int));
                     return Type.STRING;
                 }
                 case "string.concat" -> {
-                    expr(call.args().get(0));
-                    expr(call.args().get(1));
+                    genExpr(call.args().get(0));
+                    genExpr(call.args().get(1));
                     code.invokevirtual(CD_String, "concat", MethodTypeDesc.of(CD_String, CD_String));
                     return Type.STRING;
                 }
                 case "string.split" -> {
-                    expr(call.args().get(0));
-                    expr(call.args().get(1));
+                    genExpr(call.args().get(0));
+                    genExpr(call.args().get(1));
                     code.invokestatic(CD_Strings, "split", MTD_Strings_split);
                     return Type.list(Type.STRING);
                 }
                 case "string.join" -> {
-                    expr(call.args().get(0));
-                    expr(call.args().get(1));
+                    genExpr(call.args().get(0));
+                    genExpr(call.args().get(1));
                     code.invokestatic(CD_Strings, "join", MTD_Strings_join);
                     return Type.STRING;
                 }
                 case "string.replace" -> {
-                    expr(call.args().get(0));
-                    expr(call.args().get(1));
-                    expr(call.args().get(2));
+                    genExpr(call.args().get(0));
+                    genExpr(call.args().get(1));
+                    genExpr(call.args().get(2));
                     code.invokestatic(CD_Strings, "replace", MTD_Strings_replace);
                     return Type.STRING;
                 }
                 case "string.words" -> {
-                    expr(call.args().get(0));
+                    genExpr(call.args().get(0));
                     code.invokestatic(CD_Strings, "words", MTD_Strings_words);
                     return Type.list(Type.STRING);
                 }
                 case "string.fromInt" -> {
-                    expr(call.args().get(0));
+                    genExpr(call.args().get(0));
                     code.invokestatic(CD_Strings, "fromInt", MTD_Strings_fromInt);
                     return Type.STRING;
                 }
                 case "list.sort" -> {
-                    Type at = expr(call.args().get(0));
+                    Type at = genExpr(call.args().get(0));
                     code.invokestatic(CD_Lists, "sort", MTD_Lists_sort);
                     return at;
                 }
                 case "map.containsKey" -> {
-                    expr(call.args().get(0));
-                    expr(call.args().get(1));
+                    genExpr(call.args().get(0));
+                    genExpr(call.args().get(1));
                     code.invokestatic(CD_Maps, "containsKey",
                             MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_Map, CD_String));
                     return Type.BOOL;
                 }
                 case "map.keys" -> {
-                    expr(call.args().get(0));
+                    genExpr(call.args().get(0));
                     code.invokestatic(CD_Maps, "keys", MethodTypeDesc.of(CD_List, CD_Map));
                     return Type.list(Type.STRING);
                 }
                 case "map.values" -> {
-                    Type mt = expr(call.args().get(0));
+                    Type mt = genExpr(call.args().get(0));
                     code.invokestatic(CD_Maps, "values", MethodTypeDesc.of(CD_List, CD_Map));
                     return Type.list(((Type.MapOf) mt).value());
                 }
@@ -2523,47 +2507,43 @@ public final class Backend {
             }
         }
 
-        private Type call(Ast.Call call) {
+        private Type call(Core.Call call) {
             Prelude.IntrinsicSig intrinsic = Prelude.intrinsics().get(call.fn());
             if (intrinsic != null) {
                 return intrinsicCall(intrinsic.key(), call);
             }
+            // A fold is a Core.Fold, never a Core.Call, so it does not appear here (see genExpr).
             switch (call.fn()) {
                 case "String.length" -> {
-                    expr(call.args().get(0));
+                    genExpr(call.args().get(0));
                     code.invokevirtual(CD_String, "length", MethodTypeDesc.of(ConstantDescs.CD_int));
                     code.i2l();
                     return Type.INT;
                 }
                 case "List.length" -> {
-                    expr(call.args().get(0));
+                    genExpr(call.args().get(0));
                     code.invokeinterface(CD_List, "size", MTD_size);
                     code.i2l();
                     return Type.INT;
                 }
-                case Core.FOLD -> {
-                    // the one privileged loop; the rest derive from it (ADR-0028). Emitted through the
-                    // Core `Fold` node, the same path a natively-lowered fold takes.
-                    return fold((Core.Fold) Core.of(call));
-                }
                 case "List.get" -> {
-                    Type ct = expr(call.args().get(0));
-                    expr(call.args().get(1));                // long index
+                    Type ct = genExpr(call.args().get(0));
+                    genExpr(call.args().get(1));                // long index
                     code.invokestatic(CD_Lists, "get",
                             MethodTypeDesc.of(CD_Option, CD_List, ConstantDescs.CD_long));
                     return Type.option(((Type.ListOf) ct).element());
                 }
                 case "Map.get" -> {
-                    Type ct = expr(call.args().get(0));
-                    expr(call.args().get(1));                // String key
+                    Type ct = genExpr(call.args().get(0));
+                    genExpr(call.args().get(1));                // String key
                     code.invokestatic(CD_Maps, "get", MethodTypeDesc.of(CD_Option, CD_Map, CD_String));
                     return Type.option(((Type.MapOf) ct).value());
                 }
                 case "Int.add", "Int.subtract", "Int.multiply",
                      "Decimal.add", "Decimal.subtract", "Decimal.multiply" -> {
                     String op = bareOp(call.fn());
-                    Type t = expr(call.args().get(0));
-                    expr(call.args().get(1));
+                    Type t = genExpr(call.args().get(0));
+                    genExpr(call.args().get(1));
                     if (t == Type.DECIMAL) {
                         code.invokevirtual(CD_BigDecimal, op,
                                 MethodTypeDesc.of(CD_BigDecimal, CD_BigDecimal));
@@ -2579,8 +2559,8 @@ public final class Backend {
                     return t;
                 }
                 case "Int.compare", "Decimal.compare" -> {
-                    Type t = expr(call.args().get(0));
-                    expr(call.args().get(1));
+                    Type t = genExpr(call.args().get(0));
+                    genExpr(call.args().get(1));
                     if (t == Type.DECIMAL) {
                         code.invokevirtual(CD_BigDecimal, "compareTo",
                                 MethodTypeDesc.of(ConstantDescs.CD_int, CD_BigDecimal));
@@ -2622,11 +2602,11 @@ public final class Backend {
 
         /** {@code divide}/{@code remainder} on Int: a zero divisor takes the DivisionByZero case,
          * otherwise the quotient/remainder is boxed (spec 18.2). */
-        private Type intDivide(Ast.Call call, boolean divide) {
-            expr(call.args().get(0));
+        private Type intDivide(Core.Call call, boolean divide) {
+            genExpr(call.args().get(0));
             int aSlot = slot(Type.INT);
             code.lstore(aSlot);
-            expr(call.args().get(1));
+            genExpr(call.args().get(1));
             int bSlot = slot(Type.INT);
             code.lstore(bSlot);
             code.lload(bSlot);
@@ -2652,11 +2632,11 @@ public final class Backend {
 
         /** {@code divide(a, b, scale, mode)} on Decimal: a zero divisor takes the DivisionByZero
          * case, otherwise {@code a.divide(b, scale, RoundingMode.mode)} (spec 18.3). */
-        private Type decimalDivide(Ast.Call call) {
-            expr(call.args().get(0));
+        private Type decimalDivide(Core.Call call) {
+            genExpr(call.args().get(0));
             int aSlot = slot(Type.DECIMAL);
             code.astore(aSlot);
-            expr(call.args().get(1));
+            genExpr(call.args().get(1));
             int bSlot = slot(Type.DECIMAL);
             code.astore(bSlot);
             code.aload(bSlot);
@@ -2666,9 +2646,9 @@ public final class Backend {
             code.ifeq(zero);                       // signum == 0 -> DivisionByZero case
             code.aload(aSlot);
             code.aload(bSlot);
-            expr(call.args().get(2));              // scale (Int, a long)
+            genExpr(call.args().get(2));              // scale (Int, a long)
             code.l2i();
-            String mode = ((Ast.Var) call.args().get(3)).name();
+            String mode = ((Core.Var) call.args().get(3)).name();
             code.getstatic(CD_RoundingMode, mode, CD_RoundingMode);
             code.invokevirtual(CD_BigDecimal, "divide", MTD_bdDivide);
             code.goto_(end);
@@ -2680,13 +2660,13 @@ public final class Backend {
 
         /** Emits an inline call to an injected required behavior, leaving its success value on
          * the stack cast to the success type (spec 12.2, 13). */
-        private Type requiredCall(Ast.Call call) {
+        private Type requiredCall(Core.Call call) {
             code.aload(0);
             code.getfield(cdName, call.fn(), CD_Behavior);
             if (call.args().isEmpty()) {
                 code.aconst_null();        // `() -> R`: the implementation ignores the input
             } else {
-                Type at = expr(call.args().get(0));
+                Type at = genExpr(call.args().get(0));
                 box(code, at);
             }
             code.invokeinterface(CD_Behavior, "apply", MTD_apply);
@@ -2916,14 +2896,14 @@ public final class Backend {
 
         /** Applies a first-class function value: {@code f.apply(new Object[]{args...})}, then casts
          * the {@code Object} result back to the function's result type. */
-        private Type applyFn(Ast.Call call, Var fv, Type.FnOf fnType) {
+        private Type applyFn(Core.Call call, Var fv, Type.FnOf fnType) {
             load(code, fv.slot(), fv.type());   // the Fn receiver
             pushInt(code, call.args().size());
             code.anewarray(CD_Object);
             for (int i = 0; i < call.args().size(); i++) {
                 code.dup();
                 pushInt(code, i);
-                Type at = expr(call.args().get(i));
+                Type at = genExpr(call.args().get(i));
                 box(code, at);
                 code.aastore();
             }
