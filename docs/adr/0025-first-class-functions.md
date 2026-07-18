@@ -23,7 +23,7 @@ A function still may not be stored in a `data` field or appear in a behavior's i
 
 The common idioms work — local named functions, runtime selection, returned closures — while the representation boundary stays intact: a function never reaches a codec. The inline path keeps the no-closure cost of the original design wherever the function does not escape, so a runtime `Fn` is built only when one is genuinely needed.
 
-Parameter-type inference is deliberately narrow: it reads the argument types at the application sites of a `let`-bound function. A function that is never applied cannot be typed, and is rejected. This is not the general type inference the MVP defers; it is the local rule that the escaping cases need.
+Parameter-type inference is deliberately narrow: it reads the argument types at the application sites of a `let`-bound function. A function that is never applied cannot be typed, and is rejected. This is not the general type inference Souther leaves to future work; it is the local rule that the escaping cases need.
 
 Because functions are monomorphic, this does not reintroduce user-defined generics (ADR-0010): a helper's function-typed parameter names concrete types.
 

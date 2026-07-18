@@ -177,13 +177,15 @@ undercut one of the ideas above.
   Class-File API (`java.lang.classfile`) generates `.class` files directly, without going
   through `javac`.
 
-### Deferred (not part of the MVP yet)
+### Not yet
 
-These are not rejected on principle — they are simply out of scope for now: a `let` that returns a
-function, functions stored in a data field, a human-readable Java-source backend, incremental
-compilation, an LSP / IDE plugin, static invariant proofs, hand-written codec syntax, and `Decimal`
-division with an explicit rounding mode. (Blocks — `x -> ...` passed to `all` / `any` — and
-higher-order function arguments are already supported.)
+These are not rejected on principle — they are simply out of scope for now: a human-readable
+Java-source backend, incremental compilation, an LSP / IDE plugin, source maps, static invariant
+proofs, hand-written codec syntax, JSON Schema / Wasm / JavaScript output, and JSON-temporal /
+jOOQ-nested codec generation (a `Date` field or a nested record currently derives only the
+plain/`Map` decoder). Functions cannot be stored in a data field — they have no external
+representation. (First-class functions and closures, blocks passed to combinators, higher-order
+arguments, tuples, and the value pipe are all supported.)
 
 ## Building and using
 
