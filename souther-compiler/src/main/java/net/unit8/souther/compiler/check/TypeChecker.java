@@ -221,10 +221,102 @@ public final class TypeChecker {
             // a helper that returns a function (e.g. `let adder (n) = (x) -> x + n`) has no application
             // here to infer the lambda's parameter types from; it is checked where it is inlined and
             // applied (spec §blocks).
+            checkFunctionArgs(h.body(), env, symbols, reqSigs, inliner);
             if (producesFunction(body)) {
                 continue;
             }
             typeOf(body, env, null, symbols, reqSigs);
+        }
+    }
+
+    /**
+     * Checks each function passed to a helper's function-typed parameter against that parameter's
+     * declared type, at the call site — before the helper is expanded inline. Without this, a bad
+     * function argument to a combinator surfaces deep inside the {@code fold} it derives from (a
+     * non-{@code Bool} {@code filter} predicate as the {@code if} the derivation expands to), which
+     * names the derivation, not the mistake. Here the error names the parameter and the combinator.
+     *
+     * <p>It walks the un-inlined body. Every helper call binds its signature's type variables from
+     * its collection arguments ({@code 'a} from a {@code List<'a>}), then checks each function
+     * argument against the resulting concrete function type. The check is best-effort: when an
+     * argument's type cannot be determined in the available scope (a value bound further out), it is
+     * skipped and the ordinary inlined check still applies.
+     */
+    private static void checkFunctionArgs(Ast.Expr e, Map<String, Type> env, Map<String, Ast.Def> symbols,
+                                          Map<String, ReqSig> reqs, HelperInliner inliner) {
+        if (e instanceof Ast.Call call) {
+            checkHelperCallFnArgs(call, env, symbols, reqs, inliner);
+        }
+        forEachChild(e, sub -> checkFunctionArgs(sub, env, symbols, reqs, inliner));
+    }
+
+    private static void checkHelperCallFnArgs(Ast.Call call, Map<String, Type> env, Map<String, Ast.Def> symbols,
+                                              Map<String, ReqSig> reqs, HelperInliner inliner) {
+        Ast.FnDef h = inliner.helper(call.fn());
+        if (h == null || call.args().size() != h.params().size()) {
+            return;   // not a helper, or an arity mismatch the inliner reports
+        }
+        List<Type> declared = new ArrayList<>();
+        boolean hasFn = false;
+        for (Ast.FnParam p : h.params()) {
+            Type pt = resolveParamType(p.type(), symbols);
+            declared.add(pt);
+            hasFn |= pt instanceof Type.FnOf;
+        }
+        if (!hasFn) {
+            return;
+        }
+        // the collection (non-function) arguments bind the signature's type variables — `'a` from a
+        // `List<'a>` collection — so the function parameters become concrete before the check.
+        Map<String, Type> bind = new HashMap<>();
+        for (int i = 0; i < declared.size(); i++) {
+            if (declared.get(i) instanceof Type.FnOf) {
+                continue;
+            }
+            try {
+                Type at = typeOf(inliner.inline(call.args().get(i)), env, null, symbols, reqs);
+                unify(declared.get(i), at, bind, symbols, call.pos(), "argument " + (i + 1));
+            } catch (CompileException ignored) {
+                return;   // can't pin the types here; leave it to the inlined check
+            }
+        }
+        for (int i = 0; i < declared.size(); i++) {
+            if (declared.get(i) instanceof Type.FnOf fn0) {
+                checkFunctionArg(h, h.params().get(i).name(), (Type.FnOf) substitute(fn0, bind),
+                        call.args().get(i), env, symbols, reqs, inliner);
+            }
+        }
+    }
+
+    private static void checkFunctionArg(Ast.FnDef h, String paramName, Type.FnOf want, Ast.Expr arg,
+                                         Map<String, Type> env, Map<String, Ast.Def> symbols,
+                                         Map<String, ReqSig> reqs, HelperInliner inliner) {
+        if (arg instanceof Ast.Block lambda) {
+            if (lambda.params().size() != want.params().size()) {
+                throw new CompileException(arg.pos(), "the block passed to `" + paramName + "` of `let "
+                        + h.name() + "` takes " + want.params().size() + " argument(s) but is written with "
+                        + lambda.params().size());
+            }
+            Map<String, Type> lenv = new HashMap<>(env);
+            for (int j = 0; j < lambda.params().size(); j++) {
+                if (want.params().get(j) instanceof Type.Var) {
+                    return;   // the parameter type is still open; nothing concrete to check
+                }
+                lenv.put(lambda.params().get(j), want.params().get(j));
+            }
+            Type got;
+            try {
+                got = typeOf(inliner.inline(lambda.body()), lenv, null, symbols, reqs);
+            } catch (CompileException ignored) {
+                return;   // best-effort; the inlined check reports a genuine error with full context
+            }
+            if (!(want.result() instanceof Type.Var) && !assignable(got, want.result(), symbols)) {
+                throw new CompileException(lambda.pos(), "the block passed to `" + paramName + "` of `let "
+                        + h.name() + "` must return " + want.result() + " but returns " + got);
+            }
+        } else if (arg instanceof Ast.Var v && env.get(v.name()) instanceof Type vt && !(vt instanceof Type.FnOf)) {
+            throw new CompileException(arg.pos(), "`" + paramName + "` of `let " + h.name()
+                    + "` expects a function, but `" + v.name() + "` is a value, not a function");
         }
     }
 
@@ -264,6 +356,9 @@ public final class TypeChecker {
             env.put(fn.params().get(i).name(), successType(spec.params().get(i).type(), symbols));
         }
         Type output = successType(spec.ret(), symbols);
+        // Check functions passed to helper parameters (e.g. a combinator's predicate) against their
+        // declared types first, so a mismatch names the parameter, not the derivation it expands to.
+        checkFunctionArgs(fn.body(), env, symbols, reqSigs, inliner);
         // Expand helper calls inline (spec 12.5): the whole body is then checked as one expression,
         // so a helper's constructions and injected calls count toward this behavior's permission and
         // requires — exactly as if the code had been written inline.
@@ -2004,13 +2099,20 @@ public final class TypeChecker {
         }
     }
 
-    /** Replaces the type variables bound by {@link #unify} in an intrinsic's result type. */
+    /** Replaces the type variables bound by {@link #unify} in a result type. */
     private static Type substitute(Type t, Map<String, Type> bindings) {
         return switch (t) {
             case Type.Var v -> bindings.getOrDefault(v.name(), v);
             case Type.ListOf l -> Type.list(substitute(l.element(), bindings));
             case Type.MapOf m -> Type.map(substitute(m.value(), bindings));
             case Type.OptionOf o -> Type.option(substitute(o.element(), bindings));
+            case Type.FnOf f -> {
+                List<Type> params = new ArrayList<>();
+                for (Type p : f.params()) {
+                    params.add(substitute(p, bindings));
+                }
+                yield Type.fn(params, substitute(f.result(), bindings));
+            }
             default -> t;
         };
     }

@@ -123,10 +123,10 @@ class CompileBlockTest {
         assertThrows(CompileException.class, () -> Compiler.compile(src));
     }
 
-    // filter's predicate must return Bool. Since filter is now a prelude helper derived from fold
-    // (ADR-0028), a non-Bool predicate is caught inside the derivation — the `if keep(x)` it expands
-    // to — rather than by a hard-coded combinator check, so the message speaks of the condition. The
-    // error must still point at the user's `filter` call (line 3), not at a line of souther.list.
+    // filter's predicate must return Bool. Although filter is now a prelude helper derived from fold
+    // (ADR-0028), the predicate is checked against filter's declared `keep: ('a) -> Bool` at the call
+    // site, so the message names the combinator and its parameter — not the `if` the fold expands to —
+    // and points at the user's `filter` call (line 3), not at a line of souther.list.
     @Test
     void theBlockMustReturnBoolForFilter() {
         String src = """
@@ -135,12 +135,14 @@ class CompileBlockTest {
                 let f (xs) = filter(xs, x -> x * 2)
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
+        assertTrue(e.getMessage().contains("filter"), e.getMessage());
         assertTrue(e.getMessage().contains("BOOL"), e.getMessage());
         assertTrue(e.getMessage().startsWith("3:"), "points at the user's call, not the prelude: " + e.getMessage());
     }
 
-    // Passing a non-function where a combinator wants one is still rejected: `map` is a helper whose
-    // second parameter is applied as `f(x)`, so a value there is called as a function and fails.
+    // Passing a value where a combinator wants a function is rejected at the call site, naming the
+    // parameter and the combinator — checked against `map`'s declared `f: ('a) -> 'b` before the
+    // derivation is expanded, so the message speaks of `map`, not of the fold it becomes.
     @Test
     void mapWithoutAFunctionIsRejected() {
         String src = """
@@ -149,6 +151,8 @@ class CompileBlockTest {
                 let f (xs) = map(xs, xs)
                 """;
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
-        assertTrue(e.getMessage().contains("not a behavior or builtin"), e.getMessage());
+        assertTrue(e.getMessage().contains("expects a function"), e.getMessage());
+        assertTrue(e.getMessage().contains("map"), e.getMessage());
+        assertTrue(e.getMessage().startsWith("3:"), "points at the user's call: " + e.getMessage());
     }
 }

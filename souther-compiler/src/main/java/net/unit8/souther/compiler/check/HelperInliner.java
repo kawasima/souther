@@ -67,6 +67,13 @@ public final class HelperInliner {
         return own;
     }
 
+    /** Looks up a helper by name across the prelude and the module's own helpers, or null if the
+     * name is not a helper (a builtin, injected behavior, or unknown). Used to type-check a function
+     * passed to a helper's function parameter against the declared type, at the call site. */
+    public Ast.FnDef helper(String name) {
+        return helpers.get(name);
+    }
+
     /** {@code fold} is the one privileged loop primitive that takes a block (spec 18.4); its block has
      * two parameters. A bare name passed in its place is sugar for a block that wraps a call. The
      * other combinators (map/filter/all/any) are ordinary prelude helpers derived from fold
