@@ -44,3 +44,6 @@ specification is in Japanese.
 | [0027](0027-match-with-pipe-cases.md) | match reads `match e with \| case -> ...` (F# form) | `[#match]` |
 | [0028](0028-stdlib-privileged-core-over-intrinsic-kernel.md) | The stdlib is a privileged core written in Souther over an intrinsic kernel | `[#stdlib]`, `[#primitives]` |
 | [0029](0029-platform-failures-are-exceptions-not-cases.md) | Platform failures propagate as exceptions; only domain outcomes are cases | `[#java-impl-rules]`, `[#mvp-scope]` |
+| [0030](0030-spread-not-include-keyword.md) | Record composition and update use a `...` spread, not an `include` keyword | `[#product-data]`, `[#field-spread]`, `[#record-literal]` |
+| [0031](0031-invariant-follows-the-type-body.md) | A data's `invariant` clause follows the type body, not the record's braces | `[#invariant]`, `[#product-data]` |
+| [0032](0032-newtype-constructor-parenthesized.md) | A newtype is constructed by applying its name, parenthesized: `金額(500)` | `[#newtype]`, `[#violation-destination]` |

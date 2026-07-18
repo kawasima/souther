@@ -875,6 +875,15 @@ public final class Backend {
      */
     private void emitBodyTail(Gen gen, CodeBuilder code, Ast.Expr e, ClassDesc cdB,
                               Set<String> requiredNames, Map<String, Type> requiredSuccess) {
+        // 金額(x) as a tail result is the wrapper construction 金額 { value = x }; normalise it so an
+        // invariant-bearing newtype routes through the checked __construct path below (and aborts
+        // on violation), rather than the plain construction that `gen.expr` would emit.
+        if (e instanceof Ast.Call call && symbols.get(call.fn()) instanceof Ast.Data nt
+                && nt.newtype() && call.args().size() == 1) {
+            e = new Ast.NewData(call.fn(),
+                    List.of(new Ast.FieldInit("value", call.args().get(0), call.pos())),
+                    List.of(), call.pos());
+        }
         switch (e) {
             case Ast.LetIn li -> {
                 if (li.value() instanceof Ast.Call call && requiredNames.contains(call.fn())) {
@@ -2479,6 +2488,14 @@ public final class Backend {
         }
 
         private Type call(Ast.Call call) {
+            // A newtype name applied to one argument constructs the wrapper: 金額(500). The checker
+            // proved either there is no invariant or the constant one holds, so a plain construction
+            // (no runtime __construct check) is correct.
+            if (symbols.get(call.fn()) instanceof Ast.Data nt && nt.newtype()) {
+                return newData(new Ast.NewData(call.fn(),
+                        List.of(new Ast.FieldInit("value", call.args().get(0), call.pos())),
+                        List.of(), call.pos()));
+            }
             Prelude.IntrinsicSig intrinsic = Prelude.intrinsics().get(call.fn());
             if (intrinsic != null) {
                 return intrinsicCall(intrinsic.key(), call);

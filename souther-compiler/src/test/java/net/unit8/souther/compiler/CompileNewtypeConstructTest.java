@@ -1,0 +1,155 @@
+package net.unit8.souther.compiler;
+
+import net.unit8.souther.runtime.Behavior;
+import net.unit8.souther.runtime.ConstraintViolation;
+
+import net.unit8.raoh.Ok;
+import net.unit8.raoh.Path;
+import net.unit8.raoh.decode.Decoder;
+import net.unit8.raoh.encode.Encoder;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * A newtype name applied to one argument constructs the wrapper: {@code 金額(500)} — the type name
+ * in call position is its constructor. A constant argument is checked against the invariant at
+ * compile time, so {@code 金額(-5)} is a compile error rather than a runtime abort; such a
+ * construction cannot abort and so is legal anywhere, including a non-tail {@code let}. A newtype
+ * with no invariant wraps any value, constant or runtime.
+ */
+class CompileNewtypeConstructTest {
+
+    private static final String MODULE = """
+            module demo
+            import String { length }
+            data 金額 = Int
+                invariant value >= 0
+            data 会員ID = String
+                invariant length(value) > 0
+            data Tag = String
+
+            behavior makeMoney : (x: Int) -> 金額 constructs 金額
+            let makeMoney (x) = 金額(500)
+
+            behavior makeId : (x: Int) -> 会員ID constructs 会員ID
+            let makeId (x) = 会員ID("m-01")
+
+            behavior nonTail : (x: Int) -> 金額 constructs 金額
+            let nonTail (x) = {
+                let m = 金額(300)
+                m
+            }
+
+            behavior rewrap : (t: Tag) -> Tag constructs Tag
+            let rewrap (t) = Tag(t.value)
+
+            behavior halve : (m: 金額) -> 金額 constructs 金額
+            let halve (m) = 金額(m.value - 100)
+            """;
+
+    private BytesClassLoader loader() {
+        return new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object apply(BytesClassLoader loader, String cls, Object in) throws Exception {
+        Object b = loader.loadClass("demo." + cls).getConstructor().newInstance();
+        return ((Behavior<Object, Object>) b).apply(in);
+    }
+
+    private Object encode(BytesClassLoader loader, String type, Object v) throws Exception {
+        Encoder enc = (Encoder) loader.loadClass("demo." + type).getMethod("encoder").invoke(null);
+        return enc.encode(v);
+    }
+
+    @Test
+    void constantConstructionEncodesToItsPayload() throws Exception {
+        BytesClassLoader loader = loader();
+        Object money = apply(loader, "MakeMoney", 0L);
+        assertEquals("demo.金額", money.getClass().getName());
+        assertEquals(500L, encode(loader, "金額", money));
+    }
+
+    @Test
+    void stringNewtypeConstantConstruction() throws Exception {
+        BytesClassLoader loader = loader();
+        Object id = apply(loader, "MakeId", 0L);
+        assertEquals("m-01", encode(loader, "会員ID", id));
+    }
+
+    @Test
+    void constantConstructionIsLegalInANonTailLet() throws Exception {
+        BytesClassLoader loader = loader();
+        Object money = apply(loader, "NonTail", 0L);
+        assertEquals(300L, encode(loader, "金額", money));
+    }
+
+    @Test
+    void noInvariantNewtypeWrapsARuntimeValue() throws Exception {
+        BytesClassLoader loader = loader();
+        Decoder dec = (Decoder) loader.loadClass("demo.Tag").getMethod("decoder").invoke(null);
+        Object tag = ((Ok) dec.decode("hello", Path.ROOT)).value();
+        Object out = apply(loader, "Rewrap", tag);
+        assertEquals("hello", encode(loader, "Tag", out));
+    }
+
+    @Test
+    void constantViolatingTheInvariantIsACompileError() {
+        String src = """
+                module demo
+                data 金額 = Int
+                    invariant value >= 0
+                behavior make : (x: Int) -> 金額 constructs 金額
+                let make (x) = 金額(-5)
+                """;
+        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
+        assertTrue(e.getMessage().contains("金額"), e.getMessage());
+    }
+
+    @Test
+    void emptyStringViolatingLengthInvariantIsACompileError() {
+        String src = """
+                module demo
+                import String { length }
+                data 会員ID = String
+                    invariant length(value) > 0
+                behavior make : (x: Int) -> 会員ID constructs 会員ID
+                let make (x) = 会員ID("")
+                """;
+        assertThrows(CompileException.class, () -> Compiler.compile(src));
+    }
+
+    @Test
+    void runtimeConstructionInTailConstructsAndAbortsOnViolation() throws Exception {
+        BytesClassLoader loader = loader();
+        Decoder dec = (Decoder) loader.loadClass("demo.金額").getMethod("decoder").invoke(null);
+        // 500 - 100 = 400 >= 0: the runtime construction holds and comes back
+        Object big = ((Ok) dec.decode(500L, Path.ROOT)).value();
+        assertEquals(400L, encode(loader, "金額", apply(loader, "Halve", big)));
+        // 50 - 100 = -50 breaks value >= 0: the tail construction goes through __construct and aborts
+        Object small = ((Ok) dec.decode(50L, Path.ROOT)).value();
+        assertThrows(ConstraintViolation.class, () -> apply(loader, "Halve", small));
+    }
+
+    @Test
+    void runtimeInvariantConstructionOutsideTailIsForbidden() {
+        // a runtime-argument invariant construction may only be the behavior's result (its abort is
+        // the outcome); in a non-tail let binding it is a compile error
+        String src = """
+                module demo
+                data 金額 = Int
+                    invariant value >= 0
+                behavior bad : (m: 金額) -> 金額 constructs 金額
+                let bad (m) = {
+                    let y = 金額(m.value - 100)
+                    y
+                }
+                """;
+        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
+        assertTrue(e.getMessage().contains("result expression"), e.getMessage());
+    }
+}

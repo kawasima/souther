@@ -1,0 +1,139 @@
+package net.unit8.souther.compiler.check;
+
+import net.unit8.souther.compiler.ast.Ast;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+/**
+ * Folds a compile-time-constant expression to its value ({@code Long} / {@code BigDecimal} /
+ * {@code String} / {@code Boolean}), or {@link Optional#empty()} when it is not constant-foldable.
+ *
+ * <p>Used to check a newtype constructor's literal argument against the type's invariant at compile
+ * time, so {@code 金額(-5)} is a compile error rather than a runtime abort. A construction whose
+ * argument folds and whose invariant folds to {@code true} cannot abort, so it needs no runtime
+ * check and may sit anywhere (not only in a behavior's tail).
+ *
+ * <p>The supported fragment covers what data invariants use: literals, the wrapped {@code value},
+ * arithmetic, comparison, logic, and {@code String.length} / {@code contains}. Anything outside it
+ * folds to empty, which the caller treats as "cannot verify at compile time".
+ */
+final class ConstEval {
+    private ConstEval() {}
+
+    /** Folds {@code e} under {@code env} (e.g. {@code value} bound to a constructor's argument). */
+    static Optional<Object> eval(Ast.Expr e, Map<String, Object> env) {
+        return switch (e) {
+            case Ast.IntLit i -> Optional.of(i.value());
+            case Ast.DecimalLit d -> Optional.of(d.value());
+            case Ast.StringLit s -> Optional.of(s.value());
+            case Ast.BoolLit b -> Optional.of(b.value());
+            case Ast.Var v -> Optional.ofNullable(env.get(v.name()));
+            case Ast.Neg neg -> negate(eval(neg.operand(), env).orElse(null));
+            case Ast.Binary bin -> binary(bin, env);
+            case Ast.Call call -> call(call, env);
+            default -> Optional.empty();
+        };
+    }
+
+    private static Optional<Object> negate(Object o) {
+        if (o instanceof Long x) {
+            return Optional.of(-x);
+        }
+        if (o instanceof BigDecimal d) {
+            return Optional.of(d.negate());
+        }
+        return Optional.empty();
+    }
+
+    private static Optional<Object> binary(Ast.Binary bin, Map<String, Object> env) {
+        Optional<Object> l = eval(bin.left(), env);
+        Optional<Object> r = eval(bin.right(), env);
+        if (l.isEmpty() || r.isEmpty()) {
+            return Optional.empty();
+        }
+        Object a = l.get();
+        Object b = r.get();
+        return switch (bin.op()) {
+            case AND -> a instanceof Boolean x && b instanceof Boolean y
+                    ? Optional.of(x && y) : Optional.empty();
+            case OR -> a instanceof Boolean x && b instanceof Boolean y
+                    ? Optional.of(x || y) : Optional.empty();
+            case EQ -> Optional.of(a.equals(b));
+            case NE -> Optional.of(!a.equals(b));
+            case LT, LE, GT, GE -> compare(bin.op(), a, b);
+            case ADD, SUB, MUL -> arith(bin.op(), a, b);
+            case CONCAT -> Optional.empty();   // lists are not folded
+        };
+    }
+
+    private static Optional<Object> compare(Ast.BinOp op, Object a, Object b) {
+        Integer c = order(a, b);
+        if (c == null) {
+            return Optional.empty();
+        }
+        return Optional.of(switch (op) {
+            case LT -> c < 0;
+            case LE -> c <= 0;
+            case GT -> c > 0;
+            case GE -> c >= 0;
+            default -> throw new IllegalStateException();
+        });
+    }
+
+    /** Total order over two constants of the same ordered kind, or null if they are not comparable. */
+    private static Integer order(Object a, Object b) {
+        if (a instanceof Long x && b instanceof Long y) {
+            return Long.compare(x, y);
+        }
+        if (a instanceof BigDecimal x && b instanceof BigDecimal y) {
+            return x.compareTo(y);
+        }
+        if (a instanceof String x && b instanceof String y) {
+            return x.compareTo(y);
+        }
+        return null;
+    }
+
+    private static Optional<Object> arith(Ast.BinOp op, Object a, Object b) {
+        if (a instanceof Long x && b instanceof Long y) {
+            return Optional.of(switch (op) {
+                case ADD -> x + y;
+                case SUB -> x - y;
+                case MUL -> x * y;
+                default -> throw new IllegalStateException();
+            });
+        }
+        if (a instanceof BigDecimal x && b instanceof BigDecimal y) {
+            return Optional.of(switch (op) {
+                case ADD -> x.add(y);
+                case SUB -> x.subtract(y);
+                case MUL -> x.multiply(y);
+                default -> throw new IllegalStateException();
+            });
+        }
+        return Optional.empty();
+    }
+
+    private static Optional<Object> call(Ast.Call call, Map<String, Object> env) {
+        List<Ast.Expr> args = call.args();
+        switch (call.fn()) {
+            case "length", "String.length" -> {
+                if (args.size() == 1 && eval(args.get(0), env).orElse(null) instanceof String s) {
+                    return Optional.of((long) s.length());
+                }
+            }
+            case "contains", "String.contains" -> {
+                if (args.size() == 2
+                        && eval(args.get(0), env).orElse(null) instanceof String s
+                        && eval(args.get(1), env).orElse(null) instanceof String sub) {
+                    return Optional.of(s.contains(sub));
+                }
+            }
+            default -> { }
+        }
+        return Optional.empty();
+    }
+}
