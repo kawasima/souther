@@ -40,10 +40,11 @@ Gradle なら同じプロセッサを `annotationProcessor` 依存＋`-Asouther.
 | `email` | 単一フィールド data ＋ invariant（最小例。newtype＝裸の文字列から decode） |
 | `contact` | 直和 data（sealed）＋ 判別デコーダ（判別子 `"type"`／タグ＝アーム名） |
 | `expense` | `List<T>`／ネストした newtype／直積の decode・encode 往復 |
+| `cart` | リストコンビネータ `map`/`filter`/`all`/`any`（`souther.list` が `fold` から導く）＋ 空リスト `[]`。behavior `見積る` を実際に実行して結果アームを検査する |
 | `businesstrip` | include（フィールド合成）＋ ネストした newtype invariant |
 | `member` | 会員照会。`required behavior findMember`（外界依存）＋ 型ルーティング `>->`。Spring MVC + jOOQ の境界コードを実際にコンパイルする（下記） |
 
-`.sou` だけで手書き Java の無いモジュール（email/contact/expense/businesstrip）には、プロセッサを起動する
+`.sou` だけで手書き Java の無いモジュール（email/contact/expense/cart/businesstrip）には、プロセッサを起動する
 ための最小の `package-info.java` を1つ置いています（javac はソースが1つ以上ないとアノテーション処理を
 起動しないため）。smoke テストは生成された `decoder()`/`encoder()` を型付きで叩きます
 （`decoder()` は `Decoder<…, T>`、`decode(input, Path.ROOT)` は `Result<T>` を返し、`Ok`/`Err` を

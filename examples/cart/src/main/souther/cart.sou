@@ -1,0 +1,45 @@
+// リストコンビネータのショーケース: map / filter / all / any / fold と空リスト []。
+// これらは組み込みではなく souther.list が fold から導く自言語の関数（ADR-0028）。
+// fold だけが唯一の特権ループで、残りはそこから畳んで作られる。decoder/encoder は導出。
+module example.cart
+
+data 明細 = {
+    名前: String
+    数量: Int
+    単価: Int
+}
+
+data カート = {
+    受付中: Bool
+    明細リスト: List<明細>
+}
+
+// 見積結果は3アームの直和。空・数量不正は本線から外れる失敗アーム。
+data 見積 = {
+    合計金額: Int
+    品目数: Int
+    高額あり: Bool
+}
+data 空カート
+data 数量不正 = { 不正件数: Int }
+
+behavior 見積る : (c: カート) -> 見積 | 空カート | 数量不正
+    constructs 見積, 空カート, 数量不正
+
+let 見積る (c) = {
+    require length(対象明細(c)) >= 1 else 空カート
+    require all(対象明細(c), m -> m.数量 >= 1)
+        else 数量不正 { 不正件数: length(filter(対象明細(c), m -> m.数量 < 1)) }
+    見積 {
+        合計金額: 合計(対象明細(c)),
+        品目数: length(対象明細(c)),
+        高額あり: any(対象明細(c), m -> m.単価 >= 100000)
+    }
+}
+
+// 受付停止中は対象を空にする。[] は文脈（この if の相方が List<明細>）から型が決まる。
+let 対象明細 (c: カート) = if c.受付中 then c.明細リスト else []
+
+// 各明細の金額を出し（map）、fold で合計する。金額 は明細1件を Int に写す純粋なヘルパー。
+let 金額 (m: 明細) = m.数量 * m.単価
+let 合計 (xs: List<明細>) = fold(map(xs, 金額), 0, (acc, x) -> acc + x)
