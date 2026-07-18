@@ -223,8 +223,10 @@ Implemented and covered by tests:
 - Behaviors: `behavior` and its separate `let`, behaviors with no `let` injected from Java,
   `requires` sets (declared on simple behaviors, inferred over a `>->` pipeline), inline
   injected-behavior calls, `constructs`, unmarked sum outputs, and type-routed `>->`.
-- Terms: `match` / `let` / `if` / `require`, record literals with spread, union parameter types
-  and matching, and the String / Int / Decimal / List / Map standard library.
+- Terms: `match` / `let` / `if` / `require`, record literals with spread, the empty-list literal
+  `[]` typed by context, union parameter types and matching, and the String / Int / Decimal /
+  List / Map standard library — shipped in the reserved `souther.*` namespace, with the list
+  combinators (`map` / `filter` / `all` / `any`) self-hosted over the one `fold` primitive.
 - Boundary and packaging: derived decoders / encoders, modules with `exposing` / `import` and
   cyclic-import detection, JVM visibility hardening, and direct ClassFile bytecode generation.
 

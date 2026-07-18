@@ -1,6 +1,6 @@
 # ADR-0028: The standard library is a privileged core written in Souther over an intrinsic kernel
 
-Status: Accepted (decided 2026-07-18; not yet implemented). Amends ADR-0010.
+Status: Implemented (decided 2026-07-18). Amends ADR-0010.
 
 ## Context
 
@@ -36,11 +36,14 @@ Concretely:
   fold, the map accessors — are declared in `core` with an intrinsic body:
   `let length (s: String): Int = intrinsic "string.length"`. The backend emits the JVM
   primitive for each key. Writing an `intrinsic` body is a privilege of `core`.
-- The derivable layer is written in Souther over the kernel:
-  `let any (xs: List<'a>, p: ('a) -> Bool): Bool = not(all(xs, x -> not(p(x))))`. String
-  functions stay largely intrinsic, since Souther has no `Char` and index recursion over a
-  string is not worth writing — Elm keeps most of `String` in the Kernel for the same
-  reason.
+- The derivable layer is written in Souther over the kernel. The one irreducible loop is
+  `fold`, and the four combinators are `souther.list` helpers over it:
+  `let all (xs: List<'a>, p: ('a) -> Bool) = fold(xs, true, (acc, x) -> acc && p(x))`, and
+  `map`/`filter` the same, seeding an empty list `[]` and growing it. Each expands inline at
+  its call site, where its type variables resolve to concrete types, so `map(xs, x -> ...)`
+  reads exactly as the built-in did. String functions stay largely intrinsic, since Souther
+  has no `Char` and index recursion over a string is not worth writing — Elm keeps most of
+  `String` in the Kernel for the same reason.
 - Generics and recursion are opened, but only inside `core`. A type variable is `'a`
   (F#/OCaml): a leading apostrophe marks it where Souther's case-insensitive identifiers
   rule out the lowercase convention Haskell and Elm rely on. A type variable needs no `<A>`
@@ -69,6 +72,20 @@ Souther does not support self-referential data — no derived codec traverses a 
 business model in the SMDD sense (state machines, records, lists of records) does not ask
 for it. So the confinement costs the model no expressiveness it would use, the same argument
 ADR-0010 makes for the absence of user generics.
+
+Deriving `map`/`filter` from `fold` forced one language relaxation: the empty-list literal
+`[]`, which `[#stdlib-list]` had forbidden because its element type could not be determined.
+It is now admitted with its type fixed by context — the accumulator a `fold` seed grows into,
+the other operand of `++`, an `if`/`match` arm, or the `List<T>` a position expects — which is
+sound because an empty list is element-agnostic at runtime. Without it, no list-producing
+combinator could start from an empty accumulator in Souther.
+
+Self-hosting shifts where a combinator misuse is reported: a non-`Bool` `filter` predicate now
+surfaces through the `if` the derivation expands to, not a bespoke check. To keep this from
+pointing at shipped source, a type error inside an inlined prelude helper is stamped with the
+call site, so it points at the user's call. The message still names the derivation's `if`; a
+combinator-level message would need argument type-checking against the declared parameter,
+which is left for later.
 
 The value pipe `|>` is not adopted alongside this. Souther's combinators take the collection
 first (`map(xs, f)`), where Elm and F# take it last precisely so `|>` threads, and the
