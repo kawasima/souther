@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -802,9 +803,6 @@ public final class TypeChecker {
             }
             case Ast.NewData nd when isInvariantBearing(nd.typeName(), symbols) ->
                     nd.inits().forEach(i -> forbidInvariantConstruct(i.value(), symbols));
-            case Ast.Call call when symbols.get(call.fn()) instanceof Ast.Data nt && nt.newtype()
-                    && isInvariantBearing(call.fn(), symbols) ->
-                    call.args().forEach(a -> forbidInvariantConstruct(a, symbols));
             default -> forbidInvariantConstruct(e, symbols);
         }
     }
@@ -874,10 +872,9 @@ public final class TypeChecker {
     }
 
     private static void collectConstChecks(Ast.Expr e, Map<String, Ast.Def> symbols, List<ConstCheck> out) {
-        if (e instanceof Ast.Call call && symbols.get(call.fn()) instanceof Ast.Data nt && nt.newtype()
-                && isInvariantBearing(call.fn(), symbols) && call.args().size() == 1) {
-            ConstEval.eval(call.args().get(0))
-                    .ifPresent(v -> out.add(new ConstCheck(call.fn(), v, call.pos())));
+        if (e instanceof Ast.NewData nd && symbols.get(nd.typeName()) instanceof Ast.Data nt
+                && nt.newtype() && isInvariantBearing(nd.typeName(), symbols)) {
+            newtypeConstantArg(nd).ifPresent(v -> out.add(new ConstCheck(nd.typeName(), v, nd.pos())));
         }
         forEachChild(e, c -> collectConstChecks(c, symbols, out));
     }
@@ -887,16 +884,12 @@ public final class TypeChecker {
     }
 
     private static void forbidInvariantConstruct(Ast.Expr e, Map<String, Ast.Def> symbols) {
-        if (e instanceof Ast.NewData nd && isInvariantBearing(nd.typeName(), symbols)) {
+        // An invariant-bearing construction outside the tail is forbidden — its abort must be the
+        // behavior's result — unless a newtype's constant value is verified by CTFE (which cannot
+        // abort); that is exempt and may sit anywhere (e.g. `let money = 金額(500)`).
+        if (e instanceof Ast.NewData nd && isInvariantBearing(nd.typeName(), symbols)
+                && !isConstantNewtypeConstruct(nd, symbols)) {
             throw new CompileException(nd.pos(), "invariant-bearing `" + nd.typeName()
-                    + "` can only be constructed as the behavior's result expression");
-        }
-        // 金額(x) is a construction too: forbid it outside tail unless it folds to a verified
-        // constant (which cannot abort). A no-invariant newtype is unrestricted.
-        if (e instanceof Ast.Call c && symbols.get(c.fn()) instanceof Ast.Data nt
-                && nt.newtype() && isInvariantBearing(c.fn(), symbols)
-                && !isConstantNewtypeConstruct(c, symbols)) {
-            throw new CompileException(c.pos(), "invariant-bearing `" + c.fn()
                     + "` can only be constructed as the behavior's result expression");
         }
         switch (e) {
@@ -949,12 +942,7 @@ public final class TypeChecker {
                 }
             }
             case Ast.FieldAccess fa -> collectConstructs(fa.target(), out, symbols, bound);
-            case Ast.Call call -> {
-                if (symbols.get(call.fn()) instanceof Ast.Data nt && nt.newtype()) {
-                    out.add(call.fn());   // 金額(500) constructs 金額
-                }
-                call.args().forEach(a -> collectConstructs(a, out, symbols, bound));
-            }
+            case Ast.Call call -> call.args().forEach(a -> collectConstructs(a, out, symbols, bound));
             case Ast.Binary bin -> {
                 collectConstructs(bin.left(), out, symbols, bound);
                 collectConstructs(bin.right(), out, symbols, bound);
@@ -1720,13 +1708,9 @@ public final class TypeChecker {
                 yield Type.union(new java.util.LinkedHashSet<>(List.of("Int", "DivisionByZero")));
             }
             default -> {
-                // A newtype name applied to an argument constructs the wrapper: 金額(500) — the type
-                // name in call position is its constructor (reusing `金額 { value = e }` construction).
-                if (symbols.get(call.fn()) instanceof Ast.Data nt && nt.newtype()) {
-                    yield typeOfNewtypeConstruct(call, nt, env, data, symbols, reqs);
-                }
                 // a function-typed value in scope (a helper's function parameter) applied to
-                // arguments — f(x) (spec §fn-declaration)
+                // arguments — f(x) (spec §fn-declaration). A newtype construction 金額(500) never
+                // reaches here — NewtypeDesugar has lowered it to a NewData literal.
                 if (env.get(call.fn()) instanceof Type.FnOf fn) {
                     if (args.size() != fn.params().size()) {
                         throw new CompileException(call.pos(), "`" + call.fn() + "` takes "
@@ -1771,26 +1755,17 @@ public final class TypeChecker {
     }
 
     /**
-     * {@code 金額(500)} — a newtype name applied to one argument constructs the wrapper, reusing the
-     * record-literal check for {@code 金額 { value = e }}. For an invariant-bearing newtype the
-     * argument must fold to a constant whose invariant holds: such a construction cannot abort, so
-     * it is legal anywhere. A runtime argument to an invariant-bearing newtype is deferred to the
-     * tail construction path (spec §violation-destination) and reported as needing a constant.
+     * The constant a newtype construction wraps, if its {@code value} argument folds — for
+     * {@code 金額(500)} (lowered to {@code 金額 { value = 500 }} by NewtypeDesugar) or the record
+     * form written directly. Empty when the argument is a runtime value or the data is not a
+     * single-{@code value} wrapper (e.g. a product).
      */
-    private static Type typeOfNewtypeConstruct(Ast.Call call, Ast.Data nt, Map<String, Type> env,
-            Ast.Data data, Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
-        if (call.args().size() != 1) {
-            throw new CompileException(call.pos(), "`" + nt.name() + "` wraps one value, but is applied to "
-                    + call.args().size() + " argument(s)");
+    private static Optional<Object> newtypeConstantArg(Ast.NewData nd) {
+        if (nd.spreads().isEmpty() && nd.inits().size() == 1
+                && nd.inits().get(0).name().equals("value")) {
+            return ConstEval.eval(nd.inits().get(0).value());
         }
-        // 金額(500) is the record literal 金額 { value = e } in call form; reuse its construction
-        // check. A constant argument is verified against the invariant after codegen (CTFE): a
-        // violation like 金額(-5) is a compile error there. A runtime argument to an invariant-
-        // bearing newtype is restricted to the behavior's tail and checked at run time via
-        // __construct (forbidInvariantConstruct / spec §violation-destination).
-        return typeOf(new Ast.NewData(nt.name(),
-                List.of(new Ast.FieldInit("value", call.args().get(0), call.pos())), List.of(), call.pos()),
-                env, data, symbols, reqs);
+        return Optional.empty();
     }
 
     /**
@@ -1799,9 +1774,9 @@ public final class TypeChecker {
      * tail restriction and may sit anywhere (e.g. {@code let money = 金額(500)}) — or it fails as a
      * compile error regardless of where it sits.
      */
-    private static boolean isConstantNewtypeConstruct(Ast.Call call, Map<String, Ast.Def> symbols) {
-        return symbols.get(call.fn()) instanceof Ast.Data nt && nt.newtype() && call.args().size() == 1
-                && ConstEval.eval(call.args().get(0)).isPresent();
+    private static boolean isConstantNewtypeConstruct(Ast.NewData nd, Map<String, Ast.Def> symbols) {
+        return symbols.get(nd.typeName()) instanceof Ast.Data nt && nt.newtype()
+                && newtypeConstantArg(nd).isPresent();
     }
 
     private static Type typeOfBinary(Ast.Binary bin, Map<String, Type> env, Ast.Data data,

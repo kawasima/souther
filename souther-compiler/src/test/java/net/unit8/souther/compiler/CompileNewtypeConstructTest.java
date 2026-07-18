@@ -170,6 +170,22 @@ class CompileNewtypeConstructTest {
     }
 
     @Test
+    void theRecordFormOfANewtypeConstructionGetsTheSameVerdict() {
+        // 金額 { value = -5 } is the record spelling of 金額(-5); after the desugar both are one
+        // NewData, so the record form is CTFE-checked too (previously it aborted only at run time)
+        String violate = """
+                module demo
+                data 金額 = Int
+                    invariant value >= 0
+                behavior make : (x: Int) -> 金額 constructs 金額
+                let make (x) = 金額 { value = -5 }
+                """;
+        assertThrows(CompileException.class, () -> Compiler.compile(violate));
+        // and the holding record form is legal in a non-tail let, like the call form
+        Compiler.compile(violate.replace("金額 { value = -5 }", "{\n    let m = 金額 { value = 5 }\n    m\n}"));
+    }
+
+    @Test
     void runtimeInvariantConstructionOutsideTailIsForbidden() {
         // a runtime-argument invariant construction may only be the behavior's result (its abort is
         // the outcome); in a non-tail let binding it is a compile error

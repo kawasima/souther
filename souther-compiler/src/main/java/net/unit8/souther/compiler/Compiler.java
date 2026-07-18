@@ -3,6 +3,7 @@ package net.unit8.souther.compiler;
 import net.unit8.souther.compiler.ast.Ast;
 import net.unit8.souther.compiler.check.Exposing;
 import net.unit8.souther.compiler.check.HelperInliner;
+import net.unit8.souther.compiler.check.NewtypeDesugar;
 import net.unit8.souther.compiler.check.TypeChecker;
 import net.unit8.souther.compiler.codegen.Backend;
 import net.unit8.souther.compiler.derive.Deriver;
@@ -34,6 +35,7 @@ public final class Compiler {
         rejectReservedNamespace(raw);
         Ast.Module module = Deriver.derive(Exposing.rewrite(raw));
         module = HelperInliner.forModule(module).withInlinedInvariants(module);
+        module = NewtypeDesugar.rewrite(module, TypeChecker.symbols(module));
         TypeChecker.check(module);
         Map<String, byte[]> out = Backend.generate(module);
         verifyConstConstructions(module, TypeChecker.symbols(module), out);
@@ -141,6 +143,12 @@ public final class Compiler {
         for (Ast.Module m : parsed) {
             Ast.Module d = Deriver.derive(m, visibleDefs(m, byName));
             derived.put(m.name(), HelperInliner.forModule(d).withInlinedInvariants(d));
+        }
+        // pass 1.5: lower `金額(x)` newtype constructors to NewData (needs every module's defs, so
+        // an imported newtype name resolves) before check and codegen see them
+        for (Ast.Module original : parsed) {
+            Ast.Module m = derived.get(original.name());
+            derived.put(original.name(), NewtypeDesugar.rewrite(m, visibleDefs(m, derived)));
         }
         // pass 2: type-check and generate against the derived (codec-bearing) defs
         Map<String, byte[]> out = new LinkedHashMap<>();
