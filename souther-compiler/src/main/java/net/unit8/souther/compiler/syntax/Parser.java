@@ -515,7 +515,35 @@ public final class Parser {
     // --- expressions ---
 
     private Ast.Expr parseExpr() {
-        return parseOr();
+        return parsePipe();
+    }
+
+    /** The value pipe {@code |>} binds looser than everything else and is left-associative, so
+     * {@code a |> f |> g} reads {@code g(f(a))}. It desugars here, at parse time (like {@code require}
+     * → {@code if}), so no later pass sees a pipe: the left operand becomes the last argument of the
+     * right-hand call. {@code e |> f(a)} is {@code f(a, e)}, {@code e |> f} is {@code f(e)}. */
+    private Ast.Expr parsePipe() {
+        Ast.Expr left = parseOr();
+        while (check(TokenType.VPIPE)) {
+            advance();
+            Ast.Expr right = parseOr();
+            if (right instanceof Ast.Call c) {
+                List<Ast.Expr> args = new ArrayList<>(c.args());
+                args.add(left);
+                left = new Ast.Call(c.fn(), args, c.pos());
+            } else if (right instanceof Ast.Var v) {
+                left = new Ast.Call(v.name(), List.of(left), v.pos());
+            } else if (right instanceof Ast.FieldAccess fa && fa.target() instanceof Ast.Var base) {
+                // a qualified function name written without parens, e.g. `x |> List.sort`: a dotted
+                // name with no `(` parsed as a field access, but in pipe position it names the
+                // function to call, folded into `Module.name` as a parenthesized call would be.
+                left = new Ast.Call(base.name() + "." + fa.field(), List.of(left), fa.pos());
+            } else {
+                throw new CompileException(right.pos(),
+                        "the right side of `|>` must be a function call or a function name");
+            }
+        }
+        return left;
     }
 
     private Ast.Expr parseOr() {

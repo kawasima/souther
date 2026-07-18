@@ -35,7 +35,7 @@ class CompileLambdaToFnParamTest {
                 constructs Result
 
             let check (o) = Result { ok = anyOf(o.qtys, x -> x > 0) }
-            let anyOf (xs: List<Int>, p: (Int) -> Bool) = not(all(xs, y -> not(p(y))))
+            let anyOf (xs: List<Int>, p: (Int) -> Bool) = not(all(y -> not(p(y)), xs))
             """;
 
     private BytesClassLoader loader() {

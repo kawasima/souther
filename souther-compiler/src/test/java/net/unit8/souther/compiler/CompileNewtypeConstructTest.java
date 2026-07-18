@@ -89,6 +89,27 @@ class CompileNewtypeConstructTest {
     }
 
     @Test
+    void constantWithAContainsInvariantIsCheckedInTheRightArgumentOrder() throws Exception {
+        // ConstEval runs `contains("@", value)` at compile time; the string searched is the last
+        // argument (spec §pipe). A constant that satisfies the invariant compiles and encodes.
+        String ok = """
+                module demo
+                import String { contains }
+                data Email = String
+                    invariant contains("@", value)
+                behavior make : (x: Int) -> Email constructs Email
+                let make (x) = Email("a@b.com")
+                """;
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(ok), getClass().getClassLoader());
+        assertEquals("a@b.com", encode(loader, "Email", apply(loader, "Make", 0L)));
+
+        // and a constant that does not contain "@" is rejected at compile time (not "@".contains(...))
+        String bad = ok.replace("Email(\"a@b.com\")", "Email(\"nope\")");
+        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(bad));
+        assertTrue(e.getMessage().contains("Email"), e.getMessage());
+    }
+
+    @Test
     void noInvariantNewtypeWrapsARuntimeValue() throws Exception {
         BytesClassLoader loader = loader();
         Decoder dec = (Decoder) loader.loadClass("demo.Tag").getMethod("decoder").invoke(null);

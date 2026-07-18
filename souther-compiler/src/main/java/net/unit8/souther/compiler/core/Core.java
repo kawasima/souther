@@ -148,8 +148,9 @@ public sealed interface Core {
     }
 
     private static Core ofCall(Ast.Call c) {
-        if (c.fn().equals(FOLD) && c.args().size() == 3 && c.args().get(2) instanceof Ast.Block block) {
-            return new Fold(of(c.args().get(0)), of(c.args().get(1)), block.params(),
+        if (c.fn().equals(FOLD) && c.args().size() == 3 && c.args().get(0) instanceof Ast.Block block) {
+            // fold(step, seed, xs): the step block is first, the list last (F#/Elm order, spec §pipe)
+            return new Fold(of(c.args().get(2)), of(c.args().get(1)), block.params(),
                     of(block.body()), c.pos());
         }
         return new Call(c.fn(), ofAll(c.args()), c.pos());

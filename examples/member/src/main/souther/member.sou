@@ -10,7 +10,7 @@ data 会員ID = String
 
 // メールアドレス = 文字列 // @ を含む
 data メールアドレス = String
-    invariant contains(value, "@")
+    invariant contains("@", value)
 
 // --- 会員（直積）---
 data 会員 = {

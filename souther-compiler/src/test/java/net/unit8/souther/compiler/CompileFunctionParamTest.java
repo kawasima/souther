@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * A helper {@code fn} may take a function-typed parameter {@code p: (A) -> B} and pass it on to a
- * combinator (spec §fn-declaration, {@code let 適用する (xs: List<Int>, p: (Int) -> Bool) = all(xs, p)}).
+ * combinator (spec §fn-declaration, {@code let 適用する (xs: List<Int>, p: (Int) -> Bool) = all(p, xs)}).
  * Because the function is only passed — never returned or stored — the call site is expanded inline,
  * so no runtime closure is built.
  */
@@ -35,7 +35,7 @@ class CompileFunctionParamTest {
 
             let check (o) = Result { ok = applyAll(o.qtys, positive) }
 
-            let applyAll (xs: List<Int>, p: (Int) -> Bool) = all(xs, p)
+            let applyAll (xs: List<Int>, p: (Int) -> Bool) = all(p, xs)
             let positive (x: Int) = x > 0
             """;
 

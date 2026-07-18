@@ -204,6 +204,9 @@ public final class Lexer {
                 break;
             case '|':
                 if (match('|')) return new Token(TokenType.OR, "||", start);
+                // `|>` is the value pipe (spec §pipe): it feeds its left operand into the right-hand
+                // call as its last argument. `>->` (PIPEFWD) composes behaviors; this composes values.
+                if (match('>')) return new Token(TokenType.VPIPE, "|>", start);
                 return new Token(TokenType.PIPE, "|", start);
             case '-':
                 if (match('>')) return new Token(TokenType.ARROW, "->", start);

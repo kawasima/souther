@@ -18,7 +18,7 @@ class CompileConstructsOptionalTest {
             module demo
             import String { contains }
             data Email = String
-                invariant contains(value, "@")
+                invariant contains("@", value)
             data Member = { email: Email }
             data Audit = { at: String }
             """;
@@ -37,7 +37,7 @@ class CompileConstructsOptionalTest {
         // builds Member and Audit but declares only Member — the missing Audit is E1002
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(BASE + """
                 behavior make : (e: Email) -> Member | Audit constructs Member
-                let make (e) = if contains(e.value, "x") then Audit { at = "now" } else Member { email = e }
+                let make (e) = if contains("x", e.value) then Audit { at = "now" } else Member { email = e }
                 """));
         assertEquals("E1002", e.code());
     }

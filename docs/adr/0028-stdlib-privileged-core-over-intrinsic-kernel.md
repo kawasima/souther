@@ -38,10 +38,10 @@ Concretely:
   primitive for each key. Writing an `intrinsic` body is a privilege of `core`.
 - The derivable layer is written in Souther over the kernel. The one irreducible loop is
   `fold`, and the four combinators are `souther.list` helpers over it:
-  `let all (xs: List<'a>, p: ('a) -> Bool) = fold(xs, true, (acc, x) -> acc && p(x))`, and
+  `let all (p: ('a) -> Bool, xs: List<'a>) = fold((acc, x) -> acc && p(x), true, xs)`, and
   `map`/`filter` the same, seeding an empty list `[]` and growing it. Each expands inline at
-  its call site, where its type variables resolve to concrete types, so `map(xs, x -> ...)`
-  reads exactly as the built-in did. String functions stay largely intrinsic, since Souther
+  its call site, where its type variables resolve to concrete types, so `map(x -> ..., xs)`
+  reads exactly as the built-in did. (Argument order is F#/Elm — main object last — per ADR-0034.) String functions stay largely intrinsic, since Souther
   has no `Char` and index recursion over a string is not worth writing — Elm keeps most of
   `String` in the Kernel for the same reason.
 - Generics and recursion are opened, but only inside `core`. A type variable is `'a`
@@ -87,9 +87,10 @@ call site, so it points at the user's call. The message still names the derivati
 combinator-level message would need argument type-checking against the declared parameter,
 which is left for later.
 
-The value pipe `|>` is not adopted alongside this. Souther's combinators take the collection
-first (`map(xs, f)`), where Elm and F# take it last precisely so `|>` threads, and the
-behavior level already composes with `>->`.
+> **Amended by ADR-0034.** This ADR originally left the value pipe `|>` out and kept the
+> collection-first argument order (`map(xs, f)`), reasoning that `>->` already composes at the
+> behavior level. ADR-0034 reverses both: the stdlib now takes its main object last
+> (`map(f, xs)`, the F#/Elm order that lets `|>` thread), and `|>` pipes a value through it.
 
 ## References
 

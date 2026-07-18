@@ -127,9 +127,10 @@ final class ConstEval {
                 }
             }
             case "contains", "String.contains" -> {
+                // contains(sub, s): the string being searched is the last argument (spec §pipe)
                 if (args.size() == 2
-                        && eval(args.get(0)).orElse(null) instanceof String s
-                        && eval(args.get(1)).orElse(null) instanceof String sub) {
+                        && eval(args.get(0)).orElse(null) instanceof String sub
+                        && eval(args.get(1)).orElse(null) instanceof String s) {
                     return Optional.of(s.contains(sub));
                 }
             }

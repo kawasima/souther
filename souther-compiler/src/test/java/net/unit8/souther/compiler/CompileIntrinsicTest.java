@@ -75,7 +75,7 @@ class CompileIntrinsicTest {
                 behavior firstValue : (s: Store) -> Out constructs Out
 
                 let firstValue (s) =
-                    match get(values(s.byName), 0) with
+                    match get(0, values(s.byName)) with
                         | Some as x -> Out { n = x.n }
                         | None -> Out { n = 0 }
                 """;

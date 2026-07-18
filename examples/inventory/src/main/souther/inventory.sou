@@ -33,9 +33,9 @@ let 金額 (p: 品目) = p.数量 * p.単価
 let 棚卸する (在) = {
     require length(在.品目リスト) >= 1 else 空在庫
     棚卸 {
-        総額 = sum(map(在.品目リスト, 金額)),
-        コード一覧 = sort(map(在.品目リスト, p -> p.コード.value)),
-        品切れなし = isEmpty(filter(在.品目リスト, p -> p.数量 == 0))
+        総額 = sum(map(金額, 在.品目リスト)),
+        コード一覧 = sort(map(p -> p.コード.value, 在.品目リスト)),
+        品切れなし = isEmpty(filter(p -> p.数量 == 0, 在.品目リスト))
     }
 }
 
@@ -45,4 +45,4 @@ data 取扱 = { あり: Bool }
 behavior 取扱う : (在: 在庫, 照会: 品目コード) -> 取扱
     constructs 取扱
 
-let 取扱う (在, 照会) = 取扱 { あり = member(map(在.品目リスト, p -> p.コード.value), 照会.value) }
+let 取扱う (在, 照会) = 取扱 { あり = member(照会.value, map(p -> p.コード.value, 在.品目リスト)) }

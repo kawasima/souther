@@ -15,8 +15,8 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * A named helper fn may be passed to a list combinator by name: {@code all(xs, positive)} is the
- * same as {@code all(xs, x -> positive(x))} (spec 12.5, lines 918-921). The bare name is desugared
+ * A named helper fn may be passed to a list combinator by name: {@code all(positive, xs)} is the
+ * same as {@code all(x -> positive(x), xs)} (spec 12.5, lines 918-921). The bare name is desugared
  * to a block wrapping the call, which is then expanded inline like any other helper call.
  */
 class CompileHelperByNameTest {
@@ -31,7 +31,7 @@ class CompileHelperByNameTest {
             behavior check : (o: Order) -> Result
                 constructs Result
 
-            let check (o) = Result { ok = all(o.qtys, positive), n = length(o.qtys) }
+            let check (o) = Result { ok = all(positive, o.qtys), n = length(o.qtys) }
 
             let positive (x: Int) = x > 0
             """;
@@ -59,5 +59,29 @@ class CompileHelperByNameTest {
         assertEquals(Boolean.TRUE, run(loader, check, List.of(1L, 2L, 3L)).get("ok"));
         assertEquals(Boolean.FALSE, run(loader, check, List.of(1L, -2L, 3L)).get("ok"));
         assertEquals(3L, run(loader, check, List.of(1L, 2L, 3L)).get("n"));
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void foldWithAHelperStepPassedByName() throws Exception {
+        // fold's block is its first argument (spec §pipe); a named 2-arg helper stands in for it and
+        // desugars to `($b0, $b1) -> add($b0, $b1)`, which the inliner then expands.
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
+                module demo
+                import List { fold }
+
+                data In = { ns: List<Int> }
+                data Out = { total: Int }
+
+                behavior run : (i: In) -> Out constructs Out
+
+                let add (acc: Int, x: Int) = acc + x
+                let run (i) = Out { total = fold(add, 0, i.ns) }
+                """), getClass().getClassLoader());
+        Decoder d = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
+        Object in = ((Ok) d.decode(Map.of("ns", List.of(1L, 2L, 3L)), Path.ROOT)).value();
+        Object out = ((Behavior) loader.loadClass("demo.Run").getDeclaredConstructor().newInstance()).apply(in);
+        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
+        assertEquals(6L, ((Map<?, ?>) enc.encode(out)).get("total"));
     }
 }

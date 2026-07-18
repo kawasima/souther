@@ -41,7 +41,7 @@ class CompileListLibTest {
                     reversed = reverse(i.ns),
                     total = sum(i.ns),
                     prod = product(i.ns),
-                    hasTwo = member(i.ns, 2),
+                    hasTwo = member(2, i.ns),
                     none = isEmpty(i.ns)
                 }
                 """), getClass().getClassLoader());

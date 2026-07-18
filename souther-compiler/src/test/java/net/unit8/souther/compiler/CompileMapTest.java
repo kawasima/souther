@@ -51,8 +51,8 @@ class CompileMapTest {
                 behavior lookupA : (s: Scores) -> Answer constructs Answer
 
                 let lookupA (s) =
-                    match get(s.byName, "a") with
-                        | Some as v -> Answer { found = containsKey(s.byName, "a"), value = v }
+                    match get("a", s.byName) with
+                        | Some as v -> Answer { found = containsKey("a", s.byName), value = v }
                         | None -> Answer { found = false, value = 0 }
                 """), getClass().getClassLoader());
 

@@ -1662,12 +1662,13 @@ public final class TypeChecker {
             // (ADR-0028, souther.list), so a call to one is expanded inline before it reaches here.
             case Core.FOLD -> {
                 arity(call, 3);
-                Type src = typeOf(args.get(0), env, data, symbols, reqs);
+                // fold(step, seed, xs): step block first, list last (F#/Elm order, spec §pipe)
+                Type src = typeOf(args.get(2), env, data, symbols, reqs);
                 if (!(src instanceof Type.ListOf lo)) {
                     throw new CompileException(call.pos(), "fold expects a List, got " + src);
                 }
                 Type acc = typeOf(args.get(1), env, data, symbols, reqs);
-                Type bt = blockType(call, args.get(2), List.of(acc, lo.element()), env, data, symbols, reqs);
+                Type bt = blockType(call, args.get(0), List.of(acc, lo.element()), env, data, symbols, reqs);
                 if (acc.equals(Type.EMPTY_LIST)) {
                     // the seed is `[]`; the accumulator's type is the list the block grows (ADR-0028)
                     if (!(bt instanceof Type.ListOf)) {
@@ -1684,20 +1685,20 @@ public final class TypeChecker {
             }
             case "List.get" -> {
                 arity(call, 2);
-                Type first = typeOf(args.get(0), env, data, symbols, reqs);
+                Type first = typeOf(args.get(1), env, data, symbols, reqs);   // get(index, xs): list last
                 if (!(first instanceof Type.ListOf lo)) {
                     throw new CompileException(call.pos(), "List.get expects a List, got " + first);
                 }
-                requireType(args.get(1), Type.INT, env, data, symbols, reqs, "index of List.get");
+                requireType(args.get(0), Type.INT, env, data, symbols, reqs, "index of List.get");
                 yield Type.option(lo.element());
             }
             case "Map.get" -> {
                 arity(call, 2);
-                Type first = typeOf(args.get(0), env, data, symbols, reqs);
+                Type first = typeOf(args.get(1), env, data, symbols, reqs);   // get(key, m): map last
                 if (!(first instanceof Type.MapOf mo)) {
                     throw new CompileException(call.pos(), "Map.get expects a Map, got " + first);
                 }
-                requireType(args.get(1), Type.STRING, env, data, symbols, reqs, "key of Map.get");
+                requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "key of Map.get");
                 yield Type.option(mo.value());
             }
             case "Int.add", "Int.subtract", "Int.multiply",
@@ -1901,7 +1902,7 @@ public final class TypeChecker {
                 return fn.result();
             }
             throw new CompileException(arg.pos(),
-                    call.fn() + " expects a block, e.g. `" + call.fn() + "(xs, x -> ...)` (spec 12.5)");
+                    call.fn() + " expects a block, e.g. `" + call.fn() + "((acc, x) -> ..., seed, xs)` (spec 12.5)");
         }
         if (block.params().size() != paramTypes.size()) {
             throw new CompileException(block.pos(),

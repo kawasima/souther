@@ -29,12 +29,12 @@ behavior 見積る : (c: カート) -> 見積 | 空カート | 数量不正
 
 let 見積る (c) = {
     require length(対象明細(c)) >= 1 else 空カート
-    require all(対象明細(c), m -> m.数量 >= 1)
-        else 数量不正 { 不正件数 = length(filter(対象明細(c), m -> m.数量 < 1)) }
+    require all(m -> m.数量 >= 1, 対象明細(c))
+        else 数量不正 { 不正件数 = length(filter(m -> m.数量 < 1, 対象明細(c))) }
     見積 {
         合計金額 = 合計(対象明細(c)),
         品目数 = length(対象明細(c)),
-        高額あり = any(対象明細(c), m -> m.単価 >= 100000)
+        高額あり = any(m -> m.単価 >= 100000, 対象明細(c))
     }
 }
 
@@ -43,4 +43,4 @@ let 対象明細 (c: カート) = if c.受付中 then c.明細リスト else []
 
 // 各明細の金額を出し（map）、fold で合計する。金額 は明細1件を Int に写す純粋なヘルパー。
 let 金額 (m: 明細) = m.数量 * m.単価
-let 合計 (xs: List<明細>) = fold(map(xs, 金額), 0, (acc, x) -> acc + x)
+let 合計 (xs: List<明細>) = fold((acc, x) -> acc + x, 0, map(金額, xs))

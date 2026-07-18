@@ -4,4 +4,4 @@ module example.email
 import String { contains }
 
 data Email = String
-    invariant contains(value, "@")
+    invariant contains("@", value)

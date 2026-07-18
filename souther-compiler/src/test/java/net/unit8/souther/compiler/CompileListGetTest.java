@@ -29,7 +29,7 @@ class CompileListGetTest {
             behavior firstValue : (b: Bag) -> Label constructs Label
 
             let firstValue (b) =
-                match get(b.items, 0) with
+                match get(0, b.items) with
                     | Some as x -> Label { value = x.value }
                     | None -> Label { value = "none" }
             """;

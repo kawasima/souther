@@ -94,11 +94,13 @@ public final class HelperInliner {
         return helpers.get(name);
     }
 
-    /** {@code fold} is the one privileged loop primitive that takes a block (spec 18.4); its block has
-     * two parameters. A bare name passed in its place is sugar for a block that wraps a call. The
-     * other combinators (map/filter/all/any) are ordinary prelude helpers derived from fold
-     * (ADR-0028), so they need no such desugaring — a name reaches their function parameter directly. */
-    private static final Map<String, Integer> BLOCK_ARITY = Map.of("List.fold", 2);
+    /** {@code fold} is the one privileged loop primitive that takes a block (spec 18.4); its block is
+     * the first argument and has two parameters (`(acc, x)`, spec §pipe). A bare name passed in its
+     * place is sugar for a block that wraps a call. The map is from the combinator name to the block's
+     * argument index. The other combinators (map/filter/all/any) are ordinary prelude helpers derived
+     * from fold (ADR-0028), so they need no such desugaring — a name reaches their function parameter
+     * directly. */
+    private static final Map<String, Integer> BLOCK_ARG = Map.of("List.fold", 0);
 
     /** Rewrites every helper call in {@code e} to its inlined body. */
     public Ast.Expr inline(Ast.Expr e) {
@@ -239,19 +241,18 @@ public final class HelperInliner {
     }
 
     /**
-     * A helper fn passed to a list combinator by name is sugar for a block that wraps a call:
-     * {@code all(xs, positive)} becomes {@code all(xs, $b0 -> positive($b0))} (spec 12.5, "名前で
-     * 直接渡す。同じこと"). The generated block has one parameter per helper parameter, so a later
-     * arity check against the combinator (e.g. {@code fold} wants two) still applies. The block is
-     * then expanded inline like any other helper call.
+     * A helper fn passed to {@code fold} by name is sugar for a block that wraps a call:
+     * {@code List.fold(step, seed, xs)} with a named {@code step} becomes
+     * {@code List.fold(($b0, $b1) -> step($b0, $b1), seed, xs)} (spec 12.5, "名前で直接渡す。同じこと").
+     * The generated block has one parameter per helper parameter, so a later arity check against
+     * {@code fold} (it wants two) still applies. The block is then expanded inline like any other
+     * helper call. Only {@code fold} needs this — map/filter/all/any are helpers whose function
+     * parameter the inliner binds directly (see {@link #inline}).
      */
     private Ast.Call desugarNamedBlock(Ast.Call call) {
-        Integer arity = BLOCK_ARITY.get(call.fn());
-        if (arity == null) {
-            return call;
-        }
-        int idx = call.args().size() - 1;   // the block is the last argument of every combinator
-        if (idx < 0 || !(call.args().get(idx) instanceof Ast.Var v)) {
+        Integer idx = BLOCK_ARG.get(call.fn());
+        if (idx == null || idx >= call.args().size()
+                || !(call.args().get(idx) instanceof Ast.Var v)) {
             return call;
         }
         Ast.FnDef helper = helpers.get(v.name());

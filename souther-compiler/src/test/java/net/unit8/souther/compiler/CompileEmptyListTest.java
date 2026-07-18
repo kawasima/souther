@@ -51,7 +51,7 @@ class CompileEmptyListTest {
                 behavior work : (i: In) -> Out constructs Out
 
                 let work (i) = Out { ys = copy(i.xs) }
-                let copy (xs: List<Int>) = fold(xs, [], (acc, x) -> acc ++ [x])
+                let copy (xs: List<Int>) = fold((acc, x) -> acc ++ [x], [], xs)
                 """;
         BytesClassLoader loader = loader(module);
         Object in = decode(loader, "In", Map.of("xs", List.of(1L, 2L, 3L)));
@@ -94,7 +94,7 @@ class CompileEmptyListTest {
 
                 behavior work : (i: In) -> Out constructs Out
 
-                let work (i) = Out { total = fold(map(i.xs, dbl), 0, (acc, x) -> acc + x) }
+                let work (i) = Out { total = fold((acc, x) -> acc + x, 0, map(dbl, i.xs)) }
                 let dbl (n: Int) = n * 2
                 """;
         BytesClassLoader loader = loader(module);

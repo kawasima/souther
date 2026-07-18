@@ -2428,31 +2428,31 @@ public final class Backend {
                     return Type.STRING;
                 }
                 case "string.contains" -> {
+                    genExpr(call.args().get(1));         // contains(sub, s): the string is the receiver
                     genExpr(call.args().get(0));
-                    genExpr(call.args().get(1));
                     code.invokevirtual(CD_String, "contains",
                             MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_CharSequence));
                     return Type.BOOL;
                 }
                 case "string.startsWith" -> {
+                    genExpr(call.args().get(1));         // startsWith(prefix, s): the string is the receiver
                     genExpr(call.args().get(0));
-                    genExpr(call.args().get(1));
                     code.invokevirtual(CD_String, "startsWith",
                             MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_String));
                     return Type.BOOL;
                 }
                 case "string.endsWith" -> {
+                    genExpr(call.args().get(1));         // endsWith(suffix, s): the string is the receiver
                     genExpr(call.args().get(0));
-                    genExpr(call.args().get(1));
                     code.invokevirtual(CD_String, "endsWith",
                             MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_String));
                     return Type.BOOL;
                 }
                 case "string.substring" -> {
+                    genExpr(call.args().get(2));         // substring(from, to, s): the string is the receiver
                     genExpr(call.args().get(0));
-                    genExpr(call.args().get(1));
                     code.l2i();                          // Int is a long; substring takes int indices
-                    genExpr(call.args().get(2));
+                    genExpr(call.args().get(1));
                     code.l2i();
                     code.invokevirtual(CD_String, "substring",
                             MethodTypeDesc.of(CD_String, ConstantDescs.CD_int, ConstantDescs.CD_int));
@@ -2465,21 +2465,21 @@ public final class Backend {
                     return Type.STRING;
                 }
                 case "string.split" -> {
+                    genExpr(call.args().get(1));         // split(sep, s): string then separator (Strings.split)
                     genExpr(call.args().get(0));
-                    genExpr(call.args().get(1));
                     code.invokestatic(CD_Strings, "split", MTD_Strings_split);
                     return Type.list(Type.STRING);
                 }
                 case "string.join" -> {
+                    genExpr(call.args().get(1));         // join(sep, xs): list then separator (Strings.join)
                     genExpr(call.args().get(0));
-                    genExpr(call.args().get(1));
                     code.invokestatic(CD_Strings, "join", MTD_Strings_join);
                     return Type.STRING;
                 }
                 case "string.replace" -> {
+                    genExpr(call.args().get(2));         // replace(target, replacement, s): string, target, replacement
                     genExpr(call.args().get(0));
                     genExpr(call.args().get(1));
-                    genExpr(call.args().get(2));
                     code.invokestatic(CD_Strings, "replace", MTD_Strings_replace);
                     return Type.STRING;
                 }
@@ -2499,8 +2499,8 @@ public final class Backend {
                     return at;
                 }
                 case "map.containsKey" -> {
+                    genExpr(call.args().get(1));         // containsKey(key, m): map then key (Maps.containsKey)
                     genExpr(call.args().get(0));
-                    genExpr(call.args().get(1));
                     code.invokestatic(CD_Maps, "containsKey",
                             MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_Map, CD_String));
                     return Type.BOOL;
@@ -2539,15 +2539,15 @@ public final class Backend {
                     return Type.INT;
                 }
                 case "List.get" -> {
-                    Type ct = genExpr(call.args().get(0));
-                    genExpr(call.args().get(1));                // long index
+                    Type ct = genExpr(call.args().get(1));      // get(index, xs): list then index (Lists.get)
+                    genExpr(call.args().get(0));                // long index
                     code.invokestatic(CD_Lists, "get",
                             MethodTypeDesc.of(CD_Option, CD_List, ConstantDescs.CD_long));
                     return Type.option(((Type.ListOf) ct).element());
                 }
                 case "Map.get" -> {
-                    Type ct = genExpr(call.args().get(0));
-                    genExpr(call.args().get(1));                // String key
+                    Type ct = genExpr(call.args().get(1));      // get(key, m): map then key (Maps.get)
+                    genExpr(call.args().get(0));                // String key
                     code.invokestatic(CD_Maps, "get", MethodTypeDesc.of(CD_Option, CD_Map, CD_String));
                     return Type.option(((Type.MapOf) ct).value());
                 }

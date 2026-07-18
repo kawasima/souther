@@ -4,25 +4,29 @@ module souther.list
 // is a helper expanded inline at its call site, where the type variables resolve to the concrete
 // argument types — no polymorphic method is emitted. `map`/`filter` seed the empty list `[]` and
 // grow it as the block runs; `all`/`any` fold a `Bool`. Passing a lambda to the `f`/`p` parameter is
-// fine: it is β-reduced inside the fold, so `List.map(xs, x -> ...)` reads as a loop would.
+// fine: it is β-reduced inside the fold, so `List.map(x -> ..., xs)` reads as a loop would.
+//
+// Argument order follows F#/Elm (spec §pipe): the function or predicate comes first and the list —
+// the value being transformed — comes last, so `xs |> List.map(f) |> List.filter(p)` reads top to
+// bottom. `List.fold(step, seed, xs)` likewise takes the list last; its step keeps `(acc, x)`.
 //
 // Names are qualified (`List.fold`, `List.length`): the standard library carries no bare names — you
 // reach it through `List.`/`String.`/`Map.`/`Bool.` (spec §stdlib). `++` and `==` are operators, so
 // they stay bare, and `f(x)` calls a parameter, not the library.
-let map (xs: List<'a>, f: ('a) -> 'b) = List.fold(xs, [], (acc, x) -> acc ++ [f(x)])
-let filter (xs: List<'a>, keep: ('a) -> Bool) = List.fold(xs, [], (acc, x) -> if keep(x) then acc ++ [x] else acc)
-let all (xs: List<'a>, p: ('a) -> Bool) = List.fold(xs, true, (acc, x) -> acc && p(x))
-let any (xs: List<'a>, p: ('a) -> Bool) = List.fold(xs, false, (acc, x) -> acc || p(x))
+let map (f: ('a) -> 'b, xs: List<'a>) = List.fold((acc, x) -> acc ++ [f(x)], [], xs)
+let filter (keep: ('a) -> Bool, xs: List<'a>) = List.fold((acc, x) -> if keep(x) then acc ++ [x] else acc, [], xs)
+let all (p: ('a) -> Bool, xs: List<'a>) = List.fold((acc, x) -> acc && p(x), true, xs)
+let any (p: ('a) -> Bool, xs: List<'a>) = List.fold((acc, x) -> acc || p(x), false, xs)
 
 // More of Elm's List module, still derived from `List.fold`. `reverse` grows the accumulator
 // front-first; `sum`/`product` fold a number; `concat` folds with `++`; `member` folds a Bool using
 // `==` (so it works over any comparable element); `isEmpty` reads the length. `List.concat` and
 // `String.concat` are distinct now that names are qualified.
-let reverse (xs: List<'a>) = List.fold(xs, [], (acc, x) -> [x] ++ acc)
-let sum (xs: List<Int>) = List.fold(xs, 0, (acc, x) -> acc + x)
-let product (xs: List<Int>) = List.fold(xs, 1, (acc, x) -> acc * x)
-let concat (xss: List<List<'a>>) = List.fold(xss, [], (acc, xs) -> acc ++ xs)
-let member (xs: List<'a>, e: 'a) = List.fold(xs, false, (acc, x) -> acc || x == e)
+let reverse (xs: List<'a>) = List.fold((acc, x) -> [x] ++ acc, [], xs)
+let sum (xs: List<Int>) = List.fold((acc, x) -> acc + x, 0, xs)
+let product (xs: List<Int>) = List.fold((acc, x) -> acc * x, 1, xs)
+let concat (xss: List<List<'a>>) = List.fold((acc, xs) -> acc ++ xs, [], xss)
+let member (e: 'a, xs: List<'a>) = List.fold((acc, x) -> acc || x == e, false, xs)
 let isEmpty (xs: List<'a>) = List.length(xs) == 0
 
 // `sort` orders by the elements' natural order (Elm `List.sort`). Like Elm it is a native
