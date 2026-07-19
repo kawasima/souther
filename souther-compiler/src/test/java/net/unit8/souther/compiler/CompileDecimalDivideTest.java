@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -40,12 +33,10 @@ class CompileDecimalDivideTest {
                     | DivisionByZero -> Out { value = p.a, ok = false }
             """;
 
-    @SuppressWarnings("unchecked")
     private static Object apply(BigDecimal a, BigDecimal b, BytesClassLoader loader) throws Exception {
-        Decoder pairDec = (Decoder) loader.loadClass("demo.Pair").getMethod("decoder").invoke(null);
-        Object p = ((Ok) pairDec.decode(Map.of("a", a, "b", b), Path.ROOT)).value();
+        Object p = Codecs.decoded(loader, "demo.Pair", Map.of("a", a, "b", b));
         Object divv = loader.loadClass("demo.Divv").getConstructor().newInstance();
-        return ((Behavior<Object, Object>) divv).apply(p);
+        return Codecs.apply(divv, p);
     }
 
     @Test
@@ -54,8 +45,7 @@ class CompileDecimalDivideTest {
                 new BytesClassLoader(Compiler.compile(MODULE), CompileDecimalDivideTest.class.getClassLoader());
         // 7 / 3 = 2.333..., HALF_UP at scale 2 = 2.33
         Object out = apply(new BigDecimal("7"), new BigDecimal("3"), loader);
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        Map<?, ?> m = (Map<?, ?>) enc.encode(out);
+        Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals(new BigDecimal("2.33"), m.get("value"));
         assertEquals(true, m.get("ok"));
     }
@@ -65,8 +55,7 @@ class CompileDecimalDivideTest {
         BytesClassLoader loader =
                 new BytesClassLoader(Compiler.compile(MODULE), CompileDecimalDivideTest.class.getClassLoader());
         Object out = apply(new BigDecimal("7"), new BigDecimal("0"), loader);
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        Map<?, ?> m = (Map<?, ?>) enc.encode(out);
+        Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals(false, m.get("ok"));
     }
 

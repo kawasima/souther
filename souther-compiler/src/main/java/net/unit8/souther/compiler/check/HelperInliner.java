@@ -236,11 +236,11 @@ public final class HelperInliner {
             case Ast.TupleGet tg -> new Ast.TupleGet(inline(tg.tuple()), tg.index(), tg.arity(), tg.pos());
             case Ast.ListComp comp -> new Ast.ListComp(inline(comp.element()), inlineList(comp.guards()), comp.pos());
             case Ast.Block block -> new Ast.Block(block.params(), inline(block.body()), block.pos());
-            case Ast.IntLit ignored -> e;
-            case Ast.DecimalLit ignored -> e;
-            case Ast.StringLit ignored -> e;
-            case Ast.BoolLit ignored -> e;
-            case Ast.Var ignored -> e;
+            case Ast.IntLit _ -> e;
+            case Ast.DecimalLit _ -> e;
+            case Ast.StringLit _ -> e;
+            case Ast.BoolLit _ -> e;
+            case Ast.Var _ -> e;
         };
     }
 
@@ -363,10 +363,10 @@ public final class HelperInliner {
                 }
                 yield new Ast.Block(freshParams, rename(block.body(), inner, fnParams, at), at(at, block.pos()));
             }
-            case Ast.IntLit ignored -> e;
-            case Ast.DecimalLit ignored -> e;
-            case Ast.StringLit ignored -> e;
-            case Ast.BoolLit ignored -> e;
+            case Ast.IntLit _ -> e;
+            case Ast.DecimalLit _ -> e;
+            case Ast.StringLit _ -> e;
+            case Ast.BoolLit _ -> e;
         };
     }
 
@@ -485,11 +485,11 @@ public final class HelperInliner {
                 f.accept(li.body());
             }
             case Ast.Block block -> f.accept(block.body());
-            case Ast.IntLit ignored -> { }
-            case Ast.DecimalLit ignored -> { }
-            case Ast.StringLit ignored -> { }
-            case Ast.BoolLit ignored -> { }
-            case Ast.Var ignored -> { }
+            case Ast.IntLit _ -> { }
+            case Ast.DecimalLit _ -> { }
+            case Ast.StringLit _ -> { }
+            case Ast.BoolLit _ -> { }
+            case Ast.Var _ -> { }
         }
     }
 }

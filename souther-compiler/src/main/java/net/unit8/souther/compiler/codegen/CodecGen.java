@@ -19,7 +19,6 @@ import java.lang.constant.MethodHandleDesc;
 import java.lang.constant.MethodTypeDesc;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -288,17 +287,17 @@ final class CodecGen {
 
     private static ClassDesc rawOutputType(Ast.RawExpr raw) {
         return switch (raw) {
-            case Ast.TextRaw ignored -> CD_String;
-            case Ast.IsoTextRaw ignored -> CD_String;
-            case Ast.IntRaw ignored -> CD_Long;
-            case Ast.BoolRaw ignored -> CD_Boolean;
-            case Ast.DecimalRaw ignored -> CD_BigDecimal;
-            case Ast.ObjectRaw ignored -> CD_Map;
-            case Ast.EncodeRaw ignored -> CD_Object;
-            case Ast.OptionRaw ignored -> CD_Object;
-            case Ast.ListEnc ignored -> CD_Object;
-            case Ast.SetEnc ignored -> CD_Object;
-            case Ast.MapEnc ignored -> CD_Object;
+            case Ast.TextRaw _ -> CD_String;
+            case Ast.IsoTextRaw _ -> CD_String;
+            case Ast.IntRaw _ -> CD_Long;
+            case Ast.BoolRaw _ -> CD_Boolean;
+            case Ast.DecimalRaw _ -> CD_BigDecimal;
+            case Ast.ObjectRaw _ -> CD_Map;
+            case Ast.EncodeRaw _ -> CD_Object;
+            case Ast.OptionRaw _ -> CD_Object;
+            case Ast.ListEnc _ -> CD_Object;
+            case Ast.SetEnc _ -> CD_Object;
+            case Ast.MapEnc _ -> CD_Object;
         };
     }
 
@@ -428,7 +427,7 @@ final class CodecGen {
                 }
             }
             case Ast.NewtypeDecoder nt -> collectKeyedMapTypes(nt.inner(), out);
-            case Ast.PrimDecoder ignored -> { }
+            case Ast.PrimDecoder _ -> { }
         }
     }
 
@@ -443,8 +442,8 @@ final class CodecGen {
             case Ast.ListDecRef l -> collectKeyedMapTypes(l.element(), out);
             case Ast.SetDecRef s -> collectKeyedMapTypes(s.element(), out);
             case Ast.OptionDecRef o -> collectKeyedMapTypes(o.element(), out);
-            case Ast.PrimDecRef ignored -> { }
-            case Ast.DataDecRef ignored -> { }
+            case Ast.PrimDecRef _ -> { }
+            case Ast.DataDecRef _ -> { }
         }
     }
 

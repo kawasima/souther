@@ -1,10 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -40,56 +35,41 @@ class CompileNestedSumTest {
      * {@code {type: 自社負担}}, which lost the leaf and which the decoder then rejected.
      */
     @Test
-    @SuppressWarnings("unchecked")
     void aLeafOfANestedSumIsTaggedDirectly() throws Exception {
         BytesClassLoader loader = loader();
-        Decoder<Map<String, Object>, Object> dec =
-                (Decoder<Map<String, Object>, Object>) loader.loadClass("demo.費用負担区分")
-                        .getMethod("decoder").invoke(null);
-
-        Object v = ((Ok<Object>) dec.decode(Map.of("type", "立替"), Path.ROOT)).value();
+        Object v = Codecs.decoded(loader, "demo.費用負担区分", Map.of("type", "立替"));
         assertInstanceOf(loader.loadClass("demo.立替"), v);
     }
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void aNestedSumRoundTrips() throws Exception {
         BytesClassLoader loader = loader();
-        Encoder enc = (Encoder) loader.loadClass("demo.費用負担区分").getMethod("encoder").invoke(null);
-        Decoder dec = (Decoder) loader.loadClass("demo.費用負担区分").getMethod("decoder").invoke(null);
 
         java.lang.reflect.Constructor<?> c = loader.loadClass("demo.仮払い").getDeclaredConstructors()[0];
         c.setAccessible(true);
         Object 仮払い = c.newInstance();
 
-        Object back = ((Ok) dec.decode(enc.encode(仮払い), Path.ROOT)).value();
+        Object back = Codecs.decoded(loader, "demo.費用負担区分", Codecs.encode(loader, "demo.費用負担区分", 仮払い));
         assertInstanceOf(loader.loadClass("demo.仮払い"), back, "decode(encode(v)) == v (spec 11.3)");
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void aDirectCaseOfTheOuterSumStillDecodes() throws Exception {
         BytesClassLoader loader = loader();
-        Decoder<Map<String, Object>, Object> dec =
-                (Decoder<Map<String, Object>, Object>) loader.loadClass("demo.費用負担区分")
-                        .getMethod("decoder").invoke(null);
-        Object v = ((Ok<Object>) dec.decode(Map.of("type", "先方負担"), Path.ROOT)).value();
+        Object v = Codecs.decoded(loader, "demo.費用負担区分", Map.of("type", "先方負担"));
         assertInstanceOf(loader.loadClass("demo.先方負担"), v);
     }
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void theOuterAndInnerSumAgreeOnTheTag() throws Exception {
         BytesClassLoader loader = loader();
-        Encoder outer = (Encoder) loader.loadClass("demo.費用負担区分").getMethod("encoder").invoke(null);
-        Encoder inner = (Encoder) loader.loadClass("demo.自社負担").getMethod("encoder").invoke(null);
 
         java.lang.reflect.Constructor<?> c = loader.loadClass("demo.立替").getDeclaredConstructors()[0];
         c.setAccessible(true);
         Object 立替 = c.newInstance();
 
-        assertEquals("立替", ((Map<?, ?>) outer.encode(立替)).get("type"));
-        assertEquals("立替", ((Map<?, ?>) inner.encode(立替)).get("type"),
+        assertEquals("立替", ((Map<?, ?>) Codecs.encode(loader, "demo.費用負担区分", 立替)).get("type"));
+        assertEquals("立替", ((Map<?, ?>) Codecs.encode(loader, "demo.自社負担", 立替)).get("type"),
                 "both levels tag the leaf, so a value encoded at one decodes at the other");
     }
 }

@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -41,14 +34,12 @@ class CompileHelperByNameTest {
     }
 
     private Object decodeOrder(BytesClassLoader loader, List<Long> qtys) throws Exception {
-        Decoder d = (Decoder) loader.loadClass("demo.Order").getMethod("decoder").invoke(null);
-        return ((Ok) d.decode(Map.of("qtys", qtys), Path.ROOT)).value();
+        return Codecs.decoded(loader, "demo.Order", Map.of("qtys", qtys));
     }
 
     private Map<?, ?> run(BytesClassLoader loader, Object check, List<Long> qtys) throws Exception {
-        Object r = ((Behavior) check).apply(decodeOrder(loader, qtys));
-        Encoder enc = (Encoder) loader.loadClass("demo.Result").getMethod("encoder").invoke(null);
-        return (Map<?, ?>) enc.encode(r);
+        Object r = Codecs.apply(check, decodeOrder(loader, qtys));
+        return (Map<?, ?>) Codecs.encode(loader, "demo.Result", r);
     }
 
     @Test
@@ -62,7 +53,6 @@ class CompileHelperByNameTest {
     }
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void foldWithAHelperStepPassedByName() throws Exception {
         // fold's block is its first argument (spec §pipe); a named 2-arg helper stands in for it and
         // desugars to `($b0, $b1) -> add($b0, $b1)`, which the inliner then expands.
@@ -78,10 +68,8 @@ class CompileHelperByNameTest {
                 let add (acc: Int, x: Int) = acc + x
                 let run (i) = Out { total = fold(add, 0, i.ns) }
                 """), getClass().getClassLoader());
-        Decoder d = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) d.decode(Map.of("ns", List.of(1L, 2L, 3L)), Path.ROOT)).value();
-        Object out = ((Behavior) loader.loadClass("demo.Run").getDeclaredConstructor().newInstance()).apply(in);
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        assertEquals(6L, ((Map<?, ?>) enc.encode(out)).get("total"));
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("ns", List.of(1L, 2L, 3L)));
+        Object out = Codecs.apply(loader.loadClass("demo.Run").getDeclaredConstructor().newInstance(), in);
+        assertEquals(6L, ((Map<?, ?>) Codecs.encode(loader, "demo.Out", out)).get("total"));
     }
 }

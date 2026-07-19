@@ -1,10 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -30,28 +25,20 @@ class CompileNewtypeCaseTest {
         return new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
     }
 
-    private Decoder dec(BytesClassLoader loader) throws Exception {
-        return (Decoder) loader.loadClass("demo.役職").getMethod("decoder").invoke(null);
-    }
-
-    private Encoder enc(BytesClassLoader loader) throws Exception {
-        return (Encoder) loader.loadClass("demo.役職").getMethod("encoder").invoke(null);
-    }
-
     @Test
     void newtypeCaseUsesAdjacentValueTag() throws Exception {
         BytesClassLoader loader = loader();
-        Object v = ((Ok) dec(loader).decode(Map.of("type", "管理職", "value", 3L), Path.ROOT)).value();
+        Object v = Codecs.decoded(loader, "demo.役職", Map.of("type", "管理職", "value", 3L));
         assertEquals("demo.管理職", v.getClass().getName());
-        assertEquals(Map.of("type", "管理職", "value", 3L), enc(loader).encode(v),
+        assertEquals(Map.of("type", "管理職", "value", 3L), Codecs.encode(loader, "demo.役職", v),
                 "a newtype case's inner goes under `value`, adjacent to `type`");
     }
 
     @Test
     void unitCaseIsJustItsTag() throws Exception {
         BytesClassLoader loader = loader();
-        Object v = ((Ok) dec(loader).decode(Map.of("type", "一般社員"), Path.ROOT)).value();
+        Object v = Codecs.decoded(loader, "demo.役職", Map.of("type", "一般社員"));
         assertEquals("demo.一般社員", v.getClass().getName());
-        assertEquals(Map.of("type", "一般社員"), enc(loader).encode(v));
+        assertEquals(Map.of("type", "一般社員"), Codecs.encode(loader, "demo.役職", v));
     }
 }

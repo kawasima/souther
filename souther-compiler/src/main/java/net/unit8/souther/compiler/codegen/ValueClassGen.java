@@ -137,13 +137,13 @@ final class ValueClassGen {
             cb.withFlags(pub(sum.name()) | ClassFile.ACC_INTERFACE | ClassFile.ACC_ABSTRACT);
             cb.with(PermittedSubclassesAttribute.ofSymbols(caseCds));
             sum.decoder().ifPresent(disc -> {
-                codec.emitCodecFactory(cb, "decoder", CD_RDecoder, cd(sum.name() + "$Dec"), codec.decoderSig(cdX, true));
+                codec.emitCodecFactory(cb, "decoder", CD_RDecoder, cd(sum.name() + "$Dec"), CodecGen.decoderSig(cdX, true));
                 if (codec.jsonCompatible(sum.name())) codec.emitSourceFactory(cb, sum.name(), CodecGen.Src.JSON, true);
                 if (codec.recordCompatible(sum.name())) codec.emitSourceFactory(cb, sum.name(), CodecGen.Src.JOOQ, true);
             });
             sum.encoder().ifPresent(enc ->
                     codec.emitCodecFactory(cb, "encoder", CD_REncoder, cd(sum.name() + "$Enc"),
-                            codec.encoderSig(cdX, CD_Map)));
+                            CodecGen.encoderSig(cdX, CD_Map)));
         }));
         sum.decoder().ifPresent(disc -> {
             out.put(pkg + "." + sum.name() + "$Dec", codec.generateSumDecoder(sum, disc, CodecGen.Src.NEUTRAL));
@@ -173,12 +173,12 @@ final class ValueClassGen {
             // a unit is a field-less data: its codec reads/writes nothing but the tag the sum adds
             // A unit ignores its input, so it decodes from every source. Generate all three so
             // unit cases of a JSON/record sum have a matching decoder to dispatch to.
-            codec.emitCodecFactory(cb, "decoder", CD_RDecoder, cdDec, codec.decoderSig(cdU, false));
+            codec.emitCodecFactory(cb, "decoder", CD_RDecoder, cdDec, CodecGen.decoderSig(cdU, false));
             codec.emitCodecFactory(cb, "jsonDecoder", CD_RDecoder, cd(unit.name() + "$DecJson"),
-                    codec.decoderSigFor(CodecGen.Src.JSON, cdU, false));
+                    CodecGen.decoderSigFor(CodecGen.Src.JSON, cdU, false));
             codec.emitCodecFactory(cb, "recordDecoder", CD_RDecoder, cd(unit.name() + "$DecRecord"),
-                    codec.decoderSigFor(CodecGen.Src.JOOQ, cdU, false));
-            codec.emitCodecFactory(cb, "encoder", CD_REncoder, cdEnc, codec.encoderSig(cdU, CD_Map));
+                    CodecGen.decoderSigFor(CodecGen.Src.JOOQ, cdU, false));
+            codec.emitCodecFactory(cb, "encoder", CD_REncoder, cdEnc, CodecGen.encoderSig(cdU, CD_Map));
         }));
         out.put(pkg + "." + unit.name() + "$Dec", codec.generateUnitDecoder(cdU, cdDec));
         out.put(pkg + "." + unit.name() + "$DecJson", codec.generateUnitDecoder(cdU, cd(unit.name() + "$DecJson")));

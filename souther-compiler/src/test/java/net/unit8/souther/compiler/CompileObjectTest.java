@@ -3,10 +3,7 @@ package net.unit8.souther.compiler;
 import net.unit8.raoh.Err;
 import net.unit8.raoh.Issue;
 import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
 import net.unit8.raoh.Result;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -43,30 +40,26 @@ class CompileObjectTest {
     @Test
     void decodesAndEncodesAnObject() throws Exception {
         Class<?> account = compileAccount();
-        Decoder decoder = (Decoder) account.getMethod("decoder").invoke(null);
 
-        Result r = decoder.decode(Map.of(
+        Result<?> r = Codecs.decode(account, Map.of(
                 "id", "acc-1",
                 "balance", 100L,
-                "owner", "bob"), Path.ROOT);
+                "owner", "bob"));
         assertTrue(r instanceof Ok, "expected a valid account to decode");
 
-        Encoder enc = (Encoder) account.getMethod("encoder").invoke(null);
-        Map<?, ?> encoded = (Map<?, ?>) enc.encode(((Ok) r).value());
+        Map<?, ?> encoded = (Map<?, ?>) Codecs.encode(account, ((Ok<?>) r).value());
         assertEquals(100L, encoded.get("balance"));
         assertEquals("acc-1", encoded.get("id"));
     }
 
     @Test
     void accumulatesEveryFieldError() throws Exception {
-        Decoder decoder = (Decoder) compileAccount().getMethod("decoder").invoke(null);
-
         // id is an int (expected text), balance is text (expected int), owner is missing.
-        Result r = decoder.decode(Map.of(
+        Result<?> r = Codecs.decode(compileAccount(), Map.of(
                 "id", 5L,
-                "balance", "nope"), Path.ROOT);
+                "balance", "nope"));
         assertTrue(r instanceof Err);
-        List<Issue> issues = ((Err) r).issues().asList();
+        List<Issue> issues = ((Err<?>) r).issues().asList();
         assertEquals(3, issues.size(), "all three field errors should accumulate");
 
         Set<String> codes = issues.stream()
@@ -78,14 +71,12 @@ class CompileObjectTest {
 
     @Test
     void invariantRunsAfterAccumulation() throws Exception {
-        Decoder decoder = (Decoder) compileAccount().getMethod("decoder").invoke(null);
-
-        Result r = decoder.decode(Map.of(
+        Result<?> r = Codecs.decode(compileAccount(), Map.of(
                 "id", "",
                 "balance", 0L,
-                "owner", "bob"), Path.ROOT);
+                "owner", "bob"));
         assertTrue(r instanceof Err);
         assertEquals("invariant_violation",
-                ((Err) r).issues().asList().get(0).code());
+                ((Err<?>) r).issues().asList().get(0).code());
     }
 }

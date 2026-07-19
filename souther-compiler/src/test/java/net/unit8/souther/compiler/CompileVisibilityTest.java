@@ -1,9 +1,7 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
 import net.unit8.raoh.Result;
-import net.unit8.raoh.decode.Decoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -35,8 +33,7 @@ class CompileVisibilityTest {
                 "a type absent from exposing is package-private");
 
         // the module still works internally: Public's derived decoder reads Internal
-        Decoder d = (Decoder) loader.loadClass("demo.Public").getMethod("decoder").invoke(null);
-        assertTrue(d.decode(Map.of("inner", 5L), Path.ROOT) instanceof Ok);
+        assertTrue(Codecs.decode(loader, "demo.Public", Map.of("inner", 5L)) instanceof Ok);
     }
 
     @Test
@@ -54,10 +51,9 @@ class CompileVisibilityTest {
                 "a non-exposed case of a public sealed sum is package-private");
 
         // a public sealed interface with package-private permitted subclasses still verifies and decodes
-        Decoder d = (Decoder) loader.loadClass("demo.Contact").getMethod("decoder").invoke(null);
-        Result r = d.decode(Map.of("type", "EmailC", "email", "a@b"), Path.ROOT);
+        Result<?> r = Codecs.decode(loader, "demo.Contact", Map.of("type", "EmailC", "email", "a@b"));
         assertTrue(r instanceof Ok);
-        assertTrue(((Ok) r).value().getClass().getName().equals("demo.EmailC"));
+        assertTrue(((Ok<?>) r).value().getClass().getName().equals("demo.EmailC"));
     }
 
     @Test

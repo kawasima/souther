@@ -1,13 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.Result;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import javax.tools.ToolProvider;
@@ -59,7 +51,6 @@ class CompileInlineRequiredTest {
             """;
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void requiredCalledInlineInARecordLiteral() throws Exception {
         Map<String, byte[]> classes = new HashMap<>(Compiler.compile(MODULE));
         classes.put("demo.FindMemberImpl", compileSubclass(classes, "demo.FindMemberImpl", IMPL_SRC));
@@ -72,12 +63,10 @@ class CompileInlineRequiredTest {
         Object impl = loader.loadClass("demo.FindMemberImpl").getConstructor().newInstance();
         Object handle = bind.invoke(null, impl);
 
-        Decoder idDecoder = (Decoder) loader.loadClass("demo.Id").getMethod("decoder").invoke(null);
-        Object id = ((Ok) idDecoder.decode("q", Path.ROOT)).value();
-        Object r = ((Behavior) handle).apply(id);
+        Object id = Codecs.decoded(loader, "demo.Id", "q");
+        Object r = Codecs.apply(handle, id);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Resp").getMethod("encoder").invoke(null);
-        Map<?, ?> out = (Map<?, ?>) enc.encode(r);
+        Map<?, ?> out = (Map<?, ?>) Codecs.encode(loader, "demo.Resp", r);
         Map<?, ?> m = (Map<?, ?>) out.get("m");
         assertEquals("m-1", m.get("id"));
     }

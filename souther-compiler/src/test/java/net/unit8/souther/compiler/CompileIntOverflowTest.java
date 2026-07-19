@@ -1,12 +1,6 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
 import net.unit8.souther.runtime.ConstraintViolation;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -34,16 +28,13 @@ class CompileIntOverflowTest {
                 """.formatted(bodyExpr);
     }
 
-    @SuppressWarnings("unchecked")
     private static Object run(String bodyExpr, long input) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(module(bodyExpr)),
                 CompileIntOverflowTest.class.getClassLoader());
-        Decoder inDecoder = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) inDecoder.decode(input, Path.ROOT)).value();
+        Object in = Codecs.decoded(loader, "demo.In", input);
         Object compute = loader.loadClass("demo.Compute").getConstructor().newInstance();
-        Object out = ((Behavior<Object, Object>) compute).apply(in);
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        return enc.encode(out);
+        Object out = Codecs.apply(compute, in);
+        return Codecs.encode(loader, "demo.Out", out);
     }
 
     @Test

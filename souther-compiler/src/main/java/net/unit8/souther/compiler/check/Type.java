@@ -126,7 +126,7 @@ public sealed interface Type
             };
             case Ref r -> r.name();
             case Var v -> "'" + v.name();
-            case Nothing ignored -> "_";
+            case Nothing _ -> "_";
             case ListOf l -> "List<" + show(l.element()) + ">";
             case SetOf s -> "Set<" + show(s.element()) + ">";
             case OptionOf o -> show(o.element()) + "?";

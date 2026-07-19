@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -21,7 +14,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class CompileSetCodecTest {
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void setFieldDedupesOnDecodeAndRoundTrips() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
@@ -46,14 +38,12 @@ class CompileSetCodecTest {
                 }
                 """), getClass().getClassLoader());
 
-        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
         // the array has a duplicate "a" — the Set decoder drops it
-        Object in = ((Ok) inDec.decode(Map.of("tags", List.of("a", "b", "a", "c")), Path.ROOT)).value();
-        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run")
-                .getConstructor().newInstance()).apply(in);
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("tags", List.of("a", "b", "a", "c")));
+        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, in);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        Map<?, ?> m = (Map<?, ?>) enc.encode(out);
+        Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         // decode dedupes; encode writes an array in a deterministic hash order (not first-seen).
         assertEquals(Set.of("a", "b", "c"), Set.copyOf((List<?>) m.get("tags")));
         assertEquals(3L, m.get("n"), "the deduped set has three members");

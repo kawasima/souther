@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -36,21 +29,15 @@ class CompileBehaviorTest {
             """;
 
     @Test
-    @SuppressWarnings("unchecked")
     void pureBehaviorTransformsAValue() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
 
-        Decoder memberDecoder = (Decoder) loader.loadClass("demo.Member")
-                .getMethod("decoder").invoke(null);
-        Object member = ((Ok) memberDecoder.decode(
-                Map.of("id", "m-1", "name", "bob"), Path.ROOT)).value();
+        Object member = Codecs.decoded(loader, "demo.Member", Map.of("id", "m-1", "name", "bob"));
 
         Object behavior = loader.loadClass("demo.ToResponse").getConstructor().newInstance();
-        Object response = ((Behavior<Object, Object>) behavior).apply(member);
+        Object response = Codecs.apply(behavior, member);
 
-        Encoder responseEncoder = (Encoder) loader.loadClass("demo.Response")
-                .getMethod("encoder").invoke(null);
-        Map<?, ?> encoded = (Map<?, ?>) responseEncoder.encode(response);
+        Map<?, ?> encoded = (Map<?, ?>) Codecs.encode(loader, "demo.Response", response);
         assertEquals("m-1", encoded.get("id"), "response carries the member id");
     }
 

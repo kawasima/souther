@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import javax.tools.ToolProvider;
@@ -64,7 +57,6 @@ class CompilePipeDepsTest {
     }
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void pipelineCollectsEveryStagesRequirements() throws Exception {
         Map<String, byte[]> classes = new HashMap<>(Compiler.compile(MODULE));
         classes.put("demo.FetchImpl", compileSubclass(classes, "demo.FetchImpl", impl("FetchImpl", "fetch", "In", "m")));
@@ -81,12 +73,10 @@ class CompilePipeDepsTest {
                 loader.loadClass("demo.FetchImpl").getConstructor().newInstance(),
                 loader.loadClass("demo.TagImpl").getConstructor().newInstance());
 
-        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object inVal = ((Ok) inDec.decode("x", Path.ROOT)).value();
-        Object out = ((Behavior) handle).apply(inVal);
+        Object inVal = Codecs.decoded(loader, "demo.In", "x");
+        Object out = Codecs.apply(handle, inVal);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        Map<?, ?> o = (Map<?, ?>) enc.encode(out);
+        Map<?, ?> o = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals("m", o.get("a"));
         assertEquals("T", o.get("b"));
     }
@@ -98,7 +88,6 @@ class CompilePipeDepsTest {
      * NoSuchMethodError on apply, with no way to inject the dependency at all.
      */
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void aPipelineOfAPipelineStillCollectsTheInnerRequirements() throws Exception {
         String src = MODULE + """
 
@@ -121,11 +110,9 @@ class CompilePipeDepsTest {
                 loader.loadClass("demo.FetchImpl").getConstructor().newInstance(),
                 loader.loadClass("demo.TagImpl").getConstructor().newInstance());
 
-        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object out = ((Behavior) outer).apply(((Ok) inDec.decode("x", Path.ROOT)).value());
+        Object out = Codecs.apply(outer, Codecs.decoded(loader, "demo.In", "x"));
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        Map<?, ?> o = (Map<?, ?>) enc.encode(out);
+        Map<?, ?> o = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals("T", o.get("a"), "relabel swaps the fields handle produced");
         assertEquals("m", o.get("b"));
     }

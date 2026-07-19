@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -34,17 +27,14 @@ class CompileCaseWideningTest {
             """;
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void anCaseAssignsToASumField() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        Decoder ad = (Decoder) loader.loadClass("demo.A").getMethod("decoder").invoke(null);
-        Object a = ((Ok) ad.decode(Map.of("x", 5L, "tag", 1L), Path.ROOT)).value();
+        Object a = Codecs.decoded(loader, "demo.A", Map.of("x", 5L, "tag", 1L));
 
-        Object wrap = ((Behavior<Object, Object>) loader.loadClass("demo.MakeWrap")
-                .getConstructor().newInstance()).apply(a);
+        Object wrap = Codecs.apply(
+                loader.loadClass("demo.MakeWrap").getConstructor().newInstance(), a);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Wrap").getMethod("encoder").invoke(null);
-        Map<?, ?> out = (Map<?, ?>) enc.encode(wrap);
+        Map<?, ?> out = (Map<?, ?>) Codecs.encode(loader, "demo.Wrap", wrap);
         Map<?, ?> it = (Map<?, ?>) out.get("it");
         assertEquals("A", it.get("type"), "the case is tagged as its sum's case");
         assertEquals(5L, it.get("x"));

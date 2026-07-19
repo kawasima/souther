@@ -2,11 +2,6 @@ package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
 
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -38,39 +33,33 @@ class CompilePipeTest {
     }
 
     private Object decode(BytesClassLoader loader, String type, String value) throws Exception {
-        Decoder d = (Decoder) loader.loadClass("demo." + type).getMethod("decoder").invoke(null);
-        return ((Ok) d.decode(value, Path.ROOT)).value();
+        return Codecs.decoded(loader, "demo." + type, value);
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void composesDependencyFreeBehaviors() throws Exception {
         BytesClassLoader loader = loader();
         Object ab = loader.loadClass("demo.Ab").getConstructor().newInstance();
         // apply returns the output case value directly
-        Object out = ((Behavior<Object, Object>) ab).apply(decode(loader, "Wrap", "hi"));
+        Object out = Codecs.apply(ab, decode(loader, "Wrap", "hi"));
 
         // Out is a single-field newtype, so its encoder yields the bare String value.
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        assertEquals("hi", enc.encode(out));
+        assertEquals("hi", Codecs.encode(loader, "demo.Out", out));
     }
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void injectsRequiredBehaviorIntoPipeline() throws Exception {
         BytesClassLoader loader = loader();
-        Decoder midDecoder = (Decoder) loader.loadClass("demo.Mid")
-                .getMethod("decoder").invoke(null);
 
         // The Java-side implementation of `fetch` returns the Mid case value directly.
-        Behavior fetch = w -> ((Ok) midDecoder.decode("hello", Path.ROOT)).value();
+        Object mid = Codecs.decoded(loader, "demo.Mid", "hello");
+        Behavior<Object, Object> fetch = w -> mid;
 
         Object handle = loader.loadClass("demo.Handle")
                 .getConstructor(Behavior.class).newInstance(fetch);
-        Object out = ((Behavior) handle).apply(decode(loader, "Wrap", "ignored"));
+        Object out = Codecs.apply(handle, decode(loader, "Wrap", "ignored"));
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        assertEquals("hello", enc.encode(out));
+        assertEquals("hello", Codecs.encode(loader, "demo.Out", out));
     }
 
     @Test
@@ -115,7 +104,6 @@ class CompilePipeTest {
      * `事前承認待ち AND 却下者ID`. Nothing in the routing rule needs the left operand to be unary.
      */
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void theFirstStageMayTakeSeveralInputs() throws Exception {
         String src = """
                 module demo
@@ -142,9 +130,8 @@ class CompilePipeTest {
         // the pipeline takes what its first stage takes, so it is not a one-input Behavior
         var apply = flow.getMethod("apply", Object.class, Object.class);
 
-        Decoder idDec = (Decoder) loader.loadClass("demo.Id").getMethod("decoder").invoke(null);
-        Object boss = ((Ok) idDec.decode("boss", Path.ROOT)).value();
-        Object other = ((Ok) idDec.decode("other", Path.ROOT)).value();
+        Object boss = Codecs.decoded(loader, "demo.Id", "boss");
+        Object other = Codecs.decoded(loader, "demo.Id", "other");
         java.lang.reflect.Constructor<?> pc = loader.loadClass("demo.Pending").getDeclaredConstructors()[0];
         pc.setAccessible(true);
         Object pending = pc.newInstance(boss);

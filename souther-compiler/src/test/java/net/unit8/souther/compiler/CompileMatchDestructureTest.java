@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -37,13 +30,10 @@ class CompileMatchDestructureTest {
 
     private String run(String matchBody, Map<String, Object> input) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(HEAD + matchBody), getClass().getClassLoader());
-        Decoder cd = (Decoder) loader.loadClass("demo.Contact").getMethod("decoder").invoke(null);
-        Object contact = ((Ok) cd.decode(input, Path.ROOT)).value();
+        Object contact = Codecs.decoded(loader, "demo.Contact", input);
         Object behavior = loader.loadClass("demo.ContactValue").getConstructor().newInstance();
-        @SuppressWarnings("unchecked")
-        Object label = ((Behavior<Object, Object>) behavior).apply(contact);
-        Encoder enc = (Encoder) loader.loadClass("demo.Label").getMethod("encoder").invoke(null);
-        return (String) enc.encode(label);
+        Object label = Codecs.apply(behavior, contact);
+        return (String) Codecs.encode(loader, "demo.Label", label);
     }
 
     private static final String DESTRUCTURE = """

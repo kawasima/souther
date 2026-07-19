@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -33,12 +26,10 @@ class CompileTupleTest {
                 let run (i) = %s
                 """.formatted(body);
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
-        Decoder d = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) d.decode(Map.of("x", x, "y", y), Path.ROOT)).value();
-        @SuppressWarnings("unchecked")
-        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run").getConstructor().newInstance()).apply(in);
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        return (Long) ((Map<?, ?>) enc.encode(out)).get("r");
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("x", x, "y", y));
+        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, in);
+        return (Long) ((Map<?, ?>) Codecs.encode(loader, "demo.Out", out)).get("r");
     }
 
     @Test
@@ -146,12 +137,10 @@ class CompileTupleTest {
                 }
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
-        Decoder d = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) d.decode(Map.of("ns", java.util.List.of(1L, 2L, 3L)), Path.ROOT)).value();
-        @SuppressWarnings("unchecked")
-        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run").getConstructor().newInstance()).apply(in);
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        Map<?, ?> m = (Map<?, ?>) enc.encode(out);
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("ns", java.util.List.of(1L, 2L, 3L)));
+        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, in);
+        Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals(6L, m.get("total"));
         assertEquals(3L, m.get("count"));
     }

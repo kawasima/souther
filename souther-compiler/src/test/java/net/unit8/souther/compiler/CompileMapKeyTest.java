@@ -1,12 +1,6 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
 import net.unit8.raoh.Err;
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 class CompileMapKeyTest {
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void mapKeyedByANewtype() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
@@ -54,13 +47,11 @@ class CompileMapKeyTest {
                 }
                 """), getClass().getClassLoader());
 
-        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) inDec.decode(Map.of("seed", 0L), Path.ROOT)).value();
-        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run")
-                .getConstructor().newInstance()).apply(in);
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("seed", 0L));
+        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, in);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        Map<?, ?> m = (Map<?, ?>) enc.encode(out);
+        Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals(2L, m.get("total"));
         assertEquals(true, m.get("hasP1"), "a fresh 商品ID(\"P-01\") matches by value equality");
         assertEquals(false, m.get("hasP9"));
@@ -72,7 +63,6 @@ class CompileMapKeyTest {
      *  whose string keys are constructed into 商品ID (invariant-checked), and the encoder writes the
      *  map back with keys rendered bare. */
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void newtypeKeyedMapCrossesTheBoundary() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
@@ -99,14 +89,11 @@ class CompileMapKeyTest {
                 }
                 """), getClass().getClassLoader());
 
-        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) inDec.decode(
-                Map.of("stock", Map.of("P-01", 3L, "P-02", 5L)), Path.ROOT)).value();
-        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run")
-                .getConstructor().newInstance()).apply(in);
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("stock", Map.of("P-01", 3L, "P-02", 5L)));
+        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, in);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        Map<?, ?> m = (Map<?, ?>) enc.encode(out);
+        Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals(Map.of("P-01", 3L, "P-02", 5L), m.get("stock"), "keys are rendered bare");
         assertEquals(2L, m.get("n"));
         assertEquals(true, m.get("hasP1"), "the decoded key equals a fresh 商品ID(\"P-01\")");
@@ -126,8 +113,7 @@ class CompileMapKeyTest {
                 data In = { m: Map<コード, Int> }
                 """), getClass().getClassLoader());
 
-        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object result = inDec.decode(Map.of("m", Map.of("AB", 1L)), Path.ROOT);
+        Object result = Codecs.decode(loader, "demo.In", Map.of("m", Map.of("AB", 1L)));
         assertInstanceOf(Err.class, result, "the key \"AB\" is not length 4, so the decode fails");
     }
 }

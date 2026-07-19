@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -43,11 +36,9 @@ class CompileLambdaToFnParamTest {
     }
 
     private Map<?, ?> run(BytesClassLoader loader, Object check, List<Long> qtys) throws Exception {
-        Decoder d = (Decoder) loader.loadClass("demo.Order").getMethod("decoder").invoke(null);
-        Object order = ((Ok) d.decode(Map.of("qtys", qtys), Path.ROOT)).value();
-        Object r = ((Behavior) check).apply(order);
-        Encoder enc = (Encoder) loader.loadClass("demo.Result").getMethod("encoder").invoke(null);
-        return (Map<?, ?>) enc.encode(r);
+        Object order = Codecs.decoded(loader, "demo.Order", Map.of("qtys", qtys));
+        Object r = Codecs.apply(check, order);
+        return (Map<?, ?>) Codecs.encode(loader, "demo.Result", r);
     }
 
     @Test

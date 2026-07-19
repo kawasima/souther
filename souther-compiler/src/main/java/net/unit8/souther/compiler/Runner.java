@@ -203,27 +203,27 @@ public final class Runner {
     // --- decode / encode ----------------------------------------------------------------------
 
     private static Object decode(MemoryClassLoader loader, String pkg, Type type, Object raw, int index) {
-        Decoder decoder = decoderFor(loader, pkg, type, index);
-        @SuppressWarnings("unchecked")
-        Result<Object> result = decoder.decode(raw, net.unit8.raoh.Path.ROOT);
-        if (result instanceof Ok<Object> ok) {
+        Result<?> result = decoderFor(loader, pkg, type, index).decode(raw, net.unit8.raoh.Path.ROOT);
+        if (result instanceof Ok<?> ok) {
             return ok.value();
         }
-        List<Issue> issues = ((Err<Object>) result).issues().asList();
+        List<Issue> issues = ((Err<?>) result).issues().asList();
         String detail = issues.stream()
                 .map(i -> jsonPointer(i.path()) + ": " + i.message())
                 .collect(Collectors.joining("; "));
         throw new RunException("input #" + (index + 1) + " could not be decoded — " + detail);
     }
 
-    private static Decoder decoderFor(MemoryClassLoader loader, String pkg, Type type, int index) {
+    private static Decoder<Object, ?> decoderFor(MemoryClassLoader loader, String pkg, Type type, int index) {
         if (type instanceof Type.Prim prim) {
             return leafDecoder(prim, index);
         }
         if (type instanceof Type.Ref ref) {
             try {
                 Class<?> c = loader.loadClass(pkg + "." + ref.name());
-                return (Decoder) c.getMethod("decoder").invoke(null);
+                @SuppressWarnings("unchecked")   // the generated class's decoder() erases at the reflection boundary
+                Decoder<Object, ?> decoder = (Decoder<Object, ?>) c.getMethod("decoder").invoke(null);
+                return decoder;
             } catch (ReflectiveOperationException e) {
                 throw new RunException("cannot obtain a decoder for `" + ref.name() + "`: " + e);
             }
@@ -232,7 +232,7 @@ public final class Runner {
                 + "`, which `run` cannot decode yet (only a data type or a primitive).");
     }
 
-    private static Decoder leafDecoder(Type.Prim prim, int index) {
+    private static Decoder<Object, ?> leafDecoder(Type.Prim prim, int index) {
         return switch (prim) {
             case STRING -> ObjectDecoders.string();
             case INT -> ObjectDecoders.long_();
@@ -246,31 +246,28 @@ public final class Runner {
     }
 
     private static Object encode(String pkg, Type out, Object result) {
-        Encoder encoder;
         if (out instanceof Type.Prim prim) {
-            encoder = leafEncoder(prim);
-        } else {
-            // A sum output is one concrete case at run time; its own class carries the right encoder.
-            try {
-                encoder = (Encoder) result.getClass().getMethod("encoder").invoke(null);
-            } catch (ReflectiveOperationException e) {
-                throw new RunException("cannot obtain an encoder for the output `"
-                        + result.getClass().getSimpleName() + "`: " + e);
-            }
+            return encodeLeaf(prim, result);
         }
-        @SuppressWarnings("unchecked")
-        Object tree = encoder.encode(result);
-        return tree;
+        // A sum output is one concrete case at run time; its own class carries the right encoder.
+        try {
+            @SuppressWarnings("unchecked")   // the generated class's encoder() erases at the reflection boundary
+            Encoder<Object, ?> encoder = (Encoder<Object, ?>) result.getClass().getMethod("encoder").invoke(null);
+            return encoder.encode(result);
+        } catch (ReflectiveOperationException e) {
+            throw new RunException("cannot obtain an encoder for the output `"
+                    + result.getClass().getSimpleName() + "`: " + e);
+        }
     }
 
-    private static Encoder leafEncoder(Type.Prim prim) {
+    private static Object encodeLeaf(Type.Prim prim, Object value) {
         return switch (prim) {
-            case STRING -> ObjectEncoders.string();
-            case INT -> ObjectEncoders.long_();
-            case BOOL -> ObjectEncoders.bool();
-            case DECIMAL -> ObjectEncoders.decimal();
-            case DATE -> ObjectEncoders.date();
-            case DATETIME -> ObjectEncoders.dateTime();
+            case STRING -> ObjectEncoders.string().encode((String) value);
+            case INT -> ObjectEncoders.long_().encode((Long) value);
+            case BOOL -> ObjectEncoders.bool().encode((Boolean) value);
+            case DECIMAL -> ObjectEncoders.decimal().encode((java.math.BigDecimal) value);
+            case DATE -> ObjectEncoders.date().encode((java.time.LocalDate) value);
+            case DATETIME -> ObjectEncoders.dateTime().encode((java.time.LocalDateTime) value);
             case RAW -> throw new RunException("the output is the reserved Raw type, which `run` "
                     + "cannot encode.");
         };

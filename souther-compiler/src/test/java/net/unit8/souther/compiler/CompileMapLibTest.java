@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -18,7 +11,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class CompileMapLibTest {
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void buildAndQueryAMap() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
@@ -54,13 +46,11 @@ class CompileMapLibTest {
                 }
                 """), getClass().getClassLoader());
 
-        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) inDec.decode(Map.of("base", Map.of("a", 1L, "c", 3L)), Path.ROOT)).value();
-        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run")
-                .getConstructor().newInstance()).apply(in);
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("base", Map.of("a", 1L, "c", 3L)));
+        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, in);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        Map<?, ?> m = (Map<?, ?>) enc.encode(out);
+        Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals(Map.of("a", 1L, "b", 2L), m.get("built"));
         assertEquals(Map.of("x", 9L), m.get("one"));
         assertEquals(Map.of("c", 3L), m.get("afterRemove"), "remove drops only the named key");
@@ -75,7 +65,6 @@ class CompileMapLibTest {
      *  transforms the values, update rewrites one present key through a {@code value -> value} step
      *  (an absent key is a no-op — insert / remove cover the other two cases). */
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void foldMapUpdateOverAMap() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
@@ -104,13 +93,11 @@ class CompileMapLibTest {
                 }
                 """), getClass().getClassLoader());
 
-        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) inDec.decode(Map.of("stock", Map.of("a", 10L, "b", 20L)), Path.ROOT)).value();
-        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run")
-                .getConstructor().newInstance()).apply(in);
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("stock", Map.of("a", 10L, "b", 20L)));
+        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, in);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        Map<?, ?> m = (Map<?, ?>) enc.encode(out);
+        Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals(30L, m.get("total"), "fold sums every value");
         assertEquals(Map.of("a", 20L, "b", 40L), m.get("doubled"), "map keeps keys, doubles values");
         assertEquals(Map.of("a", false, "b", true), m.get("flagged"),
@@ -125,7 +112,6 @@ class CompileMapLibTest {
      *  value type for a step to consume, so the meaningful empty case is a typed map, empty at run
      *  time.) */
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void foldMapUpdateOverTheEmptyMap() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
@@ -150,13 +136,11 @@ class CompileMapLibTest {
                 }
                 """), getClass().getClassLoader());
 
-        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) inDec.decode(Map.of("stock", Map.of()), Path.ROOT)).value();
-        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run")
-                .getConstructor().newInstance()).apply(in);
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("stock", Map.of()));
+        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, in);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        Map<?, ?> m = (Map<?, ?>) enc.encode(out);
+        Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals(0L, m.get("total"), "fold over an empty map is the seed");
         assertEquals(Map.of(), m.get("doubled"), "map over an empty map is empty");
         assertEquals(Map.of(), m.get("updated"), "update on an absent key of an empty map is empty");

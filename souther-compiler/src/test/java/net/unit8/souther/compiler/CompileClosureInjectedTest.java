@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import javax.tools.ToolProvider;
@@ -59,7 +52,6 @@ class CompileClosureInjectedTest {
             """;
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void aClosureCapturesAndCallsAnInjectedBehavior() throws Exception {
         Map<String, byte[]> classes = new HashMap<>(Compiler.compile(MODULE));
         classes.put("demo.DepImpl", compileSubclass(classes, "demo.DepImpl", IMPL_SRC));
@@ -69,12 +61,10 @@ class CompileClosureInjectedTest {
         Object impl = loader.loadClass("demo.DepImpl").getConstructor().newInstance();
         Object check = loader.loadClass("demo.Check").getMethod("bind", dep).invoke(null, impl);
 
-        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) inDec.decode(Map.of("name", "kawa", "flag", true), Path.ROOT)).value();
-        Object r = ((Behavior) check).apply(in);
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("name", "kawa", "flag", true));
+        Object r = Codecs.apply(check, in);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        assertEquals("got:kawa", ((Map<?, ?>) enc.encode(r)).get("v"));
+        assertEquals("got:kawa", ((Map<?, ?>) Codecs.encode(loader, "demo.Out", r)).get("v"));
     }
 
     private static byte[] compileSubclass(Map<String, byte[]> generated, String className, String source)

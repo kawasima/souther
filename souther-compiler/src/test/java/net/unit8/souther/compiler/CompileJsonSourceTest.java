@@ -2,7 +2,6 @@ package net.unit8.souther.compiler;
 
 import net.unit8.raoh.Err;
 import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
 import net.unit8.raoh.Result;
 import net.unit8.raoh.decode.Decoder;
 
@@ -11,11 +10,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Per-source decoder generation (spec 10.6): each data whose shape supports it gets a
@@ -48,37 +44,31 @@ class CompileJsonSourceTest {
 
     @Test
     void jsonDecoderReadsAJsonNodeObject() throws Exception {
-        Class<?> account = compile().loadClass("demo.Account");
-        Decoder decoder = (Decoder) account.getMethod("jsonDecoder").invoke(null);
-
+        BytesClassLoader loader = compile();
         JsonNode node = mapper.readTree("{\"id\":\"acc-1\",\"balance\":100,\"owner\":\"bob\"}");
-        Result r = decoder.decode(node, Path.ROOT);
+        Result<?> r = Codecs.decode(loader, "demo.Account", "jsonDecoder", node);
 
         assertInstanceOf(Ok.class, r, "a valid JSON object decodes to Ok");
     }
 
     @Test
     void jsonDecoderAccumulatesFieldErrors() throws Exception {
-        Class<?> account = compile().loadClass("demo.Account");
-        Decoder decoder = (Decoder) account.getMethod("jsonDecoder").invoke(null);
-
+        BytesClassLoader loader = compile();
         // id is a number (expected string), balance is a string (expected long), owner is missing.
         JsonNode node = mapper.readTree("{\"id\":5,\"balance\":\"nope\"}");
-        Result r = decoder.decode(node, Path.ROOT);
+        Result<?> r = Codecs.decode(loader, "demo.Account", "jsonDecoder", node);
 
         assertInstanceOf(Err.class, r);
-        assertEquals(3, ((Err) r).issues().asList().size(), "all three field errors accumulate");
+        assertEquals(3, ((Err<?>) r).issues().asList().size(), "all three field errors accumulate");
     }
 
     @Test
     void jsonDecoderDiscriminatesASum() throws Exception {
-        Class<?> application = compile().loadClass("demo.Application");
-        Decoder decoder = (Decoder) application.getMethod("jsonDecoder").invoke(null);
-
-        Result r = decoder.decode(mapper.readTree("{\"type\":\"Submitted\",\"note\":\"hi\"}"), Path.ROOT);
+        Result<?> r = Codecs.decode(compile(), "demo.Application", "jsonDecoder",
+                mapper.readTree("{\"type\":\"Submitted\",\"note\":\"hi\"}"));
 
         assertInstanceOf(Ok.class, r);
-        assertEquals("demo.Submitted", ((Ok) r).value().getClass().getName());
+        assertEquals("demo.Submitted", ((Ok<?>) r).value().getClass().getName());
     }
 
     @Test
@@ -90,11 +80,9 @@ class CompileJsonSourceTest {
                 data Event = { name: String, on: Date, at: DateTime }
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
-        Decoder decoder = (Decoder) loader.loadClass("demo.Event").getMethod("jsonDecoder").invoke(null);
-
         JsonNode node = mapper.readTree(
                 "{\"name\":\"launch\",\"on\":\"2020-01-15\",\"at\":\"2020-01-15T09:30:00\"}");
-        Result r = decoder.decode(node, Path.ROOT);
+        Result<?> r = Codecs.decode(loader, "demo.Event", "jsonDecoder", node);
 
         assertInstanceOf(Ok.class, r, "a JSON temporal string decodes to Ok");
     }
@@ -108,9 +96,8 @@ class CompileJsonSourceTest {
                 data Person = { name: String, born: BornOn }
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
-        Decoder decoder = (Decoder) loader.loadClass("demo.Person").getMethod("jsonDecoder").invoke(null);
-
-        Result r = decoder.decode(mapper.readTree("{\"name\":\"amy\",\"born\":\"1990-05-01\"}"), Path.ROOT);
+        Result<?> r = Codecs.decode(loader, "demo.Person", "jsonDecoder",
+                mapper.readTree("{\"name\":\"amy\",\"born\":\"1990-05-01\"}"));
         assertInstanceOf(Ok.class, r);
     }
 
@@ -118,8 +105,7 @@ class CompileJsonSourceTest {
     void recordDecoderBytecodeLoadsAndVerifies() throws Exception {
         // Constructing a standalone jOOQ Record needs the full jOOQ runtime, so here we just force
         // the $DecRecord class to load — that verifies its whole bytecode is valid.
-        Class<?> account = compile().loadClass("demo.Account");
-        Object recordDecoder = account.getMethod("recordDecoder").invoke(null);
+        Object recordDecoder = Codecs.decoder(compile(), "demo.Account", "recordDecoder");
         assertInstanceOf(Decoder.class, recordDecoder);
     }
 }

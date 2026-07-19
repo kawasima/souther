@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -33,15 +26,12 @@ class CompilePreludeTest {
             let flip (i) = Out { flag = not(i.flag) }
             """;
 
-    @SuppressWarnings("unchecked")
     private boolean flip(boolean in) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        Decoder d = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object input = ((Ok) d.decode(Map.of("flag", in), Path.ROOT)).value();
-        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Flip")
-                .getConstructor().newInstance()).apply(input);
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        return (Boolean) ((Map<?, ?>) enc.encode(out)).get("flag");
+        Object input = Codecs.decoded(loader, "demo.In", Map.of("flag", in));
+        Object behavior = loader.loadClass("demo.Flip").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, input);
+        return (Boolean) ((Map<?, ?>) Codecs.encode(loader, "demo.Out", out)).get("flag");
     }
 
     @Test

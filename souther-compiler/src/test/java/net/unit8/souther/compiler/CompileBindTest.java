@@ -2,11 +2,6 @@ package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
 
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import javax.tools.ToolProvider;
@@ -62,7 +57,6 @@ class CompileBindTest {
             """;
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void generatesAnAbstractBaseAndBindFactory() throws Exception {
         Map<String, byte[]> classes = new HashMap<>(Compiler.compile(MODULE));
         classes.put("demo.FindMemberImpl", compileSubclass(classes, "demo.FindMemberImpl", IMPL_SRC));
@@ -81,12 +75,10 @@ class CompileBindTest {
         Object findMemberImpl = loader.loadClass("demo.FindMemberImpl").getConstructor().newInstance();
         Object handle = bind.invoke(null, findMemberImpl);
 
-        Decoder idDecoder = (Decoder) loader.loadClass("demo.Id").getMethod("decoder").invoke(null);
-        Object id = ((Ok) idDecoder.decode("q", Path.ROOT)).value();
-        Object r = ((Behavior) handle).apply(id);
+        Object id = Codecs.decoded(loader, "demo.Id", "q");
+        Object r = Codecs.apply(handle, id);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Resp").getMethod("encoder").invoke(null);
-        Map<?, ?> out = (Map<?, ?>) enc.encode(r);
+        Map<?, ?> out = (Map<?, ?>) Codecs.encode(loader, "demo.Resp", r);
         assertEquals("m-1", out.get("id"));
     }
 

@@ -1,10 +1,6 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.raoh.Err;
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -16,7 +12,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class CompileDecimalMathTest {
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void addsAndMultipliesDecimals() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
@@ -34,16 +29,14 @@ class CompileDecimalMathTest {
                 }
                 """), getClass().getClassLoader());
 
-        Decoder priceDec = (Decoder) loader.loadClass("demo.Price").getMethod("decoder").invoke(null);
-        Object a = ((Ok) priceDec.decode(new BigDecimal("1.5"), Path.ROOT)).value();
-        Object b = ((Ok) priceDec.decode(new BigDecimal("2.25"), Path.ROOT)).value();
+        Object a = Codecs.decoded(loader, "demo.Price", new BigDecimal("1.5"));
+        Object b = Codecs.decoded(loader, "demo.Price", new BigDecimal("2.25"));
 
         Object behavior = loader.loadClass("demo.MakeQuote").getConstructor().newInstance();
         Object quote = behavior.getClass()
                 .getMethod("apply", Object.class, Object.class).invoke(behavior, a, b);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Quote").getMethod("encoder").invoke(null);
-        java.util.Map<?, ?> out = (java.util.Map<?, ?>) enc.encode(quote);
+        java.util.Map<?, ?> out = (java.util.Map<?, ?>) Codecs.encode(loader, "demo.Quote", quote);
         assertEquals(new BigDecimal("3.75"), out.get("subtotal"));
         assertEquals(new BigDecimal("5.625"), out.get("doubled")); // 3.75 * 1.5
     }
@@ -61,8 +54,7 @@ class CompileDecimalMathTest {
                     , hi: Int
                 } invariant compare(lo, hi) <= 0
                 """), getClass().getClassLoader());
-        Decoder d = (Decoder) loader.loadClass("demo.Ordered").getMethod("decoder").invoke(null);
-        assertEquals(false, d.decode(java.util.Map.of("lo", 1L, "hi", 2L), Path.ROOT) instanceof Err);
-        assertEquals(true, d.decode(java.util.Map.of("lo", 5L, "hi", 2L), Path.ROOT) instanceof Err);
+        assertEquals(false, Codecs.decode(loader, "demo.Ordered", java.util.Map.of("lo", 1L, "hi", 2L)) instanceof Err);
+        assertEquals(true, Codecs.decode(loader, "demo.Ordered", java.util.Map.of("lo", 5L, "hi", 2L)) instanceof Err);
     }
 }

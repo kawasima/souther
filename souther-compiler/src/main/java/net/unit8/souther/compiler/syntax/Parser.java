@@ -1052,14 +1052,6 @@ public final class Parser {
                 "expected " + type + " but found " + t.type());
     }
 
-    /** A syntax error with a literal (English) body. Every parser error carries the SYNTAX ERROR
-     * title, so the frame is consistent whether or not the body is a catalog key yet. */
-    private CompileException error(Token t, String message) {
-        return CompileException.of(
-                Diagnostic.titledLiteral(t.pos(), "parse.title", tokenWidth(t), message),
-                message);
-    }
-
     /** A syntax error whose body is a catalog key (localized), with the same SYNTAX ERROR title.
      * {@code legacyBody} keeps {@link CompileException#getMessage()} unchanged for callers/tests. */
     private CompileException error(Token t, String messageKey, String legacyBody, Object... args) {

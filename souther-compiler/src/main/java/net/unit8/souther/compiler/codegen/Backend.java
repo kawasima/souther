@@ -400,24 +400,8 @@ public final class Backend {
         return ctx.refTypeOrNull(t, behaviorName);
     }
 
-    private Type resolveType(Ast.TypeRef ref) {
-        return ctx.resolveType(ref);
-    }
-
     private Type successType(Ast.RetType ret) {
         return ctx.successType(ret);
-    }
-
-    private ClassDesc[] caseInterfaces(String name) {
-        return ctx.caseInterfaces(name);
-    }
-
-    private ClassDesc matchCaseClass(String caseName) {
-        return ctx.matchCaseClass(caseName);
-    }
-
-    private Map<String, Type> fieldTypes(Ast.Data data) {
-        return ctx.fieldTypes(data);
     }
 
     private ClassDesc cd(String typeName) {
@@ -660,10 +644,6 @@ public final class Backend {
         code.invokespecial(cdStage, "<init>", MethodTypeDesc.of(ConstantDescs.CD_void, ctorParams));
     }
 
-    private void castFromObject(CodeBuilder code, Type type) {
-        JvmTypes.castFromObject(code, type, ctx);
-    }
-
     // --- value class members ---
 
     // --- source compatibility: which extra source decoders a type's shape supports (spec 10.6) ---
@@ -678,14 +658,6 @@ public final class Backend {
 
     private void unbox(CodeBuilder code, Type type, int slot) {
         JvmTypes.unbox(code, type, slot, ctx);
-    }
-
-    private ClassDesc jvmType(Type type) {
-        return JvmTypes.jvmType(type, ctx);
-    }
-
-    private ClassDesc[] fieldDescs(Map<String, Type> fields) {
-        return JvmTypes.fieldDescs(fields, ctx);
     }
 
 }

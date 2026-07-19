@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -45,18 +38,15 @@ class CompileModuleChainTest {
             """;
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void composesABehaviorTwoImportHopsAway() throws Exception {
         Map<String, byte[]> classes = Compiler.compileModules(List.of(A, B, C));
         assertTrue(classes.containsKey("c.Quad"), "the two-hop composition generates c.Quad");
 
         BytesClassLoader loader = new BytesClassLoader(classes, getClass().getClassLoader());
-        Decoder nDec = (Decoder) loader.loadClass("a.N").getMethod("decoder").invoke(null);
-        Object five = ((Ok) nDec.decode(5L, Path.ROOT)).value();
+        Object five = Codecs.decoded(loader, "a.N", 5L);
         Object quad = loader.loadClass("c.Quad").getConstructor().newInstance();
-        Object r = ((Behavior) quad).apply(five);
+        Object r = Codecs.apply(quad, five);
 
-        Encoder enc = (Encoder) loader.loadClass("a.N").getMethod("encoder").invoke(null);
-        assertEquals(5L, enc.encode(r), "inc is identity, so quad round-trips 5 through the chain");
+        assertEquals(5L, Codecs.encode(loader, "a.N", r), "inc is identity, so quad round-trips 5 through the chain");
     }
 }

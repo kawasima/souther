@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -27,19 +20,16 @@ class CompileArithmeticTest {
             """;
 
     @Test
-    @SuppressWarnings("unchecked")
     void evaluatesArithmeticWithPrecedence() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
 
-        Decoder inDecoder = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) inDecoder.decode(5L, Path.ROOT)).value();
+        Object in = Codecs.decoded(loader, "demo.In", 5L);
 
         Object compute = loader.loadClass("demo.Compute").getConstructor().newInstance();
         // apply returns the output case value directly (no Result wrapper)
-        Object out = ((Behavior<Object, Object>) compute).apply(in);
+        Object out = Codecs.apply(compute, in);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
         // 5 * 2 + 10 = 20
-        assertEquals(20L, enc.encode(out));
+        assertEquals(20L, Codecs.encode(loader, "demo.Out", out));
     }
 }

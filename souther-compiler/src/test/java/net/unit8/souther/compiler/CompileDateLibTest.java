@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
@@ -20,7 +13,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class CompileDateLibTest {
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void dateAndDateTimeArithmeticInABehavior() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
@@ -57,15 +49,13 @@ class CompileDateLibTest {
                 }
                 """), getClass().getClassLoader());
 
-        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) inDec.decode(Map.of(
+        Object in = Codecs.decoded(loader, "demo.In", Map.of(
                 "start", LocalDate.parse("2026-07-19"),
-                "at", LocalDateTime.parse("2026-07-19T10:30:45")), Path.ROOT)).value();
-        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run")
-                .getConstructor().newInstance()).apply(in);
+                "at", LocalDateTime.parse("2026-07-19T10:30:45")));
+        Object out = Codecs.apply(
+                loader.loadClass("demo.Run").getConstructor().newInstance(), in);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        Map<?, ?> m = (Map<?, ?>) enc.encode(out);
+        Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals("2026-07-22", m.get("plusDays"));
         assertEquals("2026-08-19", m.get("plusMonths"));
         assertEquals("2027-07-19", m.get("plusYears"));

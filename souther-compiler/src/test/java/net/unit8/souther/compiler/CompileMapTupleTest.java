@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -20,7 +13,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CompileMapTupleTest {
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void toListFromListRoundTrip() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
@@ -42,13 +34,11 @@ class CompileMapTupleTest {
                 }
                 """), getClass().getClassLoader());
 
-        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) inDec.decode(Map.of("m", Map.of("x", 5L, "y", 7L)), Path.ROOT)).value();
-        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run")
-                .getConstructor().newInstance()).apply(in);
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("m", Map.of("x", 5L, "y", 7L)));
+        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, in);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        Map<?, ?> m = (Map<?, ?>) enc.encode(out);
+        Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals(Map.of("x", 5L, "y", 7L), m.get("round"), "toList then fromList round-trips");
         assertEquals(Map.of("a", 1L, "b", 2L), m.get("built"));
         assertEquals(2L, m.get("n"));

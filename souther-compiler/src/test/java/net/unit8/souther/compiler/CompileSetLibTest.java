@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -20,7 +13,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class CompileSetLibTest {
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void buildAndCombineSets() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
@@ -53,13 +45,11 @@ class CompileSetLibTest {
                 }
                 """), getClass().getClassLoader());
 
-        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) inDec.decode(Map.of("xs", List.of("b", "d")), Path.ROOT)).value();
-        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run")
-                .getConstructor().newInstance()).apply(in);
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("xs", List.of("b", "d")));
+        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, in);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        Map<?, ?> m = (Map<?, ?>) enc.encode(out);
+        Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals(3L, m.get("n"), "the set {a, b, c} has three members");
         assertEquals(true, m.get("hasA"));
         // Set iteration order is a deterministic hash order, not first-seen — compare membership.

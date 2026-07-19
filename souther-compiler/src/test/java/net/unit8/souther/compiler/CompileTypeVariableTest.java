@@ -6,12 +6,6 @@ import net.unit8.souther.compiler.check.TypeChecker;
 import net.unit8.souther.compiler.codegen.Backend;
 import net.unit8.souther.compiler.derive.Deriver;
 import net.unit8.souther.compiler.syntax.Parser;
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -37,7 +31,6 @@ class CompileTypeVariableTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void aCoreGenericHelperMonomorphisesByInlining() throws Exception {
         // `identity` is written once with `'a`; the `Int` call site resolves it to Int on inlining.
         String core = """
@@ -52,12 +45,11 @@ class CompileTypeVariableTest {
                 let echo (i) = Out { v = identity(i.v) }
                 """;
         BytesClassLoader loader = new BytesClassLoader(compileCore(core), getClass().getClassLoader());
-        Decoder d = (Decoder) loader.loadClass("souther.gen.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) d.decode(Map.of("v", 7L), Path.ROOT)).value();
-        Object out = ((Behavior<Object, Object>) loader.loadClass("souther.gen.Echo")
-                .getConstructor().newInstance()).apply(in);
-        Encoder enc = (Encoder) loader.loadClass("souther.gen.Out").getMethod("encoder").invoke(null);
-        assertEquals(7L, ((Map<?, ?>) enc.encode(out)).get("v"), "identity returns its argument unchanged");
+        Object in = Codecs.decoded(loader, "souther.gen.In", Map.of("v", 7L));
+        Object out = Codecs.apply(loader.loadClass("souther.gen.Echo")
+                .getConstructor().newInstance(), in);
+        assertEquals(7L, ((Map<?, ?>) Codecs.encode(loader, "souther.gen.Out", out)).get("v"),
+                "identity returns its argument unchanged");
     }
 
     @Test

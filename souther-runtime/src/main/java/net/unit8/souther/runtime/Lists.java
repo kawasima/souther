@@ -59,13 +59,11 @@ public final class Lists {
 
     /** The greatest element by natural order, {@code None} for an empty list (Elm {@code List.maximum}).
      *  The element is a {@link Comparable}, as {@code sort} requires. */
-    @SuppressWarnings({"unchecked", "rawtypes"})
     public static <T> Option<T> max(List<? extends T> xs) {
         return extreme(xs, true);
     }
 
     /** The least element by natural order, {@code None} for an empty list (Elm {@code List.minimum}). */
-    @SuppressWarnings({"unchecked", "rawtypes"})
     public static <T> Option<T> min(List<? extends T> xs) {
         return extreme(xs, false);
     }

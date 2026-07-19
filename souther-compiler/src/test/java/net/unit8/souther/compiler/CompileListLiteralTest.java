@@ -1,11 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -20,7 +14,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 class CompileListLiteralTest {
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     private List<?> pick(long a, long b) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
@@ -31,10 +24,9 @@ class CompileListLiteralTest {
 
                 let pick (x) = [x.a] ++ [x.b | x.b > 0]
                 """), getClass().getClassLoader());
-        Decoder d = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) d.decode(Map.of("a", a, "b", b), Path.ROOT)).value();
-        return (List<?>) ((Behavior<Object, Object>) loader.loadClass("demo.Pick")
-                .getConstructor().newInstance()).apply(in);
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("a", a, "b", b));
+        Object behavior = loader.loadClass("demo.Pick").getConstructor().newInstance();
+        return (List<?>) Codecs.apply(behavior, in);
     }
 
     @Test
@@ -60,13 +52,11 @@ class CompileListLiteralTest {
                 [High { threshold = x.cost } | x.cost.value > 100] ++ [LowRole { note = "role" }]
             """;
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     private List<?> reasons(long cost) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(REASONS), getClass().getClassLoader());
-        Decoder d = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) d.decode(Map.of("cost", cost), Path.ROOT)).value();
-        return (List<?>) ((Behavior<Object, Object>) loader.loadClass("demo.Reasons")
-                .getConstructor().newInstance()).apply(in);
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("cost", cost));
+        Object behavior = loader.loadClass("demo.Reasons").getConstructor().newInstance();
+        return (List<?>) Codecs.apply(behavior, in);
     }
 
     @Test

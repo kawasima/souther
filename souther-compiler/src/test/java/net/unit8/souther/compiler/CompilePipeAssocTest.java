@@ -1,11 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -43,12 +37,10 @@ class CompilePipeAssocTest {
             behavior flow = half >-> finish
             """;
 
-    @SuppressWarnings("unchecked")
     private String run(BytesClassLoader loader, long n) throws Exception {
-        Decoder dec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) dec.decode(n, Path.ROOT)).value();
+        Object in = Codecs.decoded(loader, "demo.In", n);
         Object flow = loader.loadClass("demo.Flow").getConstructor().newInstance();
-        return ((Behavior<Object, Object>) flow).apply(in).getClass().getName();
+        return Codecs.apply(flow, in).getClass().getName();
     }
 
     @Test

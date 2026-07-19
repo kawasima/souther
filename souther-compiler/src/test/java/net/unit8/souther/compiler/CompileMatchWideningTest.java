@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -44,19 +37,16 @@ class CompileMatchWideningTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void theWidenedMatchRunsAndPicksTheRightCase() throws Exception {
         BytesClassLoader loader =
                 new BytesClassLoader(Compiler.compile(MODULE), CompileMatchWideningTest.class.getClassLoader());
-        Decoder bothDec = (Decoder) loader.loadClass("demo.Both").getMethod("decoder").invoke(null);
-        Object b = ((Ok) bothDec.decode(Map.of("type", "B", "v", 7L), Path.ROOT)).value();
+        Object b = Codecs.decoded(loader, "demo.Both", Map.of("type", "B", "v", 7L));
 
         Object pick = loader.loadClass("demo.Pick").getConstructor().newInstance();
-        Object out = ((Behavior<Object, Object>) pick).apply(b);
+        Object out = Codecs.apply(pick, b);
 
         // the B case produced an OutB { b: 7 }; OutB is a single-Int-field newtype, so it encodes bare
         assertEquals("demo.OutB", out.getClass().getName());
-        Encoder enc = (Encoder) loader.loadClass("demo.OutB").getMethod("encoder").invoke(null);
-        assertEquals(7L, enc.encode(out));
+        assertEquals(7L, Codecs.encode(loader, "demo.OutB", out));
     }
 }

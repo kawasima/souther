@@ -155,7 +155,7 @@ public sealed interface Core {
             case Ast.NewData nd -> ofNewData(nd);
             case Ast.Match m -> ofMatch(m);
             case Ast.Call c -> ofCall(c);
-            case Ast.ListComp comp -> throw new IllegalStateException(
+            case Ast.ListComp _ -> throw new IllegalStateException(
                     "a list comprehension must be lowered to an `if` before Core translation");
         };
     }

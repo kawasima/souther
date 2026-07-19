@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -32,15 +25,12 @@ class CompileDivideTest {
                     | DivisionByZero -> Outcome { q = 0, ok = false }
             """;
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     private Map<?, ?> divide(long a, long b) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        Decoder d = (Decoder) loader.loadClass("demo.Pair").getMethod("decoder").invoke(null);
-        Object pair = ((Ok) d.decode(Map.of("a", a, "b", b), Path.ROOT)).value();
-        Object outcome = ((Behavior<Object, Object>) loader.loadClass("demo.DivideThem")
-                .getConstructor().newInstance()).apply(pair);
-        Encoder enc = (Encoder) loader.loadClass("demo.Outcome").getMethod("encoder").invoke(null);
-        return (Map<?, ?>) enc.encode(outcome);
+        Object pair = Codecs.decoded(loader, "demo.Pair", Map.of("a", a, "b", b));
+        Object outcome = Codecs.apply(
+                loader.loadClass("demo.DivideThem").getConstructor().newInstance(), pair);
+        return (Map<?, ?>) Codecs.encode(loader, "demo.Outcome", outcome);
     }
 
     @Test

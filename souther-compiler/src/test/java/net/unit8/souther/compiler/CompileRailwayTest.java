@@ -1,11 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -46,26 +40,23 @@ class CompileRailwayTest {
     }
 
     private Object amount(BytesClassLoader loader, long n) throws Exception {
-        Decoder d = (Decoder) loader.loadClass("demo.Amount").getMethod("decoder").invoke(null);
-        return ((Ok) d.decode(n, Path.ROOT)).value();
+        return Codecs.decoded(loader, "demo.Amount", n);
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void amountFlowsThroughToDoubled() throws Exception {
         BytesClassLoader loader = loader();
         Object process = loader.loadClass("demo.Process").getConstructor().newInstance();
-        Object r = ((Behavior<Object, Object>) process).apply(amount(loader, 42));
+        Object r = Codecs.apply(process, amount(loader, 42));
         // 42 <= 100, so guard yields Amount, which toDoubled consumes into a Doubled
         assertEquals("demo.Doubled", r.getClass().getName());
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void tooLargeCasePropagatesPastToDoubled() throws Exception {
         BytesClassLoader loader = loader();
         Object process = loader.loadClass("demo.Process").getConstructor().newInstance();
-        Object r = ((Behavior<Object, Object>) process).apply(amount(loader, 500));
+        Object r = Codecs.apply(process, amount(loader, 500));
         // 500 > 100, so guard yields TooLarge, which toDoubled does not accept: it propagates
         assertEquals("demo.TooLarge", r.getClass().getName());
     }
@@ -78,7 +69,6 @@ class CompileRailwayTest {
      * where it was split.
      */
     @Test
-    @SuppressWarnings("unchecked")
     void anCaseThatLeftTheMainLineIsNotOfferedToLaterStages() throws Exception {
         String src = """
                 module demo
@@ -105,13 +95,12 @@ class CompileRailwayTest {
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
         Object flow = loader.loadClass("demo.Flow").getConstructor().newInstance();
-        Decoder dec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
 
-        Object off = ((Behavior<Object, Object>) flow).apply(((Ok) dec.decode(500L, Path.ROOT)).value());
+        Object off = Codecs.apply(flow, Codecs.decoded(loader, "demo.In", 500L));
         assertEquals("demo.Off", off.getClass().getName(),
                 "Off left the main line at 加工, so 仕上げ must not pick it up");
 
-        Object ok = ((Behavior<Object, Object>) flow).apply(((Ok) dec.decode(5L, Path.ROOT)).value());
+        Object ok = Codecs.apply(flow, Codecs.decoded(loader, "demo.In", 5L));
         assertEquals("demo.Out", ok.getClass().getName(), "the main line still reaches 仕上げ");
     }
 

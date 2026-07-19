@@ -1,10 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -61,10 +56,8 @@ class CompileBusinessTripTest {
     }
 
     private Object draft(BytesClassLoader loader, long cost) throws Exception {
-        Decoder d = (Decoder) loader.loadClass("example.businesstrip.申請準備中")
-                .getMethod("decoder").invoke(null);
         Map<String, Object> input = Map.of("申請者", "emp-1", "予定費用", cost);
-        return ((Ok) d.decode(input, Path.ROOT)).value();
+        return Codecs.decoded(loader, "example.businesstrip.申請準備中", input);
     }
 
     private Object submit(BytesClassLoader loader, Object draft, String at) throws Exception {
@@ -81,9 +74,7 @@ class CompileBusinessTripTest {
         assertEquals("example.businesstrip.提出済み", r.getClass().getName(),
                 "50000 is within the 100000 budget");
 
-        Encoder enc = (Encoder) loader.loadClass("example.businesstrip.提出済み")
-                .getMethod("encoder").invoke(null);
-        Map<?, ?> out = (Map<?, ?>) enc.encode(r);
+        Map<?, ?> out = (Map<?, ?>) Codecs.encode(loader, "example.businesstrip.提出済み", r);
         assertEquals("emp-1", out.get("申請者"));        // carried via ...申請
         assertEquals(50000L, out.get("予定費用"));        // carried via ...申請
         assertEquals("2026-07-14", out.get("提出日時"));

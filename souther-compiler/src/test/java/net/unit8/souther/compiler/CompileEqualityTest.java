@@ -1,7 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;

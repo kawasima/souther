@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -26,15 +19,12 @@ class CompileIfTest {
             let classify (x) = Out { value = if x.value >= 100 then "high" else "low" }
             """;
 
-    @SuppressWarnings("unchecked")
     private String classify(BytesClassLoader loader, long n) throws Exception {
-        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) inDec.decode(n, Path.ROOT)).value();
+        Object in = Codecs.decoded(loader, "demo.In", n);
         Object behavior = loader.loadClass("demo.Classify").getConstructor().newInstance();
-        Object out = ((Behavior<Object, Object>) behavior).apply(in);
+        Object out = Codecs.apply(behavior, in);
         // Out is a single-field newtype, so its encoder yields the bare String.
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        return (String) enc.encode(out);
+        return (String) Codecs.encode(loader, "demo.Out", out);
     }
 
     @Test

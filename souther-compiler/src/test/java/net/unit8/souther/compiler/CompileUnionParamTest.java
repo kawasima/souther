@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -36,18 +29,15 @@ class CompileUnionParamTest {
                     | Pre as p -> Done { value = p.value }
             """;
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     private long finish(String caseType, long n) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
         // SubPre is a named sum; its cases are adjacently tagged ({type, value}), so the input to
         // finish is decoded through the sum decoder rather than a bare case value (spec 10.3, 12.2).
-        Decoder d = (Decoder) loader.loadClass("demo.SubPre").getMethod("decoder").invoke(null);
-        Object arg = ((Ok) d.decode(Map.of("type", caseType, "value", n), Path.ROOT)).value();
-        Object done = ((Behavior<Object, Object>) loader.loadClass("demo.Finish")
-                .getConstructor().newInstance()).apply(arg);
+        Object arg = Codecs.decoded(loader, "demo.SubPre", Map.of("type", caseType, "value", n));
+        Object done = Codecs.apply(loader.loadClass("demo.Finish")
+                .getConstructor().newInstance(), arg);
         // Done is a single-field newtype, so its encoder yields the bare Long.
-        Encoder enc = (Encoder) loader.loadClass("demo.Done").getMethod("encoder").invoke(null);
-        return (Long) enc.encode(done);
+        return (Long) Codecs.encode(loader, "demo.Done", done);
     }
 
     @Test

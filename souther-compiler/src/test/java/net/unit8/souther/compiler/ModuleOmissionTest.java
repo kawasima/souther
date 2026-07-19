@@ -1,6 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.compiler.ast.Ast;
 import net.unit8.souther.compiler.syntax.Parser;
 
 import org.junit.jupiter.api.Test;

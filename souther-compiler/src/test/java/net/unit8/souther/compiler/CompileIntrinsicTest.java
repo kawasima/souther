@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -36,15 +29,12 @@ class CompileIntrinsicTest {
             """;
 
     @Test
-    @SuppressWarnings("unchecked")
     void theTrimIntrinsicRunsAsAStdlibFunction() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        Decoder d = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) d.decode(Map.of("s", "  hi  "), Path.ROOT)).value();
-        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Clean")
-                .getConstructor().newInstance()).apply(in);
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        assertEquals("hi", ((Map<?, ?>) enc.encode(out)).get("s"), "trim strips surrounding whitespace");
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("s", "  hi  "));
+        Object out = Codecs.apply(loader.loadClass("demo.Clean")
+                .getConstructor().newInstance(), in);
+        assertEquals("hi", ((Map<?, ?>) Codecs.encode(loader, "demo.Out", out)).get("s"), "trim strips surrounding whitespace");
     }
 
     /** The intrinsic keeps a real signature: a non-String argument is still rejected. */
@@ -61,7 +51,6 @@ class CompileIntrinsicTest {
      * an element read type-checks. If the result stayed {@code List<'a>}, {@code x.n} would not.
      */
     @Test
-    @SuppressWarnings("unchecked")
     void aGenericIntrinsicResolvesItsResultElementType() throws Exception {
         String src = """
                 module demo
@@ -80,12 +69,10 @@ class CompileIntrinsicTest {
                         | None -> Out { n = 0 }
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
-        Decoder d = (Decoder) loader.loadClass("demo.Store").getMethod("decoder").invoke(null);
-        Object s = ((Ok) d.decode(Map.of("byName", Map.of("a", Map.of("n", 42L))), Path.ROOT)).value();
-        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.FirstValue")
-                .getConstructor().newInstance()).apply(s);
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        assertEquals(42L, ((Map<?, ?>) enc.encode(out)).get("n"), "values(m) is List<Item>, so x.n is an Int");
+        Object s = Codecs.decoded(loader, "demo.Store", Map.of("byName", Map.of("a", Map.of("n", 42L))));
+        Object out = Codecs.apply(loader.loadClass("demo.FirstValue")
+                .getConstructor().newInstance(), s);
+        assertEquals(42L, ((Map<?, ?>) Codecs.encode(loader, "demo.Out", out)).get("n"), "values(m) is List<Item>, so x.n is an Int");
     }
 
     /** A user module cannot write `intrinsic`; it is a core privilege. */

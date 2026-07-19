@@ -1,12 +1,6 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
 import net.unit8.souther.runtime.ConstraintViolation;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -26,16 +20,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class CompileArithmeticOperatorTest {
 
-    @SuppressWarnings("unchecked")
     private Object run(String module, String behavior, String type, Object input) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(module), getClass().getClassLoader());
-        Decoder dec = (Decoder) loader.loadClass("demo." + type).getMethod("decoder").invoke(null);
-        Object in = ((Ok) dec.decode(input, Path.ROOT)).value();
+        Object in = Codecs.decoded(loader, "demo." + type, input);
         String behaviorClass = Character.toUpperCase(behavior.charAt(0)) + behavior.substring(1);
         Object b = loader.loadClass("demo." + behaviorClass).getDeclaredConstructor().newInstance();
-        Object out = ((Behavior<Object, Object>) b).apply(in);
-        Encoder enc = (Encoder) loader.loadClass("demo." + type).getMethod("encoder").invoke(null);
-        return enc.encode(out);
+        Object out = Codecs.apply(b, in);
+        return Codecs.encode(loader, "demo." + type, out);
     }
 
     private static final String INT_CALC = """

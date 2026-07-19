@@ -1,11 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -41,23 +35,20 @@ class CompileOrPatternTest {
             """;
 
     @Test
-    @SuppressWarnings("unchecked")
     void anOrPatternRunsOneBodyForEveryAlternative() throws Exception {
         BytesClassLoader loader =
                 new BytesClassLoader(Compiler.compile(ROUTING), CompileOrPatternTest.class.getClassLoader());
-        Decoder three = (Decoder) loader.loadClass("demo.Three").getMethod("decoder").invoke(null);
         Object classify = loader.loadClass("demo.Classify").getConstructor().newInstance();
 
         // A and B take the same (Lo) case; C takes the other (Hi) — the or-pattern fires for both A and B
-        assertEquals("demo.Lo", apply(classify, three, "A").getClass().getName());
-        assertEquals("demo.Lo", apply(classify, three, "B").getClass().getName());
-        assertEquals("demo.Hi", apply(classify, three, "C").getClass().getName());
+        assertEquals("demo.Lo", apply(loader, classify, "A").getClass().getName());
+        assertEquals("demo.Lo", apply(loader, classify, "B").getClass().getName());
+        assertEquals("demo.Hi", apply(loader, classify, "C").getClass().getName());
     }
 
-    @SuppressWarnings("unchecked")
-    private static Object apply(Object behavior, Decoder threeDecoder, String tag) {
-        Object value = ((Ok) threeDecoder.decode(Map.of("type", tag, "v", 0L), Path.ROOT)).value();
-        return ((Behavior<Object, Object>) behavior).apply(value);
+    private static Object apply(BytesClassLoader loader, Object behavior, String tag) throws Exception {
+        Object value = Codecs.decoded(loader, "demo.Three", Map.of("type", tag, "v", 0L));
+        return Codecs.apply(behavior, value);
     }
 
     @Test

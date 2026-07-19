@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -43,15 +36,12 @@ class CompileRecursiveHelperTest {
 
     private long measure(Map<String, Object> employee) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(ORG), getClass().getClassLoader());
-        Decoder cd = (Decoder) loader.loadClass("demo.Employee").getMethod("decoder").invoke(null);
-        Object e = ((Ok) cd.decode(employee, Path.ROOT)).value();
+        Object e = Codecs.decoded(loader, "demo.Employee", employee);
 
         Object behavior = loader.loadClass("demo.MeasureDepth").getConstructor().newInstance();
-        @SuppressWarnings("unchecked")
-        Object depth = ((Behavior<Object, Object>) behavior).apply(e);
+        Object depth = Codecs.apply(behavior, e);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Depth").getMethod("encoder").invoke(null);
-        return (long) enc.encode(depth);
+        return (long) Codecs.encode(loader, "demo.Depth", depth);
     }
 
     @Test
@@ -97,15 +87,12 @@ class CompileRecursiveHelperTest {
     @Test
     void mutuallyRecursiveHelpersEachReachTheOther() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MUTUAL), getClass().getClassLoader());
-        Decoder cd = (Decoder) loader.loadClass("demo.N").getMethod("decoder").invoke(null);
-        Object n = ((Ok) cd.decode(5L, Path.ROOT)).value();
+        Object n = Codecs.decoded(loader, "demo.N", 5L);
 
         Object behavior = loader.loadClass("demo.CountHops").getConstructor().newInstance();
-        @SuppressWarnings("unchecked")
-        Object steps = ((Behavior<Object, Object>) behavior).apply(n);
+        Object steps = Codecs.apply(behavior, n);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Steps").getMethod("encoder").invoke(null);
-        assertEquals(5L, (long) enc.encode(steps));
+        assertEquals(5L, (long) Codecs.encode(loader, "demo.Steps", steps));
     }
 
     @Test
@@ -181,15 +168,12 @@ class CompileRecursiveHelperTest {
                 let run (e) = label(e)
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
-        Decoder cd = (Decoder) loader.loadClass("demo.E").getMethod("decoder").invoke(null);
-        Object e = ((Ok) cd.decode(Map.of("name", "root"), Path.ROOT)).value();
+        Object e = Codecs.decoded(loader, "demo.E", Map.of("name", "root"));
 
         Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
-        @SuppressWarnings("unchecked")
-        Object tag = ((Behavior<Object, Object>) behavior).apply(e);
+        Object tag = Codecs.apply(behavior, e);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Tag").getMethod("encoder").invoke(null);
-        assertEquals("root", enc.encode(tag));
+        assertEquals("root", Codecs.encode(loader, "demo.Tag", tag));
     }
 
     @Test

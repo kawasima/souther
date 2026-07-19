@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -24,7 +17,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CompileOrderingTest {
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void decimalDateAndDateTimeOrdering() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
@@ -54,19 +46,16 @@ class CompileOrderingTest {
                 }
                 """), getClass().getClassLoader());
 
-        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) inDec.decode(Map.ofEntries(
+        Object in = Codecs.decoded(loader, "demo.In", Map.ofEntries(
                 Map.entry("a", new BigDecimal("1.50")),   // equal to b by value, scale ignored
                 Map.entry("b", new BigDecimal("1.5")),
                 Map.entry("d1", LocalDate.parse("2026-01-01")),
                 Map.entry("d2", LocalDate.parse("2026-07-18")),
                 Map.entry("t1", LocalDateTime.parse("2026-07-18T10:00:00")),
-                Map.entry("t2", LocalDateTime.parse("2026-07-18T09:00:00"))), Path.ROOT)).value();
+                Map.entry("t2", LocalDateTime.parse("2026-07-18T09:00:00"))));
 
-        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run").getConstructor().newInstance())
-                .apply(in);
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        Map<?, ?> m = (Map<?, ?>) enc.encode(out);
+        Object out = Codecs.apply(loader.loadClass("demo.Run").getConstructor().newInstance(), in);
+        Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals(true, m.get("decEqByValue"), "1.50 >= 1.5 (scale ignored)");
         assertEquals(false, m.get("decLt"), "1.50 is not < 1.5");
         assertEquals(true, m.get("dateBefore"));

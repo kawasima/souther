@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -34,18 +27,15 @@ class CompileListGetTest {
                     | None -> Label { value = "none" }
             """;
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     private String firstValue(Object... items) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        Decoder bagDec = (Decoder) loader.loadClass("demo.Bag").getMethod("decoder").invoke(null);
-        Object bag = ((Ok) bagDec.decode(Map.of("items", List.of(items)), Path.ROOT)).value();
+        Object bag = Codecs.decoded(loader, "demo.Bag", Map.of("items", List.of(items)));
 
-        Object label = ((Behavior<Object, Object>) loader.loadClass("demo.FirstValue")
-                .getConstructor().newInstance()).apply(bag);
+        Object behavior = loader.loadClass("demo.FirstValue").getConstructor().newInstance();
+        Object label = Codecs.apply(behavior, bag);
 
         // Label is a single-field newtype, so its encoder yields the bare String.
-        Encoder enc = (Encoder) loader.loadClass("demo.Label").getMethod("encoder").invoke(null);
-        return (String) enc.encode(label);
+        return (String) Codecs.encode(loader, "demo.Label", label);
     }
 
     @Test

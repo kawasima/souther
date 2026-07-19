@@ -1,12 +1,6 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
 import net.unit8.souther.runtime.ConstraintViolation;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -32,12 +26,10 @@ class CompileMultiInvariantTest {
             let make (i) = Amount { value = i.value }
             """;
 
-    @SuppressWarnings("unchecked")
     private static Object make(long v, BytesClassLoader loader) throws Exception {
-        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) inDec.decode(v, Path.ROOT)).value();
+        Object in = Codecs.decoded(loader, "demo.In", v);
         Object make = loader.loadClass("demo.Make").getConstructor().newInstance();
-        return ((Behavior<Object, Object>) make).apply(in);
+        return Codecs.apply(make, in);
     }
 
     @Test
@@ -45,8 +37,7 @@ class CompileMultiInvariantTest {
         BytesClassLoader loader =
                 new BytesClassLoader(Compiler.compile(MODULE), CompileMultiInvariantTest.class.getClassLoader());
         Object amount = make(50L, loader);
-        Encoder enc = (Encoder) loader.loadClass("demo.Amount").getMethod("encoder").invoke(null);
-        assertEquals(50L, enc.encode(amount));
+        assertEquals(50L, Codecs.encode(loader, "demo.Amount", amount));
     }
 
     @Test

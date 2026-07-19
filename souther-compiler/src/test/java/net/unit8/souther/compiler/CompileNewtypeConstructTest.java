@@ -1,12 +1,6 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
 import net.unit8.souther.runtime.ConstraintViolation;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -55,15 +49,13 @@ class CompileNewtypeConstructTest {
         return new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
     }
 
-    @SuppressWarnings("unchecked")
     private Object apply(BytesClassLoader loader, String cls, Object in) throws Exception {
         Object b = loader.loadClass("demo." + cls).getConstructor().newInstance();
-        return ((Behavior<Object, Object>) b).apply(in);
+        return Codecs.apply(b, in);
     }
 
     private Object encode(BytesClassLoader loader, String type, Object v) throws Exception {
-        Encoder enc = (Encoder) loader.loadClass("demo." + type).getMethod("encoder").invoke(null);
-        return enc.encode(v);
+        return Codecs.encode(loader, "demo." + type, v);
     }
 
     @Test
@@ -112,8 +104,7 @@ class CompileNewtypeConstructTest {
     @Test
     void noInvariantNewtypeWrapsARuntimeValue() throws Exception {
         BytesClassLoader loader = loader();
-        Decoder dec = (Decoder) loader.loadClass("demo.Tag").getMethod("decoder").invoke(null);
-        Object tag = ((Ok) dec.decode("hello", Path.ROOT)).value();
+        Object tag = Codecs.decoded(loader, "demo.Tag", "hello");
         Object out = apply(loader, "Rewrap", tag);
         assertEquals("hello", encode(loader, "Tag", out));
     }
@@ -147,12 +138,11 @@ class CompileNewtypeConstructTest {
     @Test
     void runtimeConstructionInTailConstructsAndAbortsOnViolation() throws Exception {
         BytesClassLoader loader = loader();
-        Decoder dec = (Decoder) loader.loadClass("demo.金額").getMethod("decoder").invoke(null);
         // 500 - 100 = 400 >= 0: the runtime construction holds and comes back
-        Object big = ((Ok) dec.decode(500L, Path.ROOT)).value();
+        Object big = Codecs.decoded(loader, "demo.金額", 500L);
         assertEquals(400L, encode(loader, "金額", apply(loader, "Halve", big)));
         // 50 - 100 = -50 breaks value >= 0: the tail construction goes through __construct and aborts
-        Object small = ((Ok) dec.decode(50L, Path.ROOT)).value();
+        Object small = Codecs.decoded(loader, "demo.金額", 50L);
         assertThrows(ConstraintViolation.class, () -> apply(loader, "Halve", small));
     }
 

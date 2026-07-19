@@ -1,9 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
@@ -22,10 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class CompileFieldAccessorTest {
 
-    @SuppressWarnings("unchecked")
     private static Object decodeMember(BytesClassLoader loader, Class<?> member) throws Exception {
-        Decoder dec = (Decoder) member.getMethod("decoder").invoke(null);
-        return ((Ok) dec.decode(Map.of("id", "m-1", "age", 30L), Path.ROOT)).value();
+        return Codecs.decoded(member, Map.of("id", "m-1", "age", 30L));
     }
 
     @Test

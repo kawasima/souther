@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -38,16 +31,13 @@ class CompileOptionMatchTest {
 
     private String run(Map<String, Object> tripObject) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        Decoder cd = (Decoder) loader.loadClass("demo.Trip").getMethod("decoder").invoke(null);
-        Object trip = ((Ok) cd.decode(tripObject, Path.ROOT)).value();
+        Object trip = Codecs.decoded(loader, "demo.Trip", tripObject);
 
         Object behavior = loader.loadClass("demo.ApproverLabel").getConstructor().newInstance();
-        @SuppressWarnings("unchecked")
-        Object label = ((Behavior<Object, Object>) behavior).apply(trip);
+        Object label = Codecs.apply(behavior, trip);
 
         // Label is a single-field newtype, so its encoder yields the bare String.
-        Encoder enc = (Encoder) loader.loadClass("demo.Label").getMethod("encoder").invoke(null);
-        return (String) enc.encode(label);
+        return (String) Codecs.encode(loader, "demo.Label", label);
     }
 
     @Test

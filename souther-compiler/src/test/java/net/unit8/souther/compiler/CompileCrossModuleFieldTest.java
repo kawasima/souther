@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -40,21 +33,18 @@ class CompileCrossModuleFieldTest {
             """;
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void aBehaviorReadsAFieldOfAnImportedData() throws Exception {
         Map<String, byte[]> classes = Compiler.compileModules(List.of(A, B));
         BytesClassLoader loader = new BytesClassLoader(classes, getClass().getClassLoader());
 
-        Decoder reqDec = (Decoder) loader.loadClass("b.申請").getMethod("decoder").invoke(null);
-        Object req = ((Ok) reqDec.decode(
-                Map.of("申請者", Map.of("id", "e-1", "上長ID", "e-2")), Path.ROOT)).value();
+        Object req = Codecs.decoded(loader, "b.申請",
+                Map.of("申請者", Map.of("id", "e-1", "上長ID", "e-2")));
 
         Object beh = loader.loadClass("b.上長IDを得る").getConstructor().newInstance();
-        Object r = ((Behavior) beh).apply(req);
+        Object r = Codecs.apply(beh, req);
 
         // 上長ID is 従業員ID (a newtype from module a); its encoder yields the bare String.
-        Encoder enc = (Encoder) loader.loadClass("a.従業員ID").getMethod("encoder").invoke(null);
-        assertEquals("e-2", enc.encode(r));
+        assertEquals("e-2", Codecs.encode(loader, "a.従業員ID", r));
     }
 
     private static final String BASE = """
@@ -75,19 +65,16 @@ class CompileCrossModuleFieldTest {
             """;
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void spreadingAnImportedDataReadsItsFieldsThroughAccessors() throws Exception {
         Map<String, byte[]> classes = Compiler.compileModules(List.of(BASE, DERIVED));
         BytesClassLoader loader = new BytesClassLoader(classes, getClass().getClassLoader());
 
-        Decoder baseDec = (Decoder) loader.loadClass("base_m.Base").getMethod("decoder").invoke(null);
-        Object base = ((Ok) baseDec.decode(Map.of("a", "A", "b", "B"), Path.ROOT)).value();
+        Object base = Codecs.decoded(loader, "base_m.Base", Map.of("a", "A", "b", "B"));
 
         Object beh = loader.loadClass("derived_m.拡張する").getConstructor().newInstance();
-        Object r = ((Behavior) beh).apply(base);
+        Object r = Codecs.apply(beh, base);
 
-        Encoder enc = (Encoder) loader.loadClass("derived_m.Derived").getMethod("encoder").invoke(null);
-        Map<?, ?> out = (Map<?, ?>) enc.encode(r);
+        Map<?, ?> out = (Map<?, ?>) Codecs.encode(loader, "derived_m.Derived", r);
         assertEquals("A", out.get("a"));
         assertEquals("B", out.get("b"));
         assertEquals("x", out.get("c"));

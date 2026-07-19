@@ -1,11 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -27,12 +21,10 @@ class CompileMultiSuccessTest {
                 if d.value <= 100 then Cheap { cost = d.value } else Pricey { cost = d.value }
             """;
 
-    @SuppressWarnings("unchecked")
     private String classify(BytesClassLoader loader, long cost) throws Exception {
-        Decoder dec = (Decoder) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
-        Object draft = ((Ok) dec.decode(cost, Path.ROOT)).value();
+        Object draft = Codecs.decoded(loader, "demo.Draft", cost);
         Object behavior = loader.loadClass("demo.Classify").getConstructor().newInstance();
-        Object r = ((Behavior<Object, Object>) behavior).apply(draft);
+        Object r = Codecs.apply(behavior, draft);
         return r.getClass().getName();
     }
 

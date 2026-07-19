@@ -1,12 +1,7 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
 import net.unit8.raoh.Err;
 import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +12,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CompileStringLibTest {
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void concatUppercaseAndSubstringInABehavior() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
@@ -32,18 +26,15 @@ class CompileStringLibTest {
                 let greet (n) = Greeting { value = concat(concat("hi ", uppercase(substring(0, 3, n.value))), "!") }
                 """), getClass().getClassLoader());
 
-        Decoder nameDec = (Decoder) loader.loadClass("demo.Name").getMethod("decoder").invoke(null);
-        Object name = ((Ok) nameDec.decode("robert", Path.ROOT)).value();
-        Object greeting = ((Behavior<Object, Object>) loader.loadClass("demo.Greet")
-                .getConstructor().newInstance()).apply(name);
+        Object name = Codecs.decoded(loader, "demo.Name", "robert");
+        Object behavior = loader.loadClass("demo.Greet").getConstructor().newInstance();
+        Object greeting = Codecs.apply(behavior, name);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Greeting").getMethod("encoder").invoke(null);
         // Greeting has a single String field, so it is a newtype: encodes as bare Text
-        assertEquals("hi ROB!", enc.encode(greeting));
+        assertEquals("hi ROB!", Codecs.encode(loader, "demo.Greeting", greeting));
     }
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void splitJoinAndReplace() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
@@ -66,20 +57,17 @@ class CompileStringLibTest {
                 }
                 """), getClass().getClassLoader());
 
-        Decoder rawDec = (Decoder) loader.loadClass("demo.Raw").getMethod("decoder").invoke(null);
-        Object raw = ((Ok) rawDec.decode("a,b,,c", Path.ROOT)).value();
-        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run")
-                .getConstructor().newInstance()).apply(raw);
+        Object raw = Codecs.decoded(loader, "demo.Raw", "a,b,,c");
+        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, raw);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        java.util.Map<?, ?> m = (java.util.Map<?, ?>) enc.encode(out);
+        java.util.Map<?, ?> m = (java.util.Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals(java.util.List.of("a", "b", "", "c"), m.get("parts"), "split keeps empty pieces");
         assertEquals("a|b||c", m.get("joined"));
         assertEquals("a;b;;c", m.get("swapped"));
     }
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void wordsAndFromInt() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
@@ -103,13 +91,11 @@ class CompileStringLibTest {
                 }
                 """), getClass().getClassLoader());
 
-        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) inDec.decode(java.util.Map.of("text", "  the  quick fox ", "n", 42L), Path.ROOT)).value();
-        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run")
-                .getConstructor().newInstance()).apply(in);
+        Object in = Codecs.decoded(loader, "demo.In", java.util.Map.of("text", "  the  quick fox ", "n", 42L));
+        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, in);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        java.util.Map<?, ?> m = (java.util.Map<?, ?>) enc.encode(out);
+        java.util.Map<?, ?> m = (java.util.Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals(java.util.List.of("the", "quick", "fox"), m.get("tokens"), "words splits on whitespace runs");
         assertEquals("item-42", m.get("label"));
     }
@@ -124,10 +110,8 @@ class CompileStringLibTest {
                 data Sku = String
                     invariant startsWith("X", value) && endsWith("Z", value)
                 """), getClass().getClassLoader());
-        Decoder d = (Decoder) loader.loadClass("demo.Sku").getMethod("decoder").invoke(null);
-
-        assertTrue(d.decode("XabcZ", Path.ROOT) instanceof Ok);
-        assertTrue(d.decode("Xabc", Path.ROOT) instanceof Err, "must end with Z");
-        assertTrue(d.decode("abcZ", Path.ROOT) instanceof Err, "must start with X");
+        assertTrue(Codecs.decode(loader, "demo.Sku", "XabcZ") instanceof Ok);
+        assertTrue(Codecs.decode(loader, "demo.Sku", "Xabc") instanceof Err, "must end with Z");
+        assertTrue(Codecs.decode(loader, "demo.Sku", "abcZ") instanceof Err, "must start with X");
     }
 }

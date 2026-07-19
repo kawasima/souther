@@ -1,11 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -42,16 +36,14 @@ class CompileNamedSumStageTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void theAcceptedCaseRoutesIntoTheNextStage() throws Exception {
         BytesClassLoader loader =
                 new BytesClassLoader(Compiler.compile(MODULE), CompileNamedSumStageTest.class.getClassLoader());
         // A is a case of AB, so it decodes from an object; v > 0 makes classify pass it through
-        Decoder aDec = (Decoder) loader.loadClass("demo.A").getMethod("decoder").invoke(null);
-        Object a = ((Ok) aDec.decode(java.util.Map.of("v", 5L), Path.ROOT)).value();
+        Object a = Codecs.decoded(loader, "demo.A", java.util.Map.of("v", 5L));
 
         Object pipe = loader.loadClass("demo.Pipe").getConstructor().newInstance();
-        Object out = ((Behavior<Object, Object>) pipe).apply(a);
+        Object out = Codecs.apply(pipe, a);
 
         // A routed into handleA, producing OutA { a: 5 }
         assertEquals("demo.OutA", out.getClass().getName());

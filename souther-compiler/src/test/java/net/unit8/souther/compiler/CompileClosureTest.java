@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -38,11 +31,9 @@ class CompileClosureTest {
             """;
 
     private long run(BytesClassLoader loader, Object check, long v, boolean spring) throws Exception {
-        Decoder d = (Decoder) loader.loadClass("demo.Order").getMethod("decoder").invoke(null);
-        Object order = ((Ok) d.decode(Map.of("v", v, "spring", spring), Path.ROOT)).value();
-        Object r = ((Behavior) check).apply(order);
-        Encoder enc = (Encoder) loader.loadClass("demo.Result").getMethod("encoder").invoke(null);
-        return (Long) ((Map<?, ?>) enc.encode(r)).get("n");
+        Object order = Codecs.decoded(loader, "demo.Order", Map.of("v", v, "spring", spring));
+        Object r = Codecs.apply(check, order);
+        return (Long) ((Map<?, ?>) Codecs.encode(loader, "demo.Result", r)).get("n");
     }
 
     @Test
@@ -119,12 +110,10 @@ class CompileClosureTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MULTIARG), getClass().getClassLoader());
         Object check = loader.loadClass("demo.Check").getDeclaredConstructor().newInstance();
 
-        Decoder d = (Decoder) loader.loadClass("demo.Pair").getMethod("decoder").invoke(null);
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        Object plus = ((Ok) d.decode(Map.of("a", 7L, "b", 3L, "plus", true), Path.ROOT)).value();
-        Object minus = ((Ok) d.decode(Map.of("a", 7L, "b", 3L, "plus", false), Path.ROOT)).value();
-        assertEquals(10L, ((Map<?, ?>) enc.encode(((Behavior) check).apply(plus))).get("v"));
-        assertEquals(4L, ((Map<?, ?>) enc.encode(((Behavior) check).apply(minus))).get("v"));
+        Object plus = Codecs.decoded(loader, "demo.Pair", Map.of("a", 7L, "b", 3L, "plus", true));
+        Object minus = Codecs.decoded(loader, "demo.Pair", Map.of("a", 7L, "b", 3L, "plus", false));
+        assertEquals(10L, ((Map<?, ?>) Codecs.encode(loader, "demo.Out", Codecs.apply(check, plus))).get("v"));
+        assertEquals(4L, ((Map<?, ?>) Codecs.encode(loader, "demo.Out", Codecs.apply(check, minus))).get("v"));
     }
 
     // a closure that constructs a data — the construction must count against the behavior's
@@ -149,12 +138,10 @@ class CompileClosureTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(CONSTRUCTING), getClass().getClassLoader());
         Object check = loader.loadClass("demo.Check").getDeclaredConstructor().newInstance();
 
-        Decoder d = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        Object up = ((Ok) d.decode(Map.of("v", 10L, "up", true), Path.ROOT)).value();
-        Object down = ((Ok) d.decode(Map.of("v", 10L, "up", false), Path.ROOT)).value();
-        assertEquals(11L, ((Map<?, ?>) enc.encode(((Behavior) check).apply(up))).get("v"));
-        assertEquals(9L, ((Map<?, ?>) enc.encode(((Behavior) check).apply(down))).get("v"));
+        Object up = Codecs.decoded(loader, "demo.In", Map.of("v", 10L, "up", true));
+        Object down = Codecs.decoded(loader, "demo.In", Map.of("v", 10L, "up", false));
+        assertEquals(11L, ((Map<?, ?>) Codecs.encode(loader, "demo.Out", Codecs.apply(check, up))).get("v"));
+        assertEquals(9L, ((Map<?, ?>) Codecs.encode(loader, "demo.Out", Codecs.apply(check, down))).get("v"));
     }
 
     /** A closure that constructs a data must still obey the behavior's `constructs` permission: here
@@ -186,10 +173,8 @@ class CompileClosureTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(RETURNING), getClass().getClassLoader());
         Object check = loader.loadClass("demo.Check").getDeclaredConstructor().newInstance();
 
-        Decoder d = (Decoder) loader.loadClass("demo.Order").getMethod("decoder").invoke(null);
-        Object order = ((Ok) d.decode(Map.of("v", 10L), Path.ROOT)).value();
-        Object r = ((Behavior) check).apply(order);
-        Encoder enc = (Encoder) loader.loadClass("demo.Result").getMethod("encoder").invoke(null);
-        assertEquals(15L, ((Map<?, ?>) enc.encode(r)).get("n"));   // (x -> x + 5)(10)
+        Object order = Codecs.decoded(loader, "demo.Order", Map.of("v", 10L));
+        Object r = Codecs.apply(check, order);
+        assertEquals(15L, ((Map<?, ?>) Codecs.encode(loader, "demo.Result", r)).get("n"));   // (x -> x + 5)(10)
     }
 }

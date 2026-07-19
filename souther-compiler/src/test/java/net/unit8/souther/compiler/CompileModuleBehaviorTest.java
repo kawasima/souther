@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -39,19 +32,16 @@ class CompileModuleBehaviorTest {
             """;
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void importedBehaviorComposesInAnotherModule() throws Exception {
         Map<String, byte[]> classes = Compiler.compileModules(List.of(A, B));
         BytesClassLoader loader = new BytesClassLoader(classes, getClass().getClassLoader());
 
-        Decoder nDec = (Decoder) loader.loadClass("m.a.N").getMethod("decoder").invoke(null);
-        Object five = ((Ok) nDec.decode(5L, Path.ROOT)).value();
+        Object five = Codecs.decoded(loader, "m.a.N", 5L);
 
         Object twice = loader.loadClass("m.b.Twice").getConstructor().newInstance();
-        Object r = ((Behavior) twice).apply(five);
+        Object r = Codecs.apply(twice, five);
 
         // inc twice: 5 -> 6 -> 7. N is a newtype, so its encoder yields the bare Long.
-        Encoder enc = (Encoder) loader.loadClass("m.a.N").getMethod("encoder").invoke(null);
-        assertEquals(7L, enc.encode(r));
+        assertEquals(7L, Codecs.encode(loader, "m.a.N", r));
     }
 }

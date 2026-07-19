@@ -1,10 +1,7 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
 import net.unit8.raoh.Result;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -33,30 +30,25 @@ class CompileUnitCaseTest {
         return new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
     }
 
-    private Decoder reasonDecoder(BytesClassLoader loader) throws Exception {
-        return (Decoder) loader.loadClass("demo.Reason").getMethod("decoder").invoke(null);
-    }
-
     @Test
     void decodesAUnitCase() throws Exception {
         BytesClassLoader loader = loader();
-        Result low = reasonDecoder(loader).decode(Map.of("type", "LowRole"), Path.ROOT);
+        Result<?> low = Codecs.decode(loader, "demo.Reason", Map.of("type", "LowRole"));
         assertTrue(low instanceof Ok);
-        assertEquals("demo.LowRole", ((Ok) low).value().getClass().getName());
+        assertEquals("demo.LowRole", ((Ok<?>) low).value().getClass().getName());
 
-        Result high = reasonDecoder(loader)
-                .decode(Map.of("type", "High", "threshold", 5L), Path.ROOT);
+        Result<?> high = Codecs.decode(loader, "demo.Reason",
+                Map.of("type", "High", "threshold", 5L));
         assertTrue(high instanceof Ok);
-        assertEquals("demo.High", ((Ok) high).value().getClass().getName());
+        assertEquals("demo.High", ((Ok<?>) high).value().getClass().getName());
     }
 
     @Test
     void encodesAUnitCaseWithItsTag() throws Exception {
         BytesClassLoader loader = loader();
-        Result low = reasonDecoder(loader).decode(Map.of("type", "LowRole"), Path.ROOT);
+        Result<?> low = Codecs.decode(loader, "demo.Reason", Map.of("type", "LowRole"));
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Reason").getMethod("encoder").invoke(null);
-        Map<?, ?> out = (Map<?, ?>) enc.encode(((Ok) low).value());
+        Map<?, ?> out = (Map<?, ?>) Codecs.encode(loader, "demo.Reason", ((Ok<?>) low).value());
         assertEquals("LowRole", out.get("type"));
         assertEquals(1, out.size(), "a unit case encodes to just its tag");
     }

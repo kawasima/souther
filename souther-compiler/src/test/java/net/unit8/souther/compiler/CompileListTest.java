@@ -1,14 +1,9 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
 import net.unit8.raoh.Err;
 import net.unit8.raoh.Issue;
 import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
 import net.unit8.raoh.Result;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -45,33 +40,27 @@ class CompileListTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void decodesListsAndCountsThem() throws Exception {
         BytesClassLoader loader = loader();
-        Decoder decoder = (Decoder) loader.loadClass("demo.Request").getMethod("decoder").invoke(null);
 
-        Result r = decoder.decode(Map.of(
+        Result<?> r = Codecs.decode(loader, "demo.Request", Map.of(
                 "nums", List.of(1L, 2L, 3L),
-                "reasons", List.of("high", "late")), Path.ROOT);
+                "reasons", List.of("high", "late")));
         assertTrue(r instanceof Ok);
-        Object request = ((Ok) r).value();
+        Object request = ((Ok<?>) r).value();
         Object count = loader.loadClass("demo.CountReasons").getConstructor().newInstance();
-        Object out = ((Behavior<Object, Object>) count).apply(request);
+        Object out = Codecs.apply(count, request);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Count").getMethod("encoder").invoke(null);
-        assertEquals(2L, enc.encode(out));
+        assertEquals(2L, Codecs.encode(loader, "demo.Count", out));
     }
 
     @Test
     void listElementErrorsCarryIndexPaths() throws Exception {
-        Decoder decoder = (Decoder) loader().loadClass("demo.Request")
-                .getMethod("decoder").invoke(null);
-
-        Result r = decoder.decode(Map.of(
+        Result<?> r = Codecs.decode(loader(), "demo.Request", Map.of(
                 "nums", List.of(1L, "bad", 3L),
-                "reasons", List.of()), Path.ROOT);
+                "reasons", List.of()));
         assertTrue(r instanceof Err);
-        Issue e = ((Err) r).issues().asList().get(0);
+        Issue e = ((Err<?>) r).issues().asList().get(0);
         assertEquals("type_mismatch", e.code());
         // path is [nums, 1]
         assertEquals("/nums/1", e.path().toJsonPointer());

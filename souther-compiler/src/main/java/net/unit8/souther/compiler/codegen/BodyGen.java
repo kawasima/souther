@@ -170,7 +170,7 @@ final class BodyGen {
                 for (Type t : valueTypes) {
                     ctor.add(jvmType(t));
                 }
-                for (String ignored : injectedNames) {
+                for (String _ : injectedNames) {
                     ctor.add(CD_Behavior);
                 }
                 cb.withMethodBody("<init>", MethodTypeDesc.of(ConstantDescs.CD_void, ctor.toArray(new ClassDesc[0])),
@@ -1205,10 +1205,10 @@ final class BodyGen {
                     collectFree(comp.element(), bound, free);
                     comp.guards().forEach(g -> collectFree(g, bound, free));
                 }
-                case Ast.IntLit ignored -> { }
-                case Ast.DecimalLit ignored -> { }
-                case Ast.StringLit ignored -> { }
-                case Ast.BoolLit ignored -> { }
+                case Ast.IntLit _ -> { }
+                case Ast.DecimalLit _ -> { }
+                case Ast.StringLit _ -> { }
+                case Ast.BoolLit _ -> { }
             }
         }
 

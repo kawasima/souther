@@ -1,7 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -37,11 +35,10 @@ class CompileBlockTest {
             let どれか正か (xs) = any(x -> x > 0, xs)
             """;
 
-    @SuppressWarnings("unchecked")
     private Object run(String name, Object arg) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
         Object b = loader.loadClass("demo." + name).getConstructor().newInstance();
-        return ((Behavior<Object, Object>) b).apply(arg);
+        return Codecs.apply(b, arg);
     }
 
     @Test

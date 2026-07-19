@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -43,11 +36,9 @@ class CompileLambdaLetTest {
     }
 
     private long run(BytesClassLoader loader, Object check, long v) throws Exception {
-        Decoder d = (Decoder) loader.loadClass("demo.Order").getMethod("decoder").invoke(null);
-        Object order = ((Ok) d.decode(Map.of("v", v), Path.ROOT)).value();
-        Object r = ((Behavior) check).apply(order);
-        Encoder enc = (Encoder) loader.loadClass("demo.Result").getMethod("encoder").invoke(null);
-        return (Long) ((Map<?, ?>) enc.encode(r)).get("n");
+        Object order = Codecs.decoded(loader, "demo.Order", Map.of("v", v));
+        Object r = Codecs.apply(check, order);
+        return (Long) ((Map<?, ?>) Codecs.encode(loader, "demo.Result", r)).get("n");
     }
 
     @Test

@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import javax.tools.ToolProvider;
@@ -52,7 +45,6 @@ class CompileModuleInjectedTest {
             """;
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void importsAnInjectedBehaviorAndBindsItAcrossModules() throws Exception {
         Map<String, byte[]> classes = new HashMap<>(Compiler.compileModules(List.of(A, B)));
         classes.put("a.ProduceImpl", compileSubclass(classes, "a.ProduceImpl", IMPL));
@@ -64,12 +56,10 @@ class CompileModuleInjectedTest {
         Object impl = loader.loadClass("a.ProduceImpl").getConstructor().newInstance();
         Object flow = bind.invoke(null, impl);
 
-        Decoder nDec = (Decoder) loader.loadClass("a.N").getMethod("decoder").invoke(null);
-        Object five = ((Ok) nDec.decode(5L, Path.ROOT)).value();
-        Object r = ((Behavior) flow).apply(five);
+        Object five = Codecs.decoded(loader, "a.N", 5L);
+        Object r = Codecs.apply(flow, five);
 
-        Encoder enc = (Encoder) loader.loadClass("a.N").getMethod("encoder").invoke(null);
-        assertEquals(5L, enc.encode(r));
+        assertEquals(5L, Codecs.encode(loader, "a.N", r));
     }
 
     /** Compiles {@code source} against the generated classes and returns the class bytes. */

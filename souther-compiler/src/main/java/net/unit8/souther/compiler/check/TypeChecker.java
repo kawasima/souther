@@ -76,7 +76,7 @@ public final class TypeChecker {
             switch (def) {
                 case Ast.Data data -> checkData(data, symbols);
                 case Ast.SumData sum -> checkSum(sum, symbols);
-                case Ast.UnitData ignored -> { }
+                case Ast.UnitData _ -> { }
             }
         }
         checkNoUninhabitableCycle(module, symbols);
@@ -1271,11 +1271,11 @@ public final class TypeChecker {
             // a bare name that resolves to a unit data is that unit's construction (spec 8.4)
             case Ast.Var v when !bound.contains(v.name())
                     && symbols.get(v.name()) instanceof Ast.UnitData -> out.add(v.name());
-            case Ast.IntLit ignored -> { }
-            case Ast.DecimalLit ignored -> { }
-            case Ast.StringLit ignored -> { }
-            case Ast.BoolLit ignored -> { }
-            case Ast.Var ignored -> { }
+            case Ast.IntLit _ -> { }
+            case Ast.DecimalLit _ -> { }
+            case Ast.StringLit _ -> { }
+            case Ast.BoolLit _ -> { }
+            case Ast.Var _ -> { }
         }
     }
 
@@ -1813,10 +1813,10 @@ public final class TypeChecker {
     public static Type typeOf(Ast.Expr e, Map<String, Type> env, Ast.Data data,
                               Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
         return switch (e) {
-            case Ast.IntLit ignored -> Type.INT;
-            case Ast.DecimalLit ignored -> Type.DECIMAL;
-            case Ast.StringLit ignored -> Type.STRING;
-            case Ast.BoolLit ignored -> Type.BOOL;
+            case Ast.IntLit _ -> Type.INT;
+            case Ast.DecimalLit _ -> Type.DECIMAL;
+            case Ast.StringLit _ -> Type.STRING;
+            case Ast.BoolLit _ -> Type.BOOL;
             case Ast.Tuple tup -> {
                 List<Type> elems = new ArrayList<>();
                 for (Ast.Expr el : tup.elements()) {
@@ -2678,7 +2678,7 @@ public final class TypeChecker {
      * becomes a first-class {@code Fn} (spec §blocks). */
     public static boolean producesFunction(Ast.Expr e) {
         return switch (e) {
-            case Ast.Block ignored -> true;
+            case Ast.Block _ -> true;
             case Ast.If iff -> producesFunction(iff.then()) || producesFunction(iff.els());
             // a lambda returned under its capture bindings, e.g. inlining `adder(5)` leaves
             // `let $n = 5 in (x) -> x + $n` (spec §blocks)

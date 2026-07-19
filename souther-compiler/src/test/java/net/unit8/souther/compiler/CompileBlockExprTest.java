@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -30,14 +23,11 @@ class CompileBlockExprTest {
                     else n
             """;
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     private long apply(BytesClassLoader loader, long in) throws Exception {
-        Decoder dec = (Decoder) loader.loadClass("demo.N").getMethod("decoder").invoke(null);
-        Object n = ((Ok) dec.decode(in, Path.ROOT)).value();
+        Object n = Codecs.decoded(loader, "demo.N", in);
         Object f = loader.loadClass("demo.F").getConstructor().newInstance();
-        Object r = ((Behavior) f).apply(n);
-        Encoder enc = (Encoder) loader.loadClass("demo.N").getMethod("encoder").invoke(null);
-        return (long) enc.encode(r);
+        Object r = Codecs.apply(f, n);
+        return (long) Codecs.encode(loader, "demo.N", r);
     }
 
     @Test

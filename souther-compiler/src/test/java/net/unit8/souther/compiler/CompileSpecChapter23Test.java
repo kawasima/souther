@@ -2,10 +2,6 @@ package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
 
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -114,13 +110,9 @@ class CompileSpecChapter23Test {
 
     /** The nested sum of 8.3 dispatches over its leaves, so 自社負担 never appears on the wire. */
     @Test
-    @SuppressWarnings("unchecked")
     void theNestedCostSumDecodesALeaf() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        Decoder<Map<String, Object>, Object> dec =
-                (Decoder<Map<String, Object>, Object>) loader.loadClass("example.businesstrip.費用負担区分")
-                        .getMethod("decoder").invoke(null);
-        Object v = ((Ok<Object>) dec.decode(Map.of("type", "会社カード"), Path.ROOT)).value();
+        Object v = Codecs.decoded(loader, "example.businesstrip.費用負担区分", Map.of("type", "会社カード"));
         assertEquals("example.businesstrip.会社カード", v.getClass().getName());
     }
 
@@ -129,14 +121,8 @@ class CompileSpecChapter23Test {
      * approver is not the applicant's manager the guard returns 承認権限なし.
      */
     @Test
-    @SuppressWarnings("unchecked")
     void approvalRequiresTheApplicantsManager() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-
-        Decoder<Object, Object> idDec = (Decoder<Object, Object>) loader
-                .loadClass("example.businesstrip.従業員ID").getMethod("decoder").invoke(null);
-        Decoder<Map<String, Object>, Object> reqDec = (Decoder<Map<String, Object>, Object>) loader
-                .loadClass("example.businesstrip.事前承認待ち").getMethod("decoder").invoke(null);
 
         Map<String, Object> 申請 = Map.of(
                 "申請者", Map.of("id", "e1", "役職", Map.of("type", "一般社員"), "上長ID", "boss"),
@@ -146,7 +132,7 @@ class CompileSpecChapter23Test {
                 "出張終了日", java.time.LocalDate.parse("2026-08-02"),
                 "提出日時", java.time.LocalDateTime.parse("2026-07-15T10:00:00"),
                 "事前承認理由リスト", List.of(Map.of("type", "高額出張", "基準金額", 100000L)));
-        Object 事前承認待ち = ((Ok<Object>) reqDec.decode(申請, Path.ROOT)).value();
+        Object 事前承認待ち = Codecs.decoded(loader, "example.businesstrip.事前承認待ち", 申請);
 
         Object clock = java.lang.reflect.Proxy.newProxyInstance(loader,
                 new Class<?>[]{Behavior.class}, (p, m, a) -> java.time.LocalDateTime.parse("2026-07-15T12:00:00"));
@@ -154,7 +140,7 @@ class CompileSpecChapter23Test {
                 .getConstructor(Behavior.class).newInstance(clock);
         var apply = 事前承認する.getClass().getMethod("apply", Object.class, Object.class);
 
-        Object stranger = ((Ok<Object>) idDec.decode("someone", Path.ROOT)).value();
+        Object stranger = Codecs.decoded(loader, "example.businesstrip.従業員ID", "someone");
         assertEquals("example.businesstrip.承認権限なし",
                 apply.invoke(事前承認する, 事前承認待ち, stranger).getClass().getName(),
                 "承認者ID /= 上長ID leaves via the guard");

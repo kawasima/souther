@@ -1,10 +1,7 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
 import net.unit8.raoh.Result;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -24,7 +21,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CompileListEncoderTest {
 
     @Test
-    @SuppressWarnings("unchecked")
     void listsOfNonStringPrimitivesRoundTrip() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
@@ -35,17 +31,14 @@ class CompileListEncoderTest {
                     , days:   List<Date>
                 }
                 """), getClass().getClassLoader());
-        Decoder dec = (Decoder) loader.loadClass("demo.Bag").getMethod("decoder").invoke(null);
-        Encoder enc = (Encoder) loader.loadClass("demo.Bag").getMethod("encoder").invoke(null);
-
         Map<String, Object> in = Map.of(
                 "prices", List.of(new BigDecimal("1.50"), new BigDecimal("2.25")),
                 "flags", List.of(true, false),
                 "days", List.of(LocalDate.parse("2026-07-17")));
-        Result r = dec.decode(in, Path.ROOT);
+        Result<?> r = Codecs.decode(loader, "demo.Bag", in);
         assertTrue(r instanceof Ok, "the decoder already handled these element types");
 
-        Map<?, ?> out = (Map<?, ?>) enc.encode(((Ok) r).value());
+        Map<?, ?> out = (Map<?, ?>) Codecs.encode(loader, "demo.Bag", ((Ok<?>) r).value());
         assertEquals(List.of(new BigDecimal("1.50"), new BigDecimal("2.25")), out.get("prices"));
         assertEquals(List.of(true, false), out.get("flags"));
         assertEquals(List.of("2026-07-17"), out.get("days"), "a Date element encodes to its ISO form");

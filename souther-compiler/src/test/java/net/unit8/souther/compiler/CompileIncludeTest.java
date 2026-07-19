@@ -2,10 +2,7 @@ package net.unit8.souther.compiler;
 
 import net.unit8.raoh.Err;
 import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
 import net.unit8.raoh.Result;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -44,18 +41,16 @@ class CompileIncludeTest {
     void spreadCarriesIncludedFieldsThroughATransition() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(FLOW), getClass().getClassLoader());
 
-        Decoder draftDecoder = (Decoder) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
-        Result r = draftDecoder.decode(Map.of("applicant", "bob", "cost", 100L), Path.ROOT);
+        Result<?> r = Codecs.decode(loader, "demo.Draft", Map.of("applicant", "bob", "cost", 100L));
         assertTrue(r instanceof Ok);
-        Object draft = ((Ok) r).value();
+        Object draft = ((Ok<?>) r).value();
 
         Object submit = loader.loadClass("demo.Submit").getConstructor().newInstance();
         Object submitted = submit.getClass()
                 .getMethod("apply", Object.class, Object.class)
                 .invoke(submit, draft, "2026");
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Submitted").getMethod("encoder").invoke(null);
-        Map<?, ?> out = (Map<?, ?>) enc.encode(submitted);
+        Map<?, ?> out = (Map<?, ?>) Codecs.encode(loader, "demo.Submitted", submitted);
         assertEquals("bob", out.get("applicant"));  // from ...d (included field)
         assertEquals(100L, out.get("cost"));         // from ...d (included field)
         assertEquals("2026", out.get("submittedAt"));
@@ -69,14 +64,13 @@ class CompileIncludeTest {
                 data Draft = { ...Common }
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
-        Decoder decoder = (Decoder) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
 
-        Result good = decoder.decode(Map.of("applicant", "bob", "cost", 5L), Path.ROOT);
+        Result<?> good = Codecs.decode(loader, "demo.Draft", Map.of("applicant", "bob", "cost", 5L));
         assertTrue(good instanceof Ok);
 
-        Result bad = decoder.decode(Map.of("applicant", "bob", "cost", -5L), Path.ROOT);
+        Result<?> bad = Codecs.decode(loader, "demo.Draft", Map.of("applicant", "bob", "cost", -5L));
         assertTrue(bad instanceof Err, "Common's invariant is inherited by Draft");
         assertEquals("invariant_violation",
-                ((Err) bad).issues().asList().get(0).code());
+                ((Err<?>) bad).issues().asList().get(0).code());
     }
 }

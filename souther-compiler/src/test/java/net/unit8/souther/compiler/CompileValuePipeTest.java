@@ -1,11 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -22,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class CompileValuePipeTest {
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     private long run(String body, long v) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
@@ -36,10 +29,9 @@ class CompileValuePipeTest {
 
                 let run (x) = %s
                 """.formatted(body)), getClass().getClassLoader());
-        Decoder d = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) d.decode(Map.of("v", v), Path.ROOT)).value();
-        return (Long) ((Behavior<Object, Object>) loader.loadClass("demo.Run")
-                .getConstructor().newInstance()).apply(in);
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("v", v));
+        return (Long) Codecs.apply(loader.loadClass("demo.Run")
+                .getConstructor().newInstance(), in);
     }
 
     @Test
@@ -64,7 +56,6 @@ class CompileValuePipeTest {
     }
 
     @Test
-    @SuppressWarnings({"unchecked", "rawtypes"})
     void pipeIntoAQualifiedNameWithoutParens() throws Exception {
         // `xs |> List.sum` — a qualified stdlib name with no parens (the idiomatic F#/Elm form). It
         // parses as a field access, but the pipe routes it to the call `List.sum(xs)`.
@@ -77,10 +68,9 @@ class CompileValuePipeTest {
 
                 let run (x) = x.ns |> List.sum
                 """), getClass().getClassLoader());
-        Decoder d = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
-        Object in = ((Ok) d.decode(Map.of("ns", List.of(1L, 2L, 3L)), Path.ROOT)).value();
-        long r = (Long) ((Behavior<Object, Object>) loader.loadClass("demo.Run")
-                .getConstructor().newInstance()).apply(in);
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("ns", List.of(1L, 2L, 3L)));
+        long r = (Long) Codecs.apply(loader.loadClass("demo.Run")
+                .getConstructor().newInstance(), in);
         assertEquals(6L, r);
     }
 }

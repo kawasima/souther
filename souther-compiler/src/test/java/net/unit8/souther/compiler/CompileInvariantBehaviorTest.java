@@ -1,12 +1,6 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
 import net.unit8.souther.runtime.ConstraintViolation;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
 
 import org.junit.jupiter.api.Test;
 
@@ -39,30 +33,26 @@ class CompileInvariantBehaviorTest {
     }
 
     private Object draft(BytesClassLoader loader, long cost) throws Exception {
-        Decoder d = (Decoder) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
-        return ((Ok) d.decode(cost, Path.ROOT)).value();
+        return Codecs.decoded(loader, "demo.Draft", cost);
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void constructionSucceedsWhenInvariantHolds() throws Exception {
         BytesClassLoader loader = loader();
         Object discount = loader.loadClass("demo.Discount").getConstructor().newInstance();
-        Object r = ((Behavior<Object, Object>) discount).apply(draft(loader, 3000));
+        Object r = Codecs.apply(discount, draft(loader, 3000));
         assertEquals("demo.Adjusted", r.getClass().getName(), "3000 - 2000 = 1000 >= 0");
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Adjusted").getMethod("encoder").invoke(null);
-        assertEquals(1000L, enc.encode(r));
+        assertEquals(1000L, Codecs.encode(loader, "demo.Adjusted", r));
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void invariantViolationAborts() throws Exception {
         BytesClassLoader loader = loader();
         Object discount = loader.loadClass("demo.Discount").getConstructor().newInstance();
         // 100 - 2000 = -1900 violates cost >= 0, so the construction aborts rather than returning
         ConstraintViolation v = assertThrows(ConstraintViolation.class,
-                () -> ((Behavior<Object, Object>) discount).apply(draft(loader, 100)));
+                () -> Codecs.apply(discount, draft(loader, 100)));
         // the message names the data whose invariant broke
         org.junit.jupiter.api.Assertions.assertTrue(v.getMessage().contains("Adjusted"), v.getMessage());
     }
@@ -75,7 +65,6 @@ class CompileInvariantBehaviorTest {
      * construction goes through {@code __construct} wherever it sits — and aborts on violation.
      */
     @Test
-    @SuppressWarnings("unchecked")
     void invariantIsCheckedForAConstructionInsideAGuardElse() throws Exception {
         String src = """
                 module demo
@@ -93,15 +82,14 @@ class CompileInvariantBehaviorTest {
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
         Object adjust = loader.loadClass("demo.Adjust").getConstructor().newInstance();
-        Decoder dec = (Decoder) loader.loadClass("demo.Draft").getMethod("decoder").invoke(null);
 
         // the guard fails, so the else branch builds Adjusted { cost: 999 - 2000 = -1001 },
         // which breaks cost >= 0 — it must abort, not come back as an Adjusted
         assertThrows(ConstraintViolation.class,
-                () -> ((Behavior<Object, Object>) adjust).apply(((Ok) dec.decode(999L, Path.ROOT)).value()),
+                () -> Codecs.apply(adjust, Codecs.decoded(loader, "demo.Draft", 999L)),
                 "a guard's else branch must check the invariant too");
 
-        Object ok = ((Behavior<Object, Object>) adjust).apply(((Ok) dec.decode(3000L, Path.ROOT)).value());
+        Object ok = Codecs.apply(adjust, Codecs.decoded(loader, "demo.Draft", 3000L));
         assertEquals("demo.Kept", ok.getClass().getName());
     }
 

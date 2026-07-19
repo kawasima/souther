@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -38,8 +31,7 @@ class CompileHelperFnTest {
     }
 
     private Object decode(BytesClassLoader loader, String type, Object input) throws Exception {
-        Decoder d = (Decoder) loader.loadClass("demo." + type).getMethod("decoder").invoke(null);
-        return ((Ok) d.decode(input, Path.ROOT)).value();
+        return Codecs.decoded(loader, "demo." + type, input);
     }
 
     @Test
@@ -48,10 +40,9 @@ class CompileHelperFnTest {
         Object bill = loader.loadClass("demo.Bill").getDeclaredConstructor().newInstance();
 
         Object order = decode(loader, "Order", java.util.Map.of("price", 6L, "rate", 7L));
-        Object r = ((Behavior) bill).apply(order);
+        Object r = Codecs.apply(bill, order);
 
-        Encoder enc = (Encoder) loader.loadClass("demo.Receipt").getMethod("encoder").invoke(null);
-        java.util.Map<?, ?> receipt = (java.util.Map<?, ?>) enc.encode(r);
+        java.util.Map<?, ?> receipt = (java.util.Map<?, ?>) Codecs.encode(loader, "demo.Receipt", r);
         assertEquals(6L, receipt.get("subtotal"));
         assertEquals(42L, receipt.get("total"), "the inlined helper computed price * rate");
     }
@@ -137,9 +128,8 @@ class CompileHelperFnTest {
                 """), getClass().getClassLoader());
         Object bill = loader.loadClass("demo.Bill").getDeclaredConstructor().newInstance();
         Object order = decode(loader, "Order", java.util.Map.of("price", 2L, "rate", 3L));
-        Object r = ((Behavior) bill).apply(order);
-        Encoder enc = (Encoder) loader.loadClass("demo.Receipt").getMethod("encoder").invoke(null);
-        java.util.Map<?, ?> receipt = (java.util.Map<?, ?>) enc.encode(r);
+        Object r = Codecs.apply(bill, order);
+        java.util.Map<?, ?> receipt = (java.util.Map<?, ?>) Codecs.encode(loader, "demo.Receipt", r);
         assertEquals(18L, receipt.get("total"), "2 * (3 * 3)");
     }
 }

@@ -1,12 +1,5 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.runtime.Behavior;
-
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-import net.unit8.raoh.decode.Decoder;
-import net.unit8.raoh.encode.Encoder;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -27,14 +20,12 @@ class CompileEmptyListTest {
     }
 
     private Object decode(BytesClassLoader loader, String type, Map<String, Object> fields) throws Exception {
-        Decoder d = (Decoder) loader.loadClass("demo." + type).getMethod("decoder").invoke(null);
-        return ((Ok) d.decode(fields, Path.ROOT)).value();
+        return Codecs.decoded(loader, "demo." + type, fields);
     }
 
     private Map<?, ?> run(BytesClassLoader loader, Object in) throws Exception {
-        Object r = ((Behavior) loader.loadClass("demo.Work").getDeclaredConstructor().newInstance()).apply(in);
-        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
-        return (Map<?, ?>) enc.encode(r);
+        Object r = Codecs.apply(loader.loadClass("demo.Work").getDeclaredConstructor().newInstance(), in);
+        return (Map<?, ?>) Codecs.encode(loader, "demo.Out", r);
     }
 
     /** {@code []} as a fold seed the block grows a list into (the shape a derived {@code map} takes). */
