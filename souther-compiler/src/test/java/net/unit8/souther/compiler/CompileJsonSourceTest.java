@@ -82,6 +82,39 @@ class CompileJsonSourceTest {
     }
 
     @Test
+    void jsonDecoderReadsTemporalFields() throws Exception {
+        // A Date/DateTime field is read from a JSON string via Raoh's string().date()/dateTime(),
+        // so a temporal-bearing type is JSON-decodable (previously its jsonDecoder was skipped).
+        String src = """
+                module demo
+                data Event = { name: String, on: Date, at: DateTime }
+                """;
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Decoder decoder = (Decoder) loader.loadClass("demo.Event").getMethod("jsonDecoder").invoke(null);
+
+        JsonNode node = mapper.readTree(
+                "{\"name\":\"launch\",\"on\":\"2020-01-15\",\"at\":\"2020-01-15T09:30:00\"}");
+        Result r = decoder.decode(node, Path.ROOT);
+
+        assertInstanceOf(Ok.class, r, "a JSON temporal string decodes to Ok");
+    }
+
+    @Test
+    void jsonDecoderReadsATemporalNewtypeField() throws Exception {
+        // a newtype over Date (a bare ISO string in JSON) exercises the prim-decoder leaf path too
+        String src = """
+                module demo
+                data BornOn = Date
+                data Person = { name: String, born: BornOn }
+                """;
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Decoder decoder = (Decoder) loader.loadClass("demo.Person").getMethod("jsonDecoder").invoke(null);
+
+        Result r = decoder.decode(mapper.readTree("{\"name\":\"amy\",\"born\":\"1990-05-01\"}"), Path.ROOT);
+        assertInstanceOf(Ok.class, r);
+    }
+
+    @Test
     void recordDecoderBytecodeLoadsAndVerifies() throws Exception {
         // Constructing a standalone jOOQ Record needs the full jOOQ runtime, so here we just force
         // the $DecRecord class to load — that verifies its whole bytecode is valid.

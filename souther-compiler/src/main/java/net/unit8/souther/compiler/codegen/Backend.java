@@ -1495,7 +1495,6 @@ public final class Backend {
     }
 
     private boolean jsonOkType(Type t, Set<String> seen) {
-        if (t == Type.DATE || t == Type.DATETIME) return false;
         if (t instanceof Type.OptionOf o) return jsonOkType(o.element(), seen);
         if (t instanceof Type.ListOf l) return jsonOkType(l.element(), seen);
         if (t instanceof Type.MapOf m) return jsonOkType(m.value(), seen);
@@ -1589,8 +1588,20 @@ public final class Backend {
             case INT -> code.invokestatic(owner, "long_", MTD_leafLong);
             case BOOL -> code.invokestatic(owner, "bool", MTD_leafBool);
             case DECIMAL -> code.invokestatic(owner, "decimal", MTD_leafDecimal);
-            case DATE -> code.invokestatic(owner, "date", MTD_leafTemporal);
-            case DATETIME -> code.invokestatic(owner, "dateTime", MTD_leafTemporal);
+            case DATE -> emitTemporalLeaf(code, src, "date");
+            case DATETIME -> emitTemporalLeaf(code, src, "dateTime");
+        }
+    }
+
+    /** Emits a temporal leaf decoder. {@code JsonDecoders} has no {@code date()}/{@code dateTime()}
+     * factory — a JSON temporal is a string that is then parsed (Raoh's {@code string().date()}),
+     * whereas the neutral/map source has a direct static factory. */
+    private void emitTemporalLeaf(CodeBuilder code, Src src, String method) {
+        if (src == Src.JSON) {
+            code.invokestatic(CD_JsonDecoders, "string", MTD_leafString);
+            code.invokevirtual(CD_StringDecoder, method, MTD_leafTemporal);
+        } else {
+            code.invokestatic(srcLeafOwner(src), method, MTD_leafTemporal);
         }
     }
 
@@ -1603,8 +1614,8 @@ public final class Backend {
             case INT -> code.invokestatic(leaf, "long_", MTD_leafLong);
             case BOOL -> code.invokestatic(leaf, "bool", MTD_leafBool);
             case DECIMAL -> code.invokestatic(leaf, "decimal", MTD_leafDecimal);
-            case DATE -> code.invokestatic(leaf, "date", MTD_leafTemporal);
-            case DATETIME -> code.invokestatic(leaf, "dateTime", MTD_leafTemporal);
+            case DATE -> emitTemporalLeaf(code, src, "date");
+            case DATETIME -> emitTemporalLeaf(code, src, "dateTime");
         }
         code.aload(1);                                                 // in (bare value)
         code.aload(2);                                                 // path

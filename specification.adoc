@@ -799,7 +799,7 @@ Source -> AST -> (導出で decoder/encoder を AST に充填) -> 型検査 -> C
 
 Souther のランタイム（souther-runtime）は Raoh に依存しない。Raoh に依存するのは生成されたバイトコードと、それを使うアプリだけである。プリミティブ解析・エラー集積（Applicative）・判別振り分け（<<sum-discrimination>>）は Raoh の combinator が担い、Souther は data の形状（キー・型・判別子・ケースタグ）を Raoh の decoder 構築へ写すだけである。
 
-decoder は入力源ごとに生成する。素の値 / Map は raoh-core、JSON の `+JsonNode+` は raoh-json、jOOQ の `+Record+` は raoh-jooq の combinator を使う。骨組み（キー・型・判別子・ケースタグ）は源に依らず共通で、末端のフィールド取得だけが源ごとに差し替わる。各公開 data には、その形状が対応する源ぶんを生成する。素の値 / Map は常に生成する。JSON は temporal（`+Date+` / `+DateTime+`）を含まない形状に生成する。jOOQ `+Record+` は入れ子・List・Map を持たない平坦な形状（スカラ列と newtype 列のみ）に生成する。単位dataは入力を無視するので、全源に対応する。
+decoder は入力源ごとに生成する。素の値 / Map は raoh-core、JSON の `+JsonNode+` は raoh-json、jOOQ の `+Record+` は raoh-jooq の combinator を使う。骨組み（キー・型・判別子・ケースタグ）は源に依らず共通で、末端のフィールド取得だけが源ごとに差し替わる。各公開 data には、その形状が対応する源ぶんを生成する。素の値 / Map と JSON は常に生成する。JSON の temporal（`+Date+` / `+DateTime+`）は ISO8601 文字列として読む（`+string().date()+` / `+string().dateTime()+`）。jOOQ `+Record+` は入れ子・List・Map を持たない平坦な形状（スカラ列と newtype 列のみ）にだけ生成する ── 行が平坦なので入れ子オブジェクトは1カラムに載らない。単位dataは入力を無視するので、全源に対応する。
 
 [#encoder]
 == Encoder
@@ -2342,7 +2342,7 @@ var result = handle.apply(rawInput);
 * 高度な（全域的な）型推論。現状は宣言主義で、behavior は仕様から型を受け、ヘルパーは自分で型を書く（<<fn-declaration>>）。
 * 関数を data のフィールドに格納すること。関数は外部表現に写せないので、置けば decoder / encoder の導出（<<decoder>>・<<encoder>>）に例外を作ることになる（<<blocks>>）。
 * 入力源を使われ方で絞る生成の最適化（現状は data の形状が対応する源ぶんを生成する。<<codec-generation>>）。
-* *境界コーデックの穴（現状の制限）*: `+Date+` / `+DateTime+` フィールドを持つ型の JSON decoder と、入れ子 data を持つ型の jOOQ decoder は、現状は生成しない。素の値 / Map 源の decoder は生成される。
+* jOOQ の平坦制約: jOOQ `+Record+` は行が平坦なので、入れ子 data / List / Map を持つ型の jOOQ decoder は生成しない。素の値 / Map / JSON 源の decoder は生成される。これは jOOQ 行の性質上の制約で、恒久的な性格が強い。
 
 [#non-functional]
 == 非機能要件

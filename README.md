@@ -181,9 +181,9 @@ undercut one of the ideas above.
 
 These are not rejected on principle — they are simply out of scope for now: a human-readable
 Java-source backend, incremental compilation, an LSP / IDE plugin, source maps, static invariant
-proofs, hand-written codec syntax, JSON Schema / Wasm / JavaScript output, and JSON-temporal /
-jOOQ-nested codec generation (a `Date` field or a nested record currently derives only the
-plain/`Map` decoder). Functions cannot be stored in a data field — they have no external
+proofs, hand-written codec syntax, and JSON Schema / Wasm / JavaScript output. A jOOQ `Record` is a
+flat row, so a type with a nested object, list, or map derives no `recordDecoder()` (its plain/`Map`
+and JSON decoders are generated). Functions cannot be stored in a data field — they have no external
 representation. (First-class functions and closures, blocks passed to combinators, higher-order
 arguments, tuples, and the value pipe are all supported.)
 
