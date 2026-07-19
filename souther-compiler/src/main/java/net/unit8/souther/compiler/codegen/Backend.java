@@ -2436,6 +2436,16 @@ public final class Backend {
             nextSlot = Math.max(nextSlot, slot + width(type));
         }
 
+        /** Restores a name to the binding it had before a block shadowed it (or removes it if it had
+         * none), so a block's parameters do not leak past the block (see {@link #fold}). */
+        private void restore(String name, Var previous) {
+            if (previous == null) {
+                env.remove(name);
+            } else {
+                env.put(name, previous);
+            }
+        }
+
         int slot(Type type) {
             int s = nextSlot;
             nextSlot += width(type);
@@ -2520,10 +2530,10 @@ public final class Backend {
             // The accumulator lives in a slot typed to the seed (a long for Int, an int for Bool,
             // a reference otherwise), so it stays unboxed across iterations — no Long.valueOf /
             // longValue round-trip per element, which keeps the loop friendly to the JIT.
-            Type accType = genExpr(f.seed());   // the seed; its type is the accumulator's
+            Type seedType = genExpr(f.seed());   // emits the seed value
+            Type accType = resolveAccType(f, seedType, elemType);
             int accSlot = slot(accType);
             store(code, accSlot, accType);
-            Type resultType = accType;
 
             int iSlot = slot(Type.BOOL);
             code.iconst_0();
@@ -2543,12 +2553,16 @@ public final class Backend {
             code.invokeinterface(CD_List, "get", MethodTypeDesc.of(CD_Object, ConstantDescs.CD_int));
             int elemSlot = slot(elemType);
             unbox(code, elemType, elemSlot);
+            // The block's parameter names are scoped to the block: a nested fold reuses the same names
+            // (the derived combinators all bind `acc`/`x`), so save any outer binding these shadow and
+            // restore it after the body, or the outer `acc` would resolve to the inner fold's slot.
+            Var prevAcc = env.get(f.params().get(0));
+            Var prevElem = env.get(f.params().get(1));
             bind(f.params().get(0), accSlot, accType);
             bind(f.params().get(1), elemSlot, elemType);
-            Type bt = genExpr(f.body());
-            if (accType.equals(Type.EMPTY_LIST)) {
-                resultType = bt;   // an empty-list seed takes the list the block grows (ADR-0028)
-            }
+            genExpr(f.body());
+            restore(f.params().get(0), prevAcc);
+            restore(f.params().get(1), prevElem);
             store(code, accSlot, accType);
 
             code.iinc(iSlot, 1);
@@ -2556,7 +2570,34 @@ public final class Backend {
             code.labelBinding(done);
 
             load(code, accSlot, accType);
-            return resultType;
+            return accType;
+        }
+
+        /**
+         * The accumulator's type — the type of the slot the fold carries across iterations. Usually
+         * it is the seed's type. But an empty-collection seed ({@code []}, {@code Map.empty}, or a
+         * tuple of them) carries no element/key/value type of its own (ADR-0028); that type is on the
+         * block that grows the accumulator, not on the seed. When the block only <em>writes</em> the
+         * accumulator ({@code acc ++ [f(x)]}) the untyped slot survives, but when it <em>reads</em> it
+         * through a nested combinator ({@code any(e -> e == x, acc)}) the backend would unbox a
+         * {@code Nothing} element and crash. So for such a seed we ask the checker for the block's
+         * result type — the type the accumulator resolves to — exactly as the checker types this fold.
+         */
+        private Type resolveAccType(Core.Fold f, Type seedType, Type elemType) {
+            if (!mentionsNothing(seedType)) {
+                return seedType;
+            }
+            Map<String, Type> inner = typesEnv();
+            inner.put(f.params().get(0), seedType);
+            inner.put(f.params().get(1), elemType);
+            Type resolved = TypeChecker.typeOf(f.body().toAst(), inner, data, symbols, reqSigs());
+            return mentionsNothing(resolved) ? seedType : resolved;
+        }
+
+        /** Whether {@code t} still carries the empty-collection bottom {@link Type#NOTHING} — an
+         * unresolved element/key/value type that must not reach codegen (it has no JVM form). */
+        private static boolean mentionsNothing(Type t) {
+            return Type.mentions(t, x -> x instanceof Type.Nothing);
         }
 
         /**

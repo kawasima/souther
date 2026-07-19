@@ -64,8 +64,10 @@ public sealed interface Core {
                 }
                 yield new Ast.Match(m.scrutinee().toAst(), cases, m.pos());
             }
-            case Fold f -> new Ast.Call(FOLD, List.of(f.source().toAst(), f.seed().toAst(),
-                    new Ast.Block(f.params(), f.body().toAst(), f.pos())), f.pos());
+            // fold(step, seed, xs): step block first, list last — the inverse of `of` (F#/Elm order).
+            case Fold f -> new Ast.Call(FOLD, List.of(
+                    new Ast.Block(f.params(), f.body().toAst(), f.pos()),
+                    f.seed().toAst(), f.source().toAst()), f.pos());
         };
     }
 

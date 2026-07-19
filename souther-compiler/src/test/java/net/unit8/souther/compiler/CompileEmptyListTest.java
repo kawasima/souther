@@ -102,6 +102,34 @@ class CompileEmptyListTest {
         assertEquals(12L, run(loader, in).get("total"));   // (1 + 2 + 3) * 2
     }
 
+    /**
+     * An empty-seeded fold whose block <em>reads</em> the accumulator before growing it — the
+     * dedupe shape: {@code if any(e -> e == x, acc) then acc else acc ++ [x]}. The accumulator's
+     * element type is not on the {@code []} seed; it is fixed by the block that grows it. The
+     * backend must resolve that type for the slot, or the nested {@code any} reads a {@code Nothing}
+     * element and codegen crashes.
+     */
+    @Test
+    void anEmptySeededFoldReadsItsOwnAccumulator() throws Exception {
+        String module = """
+                module demo
+
+                import List ( fold, any )
+
+                data In = { xs: List<Int> }
+                data Out = { ys: List<Int> }
+
+                behavior work : (i: In) -> Out constructs Out
+
+                let work (i) = Out { ys = dedupe(i.xs) }
+                let dedupe (xs: List<Int>) =
+                    fold((acc, x) -> if any(e -> e == x, acc) then acc else acc ++ [x], [], xs)
+                """;
+        BytesClassLoader loader = loader(module);
+        Object in = decode(loader, "In", Map.of("xs", List.of(1L, 2L, 2L, 3L, 1L)));
+        assertEquals(List.of(1L, 2L, 3L), run(loader, in).get("ys"));
+    }
+
     /** {@code []} straight into a {@code List<T>} field: an empty list of that type. */
     @Test
     void emptyListIntoField() throws Exception {

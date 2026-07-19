@@ -595,14 +595,7 @@ public final class TypeChecker {
     }
 
     private static boolean containsTuple(Type t) {
-        return switch (t) {
-            case Type.TupleOf ignored -> true;
-            case Type.ListOf l -> containsTuple(l.element());
-            case Type.MapOf m -> containsTuple(m.key()) || containsTuple(m.value());
-            case Type.SetOf s -> containsTuple(s.element());
-            case Type.OptionOf o -> containsTuple(o.element());
-            default -> false;
-        };
+        return Type.mentions(t, x -> x instanceof Type.TupleOf);
     }
 
     private static void checkInjectionConstructs(Ast.SpecBehavior spec, Map<String, Ast.Def> symbols,
@@ -1745,6 +1738,12 @@ public final class TypeChecker {
         return null;
     }
 
+    /** The scalar empty-collection bottom: the element type of a {@code []} whose type is not yet
+     * fixed (ADR-0028). It unifies with any type, so a comparison against it is left to run time. */
+    private static boolean isBottom(Type t) {
+        return t instanceof Type.Nothing;
+    }
+
     private static Type unifyElem(Type a, Type b, SourcePos pos) {
         if (a == Type.NOTHING) {   // the empty list absorbs into the other's element type (ADR-0028)
             return b;
@@ -2141,9 +2140,14 @@ public final class TypeChecker {
             case EQ, NE -> {
                 Type lt = typeOf(bin.left(), env, data, symbols, reqs);
                 Type rt = typeOf(bin.right(), env, data, symbols, reqs);
-                // two values of the same data compare by their fields (spec 16.2); across
-                // different types there is nothing to compare
-                if (!lt.equals(rt)) {
+                // two values of the same data compare by their fields (spec 16.2); across different
+                // types there is nothing to compare. An operand may be the scalar empty-collection
+                // bottom (`Nothing`) when it reads an accumulator a `[]` seed grows — the `e` in
+                // `if any(e -> e == x, acc) …` over a `fold(…, [], xs)` is bound to the not-yet-fixed
+                // element type (ADR-0028). At run time it holds the other operand's type, so absorb the
+                // bottom rather than reject the comparison. (A whole empty list `[]` stays a type error
+                // against a non-list, so this does not loosen `[] == 5`.)
+                if (!lt.equals(rt) && !isBottom(lt) && !isBottom(rt)) {
                     throw new CompileException(bin.pos(), "cannot compare " + lt + " with " + rt);
                 }
                 yield Type.BOOL;

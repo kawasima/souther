@@ -109,4 +109,22 @@ public sealed interface Type
     static Type var(String name) {
         return new Var(name);
     }
+
+    /** Whether {@code t}, or any type nested inside it, satisfies {@code p}. Tests {@code t} itself
+     * first, then recurses through the collection types ({@code List}/{@code Set}/{@code Option}
+     * element, {@code Map} key and value, {@code Tuple} members). The single tree walk both
+     * "contains a tuple" and "still carries the empty-collection bottom" are expressed over. */
+    static boolean mentions(Type t, java.util.function.Predicate<Type> p) {
+        if (p.test(t)) {
+            return true;
+        }
+        return switch (t) {
+            case ListOf l -> mentions(l.element(), p);
+            case SetOf s -> mentions(s.element(), p);
+            case OptionOf o -> mentions(o.element(), p);
+            case MapOf m -> mentions(m.key(), p) || mentions(m.value(), p);
+            case TupleOf tu -> tu.elements().stream().anyMatch(e -> mentions(e, p));
+            default -> false;
+        };
+    }
 }

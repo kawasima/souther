@@ -299,7 +299,7 @@ public final class HelperInliner {
      * the user never wrote. A module-own helper passes {@code null} and keeps its own positions. The
      * caller's argument expressions, spliced in separately, keep their own positions either way.
      */
-    private static Ast.Expr rename(Ast.Expr e, Map<String, String> subst, Set<String> fnParams, SourcePos at) {
+    private Ast.Expr rename(Ast.Expr e, Map<String, String> subst, Set<String> fnParams, SourcePos at) {
         return switch (e) {
             case Ast.Var v -> subst.containsKey(v.name()) ? new Ast.Var(subst.get(v.name()), at(at, v.pos())) : e;
             case Ast.FieldAccess fa -> new Ast.FieldAccess(rename(fa.target(), subst, fnParams, at), fa.field(), at(at, fa.pos()));
@@ -340,11 +340,18 @@ public final class HelperInliner {
             case Ast.TupleGet tg -> new Ast.TupleGet(rename(tg.tuple(), subst, fnParams, at), tg.index(), tg.arity(), at(at, tg.pos()));
             case Ast.ListComp comp -> new Ast.ListComp(rename(comp.element(), subst, fnParams, at), renameList(comp.guards(), subst, fnParams, at), at(at, comp.pos()));
             case Ast.Block block -> {
+                // α-rename the block's own parameters to fresh `$`-names. Caller code — a lambda passed
+                // to a function parameter — is spliced into this block's scope during inlining; if the
+                // block bound a plain name (`acc`/`x`, as the derived combinators do) it would capture a
+                // caller variable of the same name. Fresh `$`-names cannot collide with caller code.
                 Map<String, String> inner = subst;
+                List<String> freshParams = new ArrayList<>();
                 for (String p : block.params()) {
-                    inner = without(inner, p);
+                    String fresh = "$b" + (counter++) + "_" + p;
+                    freshParams.add(fresh);
+                    inner = with(inner, p, fresh);
                 }
-                yield new Ast.Block(block.params(), rename(block.body(), inner, fnParams, at), at(at, block.pos()));
+                yield new Ast.Block(freshParams, rename(block.body(), inner, fnParams, at), at(at, block.pos()));
             }
             case Ast.IntLit ignored -> e;
             case Ast.DecimalLit ignored -> e;
@@ -359,7 +366,7 @@ public final class HelperInliner {
         return at != null ? at : own;
     }
 
-    private static List<Ast.Expr> renameList(List<Ast.Expr> es, Map<String, String> subst, Set<String> fnParams, SourcePos at) {
+    private List<Ast.Expr> renameList(List<Ast.Expr> es, Map<String, String> subst, Set<String> fnParams, SourcePos at) {
         List<Ast.Expr> out = new ArrayList<>();
         for (Ast.Expr e : es) {
             out.add(rename(e, subst, fnParams, at));
@@ -373,6 +380,13 @@ public final class HelperInliner {
         }
         Map<String, String> copy = new HashMap<>(subst);
         copy.remove(name);
+        return copy;
+    }
+
+    /** {@code subst} with {@code name} rebound to {@code fresh} (a copy; the original is untouched). */
+    private static Map<String, String> with(Map<String, String> subst, String name, String fresh) {
+        Map<String, String> copy = new HashMap<>(subst);
+        copy.put(name, fresh);
         return copy;
     }
 
