@@ -229,8 +229,10 @@ public interface Ast {
     /** An optional field decoder: absent/null becomes {@code None}, present decodes {@code element}. */
     record OptionDecRef(DecRef element, SourcePos pos) implements DecRef {}
 
-    /** A {@code Map<String, T>} decoder: each object value is decoded with {@code value}. */
-    record MapDecRef(DecRef value, SourcePos pos) implements DecRef {}
+    /** A {@code Map<K, T>} decoder: each object value is decoded with {@code value}. {@code keyType}
+     * is {@code null} for a plain {@code String} key, or the String-backed newtype the keys are
+     * constructed into at the boundary. */
+    record MapDecRef(DecRef value, String keyType, SourcePos pos) implements DecRef {}
 
     /** A primitive field decoder kind. */
     enum PrimKind { STRING, INT, BOOL, DECIMAL, DATE, DATETIME }
@@ -258,8 +260,10 @@ public interface Ast {
             permits TextRaw, IntRaw, BoolRaw, DecimalRaw, IsoTextRaw, ObjectRaw, EncodeRaw, ListEnc,
                     SetEnc, OptionRaw, MapEnc {}
 
-    /** Encodes a {@code Map<String, T>} to a {@code Raw.Object}, each value via {@code elem}. */
-    record MapEnc(Expr source, EncElem elem, SourcePos pos) implements RawExpr {}
+    /** Encodes a {@code Map<K, T>} to a {@code Raw.Object}, each value via {@code elem}. {@code keyType}
+     * is {@code null} for a plain {@code String} key, or the String-backed newtype whose keys are
+     * rendered bare at the boundary. */
+    record MapEnc(Expr source, EncElem elem, String keyType, SourcePos pos) implements RawExpr {}
 
     /** Encodes an optional field: {@code None} becomes {@code Raw.Null}, {@code Some(v)} encodes
      * {@code v} via {@code inner}, which reads the unwrapped value bound to {@code elemVar}. */

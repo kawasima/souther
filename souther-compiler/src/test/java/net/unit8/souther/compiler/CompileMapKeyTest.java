@@ -2,6 +2,7 @@ package net.unit8.souther.compiler;
 
 import net.unit8.souther.runtime.Behavior;
 
+import net.unit8.raoh.Err;
 import net.unit8.raoh.Ok;
 import net.unit8.raoh.Path;
 import net.unit8.raoh.decode.Decoder;
@@ -13,11 +14,10 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
-/** A Map keyed by a String-backed newtype ([#stdlib-map], ADR-0040): the key carries its domain
- *  type, and the map is keyed by the newtype value (value equality, ADR-0009). */
+/** A Map keyed by a String-backed newtype ([#stdlib-map]): the key carries its domain type, and the
+ *  map is keyed by the newtype value (value equality). */
 class CompileMapKeyTest {
 
     @Test
@@ -66,15 +66,66 @@ class CompileMapKeyTest {
         assertEquals(List.of("P-01", "P-02"), m.get("keyList"), "keys are 商品ID, encoded bare");
     }
 
+    /** A {@code Map<商品ID, V>} crosses the codec boundary: the derived decoder reads a JSON object
+     *  whose string keys are constructed into 商品ID (invariant-checked), and the encoder writes the
+     *  map back with keys rendered bare. */
     @Test
-    void aNewtypeKeyedMapCannotYetBeAField() {
-        // the typed-key codec is not implemented yet: such a map is usable in a body, not at the
-        // boundary. A data field of that type is a clear error, not a mis-encoding (ADR-0040).
-        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile("""
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void newtypeKeyedMapCrossesTheBoundary() throws Exception {
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
+
+                import Map ( insert, size, containsKey )
+
                 data 商品ID = String
-                data Bad = { stock: Map<商品ID, Int> }
-                """));
-        assertTrue(e.getMessage().contains("typed-key codec"), e.getMessage());
+
+                data In = { stock: Map<商品ID, Int> }
+                data Out = {
+                    stock: Map<商品ID, Int>
+                    , n: Int
+                    , hasP1: Bool
+                    , more: Map<商品ID, Int>
+                }
+
+                behavior run : (i: In) -> Out constructs Out, 商品ID
+
+                let run (i) = Out {
+                    stock = i.stock,
+                    n = size(i.stock),
+                    hasP1 = containsKey(商品ID("P-01"), i.stock),
+                    more = insert(商品ID("P-03"), 9, i.stock)
+                }
+                """), getClass().getClassLoader());
+
+        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
+        Object in = ((Ok) inDec.decode(
+                Map.of("stock", Map.of("P-01", 3L, "P-02", 5L)), Path.ROOT)).value();
+        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run")
+                .getConstructor().newInstance()).apply(in);
+
+        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
+        Map<?, ?> m = (Map<?, ?>) enc.encode(out);
+        assertEquals(Map.of("P-01", 3L, "P-02", 5L), m.get("stock"), "keys are rendered bare");
+        assertEquals(2L, m.get("n"));
+        assertEquals(true, m.get("hasP1"), "the decoded key equals a fresh 商品ID(\"P-01\")");
+        assertEquals(Map.of("P-01", 3L, "P-02", 5L, "P-03", 9L), m.get("more"));
+    }
+
+    /** A key that violates the key newtype's invariant fails the decode at the key's path, rather than
+     *  aborting: at the boundary an invariant is a decode failure. */
+    @Test
+    void aKeyViolatingItsInvariantFailsDecode() throws Exception {
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
+                module demo
+
+                data コード = String
+                invariant String.length(value) == 4
+
+                data In = { m: Map<コード, Int> }
+                """), getClass().getClassLoader());
+
+        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
+        Object result = inDec.decode(Map.of("m", Map.of("AB", 1L)), Path.ROOT);
+        assertInstanceOf(Err.class, result, "the key \"AB\" is not length 4, so the decode fails");
     }
 }

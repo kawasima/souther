@@ -1448,7 +1448,9 @@ public final class TypeChecker {
             }
             case Ast.ListDecRef l -> Type.list(decRefType(l.element(), symbols));
             case Ast.OptionDecRef o -> Type.option(decRefType(o.element(), symbols));
-            case Ast.MapDecRef mp -> Type.map(decRefType(mp.value(), symbols));
+            case Ast.MapDecRef mp -> Type.map(
+                    mp.keyType() == null ? Type.STRING : Type.ref(mp.keyType()),
+                    decRefType(mp.value(), symbols));
         };
     }
 

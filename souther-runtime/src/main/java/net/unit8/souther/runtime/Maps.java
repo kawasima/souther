@@ -89,4 +89,15 @@ public final class Maps {
     public static <V> List<V> values(Map<?, V> map) {
         return new ArrayList<>(map.values());
     }
+
+    /** {@code m} with every key rewritten by {@code keyFn}, values unchanged, in iteration order.
+     *  The encoder uses it to render a {@code Map<商品ID, V>}'s keys bare (each key's {@code value})
+     *  before the boundary map encoder writes a {@code String}-keyed object. */
+    public static <K, V> Map<Object, V> mapKeys(Map<K, V> m, java.util.function.Function<K, ?> keyFn) {
+        LinkedHashMap<Object, V> out = new LinkedHashMap<>();
+        for (Map.Entry<K, V> e : m.entrySet()) {
+            out.put(keyFn.apply(e.getKey()), e.getValue());
+        }
+        return Collections.unmodifiableMap(out);
+    }
 }

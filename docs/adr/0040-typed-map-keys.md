@@ -1,8 +1,8 @@
 # ADR-0040: A Map key may be a String-backed newtype, not only String
 
-Status: Accepted. The in-language type and operations are implemented; the boundary codec for a
-non-String key is deferred (a newtype-keyed map is a compile error as a data field or behavior I/O
-until it lands).
+Status: Accepted. The in-language type and operations are implemented, and so is the boundary codec:
+a newtype-keyed map may be a data field or behavior I/O, decoding each string key into the key
+newtype (invariant-checked) and encoding it back bare.
 
 ## Context
 
@@ -30,24 +30,21 @@ over `String`, or (inside `core` only) a key type variable `'k` that monomorphis
 - **Standard library** generalises over the key: `containsKey` / `insert` / `remove` / `singleton` /
   `get` / `keys` / `toList` / `fromList` take and return the key type. `Map.empty` is the
   empty-collection bottom in both key and value, fixed by context like `[]`.
-- **Boundary codec is deferred.** Encoding a `Map<商品ID, V>` to a JSON object must render each key
-  `商品ID` to its bare string, and decoding must construct a `商品ID` from each string key (checking
-  its invariant, and — for an invariant-bearing key — able to fail). That key codec is not yet
-  implemented, so a `Map` with a non-`String` key **may not** be a data field or a behavior's
-  input/output; it is a clear compile error there. Such a map is fully usable inside a behavior body.
+- **Boundary codec.** A `Map<商品ID, V>` is a JSON object with bare-string keys. Decoding reads the
+  object with the value decoder, then runs the key newtype's own decoder on each string key, so the
+  key's invariant is enforced and a bad key fails the decode at that key's path (issues accumulate
+  across the map). Encoding renders each key `商品ID` back to its bare `value` before writing the
+  object. The runtime carries no Raoh dependency (ADR-0004): the key-remap runs in a small helper the
+  decoder class generates, and the encode-side stringify is a pure key rewrite in souther-runtime.
 
 ## Consequences
 
-The type-level win lands immediately: `Map<商品ID, 在庫>` and `Map<従業員ID, 権限>` are distinct types,
-and the key of a lookup is checked against the map's key type, so the two cannot be confused. Building
-and querying a keyed map — the aggregation the review asked for (add/update/remove an entry by a typed
-key) — works in a behavior body.
-
-What is deferred is only the *representation* at the boundary. A behavior that must receive or return
-a keyed map still keys by `String` for now and wraps the newtype internally; when the typed-key codec
-lands, the field/I·O restriction lifts with no change to the type or the operations. Keeping the
-restriction an explicit error (rather than silently treating the key as a `String`) means a model
-never mis-encodes a typed key.
+`Map<商品ID, 在庫>` and `Map<従業員ID, 権限>` are distinct types, and the key of a lookup is checked
+against the map's key type, so the two cannot be confused. Building and querying a keyed map — the
+aggregation the review asked for (add/update/remove an entry by a typed key) — works in a behavior
+body, and such a map now crosses the boundary too: a behavior can receive or return `Map<商品ID, V>`
+directly, and a key that violates the newtype's invariant is a decode failure at that key's path,
+not a silently accepted string.
 
 The key stays String-backed on purpose: admitting an arbitrary value key would need an entry-array
 representation (a JSON object cannot key by a non-string), which changes the boundary format. A
@@ -59,7 +56,6 @@ step (the option chosen over a value-key design).
 - ADR-0014 (a newtype is nominal and bare-string represented — why a String-backed newtype is a valid
   key)
 - ADR-0009 (value equality — how a newtype-keyed map matches keys)
-- ADR-0004 (derived codecs, souther-runtime is Raoh-free — the constraint the deferred key codec must
-  meet)
+- ADR-0004 (derived codecs, souther-runtime is Raoh-free — the constraint the key codec meets)
 - Specification: `[#collections]`, `[#stdlib-map]`
 - Prior art: Elm `Dict`, F# `Map` (typed keys)

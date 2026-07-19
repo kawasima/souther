@@ -164,6 +164,20 @@ public final class Backend {
     private static final MethodTypeDesc MTD_Rencode_leaf = MethodTypeDesc.of(CD_REncoder);
     private static final MethodTypeDesc MTD_Rencode_list = MethodTypeDesc.of(CD_REncoder, CD_REncoder);
     private static final ClassDesc CD_Function = ClassDesc.of("java.util.function.Function");
+    // Newtype-keyed Map codec: decode remaps String keys into the key newtype via
+    // flatMapWithPath + a generated $Dec.__rekey helper; encode renders keys bare via Maps.mapKeys.
+    private static final ClassDesc CD_BiFunction = ClassDesc.of("java.util.function.BiFunction");
+    private static final ClassDesc CD_Iterator = ClassDesc.of("java.util.Iterator");
+    private static final ClassDesc CD_MapEntry = CD_Map.nested("Entry");
+    private static final MethodTypeDesc MTD_flatMapWithPath = MethodTypeDesc.of(CD_RDecoder, CD_BiFunction);
+    private static final MethodTypeDesc MTD_rekey = MethodTypeDesc.of(CD_RResult, CD_Map, CD_RPath);
+    private static final MethodTypeDesc MTD_entrySet = MethodTypeDesc.of(CD_Set);
+    private static final MethodTypeDesc MTD_iterator = MethodTypeDesc.of(CD_Iterator);
+    private static final MethodTypeDesc MTD_hasNext = MethodTypeDesc.of(ConstantDescs.CD_boolean);
+    private static final MethodTypeDesc MTD_getKeyValue = MethodTypeDesc.of(CD_Object);
+    private static final MethodTypeDesc MTD_Path_append = MethodTypeDesc.of(CD_RPath, CD_String);
+    private static final MethodTypeDesc MTD_mapKeys = MethodTypeDesc.of(CD_Map, CD_Map, CD_Function);
+    private static final MethodTypeDesc MTD_value = MethodTypeDesc.of(CD_String);
     /** {@code Decoder.map(Function)}: turns a {@code Decoder<I, List<T>>} into a {@code Decoder<I, Set<T>>}. */
     private static final MethodTypeDesc MTD_Rdecoder_map = MethodTypeDesc.of(CD_RDecoder, CD_Function);
     /** {@code LambdaMetafactory.metafactory} — the bootstrap that materialises a method reference as a
@@ -235,6 +249,38 @@ public final class Backend {
                 MethodTypeDesc.of(CD_Set, CD_List));          // instantiatedMethodType: (List) -> Set
     }
 
+    /** The name of the generated per-$Dec helper that remaps a decoded {@code Map<String, V>}'s keys
+     *  into the String-backed newtype {@code keyType}, invariant-checked. */
+    private static String rekeyMethod(String keyType) {
+        return "__rekey$" + keyType;
+    }
+
+    /** {@code invokedynamic} producing a {@code BiFunction<Map, Path, Result>} over the current $Dec
+     *  class's {@code __rekey$<keyType>}, for {@code Decoder.flatMapWithPath} in a newtype-keyed map. */
+    private static DynamicCallSiteDesc rekeyCallSite(ClassDesc cdDec, String keyType) {
+        DirectMethodHandleDesc impl = MethodHandleDesc.ofMethod(
+                DirectMethodHandleDesc.Kind.STATIC, cdDec, rekeyMethod(keyType), MTD_rekey);
+        return DynamicCallSiteDesc.of(
+                BSM_METAFACTORY, "apply",
+                MethodTypeDesc.of(CD_BiFunction),                        // no captures: () -> BiFunction
+                MethodTypeDesc.of(CD_Object, CD_Object, CD_Object),      // samMethodType: (Object,Object) -> Object
+                impl,                                                    // implMethod: __rekey(Map,Path) -> Result
+                MTD_rekey);                                              // instantiatedMethodType: (Map,Path) -> Result
+    }
+
+    /** {@code invokedynamic} producing a {@code Function<K, String>} over the key newtype's bare
+     *  {@code value()} accessor, for {@code Maps.mapKeys} when encoding a newtype-keyed map. */
+    private DynamicCallSiteDesc keyValueCallSite(String keyType) {
+        DirectMethodHandleDesc impl = MethodHandleDesc.ofMethod(
+                DirectMethodHandleDesc.Kind.VIRTUAL, cd(keyType), "value", MTD_value);
+        return DynamicCallSiteDesc.of(
+                BSM_METAFACTORY, "apply",
+                MethodTypeDesc.of(CD_Function),                          // no captures: () -> Function
+                MethodTypeDesc.of(CD_Object, CD_Object),                 // samMethodType: (Object) -> Object
+                impl,                                                    // implMethod: K.value() -> String
+                MethodTypeDesc.of(CD_String, cd(keyType)));              // instantiatedMethodType: (K) -> String
+    }
+
     // Generated classes aren't loadable while we compile, so stack-map merging (e.g. an
     // `if` producing a union of two data types) can't resolve their common supertype.
     // Treat any class we can't resolve as a plain class extending Object.
@@ -263,6 +309,9 @@ public final class Backend {
 
     private final String pkg;
     private final Map<String, Ast.Def> symbols;
+    /** The $Dec class currently being generated — the owner of the {@code __rekey} helpers a
+     * newtype-keyed map decoder references. Set per {@link #generateDecoderClass}. */
+    private ClassDesc decoderClass;
     private final Map<String, List<String>> caseToSums;
     private final Map<String, String> typePackage;
     /** True when the module has no {@code exposing} clause: everything stays public. */
@@ -718,7 +767,9 @@ public final class Backend {
             emitConstructMethod(cb, cdName, data, fields);
             // An exposed data gets public read accessors so its fields are readable across the
             // module (package) boundary and from Java (spec 8.5, 19.2). The ctor stays non-public.
-            if (pub(data.name()) != 0) {
+            // A String-backed newtype always exposes its bare `value()`: the encoder reads it to
+            // render a newtype-keyed map's keys bare, even when the newtype itself is unexposed.
+            if (pub(data.name()) != 0 || isStringBackedNewtype(data, fields)) {
                 emitAccessors(cb, cdName, fields);
             }
             data.decoder().ifPresent(d -> {
@@ -1383,6 +1434,12 @@ public final class Backend {
      * Only called for exposed data; the constructor stays non-public, so a read never enables
      * construction (spec 2.7).
      */
+    /** A newtype over a single {@code String} field ({@code data X = String}) — the shape a Map key
+     * may take, whose bare {@code value()} the boundary encoder renders. */
+    private static boolean isStringBackedNewtype(Ast.Data data, Map<String, Type> fields) {
+        return data.newtype() && fields.size() == 1 && fields.values().iterator().next() == Type.STRING;
+    }
+
     private void emitAccessors(ClassBuilder cb, ClassDesc cdName, Map<String, Type> fields) {
         for (Map.Entry<String, Type> f : fields.entrySet()) {
             Type ft = f.getValue();
@@ -1632,6 +1689,7 @@ public final class Backend {
     private byte[] generateDecoderClass(ClassDesc cdName, Ast.Data data, Ast.DecoderDef dec,
                                         Map<String, Type> fields, Src src) {
         ClassDesc cdDec = cd(data.name() + srcSuffix(src));
+        decoderClass = cdDec;
         return build(cdDec, cb -> {
             cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             cb.withInterfaceSymbols(CD_RDecoder);
@@ -1645,6 +1703,127 @@ public final class Backend {
                     case Ast.NewtypeDecoder nt -> emitNewtypeDecode(code, gen, cdName, nt, fields, src);
                 }
             });
+            // One key-remap helper per String-backed newtype used as a map key anywhere in this
+            // decoder; the decode body's flatMapWithPath call sites reference them.
+            Set<String> keyTypes = new LinkedHashSet<>();
+            collectKeyedMapTypes(dec, keyTypes);
+            for (String keyType : keyTypes) {
+                emitRekeyHelper(cb, keyType);
+            }
+        });
+    }
+
+    /** Collects the String-backed newtypes used as map keys anywhere in a derived decoder. */
+    private void collectKeyedMapTypes(Ast.DecoderDef dec, Set<String> out) {
+        switch (dec) {
+            case Ast.ObjectDecoder obj -> {
+                for (Ast.Bind bind : obj.binds()) {
+                    collectKeyedMapTypes(bind.ref(), out);
+                }
+            }
+            case Ast.NewtypeDecoder nt -> collectKeyedMapTypes(nt.inner(), out);
+            case Ast.PrimDecoder ignored -> { }
+        }
+    }
+
+    private void collectKeyedMapTypes(Ast.DecRef ref, Set<String> out) {
+        switch (ref) {
+            case Ast.MapDecRef mp -> {
+                if (mp.keyType() != null) {
+                    out.add(mp.keyType());
+                }
+                collectKeyedMapTypes(mp.value(), out);
+            }
+            case Ast.ListDecRef l -> collectKeyedMapTypes(l.element(), out);
+            case Ast.SetDecRef s -> collectKeyedMapTypes(s.element(), out);
+            case Ast.OptionDecRef o -> collectKeyedMapTypes(o.element(), out);
+            case Ast.PrimDecRef ignored -> { }
+            case Ast.DataDecRef ignored -> { }
+        }
+    }
+
+    /**
+     * Emits {@code static Result __rekey$K(Map src, Path path)}: it remaps a decoded
+     * {@code Map<String, V>}'s keys into the String-backed newtype {@code K}, running {@code K}'s own
+     * decoder (which applies K's invariant) on each key. Key issues accumulate across the whole map
+     * (spec 15) and a failure lands at the key's path; on success it returns a {@code Map<K, V>} in
+     * iteration order. Materialised as a {@code BiFunction} for {@code Decoder.flatMapWithPath}.
+     */
+    private void emitRekeyHelper(ClassBuilder cb, String keyType) {
+        cb.withMethodBody(rekeyMethod(keyType), MTD_rekey, ClassFile.ACC_STATIC | ClassFile.ACC_SYNTHETIC,
+                code -> {
+            // locals: src=0, path=1, keyDec=2, out=3, issues=4, it=5, entry=6, key=7, kr=8
+            invokeCodec(code, keyType, "decoder", MTD_Rdecoder);
+            code.astore(2);                                              // keyDec = K.decoder()
+            code.new_(CD_LinkedHashMap);
+            code.dup();
+            code.invokespecial(CD_LinkedHashMap, "<init>", MTD_void);
+            code.astore(3);                                             // out = new LinkedHashMap()
+            code.getstatic(CD_RIssues, "EMPTY", CD_RIssues);
+            code.astore(4);                                            // issues = Issues.EMPTY
+            code.aload(0);
+            code.invokeinterface(CD_Map, "entrySet", MTD_entrySet);
+            code.invokeinterface(CD_Set, "iterator", MTD_iterator);
+            code.astore(5);                                            // it = src.entrySet().iterator()
+
+            Label loop = code.newLabel();
+            Label done = code.newLabel();
+            code.labelBinding(loop);
+            code.aload(5);
+            code.invokeinterface(CD_Iterator, "hasNext", MTD_hasNext);
+            code.ifeq(done);
+            code.aload(5);
+            code.invokeinterface(CD_Iterator, "next", MTD_getKeyValue);
+            code.checkcast(CD_MapEntry);
+            code.astore(6);                                            // entry = it.next()
+            code.aload(6);
+            code.invokeinterface(CD_MapEntry, "getKey", MTD_getKeyValue);
+            code.astore(7);                                            // key = entry.getKey()
+            // kr = keyDec.decode(key, path.append((String) key))
+            code.aload(2);
+            code.aload(7);
+            code.aload(1);
+            code.aload(7);
+            code.checkcast(CD_String);
+            code.invokevirtual(CD_RPath, "append", MTD_Path_append);
+            code.invokeinterface(CD_RDecoder, "decode", MTD_Rdecode);
+            code.astore(8);                                            // kr
+            code.aload(8);
+            code.instanceOf(CD_RErr);
+            Label ok = code.newLabel();
+            code.ifeq(ok);
+            // Err: issues = issues.merge(((Err) kr).issues())
+            code.aload(4);
+            code.aload(8);
+            code.checkcast(CD_RErr);
+            code.invokevirtual(CD_RErr, "issues", MTD_Err_issues);
+            code.invokevirtual(CD_RIssues, "merge", MTD_Issues_merge);
+            code.astore(4);
+            code.goto_(loop);
+            code.labelBinding(ok);
+            // out.put(((Ok) kr).value(), entry.getValue())
+            code.aload(3);
+            code.aload(8);
+            code.checkcast(CD_ROk);
+            code.invokevirtual(CD_ROk, "value", MTD_Object);
+            code.aload(6);
+            code.invokeinterface(CD_MapEntry, "getValue", MTD_getKeyValue);
+            code.invokeinterface(CD_Map, "put", MTD_Map_put);
+            code.pop();
+            code.goto_(loop);
+
+            code.labelBinding(done);
+            code.aload(4);
+            code.invokevirtual(CD_RIssues, "isEmpty", MTD_Issues_isEmpty);
+            Label fail = code.newLabel();
+            code.ifeq(fail);
+            code.aload(3);
+            code.invokestatic(CD_RResult, "ok", MTD_Rok, true);       // Result.ok(out)
+            code.areturn();
+            code.labelBinding(fail);
+            code.aload(4);
+            code.invokestatic(CD_RResult, "err", MTD_Rerr, true);    // Result.err(issues)
+            code.areturn();
         });
     }
 
@@ -1845,7 +2024,8 @@ public final class Backend {
             case Ast.ListDecRef l -> Type.list(bindType(l.element()));
             case Ast.SetDecRef s -> Type.set(bindType(s.element()));
             case Ast.OptionDecRef o -> Type.option(bindType(o.element()));
-            case Ast.MapDecRef mp -> Type.map(bindType(mp.value()));
+            case Ast.MapDecRef mp -> Type.map(
+                    mp.keyType() == null ? Type.STRING : Type.ref(mp.keyType()), bindType(mp.value()));
         };
     }
 
@@ -1882,7 +2062,12 @@ public final class Backend {
                     "optional is only supported as a direct object field");
             case Ast.MapDecRef mp -> {
                 emitDecoderObject(code, mp.value(), src);
-                code.invokestatic(srcListOwner(src), "map", MTD_mapDec);
+                code.invokestatic(srcListOwner(src), "map", MTD_mapDec);   // Decoder<I, Map<String,V>>
+                if (mp.keyType() != null) {
+                    // Remap the String keys into the key newtype, invariant-checked.
+                    code.invokedynamic(rekeyCallSite(decoderClass, mp.keyType()));   // BiFunction<Map,Path,Result>
+                    code.invokeinterface(CD_RDecoder, "flatMapWithPath", MTD_flatMapWithPath);
+                }
             }
         }
     }
@@ -2040,8 +2225,13 @@ public final class Backend {
             }
             case Ast.MapEnc me -> {
                 pushElemEncoder(code, me.elem());
-                code.invokestatic(CD_MapEncoders, "mapOf", MTD_Rencode_list);
-                gen.expr(me.source());
+                code.invokestatic(CD_MapEncoders, "mapOf", MTD_Rencode_list);   // Encoder<Map<String,V>,Object>
+                gen.expr(me.source());                                          // Map<K,V>
+                if (me.keyType() != null) {
+                    // Render the newtype keys bare before the String-keyed map encoder.
+                    code.invokedynamic(keyValueCallSite(me.keyType()));         // Function<K,String>
+                    code.invokestatic(CD_Maps, "mapKeys", MTD_mapKeys);         // Map<String,V>
+                }
                 code.invokeinterface(CD_REncoder, "encode", MTD_Rencode);
             }
             case Ast.ObjectRaw o -> {
