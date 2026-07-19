@@ -384,12 +384,6 @@ final class BodyGen {
             int srcSlot = slot(Type.STRING);
             code.astore(srcSlot);
 
-            // The source is an immutable list, so its length is loop-invariant — read it once.
-            int sizeSlot = slot(Type.BOOL);
-            code.aload(srcSlot);
-            code.invokeinterface(CD_List, "size", MTD_size);
-            code.istore(sizeSlot);
-
             // The accumulator lives in a slot typed to the seed (a long for Int, an int for Bool,
             // a reference otherwise), so it stays unboxed across iterations — no Long.valueOf /
             // longValue round-trip per element, which keeps the loop friendly to the JIT.
@@ -398,30 +392,35 @@ final class BodyGen {
             int accSlot = slot(accType);
             store(code, accSlot, accType);
 
-            int iSlot = slot(Type.BOOL);
-            code.iconst_0();
-            code.istore(iSlot);
-            Label test = code.newLabel();
-            Label done = code.newLabel();
-            code.labelBinding(test);
-            code.iload(iSlot);
-            code.iload(sizeSlot);
-            code.if_icmpge(done);
-
             // When the source is the empty-list literal, its element type is a Nothing bottom
             // (ADR-0028): there is no element to fetch, and the loop is dead code — `fold f z []` is
-            // `z`. Emit no body; the size-0 loop falls straight through to `done` and the accumulator,
-            // still the seed, is loaded below. Faithfully emitting the body would unbox the Nothing
-            // element (as `acc + x` does with `x`), which has no JVM form and would crash the backend.
+            // `z`. Emit no loop at all and load the accumulator, still the seed, below. Faithfully
+            // emitting the body would unbox the Nothing element (as `acc + x` does with `x`), which
+            // has no JVM form and would crash the backend.
             if (!mentionsNothing(elemType)) {
+                // Walk the source with an Iterator rather than get(i): a List value is a persistent
+                // vector, whose iterator yields each element in O(1) amortized, whereas get(i)
+                // descends the trie (O(log n)) on every step. The one privileged list loop stays a
+                // single pass over the source.
+                int itSlot = slot(Type.STRING);
+                code.aload(srcSlot);
+                code.invokeinterface(CD_List, "iterator", MTD_iterator);
+                code.astore(itSlot);
+
+                Label test = code.newLabel();
+                Label done = code.newLabel();
+                code.labelBinding(test);
+                code.aload(itSlot);
+                code.invokeinterface(CD_Iterator, "hasNext", MTD_hasNext);
+                code.ifeq(done);
+
+                code.aload(itSlot);
+                code.invokeinterface(CD_Iterator, "next", MTD_Object);
+                int elemSlot = slot(elemType);
+                unbox(code, elemType, elemSlot);
                 // bind the block's parameters — the accumulator and this element — for this iteration.
                 // The accumulator param reads straight from its typed slot; the block never writes the
                 // slot, so binding the param to it directly is safe (the new value is stored below).
-                code.aload(srcSlot);
-                code.iload(iSlot);
-                code.invokeinterface(CD_List, "get", MethodTypeDesc.of(CD_Object, ConstantDescs.CD_int));
-                int elemSlot = slot(elemType);
-                unbox(code, elemType, elemSlot);
                 // The block's parameter names are scoped to the block: a nested fold reuses the same
                 // names (the derived combinators all bind `acc`/`x`), so save any outer binding these
                 // shadow and restore it after the body, or the outer `acc` would resolve to the inner
@@ -434,11 +433,10 @@ final class BodyGen {
                 restore(f.params().get(0), prevAcc);
                 restore(f.params().get(1), prevElem);
                 store(code, accSlot, accType);
-            }
 
-            code.iinc(iSlot, 1);
-            code.goto_(test);
-            code.labelBinding(done);
+                code.goto_(test);
+                code.labelBinding(done);
+            }
 
             load(code, accSlot, accType);
             return accType;
