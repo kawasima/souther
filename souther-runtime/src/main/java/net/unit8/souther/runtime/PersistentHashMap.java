@@ -30,9 +30,10 @@ import java.util.Set;
  * <p>Values are never null (a Souther collection models absence with {@code Option}), so
  * {@link #get} returning {@code null} unambiguously means "absent".
  *
- * <p>{@code remove} drops emptied sub-nodes but does not collapse a single-entry sub-node back
- * inline (CHAMP canonicalization); the trie stays correct and answers every query, it is only
- * slightly less compact after deletions. Canonicalization is a later memory optimization.
+ * <p>{@code remove} keeps the trie canonical: an emptied sub-node is dropped and a sub-node that
+ * collapses to a single entry is inlined back into its parent (bubbling up a level when the parent
+ * would otherwise become a lone-entry inner node). So a key set reached by deletions has the same
+ * shape — and the same deterministic iteration order — as one built directly.
  */
 public final class PersistentHashMap<K, V> extends AbstractMap<K, V> {
 
@@ -290,12 +291,38 @@ public final class PersistentHashMap<K, V> extends AbstractMap<K, V> {
                 if (newSub == sub) {
                     return this;
                 }
-                if (newSub instanceof BitmapIndexedNode bin && bin.dataMap == 0 && bin.nodeMap == 0) {
-                    return copyAndRemoveNode(bitpos);
+                switch (sizePredicate(newSub)) {
+                    case 0:
+                        return copyAndRemoveNode(bitpos);
+                    case 1:
+                        // The sub-node collapsed to a single entry: inline it here so the trie stays
+                        // canonical (a HashCollisionNode that dropped to one pair, or a sub-node whose
+                        // sole surviving key belongs one level up). When this node is itself just that
+                        // one sub-node, bubble the entry up instead so this node does not become a
+                        // non-canonical lone-entry inner node — re-keyed to this level's bit, since the
+                        // surviving key shares the removed key's chunk here and only diverged deeper.
+                        if (payloadArity() == 0 && nodeArity() == 1) {
+                            return new BitmapIndexedNode(bitpos, 0,
+                                    new Object[]{newSub.keyAt(0), newSub.valAt(0)});
+                        }
+                        return copyAndMigrateNodeToInline(bitpos, newSub);
+                    default:
+                        return copyAndSetNode(bitpos, newSub);
                 }
-                return copyAndSetNode(bitpos, newSub);
             }
             return this;
+        }
+
+        /** 0 for empty, 1 for a single inline entry (a candidate to inline into the parent), 2 for
+         *  anything larger. */
+        private static int sizePredicate(Node n) {
+            if (n.payloadArity() == 0 && n.nodeArity() == 0) {
+                return 0;
+            }
+            if (n.nodeArity() == 0 && n.payloadArity() == 1) {
+                return 1;
+            }
+            return 2;
         }
 
         private BitmapIndexedNode copyAndSetValue(int bitpos, Object val) {
@@ -351,6 +378,25 @@ public final class PersistentHashMap<K, V> extends AbstractMap<K, V> {
             c[nodeBase + ni] = node;
             System.arraycopy(contents, 2 * p + ni, c, nodeBase + ni + 1, n - ni);  // nodes from ni
             return new BitmapIndexedNode(dataMap ^ bitpos, nodeMap | bitpos, c);
+        }
+
+        /** Inlines {@code node}'s single entry at {@code bitpos} and drops it from the node section
+         *  (data grows by a pair, nodes shrink by one) — the inverse of {@link
+         *  #copyAndMigrateInlineToNode}, restoring canonical form after a removal. */
+        private BitmapIndexedNode copyAndMigrateNodeToInline(int bitpos, Node node) {
+            int p = payloadArity();
+            int n = nodeArity();
+            int d = dataIndex(bitpos);
+            int ni = nodeIndex(bitpos);
+            Object[] c = new Object[contents.length + 1];   // +2 data, -1 node
+            System.arraycopy(contents, 0, c, 0, 2 * d);                       // data before the pair
+            c[2 * d] = node.keyAt(0);
+            c[2 * d + 1] = node.valAt(0);
+            System.arraycopy(contents, 2 * d, c, 2 * d + 2, 2 * (p - d));      // data after the pair
+            int nodeBase = 2 * (p + 1);
+            System.arraycopy(contents, 2 * p, c, nodeBase, ni);              // nodes before ni
+            System.arraycopy(contents, 2 * p + ni + 1, c, nodeBase + ni, n - ni - 1);  // nodes after ni
+            return new BitmapIndexedNode(dataMap | bitpos, nodeMap ^ bitpos, c);
         }
     }
 
