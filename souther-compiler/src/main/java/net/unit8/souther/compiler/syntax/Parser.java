@@ -216,9 +216,10 @@ public final class Parser {
             }
             return new Ast.FnDef(name, params, declaredReturn, key, null, kw.pos());
         }
-        if (declaredReturn != null) {
-            throw error(kw, "a `let` infers its return type; only a core intrinsic declares one");
-        }
+        // A helper may declare its return type: `let 深さ (s: 社員): Int = ...`. It is required only
+        // when the helper recurses — the cycle can't be inferred through — and otherwise inferred, so
+        // a declared return on a behavior-implementing fn (whose type comes from the behavior) is
+        // rejected later, in the type checker (spec 13.1).
         Ast.Expr body;
         if (match(TokenType.LBRACE)) {
             body = parseBody();
@@ -226,7 +227,7 @@ public final class Parser {
         } else {
             body = parseExpr();
         }
-        return new Ast.FnDef(name, params, null, null, body, kw.pos());
+        return new Ast.FnDef(name, params, declaredReturn, null, body, kw.pos());
     }
 
     /** A {@code fn} parameter: {@code name} (type from the behavior) or {@code name: type} (helper).

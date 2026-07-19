@@ -8,7 +8,6 @@ import net.unit8.souther.compiler.ast.Ast;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,6 +29,7 @@ public final class HelperInliner {
 
     private final Map<String, Ast.FnDef> helpers;   // prelude + module-own, keyed by name (inlining)
     private final Map<String, Ast.FnDef> own;       // the module's own helpers (standalone check)
+    private final Set<String> recursive = new HashSet<>();   // own helpers on a call cycle (spec 13.1)
     private int counter = 0;
 
     private HelperInliner(Map<String, Ast.FnDef> helpers, Map<String, Ast.FnDef> own) {
@@ -57,8 +57,14 @@ public final class HelperInliner {
         Map<String, Ast.FnDef> helpers = new HashMap<>(Prelude.helpers());
         helpers.putAll(own);
         HelperInliner inliner = new HelperInliner(helpers, own);
-        inliner.rejectRecursion();
+        inliner.classifyRecursion();
         return inliner;
+    }
+
+    /** The module's own helpers that recurse (self or mutual) and so are lowered to methods rather
+     * than inlined (spec 13.1). A call to one is left standing by {@link #inline}. */
+    public Set<String> recursiveHelpers() {
+        return recursive;
     }
 
     /** The module's own helper fns, keyed by name (for the standalone signature check). The
@@ -112,8 +118,10 @@ public final class HelperInliner {
                     args.add(inline(a));
                 }
                 Ast.FnDef helper = helpers.get(call.fn());
-                if (helper == null) {
-                    yield new Ast.Call(call.fn(), args, call.pos());   // builtin or injected behavior
+                if (helper == null || recursive.contains(call.fn())) {
+                    // builtin, injected behavior, or a recursive helper — a recursive helper is
+                    // lowered to a method, so its call stays a Call (spec 13.1); only its args inline.
+                    yield new Ast.Call(call.fn(), args, call.pos());
                 }
                 if (args.size() != helper.params().size()) {
                     throw new CompileException(call.pos(), "helper `let " + helper.name() + "` takes "
@@ -368,28 +376,36 @@ public final class HelperInliner {
         return copy;
     }
 
-    /** Rejects a helper that calls itself directly or through other helpers (spec 13.1). */
-    private void rejectRecursion() {
-        for (Ast.FnDef h : helpers.values()) {
-            visit(h.name(), h, new LinkedHashSet<>());
+    /** Records the module's own helpers that lie on a call cycle (self or mutual). A recursive helper
+     * is lowered to a method that may call itself, rather than inlined (spec 13.1). A helper is
+     * recursive iff it can reach itself through helper calls; every member of a mutual cycle is
+     * reached from itself, so all are marked. */
+    private void classifyRecursion() {
+        for (String name : own.keySet()) {
+            if (reaches(name, name, new HashSet<>())) {
+                recursive.add(name);
+            }
         }
     }
 
-    private void visit(String root, Ast.FnDef h, Set<String> onPath) {
-        if (!onPath.add(h.name())) {
-            throw new CompileException(h.pos(), "helper `let " + h.name()
-                    + "` is recursive (directly or through other helpers), which is not allowed: "
-                    + "a helper is expanded inline, so it must bottom out (spec 13.1)");
+    /** Whether {@code target} is reachable from {@code from} through helper-call edges. Prelude
+     * helpers never call a module's own helpers, so a cycle stays within the module's own helpers. */
+    private boolean reaches(String from, String target, Set<String> seen) {
+        Ast.FnDef h = helpers.get(from);
+        if (h == null) {
+            return false;
         }
         Set<String> called = new HashSet<>();
         collectHelperCalls(h.body(), called);
         for (String c : called) {
-            Ast.FnDef callee = helpers.get(c);
-            if (callee != null) {
-                visit(root, callee, onPath);
+            if (c.equals(target)) {
+                return true;
+            }
+            if (seen.add(c) && reaches(c, target, seen)) {
+                return true;
             }
         }
-        onPath.remove(h.name());
+        return false;
     }
 
     /** Whether {@code name} occurs as a variable or a call target anywhere in {@code e}. Used to

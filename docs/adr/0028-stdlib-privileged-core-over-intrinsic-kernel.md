@@ -61,17 +61,17 @@ Concretely:
 
 ## Consequences
 
-The user-facing restriction of ADR-0010 stands — a business model still writes no generics
-and no recursion — but its rationale narrows: generics and recursion are not absent from the
-language, they are confined to a core that ships with the compiler. The stdlib gains a
+The user-facing restriction of ADR-0010 narrows: a business model still writes no generics,
+but recursion has since returned to user helpers (ADR-0038). Generics are not absent from the
+language either — they are confined to a core that ships with the compiler. The stdlib gains a
 single definition site, and its derivable half is exercised in Souther rather than asserted
 by the compiler.
 
-Confining recursion to `core` would matter only for processing recursive user data, but
-Souther does not support self-referential data — no derived codec traverses a cycle — and a
-business model in the SMDD sense (state machines, records, lists of records) does not ask
-for it. So the confinement costs the model no expressiveness it would use, the same argument
-ADR-0010 makes for the absence of user generics.
+This ADR originally argued that confining recursion to `core` cost the model nothing, on the
+premise that "Souther does not support self-referential data — no derived codec traverses a
+cycle." That premise was wrong on both counts (see the amendment below), and ADR-0038 returns
+recursion to user helpers. What stays true here is the *generics* half: monomorphization and
+type variables remain a `core` privilege, since a business model writes no generics.
 
 Deriving `map`/`filter` from `fold` forced one language relaxation: the empty-list literal
 `[]`, which `[#stdlib-list]` had forbidden because its element type could not be determined.
@@ -91,6 +91,11 @@ which is left for later.
 > collection-first argument order (`map(xs, f)`), reasoning that `>->` already composes at the
 > behavior level. ADR-0034 reverses both: the stdlib now takes its main object last
 > (`map(f, xs)`, the F#/Elm order that lets `|>` thread), and `|>` pipes a value through it.
+
+> **Amended by ADR-0038.** This ADR confined recursion to `core`, on the premise that Souther
+> has no self-referential user data. That premise was false — a `data` may refer to itself and
+> its derived codecs traverse it — so ADR-0038 returns recursion to user helpers, lowering a
+> recursive helper to a method. The generics/monomorphization privilege of `core` is unchanged.
 
 ## References
 

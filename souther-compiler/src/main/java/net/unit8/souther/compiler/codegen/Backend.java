@@ -237,6 +237,9 @@ public final class Backend {
      * module output once every behavior is generated. */
     private final Map<String, byte[]> synthClasses = new LinkedHashMap<>();
     private int lambdaCounter = 0;
+    /** The module's recursive helpers, lowered to static methods on {@code $Fns} (spec 13.1); a call
+     * to one is an {@code invokestatic}, not an inlined body. Keyed by helper name. */
+    private Map<String, Ast.FnDef> recursiveHelpers = Map.of();
 
     private Backend(String pkg, Map<String, Ast.Def> symbols, Map<String, List<String>> caseToSums,
                     Map<String, String> typePackage, boolean exposeAll, Set<String> exposed) {
@@ -290,6 +293,19 @@ public final class Backend {
         Set<String> exposed = new HashSet<>(module.exposing());
         Backend b = new Backend(module.name(), symbols, caseToSums, typePackage,
                 module.exposing().isEmpty(), exposed);
+        // After the Lower stage the only non-behavior fns left are recursive helpers (spec 13.1);
+        // each is lowered to a static method on the module's `$Fns` class rather than inlined.
+        Set<String> behaviorNames = new HashSet<>();
+        for (Ast.BehaviorDef bd : module.behaviors()) {
+            behaviorNames.add(bd.name());
+        }
+        Map<String, Ast.FnDef> recHelpers = new LinkedHashMap<>();
+        for (Ast.FnDef fn : module.fns()) {
+            if (!behaviorNames.contains(fn.name())) {
+                recHelpers.put(fn.name(), fn);
+            }
+        }
+        b.recursiveHelpers = recHelpers;
         // A behavior's class capitalizes its first letter (spec 19.5). Data names are already
         // capitalized, so `behavior quote` producing `data Quote` would generate two classes named
         // `Quote`. Reject the collision here rather than let one silently overwrite the other.
@@ -382,8 +398,42 @@ public final class Backend {
                                 b.generatePipe(pipe, requiredNames, sigs, behaviorDeps, pipeStages));
             }
         }
+        if (!recHelpers.isEmpty()) {
+            out.put(module.name() + ".$Fns", b.generateRecursiveHelpers(recHelpers));
+        }
         out.putAll(b.synthClasses);   // escaping lambdas compiled to Fn classes (spec §blocks)
         return out;
+    }
+
+    /**
+     * Emits the module's recursive helpers as {@code static} methods on a package-private {@code $Fns}
+     * class (spec 13.1). Each helper's declared parameter and return types are boxed as {@code Object}
+     * across the method boundary, unboxed on entry and boxed on return, so a self- or mutual call is a
+     * plain {@code invokestatic} — the recursion the inliner cannot express. The body is emitted through
+     * the same {@code emitBodyTail} path a behavior uses; a helper is pure, so it has no injected fields.
+     */
+    private byte[] generateRecursiveHelpers(Map<String, Ast.FnDef> helpers) {
+        ClassDesc cdFns = ClassDesc.of(pkg + ".$Fns");
+        return build(cdFns, cb -> {
+            cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);   // package-private, not exposed
+            for (Ast.FnDef h : helpers.values()) {
+                int n = h.params().size();
+                ClassDesc[] params = new ClassDesc[n];
+                java.util.Arrays.fill(params, CD_Object);
+                cb.withMethodBody(h.name(), MethodTypeDesc.of(CD_Object, params), ClassFile.ACC_STATIC,
+                        code -> {
+                    Gen gen = new Gen(code, null, cdFns, n);
+                    for (int i = 0; i < n; i++) {
+                        Type pt = successType((Ast.RetType) h.params().get(i).type());
+                        code.aload(i);
+                        int slot = gen.slot(pt);
+                        unbox(code, pt, slot);
+                        gen.bind(h.params().get(i).name(), slot, pt);
+                    }
+                    emitBodyTail(gen, code, Core.of(h.body()), cdFns, Set.of(), Map.of());
+                });
+            }
+        });
     }
 
     /** Emits injected required-behavior fields plus the matching constructor (or a no-arg ctor). */
@@ -2651,12 +2701,32 @@ public final class Backend {
                     if (fv != null && fv.type() instanceof Type.FnOf fnType) {
                         return applyFn(call, fv, fnType);
                     }
+                    Ast.FnDef rec = recursiveHelpers.get(call.fn());
+                    if (rec != null) {
+                        return recursiveHelperCall(call, rec);
+                    }
                     if (reqNames.contains(call.fn())) {
                         return requiredCall(call);
                     }
                     throw new CompileException(call.pos(), "unknown function `" + call.fn() + "`");
                 }
             }
+        }
+
+        /** Calls a recursive helper as a static method on {@code $Fns} (spec 13.1): each argument is
+         * evaluated and boxed, the {@code invokestatic} returns {@code Object}, and the result is cast
+         * back to the helper's declared return type. A self- or mutual call reaches here the same way. */
+        private Type recursiveHelperCall(Core.Call call, Ast.FnDef h) {
+            for (Core arg : call.args()) {
+                Type at = genExpr(arg);
+                box(code, at);
+            }
+            ClassDesc[] params = new ClassDesc[call.args().size()];
+            java.util.Arrays.fill(params, CD_Object);
+            code.invokestatic(ClassDesc.of(pkg + ".$Fns"), call.fn(), MethodTypeDesc.of(CD_Object, params));
+            Type rt = successType(h.declaredReturn());
+            castFromObject(code, rt);
+            return rt;
         }
 
         /** The operation name from a qualified builtin call ({@code "Decimal.add"} → {@code "add"}). */

@@ -57,6 +57,18 @@ public final class TypeChecker {
         for (Ast.FnDef fn : lowered.fns()) {
             loweredBodies.put(fn.name(), fn.body());
         }
+        HelperInliner inliner = HelperInliner.forModule(module);
+        Map<String, Type> recursiveHelperFns = recursiveHelperSigs(inliner, symbols);
+        // An invariant runs on every construction and must terminate, so it may not call a recursive
+        // helper (spec §invariant-expressions); a non-recursive helper is already inlined into it. This
+        // runs before the data check, so the invariant's recursive call is named before it is otherwise
+        // reported as an unknown function.
+        for (Ast.Def def : module.defs()) {
+            if (def instanceof Ast.Data data && data.invariant().isPresent()) {
+                rejectRecursiveHelperInInvariant(data.invariant().get(), data.name(),
+                        recursiveHelperFns.keySet());
+            }
+        }
         for (Ast.Def def : module.defs()) {
             switch (def) {
                 case Ast.Data data -> checkData(data, symbols);
@@ -64,6 +76,7 @@ public final class TypeChecker {
                 case Ast.UnitData ignored -> { }
             }
         }
+        checkNoUninhabitableCycle(module, symbols);
         Map<String, Ast.FnDef> fns = new HashMap<>();
         for (Ast.FnDef fn : module.fns()) {
             if (fns.put(fn.name(), fn) != null) {
@@ -133,14 +146,17 @@ public final class TypeChecker {
         }
         // Helper fns (no matching behavior) are expanded inline at each call site (spec 12.5); a
         // helper is checked standalone against its own declared parameter types (spec 13.1).
-        HelperInliner inliner = HelperInliner.forModule(module);
-        checkHelpers(inliner, symbols, reqSigs);
+        checkHelpers(inliner, symbols, reqSigs, recursiveHelperFns);
+        // What each recursive helper constructs, transitively — a recursive helper is not inlined, so
+        // its constructions are attributed to the behavior that calls it (spec 12.5).
+        Map<String, Set<String>> recHelperConstructs =
+                recursiveHelperConstructs(recursiveHelperFns.keySet(), loweredBodies, inliner, symbols);
         for (Ast.BehaviorDef b : module.behaviors()) {
             if (b instanceof Ast.SpecBehavior spec) {
                 Ast.FnDef fn = fns.get(spec.name());
                 if (fn != null) {
                     checkSpecFn(spec, fn, loweredBodies.get(spec.name()), symbols, allBehaviors,
-                            reqSigs, inliner);
+                            reqSigs, inliner, recursiveHelperFns, recHelperConstructs);
                 }
             }
         }
@@ -225,7 +241,7 @@ public final class TypeChecker {
      * repeated here.
      */
     private static void checkHelpers(HelperInliner inliner, Map<String, Ast.Def> symbols,
-                                     Map<String, ReqSig> reqSigs) {
+                                     Map<String, ReqSig> reqSigs, Map<String, Type> recursiveHelperFns) {
         for (Ast.FnDef h : inliner.helpers().values()) {
             Map<String, Type> env = new HashMap<>();
             for (Ast.FnParam p : h.params()) {
@@ -245,8 +261,82 @@ public final class TypeChecker {
             if (producesFunction(body)) {
                 continue;
             }
-            typeOf(body, env, null, symbols, reqSigs);
+            if (recursiveHelperFns.containsKey(h.name())) {
+                // a recursive helper is pure: it is a static method with no injected fields, so it
+                // cannot reach an injected behavior — put the effect in the behavior that calls it.
+                rejectInjectedCalls(body, h.name(), reqSigs.keySet());
+            }
+            // self- and mutual calls resolve through the helper signatures, so the recursion type-checks
+            // without a fixpoint (each declares its return type, spec 13.1).
+            Map<String, Type> tenv = new HashMap<>(env);
+            tenv.putAll(recursiveHelperFns);
+            Type bodyType = typeOf(body, tenv, null, symbols, reqSigs);
+            // a declared return type — required on a recursive helper, allowed on any helper — must
+            // match the body; a lying annotation is not silently ignored.
+            if (h.declaredReturn() != null) {
+                Type declared = successType(h.declaredReturn(), symbols);
+                if (!assignable(bodyType, declared, symbols)) {
+                    throw new CompileException(h.pos(), "helper `let " + h.name()
+                            + "` declares it returns " + declared + " but its body is " + bodyType);
+                }
+            }
         }
+    }
+
+    /**
+     * Signatures of the module's recursive helpers, each a {@link Type.FnOf} from its declared
+     * parameter types to its declared return type. A recursive helper must declare its return type:
+     * the type can't be inferred through the cycle. Registered in a body's environment so a self- or
+     * mutual call type-checks (spec 13.1).
+     */
+    private static Map<String, Type> recursiveHelperSigs(HelperInliner inliner, Map<String, Ast.Def> symbols) {
+        Map<String, Type> sigs = new HashMap<>();
+        for (String name : inliner.recursiveHelpers()) {
+            Ast.FnDef h = inliner.helper(name);
+            if (h.declaredReturn() == null) {
+                throw new CompileException(h.pos(), "recursive helper `let " + name
+                        + "` must declare its return type — `let " + name + " (...) : <type> = ...` — "
+                        + "because its result cannot be inferred through the recursion (spec 13.1)");
+            }
+            List<Type> params = new ArrayList<>();
+            for (Ast.FnParam p : h.params()) {
+                if (p.type() == null) {
+                    throw new CompileException(p.pos(), "helper `let " + name + "` must annotate "
+                            + "parameter `" + p.name() + "` with its type (spec 13.1)");
+                }
+                if (p.type() instanceof Ast.FnType) {
+                    // a recursive helper is a static method, and a function value cannot be passed to
+                    // one (a block is not a value, spec 12.5); reject the function parameter directly.
+                    throw new CompileException(p.pos(), "recursive helper `let " + name + "` cannot take"
+                            + " the function parameter `" + p.name() + "` — a recursive helper is a"
+                            + " method and a function cannot be passed to it");
+                }
+                params.add(resolveParamType(p.type(), symbols));
+            }
+            sigs.put(name, Type.fn(params, successType(h.declaredReturn(), symbols)));
+        }
+        return sigs;
+    }
+
+    /** Rejects a call to a recursive helper inside an invariant: an invariant is checked on every
+     * construction and must terminate, so it cannot call one (spec §invariant-expressions). */
+    private static void rejectRecursiveHelperInInvariant(Ast.Expr e, String data, Set<String> recursive) {
+        if (e instanceof Ast.Call call && recursive.contains(call.fn())) {
+            throw new CompileException(call.pos(), "the invariant of `" + data + "` calls the recursive "
+                    + "helper `" + call.fn() + "`, but an invariant is checked at construction time and "
+                    + "must terminate — a recursive helper cannot appear in an invariant");
+        }
+        forEachChild(e, c -> rejectRecursiveHelperInInvariant(c, data, recursive));
+    }
+
+    /** Rejects a call to an injected behavior inside a recursive helper: it is pure (spec 13.1). */
+    private static void rejectInjectedCalls(Ast.Expr e, String helper, Set<String> injected) {
+        if (e instanceof Ast.Call call && injected.contains(call.fn())) {
+            throw new CompileException(call.pos(), "recursive helper `let " + helper + "` is pure and "
+                    + "cannot call the injected behavior `" + call.fn() + "` — put the effect in the "
+                    + "behavior that calls this helper (spec 13.1)");
+        }
+        forEachChild(e, c -> rejectInjectedCalls(c, helper, injected));
     }
 
     /**
@@ -342,7 +432,14 @@ public final class TypeChecker {
 
     private static void checkSpecFn(Ast.SpecBehavior spec, Ast.FnDef fn, Ast.Expr inlinedBody,
                                     Map<String, Ast.Def> symbols, Set<String> allBehaviors,
-                                    Map<String, ReqSig> reqSigs, HelperInliner inliner) {
+                                    Map<String, ReqSig> reqSigs, HelperInliner inliner,
+                                    Map<String, Type> recursiveHelperFns,
+                                    Map<String, Set<String>> recHelperConstructs) {
+        if (fn.declaredReturn() != null) {
+            throw new CompileException(fn.pos(), "`let " + fn.name() + "` implements `behavior "
+                    + spec.name() + "`, so its return type comes from the behavior — do not declare one"
+                    + " (spec 13.1)");
+        }
         int nBusiness = spec.params().size();
         int nReq = spec.requires().size();
         if (fn.params().size() != nBusiness + nReq) {
@@ -385,7 +482,11 @@ public final class TypeChecker {
         Ast.Expr body = inlinedBody;
         rejectNonRequiredCalls(body, allBehaviors, reqSigs);
 
-        Type rt = typeOf(body, env, null, symbols, reqSigs);
+        // recursive helpers this behavior calls resolve through their signatures (spec 13.1); merged
+        // only for typing, so construction/requires walks below still see the business params alone.
+        Map<String, Type> tenv = new HashMap<>(env);
+        tenv.putAll(recursiveHelperFns);
+        Type rt = typeOf(body, tenv, null, symbols, reqSigs);
         if (!assignable(rt, output, symbols)) {
             throw new CompileException(body.pos(),
                     "behavior `" + spec.name() + "` returns " + output + " but its `let` body is " + rt);
@@ -394,7 +495,7 @@ public final class TypeChecker {
         // One expression (spec 16.4): this single walk sees every construction, including under a
         // desugared `require`.
         Set<String> constructed = new HashSet<>();
-        collectConstructs(body, constructed, symbols, new HashSet<>(env.keySet()));
+        collectConstructs(body, constructed, symbols, new HashSet<>(env.keySet()), recHelperConstructs);
         // `constructs` on an fn-backed behavior is optional: its construction permission is internal
         // (invisible to callers, unlike `requires`), so with the body visible the set can be inferred
         // (ADR-0002). Omit it and inference stands. Declare it and it must match the body exactly —
@@ -949,54 +1050,62 @@ public final class TypeChecker {
      * Without it, a parameter named after a unit data was read as constructing that unit.
      */
     private static void collectConstructs(Ast.Expr e, Set<String> out, Map<String, Ast.Def> symbols,
-                                          Set<String> bound) {
+                                          Set<String> bound, Map<String, Set<String>> recConstructs) {
         switch (e) {
             case Ast.LetIn li -> {
-                collectConstructs(li.value(), out, symbols, bound);
+                collectConstructs(li.value(), out, symbols, bound, recConstructs);
                 Set<String> inner = new HashSet<>(bound);
                 inner.add(li.name());
-                collectConstructs(li.body(), out, symbols, inner);
+                collectConstructs(li.body(), out, symbols, inner, recConstructs);
             }
             case Ast.NewData nd -> {
                 out.add(nd.typeName());
                 for (Ast.FieldInit init : nd.inits()) {
-                    collectConstructs(init.value(), out, symbols, bound);
+                    collectConstructs(init.value(), out, symbols, bound, recConstructs);
                 }
             }
-            case Ast.FieldAccess fa -> collectConstructs(fa.target(), out, symbols, bound);
-            case Ast.Tuple tup -> tup.elements().forEach(el -> collectConstructs(el, out, symbols, bound));
-            case Ast.TupleGet tg -> collectConstructs(tg.tuple(), out, symbols, bound);
-            case Ast.Call call -> call.args().forEach(a -> collectConstructs(a, out, symbols, bound));
-            case Ast.Binary bin -> {
-                collectConstructs(bin.left(), out, symbols, bound);
-                collectConstructs(bin.right(), out, symbols, bound);
+            case Ast.FieldAccess fa -> collectConstructs(fa.target(), out, symbols, bound, recConstructs);
+            case Ast.Tuple tup -> tup.elements().forEach(el -> collectConstructs(el, out, symbols, bound, recConstructs));
+            case Ast.TupleGet tg -> collectConstructs(tg.tuple(), out, symbols, bound, recConstructs);
+            case Ast.Call call -> {
+                // a recursive helper is not inlined, so its own (transitive) constructions are
+                // attributed to the behavior that calls it, exactly as an inlined helper's would be.
+                Set<String> viaHelper = recConstructs.get(call.fn());
+                if (viaHelper != null) {
+                    out.addAll(viaHelper);
+                }
+                call.args().forEach(a -> collectConstructs(a, out, symbols, bound, recConstructs));
             }
-            case Ast.Neg neg -> collectConstructs(neg.operand(), out, symbols, bound);
+            case Ast.Binary bin -> {
+                collectConstructs(bin.left(), out, symbols, bound, recConstructs);
+                collectConstructs(bin.right(), out, symbols, bound, recConstructs);
+            }
+            case Ast.Neg neg -> collectConstructs(neg.operand(), out, symbols, bound, recConstructs);
             case Ast.Match m -> {
-                collectConstructs(m.scrutinee(), out, symbols, bound);
+                collectConstructs(m.scrutinee(), out, symbols, bound, recConstructs);
                 for (Ast.Case c : m.cases()) {
                     Set<String> inner = new HashSet<>(bound);
                     if (c.binding() != null) {
                         inner.add(c.binding());
                     }
-                    collectConstructs(c.body(), out, symbols, inner);
+                    collectConstructs(c.body(), out, symbols, inner, recConstructs);
                 }
             }
             case Ast.If iff -> {
-                collectConstructs(iff.cond(), out, symbols, bound);
-                collectConstructs(iff.then(), out, symbols, bound);
-                collectConstructs(iff.els(), out, symbols, bound);
+                collectConstructs(iff.cond(), out, symbols, bound, recConstructs);
+                collectConstructs(iff.then(), out, symbols, bound, recConstructs);
+                collectConstructs(iff.els(), out, symbols, bound, recConstructs);
             }
-            case Ast.ListLit lit -> lit.elements().forEach(el -> collectConstructs(el, out, symbols, bound));
+            case Ast.ListLit lit -> lit.elements().forEach(el -> collectConstructs(el, out, symbols, bound, recConstructs));
             case Ast.ListComp comp -> {
-                collectConstructs(comp.element(), out, symbols, bound);
-                comp.guards().forEach(g -> collectConstructs(g, out, symbols, bound));
+                collectConstructs(comp.element(), out, symbols, bound, recConstructs);
+                comp.guards().forEach(g -> collectConstructs(g, out, symbols, bound, recConstructs));
             }
             case Ast.Block block -> {
                 // a block builds under the enclosing behavior's permission (spec 12.5)
                 Set<String> inner = new HashSet<>(bound);
                 inner.addAll(block.params());
-                collectConstructs(block.body(), out, symbols, inner);
+                collectConstructs(block.body(), out, symbols, inner, recConstructs);
             }
             // a bare name that resolves to a unit data is that unit's construction (spec 8.4)
             case Ast.Var v when !bound.contains(v.name())
@@ -1007,6 +1116,59 @@ public final class TypeChecker {
             case Ast.BoolLit ignored -> { }
             case Ast.Var ignored -> { }
         }
+    }
+
+    /**
+     * The data each recursive helper constructs, transitively. A recursive helper is lowered to a
+     * method rather than inlined, so its constructions do not appear in a caller's body; this map lets
+     * {@link #collectConstructs} attribute them to the behavior that calls the helper (spec 12.5). The
+     * closure follows recursive-helper calls: a helper's set includes what the recursive helpers it
+     * calls construct. Non-recursive helper calls are already inlined into the bodies here.
+     */
+    private static Map<String, Set<String>> recursiveHelperConstructs(
+            Set<String> recursive, Map<String, Ast.Expr> loweredBodies,
+            HelperInliner inliner, Map<String, Ast.Def> symbols) {
+        Map<String, Set<String>> own = new HashMap<>();
+        Map<String, Set<String>> calls = new HashMap<>();
+        for (String h : recursive) {
+            Ast.Expr body = loweredBodies.get(h);
+            Set<String> bound = new HashSet<>();
+            for (Ast.FnParam p : inliner.helper(h).params()) {
+                bound.add(p.name());
+            }
+            Set<String> c = new HashSet<>();
+            collectConstructs(body, c, symbols, bound, Map.of());   // recursive calls opaque here
+            own.put(h, c);
+            Set<String> callees = new LinkedHashSet<>();
+            collectCalls(body, callees, recursive);
+            calls.put(h, callees);
+        }
+        Map<String, Set<String>> full = new HashMap<>();
+        for (String h : recursive) {
+            full.put(h, new HashSet<>(own.get(h)));
+        }
+        // fixpoint: propagate each callee's constructions until nothing new is added (handles mutual
+        // recursion, whose call graph has cycles).
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            for (String h : recursive) {
+                for (String g : calls.get(h)) {
+                    if (full.get(h).addAll(full.get(g))) {
+                        changed = true;
+                    }
+                }
+            }
+        }
+        return full;
+    }
+
+    /** Collects the names in {@code names} that {@code e} calls (a recursive-helper call graph edge). */
+    private static void collectCalls(Ast.Expr e, Set<String> out, Set<String> names) {
+        if (e instanceof Ast.Call call && names.contains(call.fn())) {
+            out.add(call.fn());
+        }
+        forEachChild(e, c -> collectCalls(c, out, names));
     }
 
     /** Builds the name → definition table for a module. */
@@ -1114,6 +1276,46 @@ public final class TypeChecker {
         }
         data.invariant().ifPresent(invs::add);
         return invs;
+    }
+
+    /**
+     * Rejects a data whose construction requires constructing itself through mandatory fields with no
+     * base case — a base-less cycle is uninhabitable, so no value can ever be built. An optional
+     * ({@code ?}) field or a {@code List}/{@code Map} field is a base case ({@code None} or the empty
+     * collection breaks the cycle), so it does not count as a mandatory edge. A sum is OR-composed —
+     * a cycle routed through one may bottom out in another case — so the walk stops at a sum rather
+     * than raise a false positive.
+     */
+    private static void checkNoUninhabitableCycle(Ast.Module module, Map<String, Ast.Def> symbols) {
+        for (Ast.Def def : module.defs()) {
+            if (def instanceof Ast.Data data
+                    && mandatoryReaches(data.name(), data.name(), symbols, new HashSet<>())) {
+                throw new CompileException(data.pos(), "data `" + data.name() + "` cannot be constructed:"
+                        + " it needs a value of itself through a mandatory field, with no `?` or `List`"
+                        + " to bottom out — make the self-referring field optional (`?`) or a `List`.");
+            }
+        }
+    }
+
+    /** Whether {@code target} is reachable from {@code from} through mandatory data-typed fields. A
+     * plain field of a record/newtype type is a {@link Type.Ref}; an optional, list, or map field is
+     * not, so only mandatory references form edges. */
+    private static boolean mandatoryReaches(String from, String target, Map<String, Ast.Def> symbols,
+                                            Set<String> seen) {
+        if (!(symbols.get(from) instanceof Ast.Data d)) {
+            return false;   // a sum (OR-composed) or unit (field-less) breaks the mandatory chain
+        }
+        for (Type ft : fieldTypes(d, symbols).values()) {
+            if (ft instanceof Type.Ref ref) {
+                if (ref.name().equals(target)) {
+                    return true;
+                }
+                if (seen.add(ref.name()) && mandatoryReaches(ref.name(), target, symbols, seen)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private static void checkData(Ast.Data data, Map<String, Ast.Def> symbols) {

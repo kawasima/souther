@@ -35,13 +35,15 @@ public final class Lower {
         for (Ast.BehaviorDef b : module.behaviors()) {
             behaviorNames.add(b.name());
         }
+        Set<String> recursive = inliner.recursiveHelpers();
         List<Ast.FnDef> fns = new ArrayList<>();
         for (Ast.FnDef fn : module.fns()) {
-            if (behaviorNames.contains(fn.name())) {
+            // A behavior body and a recursive helper both survive to the backend with their body
+            // inlined (non-recursive calls expanded, recursive calls left standing, spec 13.1). A
+            // non-recursive helper is fully inlined at its call sites and never emitted — drop it.
+            if (behaviorNames.contains(fn.name()) || recursive.contains(fn.name())) {
                 fns.add(new Ast.FnDef(fn.name(), fn.params(), fn.declaredReturn(), fn.intrinsicKey(),
                         desugar(inliner.inline(fn.body())), fn.pos()));
-            } else {
-                fns.add(fn);   // a helper fn: inlined at its call sites, never emitted on its own
             }
         }
         List<Ast.Def> defs = new ArrayList<>();
