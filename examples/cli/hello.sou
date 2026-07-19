@@ -1,0 +1,9 @@
+// Hello, World — a bare string in, a bare string out.
+// No `module` header: a single file run on its own is named after the file (ADR-0043).
+//
+//   souther run hello.sou --input '"world"'
+//   => "Hello, world"
+
+behavior greet : (name: String) -> String
+
+let greet (name) = String.concat("Hello, ", name)

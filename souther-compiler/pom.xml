@@ -28,10 +28,11 @@
             <artifactId>souther-runtime</artifactId>
             <scope>provided</scope>
         </dependency>
+        <!-- raoh core: the derived decoders/encoders `souther run` drives through (Runner), and the
+             leaf codecs for primitive-typed inputs/outputs. -->
         <dependency>
             <groupId>net.unit8.raoh</groupId>
             <artifactId>raoh</artifactId>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>net.unit8.raoh</groupId>
@@ -43,13 +44,12 @@
             <artifactId>raoh-jooq</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- Jackson 3 (provided by raoh-json) is needed at runtime to exercise a generated
-             jsonDecoder() against a real JsonNode in tests. -->
+        <!-- Jackson 3: parses the `souther run` input JSON to plain objects and renders the encoded
+             output back to JSON text (Runner); also exercises a generated jsonDecoder() in tests. -->
         <dependency>
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>3.1.0</version>
-            <scope>test</scope>
+            <version>3.1.5</version>
         </dependency>
         <!-- jOOQ (provided by raoh-jooq) is needed at runtime to load/verify a generated
              recordDecoder()'s $DecRecord bytecode in tests. -->

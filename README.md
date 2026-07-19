@@ -59,8 +59,27 @@ mvn install
 # Compile a .sou file to .class files.
 java -cp souther-compiler/target/classes:souther-runtime/target/classes \
      net.unit8.souther.compiler.Main \
-     examples/businesstrip/src/main/souther/businesstrip.sou -d /tmp/out
+     compile examples/businesstrip/src/main/souther/businesstrip.sou -d /tmp/out
 ```
+
+To try a behavior without writing any Java, `souther run` compiles a `.sou` in memory and drives one behavior: it decodes the `--input` JSON through the behavior's derived decoders, applies it, and prints the result through its derived encoder. A single file run on its own may omit the `module` header — it is named after the file (ADR-0043).
+
+The `souther-cli` module bundles the compiler, runtime, and their dependencies into one really-executable jar, so no classpath or `java -jar` is needed:
+
+```sh
+# Build target/souther — a self-contained executable (a launcher stub prepended to an uber jar).
+mvn -pl souther-cli -am -DskipTests install
+
+# hello.sou  (no module header needed)
+#   behavior greet : (name: String) -> String
+#   let greet (name) = String.concat("Hello, ", name)
+./souther-cli/target/souther run hello.sou --behavior greet --input '"world"'
+# => "Hello, world"
+```
+
+`--behavior` may be omitted when the module holds exactly one runnable behavior, and `--input` when the behavior takes no argument. A multi-argument behavior takes a JSON array (`--input '[3, 7]'`). Only a self-contained behavior with a `let` and no `requires` can be driven; an injected behavior or a `>->` pipeline is refused with a reason.
+
+The same `souther` binary also compiles to `.class` files (`souther compile hello.sou -d out`). It runs on any Unix shell; on Windows, use it as a plain jar (`java -jar souther-cli/target/souther.jar …`).
 
 To integrate Souther into an application's Maven build, configure `SoutherProcessor` as an annotation processor. [`examples/README.md`](examples/README.md) contains that configuration and examples using the generated types from Java, Spring Boot, and jOOQ.
 

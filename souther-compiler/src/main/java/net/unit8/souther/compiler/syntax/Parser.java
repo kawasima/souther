@@ -33,17 +33,43 @@ public final class Parser {
     }
 
     public static Ast.Module parse(String source) {
-        return new Parser(new Lexer(source).tokenize()).parseModule();
+        return parse(source, "Main");
+    }
+
+    /**
+     * Parses one compilation unit. When the source omits the {@code module} header, the module is
+     * named {@code defaultModuleName} — F#/Elm treat a header-less single file as an implicit module
+     * (F# after the file name, Elm as {@code Main}). A {@code null} default makes the header
+     * required, used when linking several modules, where an unnamed module could not be imported.
+     */
+    public static Ast.Module parse(String source, String defaultModuleName) {
+        return new Parser(new Lexer(source).tokenize()).parseModule(defaultModuleName);
     }
 
     // --- module ---
 
     public Ast.Module parseModule() {
-        Token m = expect(TokenType.MODULE);
-        String name = qualifiedName();
-        moduleName = name;
+        return parseModule("Main");
+    }
+
+    public Ast.Module parseModule(String defaultModuleName) {
+        String name;
+        SourcePos pos;
         Map<String, Ast.RetType> exposedOutputs = new HashMap<>();
-        List<String> exposing = check(TokenType.EXPOSING) ? parseExposing(exposedOutputs) : new ArrayList<>();
+        List<String> exposing;
+        if (check(TokenType.MODULE)) {
+            Token m = expect(TokenType.MODULE);
+            name = qualifiedName();
+            pos = m.pos();
+            exposing = check(TokenType.EXPOSING) ? parseExposing(exposedOutputs) : new ArrayList<>();
+        } else if (defaultModuleName != null) {
+            name = defaultModuleName;
+            pos = peek().pos();
+            exposing = new ArrayList<>();
+        } else {
+            throw error(peek(), "expected `module` declaration");
+        }
+        moduleName = name;
         List<Ast.Import> imports = new ArrayList<>();
         while (check(TokenType.IMPORT)) {
             imports.add(parseImport());
@@ -62,7 +88,7 @@ public final class Parser {
                 throw error(peek(), "expected data, behavior, or let");
             }
         }
-        return new Ast.Module(name, exposing, exposedOutputs, imports, defs, behaviors, fns, m.pos());
+        return new Ast.Module(name, exposing, exposedOutputs, imports, defs, behaviors, fns, pos);
     }
 
     /**

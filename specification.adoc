@@ -192,6 +192,13 @@ The extension is `+.sou+`. Each file defines one module.
 module example.businesstrip
 ----
 
+A single file compiled on its own MAY omit the `+module+` header and start directly with a `+data+`
+/ `+behavior+` / `+let+`; the module is then named after the file (the file-name stem), or `+Main+`
+when compiled from a source string with no file name (ADR-0043). This follows F#/Elm, which make the
+header optional only for a single file. A module compiled together with others and reached by
+`+import+` MUST write the header — an unnamed module cannot be the target of an `+import+`, so
+omitting it there is a compile error.
+
 Keywords and the standard library are in English, but user-defined identifiers (types, fields, behaviors) MAY use Unicode. Because the spec DSL is written in Japanese, business vocabulary can be used as identifiers directly. Identifiers SHALL be *NFC-normalized* before binding and comparison; in Japanese a precomposed character and a combining sequence can look identical, so without normalization names that look the same would diverge in binding. Source is UTF-8.
 
 [,text]

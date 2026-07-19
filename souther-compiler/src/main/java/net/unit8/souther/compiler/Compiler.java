@@ -30,9 +30,16 @@ public final class Compiler {
 
     private Compiler() {}
 
-    /** Compiles a single self-contained module (no imports) into binary class name → bytecode. */
+    /** Compiles a single self-contained module (no imports) into binary class name → bytecode.
+     * A source that omits the {@code module} header is named {@code Main} (the string API has no
+     * file name to derive from; {@link Runner} passes the file-name stem instead). */
     public static Map<String, byte[]> compile(String source) {
-        Ast.Module raw = Parser.parse(source);
+        return compile(source, "Main");
+    }
+
+    /** As {@link #compile(String)}, but a header-less source is named {@code defaultModuleName}. */
+    public static Map<String, byte[]> compile(String source, String defaultModuleName) {
+        Ast.Module raw = Parser.parse(source, defaultModuleName);
         rejectReservedNamespace(raw);
         Ast.Module module = Deriver.derive(Exposing.rewrite(raw));
         module = HelperInliner.forModule(module).withInlinedInvariants(module);
@@ -84,25 +91,6 @@ public final class Compiler {
         return v.getClass();   // String, BigDecimal
     }
 
-    /** Loads the freshly generated classes so their {@code $Ctfe.check} can run at compile time. */
-    private static final class MemoryClassLoader extends ClassLoader {
-        private final Map<String, byte[]> classes;
-
-        MemoryClassLoader(Map<String, byte[]> classes, ClassLoader parent) {
-            super(parent);
-            this.classes = classes;
-        }
-
-        @Override
-        protected Class<?> findClass(String name) throws ClassNotFoundException {
-            byte[] b = classes.get(name);
-            if (b == null) {
-                throw new ClassNotFoundException(name);
-            }
-            return defineClass(name, b, 0, b.length);
-        }
-    }
-
     /** The namespace the compiler ships (souther.string/list/map/bool); a user module may not
      * take a reserved name, or it could grant itself the core's privileges (ADR-0028). */
     private static final String RESERVED_NAMESPACE = "souther";
@@ -128,7 +116,8 @@ public final class Compiler {
     public static Map<String, byte[]> compileModules(List<String> sources) {
         List<Ast.Module> parsed = new ArrayList<>();
         for (String s : sources) {
-            Ast.Module raw = Parser.parse(s);
+            // A module linked by imports must be named; `null` forbids omitting the header here.
+            Ast.Module raw = Parser.parse(s, null);
             rejectReservedNamespace(raw);
             parsed.add(Exposing.rewrite(raw));
         }

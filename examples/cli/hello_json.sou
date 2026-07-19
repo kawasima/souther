@@ -1,0 +1,14 @@
+// Hello, World — a JSON object in, a JSON object out.
+// The decoder and encoder are derived from the data shapes (the JSON keys are the field names),
+// so `run` reads `{ "name": ... }` into `Greeting` and writes `Message` back as `{ "text": ... }`.
+//
+//   souther run hello_json.sou --input '{"name": "world"}'
+//   => {"text":"Hello, world"}
+
+data Greeting = { name: String }
+data Message = { text: String }
+
+behavior greet : (greeting: Greeting) -> Message
+    constructs Message
+
+let greet (greeting) = Message { text = String.concat("Hello, ", greeting.name) }

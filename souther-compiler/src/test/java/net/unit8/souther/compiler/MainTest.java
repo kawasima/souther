@@ -33,7 +33,7 @@ class MainTest {
                 """);
         Path out = Files.createTempDirectory("souther-cli-out");
 
-        Main.run(List.of(a, b), out);
+        Main.compileToDir(List.of(a, b), out);
 
         assertTrue(Files.exists(out.resolve("a/従業員ID.class")), "module a's class is written");
         assertTrue(Files.exists(out.resolve("b/Trip.class")), "module b's class, which imports a, is written");

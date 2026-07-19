@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>net.unit8.souther</groupId>
+        <artifactId>souther-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>souther-cli</artifactId>
+
+    <description>Bundles the compiler, runtime, and their dependencies into one really-executable
+        jar so `souther` runs a .sou file without a Maven build.</description>
+
+    <dependencies>
+        <!-- The compiler pulls raoh + Jackson transitively (both compile-scope), and it declares
+             souther-runtime as provided; this module adds it back at runtime so the uber jar is
+             self-contained (the compiler's own published POM stays unchanged). -->
+        <dependency>
+            <groupId>net.unit8.souther</groupId>
+            <artifactId>souther-compiler</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>net.unit8.souther</groupId>
+            <artifactId>souther-runtime</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <!-- The uber jar is `souther.jar` and the prepended launcher is `souther`. -->
+        <finalName>souther</finalName>
+        <plugins>
+            <!-- Merge every dependency into one jar with Main-Class set. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                        <!-- Run on the class path, so module descriptors are noise
+                                             (and several would collide). -->
+                                        <exclude>module-info.class</exclude>
+                                        <exclude>META-INF/versions/*/module-info.class</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>net.unit8.souther.compiler.Main</mainClass>
+                                    <manifestEntries>
+                                        <Multi-Release>true</Multi-Release>
+                                    </manifestEntries>
+                                </transformer>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Prepend a `#!/bin/sh … exec java -jar $0 "$@"` launcher to the shaded jar so the
+                 output `target/souther` runs directly (chmod already applied). -->
+            <plugin>
+                <groupId>org.skife.maven</groupId>
+                <artifactId>really-executable-jar-maven-plugin</artifactId>
+                <version>2.1.1</version>
+                <configuration>
+                    <programFile>souther</programFile>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>really-executable-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -23,6 +23,7 @@
     <modules>
         <module>souther-runtime</module>
         <module>souther-compiler</module>
+        <module>souther-cli</module>
     </modules>
 
     <properties>
@@ -52,6 +53,11 @@
             <dependency>
                 <groupId>net.unit8.souther</groupId>
                 <artifactId>souther-runtime</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.unit8.souther</groupId>
+                <artifactId>souther-compiler</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
