@@ -408,25 +408,33 @@ final class BodyGen {
             code.iload(sizeSlot);
             code.if_icmpge(done);
 
-            // bind the block's parameters — the accumulator and this element — for this iteration.
-            // The accumulator param reads straight from its typed slot; the block never writes the
-            // slot, so binding the param to it directly is safe (the new value is stored below).
-            code.aload(srcSlot);
-            code.iload(iSlot);
-            code.invokeinterface(CD_List, "get", MethodTypeDesc.of(CD_Object, ConstantDescs.CD_int));
-            int elemSlot = slot(elemType);
-            unbox(code, elemType, elemSlot);
-            // The block's parameter names are scoped to the block: a nested fold reuses the same names
-            // (the derived combinators all bind `acc`/`x`), so save any outer binding these shadow and
-            // restore it after the body, or the outer `acc` would resolve to the inner fold's slot.
-            Var prevAcc = env.get(f.params().get(0));
-            Var prevElem = env.get(f.params().get(1));
-            bind(f.params().get(0), accSlot, accType);
-            bind(f.params().get(1), elemSlot, elemType);
-            genExpr(f.body());
-            restore(f.params().get(0), prevAcc);
-            restore(f.params().get(1), prevElem);
-            store(code, accSlot, accType);
+            // When the source is the empty-list literal, its element type is a Nothing bottom
+            // (ADR-0028): there is no element to fetch, and the loop is dead code — `fold f z []` is
+            // `z`. Emit no body; the size-0 loop falls straight through to `done` and the accumulator,
+            // still the seed, is loaded below. Faithfully emitting the body would unbox the Nothing
+            // element (as `acc + x` does with `x`), which has no JVM form and would crash the backend.
+            if (!mentionsNothing(elemType)) {
+                // bind the block's parameters — the accumulator and this element — for this iteration.
+                // The accumulator param reads straight from its typed slot; the block never writes the
+                // slot, so binding the param to it directly is safe (the new value is stored below).
+                code.aload(srcSlot);
+                code.iload(iSlot);
+                code.invokeinterface(CD_List, "get", MethodTypeDesc.of(CD_Object, ConstantDescs.CD_int));
+                int elemSlot = slot(elemType);
+                unbox(code, elemType, elemSlot);
+                // The block's parameter names are scoped to the block: a nested fold reuses the same
+                // names (the derived combinators all bind `acc`/`x`), so save any outer binding these
+                // shadow and restore it after the body, or the outer `acc` would resolve to the inner
+                // fold's slot.
+                Var prevAcc = env.get(f.params().get(0));
+                Var prevElem = env.get(f.params().get(1));
+                bind(f.params().get(0), accSlot, accType);
+                bind(f.params().get(1), elemSlot, elemType);
+                genExpr(f.body());
+                restore(f.params().get(0), prevAcc);
+                restore(f.params().get(1), prevElem);
+                store(code, accSlot, accType);
+            }
 
             code.iinc(iSlot, 1);
             code.goto_(test);

@@ -170,4 +170,36 @@ class CompileEmptyListTest {
         BytesClassLoader loader = loader(module);
         assertEquals(List.of(), run(loader, decode(loader, "In", Map.of("x", 1L))).get("ys"));
     }
+
+    /**
+     * An arithmetic fold over the empty-list literal is the seed. The element type of {@code []} is
+     * a {@code Nothing} bottom, so the step's element operand ({@code x} in {@code acc + x}) has no
+     * JVM form; but the source is statically empty, so the loop body is dead code — {@code fold f z
+     * []} is {@code z}. This is Elm's {@code List.sum [] == 0} / {@code List.product [] == 1}. The
+     * backend must emit no body rather than unbox the {@code Nothing} element and crash.
+     */
+    @Test
+    void arithmeticFoldOverTheEmptyLiteralIsTheSeed() throws Exception {
+        String module = """
+                module demo
+
+                import List ( fold, sum, product )
+
+                data In = { x: Int }
+                data Out = { s: Int, p: Int, folded: Int }
+
+                behavior work : (i: In) -> Out constructs Out
+
+                let work (i) = Out {
+                    s = sum([]),
+                    p = product([]),
+                    folded = fold((acc, x) -> acc + x, 7, [])
+                }
+                """;
+        BytesClassLoader loader = loader(module);
+        Map<?, ?> out = run(loader, decode(loader, "In", Map.of("x", 1L)));
+        assertEquals(0L, out.get("s"), "sum of the empty list is 0");
+        assertEquals(1L, out.get("p"), "product of the empty list is 1");
+        assertEquals(7L, out.get("folded"), "an arithmetic fold over [] returns the seed");
+    }
 }

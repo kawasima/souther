@@ -70,4 +70,95 @@ class CompileMapLibTest {
         assertEquals(true, m.get("hasB"));
         assertEquals(Map.of(), m.get("emptyMap"), "Map.empty() is an empty map");
     }
+
+    /** The Map higher-order operations ([#stdlib-map]): fold sums the values, map keeps the keys and
+     *  transforms the values, update rewrites one present key through a {@code value -> value} step
+     *  (an absent key is a no-op — insert / remove cover the other two cases). */
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void foldMapUpdateOverAMap() throws Exception {
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
+                module demo
+
+                import Map ( fold, map, update )
+
+                data In = { stock: Map<String, Int> }
+                data Out = {
+                    total: Int
+                    , doubled: Map<String, Int>
+                    , flagged: Map<String, Bool>
+                    , afterIssue: Map<String, Int>
+                    , afterAbsent: Map<String, Int>
+                }
+
+                behavior run : (i: In) -> Out constructs Out
+
+                let run (i) = {
+                    Out {
+                        total = fold((acc, k, v) -> acc + v, 0, i.stock),
+                        doubled = map((k, v) -> v * 2, i.stock),
+                        flagged = map((k, v) -> v > 15, i.stock),
+                        afterIssue = update("a", (v) -> v - 1, i.stock),
+                        afterAbsent = update("z", (v) -> v - 1, i.stock)
+                    }
+                }
+                """), getClass().getClassLoader());
+
+        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
+        Object in = ((Ok) inDec.decode(Map.of("stock", Map.of("a", 10L, "b", 20L)), Path.ROOT)).value();
+        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run")
+                .getConstructor().newInstance()).apply(in);
+
+        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
+        Map<?, ?> m = (Map<?, ?>) enc.encode(out);
+        assertEquals(30L, m.get("total"), "fold sums every value");
+        assertEquals(Map.of("a", 20L, "b", 40L), m.get("doubled"), "map keeps keys, doubles values");
+        assertEquals(Map.of("a", false, "b", true), m.get("flagged"),
+                "map changes the value type Int -> Bool, keeping the keys");
+        assertEquals(Map.of("a", 9L, "b", 20L), m.get("afterIssue"), "update rewrites the present key");
+        assertEquals(Map.of("a", 10L, "b", 20L), m.get("afterAbsent"),
+                "update leaves the map unchanged when the key is absent");
+    }
+
+    /** fold / map / update over a statically-typed map that is empty at runtime: fold returns the
+     *  seed, map and update return an empty map — no step runs. (A bare {@code Map.empty()} has no
+     *  value type for a step to consume, so the meaningful empty case is a typed map, empty at run
+     *  time.) */
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void foldMapUpdateOverTheEmptyMap() throws Exception {
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
+                module demo
+
+                import Map ( fold, map, update )
+
+                data In = { stock: Map<String, Int> }
+                data Out = {
+                    total: Int
+                    , doubled: Map<String, Int>
+                    , updated: Map<String, Int>
+                }
+
+                behavior run : (i: In) -> Out constructs Out
+
+                let run (i) = {
+                    Out {
+                        total = fold((acc, k, v) -> acc + v, 0, i.stock),
+                        doubled = map((k, v) -> v * 2, i.stock),
+                        updated = update("a", (v) -> v - 1, i.stock)
+                    }
+                }
+                """), getClass().getClassLoader());
+
+        Decoder inDec = (Decoder) loader.loadClass("demo.In").getMethod("decoder").invoke(null);
+        Object in = ((Ok) inDec.decode(Map.of("stock", Map.of()), Path.ROOT)).value();
+        Object out = ((Behavior<Object, Object>) loader.loadClass("demo.Run")
+                .getConstructor().newInstance()).apply(in);
+
+        Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
+        Map<?, ?> m = (Map<?, ?>) enc.encode(out);
+        assertEquals(0L, m.get("total"), "fold over an empty map is the seed");
+        assertEquals(Map.of(), m.get("doubled"), "map over an empty map is empty");
+        assertEquals(Map.of(), m.get("updated"), "update on an absent key of an empty map is empty");
+    }
 }

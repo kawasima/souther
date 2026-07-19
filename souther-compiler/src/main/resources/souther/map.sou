@@ -8,8 +8,7 @@ module souther.map
 //
 // Argument order follows F#/Elm ([#pipe]): the map comes last, so `m |> Map.insert(k, v)` reads
 // left to right. `Map.empty` is a compiler built-in — like `[]`, its key and value are fixed by
-// context, so it has no argument to learn them from. `fold` / `map` / `update` (which take a step
-// function) are not here yet — they need the inlined-step lowering `List.fold` uses.
+// context, so it has no argument to learn them from.
 let containsKey (key: 'k, m: Map<'k, 'a>) : Bool = intrinsic "map.containsKey"
 let keys (m: Map<'k, 'a>) : List<'k> = intrinsic "map.keys"
 let values (m: Map<'k, 'a>) : List<'a> = intrinsic "map.values"
@@ -24,3 +23,29 @@ let size (m: Map<'k, 'a>) : Int = intrinsic "map.size"
 // signature (ADR-0037) — it never crosses a codec boundary. `fromList` lets a later entry win.
 let toList (m: Map<'k, 'a>) : List<('k, 'a)> = intrinsic "map.toList"
 let fromList (entries: List<('k, 'a)>) : Map<'k, 'a> = intrinsic "map.fromList"
+
+// The higher-order operations, the only ones taking a step function. `Map` adds no privileged loop:
+// `fold` runs `List.fold` over the entries (`toList`, [#stdlib-map]), so the one list-fold loop
+// stays the sole primitive. The entries fold in the map's deterministic hash order (`toList`'s
+// order), so a fold that combines its values reproduces the same result each run.
+//
+// `fold`'s step is `(acc, key, value)` (F#'s `Map.fold` folder is `state key value`, Elm's
+// `Dict.foldl` is `k v acc`); the entry tuple is destructured and passed on. `map` keeps the keys
+// and rewrites the values (Elm `Dict.map` / F# `Map.map`, both `(key, value) -> value`), growing a
+// fresh map through `fold`. `update` rewrites the value under one key with `f`; an absent key is a
+// no-op. Its step is `('a) -> 'a`, not Elm's `Maybe v -> Maybe v`: `Option` is not surface-writable
+// ([#algebraic-types]), so a step cannot return one — insert a new key with `insert` and drop one
+// with `remove`, and let `update` cover the "change what is there" case.
+let fold (step: ('acc, 'k, 'a) -> 'acc, seed: 'acc, m: Map<'k, 'a>) : 'acc =
+    List.fold((acc, e) -> {
+        let (k, v) = e
+        step(acc, k, v)
+    }, seed, Map.toList(m))
+
+let map (f: ('k, 'a) -> 'b, m: Map<'k, 'a>) : Map<'k, 'b> =
+    Map.fold((acc, k, v) -> Map.insert(k, f(k, v), acc), Map.empty(), m)
+
+let update (key: 'k, f: ('a) -> 'a, m: Map<'k, 'a>) : Map<'k, 'a> =
+    match Map.get(key, m) with
+        | None -> m
+        | Some v -> Map.insert(key, f(v), m)
