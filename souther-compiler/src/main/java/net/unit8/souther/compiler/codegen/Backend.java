@@ -77,6 +77,7 @@ public final class Backend {
     private static final ClassDesc CD_Lists = ClassDesc.of("net.unit8.souther.runtime.Lists");
     private static final ClassDesc CD_Strings = ClassDesc.of("net.unit8.souther.runtime.Strings");
     private static final ClassDesc CD_Maps = ClassDesc.of("net.unit8.souther.runtime.Maps");
+    private static final ClassDesc CD_Temporals = ClassDesc.of("net.unit8.souther.runtime.Temporals");
     private static final ClassDesc CD_Option = ClassDesc.of("net.unit8.souther.runtime.Option");
     private static final ClassDesc CD_OptionSome = CD_Option.nested("Some");
     private static final ClassDesc CD_OptionNone = CD_Option.nested("None");
@@ -2618,8 +2619,47 @@ public final class Backend {
                     code.invokestatic(CD_Maps, "values", MethodTypeDesc.of(CD_List, CD_Map));
                     return Type.list(((Type.MapOf) mt).value());
                 }
+                // Date / DateTime arithmetic. Int is a long on the JVM, so the count is already a
+                // long and needs no conversion. The date/date-time being operated on is the last
+                // argument ([#pipe]); it is emitted first as the receiver of the plus* call.
+                case "date.addDays" -> { return temporalPlus(call, CD_LocalDate, "plusDays", Type.DATE); }
+                case "date.addMonths" -> { return temporalPlus(call, CD_LocalDate, "plusMonths", Type.DATE); }
+                case "date.addYears" -> { return temporalPlus(call, CD_LocalDate, "plusYears", Type.DATE); }
+                case "date.daysBetween" -> {
+                    genExpr(call.args().get(0));         // from
+                    genExpr(call.args().get(1));         // to
+                    code.invokestatic(CD_Temporals, "daysBetween",
+                            MethodTypeDesc.of(ConstantDescs.CD_long, CD_LocalDate, CD_LocalDate));
+                    return Type.INT;
+                }
+                case "datetime.addMinutes" -> { return temporalPlus(call, CD_LocalDateTime, "plusMinutes", Type.DATETIME); }
+                case "datetime.addHours" -> { return temporalPlus(call, CD_LocalDateTime, "plusHours", Type.DATETIME); }
+                case "datetime.addDays" -> { return temporalPlus(call, CD_LocalDateTime, "plusDays", Type.DATETIME); }
+                case "datetime.minutesBetween" -> {
+                    genExpr(call.args().get(0));         // from
+                    genExpr(call.args().get(1));         // to
+                    code.invokestatic(CD_Temporals, "minutesBetween",
+                            MethodTypeDesc.of(ConstantDescs.CD_long, CD_LocalDateTime, CD_LocalDateTime));
+                    return Type.INT;
+                }
+                case "datetime.toDate" -> {
+                    genExpr(call.args().get(0));
+                    code.invokevirtual(CD_LocalDateTime, "toLocalDate", MethodTypeDesc.of(CD_LocalDate));
+                    return Type.DATE;
+                }
                 default -> throw new CompileException(call.pos(), "unknown intrinsic `" + key + "`");
             }
+        }
+
+        /** Emits a {@code java.time} {@code plus*} call for a Date/DateTime add-intrinsic:
+         * {@code add<Unit>(count, t)} becomes {@code t.plus<Unit>(count)}. The temporal is the last
+         * argument ([#pipe]) and is emitted first as the receiver; the count is an {@code Int} (a
+         * long), which {@code plus*} takes directly. */
+        private Type temporalPlus(Core.Call call, ClassDesc temporal, String method, Type result) {
+            genExpr(call.args().get(1));             // the date / date-time (receiver)
+            genExpr(call.args().get(0));             // the count (long)
+            code.invokevirtual(temporal, method, MethodTypeDesc.of(temporal, ConstantDescs.CD_long));
+            return result;
         }
 
         private Type call(Core.Call call) {

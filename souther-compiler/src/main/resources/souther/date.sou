@@ -1,0 +1,14 @@
+module souther.date
+
+// Date arithmetic (ADR-0028, [#stdlib-date]). `Date` is `java.time.LocalDate`; each `let` names a
+// JVM operation the backend emits, checked against the declared signature like any intrinsic. These
+// are pure calendar computations, so they stay in the domain rather than becoming injected
+// behaviours ([#injected-behavior]) — only reading the *current* date needs the outside world.
+//
+// Argument order follows F#/Elm ([#pipe]): the date operated on comes last, so
+// `d |> Date.addDays(3)` reads left to right. `daysBetween(from, to)` counts whole days from `from`
+// to `to`, negative when `to` precedes `from`.
+let addDays (days: Int, d: Date) : Date = intrinsic "date.addDays"
+let addMonths (months: Int, d: Date) : Date = intrinsic "date.addMonths"
+let addYears (years: Int, d: Date) : Date = intrinsic "date.addYears"
+let daysBetween (from: Date, to: Date) : Int = intrinsic "date.daysBetween"

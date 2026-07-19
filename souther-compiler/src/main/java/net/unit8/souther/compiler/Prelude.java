@@ -36,14 +36,17 @@ public final class Prelude {
 
     /** The bundled prelude sources, in load order. */
     private static final List<String> RESOURCES =
-            List.of("/souther/bool.sou", "/souther/string.sou", "/souther/map.sou", "/souther/list.sou");
+            List.of("/souther/bool.sou", "/souther/string.sou", "/souther/map.sou", "/souther/list.sou",
+                    "/souther/date.sou", "/souther/datetime.sou");
 
     /** Reserved module name → short qualifier (spec §stdlib). {@code souther.list} → {@code List}. */
     private static final Map<String, String> MODULE_TO_ALIAS = Map.of(
             "souther.list", "List",
             "souther.string", "String",
             "souther.map", "Map",
-            "souther.bool", "Bool");
+            "souther.bool", "Bool",
+            "souther.date", "Date",
+            "souther.datetime", "DateTime");
 
     /** The checker built-ins, by qualified name — the primitives that have no prelude source because
      *  they are overloaded (length/get) or need a bespoke loop/codegen (fold), plus arithmetic. They
@@ -58,7 +61,7 @@ public final class Prelude {
     /** Every qualifier a call may carry: the four prelude modules plus the arithmetic built-in
      *  namespaces {@code Int}/{@code Decimal} (spec §stdlib). */
     private static final Set<String> QUALIFIERS =
-            Set.of("List", "String", "Map", "Bool", "Int", "Decimal");
+            Set.of("List", "String", "Map", "Bool", "Int", "Decimal", "Date", "DateTime");
 
     /** A shipped primitive: its declared signature and the backend key naming its bytecode. */
     public record IntrinsicSig(String name, List<Type> params, Type result, String key) {

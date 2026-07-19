@@ -1627,13 +1627,13 @@ An outside-world dependency is declared as a behavior with no implementation, an
 [#reserved-namespace]
 === Reserved namespace
 
-The standard library is bundled with the compiler and referenced by short qualifiers — `+List+` (list), `+String+` (string), `+Map+` (map), `+Bool+` (boolean), `+Int+` / `+Decimal+` (numbers). Every function is called through this qualifier: `+List.map(f, xs)+`, `+String.trim(s)+`, `+List.length(xs)+`. There is no automatic import — names are not delivered implicitly. What may be written bare is operators (`+==+` `+<+` `+{plus}{plus}+`, etc.), `+if+` / `+match+`, literals, and the current module's helpers. Argument order follows the convention of <<pipe>> (primary subject last).
+The standard library is bundled with the compiler and referenced by short qualifiers — `+List+` (list), `+String+` (string), `+Map+` (map), `+Bool+` (boolean), `+Int+` / `+Decimal+` (numbers), `+Date+` / `+DateTime+` (temporal). Every function is called through this qualifier: `+List.map(f, xs)+`, `+String.trim(s)+`, `+List.length(xs)+`. There is no automatic import — names are not delivered implicitly. What may be written bare is operators (`+==+` `+<+` `+{plus}{plus}+`, etc.), `+if+` / `+match+`, literals, and the current module's helpers. Argument order follows the convention of <<pipe>> (primary subject last).
 
 To call a name bare, import it explicitly: writing `+import List ( map, filter )+` lets you write `+map(f, xs)+` unqualified thereafter. As in Elm's `+import List exposing (map)+`, qualified access always works, and `+import+` is only sugar to elide the qualifier. Importing the same bare name from two modules is ambiguous, so qualify one of them (e.g. `+String.length+` and `+List.length+` used together in one module; <<imports>>).
 
 Qualifiers such as `+List+` denote a module only in expression position, distinct from the type-position `+List<T>+` (angle brackets), which does not conflict (as in Elm). `+length+` / `+get+` span `+String+` and `+List+`, and `+List+` and `+Map+`, but they become distinct names `+String.length+` / `+List.length+`, `+List.get+` / `+Map.get+`, so they are not overloads but each module's own function.
 
-The entity the short qualifier denotes is placed in the reserved namespaces `+souther.string+` / `+souther.list+` / `+souther.map+` / `+souther.bool+`. The `+souther+` namespace is reserved, and a user module MUST NOT name itself under it — `+module souther.foo+` is a compile error. Only the reserved namespace holds core's privileges (generics, recursion, intrinsics), and this is the line preventing a user from granting them to itself (the boundedness of <<algebraic-types>>). A name that merely starts with the string `+souther+`, such as `+southernmost+`, is an ordinary user name, not under this namespace.
+The entity the short qualifier denotes is placed in the reserved namespaces `+souther.string+` / `+souther.list+` / `+souther.map+` / `+souther.bool+` / `+souther.date+` / `+souther.datetime+`. The `+souther+` namespace is reserved, and a user module MUST NOT name itself under it — `+module souther.foo+` is a compile error. Only the reserved namespace holds core's privileges (generics, recursion, intrinsics), and this is the line preventing a user from granting them to itself (the boundedness of <<algebraic-types>>). A name that merely starts with the string `+souther+`, such as `+southernmost+`, is an ordinary user name, not under this namespace.
 
 [#type-variables]
 ==== Type variables
@@ -1798,6 +1798,26 @@ not
 ----
 
 `+not+` is the *first self-host function* placed in `+souther.bool+`. It is not a primitive but written in Souther as `+let not (b: Bool) = if b then false else true+`, called qualified as `+Bool.not+` (bare via `+import Bool ( not )+`). Being non-recursive, it is inline-expanded at the call site and no dedicated class is generated. Negation is written with this `+not+` — there is no prefix `+!+` operator (redundant, since `+not+` exists).
+
+[#stdlib-date]
+=== Date
+
+[,text]
+----
+addDays  addMonths  addYears  daysBetween
+----
+
+`+Date+` is a local calendar date (<<primitives>>). Calendar arithmetic is pure and belongs in the domain, not behind an injected behavior (<<injected-behavior>>) — only reading the *current* date needs the outside world. `+addDays(n, d)+` / `+addMonths(n, d)+` / `+addYears(n, d)+` shift `+d+` by `+n+` units (`+n+` may be negative), following `+java.time.LocalDate+`, which clamps the end of a month (`+addMonths(1, 2026-01-31)+` is `+2026-02-28+`). `+daysBetween(from, to)+` is the whole days from `+from+` to `+to+`, negative when `+to+` precedes `+from+`. The date operated on is last (<<pipe>>), so `+d |> Date.addDays(3)+` reads left to right.
+
+[#stdlib-datetime]
+=== DateTime
+
+[,text]
+----
+addMinutes  addHours  addDays  minutesBetween  toDate
+----
+
+`+DateTime+` is a local date-time with no zone (<<primitives>>); the zone stays a boundary concern. `+addMinutes+` / `+addHours+` / `+addDays+` shift by their unit; `+minutesBetween(from, to)+` is the whole minutes between (negative when `+to+` precedes `+from+`); `+toDate(dt)+` drops the time of day, yielding a `+Date+`. As with `+Date+`, the date-time operated on is last (<<pipe>>).
 
 Decoders and Encoders do not appear in Souther's syntax. Derived from a data's shape, they are generated by the ClassFile backend as Raoh Decoders / Encoders (<<codec-generation>>, <<encoder>>). Primitive parsing, error accumulation, discriminator dispatch, and encoding are handled by Raoh combinators; there is no facade on the souther-runtime side. A custom boundary codec (<<custom-codec>>) uses Raoh directly from the Java side.
 

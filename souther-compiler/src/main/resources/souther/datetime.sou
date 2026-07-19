@@ -1,0 +1,13 @@
+module souther.datetime
+
+// DateTime arithmetic (ADR-0028, [#stdlib-datetime]). `DateTime` is `java.time.LocalDateTime`, a
+// local date-time with no zone — the boundary owns the zone ([#primitives]). Each `let` names a JVM
+// operation the backend emits. Like Date arithmetic these are pure, so they belong in the domain.
+//
+// Argument order is F#/Elm ([#pipe]): the date-time operated on comes last. `minutesBetween(from,
+// to)` counts whole minutes; `toDate` drops the time of day, yielding a `Date`.
+let addMinutes (minutes: Int, dt: DateTime) : DateTime = intrinsic "datetime.addMinutes"
+let addHours (hours: Int, dt: DateTime) : DateTime = intrinsic "datetime.addHours"
+let addDays (days: Int, dt: DateTime) : DateTime = intrinsic "datetime.addDays"
+let minutesBetween (from: DateTime, to: DateTime) : Int = intrinsic "datetime.minutesBetween"
+let toDate (dt: DateTime) : Date = intrinsic "datetime.toDate"
