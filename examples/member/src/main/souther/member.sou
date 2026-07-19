@@ -13,11 +13,11 @@ data メールアドレス = String
     invariant contains("@", value)
 
 // --- 会員（直積）---
-data 会員 = {
-    id:    会員ID
-    , メール:  メールアドレス
-    , 表示名:  String
-}
+data 会員 =
+    { id: 会員ID
+    , メール: メールアドレス
+    , 表示名: String
+    }
 
 // --- 照会の失敗ケース（ただの data。error でも Result でもない）---
 // どちらもドメインの帰結：会員なし＝見つからない、保存データ不正＝保存値がドメイン不変条件を破る。
@@ -32,11 +32,11 @@ data 保存データ不正
 behavior findMember : (id: 会員ID) -> 会員 | 会員なし | 保存データ不正
 
 // --- 表示用の整形（純粋 behavior）---
-data 会員表示 = {
-    id:    String
-    , メール:  String
-    , 表示名:  String
-}
+data 会員表示 =
+    { id: String
+    , メール: String
+    , 表示名: String
+    }
 
 behavior 会員を表示用に整形する : (会員: 会員) -> 会員表示
     constructs 会員表示

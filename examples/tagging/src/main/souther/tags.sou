@@ -14,10 +14,10 @@ import List ( map, filter, sort, length )
 data タグ入力 = { 生: String }
 
 // 正規形: 整形済みのタグ列と、その表示用の一本の文字列。
-data タグ集合 = {
-    タグ: List<String>
+data タグ集合 =
+    { タグ: List<String>
     , 表示: String
-}
+    }
 // 整形すると空になる入力（空文字、空白やカンマだけ）の失敗ケース。
 data タグ無し
 

@@ -143,6 +143,9 @@ public final class Parser {
             if (!check(TokenType.RPAREN)) {
                 params.add(parseParam());
                 while (match(TokenType.COMMA)) {
+                    if (check(TokenType.RPAREN)) {
+                        break;
+                    }
                     params.add(parseParam());
                 }
             }
@@ -180,6 +183,11 @@ public final class Parser {
     private void parseNameList(List<String> out) {
         out.add(expect(TokenType.IDENT).text());
         while (match(TokenType.COMMA)) {
+            // no closing bracket terminates this list, so a trailing comma is one whose next token
+            // is not another name (the clause ends, or `constructs`/`requires` switches).
+            if (!check(TokenType.IDENT)) {
+                break;
+            }
             out.add(expect(TokenType.IDENT).text());
         }
     }
@@ -199,6 +207,9 @@ public final class Parser {
         if (!check(TokenType.RPAREN)) {
             params.add(parseFnParam());
             while (match(TokenType.COMMA)) {
+                if (check(TokenType.RPAREN)) {
+                    break;
+                }
                 params.add(parseFnParam());
             }
         }
@@ -247,6 +258,9 @@ public final class Parser {
             if (!check(TokenType.RPAREN)) {
                 params.add(parseRetType());
                 while (match(TokenType.COMMA)) {
+                    if (check(TokenType.RPAREN)) {
+                        break;
+                    }
                     params.add(parseRetType());
                 }
             }
@@ -448,6 +462,9 @@ public final class Parser {
             List<Ast.TypeRef> elems = new ArrayList<>();
             elems.add(parseTypeRef());
             while (match(TokenType.COMMA)) {
+                if (check(TokenType.RPAREN)) {
+                    break;
+                }
                 elems.add(parseTypeRef());
             }
             expect(TokenType.RPAREN);
@@ -506,6 +523,9 @@ public final class Parser {
         List<String> names = new ArrayList<>();
         names.add(expect(TokenType.IDENT).text());
         while (match(TokenType.COMMA)) {
+            if (check(TokenType.RPAREN)) {
+                break;
+            }
             names.add(expect(TokenType.IDENT).text());
         }
         expect(TokenType.RPAREN);
@@ -716,6 +736,9 @@ public final class Parser {
                     List<Ast.Expr> elements = new ArrayList<>();
                     elements.add(first);
                     while (match(TokenType.COMMA)) {
+                        if (check(TokenType.RPAREN)) {
+                            break;
+                        }
                         elements.add(parseExpr());
                     }
                     expect(TokenType.RPAREN);
@@ -776,6 +799,9 @@ public final class Parser {
             List<Ast.Expr> guards = new ArrayList<>();
             guards.add(parseExpr());
             while (match(TokenType.COMMA)) {
+                if (check(TokenType.RBRACKET)) {
+                    break;
+                }
                 guards.add(parseExpr());
             }
             expect(TokenType.RBRACKET);
@@ -784,6 +810,9 @@ public final class Parser {
         List<Ast.Expr> elems = new ArrayList<>();
         elems.add(first);
         while (match(TokenType.COMMA)) {
+            if (check(TokenType.RBRACKET)) {
+                break;
+            }
             elems.add(parseExpr());
         }
         expect(TokenType.RBRACKET);
@@ -878,6 +907,9 @@ public final class Parser {
         if (!check(TokenType.RPAREN)) {
             args.add(parseArg());
             while (match(TokenType.COMMA)) {
+                if (check(TokenType.RPAREN)) {
+                    break;
+                }
                 args.add(parseArg());
             }
         }
@@ -910,6 +942,9 @@ public final class Parser {
         List<String> params = new ArrayList<>();
         params.add(expect(TokenType.IDENT).text());
         while (match(TokenType.COMMA)) {
+            if (check(TokenType.RPAREN)) {
+                break;
+            }
             params.add(expect(TokenType.IDENT).text());
         }
         expect(TokenType.RPAREN);
@@ -926,6 +961,9 @@ public final class Parser {
         i++;
         while (peekAt(i).type() == TokenType.COMMA) {
             i++;
+            if (peekAt(i).type() == TokenType.RPAREN) {
+                break;   // a trailing comma: `(a, b,) -> ...`
+            }
             if (peekAt(i).type() != TokenType.IDENT) {
                 return false;
             }

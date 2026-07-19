@@ -279,6 +279,7 @@ The full formal grammar (BNF) is deferred (<<future-work>>). The delimiters and 
 
 * Both `+data+` declaration fields and record-literal `+型名 { ... }+` fields are `+,+`-separated (<<product-data>>, <<record-literal>>). A declaration gives a type, so `+名前: 型+`; a literal binds a value, so `+名前 = 値+` (`+:+` = has this type, `+=+` = is defined as this; ADR-0026). A `+...+` spread is an element that composes types but appears in the same comma sequence as fields (<<field-spread>>, ADR-0012, ADR-0030). An `+invariant+` is a clause placed after the type body (`+{ ... }+` or `+= Y+`) and is not part of the field list (<<invariant>>, ADR-0031).
 * Argument lists and the enumerations in `+constructs+` / `+requires+` are `+,+`-separated (<<behavior-io>>, <<constructs>>, <<requires>>).
+* Every `+,+`-separated list — declaration and record-literal fields, parameter and argument lists, tuple elements, list literals, and the `+constructs+` / `+requires+` name lists — MAY carry a single trailing `+,+` before its closing delimiter. It is optional and has no meaning; it accommodates writers coming from Go or TypeScript. The sample code in this spec keeps a leading-comma layout instead (the `+,+` opens each continuation line, as in Elm) and writes no trailing comma.
 * `+|+` is the case separator of a sum and binds more loosely than `+->+`. `+(x: T) -> A | B+` reads as `+(x: T) -> (A | B)+` (the whole output is a sum). An anonymous `+|+` MUST NOT be written on input (<<union-intersection>>).
 * `+>->+` is the stage separator of a pipeline: not a binary operator but a flat n-ary sequence. It is associative (<<type-routing>>). Only a behavior name MAY appear in a stage position; parentheses such as `+(f >-> g)+` MUST NOT be written.
 * `+|>+` is the value pipe, binding most loosely and left-associatively. `+a |> f |> g+` reads as `+g(f(a))+`. The left side enters the last argument of the right-hand call and is expanded to a call at parse time (<<pipe>>). This is distinct from the `+>->+` that composes behaviors; it threads the value of an expression.
@@ -417,9 +418,9 @@ Optionality is expressed with `+?+`.
 
 [,text]
 ----
-data 出張完了 = {
-    事前承認者: 従業員ID?
-}
+data 出張完了 =
+    { 事前承認者: 従業員ID?
+    }
 ----
 
 This desugars to:
@@ -463,11 +464,11 @@ The spec DSL's `+AND+` maps to a product. A field name is the business role; the
 [,text]
 ----
 // spec DSL: data 従業員 = 従業員ID AND 役職 AND 上長ID
-data 従業員 = {
-    id:    従業員ID
-    , 役職:   役職
-    , 上長ID: 従業員ID       // role name (上長ID) differs from type (従業員ID)
-}
+data 従業員 =
+    { id: 従業員ID
+    , 役職: 役職
+    , 上長ID: 従業員ID // role name (上長ID) differs from type (従業員ID)
+    }
 ----
 
 Role and type may be written separately. In the spec DSL the same concept has a different name per layer: `+承認者ID+` (operation input) becomes `+事前承認者ID+` (stored state) becomes `+pre_approver_id+` (DB column). A field such as `+事前承認者: 従業員ID+` writes the role in the field name and the concept in the type.
@@ -498,20 +499,20 @@ In the spec DSL, a state sharing common items is written as `+data 提出済み 
 
 [,text]
 ----
-data 出張申請共通項目 = {
-    申請者:    従業員
-    , 予定費用:   金額
-    , 出張先:    String
-    , 出張目的:   String
+data 出張申請共通項目 =
+    { 申請者: 従業員
+    , 予定費用: 金額
+    , 出張先: String
+    , 出張目的: String
     , 出張開始日: Date
     , 出張終了日: Date
-}
+    }
 
 // spec DSL: data 提出済み = 出張申請共通項目 AND 提出日時
-data 提出済み = {
-    ...出張申請共通項目     // take in the common item's fields flatly
+data 提出済み =
+    { ...出張申請共通項目 // take in the common item's fields flatly
     , 提出日時: DateTime
-}
+    }
 ----
 
 The `+...+` spread is defined as follows.
@@ -641,15 +642,15 @@ A value constraint written as a comment in the spec DSL is made executable as an
 [,text]
 ----
 // spec DSL: data 金額 = 整数 // 0以上、円単位
-data 金額 = {
-    value: Int
-}
+data 金額 =
+    { value: Int
+    }
     invariant value >= 0
 
-data DateRange = {
-    start: Date
-    , end:   Date
-}
+data DateRange =
+    { start: Date
+    , end: Date
+    }
     invariant start <= end
 ----
 
@@ -743,11 +744,11 @@ data 金額 = Int
 // derived Decoder: Int(n) -> 金額 { value: n } (with invariant check)
 
 // a multi-field data reads from an Object, field name = key
-data 従業員 = {
-    id:    従業員ID
-    , 役職:   役職
+data 従業員 =
+    { id: 従業員ID
+    , 役職: 役職
     , 上長ID: 従業員ID
-}
+    }
 // derived Decoder: reads { "id": ..., "役職": ..., "上長ID": ... } with each field's derived Decoder
 ----
 
@@ -853,10 +854,10 @@ The default Encoder is derived by rules symmetric to the Decoder.
 data 金額 = Int  invariant value >= 0
 // derived Encoder: 金額 -> Int(self.value) (bare integer)
 
-data 提出済み = {
-    ...出張申請共通項目
+data 提出済み =
+    { ...出張申請共通項目
     , 提出日時: DateTime
-}
+    }
 // derived Encoder: 提出済み -> { "申請者": ..., "予定費用": ..., ..., "提出日時": ... }
 ----
 
@@ -2245,20 +2246,20 @@ data 先方負担
 
 // --- product (role name ≠ type name) ---
 // data 従業員 = 従業員ID AND 役職 AND 上長ID
-data 従業員 = {
-    id:    従業員ID
-    , 役職:   役職
+data 従業員 =
+    { id: 従業員ID
+    , 役職: 役職
     , 上長ID: 従業員ID
-}
+    }
 
-data 出張申請共通項目 = {
-    申請者:    従業員
-    , 予定費用:   金額
-    , 出張先:    String
-    , 出張目的:   String
+data 出張申請共通項目 =
+    { 申請者: 従業員
+    , 予定費用: 金額
+    , 出張先: String
+    , 出張目的: String
     , 出張開始日: Date
     , 出張終了日: Date
-}
+    }
 
 // --- sum of states (case = named data, common items taken in flatly by a ... spread) ---
 // data 出張申請 = 申請準備中 OR 提出済み OR 事前承認待ち OR 事前承認済み
@@ -2276,18 +2277,18 @@ data 高額出張 = { 基準金額: 金額 }
 data 権限不足 = 役職
 data 先方費用負担
 
-data 事前承認待ち = {
-    ...出張申請共通項目
-    , 提出日時:         DateTime
+data 事前承認待ち =
+    { ...出張申請共通項目
+    , 提出日時: DateTime
     , 事前承認理由リスト: List<事前承認理由>
-}
+    }
 
-data 事前承認済み = {
-    ...出張申請共通項目
-    , 提出日時:    DateTime
+data 事前承認済み =
+    { ...出張申請共通項目
+    , 提出日時: DateTime
     , 事前承認日時: DateTime
-    , 事前承認者:  従業員ID
-}
+    , 事前承認者: 従業員ID
+    }
 
 // 承認権限なし is just data (a failure is ordinary data; no error declaration)
 data 承認権限なし

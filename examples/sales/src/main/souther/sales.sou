@@ -7,21 +7,21 @@ import List ( map, filter, sum, distinct, length )
 data 商品ID = String
     invariant String.length(value) >= 1
 
-data 明細 = {
-    商品: 商品ID
+data 明細 =
+    { 商品: 商品ID
     , 数量: Int
     , 金額: Int
-}
+    }
 
 data 注文 = { 明細リスト: List<明細> }
 
 // 受注レポート: 総額・取扱商品(重複排除)・明細数・高額明細(1000以上)の件数。
-data レポート = {
-    総額: Int
+data レポート =
+    { 総額: Int
     , 取扱商品: List<String>
     , 明細数: Int
     , 高額明細数: Int
-}
+    }
 // 明細が1件も無い注文の失敗ケース。
 data 空注文
 

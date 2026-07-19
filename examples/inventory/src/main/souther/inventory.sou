@@ -7,20 +7,20 @@ import List ( map, filter, sort, sum, member, isEmpty, length )
 data 品目コード = String
     invariant String.length(value) >= 1
 
-data 品目 = {
-    コード: 品目コード
+data 品目 =
+    { コード: 品目コード
     , 数量: Int
     , 単価: Int
-}
+    }
 
 data 在庫 = { 品目リスト: List<品目> }
 
 // 棚卸の結果: 総額・辞書順のコード一覧・品切れ品目が無いか。
-data 棚卸 = {
-    総額: Int
+data 棚卸 =
+    { 総額: Int
     , コード一覧: List<String>
     , 品切れなし: Bool
-}
+    }
 // 品目が1件も無い在庫の失敗ケース。
 data 空在庫
 

@@ -4,10 +4,10 @@ import List ( length )
 
 data 理由 = { コード: String }
 
-data 申請 = {
-    予定費用: Int
+data 申請 =
+    { 予定費用: Int
     , 理由リスト: List<理由>
-}
+    }
 
 data 通常 = { 件数: Int }
 data 要審査 = { 件数: Int }
