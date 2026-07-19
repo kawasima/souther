@@ -18,5 +18,5 @@ Because business models are written in concrete business vocabulary, an abstract
 
 ## References
 
-- Specification: §7.3
+- Specification: `[#algebraic-types]`
 - ADR-0001 (one-to-one with the spec DSL)

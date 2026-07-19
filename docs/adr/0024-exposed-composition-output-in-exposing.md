@@ -6,7 +6,7 @@ Status: Accepted
 
 A `>->` composition behavior infers its output from its stages. ADR-0017 keeps that inference but lets a composition *optionally* declare its output, so a far-away change pins the blame (E1604) to the definition instead of letting the output grow silently.
 
-That optional declaration is weakest exactly where a change is least visible: the module boundary. When a composition is listed in `exposing`, its consumers compile separately — another module, or Java. An upstream stage that adds a case, or a downstream stage that narrows its input, changes the composition's output; the definition line is unchanged and still compiles, so nothing at the definition reports it. Whether the consumer notices depends on how it consumes. A Java exhaustive `switch` over the generated sealed interface (§19.8) fails to compile; a `switch` with a `default`, or JSON serialization at the boundary, does not. Inside the same module the change surfaces wherever the value is matched. Across the export boundary it need not surface at all.
+That optional declaration is weakest exactly where a change is least visible: the module boundary. When a composition is listed in `exposing`, its consumers compile separately — another module, or Java. An upstream stage that adds a case, or a downstream stage that narrows its input, changes the composition's output; the definition line is unchanged and still compiles, so nothing at the definition reports it. Whether the consumer notices depends on how it consumes. A Java exhaustive `switch` over the generated sealed interface (`[#jvm-anonymous-union]`) fails to compile; a `switch` with a `default`, or JSON serialization at the boundary, does not. Inside the same module the change surfaces wherever the value is matched. Across the export boundary it need not surface at all.
 
 ## Decision
 
@@ -28,11 +28,11 @@ The exposing list becomes the module's interface description — implementation 
 
 The cost is that an exposed composition's output is stated twice — in its upstream stages and in the exposing signature — and an intended case addition must edit both. The second edit is the intent: the boundary changes because someone wrote it, not because inference carried it across.
 
-This narrows ADR-0017 for the exposed case (optional to required) and fixes the location (the exposing list). It revises §14.5, which had the declaration optional and on the definition.
+This narrows ADR-0017 for the exposed case (optional to required) and fixes the location (the exposing list). It revises `[#declared-composition-output]`, which had the declaration optional and on the definition.
 
 ## References
 
-- Specification: §4, §14.5, §19.8
+- Specification: `[#modules]`, `[#declared-composition-output]`, `[#jvm-anonymous-union]`
 - ADR-0017 (declare, don't infer — this ADR narrows its composed-output case)
 - ADR-0007 (unmarked sum; the off-ramp is decided by composition)
 - ADR-0001 (one-to-one with the spec DSL — the point-free composition form this preserves)

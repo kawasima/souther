@@ -16,7 +16,7 @@ have.
 A behavior whose type is declared but that has no implementation is an outside-world
 dependency: its implementation is injected from Java. There is no keyword — the *absence*
 of an implementation is what means "supply this from outside." An implementation is
-either a same-named `let` (§13.1) or a `>->` composition on the right-hand side (§14); a
+either a same-named `let` (`[#fn-declaration]`) or a `>->` composition on the right-hand side (`[#composition]`); a
 behavior with neither is the injection target.
 
 ## Consequences
@@ -30,10 +30,10 @@ argument of the using `let` (see ADR-0016). The read-only "// 依存" versus mut
 "// 副作用" distinction is documentation of intent only; it does not affect the value
 composition rules.
 
-`constructs` is still required on a non-implemented behavior (§12.3): the declaration
+`constructs` is still required on a non-implemented behavior (`[#constructs]`): the declaration
 reads the same as if it were implemented in Souther — `findMember` mints its failure cases
 but does *not* mint `会員` (it reads an outside value through a decoder). The generated
-Java base class (§13.3) hands out factories for the declared unit cases from here.
+Java base class (`[#java-base-class]`) hands out factories for the declared unit cases from here.
 
 Which behaviors get a `let` and which are injected is not mechanically derivable from the
 DSL: `// 依存:` is a note, not an obligation, so its absence does not prove a behavior is
@@ -43,5 +43,5 @@ the form using the `// 依存:` / `// 副作用:` notes as a guide.
 
 ## References
 
-- Specification: §2.5, §13.2, §13.3
+- Specification: `[#no-impl-for-outside]`, `[#injected-behavior]`, `[#java-base-class]`
 - ADR-0001 (one-to-one with the spec DSL), ADR-0016 (requirements as arguments)

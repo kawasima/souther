@@ -18,5 +18,5 @@ Status: Accepted
 
 ## References
 
-- Specification: §7.3, §7.4
+- Specification: `[#algebraic-types]`, `[#optional]`
 - ADR-0002 (closed construction paths), ADR-0013 (sum cases are named-data references)

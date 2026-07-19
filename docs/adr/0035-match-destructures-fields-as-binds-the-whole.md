@@ -39,7 +39,7 @@ Option's payload binding to the positional F#/Elm form.
   a literal (`{ email = "x" }` is not a pattern). `match` dispatches on the case; value conditions go
   in the body or a `require`, since Souther has no `_` wildcard or `when` guard to fall through on
   (Elm's stance). Nested destructuring is one level — to go deeper, bind the field and `match` it
-  again, matching the nested-sum rule (each sum level is matched independently, spec §match).
+  again, matching the nested-sum rule (each sum level is matched independently, spec `[#match]`).
 
 ## Consequences
 

@@ -18,4 +18,4 @@ Only behaviors that appear in the spec DSL are behaviors; implementation helpers
 
 ## References
 
-- Specification: §2.4, §12
+- Specification: `[#behavior-composition-unit]`, `[#behavior]`

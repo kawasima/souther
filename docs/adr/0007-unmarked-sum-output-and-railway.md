@@ -22,7 +22,7 @@ consume leaves the mainline (Railway); every remaining case rides to the next st
 ## Consequences
 
 The same value leaves the mainline in one composition and rides it in another
-(§12.2). "Failure" is not a language-level concept; an off-ramp case is just an ordinary
+(`[#unmarked-output]`). "Failure" is not a language-level concept; an off-ramp case is just an ordinary
 business result, not a `Result`-style success/failure wrapper. This mirrors the spec DSL,
 which lists only business results in the output `OR` and keeps implementation-driven
 failures out of the type.
@@ -30,7 +30,7 @@ failures out of the type.
 Unexpected failures — out of memory, network partition — are never listed in the output.
 Invariant violations are also *not* here: they are model bugs with no business vocabulary,
 so they abort rather than appear as a case (see ADR-0003). Independent validation errors
-are accumulated inside the Decoder (§15), which is a boundary concern, not a domain case.
+are accumulated inside the Decoder (`[#case-propagation]`), which is a boundary concern, not a domain case.
 
 The mainline/off-ramp split is carried as composition *plumbing*, not as a mark on the
 value. Because the split is remembered by the composition and folds back into a plain sum
@@ -54,5 +54,5 @@ connotation — the same shape as stage routing here.
 
 ## References
 
-- Specification: §2.6, §12.2, §14 (esp. §14.2, §14.3), §29
+- Specification: `[#unmarked-sum]`, `[#unmarked-output]`, `[#composition]` (esp. `[#type-routing]`, `[#composition-with-requirements]`), `[#core-semantics]`
 - ADR-0003 (invariant violations abort in the domain)

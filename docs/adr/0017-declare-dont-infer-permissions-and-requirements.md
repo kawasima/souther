@@ -20,6 +20,6 @@ Prior art takes the same position. Flix requires top-level type *and* effect ann
 
 ## References
 
-- Specification: §12.3, §12.6, §14.5
+- Specification: `[#constructs]`, `[#requires]`, `[#declared-composition-output]`
 - Madsen, *The Principles of the Flix Programming Language*, Onward! 2022, Principle 7
 - Unison issue #691

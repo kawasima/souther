@@ -32,5 +32,5 @@ keeps every business branch in the output sum rather than hidden in a foreign ca
 
 ## References
 
-- Specification: §2.7, §3, §22.10 (E1401)
+- Specification: `[#asymmetric-interop]`, `[#out-of-scope]`, `[#e1401]`
 - ADR-0002 (closed construction paths), ADR-0006 (outside-world via missing implementation), ADR-0007 (unmarked sum output)

@@ -14,8 +14,8 @@ Reading a field is possible wherever the data's type is visible: within a module
 
 Reading a field cannot break an invariant; only construction can, and construction is limited to the paths of ADR-0002. So allowing cross-boundary reads does not weaken the "no unvalidated value" guarantee — reading and constructing are separate permissions. No getter-only behavior is needed to pass a value outward: such a getter would not appear in the spec DSL, so it could not be a behavior at all (ADR-0005).
 
-On the JVM, exposed data get public read accessors, because module = package and a package-private field cannot be read across the boundary. Constructors stay non-public, so Java can read a value's fields but must go through the invariant-checking decoder to build one (§19.6). Reading a field from Java is the same exposure the encoder already gives by emitting every field as JSON; what is protected is construction.
+On the JVM, exposed data get public read accessors, because module = package and a package-private field cannot be read across the boundary. Constructors stay non-public, so Java can read a value's fields but must go through the invariant-checking decoder to build one (`[#jvm-construction-privacy]`). Reading a field from Java is the same exposure the encoder already gives by emitting every field as JSON; what is protected is construction.
 
 ## References
 
-- Specification: §8.5, §19.2, §19.6
+- Specification: `[#field-visibility]`, `[#jvm-product]`, `[#jvm-construction-privacy]`

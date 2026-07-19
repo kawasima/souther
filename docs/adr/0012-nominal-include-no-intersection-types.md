@@ -20,5 +20,5 @@ Admitting `A & B` as a type would break the foundation: it leaves undetermined w
 
 ## References
 
-- Specification: §8.2, §8.6
+- Specification: `[#field-spread]`, `[#union-intersection]`
 - ADR-0002 (closed construction paths), ADR-0003 (invariant violations abort in the domain)

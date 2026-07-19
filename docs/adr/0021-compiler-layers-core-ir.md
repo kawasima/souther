@@ -1,4 +1,4 @@
-# ADR-0021: Compiler layers — a typed Core IR between type-checking and code generation
+# ADR-0021: Compiler layers — a Core IR between type-checking and code generation
 
 Status: Accepted; implemented (supersedes the MVP "no separate IR" stance recorded under History)
 
@@ -18,7 +18,7 @@ needed), and the JVM erases generics and boxes collection elements regardless, s
 Core buys little for them. A typed Core IR is deferred until a real need appears — recursive
 generics lowered to shared methods, or an optimization that needs types on nodes.
 
-The normative specification (`<<compiler-pipeline>>`, `<<ast-tracking>>`) still holds: Core
+The normative specification (`[#compiler-pipeline]`, `[#ast-tracking]`) still holds: Core
 is a structural lowering of behavior bodies with no type reification, so "no separate IR" in
 the sense of a typed/reified representation remains accurate; the pipeline text is revised
 when a typed Core lands, not ahead of it.
@@ -50,8 +50,9 @@ The "no IR" stance has three costs that now bite:
 
 ## Decision
 
-The compiler is defined as an explicit layered pipeline with a typed **Core IR** for
-behavior bodies.
+The compiler is defined as an explicit layered pipeline with a **Core IR** for
+behavior bodies. (As implemented the Core IR is structural, not typed; a typed Core IR
+is deferred — see the implementation note above.)
 
 1. **Parse** — source to surface AST. Only concrete-syntax desugars that need no types.
 2. **Resolve** — import/`exposing` name resolution (today `Exposing`).
@@ -61,7 +62,7 @@ behavior bodies.
    happens, once: helper inlining, the remaining desugars, `fold`-to-loop shaping,
    `match` lowering, closure conversion, intrinsic lowering, and — when it lands —
    monomorphization of generic helpers. It precedes the body check because a behavior's
-   permission and `requires` are defined on the inlined body (spec 12.5), so the check is
+   permission and `requires` are defined on the inlined body (`[#blocks]`), so the check is
    defined on the lowered form.
 5. **TypeCheck** — type, requirement, and construction-permission checking. It consumes
    the lowered bodies for the body check and does not rewrite. Surface checks (data,
@@ -114,7 +115,7 @@ The original decision (MVP), superseded by the above:
 
 ## References
 
-- Specification: §10.6, §20, §21
+- Specification: `[#codec-generation]`, `[#compiler-pipeline]`, `[#ast-tracking]`
 - ADR-0010: polymorphism limited to the stdlib (the generics/monomorphization this layer hosts)
 - ADR-0025: first-class functions (closure conversion is a Lower pass)
 - ADR-0028: stdlib as a privileged core over an intrinsic kernel (intrinsic lowering is a Lower pass)

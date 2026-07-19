@@ -22,7 +22,7 @@ Consequently, Koka's reason for rejecting a union-based design — `µ1 ∪ µ2 
 
 ## References
 
-- Specification: §12.5, §12.6, §13.6, §29
+- Specification: `[#blocks]`, `[#requires]`, `[#requirement-propagation]`, `[#core-semantics]`
 - Brachthäuser, Schuster, Ostermann, *Effects as Capabilities*, OOPSLA 2020
 - Leijen, *Koka: Programming with Row Polymorphic Effect Types*, MSFP 2014
 - Unison (effect rows / abilities)

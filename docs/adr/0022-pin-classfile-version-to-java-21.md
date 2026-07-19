@@ -16,4 +16,4 @@ Deferring to the build JDK's default would make artifact versions track each dev
 
 ## References
 
-- Specification: §19.1
+- Specification: `[#target-jdk]`

@@ -22,6 +22,6 @@ Disallowing a lambda bound to a named definition follows the ML family's treatme
 
 ## References
 
-- Specification: §5 (delimiters), §13.1 (let declaration), §16.3 (match)
+- Specification: `[#delimiters]` (delimiters), `[#fn-declaration]` (let declaration), `[#match]` (match)
 - ADR-0001 (one-to-one with the spec DSL), ADR-0007 (F#-derived railway)
 - ADR-0025 (first-class functions)

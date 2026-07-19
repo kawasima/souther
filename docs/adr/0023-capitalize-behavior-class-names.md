@@ -16,4 +16,4 @@ The collision surfaces at compile time rather than producing two classes that cl
 
 ## References
 
-- Specification: §19.5
+- Specification: `[#jvm-behavior]`

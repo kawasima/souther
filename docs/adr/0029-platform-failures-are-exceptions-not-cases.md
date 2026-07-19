@@ -1,6 +1,6 @@
 # ADR-0029: Platform failures propagate as exceptions; only domain outcomes are cases
 
-Status: Accepted (decided 2026-07-18). Amends ADR-0007; revises `[#java-impl-rules]` (§13.4).
+Status: Accepted (decided 2026-07-18). Amends ADR-0007; revises `[#java-impl-rules]` (`[#java-impl-rules]`).
 
 ## Context
 
@@ -10,7 +10,7 @@ values, and `.sou` code can neither `throw` nor `catch` (E1302). This is deliber
 keeps failure handling in the type and under exhaustiveness checking.
 
 External-world dependencies are behaviors with no implementation, injected from Java
-(ADR-0006). The original rule for those Java implementations (§13.4) said: *return one of the
+(ADR-0006). The original rule for those Java implementations (`[#java-impl-rules]`) said: *return one of the
 declared failure cases; do not let DB exceptions or HTTP failures leak to the language side.*
 Its worked example, `findMember`, therefore declared a `DB不通` (database-unavailable) case and
 folded any `DataAccessException` into it.
@@ -44,7 +44,7 @@ Split the two kinds of failure by channel:
 The language (`.sou`) still has no exceptions — E1302 stands, and it bans exceptions for
 *business-flow control*. A propagated platform failure is not business-flow control; it is
 abnormal termination, in the same category as invariant-violation aborts (ADR-0003) and the
-"VM failures and implementation bugs are out of scope" clause that §13.4 already had. The
+"VM failures and implementation bugs are out of scope" clause that `[#java-impl-rules]` already had. The
 boundary (the Java/framework side) catches it and handles it as the cross-cutting concern it
 is: an HTTP 503, a retry, a transaction rollback.
 
@@ -96,7 +96,7 @@ not a 503.
   thrown platform failure. `会員なし` and `保存データ不正` remain domain cases.
 - Callers of injected behaviors must expect that a platform failure surfaces as an exception at
   the boundary, not as a case, and handle it there.
-- The most important reason for writing this ADR: the previous §13.4 text stated the opposite
+- The most important reason for writing this ADR: the previous `[#java-impl-rules]` text stated the opposite
   ("do not let DB exceptions leak"), which actively misled readers into modeling `DB不通` as a
   domain case. The principle was load-bearing but undocumented; this records it.
 

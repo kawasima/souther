@@ -57,7 +57,7 @@ function form; the operator trades that for convenience).
 
 ## References
 
-- Specification: §primitives (numeric literals), §stdlib-int, §stdlib-decimal
+- Specification: `[#primitives]` (numeric literals), `[#stdlib-int]`, `[#stdlib-decimal]`
 - ADR-0003: invariant violations abort in the domain (the abort model `/` follows)
 - ADR-0009: Decimal ignores scale
 - ADR-0019: one arrow `->`; ML-family grounding (F#/Elm) — the `m` suffix follows F#

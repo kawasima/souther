@@ -20,4 +20,4 @@ The non-functional requirement that one spec DSL definition corresponds to one S
 
 ## References
 
-- Specification: §1, §1.1, §2, §12, §13.2, §28, §29
+- Specification: `[#purpose]`, `[#mapping-principle]`, `[#design-principles]`, `[#behavior]`, `[#injected-behavior]`, `[#non-functional]`, `[#core-semantics]`

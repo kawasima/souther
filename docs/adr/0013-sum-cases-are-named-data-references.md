@@ -18,4 +18,4 @@ A case value **is** a value of the sum: as in functional languages, a value of a
 
 ## References
 
-- Specification: §8.3
+- Specification: `[#sum-data]`

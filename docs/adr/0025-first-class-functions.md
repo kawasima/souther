@@ -10,7 +10,7 @@ The question is whether to make functions first-class, and if so, whether every 
 
 ## Decision
 
-Functions are first-class values. A lambda `(x) -> e` may be bound with `let`, applied `f(x)`, and returned. Function types `(A) -> B` are written on a helper `let`'s parameters. A lambda's parameter types are not annotated; they are inferred from how it is applied.
+Functions are first-class values. A function value may be bound with `let`, applied `f(x)`, and returned. "Bound with `let`" here means a function-valued expression on the right of `=` — one selected at runtime, or a returned closure; binding a bare lambda directly as a named definition is still written `let f (x) = e`, not `let f = (x) -> e` (ADR-0019, ADR-0026). Function types `(A) -> B` are written on a helper `let`'s parameters. A lambda's parameter types are not annotated; they are inferred from how it is applied.
 
 How a function is compiled depends on whether it escapes:
 
@@ -29,7 +29,7 @@ Because functions are monomorphic, this does not reintroduce user-defined generi
 
 ## References
 
-- Specification: §12.5 (blocks), §13.1 (let declaration), §18.4 (combinators)
+- Specification: `[#blocks]` (blocks), `[#fn-declaration]` (let declaration), `[#stdlib-list]` (combinators)
 - ADR-0004 (derived codecs — why a function has no representation)
 - ADR-0010 (no user generics — functions stay monomorphic)
-- ADR-0019 (the `->` arrow for lambdas)
+- ADR-0019 (the `->` arrow for lambdas), ADR-0026 (`let f (x) = e`, not `let f = (x) -> e`, defines a named function)

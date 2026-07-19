@@ -4,7 +4,7 @@ Status: Accepted
 
 ## Context
 
-ADR-0010 kept recursion out of the user language, and ADR-0028 confined it to the privileged
+The inline-only helper model kept recursion out of the user language, and ADR-0028 confined it to the privileged
 `core` namespace. ADR-0028 justified the confinement with a factual claim:
 
 > Confining recursion to `core` would matter only for processing recursive user data, but
@@ -31,7 +31,7 @@ confinement bought the model nothing here; it removed expressiveness the model d
 
 ## Decision
 
-A user helper may recurse. Overturn the "no user recursion" of ADR-0010/ADR-0028 for named
+A user helper may recurse. Overturn the "no user recursion" of ADR-0028 and the inline-helper model for named
 helpers.
 
 - **A recursive helper is lowered to a method, not inlined.** The helper inliner already detects
@@ -73,9 +73,9 @@ breaks the cycle. A sum is OR-composed, so the check does not propagate through 
 
 ## Consequences
 
-The user-facing restriction of ADR-0010 narrows again: a business model still writes no generics,
+The user-facing bound narrows again: a business model still writes no generics (ADR-0010),
 but it may now write recursion over its own self-referential data. The "helpers never recurse" of
-spec 13.1 is replaced by "a recursive helper is lowered to a method"; the earlier inline-only model
+`[#fn-declaration]` is replaced by "a recursive helper is lowered to a method"; the earlier inline-only model
 survives for the non-recursive majority.
 
 The recursion mechanism reuses the behavior-body emission path (`emitBodyTail` over the Core IR,
@@ -91,7 +91,7 @@ at the optional/list break that makes the shape inhabitable.
 ## References
 
 - Specification: `[#fn-declaration]`, `[#algebraic-types]`
-- ADR-0010 (no user generics or recursion — amended: recursion returns to user helpers)
+- ADR-0010 (no user generics — the recursion ban was the inline-helper model's, not 0010's)
 - ADR-0028 (recursion confined to core — amended: its "no self-referential data" premise was false)
 - ADR-0029 (platform failures are exceptions — a non-terminating recursion overflows the stack)
 - ADR-0021 (Core IR and the Lower stage — the recursion lowering reuses the behavior-body path)

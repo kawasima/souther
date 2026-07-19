@@ -18,4 +18,4 @@ This relies on branches being allowed to differ in type: `if <cond> then <rest> 
 
 ## References
 
-- Specification: §16.2, §16.4
+- Specification: `[#if]`, `[#require]`

@@ -17,4 +17,4 @@ In Souther, business-meaningful change crosses a type boundary (`申請 → 事�
 
 ## References
 
-- Specification: §5, §12.4, §25.1
+- Specification: `[#delimiters]`, `[#record-literal]`

@@ -19,7 +19,7 @@ fields recursively, and the `Decimal` comparison at the leaves ignores scale. Th
 ## Consequences
 
 Scale is not lost from the value — the Encoder emits the scale it read, so the round-trip
-`decode(encode(v)) == v` (§11.3) still holds. Only *identity* ignores scale. If rounding
+`decode(encode(v)) == v` (`[#round-trip]`) still holds. Only *identity* ignores scale. If rounding
 precision is a domain concern, model it as an invariant or a separate field rather than
 leaning on incidental `Decimal` scale.
 
@@ -39,9 +39,9 @@ Note that `java.math.BigDecimal.equals` compares scale, so Souther does not foll
 generated data class implements `equals`/`hashCode` from all fields (value-based), which
 is distinct from both Java's `==` (reference comparison) and `BigDecimal.equals`
 (scale-sensitive). This value equality also holds when the data is viewed from Java, so it
-works directly as a `Map` key (§19.2).
+works directly as a `Map` key (`[#jvm-product]`).
 
 ## References
 
-- Specification: §7.1, §11.3, §19.2
+- Specification: `[#primitives]`, `[#round-trip]`, `[#jvm-product]`
 - Clojure CLJ-1118; Groovy GROOVY-2334 (2007); Scala `scala.math.BigDecimal`; Ceylon; C# / Python `Decimal`

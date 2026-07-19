@@ -18,4 +18,4 @@ Because there is no `|`, a single-name right-hand side is never read as a one-ca
 
 ## References
 
-- Specification: §8.7, §10.3, §11.2
+- Specification: `[#newtype]`, `[#sum-discrimination]`, `[#encoder-derivation]`
