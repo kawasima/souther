@@ -1,241 +1,133 @@
 # Souther
 
-Souther is a small JVM language for **specification model driven development (SMDD)**. Its job
-is to transcribe a *specification DSL* into an *executable implementation model* without a
-translation step in between.
+Souther is a small JVM language for describing business data, value constraints, and state transitions, then generating types and behaviors that Java can use.
 
-The specification DSL describes business rules with just `data` (AND / OR / List / `?`) and
-`behavior` (`->` / `>->`). It leaves three things in comments so a human or an LLM can still read
-the whole model in one sitting; Souther promotes each of those to something executable:
-
-| The spec DSL leaves this in a comment | Souther makes it executable with |
-| --- | --- |
-| value constraints (`// 0 or greater`, `// approver is the manager`) | `invariant` |
-| "this value has been validated" (parse-don't-validate) | closed construction paths (derived `decoder` / `constructs`) |
-| `// depends on: catalog`, `// side effect: send mail` | a `behavior` with no `let` (implementation injected from Java) |
-
-Distinction, requiredness, multiplicity, state transitions, and totality map straight onto
-Souther's types. The value constraints and the outside-world dependencies move from comments to
-types and injection. Nothing else is added.
-
-The full language specification lives in [`specification.adoc`](specification.adoc) (written in
-Japanese, since the source spec DSL is Japanese and user-defined identifiers may be Unicode). The
-spec states *what* the language does; the reasoning behind each decision — the alternatives weighed
-and the prior art — is recorded as ADRs under [`docs/adr/`](docs/adr/).
-
-## A taste
+You write business rules with `data` and `behavior`. `invariant` makes value constraints explicit, while behaviors implemented in Java make dependencies such as a database or a clock explicit. This keeps the domain model's boundary intact as it becomes an implementation.
 
 ```text
-module example.businesstrip exposing (
-    出張申請,
-    出張申請を提出する,
-    事前承認する
-)
+external input -> decoder -> Souther data / behavior -> encoder -> external output
+                                   ^
+                           Java injects dependencies
+```
 
-// A value type. `data X = Y` (a single type on the right) is a newtype with Y's bare
-// representation; the spec DSL's "// not empty" comment becomes an invariant.
-data 従業員ID = String
+Souther is intended to turn the specification DSL of [Specification Model-Driven Development (SMDD)](#specification-model-driven-development-smdd) into an executable implementation model. It makes executable the constraints, validated construction, and outside-world dependencies that the specification DSL leaves in comments.
+
+## Start with an example
+
+This example either moves a travel request into the `Submitted` state or rejects it. An `Amount` cannot be negative, and the behavior produces either `Submitted` or `Rejected`.
+
+```text
+module example.trip
+import String ( length )
+
+data EmployeeId = String
     invariant length(value) > 0
 
-data 金額 = Int
+data Amount = Int
     invariant value >= 0
 
-// A state machine as a sum of named states; the common fields are flattened with a `...` spread.
-data 出張申請 = 申請準備中 | 提出済み | 事前承認待ち | 事前承認済み
-data 申請準備中 = { ...出張申請共通項目 }
-data 提出済み = { ...出張申請共通項目, 提出日時: DateTime }
+data DraftRequest = { applicant: EmployeeId, plannedCost: Amount }
+data Submitted = { ...DraftRequest, submittedAt: String }
+data Rejected = { reason: String }
 
+behavior submit : (request: DraftRequest, submittedAt: String) -> Submitted | Rejected
+    constructs Submitted, Rejected
 
-// "承認権限なし" is just a data — not an error type, not a Result.
-data 承認権限なし
-
-// A dependency: no `let`, so the clock is injected from Java.
-behavior 現在時刻 : () -> DateTime
-
-// The output is an unmarked sum. Whether a case is a "failure" is decided by composition,
-// not by this behavior. A simple behavior declares what it `requires` and `constructs`.
-behavior 事前承認する : (
-    申請:    事前承認待ち,
-    承認者ID: 従業員ID
-) -> 事前承認済み | 承認権限なし
-    requires 現在時刻
-    constructs 事前承認済み, 承認権限なし
-
-// The implementation is a separate `let`; each `requires` name appears as a trailing argument.
-let 事前承認する (申請, 承認者ID, 現在時刻) = {
-    require 承認者ID == 申請.申請者.上長ID
-        else 承認権限なし
-
-    事前承認済み { ...申請, 事前承認日時 = 現在時刻(), 事前承認者 = 承認者ID }
+let submit (request, submittedAt) = {
+    require request.plannedCost.value <= 100000 else Rejected { reason = "high_cost" }
+    Submitted { ...request, submittedAt = submittedAt }
 }
 ```
 
-Behaviors compose with `>->`, which routes the cases of one stage's output into the next and lets
-the cases the next stage does not accept flow straight through:
+The example introduces Souther's central ideas:
 
-```text
-behavior 会員を照会し整形する = findMember >-> 会員を表示用に整形する
-```
+- `data` represents domain values and states. `|` means alternatives, and `...` composes fields.
+- An `invariant` is checked every time that `data` is constructed by a decoder or behavior.
+- A `behavior` declares its input and possible business outcomes; `constructs` grants it authority to construct those values.
+- `require ... else ...` is a business branch. `Rejected` is an ordinary domain value, not an exception.
 
-Decoding and encoding are not `>->` stages — they are the boundary. At the edge you decode the raw
-input, run the behavior pipeline over the domain values, then encode the result. Each exposed data
-gets a derived `decoder()` / `encoder()` for Java to call.
+The complete runnable example is in [`examples/businesstrip/`](examples/businesstrip/).
 
-## Core ideas
+## Try it
 
-### Closed construction paths
-
-A value of `data T` can only be produced by `T`'s derived decoder, a behavior that declares
-`constructs T`, or compiler-generated code. Writing `T` as a return type is not enough. This is how
-parse-don't-validate ("a validated value is validated by its type") survives contact with an
-implementation. Constructors are non-public, so the rule holds even across the Java boundary.
-
-### Invariants checked at every construction path
-
-An `invariant` on a `data` runs wherever that data is built — decoders and behaviors alike,
-including invariants inherited through a `...` spread. A behavior that constructs an invariant-bearing
-data must have a case for the violation to go to, or it is a compile error.
-
-### Business results are unmarked sums
-
-There is no `Result`, no `Either`, no success/error tag. A behavior maps its input to one of
-several possible domain results. Which case counts as "off the happy path" is decided at composition
-time: `f >-> g` routes the cases of `f`'s output that `g`'s input accepts into `g`, and lets the
-rest flow straight through to the output. That is Railway-oriented programming without privileging
-"failure" — a case that isn't consumed simply propagates.
-
-### Outside-world dependencies are behaviors with no implementation
-
-DB, HTTP, files, the clock, ID generation — none are implemented in the language. You declare the
-behavior's type and write no `let`; the implementation is injected from Java. Conceptually a
-behavior has the type `Behavior<Requirements, Input, Output>`, where `Requirements` is the set of
-unimplemented behaviors it needs. A simple behavior declares its `requires` set and the compiler
-checks it against the `let`; a `>->` composition infers it as the union over the stages. Binding the
-implementations produces a callable behavior:
-
-```java
-var handle = Handle.bind(new JdbcFindMember(dataSource));
-var result = handle.apply(rawInput);
-```
-
-### Boundary codecs are derived, not written
-
-Decoders and encoders never appear in the language syntax. They are derived from the shape of the
-data: a JSON key is the field name, a single-primitive-field data is a bare newtype, and a sum
-discriminates on `"type"` with the case name as the tag. When the default derivation isn't enough
-(renamed keys, normalization, a business-specific discriminator), you write a custom codec on the
-Java boundary that calls the data's invariant-checking construction.
-
-### Modules are explicit
-
-One module per file. A module lists its public surface with `exposing ( ... )` and pulls specific
-names with `import <module> ( ... )`. There are no wildcard imports, cyclic imports are a compile
-error, and anything not exposed is emitted as a package-private class — the boundary is enforced at
-the JVM level, not just at import resolution.
-
-## Java interop is asymmetric
-
-```text
-Java    -> Souther's generated output      allowed
-Souther -> arbitrary Java API              forbidden (the outside world is reached only through a behavior with no `let`)
-```
-
-Java calls the generated types and behaviors. Souther cannot call arbitrary Java. A behavior with
-no `let` is generated as an abstract base class that a Java implementation `extends`; the
-implementation may build only the cases that behavior declares, through `protected` factories, so
-closed construction is preserved across the boundary.
-
-## What Souther deliberately does not have
-
-Souther is opinionated. The following are left out *by design*, not by omission — each would
-undercut one of the ideas above.
-
-- **No exceptions, no `null`, no mutable state, no threads, no async.** Failure is a domain case
-  in the output sum; absence is an optional field (`?`); everything is immutable. `null` and
-  `throw` are compile errors that point you at the alternative.
-- **No arbitrary JVM calls from Souther.** The only door to the outside world is a behavior with
-  no `let`, injected from Java. This keeps pure behaviors provably pure and keeps effects at the edges.
-- **No structural intersection types (`A & B`).** Souther is nominal so that construction paths
-  stay closed: an intersection value has no clear constructor and no clear invariant to check.
-  The spec DSL's `AND` means "has all of A's fields, plus more", which is nominal field
-  composition — the `...` spread — not "is both A and B".
-- **No `Result` / `Either`, no dedicated success/failure slot.** Outputs are unmarked domain
-  sums; the happy-path/off-path split is a property of a *composition*, not of a value.
-- **No type classes / traits, higher-kinded types, dependent types, SMT or termination proofs.**
-  Souther tracks two things about data (which values are it, which expressions may construct it)
-  and three about a behavior (input, output sum, required-behavior set). That is the whole type
-  system.
-- **No separate Decoder IR / Domain IR.** The ClassFile backend emits decode/encode bytecode
-  directly from the AST, generating the boundary library Raoh's combinators as bytecode.
-  `souther-runtime` itself does not depend on Raoh; the Raoh dependency lives only in the
-  generated code and the application that uses it.
-- **`>->` composes single-input stages only.** A pipeline threads one value from stage to stage;
-  a multi-argument behavior is applied by call / `match`, not placed in a pipeline.
-- **`Never` and `Unit` are reading-level concepts, not surface-writable type names.** A unit is
-  always a field-less `data`.
-- **No package manager, no REPL, no bespoke VM.** The JVM is the distribution substrate; the
-  Class-File API (`java.lang.classfile`) generates `.class` files directly, without going
-  through `javac`.
-
-### Not yet
-
-These are not rejected on principle — they are simply out of scope for now: a human-readable
-Java-source backend, incremental compilation, an LSP / IDE plugin, source maps, static invariant
-proofs, hand-written codec syntax, and JSON Schema / Wasm / JavaScript output. A jOOQ `Record` is a
-flat row, so a type with a nested object, list, or map derives no `recordDecoder()` (its plain/`Map`
-and JSON decoders are generated). Functions cannot be stored in a data field — they have no external
-representation. (First-class functions and closures, blocks passed to combinators, higher-order
-arguments, tuples, and the value pipe are all supported.)
-
-## Building and using
-
-Requirements: JDK 25 (the compiler uses the Class-File API); generated `.class` files target
-Java 21+.
+Souther requires JDK 25 and Maven. The compiler uses the JDK Class-File API; generated `.class` files target Java 21 and later.
 
 ```sh
-mvn install                 # build souther-runtime and souther-compiler, run the tests
+# Build the runtime and compiler, and run the tests.
+mvn install
 
-# compile a single .sou file to .class files
+# Compile a .sou file to .class files.
 java -cp souther-compiler/target/classes:souther-runtime/target/classes \
-     net.unit8.souther.compiler.Main examples/businesstrip/src/main/souther/businesstrip.sou -d /tmp/out
+     net.unit8.souther.compiler.Main \
+     examples/businesstrip/src/main/souther/businesstrip.sou -d /tmp/out
 ```
 
-Programmatically:
+To integrate Souther into an application's Maven build, configure `SoutherProcessor` as an annotation processor. [`examples/README.md`](examples/README.md) contains that configuration and examples using the generated types from Java, Spring Boot, and jOOQ.
+
+The Java API compiles a source string containing either one module or several linked modules:
 
 ```java
-// one self-contained module
 Map<String, byte[]> classes = Compiler.compile(source);
-
-// several modules linked through their imports
-Map<String, byte[]> classes = Compiler.compileModules(List.of(employeeSrc, tripSrc));
+Map<String, byte[]> linked = Compiler.compileModules(List.of(employeeSource, tripSource));
 ```
 
-The repository is a two-module Maven build: `souther-runtime` (`Option`, `Behavior`, `Fn`,
-`Result`, `ConstraintViolation`, and the numeric / collection helpers; it does not
-depend on Raoh) and `souther-compiler` (lexer, parser, type checker, deriver, and the ClassFile
-backend). Runnable `.sou` examples and a Spring Boot + jOOQ
-interop example live under [`examples/`](examples/).
+## What Souther guarantees
 
-## Status
+### Construction of invalid data is confined
 
-Implemented and covered by tests:
+Only a derived decoder, a behavior declaring `constructs T`, that behavior's Java implementation, or compiler-generated code may construct `data T`. Merely using `T` as a return type does not grant construction authority. Generated constructors are non-public, so the rule holds across the Java boundary.
 
-- Types: all primitives (`Bool` / `Int` / `Decimal` / `String` / `Date` / `DateTime`), `List<T>`,
-  `Map<String, T>`, optional fields (`?` → `Option`) with `Some`/`None` matching, and product /
-  sum / unit data with `...` spread and `invariant`.
-- Behaviors: `behavior` and its separate `let`, behaviors with no `let` injected from Java,
-  `requires` sets (declared on simple behaviors, inferred over a `>->` pipeline), inline
-  injected-behavior calls, `constructs`, unmarked sum outputs, and type-routed `>->`.
-- Terms: `match` / `let` / `if` / `require`, record literals with spread, the empty-list literal
-  `[]` typed by context, union parameter types and matching, and the String / Int / Decimal /
-  List / Map standard library — shipped in the reserved `souther.*` namespace, with the list
-  combinators (`map` / `filter` / `all` / `any`) self-hosted over the one `fold` primitive.
-- Boundary and packaging: derived decoders / encoders, modules with `exposing` / `import` and
-  cyclic-import detection, JVM visibility hardening, and direct ClassFile bytecode generation.
+### Business outcomes are not exceptions
+
+A behavior's output is a sum of named data, such as `Submitted | Rejected`; it has no `Result` / `Either` wrapper or privileged success/failure slot. `f >-> g` sends only the output cases that `g` accepts to the next stage, and passes the rest through unchanged. Whether a case leaves the main path is a property of composition, not of the value itself.
+
+The runtime's `Result` for malformed decoder input is separate from a behavior's domain outcome: the former belongs to the boundary, the latter is domain data.
+
+### The outside world stays at the Java boundary
+
+Souther does not directly call databases, HTTP services, files, clocks, or ID generators. Instead, it declares a behavior with no implementation and Java injects that implementation.
+
+```text
+behavior currentTime : () -> DateTime
+
+behavior approve : (request: AwaitingApproval) -> Approved
+    requires currentTime
+```
+
+Souther cannot call arbitrary Java APIs; Java can use the generated data and behaviors. This asymmetry makes the boundary between pure domain computation and external effects explicit.
+
+## Language shape
+
+Souther is deliberately small:
+
+- immutable product / sum / unit data, `List<T>`, `Map<String, T>`, and optional fields (`T?`)
+- `invariant`, `match`, `let`, `if`, `require`, record literals, and field spread
+- `behavior`, Java injection, `requires`, `constructs`, and type-routed `>->` composition
+- derived decoders / encoders and explicit modules with `exposing` / `import`
+
+It intentionally does not provide exceptions, `null`, mutable state, asynchronous execution, arbitrary JVM calls, type classes or higher-kinded types, a package manager, or a REPL. These omissions keep construction paths, value constraints, and outside-world dependencies tractable.
+
+Not yet implemented: a Java-source backend, incremental compilation, an LSP, source maps, static invariant proofs, handwritten codec syntax, and JSON Schema / Wasm / JavaScript output.
+
+## Details and examples
+
+- [Language specification (Japanese)](specification.adoc): the normative syntax and semantics
+- [ADRs](docs/adr/README.md): design decisions, alternatives, and prior art
+- [Examples](examples/README.md): Maven / Gradle integration, decoders / encoders, and Java, Spring Boot, and jOOQ interop
+
+The repository has two Maven modules:
+
+- `souther-runtime`: `Option`, `Behavior`, `Fn`, boundary `Result`, `ConstraintViolation`, and numeric / collection helpers
+- `souther-compiler`: lexer, parser, type checker, deriver, and ClassFile backend
+
+## Specification Model-Driven Development (SMDD)
+
+The SMDD specification DSL expresses business rules with `data` (AND / OR / List / `?`) and `behavior` (`->` / `>->`). It leaves value constraints, the fact that a value has been validated, and outside-world dependencies in comments. Souther maps those respectively to `invariant`, closed construction paths (`decoder` / `constructs`), and behaviors injected from Java.
+
+The [language specification](specification.adoc) has the full mapping and design principles.
 
 ## License
 
-Copyright ©kawasima 2026
+Copyright © kawasima 2026
 
-Released under the [Eclipse Public License 2.0](https://www.eclipse.org/legal/epl-2.0/)
-(EPL-2.0). See [`LICENSE`](LICENSE) for the full text.
+Released under the [Eclipse Public License 2.0](https://www.eclipse.org/legal/epl-2.0/).
