@@ -440,6 +440,22 @@ public final class Parser {
     }
 
     private Ast.TypeRef parseTypeRef() {
+        if (check(TokenType.LPAREN)) {
+            // A tuple type `(A, B, ...)` (ADR-0036): a type argument (`List<(String, 'a)>`) or a
+            // helper/stdlib return type. A bare tuple parameter is not reached here — a helper
+            // parameter's `(` is read as a function type (parseParamType).
+            Token open = advance();
+            List<Ast.TypeRef> elems = new ArrayList<>();
+            elems.add(parseTypeRef());
+            while (match(TokenType.COMMA)) {
+                elems.add(parseTypeRef());
+            }
+            expect(TokenType.RPAREN);
+            if (elems.size() < 2) {
+                throw error(open, "a tuple type needs at least two elements; `(T)` is not a type");
+            }
+            return new Ast.TypeRef(null, null, elems, open.pos());
+        }
         if (check(TokenType.TYPEVAR)) {
             Token v = advance();
             if (!isReservedNamespace(moduleName)) {

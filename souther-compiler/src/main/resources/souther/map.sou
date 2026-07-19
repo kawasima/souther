@@ -19,3 +19,8 @@ let insert (key: String, value: 'a, m: Map<String, 'a>) : Map<String, 'a> = intr
 let remove (key: String, m: Map<String, 'a>) : Map<String, 'a> = intrinsic "map.remove"
 let isEmpty (m: Map<String, 'a>) : Bool = intrinsic "map.isEmpty"
 let size (m: Map<String, 'a>) : Int = intrinsic "map.size"
+
+// Conversion to / from a list of (key, value) tuples. A tuple type is allowed in a stdlib
+// signature (ADR-0036) — it never crosses a codec boundary. `fromList` lets a later entry win.
+let toList (m: Map<String, 'a>) : List<(String, 'a)> = intrinsic "map.toList"
+let fromList (entries: List<(String, 'a)>) : Map<String, 'a> = intrinsic "map.fromList"

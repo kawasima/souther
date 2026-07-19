@@ -90,6 +90,7 @@ public final class TypeChecker {
             if (b instanceof Ast.SpecBehavior spec) {
                 specNames.add(b.name());
                 rejectAnonymousUnionParams(spec);
+                rejectTupleIO(spec);
             }
         }
         // A data is Java-buildable from outside iff the whole module is public (no `exposing`) or
@@ -565,6 +566,42 @@ public final class TypeChecker {
                         + "` and take that name (spec 8.6, 12.2)");
             }
         }
+    }
+
+    /** A tuple is expression-level only (ADR-0036): it has no external representation and cannot
+     * cross a decoder/encoder boundary, so it may not be a behavior's input or output. Tuple types in
+     * a helper/stdlib signature are fine — they never touch a codec. */
+    private static void rejectTupleIO(Ast.SpecBehavior spec) {
+        for (Ast.Param p : spec.params()) {
+            for (Ast.TypeRef c : p.type().cases()) {
+                if (refHasTuple(c)) {
+                    throw new CompileException(p.pos(), "parameter `" + p.name()
+                            + "` is a tuple; a tuple has no external representation and cannot cross the"
+                            + " boundary, so a behavior's input must be a named data (ADR-0036)");
+                }
+            }
+        }
+        for (Ast.TypeRef c : spec.ret().cases()) {
+            if (refHasTuple(c)) {
+                throw new CompileException(spec.pos(), "behavior `" + spec.name() + "` outputs a tuple;"
+                        + " a tuple cannot cross the boundary, so a behavior's output must be a named"
+                        + " data or a sum of them (ADR-0036)");
+            }
+        }
+    }
+
+    private static boolean refHasTuple(Ast.TypeRef ref) {
+        return ref.isTuple() || (ref.arg() != null && refHasTuple(ref.arg()));
+    }
+
+    private static boolean containsTuple(Type t) {
+        return switch (t) {
+            case Type.TupleOf ignored -> true;
+            case Type.ListOf l -> containsTuple(l.element());
+            case Type.MapOf m -> containsTuple(m.value());
+            case Type.OptionOf o -> containsTuple(o.element());
+            default -> false;
+        };
     }
 
     private static void checkInjectionConstructs(Ast.SpecBehavior spec, Map<String, Ast.Def> symbols,
@@ -1320,6 +1357,14 @@ public final class TypeChecker {
 
     private static void checkData(Ast.Data data, Map<String, Ast.Def> symbols) {
         Map<String, Type> fields = fieldTypes(data, symbols);
+
+        for (Map.Entry<String, Type> e : fields.entrySet()) {
+            if (containsTuple(e.getValue())) {
+                throw new CompileException(data.pos(), "a tuple cannot be a data field (`"
+                        + data.name() + "." + e.getKey() + "`): a tuple has no external representation, "
+                        + "so it cannot cross a decoder/encoder boundary (ADR-0036). Use a named data.");
+            }
+        }
 
         data.invariant().ifPresent(expr -> {
             Type t = typeOf(expr, fields, data, symbols);
@@ -2426,6 +2471,15 @@ public final class TypeChecker {
         if (from instanceof Type.OptionOf a && to instanceof Type.OptionOf b) {
             return assignable(a.element(), b.element(), symbols);
         }
+        if (from instanceof Type.TupleOf a && to instanceof Type.TupleOf b
+                && a.elements().size() == b.elements().size()) {
+            for (int i = 0; i < a.elements().size(); i++) {
+                if (!assignable(a.elements().get(i), b.elements().get(i), symbols)) {
+                    return false;
+                }
+            }
+            return true;
+        }
         Set<String> fa = leafCases(from, symbols);
         Set<String> ta = leafCases(to, symbols);
         return !fa.isEmpty() && !ta.isEmpty() && ta.containsAll(fa);
@@ -2461,6 +2515,12 @@ public final class TypeChecker {
                     unify(p.value(), a.value(), bindings, symbols, pos, what);
             case Type.OptionOf p when arg instanceof Type.OptionOf a ->
                     unify(p.element(), a.element(), bindings, symbols, pos, what);
+            case Type.TupleOf p when arg instanceof Type.TupleOf a
+                    && p.elements().size() == a.elements().size() -> {
+                for (int i = 0; i < p.elements().size(); i++) {
+                    unify(p.elements().get(i), a.elements().get(i), bindings, symbols, pos, what);
+                }
+            }
             case Type.FnOf p when arg instanceof Type.FnOf a && p.params().size() == a.params().size() -> {
                 for (int i = 0; i < p.params().size(); i++) {
                     unify(p.params().get(i), a.params().get(i), bindings, symbols, pos, what);
@@ -2489,6 +2549,13 @@ public final class TypeChecker {
                 }
                 yield Type.fn(params, substitute(f.result(), bindings));
             }
+            case Type.TupleOf tup -> {
+                List<Type> es = new ArrayList<>();
+                for (Type e : tup.elements()) {
+                    es.add(substitute(e, bindings));
+                }
+                yield Type.tuple(es);
+            }
             default -> t;
         };
     }
@@ -2509,6 +2576,13 @@ public final class TypeChecker {
     }
 
     public static Type resolveType(Ast.TypeRef ref, Map<String, Ast.Def> symbols) {
+        if (ref.isTuple()) {
+            List<Type> elems = new ArrayList<>();
+            for (Ast.TypeRef e : ref.tupleElems()) {
+                elems.add(resolveType(e, symbols));
+            }
+            return Type.tuple(elems);   // (A, B, ...) — a helper/stdlib signature only (ADR-0036)
+        }
         return switch (ref.name()) {
             case "Int" -> Type.INT;
             case "String" -> Type.STRING;

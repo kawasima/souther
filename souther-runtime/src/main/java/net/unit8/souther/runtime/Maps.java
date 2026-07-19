@@ -51,6 +51,27 @@ public final class Maps {
         return m.size();
     }
 
+    /** The entries as a list of {@code (key, value)} tuples, each an {@code Object[]} (ADR-0036),
+     *  in the map's iteration order. */
+    public static <V> List<Object[]> toList(Map<String, V> m) {
+        List<Object[]> out = new ArrayList<>(m.size());
+        for (Map.Entry<String, V> e : m.entrySet()) {
+            out.add(new Object[]{e.getKey(), e.getValue()});
+        }
+        return List.copyOf(out);
+    }
+
+    /** A map from a list of {@code (key, value)} tuples; a later entry overwrites an earlier one
+     *  with the same key. */
+    @SuppressWarnings("unchecked")
+    public static <V> Map<String, V> fromList(List<Object[]> entries) {
+        LinkedHashMap<String, V> out = new LinkedHashMap<>();
+        for (Object[] e : entries) {
+            out.put((String) e[0], (V) e[1]);
+        }
+        return Collections.unmodifiableMap(out);
+    }
+
     /** {@code Some(value)} when {@code key} is present, else {@code None}. */
     public static <V> Option<V> get(Map<String, V> map, String key) {
         return map.containsKey(key) ? Option.some(map.get(key)) : Option.none();

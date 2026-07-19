@@ -163,8 +163,22 @@ public interface Ast {
     /** A field: a role name and its type. */
     record Field(String name, TypeRef type, SourcePos pos) implements Ast {}
 
-    /** A named type reference, optionally with one type argument (e.g. {@code List<T>}). */
-    record TypeRef(String name, TypeRef arg, SourcePos pos) implements Ast {}
+    /**
+     * A named type reference, optionally with one type argument (e.g. {@code List<T>}). When
+     * {@code tupleElems} is non-null the ref is a tuple type {@code (A, B, ...)} (ADR-0036) and
+     * {@code name}/{@code arg} are unused; a tuple type is written only in a helper/stdlib signature,
+     * never in a data field or a behavior's input/output (the checker rejects it there).
+     */
+    record TypeRef(String name, TypeRef arg, List<TypeRef> tupleElems, SourcePos pos) implements Ast {
+        /** An ordinary (non-tuple) reference. */
+        public TypeRef(String name, TypeRef arg, SourcePos pos) {
+            this(name, arg, null, pos);
+        }
+
+        public boolean isTuple() {
+            return tupleElems != null;
+        }
+    }
 
     /** The kind of primitive Raw a single-value decoder reads / an encoder writes. */
     enum RawKind { TEXT, INT, BOOL, DECIMAL, DATE, DATETIME }

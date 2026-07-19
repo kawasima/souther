@@ -51,6 +51,5 @@ specification is in Japanese.
 | [0034](0034-value-pipe-and-argument-order.md) | The value pipe `\|>` threads a value through calls; the stdlib takes its main object last | `[#pipe]`, `[#stdlib]`, `[#delimiters]` |
 | [0035](0035-match-destructures-fields-as-binds-the-whole.md) | A match case destructures a case's fields; `as` binds the whole; Option binds positionally (`\| Some v`) | `[#match]`, `[#algebraic-types]` |
 | [0036](0036-tuples-and-exposing-parentheses.md) | Tuples `(a, b)` are expression-level first-class values; a module's `exposing`/`import` lists use parentheses | `[#tuple]`, `[#modules]`, `[#delimiters]` |
+| [0037](0037-tuple-types-in-signatures.md) | Tuple types are writable in helper/stdlib signatures, not at a codec boundary | `[#tuple]`, `[#stdlib-map]` |
 | [0038](0038-user-recursion-over-self-referential-data.md) | User helpers may recurse over self-referential data; a recursive helper is lowered to a method | `[#fn-declaration]`, `[#algebraic-types]` |
-
-> ADR-0037 is unused: the number was skipped and never assigned.

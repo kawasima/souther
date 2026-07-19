@@ -144,6 +144,11 @@ public final class Deriver {
         if (t instanceof Type.MapOf mo) {
             return new Ast.MapDecRef(decRef(mo.value(), d, pos), pos);
         }
+        if (t instanceof Type.TupleOf) {
+            throw new CompileException(pos, "a tuple cannot be a data field in `" + d.name()
+                    + "`: a tuple has no external representation, so no decoder can be derived"
+                    + " (ADR-0036). Use a named data.");
+        }
         throw new CompileException(pos,
                 "cannot derive a decoder for field type " + t + " in `" + d.name() + "`");
     }
@@ -214,6 +219,11 @@ public final class Deriver {
         }
         if (t instanceof Type.MapOf mo) {
             return new Ast.MapEnc(access, encElem(mo.value(), d, pos), pos);
+        }
+        if (t instanceof Type.TupleOf) {
+            throw new CompileException(pos, "a tuple cannot be a data field in `" + d.name()
+                    + "`: a tuple has no external representation, so no encoder can be derived"
+                    + " (ADR-0036). Use a named data.");
         }
         throw new CompileException(pos,
                 "cannot derive an encoder for field type " + t + " in `" + d.name() + "`");

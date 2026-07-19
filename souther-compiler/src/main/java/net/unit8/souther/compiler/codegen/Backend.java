@@ -2654,6 +2654,19 @@ public final class Backend {
                     code.invokestatic(CD_Maps, "size", MethodTypeDesc.of(ConstantDescs.CD_long, CD_Map));
                     return Type.INT;
                 }
+                case "map.toList" -> {
+                    Type mt = genExpr(call.args().get(0));
+                    code.invokestatic(CD_Maps, "toList", MethodTypeDesc.of(CD_List, CD_Map));
+                    Type v = ((Type.MapOf) mt).value();
+                    return Type.list(Type.tuple(List.of(Type.STRING, v)));   // List<(String, V)>
+                }
+                case "map.fromList" -> {
+                    Type lt = genExpr(call.args().get(0));   // List<(String, V)>
+                    code.invokestatic(CD_Maps, "fromList", MethodTypeDesc.of(CD_Map, CD_List));
+                    Type elem = ((Type.ListOf) lt).element();
+                    Type v = elem instanceof Type.TupleOf tp ? tp.elements().get(1) : Type.NOTHING;
+                    return Type.map(v);
+                }
                 // Date / DateTime arithmetic. Int is a long on the JVM, so the count is already a
                 // long and needs no conversion. The date/date-time being operated on is the last
                 // argument ([#pipe]); it is emitted first as the receiver of the plus* call.

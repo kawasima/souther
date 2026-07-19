@@ -1147,6 +1147,8 @@ The set of behaviors with no implementation that a `+let+` uses and the set writ
 
 `+(a, b, ...)+` is a tuple bundling two or more values into one (ADR-0036). It is an expression-level value, used only in the middle of a computation — a helper `+let+` returning multiple values and destructuring them — and MUST NOT be written in a data field or a behavior input/output. Like a function (<<blocks>>), it does not cross the boundary, so no codec is derived. Domain vocabulary stays as named data.
 
+A tuple *type* `+(A, B, ...)+` may be written in a helper or standard-library signature — a parameter, a return type, or a type argument such as `+List<(String, 'a)>+` — since a signature is not a codec boundary (ADR-0037). It is still rejected in the two boundary positions above: a data field and a behavior's input/output, where a codec would have to be derived. A one-element `+(T)+` is not a tuple type.
+
 [,text]
 ----
 let 統計 (xs: List<Int>) = (List.sum(xs), List.length(xs))   // return multiple values
@@ -1788,9 +1790,12 @@ A `+Map+` is immutable and string-keyed (<<collections>>). The accessors read; t
 ----
 get  containsKey  keys  values                   // read
 empty  singleton  insert  remove  isEmpty  size  // build
+toList  fromList                                 // convert to / from entry tuples
 ----
 
 `+get+` returns `+Option<V>+`. `+empty+` is the empty map: like the empty list `+[]+`, its value type is fixed by context (a field or return position, or the first `+insert+`), so it is a built-in taking no argument rather than a call learning a type variable. `+singleton(k, v)+` is a one-entry map; `+insert(k, v, m)+` adds an entry or overwrites the existing one; `+remove(k, m)+` drops one, leaving `+m+` unchanged when the key is absent. Because a `+Map+` is immutable, `+insert+` / `+remove+` return a new map rather than mutating. `+size+` is the entry count and `+isEmpty+` whether there are none. The map operated on is last (<<pipe>>), so `+m |> Map.insert(k, v)+` reads left to right.
+
+`+toList(m)+` is the entries as a `+List<(String, V)>+` — a list of key/value tuples in iteration order — and `+fromList(entries)+` builds a map back (a later entry wins on a duplicate key). The tuple type in these signatures is allowed because a signature is not a codec boundary (<<tuple>>, ADR-0037).
 
 `+fold+` / `+map+` / `+update+` — the operations that take a step function — are a future addition; they need the inlined-step lowering `+List.fold+` uses.
 
