@@ -145,6 +145,12 @@ public final class Deriver {
             return new Ast.OptionDecRef(decRef(oo.element(), d, pos), pos);
         }
         if (t instanceof Type.MapOf mo) {
+            if (mo.key() != Type.STRING) {
+                throw new CompileException(pos, "a Map keyed by `" + mo.key() + "` cannot yet be a data"
+                        + " field in `" + d.name() + "`: the typed-key codec is not implemented"
+                        + " (ADR-0040). Use such a map in a behavior body, or key by String at the"
+                        + " boundary.");
+            }
             return new Ast.MapDecRef(decRef(mo.value(), d, pos), pos);
         }
         if (t instanceof Type.TupleOf) {
@@ -224,6 +230,12 @@ public final class Deriver {
             return new Ast.OptionRaw(access, inner, elemVar, pos);
         }
         if (t instanceof Type.MapOf mo) {
+            if (mo.key() != Type.STRING) {
+                throw new CompileException(pos, "a Map keyed by `" + mo.key() + "` cannot yet be a data"
+                        + " field in `" + d.name() + "`: the typed-key codec is not implemented"
+                        + " (ADR-0040). Use such a map in a behavior body, or key by String at the"
+                        + " boundary.");
+            }
             return new Ast.MapEnc(access, encElem(mo.value(), d, pos), pos);
         }
         if (t instanceof Type.TupleOf) {

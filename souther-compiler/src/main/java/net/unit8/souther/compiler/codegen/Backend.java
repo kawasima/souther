@@ -2656,15 +2656,15 @@ public final class Backend {
                 }
                 case "map.containsKey" -> {
                     genExpr(call.args().get(1));         // containsKey(key, m): map then key (Maps.containsKey)
-                    genExpr(call.args().get(0));
+                    genExpr(call.args().get(0));         // key is a String or a newtype (a reference)
                     code.invokestatic(CD_Maps, "containsKey",
-                            MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_Map, CD_String));
+                            MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_Map, ConstantDescs.CD_Object));
                     return Type.BOOL;
                 }
                 case "map.keys" -> {
-                    genExpr(call.args().get(0));
+                    Type mt = genExpr(call.args().get(0));
                     code.invokestatic(CD_Maps, "keys", MethodTypeDesc.of(CD_List, CD_Map));
-                    return Type.list(Type.STRING);
+                    return Type.list(((Type.MapOf) mt).key());
                 }
                 case "map.values" -> {
                     Type mt = genExpr(call.args().get(0));
@@ -2672,27 +2672,30 @@ public final class Backend {
                     return Type.list(((Type.MapOf) mt).value());
                 }
                 case "map.singleton" -> {
-                    genExpr(call.args().get(0));             // key (String)
+                    Type kt = genExpr(call.args().get(0));   // key (a reference)
                     Type vt = genExpr(call.args().get(1));   // value
                     box(code, vt);
                     code.invokestatic(CD_Maps, "singleton",
-                            MethodTypeDesc.of(CD_Map, CD_String, ConstantDescs.CD_Object));
-                    return Type.map(vt);
+                            MethodTypeDesc.of(CD_Map, ConstantDescs.CD_Object, ConstantDescs.CD_Object));
+                    return Type.map(kt, vt);
                 }
                 case "map.insert" -> {
-                    genExpr(call.args().get(0));             // key (String)
+                    Type kt = genExpr(call.args().get(0));   // key (a reference)
                     Type vt = genExpr(call.args().get(1));   // value
                     box(code, vt);
                     Type mt = genExpr(call.args().get(2));   // map (last, [#pipe])
-                    code.invokestatic(CD_Maps, "insert",
-                            MethodTypeDesc.of(CD_Map, CD_String, ConstantDescs.CD_Object, CD_Map));
-                    Type existing = ((Type.MapOf) mt).value();
-                    return Type.map(existing instanceof Type.Nothing ? vt : existing);
+                    code.invokestatic(CD_Maps, "insert", MethodTypeDesc.of(CD_Map,
+                            ConstantDescs.CD_Object, ConstantDescs.CD_Object, CD_Map));
+                    Type ek = ((Type.MapOf) mt).key();
+                    Type ev = ((Type.MapOf) mt).value();
+                    return Type.map(ek instanceof Type.Nothing ? kt : ek,
+                            ev instanceof Type.Nothing ? vt : ev);
                 }
                 case "map.remove" -> {
-                    genExpr(call.args().get(0));             // key (String)
+                    genExpr(call.args().get(0));             // key (a reference)
                     Type mt = genExpr(call.args().get(1));   // map
-                    code.invokestatic(CD_Maps, "remove", MethodTypeDesc.of(CD_Map, CD_String, CD_Map));
+                    code.invokestatic(CD_Maps, "remove",
+                            MethodTypeDesc.of(CD_Map, ConstantDescs.CD_Object, CD_Map));
                     return mt;
                 }
                 case "map.isEmpty" -> {
@@ -2709,15 +2712,17 @@ public final class Backend {
                 case "map.toList" -> {
                     Type mt = genExpr(call.args().get(0));
                     code.invokestatic(CD_Maps, "toList", MethodTypeDesc.of(CD_List, CD_Map));
-                    Type v = ((Type.MapOf) mt).value();
-                    return Type.list(Type.tuple(List.of(Type.STRING, v)));   // List<(String, V)>
+                    Type.MapOf mo = (Type.MapOf) mt;
+                    return Type.list(Type.tuple(List.of(mo.key(), mo.value())));   // List<(K, V)>
                 }
                 case "map.fromList" -> {
                     Type lt = genExpr(call.args().get(0));   // List<(String, V)>
                     code.invokestatic(CD_Maps, "fromList", MethodTypeDesc.of(CD_Map, CD_List));
                     Type elem = ((Type.ListOf) lt).element();
-                    Type v = elem instanceof Type.TupleOf tp ? tp.elements().get(1) : Type.NOTHING;
-                    return Type.map(v);
+                    if (elem instanceof Type.TupleOf tp) {
+                        return Type.map(tp.elements().get(0), tp.elements().get(1));
+                    }
+                    return Type.map(Type.NOTHING, Type.NOTHING);
                 }
                 case "set.singleton" -> {
                     Type vt = genExpr(call.args().get(0));   // element
@@ -2869,13 +2874,14 @@ public final class Backend {
                 }
                 case "Map.get" -> {
                     Type ct = genExpr(call.args().get(1));      // get(key, m): map then key (Maps.get)
-                    genExpr(call.args().get(0));                // String key
-                    code.invokestatic(CD_Maps, "get", MethodTypeDesc.of(CD_Option, CD_Map, CD_String));
+                    genExpr(call.args().get(0));                // key (a reference)
+                    code.invokestatic(CD_Maps, "get",
+                            MethodTypeDesc.of(CD_Option, CD_Map, ConstantDescs.CD_Object));
                     return Type.option(((Type.MapOf) ct).value());
                 }
                 case "Map.empty" -> {
                     code.invokestatic(CD_Maps, "empty", MethodTypeDesc.of(CD_Map));
-                    return Type.map(Type.NOTHING);   // element type fixed by context, like `[]`
+                    return Type.map(Type.NOTHING, Type.NOTHING);   // key/value fixed by context, like `[]`
                 }
                 case "Set.empty" -> {
                     code.invokestatic(CD_Sets, "empty", MethodTypeDesc.of(CD_Set));

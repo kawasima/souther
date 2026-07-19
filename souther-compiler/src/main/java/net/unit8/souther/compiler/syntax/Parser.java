@@ -480,13 +480,12 @@ public final class Parser {
         if (n.text().equals("Map") && check(TokenType.LT)) {
             advance();
             Ast.TypeRef key = parseTypeRef();
-            if (!key.name().equals("String") || key.arg() != null) {
-                throw error(peek(), "Map key type must be String");
-            }
             expect(TokenType.COMMA);
             Ast.TypeRef value = parseTypeRef();
             expect(TokenType.GT);
-            return new Ast.TypeRef("Map", value, n.pos());   // key is always String; carry the value type
+            // carry the value in `arg` and the key in `tupleElems` (ADR-0040); the checker validates
+            // the key is String or a String-backed newtype.
+            return new Ast.TypeRef("Map", value, List.of(key), n.pos());
         }
         return new Ast.TypeRef(n.text(), null, n.pos());
     }

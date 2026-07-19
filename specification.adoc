@@ -354,11 +354,11 @@ The `+hashCode+` of a data containing `+Decimal+` is computed after dropping sca
 [,text]
 ----
 List<T>
-Map<String, T>
+Map<K, V>
 Set<T>
 ----
 
-Collections are immutable. A `+List+` is ordered and may repeat; a `+Set+` is unordered with no duplicate elements, compared by value equality (<<primitives>>, ADR-0009); a `+Map+` is string-keyed. A `+Set+`'s external representation is a JSON array, deduplicated on decode (ADR-0039).
+Collections are immutable. A `+List+` is ordered and may repeat; a `+Set+` is unordered with no duplicate elements, compared by value equality (<<primitives>>, ADR-0009); a `+Map+` is keyed by `+K+`, which is `+String+` or a String-backed newtype (`+data 商品ID = String+`), so a key carries its domain type (`+Map<商品ID, 在庫>+`; ADR-0040). A newtype-keyed map is usable within a behavior body; crossing the boundary (a data field or behavior I/O) currently requires a `+String+` key, until the typed-key codec lands. A `+Set+`'s external representation is a JSON array, deduplicated on decode (ADR-0039).
 
 Collections are *covariant* in their element. A case `+A+` may be used as its sum `+S+` (<<sum-data>>), so `+List<A>+` may be passed where `+List<S>+` is expected, `+Set<A>+` where `+Set<S>+` is expected, `+Map<String, A>+` where `+Map<String, S>+` is expected, and `+A?+` where `+S?+` is expected. This is sound because collections are immutable and there is no room to write a sibling case later. Covariance of mutable arrays (Java) is unsound because writes are a hole; that is the difference. This is the same position as Scala's immutable `+List+` and Kotlin's read-only `+List+`. Covariance applies only in the case→sum direction; sibling cases (`+A+` and `+B+`) are unrelated.
 

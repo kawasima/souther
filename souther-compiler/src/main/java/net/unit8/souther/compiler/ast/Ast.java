@@ -165,9 +165,10 @@ public interface Ast {
 
     /**
      * A named type reference, optionally with one type argument (e.g. {@code List<T>}). When
-     * {@code tupleElems} is non-null the ref is a tuple type {@code (A, B, ...)} (ADR-0036) and
-     * {@code name}/{@code arg} are unused; a tuple type is written only in a helper/stdlib signature,
-     * never in a data field or a behavior's input/output (the checker rejects it there).
+     * {@code name} is null and {@code tupleElems} is non-null the ref is a tuple type
+     * {@code (A, B, ...)} (ADR-0036), written only in a helper/stdlib signature. A {@code Map<K, V>}
+     * reuses {@code tupleElems} to carry its key type (a single element) while {@code name} is
+     * {@code "Map"} and {@code arg} is the value type (ADR-0040).
      */
     record TypeRef(String name, TypeRef arg, List<TypeRef> tupleElems, SourcePos pos) implements Ast {
         /** An ordinary (non-tuple) reference. */
@@ -175,8 +176,10 @@ public interface Ast {
             this(name, arg, null, pos);
         }
 
+        /** A tuple type is the nameless form; a named ref that also carries {@code tupleElems}
+         *  (a {@code Map} carrying its key) is not a tuple. */
         public boolean isTuple() {
-            return tupleElems != null;
+            return name == null && tupleElems != null;
         }
     }
 

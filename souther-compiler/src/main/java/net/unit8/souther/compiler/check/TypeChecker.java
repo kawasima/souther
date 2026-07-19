@@ -598,7 +598,7 @@ public final class TypeChecker {
         return switch (t) {
             case Type.TupleOf ignored -> true;
             case Type.ListOf l -> containsTuple(l.element());
-            case Type.MapOf m -> containsTuple(m.value());
+            case Type.MapOf m -> containsTuple(m.key()) || containsTuple(m.value());
             case Type.SetOf s -> containsTuple(s.element());
             case Type.OptionOf o -> containsTuple(o.element());
             default -> false;
@@ -1985,13 +1985,13 @@ public final class TypeChecker {
                 if (!(first instanceof Type.MapOf mo)) {
                     throw new CompileException(call.pos(), "Map.get expects a Map, got " + first);
                 }
-                requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "key of Map.get");
+                requireType(args.get(0), mo.key(), env, data, symbols, reqs, "key of Map.get");
                 yield Type.option(mo.value());
             }
             case "Map.empty" -> {
                 arity(call, 0);
-                // like `[]`, the empty map's value type is a bottom fixed by context (ADR-0028)
-                yield Type.map(Type.NOTHING);
+                // like `[]`, the empty map's key and value are bottoms fixed by context (ADR-0028)
+                yield Type.map(Type.NOTHING, Type.NOTHING);
             }
             case "Set.empty" -> {
                 arity(call, 0);
@@ -2479,7 +2479,7 @@ public final class TypeChecker {
             return assignable(a.element(), b.element(), symbols);
         }
         if (from instanceof Type.MapOf a && to instanceof Type.MapOf b) {
-            return assignable(a.value(), b.value(), symbols);
+            return assignable(a.key(), b.key(), symbols) && assignable(a.value(), b.value(), symbols);
         }
         if (from instanceof Type.SetOf a && to instanceof Type.SetOf b) {
             return assignable(a.element(), b.element(), symbols);
@@ -2527,8 +2527,10 @@ public final class TypeChecker {
             }
             case Type.ListOf p when arg instanceof Type.ListOf a ->
                     unify(p.element(), a.element(), bindings, symbols, pos, what);
-            case Type.MapOf p when arg instanceof Type.MapOf a ->
-                    unify(p.value(), a.value(), bindings, symbols, pos, what);
+            case Type.MapOf p when arg instanceof Type.MapOf a -> {
+                unify(p.key(), a.key(), bindings, symbols, pos, what);
+                unify(p.value(), a.value(), bindings, symbols, pos, what);
+            }
             case Type.SetOf p when arg instanceof Type.SetOf a ->
                     unify(p.element(), a.element(), bindings, symbols, pos, what);
             case Type.OptionOf p when arg instanceof Type.OptionOf a ->
@@ -2558,7 +2560,7 @@ public final class TypeChecker {
         return switch (t) {
             case Type.Var v -> bindings.getOrDefault(v.name(), v);
             case Type.ListOf l -> Type.list(substitute(l.element(), bindings));
-            case Type.MapOf m -> Type.map(substitute(m.value(), bindings));
+            case Type.MapOf m -> Type.map(substitute(m.key(), bindings), substitute(m.value(), bindings));
             case Type.SetOf s -> Type.set(substitute(s.element(), bindings));
             case Type.OptionOf o -> Type.option(substitute(o.element(), bindings));
             case Type.FnOf f -> {
@@ -2592,6 +2594,13 @@ public final class TypeChecker {
             }
         }
         return out;
+    }
+
+    /** Whether {@code name} is a newtype over {@code String} ({@code data X = String}) — the only key
+     *  type a {@code Map} admits besides {@code String} itself (ADR-0040). */
+    static boolean isStringNewtype(String name, Map<String, Ast.Def> symbols) {
+        return symbols.get(name) instanceof Ast.Data d && d.newtype()
+                && d.fields().size() == 1 && "String".equals(d.fields().get(0).type().name());
     }
 
     public static Type resolveType(Ast.TypeRef ref, Map<String, Ast.Def> symbols) {
@@ -2632,7 +2641,14 @@ public final class TypeChecker {
                 if (ref.arg() == null) {
                     throw new CompileException(ref.pos(), "Map needs a value type, e.g. Map<String, Int>");
                 }
-                yield Type.map(resolveType(ref.arg(), symbols));
+                Type key = ref.tupleElems() == null
+                        ? Type.STRING : resolveType(ref.tupleElems().get(0), symbols);
+                if (!(key == Type.STRING || key instanceof Type.Var
+                        || (key instanceof Type.Ref r && isStringNewtype(r.name(), symbols)))) {
+                    throw new CompileException(ref.pos(), "a Map key must be String or a String-backed"
+                            + " newtype (`data X = String`), got " + key + " (ADR-0040)");
+                }
+                yield Type.map(key, resolveType(ref.arg(), symbols));
             }
             default -> {
                 if (ref.name().startsWith("'")) {

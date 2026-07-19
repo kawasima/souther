@@ -28,8 +28,10 @@ public sealed interface Type
     /** A homogeneous list of {@code element}. */
     record ListOf(Type element) implements Type {}
 
-    /** A {@code Map<String, value>} — string-keyed, per spec 7.2. */
-    record MapOf(Type value) implements Type {}
+    /** A {@code Map<key, value>}. The key is {@code String} or a String-backed newtype (ADR-0040);
+     * at runtime the map is keyed by that value (value equality, ADR-0009) and its external
+     * representation is a JSON object whose string keys are the key's bare form. */
+    record MapOf(Type key, Type value) implements Type {}
 
     /** A {@code Set<element>} — an unordered collection with no duplicate elements, compared by value
      * equality (ADR-0009). Its external representation is a JSON array, deduplicated on decode. */
@@ -78,8 +80,14 @@ public sealed interface Type
         return new OptionOf(element);
     }
 
+    /** A string-keyed map (the common case): {@code MapOf(STRING, value)}. */
     static Type map(Type value) {
-        return new MapOf(value);
+        return new MapOf(STRING, value);
+    }
+
+    /** A map with an explicit key type (a String or a String-backed newtype). */
+    static Type map(Type key, Type value) {
+        return new MapOf(key, value);
     }
 
     static Type set(Type element) {

@@ -54,3 +54,4 @@ specification is in Japanese.
 | [0037](0037-tuple-types-in-signatures.md) | Tuple types are writable in helper/stdlib signatures, not at a codec boundary | `[#tuple]`, `[#stdlib-map]` |
 | [0038](0038-user-recursion-over-self-referential-data.md) | User helpers may recurse over self-referential data; a recursive helper is lowered to a method | `[#fn-declaration]`, `[#algebraic-types]` |
 | [0039](0039-set-collection-type.md) | Set is a collection type; its external representation is a deduplicated array | `[#collections]`, `[#stdlib-set]` |
+| [0040](0040-typed-map-keys.md) | A Map key may be a String-backed newtype, not only String | `[#collections]`, `[#stdlib-map]` |
