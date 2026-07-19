@@ -130,6 +130,30 @@ class CompileEmptyListTest {
         assertEquals(List.of(1L, 2L, 3L), run(loader, in).get("ys"));
     }
 
+    /**
+     * A no-op fold over an empty seed — the block never grows it, so the accumulator type stays a
+     * bottom. The checker keeps the seed type (an empty list) rather than rejecting it, matching what
+     * the backend recovers; the result is just the empty list.
+     */
+    @Test
+    void aNoOpFoldOverAnEmptySeedKeepsTheSeedType() throws Exception {
+        String module = """
+                module demo
+
+                import List ( fold )
+
+                data In = { xs: List<Int> }
+                data Out = { ys: List<Int> }
+
+                behavior work : (i: In) -> Out constructs Out
+
+                let work (i) = Out { ys = fold((acc, x) -> acc, [], i.xs) }
+                """;
+        BytesClassLoader loader = loader(module);
+        Object in = decode(loader, "In", Map.of("xs", List.of(1L, 2L, 3L)));
+        assertEquals(List.of(), run(loader, in).get("ys"), "the block never grows the seed, so the result is empty");
+    }
+
     /** {@code []} straight into a {@code List<T>} field: an empty list of that type. */
     @Test
     void emptyListIntoField() throws Exception {

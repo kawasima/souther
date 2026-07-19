@@ -3103,6 +3103,27 @@ public final class Backend {
                             MethodTypeDesc.of(CD_Option, CD_List, ConstantDescs.CD_long));
                     return Type.option(((Type.ListOf) ct).element());
                 }
+                case "List.max", "List.min" -> {
+                    Type ct = genExpr(call.args().get(0));
+                    code.invokestatic(CD_Lists, bareOp(call.fn()),   // "max" / "min"
+                            MethodTypeDesc.of(CD_Option, CD_List));
+                    return Type.option(((Type.ListOf) ct).element());
+                }
+                case "List.find", "List.sortBy" -> {
+                    // find(p, xs) / sortBy(key, xs): the function is a value here (not inlined into a
+                    // fold), so materialise it as an Fn, then pass the list. The list's element type
+                    // gives the function's one parameter type.
+                    Type lt = TypeChecker.typeOf(call.args().get(1).toAst(), typesEnv(), data, symbols, reqSigs());
+                    Type elem = ((Type.ListOf) lt).element();
+                    emitFunctionValue(call.args().get(0).toAst(), List.of(elem));   // Fn on the stack
+                    genExpr(call.args().get(1));                                    // then the List
+                    if (call.fn().equals("List.find")) {
+                        code.invokestatic(CD_Lists, "find", MethodTypeDesc.of(CD_Option, CD_Fn, CD_List));
+                        return Type.option(elem);
+                    }
+                    code.invokestatic(CD_Lists, "sortBy", MethodTypeDesc.of(CD_List, CD_Fn, CD_List));
+                    return Type.list(elem);
+                }
                 case "Map.get" -> {
                     Type ct = genExpr(call.args().get(1));      // get(key, m): map then key (Maps.get)
                     genExpr(call.args().get(0));                // key (a reference)

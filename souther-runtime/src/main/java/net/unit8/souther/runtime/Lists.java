@@ -33,4 +33,60 @@ public final class Lists {
         out.sort((a, b) -> ((Comparable) a).compareTo(b));
         return List.copyOf(out);
     }
+
+    /** The greatest element by natural order, {@code None} for an empty list (Elm {@code List.maximum}).
+     *  The element is a {@link Comparable}, as {@code sort} requires. */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static <T> Option<T> max(List<? extends T> xs) {
+        return extreme(xs, true);
+    }
+
+    /** The least element by natural order, {@code None} for an empty list (Elm {@code List.minimum}). */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static <T> Option<T> min(List<? extends T> xs) {
+        return extreme(xs, false);
+    }
+
+    /** The first element satisfying {@code p}, or {@code None} if none does (Elm {@code List.Extra
+     *  find}). {@code p} is a first-class function value; it is applied to each element in turn. */
+    public static <T> Option<T> find(Fn p, List<? extends T> xs) {
+        for (T x : xs) {
+            if ((Boolean) p.apply(new Object[] {x})) {
+                return Option.some(x);
+            }
+        }
+        return Option.none();
+    }
+
+    /** Sorts by {@code key(element)}'s natural order, the input untouched (Elm {@code List.sortBy}).
+     *  {@code key} maps each element to an ordered value. Each key is computed once (decorate, sort,
+     *  undecorate), so a costly key runs {@code O(n)} times, not once per comparison; the sort is stable. */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static <T> List<T> sortBy(Fn key, List<? extends T> xs) {
+        List<Object[]> decorated = new ArrayList<>(xs.size());
+        for (T x : xs) {
+            decorated.add(new Object[] {x, key.apply(new Object[] {x})});
+        }
+        decorated.sort((a, b) -> ((Comparable) a[1]).compareTo(b[1]));
+        List<T> out = new ArrayList<>(decorated.size());
+        for (Object[] pair : decorated) {
+            out.add((T) pair[0]);
+        }
+        return List.copyOf(out);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static <T> Option<T> extreme(List<? extends T> xs, boolean greatest) {
+        if (xs.isEmpty()) {
+            return Option.none();
+        }
+        T best = xs.get(0);
+        for (T x : xs) {
+            int cmp = ((Comparable) x).compareTo(best);
+            if (greatest ? cmp > 0 : cmp < 0) {
+                best = x;
+            }
+        }
+        return Option.some(best);
+    }
 }

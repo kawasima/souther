@@ -29,6 +29,34 @@ let concat (xss: List<List<'a>>) = List.fold((acc, xs) -> acc ++ xs, [], xss)
 let member (e: 'a, xs: List<'a>) = List.fold((acc, x) -> acc || x == e, false, xs)
 let isEmpty (xs: List<'a>) = List.length(xs) == 0
 
+// `distinct` keeps the first occurrence of each element and drops later duplicates, comparing by
+// `==` (Elm's List.Extra `unique`). It folds `[]`, consulting the accumulator with `member` before
+// growing it — the one combinator that reads the list it is building, which is why the accumulator's
+// element type has to be recovered from the block rather than the empty seed.
+let distinct (xs: List<'a>) = List.fold((acc, x) -> if List.member(x, acc) then acc else acc ++ [x], [], xs)
+
+// `partition` splits the list by a predicate into (kept, rest), preserving order in each (Elm's
+// List.partition). It folds a pair of empty lists `([], [])`, appending each element to one side —
+// the accumulator's real shape is the pair of lists the block grows, not the bottoms the seed holds.
+let partition (keep: ('a) -> Bool, xs: List<'a>) =
+    List.fold((acc, x) -> {
+        let (yes, no) = acc
+        if keep(x) then (yes ++ [x], no) else (yes, no ++ [x])
+    }, ([], []), xs)
+
+// `groupBy` buckets the elements by a key into a `Map<'k, List<'a>>`, each bucket in first-seen
+// order (Elm's Dict-based grouping). It folds `Map.empty`, reading the current bucket with `Map.get`
+// (a `None` starts a new one) and writing back the extended bucket — a Map accumulator grown the same
+// way `distinct` grows a list, its key and value types recovered from the block.
+let groupBy (key: ('a) -> 'k, xs: List<'a>) =
+    List.fold((acc, x) ->
+        Map.insert(key(x),
+            match Map.get(key(x), acc) with
+                | None -> [x]
+                | Some bucket -> bucket ++ [x],
+            acc),
+        Map.empty(), xs)
+
 // `sort` orders by the elements' natural order (Elm `List.sort`). Like Elm it is a native
 // primitive, not a fold: an in-language sort needs comparison plus a place to remember the
 // half-built result, which `fold` alone does not give.

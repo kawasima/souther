@@ -1,0 +1,43 @@
+// distinct のショーケース: 受注明細から取扱商品の一覧を、重複を排して初出順で取り出す。distinct は
+// fold から導いた combinator の中で唯一「育てている途中のリストを member で読む」もので、[] 種の
+// accumulator の要素型を種ではなくブロックから解決できるようになって初めて自己ホストできた。
+module example.sales
+import List ( map, filter, sum, distinct, length )
+
+data 商品ID = String
+    invariant String.length(value) >= 1
+
+data 明細 = {
+    商品: 商品ID
+    , 数量: Int
+    , 金額: Int
+}
+
+data 注文 = { 明細リスト: List<明細> }
+
+// 受注レポート: 総額・取扱商品(重複排除)・明細数・高額明細(1000以上)の件数。
+data レポート = {
+    総額: Int
+    , 取扱商品: List<String>
+    , 明細数: Int
+    , 高額明細数: Int
+}
+// 明細が1件も無い注文の失敗ケース。
+data 空注文
+
+behavior 集計する : (注: 注文) -> レポート | 空注文
+    constructs レポート, 空注文
+
+// map に名前で渡す純粋ヘルパ。
+let 金額 (m: 明細) = m.金額
+let 商品名 (m: 明細) = m.商品.value
+
+let 集計する (注) = {
+    require length(注.明細リスト) >= 1 else 空注文
+    レポート {
+        総額 = sum(map(金額, 注.明細リスト)),
+        取扱商品 = distinct(map(商品名, 注.明細リスト)),
+        明細数 = length(注.明細リスト),
+        高額明細数 = length(filter(m -> m.金額 >= 1000, 注.明細リスト))
+    }
+}

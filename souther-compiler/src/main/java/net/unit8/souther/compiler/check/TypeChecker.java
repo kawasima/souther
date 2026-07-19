@@ -1688,7 +1688,7 @@ public final class TypeChecker {
                 requireType(iff.cond(), Type.BOOL, env, data, symbols, reqs, "if condition");
                 Type tt = typeOf(iff.then(), env, data, symbols, reqs);
                 Type et = typeOf(iff.els(), env, data, symbols, reqs);
-                Type empty = absorbEmptyList(tt, et);   // one case may be `[]` (ADR-0028)
+                Type empty = absorbBottom(tt, et);   // one case may be `[]`, or a tuple of them (ADR-0028)
                 if (empty != null) {
                     yield empty;
                 }
@@ -1738,10 +1738,57 @@ public final class TypeChecker {
         return null;
     }
 
+    /** Reconciles two joined positions where one may carry the empty-collection bottom, recursing
+     * through tuples so a {@code ([], [])} accumulator grown on either side joins to {@code (T, T)}
+     * (the {@code partition} shape). Beyond the whole empty list {@link #absorbEmptyList} handles, it
+     * joins same-arity tuples element-wise. Returns {@code null} when the two do not reconcile, so the
+     * caller falls through to its ordinary rules. */
+    private static Type absorbBottom(Type a, Type b) {
+        if (a.equals(b)) {
+            return a;
+        }
+        Type list = absorbEmptyList(a, b);
+        if (list != null) {
+            return list;
+        }
+        if (a instanceof Type.TupleOf ta && b instanceof Type.TupleOf tb
+                && ta.elements().size() == tb.elements().size()) {
+            List<Type> elems = new ArrayList<>();
+            for (int i = 0; i < ta.elements().size(); i++) {
+                Type e = absorbBottom(ta.elements().get(i), tb.elements().get(i));
+                if (e == null) {
+                    return null;
+                }
+                elems.add(e);
+            }
+            return Type.tuple(elems);
+        }
+        return null;
+    }
+
     /** The scalar empty-collection bottom: the element type of a {@code []} whose type is not yet
      * fixed (ADR-0028). It unifies with any type, so a comparison against it is left to run time. */
     private static boolean isBottom(Type t) {
         return t instanceof Type.Nothing;
+    }
+
+    /** Reads a bottom ({@code Nothing}) as the empty list — its run-time value when it is a list read
+     * from an accumulator an empty collection seed grows (see the {@code CONCAT} case). Leaves any
+     * other type untouched. */
+    private static Type bottomAsEmptyList(Type t) {
+        return isBottom(t) ? Type.EMPTY_LIST : t;
+    }
+
+    /** Whether {@code a} and {@code b} are the same kind of collection (so an empty-collection seed of
+     * {@code a}'s kind is grown into {@code b}) — both lists, sets, options, maps, or same-arity
+     * tuples. A bare seed and a grown value of the same shape pass; a mismatched shape does not. */
+    private static boolean sameKind(Type a, Type b) {
+        return (a instanceof Type.ListOf && b instanceof Type.ListOf)
+                || (a instanceof Type.SetOf && b instanceof Type.SetOf)
+                || (a instanceof Type.OptionOf && b instanceof Type.OptionOf)
+                || (a instanceof Type.MapOf && b instanceof Type.MapOf)
+                || (a instanceof Type.TupleOf ta && b instanceof Type.TupleOf tb
+                        && ta.elements().size() == tb.elements().size());
     }
 
     private static Type unifyElem(Type a, Type b, SourcePos pos) {
@@ -1946,6 +1993,49 @@ public final class TypeChecker {
                 }
                 yield Type.INT;
             }
+            case "List.max", "List.min" -> {
+                arity(call, 1);
+                Type t = typeOf(args.get(0), env, data, symbols, reqs);
+                if (!(t instanceof Type.ListOf lo)) {
+                    throw new CompileException(call.pos(),
+                            "argument of " + call.fn() + " must be a List but is " + t);
+                }
+                // Like `sort`, max/min compare by natural order, so the element must be an ordered
+                // primitive (Souther has no type classes); a data / newtype element is not Comparable.
+                // The empty-list literal (element `Nothing`) is fine — its result is `None`.
+                if (!isBottom(lo.element()) && !isOrdered(lo.element())) {
+                    throw new CompileException(call.pos(), call.fn() + " needs a list of ordered values "
+                            + "(Int, String, Decimal, Date, or DateTime), but the element is "
+                            + lo.element() + " — compare its ordered field instead");
+                }
+                yield Type.option(lo.element());
+            }
+            case "List.find" -> {
+                arity(call, 2);   // find(p, xs): predicate first, list last (F#/Elm order)
+                Type t = typeOf(args.get(1), env, data, symbols, reqs);
+                if (!(t instanceof Type.ListOf lo)) {
+                    throw new CompileException(call.pos(), "List.find expects a List, got " + t);
+                }
+                Type pr = blockType(call, args.get(0), List.of(lo.element()), env, data, symbols, reqs);
+                if (pr != Type.BOOL) {
+                    throw new CompileException(call.pos(),
+                            "List.find's predicate must return Bool, but returns " + pr);
+                }
+                yield Type.option(lo.element());
+            }
+            case "List.sortBy" -> {
+                arity(call, 2);   // sortBy(key, xs): key first, list last (F#/Elm order)
+                Type t = typeOf(args.get(1), env, data, symbols, reqs);
+                if (!(t instanceof Type.ListOf lo)) {
+                    throw new CompileException(call.pos(), "List.sortBy expects a List, got " + t);
+                }
+                Type keyT = blockType(call, args.get(0), List.of(lo.element()), env, data, symbols, reqs);
+                if (!isBottom(keyT) && !isOrdered(keyT)) {
+                    throw new CompileException(call.pos(), "List.sortBy's key must be an ordered value "
+                            + "(Int, String, Decimal, Date, or DateTime), but returns " + keyT);
+                }
+                yield Type.list(lo.element());
+            }
             // map/filter/all/any are no longer built in: they are prelude helpers derived from fold
             // (ADR-0028, souther.list), so a call to one is expanded inline before it reaches here.
             case Core.FOLD -> {
@@ -1957,13 +2047,17 @@ public final class TypeChecker {
                 }
                 Type acc = typeOf(args.get(1), env, data, symbols, reqs);
                 Type bt = blockType(call, args.get(0), List.of(acc, lo.element()), env, data, symbols, reqs);
-                if (acc.equals(Type.EMPTY_LIST)) {
-                    // the seed is `[]`; the accumulator's type is the list the block grows (ADR-0028)
-                    if (!(bt instanceof Type.ListOf)) {
-                        throw new CompileException(call.pos(), "fold seeded with the empty list `[]` "
-                                + "must build a list, but its block returns " + bt);
+                if (Type.mentions(acc, TypeChecker::isBottom)) {
+                    // The seed is an empty collection ([], Map.empty, Set.empty, or a tuple of them):
+                    // its element/key/value types are bottoms, so the accumulator's real type is the
+                    // one the block grows it into — the same shape. A block that never grows the seed
+                    // (a no-op fold) leaves the type a bottom; keep the seed type then, as the backend
+                    // recovers it, rather than reject it. A different shape is a genuine mismatch.
+                    if (!sameKind(acc, bt)) {
+                        throw new CompileException(call.pos(), "fold seeded with an empty collection must "
+                                + "grow a value of that collection's shape, but its block returns " + bt);
                     }
-                    yield bt;
+                    yield Type.mentions(bt, TypeChecker::isBottom) ? acc : bt;
                 }
                 if (!bt.equals(acc) && absorbEmptyList(acc, bt) == null) {
                     throw new CompileException(call.pos(),
@@ -1986,7 +2080,12 @@ public final class TypeChecker {
                 if (!(first instanceof Type.MapOf mo)) {
                     throw new CompileException(call.pos(), "Map.get expects a Map, got " + first);
                 }
-                requireType(args.get(0), mo.key(), env, data, symbols, reqs, "key of Map.get");
+                // A bottom key type is a `Map.empty`-seeded accumulator whose key is not fixed yet;
+                // the block growing it — `Map.get(k, acc)` in a groupBy fold — supplies the real key,
+                // so accept it rather than demand the bottom. Otherwise the key must match.
+                if (!isBottom(mo.key())) {
+                    requireType(args.get(0), mo.key(), env, data, symbols, reqs, "key of Map.get");
+                }
                 yield Type.option(mo.value());
             }
             case "Map.empty" -> {
@@ -2130,8 +2229,12 @@ public final class TypeChecker {
                 yield lt;
             }
             case CONCAT -> {
-                Type lt = typeOf(bin.left(), env, data, symbols, reqs);
-                Type rt = typeOf(bin.right(), env, data, symbols, reqs);
+                // A bottom operand ({@code Nothing}) is a list read from an accumulator an empty
+                // collection seed grows — the value at a key of a `Map.empty`-seeded fold, whose element
+                // type is not fixed yet. At run time it is a list, so read it as the empty list and let
+                // the other operand fix the element type, as `[] ++ xs` does.
+                Type lt = bottomAsEmptyList(typeOf(bin.left(), env, data, symbols, reqs));
+                Type rt = bottomAsEmptyList(typeOf(bin.right(), env, data, symbols, reqs));
                 if (!(lt instanceof Type.ListOf lo) || !(rt instanceof Type.ListOf ro)) {
                     throw new CompileException(bin.pos(), "`++` needs two lists, got " + lt + " and " + rt);
                 }

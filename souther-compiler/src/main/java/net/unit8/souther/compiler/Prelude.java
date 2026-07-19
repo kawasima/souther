@@ -53,7 +53,7 @@ public final class Prelude {
      *  they are overloaded (length/get) or need a bespoke loop/codegen (fold), plus arithmetic. They
      *  are reached qualified like everything else (spec §stdlib). */
     private static final Set<String> BUILTINS = Set.of(
-            "List.fold", "List.length", "List.get",
+            "List.fold", "List.length", "List.get", "List.max", "List.min", "List.find", "List.sortBy",
             "String.length",
             "Map.get", "Map.empty", "Set.empty",
             "Int.compare", "Int.remainder", "Int.divide", "Int.add", "Int.subtract", "Int.multiply",
@@ -142,6 +142,10 @@ public final class Prelude {
         BARE_TO_QUALIFIED.put("get", "List.get` or `Map.get");
         BARE_TO_QUALIFIED.put("empty", "Map.empty` or `Set.empty");
         BARE_TO_QUALIFIED.put("fold", "List.fold");
+        BARE_TO_QUALIFIED.put("max", "List.max");
+        BARE_TO_QUALIFIED.put("min", "List.min");
+        BARE_TO_QUALIFIED.put("find", "List.find");
+        BARE_TO_QUALIFIED.put("sortBy", "List.sortBy");
         BARE_TO_QUALIFIED.put("compare", "Int.compare` or `Decimal.compare");
         BARE_TO_QUALIFIED.put("remainder", "Int.remainder");
         BARE_TO_QUALIFIED.put("add", "Int.add` or `Decimal.add");
