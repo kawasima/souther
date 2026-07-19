@@ -1782,12 +1782,17 @@ The lower row is also ported from Elm's List module; except `+sort+`, all are se
 [#stdlib-map]
 === Map
 
+A `+Map+` is immutable and string-keyed (<<collections>>). The accessors read; the building operations return a fresh map.
+
 [,text]
 ----
-get  containsKey  keys  values
+get  containsKey  keys  values                   // read
+empty  singleton  insert  remove  isEmpty  size  // build
 ----
 
-`+get+` returns `+Option<V>+`.
+`+get+` returns `+Option<V>+`. `+empty+` is the empty map: like the empty list `+[]+`, its value type is fixed by context (a field or return position, or the first `+insert+`), so it is a built-in taking no argument rather than a call learning a type variable. `+singleton(k, v)+` is a one-entry map; `+insert(k, v, m)+` adds an entry or overwrites the existing one; `+remove(k, m)+` drops one, leaving `+m+` unchanged when the key is absent. Because a `+Map+` is immutable, `+insert+` / `+remove+` return a new map rather than mutating. `+size+` is the entry count and `+isEmpty+` whether there are none. The map operated on is last (<<pipe>>), so `+m |> Map.insert(k, v)+` reads left to right.
+
+`+fold+` / `+map+` / `+update+` — the operations that take a step function — are a future addition; they need the inlined-step lowering `+List.fold+` uses.
 
 [#stdlib-bool]
 === Bool

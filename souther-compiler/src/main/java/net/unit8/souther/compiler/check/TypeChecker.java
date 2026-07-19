@@ -1934,6 +1934,11 @@ public final class TypeChecker {
                 requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "key of Map.get");
                 yield Type.option(mo.value());
             }
+            case "Map.empty" -> {
+                arity(call, 0);
+                // like `[]`, the empty map's value type is a bottom fixed by context (ADR-0028)
+                yield Type.map(Type.NOTHING);
+            }
             case "Int.add", "Int.subtract", "Int.multiply",
                  "Decimal.add", "Decimal.subtract", "Decimal.multiply" ->
                     numericOp(call, env, data, symbols, reqs, false);
@@ -2439,8 +2444,13 @@ public final class TypeChecker {
         switch (param) {
             case Type.Var v -> {
                 Type bound = bindings.get(v.name());
-                if (bound == null) {
+                if (bound == null || bound == Type.NOTHING) {
+                    // first sight, or widen an empty-collection bottom to a concrete element: an
+                    // earlier `[]` / `Map.empty` argument bound NOTHING, and a later real element
+                    // fixes it (ADR-0028). Order-independent, so insert(k, v, Map.empty) infers V.
                     bindings.put(v.name(), arg);
+                } else if (arg == Type.NOTHING) {
+                    // the empty bottom absorbs into the concrete binding already learned
                 } else if (!assignable(arg, bound, symbols) && !assignable(bound, arg, symbols)) {
                     throw new CompileException(pos, what + ": expected " + bound + " but got " + arg);
                 }

@@ -1,12 +1,21 @@
 module souther.map
 
-// Map accessors (ADR-0028). `values` returns `List<'a>`: the checker unifies the argument's
-// `Map<String, 'a>` to learn `'a`, then resolves the result — so a generic intrinsic monomorphises
-// at the call site. `get` stays hard-coded for now: it is overloaded over List and Map, which a
-// single keyed intrinsic does not express.
+// Map operations (ADR-0028, [#stdlib-map]). Keys are always `String` ([#collections]); a value is
+// `'a`. The accessors (`containsKey`, `keys`, `values`, and the built-in `get`) read; the rest build
+// a new immutable map — `Map` is immutable ([#collections]), so `insert` / `remove` return a fresh
+// map and never mutate. `values` learns `'a` by unifying the argument's `Map<String, 'a>`, so a
+// generic intrinsic monomorphises at the call site.
 //
-// Argument order follows F#/Elm (spec §pipe): the map comes last, so `m |> Map.containsKey(k)` reads
-// left to right.
+// Argument order follows F#/Elm ([#pipe]): the map comes last, so `m |> Map.insert(k, v)` reads
+// left to right. `Map.empty` is a compiler built-in — like `[]`, its value type is fixed by context,
+// so it has no argument to learn `'a` from. `fold` / `map` / `update` (which take a step function)
+// are not here yet — they need the inlined-step lowering `List.fold` uses.
 let containsKey (key: String, m: Map<String, 'a>) : Bool = intrinsic "map.containsKey"
 let keys (m: Map<String, 'a>) : List<String> = intrinsic "map.keys"
 let values (m: Map<String, 'a>) : List<'a> = intrinsic "map.values"
+
+let singleton (key: String, value: 'a) : Map<String, 'a> = intrinsic "map.singleton"
+let insert (key: String, value: 'a, m: Map<String, 'a>) : Map<String, 'a> = intrinsic "map.insert"
+let remove (key: String, m: Map<String, 'a>) : Map<String, 'a> = intrinsic "map.remove"
+let isEmpty (m: Map<String, 'a>) : Bool = intrinsic "map.isEmpty"
+let size (m: Map<String, 'a>) : Int = intrinsic "map.size"

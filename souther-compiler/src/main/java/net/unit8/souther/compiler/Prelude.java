@@ -54,7 +54,7 @@ public final class Prelude {
     private static final Set<String> BUILTINS = Set.of(
             "List.fold", "List.length", "List.get",
             "String.length",
-            "Map.get",
+            "Map.get", "Map.empty",
             "Int.compare", "Int.remainder", "Int.divide", "Int.add", "Int.subtract", "Int.multiply",
             "Decimal.add", "Decimal.subtract", "Decimal.multiply", "Decimal.divide", "Decimal.compare");
 
@@ -139,6 +139,7 @@ public final class Prelude {
         // checker built-ins have no prelude source; list their bare→qualified hints explicitly.
         BARE_TO_QUALIFIED.put("length", "List.length` or `String.length");
         BARE_TO_QUALIFIED.put("get", "List.get` or `Map.get");
+        BARE_TO_QUALIFIED.put("empty", "Map.empty");
         BARE_TO_QUALIFIED.put("fold", "List.fold");
         BARE_TO_QUALIFIED.put("compare", "Int.compare` or `Decimal.compare");
         BARE_TO_QUALIFIED.put("remainder", "Int.remainder");

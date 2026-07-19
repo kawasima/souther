@@ -2619,6 +2619,41 @@ public final class Backend {
                     code.invokestatic(CD_Maps, "values", MethodTypeDesc.of(CD_List, CD_Map));
                     return Type.list(((Type.MapOf) mt).value());
                 }
+                case "map.singleton" -> {
+                    genExpr(call.args().get(0));             // key (String)
+                    Type vt = genExpr(call.args().get(1));   // value
+                    box(code, vt);
+                    code.invokestatic(CD_Maps, "singleton",
+                            MethodTypeDesc.of(CD_Map, CD_String, ConstantDescs.CD_Object));
+                    return Type.map(vt);
+                }
+                case "map.insert" -> {
+                    genExpr(call.args().get(0));             // key (String)
+                    Type vt = genExpr(call.args().get(1));   // value
+                    box(code, vt);
+                    Type mt = genExpr(call.args().get(2));   // map (last, [#pipe])
+                    code.invokestatic(CD_Maps, "insert",
+                            MethodTypeDesc.of(CD_Map, CD_String, ConstantDescs.CD_Object, CD_Map));
+                    Type existing = ((Type.MapOf) mt).value();
+                    return Type.map(existing instanceof Type.Nothing ? vt : existing);
+                }
+                case "map.remove" -> {
+                    genExpr(call.args().get(0));             // key (String)
+                    Type mt = genExpr(call.args().get(1));   // map
+                    code.invokestatic(CD_Maps, "remove", MethodTypeDesc.of(CD_Map, CD_String, CD_Map));
+                    return mt;
+                }
+                case "map.isEmpty" -> {
+                    genExpr(call.args().get(0));
+                    code.invokestatic(CD_Maps, "isEmpty",
+                            MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_Map));
+                    return Type.BOOL;
+                }
+                case "map.size" -> {
+                    genExpr(call.args().get(0));
+                    code.invokestatic(CD_Maps, "size", MethodTypeDesc.of(ConstantDescs.CD_long, CD_Map));
+                    return Type.INT;
+                }
                 // Date / DateTime arithmetic. Int is a long on the JVM, so the count is already a
                 // long and needs no conversion. The date/date-time being operated on is the last
                 // argument ([#pipe]); it is emitted first as the receiver of the plus* call.
@@ -2693,6 +2728,10 @@ public final class Backend {
                     genExpr(call.args().get(0));                // String key
                     code.invokestatic(CD_Maps, "get", MethodTypeDesc.of(CD_Option, CD_Map, CD_String));
                     return Type.option(((Type.MapOf) ct).value());
+                }
+                case "Map.empty" -> {
+                    code.invokestatic(CD_Maps, "empty", MethodTypeDesc.of(CD_Map));
+                    return Type.map(Type.NOTHING);   // element type fixed by context, like `[]`
                 }
                 case "Int.add", "Int.subtract", "Int.multiply",
                      "Decimal.add", "Decimal.subtract", "Decimal.multiply" -> {
