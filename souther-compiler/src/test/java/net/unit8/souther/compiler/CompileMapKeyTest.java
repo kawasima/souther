@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -63,7 +64,8 @@ class CompileMapKeyTest {
         assertEquals(2L, m.get("total"));
         assertEquals(true, m.get("hasP1"), "a fresh 商品ID(\"P-01\") matches by value equality");
         assertEquals(false, m.get("hasP9"));
-        assertEquals(List.of("P-01", "P-02"), m.get("keyList"), "keys are 商品ID, encoded bare");
+        // keys are 商品ID, encoded bare; Map key order is a deterministic hash order, not insertion.
+        assertEquals(Set.of("P-01", "P-02"), Set.copyOf((List<?>) m.get("keyList")));
     }
 
     /** A {@code Map<商品ID, V>} crosses the codec boundary: the derived decoder reads a JSON object

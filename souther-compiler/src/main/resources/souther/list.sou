@@ -18,11 +18,14 @@ let filter (keep: ('a) -> Bool, xs: List<'a>) = List.fold((acc, x) -> if keep(x)
 let all (p: ('a) -> Bool, xs: List<'a>) = List.fold((acc, x) -> acc && p(x), true, xs)
 let any (p: ('a) -> Bool, xs: List<'a>) = List.fold((acc, x) -> acc || p(x), false, xs)
 
-// More of Elm's List module, still derived from `List.fold`. `reverse` grows the accumulator
-// front-first; `sum`/`product` fold a number; `concat` folds with `++`; `member` folds a Bool using
-// `==` (so it works over any comparable element); `isEmpty` reads the length. `List.concat` and
-// `String.concat` are distinct now that names are qualified.
-let reverse (xs: List<'a>) = List.fold((acc, x) -> [x] ++ acc, [], xs)
+// More of Elm's List module. `sum`/`product` fold a number; `concat` folds with `++`; `member`
+// folds a Bool using `==` (so it works over any comparable element); `isEmpty` reads the length.
+// `List.concat` and `String.concat` are distinct now that names are qualified.
+//
+// `reverse` is a native primitive, not a fold: a left fold can only build a reversed list by
+// prepending (`[x] ++ acc`), and a prepend copies the whole accumulator on an array-backed list, so
+// the fold form is O(n²). The intrinsic walks the input from the end in O(n) (like `sort`).
+let reverse (xs: List<'a>) : List<'a> = intrinsic "list.reverse"
 let sum (xs: List<Int>) = List.fold((acc, x) -> acc + x, 0, xs)
 let product (xs: List<Int>) = List.fold((acc, x) -> acc * x, 1, xs)
 let concat (xss: List<List<'a>>) = List.fold((acc, xs) -> acc ++ xs, [], xss)
@@ -30,10 +33,26 @@ let member (e: 'a, xs: List<'a>) = List.fold((acc, x) -> acc || x == e, false, x
 let isEmpty (xs: List<'a>) = List.length(xs) == 0
 
 // `distinct` keeps the first occurrence of each element and drops later duplicates, comparing by
-// `==` (Elm's List.Extra `unique`). It folds `[]`, consulting the accumulator with `member` before
-// growing it — the one combinator that reads the list it is building, which is why the accumulator's
-// element type has to be recovered from the block rather than the empty seed.
-let distinct (xs: List<'a>) = List.fold((acc, x) -> if List.member(x, acc) then acc else acc ++ [x], [], xs)
+// value equality (Elm's List.Extra `unique`). It folds a pair of a `Set` of the elements seen so far
+// and the result list: an element already in the set is skipped, otherwise it joins both. Consulting
+// a `Set` (O(log n)) rather than scanning the growing list with `member` (O(n)) is what keeps it
+// O(n log n); the result list keeps first-seen order. The seen-set is discarded at the end. This is
+// the same shape as `groupBy`, which grows a `Map` accumulator from within `List.fold`.
+//
+// The seen-set is inserted into on every element, including duplicates (a duplicate insert is a
+// no-op that returns the same set). That is deliberate: only the list side is conditional. If the
+// whole step were `if seen then acc else (insert, ys ++ [x])`, the skip branch would return the bare
+// empty-seeded accumulator, whose element types are still the `[]`/`Set.empty` bottoms, and the two
+// `if` branches would disagree with the concrete else branch. Keeping the tuple's shape the same in
+// both branches (the set always grows, only the list is guarded) keeps both sides concretely typed.
+let distinct (xs: List<'a>) = {
+    let (_, out) = List.fold((acc, x) -> {
+        let (seen, ys) = acc
+        let nextYs = if Set.contains(x, seen) then ys else ys ++ [x]
+        (Set.insert(x, seen), nextYs)
+    }, (Set.empty(), []), xs)
+    out
+}
 
 // `partition` splits the list by a predicate into (kept, rest), preserving order in each (Elm's
 // List.partition). It folds a pair of empty lists `([], [])`, appending each element to one side —

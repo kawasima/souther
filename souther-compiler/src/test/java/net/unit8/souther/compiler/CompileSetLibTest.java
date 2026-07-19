@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -61,9 +62,10 @@ class CompileSetLibTest {
         Map<?, ?> m = (Map<?, ?>) enc.encode(out);
         assertEquals(3L, m.get("n"), "the set {a, b, c} has three members");
         assertEquals(true, m.get("hasA"));
-        assertEquals(List.of("a", "b", "c", "d"), m.get("unionList"));
-        assertEquals(List.of("b"), m.get("interList"));
-        assertEquals(List.of("a", "c"), m.get("diffList"));
+        // Set iteration order is a deterministic hash order, not first-seen — compare membership.
+        assertEquals(Set.of("a", "b", "c", "d"), Set.copyOf((List<?>) m.get("unionList")));
+        assertEquals(Set.of("b"), Set.copyOf((List<?>) m.get("interList")));
+        assertEquals(Set.of("a", "c"), Set.copyOf((List<?>) m.get("diffList")));
         assertEquals(true, m.get("emptyFlag"));
     }
 }

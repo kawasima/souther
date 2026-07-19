@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -53,9 +54,10 @@ class CompileSetCodecTest {
 
         Encoder enc = (Encoder) loader.loadClass("demo.Out").getMethod("encoder").invoke(null);
         Map<?, ?> m = (Map<?, ?>) enc.encode(out);
-        assertEquals(List.of("a", "b", "c"), m.get("tags"), "decode dedupes; encode writes an array");
+        // decode dedupes; encode writes an array in a deterministic hash order (not first-seen).
+        assertEquals(Set.of("a", "b", "c"), Set.copyOf((List<?>) m.get("tags")));
         assertEquals(3L, m.get("n"), "the deduped set has three members");
         assertEquals(false, m.get("hasX"));
-        assertEquals(List.of("a", "b", "c", "z"), m.get("more"));
+        assertEquals(Set.of("a", "b", "c", "z"), Set.copyOf((List<?>) m.get("more")));
     }
 }

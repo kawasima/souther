@@ -174,6 +174,7 @@ final class Intrinsics {
 
         // List
         t.put("list.sort", rt(CD_Lists, "sort", order(0), ts -> ts.get(0)));
+        t.put("list.reverse", rt(CD_Lists, "reverse", order(0), ts -> ts.get(0)));
 
         // Map — keys/values are erased to Object; the map argument stays a raw Map.
         t.put("map.containsKey", rtErased(CD_Maps, "containsKey", order(1, 0), Set.of(0), ts -> Type.BOOL));
