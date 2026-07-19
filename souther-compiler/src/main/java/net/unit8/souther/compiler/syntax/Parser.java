@@ -3,6 +3,7 @@ package net.unit8.souther.compiler.syntax;
 import net.unit8.souther.compiler.CompileException;
 import net.unit8.souther.compiler.SourcePos;
 import net.unit8.souther.compiler.ast.Ast;
+import net.unit8.souther.compiler.diag.Diagnostic;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -67,7 +68,7 @@ public final class Parser {
             pos = peek().pos();
             exposing = new ArrayList<>();
         } else {
-            throw error(peek(), "expected `module` declaration");
+            throw error(peek(), "parse.module", "expected `module` declaration");
         }
         moduleName = name;
         List<Ast.Import> imports = new ArrayList<>();
@@ -85,7 +86,7 @@ public final class Parser {
             } else if (check(TokenType.LET)) {
                 fns.add(parseFn());
             } else {
-                throw error(peek(), "expected data, behavior, or let");
+                throw error(peek(), "parse.topdef", "expected data, behavior, or let");
             }
         }
         return new Ast.Module(name, exposing, exposedOutputs, imports, defs, behaviors, fns, pos);
@@ -160,8 +161,9 @@ public final class Parser {
         // (the composition). A behavior signature reads `behavior name : (...) -> ...`; a
         // composition reads `behavior name = stage >-> stage`.
         if (check(TokenType.LPAREN)) {
-            throw error(peek(), "a behavior signature uses `:` before its parameters: "
-                    + "`behavior " + name + " : (...) -> ...`");
+            throw error(peek(), "parse.behavior.colon",
+                    "a behavior signature uses `:` before its parameters: "
+                            + "`behavior " + name + " : (...) -> ...`", name);
         }
         if (match(TokenType.COLON)) {
             expect(TokenType.LPAREN);
@@ -248,8 +250,9 @@ public final class Parser {
             advance();
             String key = expect(TokenType.STRING_LIT).text();
             if (declaredReturn == null) {
-                throw error(kw, "intrinsic `" + name + "` must declare its return type: "
-                        + "`let " + name + " (...) : <type> = intrinsic \"" + key + "\"`");
+                throw error(kw, "parse.intrinsic.rettype",
+                        "intrinsic `" + name + "` must declare its return type: "
+                                + "`let " + name + " (...) : <type> = intrinsic \"" + key + "\"`", name);
             }
             return new Ast.FnDef(name, params, declaredReturn, key, null, kw.pos());
         }
@@ -379,8 +382,9 @@ public final class Parser {
         Token kw = expect(TokenType.DATA);
         String name = expect(TokenType.IDENT).text();
         if (check(TokenType.LBRACE)) {
-            throw error(peek(), "data `" + name + "` needs `=` before its body: "
-                    + "`data " + name + " = { ... }`");
+            throw error(peek(), "parse.data.equals",
+                    "data `" + name + "` needs `=` before its body: "
+                            + "`data " + name + " = { ... }`", name);
         }
         if (match(TokenType.ASSIGN)) {
             if (check(TokenType.LBRACE)) {
@@ -438,7 +442,8 @@ public final class Parser {
             }
         }
         if (includes.isEmpty() && fields.isEmpty()) {
-            throw error(peek(), "data `" + name + "` must declare at least one field or spread");
+            throw error(peek(), "parse.data.fields",
+                    "data `" + name + "` must declare at least one field or spread", name);
         }
         expect(TokenType.RBRACE);
 
@@ -495,15 +500,18 @@ public final class Parser {
             }
             expect(TokenType.RPAREN);
             if (elems.size() < 2) {
-                throw error(open, "a tuple type needs at least two elements; `(T)` is not a type");
+                throw error(open, "parse.tuple",
+                        "a tuple type needs at least two elements; `(T)` is not a type");
             }
             return new Ast.TypeRef(null, null, elems, open.pos());
         }
         if (check(TokenType.TYPEVAR)) {
             Token v = advance();
             if (!isReservedNamespace(moduleName)) {
-                throw error(v, "type variable `" + v.text() + "` is only allowed in the core "
-                        + "(the reserved `souther` namespace); a user model stays bounded (ADR-0028)");
+                throw error(v, "parse.typevar.core",
+                        "type variable `" + v.text() + "` is only allowed in the core "
+                                + "(the reserved `souther` namespace); a user model stays bounded (ADR-0028)",
+                        v.text());
             }
             return new Ast.TypeRef(v.text(), null, v.pos());   // name begins with `'` → Type.Var
         }
@@ -639,7 +647,8 @@ public final class Parser {
                 // function to call, folded into `Module.name` as a parenthesized call would be.
                 left = new Ast.Call(base.name() + "." + fa.field(), List.of(left), fa.pos());
             } else {
-                throw new CompileException(right.pos(),
+                throw CompileException.of(
+                        Diagnostic.of(null, "parse.vpipe.right").title("parse.title").at(right.pos()).build(),
                         "the right side of `|>` must be a function call or a function name");
             }
         }
@@ -809,7 +818,7 @@ public final class Parser {
                 }
                 return base;
             }
-            default -> throw error(t, "expected an expression");
+            default -> throw error(t, "parse.expr", "expected an expression");
         }
     }
 
@@ -878,7 +887,8 @@ public final class Parser {
             List<String> fieldVars = new ArrayList<>();
             if (check(TokenType.LBRACE)) {
                 if (caseTypes.size() > 1) {
-                    throw error(peek(), "an or-pattern binds the sum type and cannot destructure a case's fields");
+                    throw error(peek(), "parse.orpattern",
+                            "an or-pattern binds the sum type and cannot destructure a case's fields");
                 }
                 advance();  // `{`
                 if (!check(TokenType.RBRACE)) {
@@ -894,7 +904,8 @@ public final class Parser {
             if (someBinding != null) {
                 binding = someBinding;
             } else if (isSome && check(TokenType.AS)) {
-                throw error(peek(), "Option's wrapped value is bound positionally: write `| Some v`, not `| Some as v`");
+                throw error(peek(), "parse.option.positional",
+                        "Option's wrapped value is bound positionally: write `| Some v`, not `| Some as v`");
             } else {
                 binding = match(TokenType.AS) ? expect(TokenType.IDENT).text() : null;
             }
@@ -1033,10 +1044,32 @@ public final class Parser {
         if (check(type)) {
             return advance();
         }
-        throw error(peek(), "expected " + type + " but found " + peek().type());
+        Token t = peek();
+        int w = t.text() == null || t.text().isEmpty() ? 1 : t.text().length();
+        throw CompileException.of(
+                Diagnostic.of(null, "parse.expected").title("parse.title").at(t.pos(), w)
+                        .args(type.display(), t.type().display()).build(),
+                "expected " + type + " but found " + t.type());
     }
 
+    /** A syntax error with a literal (English) body. Every parser error carries the SYNTAX ERROR
+     * title, so the frame is consistent whether or not the body is a catalog key yet. */
     private CompileException error(Token t, String message) {
-        return new CompileException(t.pos(), message);
+        return CompileException.of(
+                Diagnostic.titledLiteral(t.pos(), "parse.title", tokenWidth(t), message),
+                message);
+    }
+
+    /** A syntax error whose body is a catalog key (localized), with the same SYNTAX ERROR title.
+     * {@code legacyBody} keeps {@link CompileException#getMessage()} unchanged for callers/tests. */
+    private CompileException error(Token t, String messageKey, String legacyBody, Object... args) {
+        return CompileException.of(
+                Diagnostic.of(null, messageKey).title("parse.title").at(t.pos(), tokenWidth(t))
+                        .args(args).build(),
+                legacyBody);
+    }
+
+    private static int tokenWidth(Token t) {
+        return t.text() == null || t.text().isEmpty() ? 1 : t.text().length();
     }
 }

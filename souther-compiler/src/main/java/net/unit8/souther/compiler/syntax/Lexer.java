@@ -2,6 +2,7 @@ package net.unit8.souther.compiler.syntax;
 
 import net.unit8.souther.compiler.CompileException;
 import net.unit8.souther.compiler.SourcePos;
+import net.unit8.souther.compiler.diag.Diagnostic;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -85,7 +86,9 @@ public final class Lexer {
         StringBuilder sb = new StringBuilder();
         sb.append(advance());   // the apostrophe
         if (atEnd() || !Character.isJavaIdentifierStart(peek())) {
-            throw new CompileException(start, "a type variable needs a name after `'`, e.g. `'a`");
+            throw CompileException.of(
+                    Diagnostic.of(null, "lex.typevar").title("parse.title").at(start).build(),
+                    "a type variable needs a name after `'`, e.g. `'a`");
         }
         while (!atEnd() && Character.isJavaIdentifierPart(peek())) {
             sb.append(advance());
@@ -127,8 +130,11 @@ public final class Lexer {
             return new Token(TokenType.DECIMAL_LIT, sb.toString(), start);
         }
         if (fractional) {
-            throw new CompileException(start, "a fractional literal is a Decimal and needs the `m` "
-                    + "suffix (write `" + sb + "m`); Souther has no floating-point type");
+            throw CompileException.of(
+                    Diagnostic.of(null, "lex.decimal.m").title("parse.title").at(start)
+                            .args(sb.toString()).build(),
+                    "a fractional literal is a Decimal and needs the `m` suffix (write `" + sb
+                            + "m`); Souther has no floating-point type");
         }
         return new Token(TokenType.INT_LIT, sb.toString(), start);
     }
@@ -154,7 +160,9 @@ public final class Lexer {
             }
         }
         if (atEnd()) {
-            throw new CompileException(start, "unterminated string literal");
+            throw CompileException.of(
+                    Diagnostic.of(null, "lex.string.unterminated").title("parse.title").at(start).build(),
+                    "unterminated string literal");
         }
         advance(); // closing quote
         return new Token(TokenType.STRING_LIT, sb.toString(), start);
@@ -174,7 +182,9 @@ public final class Lexer {
             case '.':
                 if (match('.')) {
                     if (match('.')) return new Token(TokenType.SPREAD, "...", start);
-                    throw new CompileException(start, "spread is written `...` (three dots)");
+                    throw CompileException.of(
+                            Diagnostic.of(null, "lex.spread").title("parse.title").at(start).build(),
+                            "spread is written `...` (three dots)");
                 }
                 return new Token(TokenType.DOT, ".", start);
             case '=':
@@ -221,7 +231,10 @@ public final class Lexer {
             default:
                 break;
         }
-        throw new CompileException(start, "unexpected character '" + c + "'");
+        throw CompileException.of(
+                Diagnostic.of(null, "lex.unexpected").title("parse.title").at(start)
+                        .args(String.valueOf(c)).build(),
+                "unexpected character '" + c + "'");
     }
 
     private void skipTrivia() {

@@ -1,6 +1,7 @@
 package net.unit8.souther.compiler.check;
 
 import net.unit8.souther.compiler.CompileException;
+import net.unit8.souther.compiler.diag.Diagnostic;
 import net.unit8.souther.compiler.ast.Ast;
 
 import java.util.ArrayList;
@@ -36,8 +37,12 @@ public final class NewtypeDesugar {
                 List<Ast.Expr> args = mapExprs(call.args(), symbols);
                 if (symbols.get(call.fn()) instanceof Ast.Data nt && nt.newtype()) {
                     if (args.size() != 1) {
-                        throw new CompileException(call.pos(), "`" + call.fn() + "` wraps one value, "
-                                + "but is applied to " + args.size() + " argument(s)");
+                        throw CompileException.of(
+                                Diagnostic.of(null, "check.newtype.arity").title("check.arity.title")
+                                        .at(call.pos(), call.fn().length()).args(call.fn(), args.size())
+                                        .build(),
+                                "`" + call.fn() + "` wraps one value, but is applied to " + args.size()
+                                        + " argument(s)");
                     }
                     yield new Ast.NewData(call.fn(),
                             List.of(new Ast.FieldInit("value", args.get(0), call.pos())),

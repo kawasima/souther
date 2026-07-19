@@ -58,3 +58,4 @@ specification is in Japanese.
 | [0041](0041-map-higher-order-operations.md) | Map's fold/map/update self-host over List.fold; update is a value step, not an Option step | `[#stdlib-map]` |
 | [0042](0042-defer-rrb-and-transient-fold-accumulation.md) | Defer RRB concatenation and a transient fold accumulator; the persistent-collection performance backlog is closed | — |
 | [0043](0043-optional-module-header-for-single-file.md) | A single-file compilation unit may omit the `module` header (named after the file, or `Main`); an imported/multi-file module must declare it | `[#modules]` |
+| [0044](0044-diagnostics-as-data-with-renderer-layer.md) | Diagnostics are data rendered Elm-style or as JSON by a locale-aware layer (Japanese default); the code and source region are the stable identity | `[#compile-errors]`, `[#non-functional]` |

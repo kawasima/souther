@@ -5,6 +5,9 @@ import net.unit8.souther.compiler.Prelude;
 import net.unit8.souther.compiler.SourcePos;
 import net.unit8.souther.compiler.ast.Ast;
 import net.unit8.souther.compiler.core.Core;
+import net.unit8.souther.compiler.diag.Diagnostic;
+import net.unit8.souther.compiler.diag.Localizable;
+import net.unit8.souther.compiler.diag.Region;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -80,7 +83,10 @@ public final class TypeChecker {
         Map<String, Ast.FnDef> fns = new HashMap<>();
         for (Ast.FnDef fn : module.fns()) {
             if (fns.put(fn.name(), fn) != null) {
-                throw new CompileException(fn.pos(), "duplicate `let " + fn.name() + "`");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.dup.let").title("check.duplicate.title")
+                                .at(fn.pos()).args(fn.name()).build(),
+                        "duplicate `let " + fn.name() + "`");
             }
         }
         Set<String> allBehaviors = new HashSet<>();
@@ -110,18 +116,25 @@ public final class TypeChecker {
             // could narrow. Reject it rather than accept a form that reads as a granularity that
             // does not exist.
             if (dot >= 0) {
-                throw new CompileException(module.pos(), "`exposing` is type-granular: a data's "
-                        + "`decoder`/`encoder` are always public once the data is exposed (spec 19.4)."
-                        + " Write `" + e.substring(0, dot) + "`, not `" + e + "`");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.exposing.granular").title("check.module.title")
+                                .at(module.pos()).args(e.substring(0, dot), e).build(),
+                        "`exposing` is type-granular: a data's `decoder`/`encoder` are always public"
+                                + " once the data is exposed (spec 19.4). Write `" + e.substring(0, dot)
+                                + "`, not `" + e + "`");
             }
             // an exposed name must be one of this module's own definitions. An imported name that is
             // merely visible here is not re-exported — importers reach it from its declaring module.
             if (!ownTypes.contains(e) && !allBehaviors.contains(e)) {
-                String why = symbols.containsKey(e)
+                boolean imported = symbols.containsKey(e);
+                String why = imported
                         ? " is imported into this module, not defined here; `exposing` lists a"
                           + " module's own definitions and does not re-export imported names"
                         : ", which is not a data or behavior of this module";
-                throw new CompileException(module.pos(), "`exposing` names `" + e + "`" + why);
+                throw CompileException.of(
+                        Diagnostic.of(null, imported ? "check.exposing.imported" : "check.exposing.notdefined")
+                                .title("check.module.title").at(module.pos()).args(e).build(),
+                        "`exposing` names `" + e + "`" + why);
             }
             exposed.add(e);
         }
@@ -135,9 +148,12 @@ public final class TypeChecker {
                 // one is meaningless: nothing calls those behaviors, and nothing injects them. The
                 // behavior that composes or calls this one carries the requirement instead (13.2).
                 if (!spec.requires().isEmpty()) {
-                    throw new CompileException(spec.pos(), "behavior `" + spec.name()
-                            + "` has no `let`, so it is an injection target (spec 13.2); it cannot"
-                            + " declare `requires` — the behavior that calls or composes it does");
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.inject.requires").title("check.module.title")
+                                    .at(spec.pos()).args(spec.name()).build(),
+                            "behavior `" + spec.name() + "` has no `let`, so it is an injection target"
+                                    + " (spec 13.2); it cannot declare `requires` — the behavior that"
+                                    + " calls or composes it does");
                 }
                 reqSigs.put(spec.name(), new ReqSig(
                         spec.params().isEmpty() ? null : successType(spec.params().get(0).type(), symbols),
@@ -166,9 +182,11 @@ public final class TypeChecker {
         // implementation (checked above); any other fn is a helper (checked by checkHelpers).
         for (Ast.FnDef fn : module.fns()) {
             if (!specNames.contains(fn.name()) && allBehaviors.contains(fn.name())) {
-                throw new CompileException(fn.pos(), "`let " + fn.name()
-                        + "` cannot implement the composition `behavior " + fn.name()
-                        + "`, which is already its own implementation (spec 13.1)");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.impl.compose").title("check.impl.title")
+                                .at(fn.pos()).args(fn.name()).build(),
+                        "`let " + fn.name() + "` cannot implement the composition `behavior " + fn.name()
+                                + "`, which is already its own implementation (spec 13.1)");
             }
         }
         checkStagesAreSingleInput(module);
@@ -200,10 +218,11 @@ public final class TypeChecker {
         // a signature in `exposing` is only meaningful on a composition behavior
         for (String name : module.exposedOutputs().keySet()) {
             if (!pipeNames.contains(name)) {
-                throw new CompileException(module.pos(), "E1605", "`exposing` gives an output "
-                        + "signature to `" + name + "`, which is not a composition (`>->`) behavior;"
-                        + " only a composition needs one — every other definition states its type"
-                        + " where it is written (spec 14.5)");
+                throw CompileException.of(
+                        Diagnostic.of("E1605", "e1605.notcomposition").at(module.pos()).args(name).build(),
+                        "`exposing` gives an output signature to `" + name + "`, which is not a"
+                                + " composition (`>->`) behavior; only a composition needs one — every"
+                                + " other definition states its type where it is written (spec 14.5)");
             }
         }
         // every exposed composition must declare its output, matching the inferred one
@@ -214,16 +233,25 @@ public final class TypeChecker {
             Set<String> inferred = leafCases(sigs.get(pipe.name()).out(), symbols);
             Ast.RetType declared = module.exposedOutputs().get(pipe.name());
             if (declared == null) {
-                throw new CompileException(pipe.pos(), "E1605", "exposed composition `" + pipe.name()
-                        + "` must declare its output in `exposing` (spec 14.5): write "
-                        + "`exposing ( " + pipe.name() + " : " + caseList(inferred) + " )`");
+                throw CompileException.of(
+                        Diagnostic.of("E1605", "e1605.missing").at(pipe.pos())
+                                .args(pipe.name())
+                                .hint("e1605.missing.hint", pipe.name(), caseList(inferred))
+                                .build(),
+                        "exposed composition `" + pipe.name() + "` must declare its output in `exposing`"
+                                + " (spec 14.5): write `exposing ( " + pipe.name() + " : "
+                                + caseList(inferred) + " )`");
             }
             Set<String> declaredCases = leafCases(successType(declared, symbols), symbols);
             if (!inferred.equals(declaredCases)) {
-                throw new CompileException(pipe.pos(), "E1604", "exposed composition `" + pipe.name()
-                        + "` declares -> " + caseList(declaredCases) + " in `exposing`, but the pipeline"
-                        + " produces " + caseList(inferred) + ". Update the declared output or handle"
-                        + " the case.");
+                throw CompileException.of(
+                        Diagnostic.of("E1604", "e1604.msg").at(pipe.pos())
+                                .args(pipe.name(), caseList(declaredCases), caseList(inferred))
+                                .hint("e1604.hint")
+                                .build(),
+                        "exposed composition `" + pipe.name() + "` declares -> " + caseList(declaredCases)
+                                + " in `exposing`, but the pipeline produces " + caseList(inferred)
+                                + ". Update the declared output or handle the case.");
             }
         }
     }
@@ -247,8 +275,11 @@ public final class TypeChecker {
             Map<String, Type> env = new HashMap<>();
             for (Ast.FnParam p : h.params()) {
                 if (p.type() == null) {
-                    throw new CompileException(p.pos(), "helper `let " + h.name() + "` must annotate "
-                            + "parameter `" + p.name() + "` with its type (spec 13.1)");
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.helper.annotate").title("check.helper.title")
+                                    .at(p.pos(), p.name().length()).args(h.name(), p.name()).build(),
+                            "helper `let " + h.name() + "` must annotate parameter `" + p.name()
+                                    + "` with its type (spec 13.1)");
                 }
                 rejectBuiltinShadow(p.name(), p.pos());
                 env.put(p.name(), resolveParamType(p.type(), symbols));
@@ -277,8 +308,12 @@ public final class TypeChecker {
             if (h.declaredReturn() != null) {
                 Type declared = successType(h.declaredReturn(), symbols);
                 if (!assignable(bodyType, declared, symbols)) {
-                    throw new CompileException(h.pos(), "helper `let " + h.name()
-                            + "` declares it returns " + declared + " but its body is " + bodyType);
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.helper.return").title("check.helper.title")
+                                    .at(h.pos()).args(h.name(), Type.show(declared), Type.show(bodyType))
+                                    .build(),
+                            "helper `let " + h.name() + "` declares it returns " + declared
+                                    + " but its body is " + bodyType);
                 }
             }
         }
@@ -295,22 +330,31 @@ public final class TypeChecker {
         for (String name : inliner.recursiveHelpers()) {
             Ast.FnDef h = inliner.helper(name);
             if (h.declaredReturn() == null) {
-                throw new CompileException(h.pos(), "recursive helper `let " + name
-                        + "` must declare its return type — `let " + name + " (...) : <type> = ...` — "
-                        + "because its result cannot be inferred through the recursion (spec 13.1)");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.rechelper.return").title("check.helper.title")
+                                .at(h.pos()).args(name).build(),
+                        "recursive helper `let " + name + "` must declare its return type — `let " + name
+                                + " (...) : <type> = ...` — because its result cannot be inferred through"
+                                + " the recursion (spec 13.1)");
             }
             List<Type> params = new ArrayList<>();
             for (Ast.FnParam p : h.params()) {
                 if (p.type() == null) {
-                    throw new CompileException(p.pos(), "helper `let " + name + "` must annotate "
-                            + "parameter `" + p.name() + "` with its type (spec 13.1)");
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.helper.annotate").title("check.helper.title")
+                                    .at(p.pos(), p.name().length()).args(name, p.name()).build(),
+                            "helper `let " + name + "` must annotate parameter `" + p.name()
+                                    + "` with its type (spec 13.1)");
                 }
                 if (p.type() instanceof Ast.FnType) {
                     // a recursive helper is a static method, and a function value cannot be passed to
                     // one (a block is not a value, spec 12.5); reject the function parameter directly.
-                    throw new CompileException(p.pos(), "recursive helper `let " + name + "` cannot take"
-                            + " the function parameter `" + p.name() + "` — a recursive helper is a"
-                            + " method and a function cannot be passed to it");
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.rechelper.fnparam").title("check.helper.title")
+                                    .at(p.pos(), p.name().length()).args(name, p.name()).build(),
+                            "recursive helper `let " + name + "` cannot take the function parameter `"
+                                    + p.name() + "` — a recursive helper is a method and a function"
+                                    + " cannot be passed to it");
                 }
                 params.add(resolveParamType(p.type(), symbols));
             }
@@ -323,9 +367,12 @@ public final class TypeChecker {
      * construction and must terminate, so it cannot call one (spec §invariant-expressions). */
     private static void rejectRecursiveHelperInInvariant(Ast.Expr e, String data, Set<String> recursive) {
         if (e instanceof Ast.Call call && recursive.contains(call.fn())) {
-            throw new CompileException(call.pos(), "the invariant of `" + data + "` calls the recursive "
-                    + "helper `" + call.fn() + "`, but an invariant is checked at construction time and "
-                    + "must terminate — a recursive helper cannot appear in an invariant");
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.invariant.recursive").title("check.invariant.title")
+                            .at(call.pos(), call.fn().length()).args(data, call.fn()).build(),
+                    "the invariant of `" + data + "` calls the recursive helper `" + call.fn()
+                            + "`, but an invariant is checked at construction time and must terminate"
+                            + " — a recursive helper cannot appear in an invariant");
         }
         forEachChild(e, c -> rejectRecursiveHelperInInvariant(c, data, recursive));
     }
@@ -333,9 +380,12 @@ public final class TypeChecker {
     /** Rejects a call to an injected behavior inside a recursive helper: it is pure (spec 13.1). */
     private static void rejectInjectedCalls(Ast.Expr e, String helper, Set<String> injected) {
         if (e instanceof Ast.Call call && injected.contains(call.fn())) {
-            throw new CompileException(call.pos(), "recursive helper `let " + helper + "` is pure and "
-                    + "cannot call the injected behavior `" + call.fn() + "` — put the effect in the "
-                    + "behavior that calls this helper (spec 13.1)");
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.rechelper.pure").title("check.helper.title")
+                            .at(call.pos(), call.fn().length()).args(helper, call.fn()).build(),
+                    "recursive helper `let " + helper + "` is pure and cannot call the injected behavior `"
+                            + call.fn() + "` — put the effect in the behavior that calls this helper"
+                            + " (spec 13.1)");
         }
         forEachChild(e, c -> rejectInjectedCalls(c, helper, injected));
     }
@@ -404,9 +454,13 @@ public final class TypeChecker {
                                          Map<String, ReqSig> reqs, HelperInliner inliner) {
         if (arg instanceof Ast.Block lambda) {
             if (lambda.params().size() != want.params().size()) {
-                throw new CompileException(arg.pos(), "the block passed to `" + paramName + "` of `let "
-                        + h.name() + "` takes " + want.params().size() + " argument(s) but is written with "
-                        + lambda.params().size());
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.fn.blockparam.arity").title("check.fn.title")
+                                .at(arg.pos()).args(paramName, h.name(), want.params().size(),
+                                        lambda.params().size()).build(),
+                        "the block passed to `" + paramName + "` of `let " + h.name() + "` takes "
+                                + want.params().size() + " argument(s) but is written with "
+                                + lambda.params().size());
             }
             Map<String, Type> lenv = new HashMap<>(env);
             for (int j = 0; j < lambda.params().size(); j++) {
@@ -422,12 +476,19 @@ public final class TypeChecker {
                 return;   // best-effort; the inlined check reports a genuine error with full context
             }
             if (!(want.result() instanceof Type.Var) && !assignable(got, want.result(), symbols)) {
-                throw new CompileException(lambda.pos(), "the block passed to `" + paramName + "` of `let "
-                        + h.name() + "` must return " + want.result() + " but returns " + got);
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.fn.blockparam.return").title("check.fn.title")
+                                .at(lambda.pos()).args(paramName, h.name(), Type.show(want.result()),
+                                        Type.show(got)).build(),
+                        "the block passed to `" + paramName + "` of `let " + h.name() + "` must return "
+                                + want.result() + " but returns " + got);
             }
         } else if (arg instanceof Ast.Var v && env.get(v.name()) instanceof Type vt && !(vt instanceof Type.FnOf)) {
-            throw new CompileException(arg.pos(), "`" + paramName + "` of `let " + h.name()
-                    + "` expects a function, but `" + v.name() + "` is a value, not a function");
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.fn.notfunction").title("check.fn.title")
+                            .at(arg.pos()).args(paramName, h.name(), v.name()).build(),
+                    "`" + paramName + "` of `let " + h.name() + "` expects a function, but `" + v.name()
+                            + "` is a value, not a function");
         }
     }
 
@@ -437,31 +498,45 @@ public final class TypeChecker {
                                     Map<String, Type> recursiveHelperFns,
                                     Map<String, Set<String>> recHelperConstructs) {
         if (fn.declaredReturn() != null) {
-            throw new CompileException(fn.pos(), "`let " + fn.name() + "` implements `behavior "
-                    + spec.name() + "`, so its return type comes from the behavior — do not declare one"
-                    + " (spec 13.1)");
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.impl.noreturn").title("check.impl.title")
+                            .at(fn.pos()).args(fn.name(), spec.name()).build(),
+                    "`let " + fn.name() + "` implements `behavior " + spec.name()
+                            + "`, so its return type comes from the behavior — do not declare one"
+                            + " (spec 13.1)");
         }
         int nBusiness = spec.params().size();
         int nReq = spec.requires().size();
         if (fn.params().size() != nBusiness + nReq) {
-            throw new CompileException(fn.pos(), "`let " + fn.name() + "` takes " + fn.params().size()
-                    + " parameter(s) but `behavior " + spec.name() + "` has " + nBusiness + " input(s)"
-                    + (nReq == 0 ? "" : " plus " + nReq + " requires") + " (spec 13.1)");
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.impl.arity").title("check.impl.title")
+                            .at(fn.pos()).args(fn.name(), fn.params().size(), spec.name(), nBusiness, nReq)
+                            .build(),
+                    "`let " + fn.name() + "` takes " + fn.params().size()
+                            + " parameter(s) but `behavior " + spec.name() + "` has " + nBusiness
+                            + " input(s)" + (nReq == 0 ? "" : " plus " + nReq + " requires")
+                            + " (spec 13.1)");
         }
         for (Ast.FnParam p : fn.params()) {
             if (p.type() != null) {
-                throw new CompileException(p.pos(), "`let " + fn.name() + "` implements `behavior "
-                        + spec.name() + "`, so its parameters take their types from it — do not annotate `"
-                        + p.name() + "` (spec 13.1)");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.impl.noannotate").title("check.impl.title")
+                                .at(p.pos()).args(fn.name(), spec.name(), p.name()).build(),
+                        "`let " + fn.name() + "` implements `behavior " + spec.name()
+                                + "`, so its parameters take their types from it — do not annotate `"
+                                + p.name() + "` (spec 13.1)");
             }
         }
         for (int i = 0; i < nReq; i++) {
             String got = fn.params().get(nBusiness + i).name();
             String want = spec.requires().get(i);
             if (!got.equals(want)) {
-                throw new CompileException(fn.pos(), "`let " + fn.name() + "` parameter `" + got
-                        + "` should be `" + want + "`: the `requires` become the trailing parameters "
-                        + "in declared order (spec 12.6)");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.impl.reqorder").title("check.impl.title")
+                                .at(fn.pos()).args(fn.name(), got, want).build(),
+                        "`let " + fn.name() + "` parameter `" + got + "` should be `" + want
+                                + "`: the `requires` become the trailing parameters in declared order"
+                                + " (spec 12.6)");
             }
         }
 
@@ -489,7 +564,10 @@ public final class TypeChecker {
         tenv.putAll(recursiveHelperFns);
         Type rt = typeOf(body, tenv, null, symbols, reqSigs);
         if (!assignable(rt, output, symbols)) {
-            throw new CompileException(body.pos(),
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.behavior.return").title("check.type.mismatch.title")
+                            .at(body.pos()).args(spec.name(), Type.show(output), Type.show(rt))
+                            .diff(Type.show(rt), Type.show(output)).build(),
                     "behavior `" + spec.name() + "` returns " + output + " but its `let` body is " + rt);
         }
 
@@ -507,14 +585,18 @@ public final class TypeChecker {
         if (!spec.constructs().isEmpty()) {
             for (String c : constructed) {
                 if (!spec.constructs().contains(c)) {
-                    throw new CompileException(spec.pos(), "E1002",
+                    throw CompileException.of(
+                            Diagnostic.of("E1002", "e1002.msg").at(spec.pos())
+                                    .args(spec.name(), c).hint("e1002.hint").build(),
                             "Behavior `" + spec.name() + "` constructs `" + c
                                     + "` but does not declare `constructs " + c + "`.");
                 }
             }
             for (String declared : spec.constructs()) {
                 if (!constructed.contains(declared)) {
-                    throw new CompileException(spec.pos(), "E1006",
+                    throw CompileException.of(
+                            Diagnostic.of("E1006", "e1006.msg").at(spec.pos())
+                                    .args(spec.name(), declared).hint("e1006.hint").build(),
                             "Behavior `" + spec.name() + "` declares `constructs " + declared
                                     + "` but never builds " + declared + " — it passes an existing"
                                     + " value through. Remove it from the `constructs` clause.");
@@ -528,16 +610,20 @@ public final class TypeChecker {
         List<String> actual = requiredCalls(body, reqSigs.keySet());
         for (String call : actual) {
             if (!spec.requires().contains(call)) {
-                throw new CompileException(spec.pos(), "E1602", "`let " + fn.name() + "` calls `" + call
-                        + "`, which has no implementation, but `behavior " + spec.name()
-                        + "` does not declare `requires " + call + "`.");
+                throw CompileException.of(
+                        Diagnostic.of("E1602", "e1602.msg").at(spec.pos())
+                                .args(fn.name(), call, spec.name()).hint("e1602.hint").build(),
+                        "`let " + fn.name() + "` calls `" + call + "`, which has no implementation, but"
+                                + " `behavior " + spec.name() + "` does not declare `requires " + call + "`.");
             }
         }
         for (String req : spec.requires()) {
             if (!actual.contains(req)) {
-                throw new CompileException(spec.pos(), "E1603", "`behavior " + spec.name()
-                        + "` declares `requires " + req + "`, but `let " + fn.name()
-                        + "` never calls it. Remove it from the `requires` clause.");
+                throw CompileException.of(
+                        Diagnostic.of("E1603", "e1603.msg").at(spec.pos())
+                                .args(spec.name(), req, fn.name()).hint("e1603.hint").build(),
+                        "`behavior " + spec.name() + "` declares `requires " + req + "`, but `let "
+                                + fn.name() + "` never calls it. Remove it from the `requires` clause.");
             }
         }
     }
@@ -560,10 +646,12 @@ public final class TypeChecker {
                 String union = p.type().cases().stream()
                         .map(Ast.TypeRef::name)
                         .collect(java.util.stream.Collectors.joining(" | "));
-                throw new CompileException(p.pos(), "parameter `" + p.name()
-                        + "` has an anonymous union type `" + union + "`; a parameter type must be a"
-                        + " single named type — declare `data ... = " + union
-                        + "` and take that name (spec 8.6, 12.2)");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.param.union").title("check.boundary.title")
+                                .at(p.pos(), p.name().length()).args(p.name(), union).build(),
+                        "parameter `" + p.name() + "` has an anonymous union type `" + union
+                                + "`; a parameter type must be a single named type — declare `data ... = "
+                                + union + "` and take that name (spec 8.6, 12.2)");
             }
         }
     }
@@ -575,17 +663,23 @@ public final class TypeChecker {
         for (Ast.Param p : spec.params()) {
             for (Ast.TypeRef c : p.type().cases()) {
                 if (refHasTuple(c)) {
-                    throw new CompileException(p.pos(), "parameter `" + p.name()
-                            + "` is a tuple; a tuple has no external representation and cannot cross the"
-                            + " boundary, so a behavior's input must be a named data (ADR-0036)");
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.param.tuple").title("check.boundary.title")
+                                    .at(p.pos(), p.name().length()).args(p.name()).build(),
+                            "parameter `" + p.name() + "` is a tuple; a tuple has no external"
+                                    + " representation and cannot cross the boundary, so a behavior's"
+                                    + " input must be a named data (ADR-0036)");
                 }
             }
         }
         for (Ast.TypeRef c : spec.ret().cases()) {
             if (refHasTuple(c)) {
-                throw new CompileException(spec.pos(), "behavior `" + spec.name() + "` outputs a tuple;"
-                        + " a tuple cannot cross the boundary, so a behavior's output must be a named"
-                        + " data or a sum of them (ADR-0036)");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.output.tuple").title("check.boundary.title")
+                                .at(spec.pos()).args(spec.name()).build(),
+                        "behavior `" + spec.name() + "` outputs a tuple; a tuple cannot cross the"
+                                + " boundary, so a behavior's output must be a named data or a sum of"
+                                + " them (ADR-0036)");
             }
         }
     }
@@ -606,10 +700,13 @@ public final class TypeChecker {
                 continue;   // unknown names are caught elsewhere; a unit has a generated factory
             }
             if (!exposeAll && !exposed.contains(c)) {
-                throw new CompileException(spec.pos(), "E1305", "Injected behavior `" + spec.name()
-                        + "` declares `constructs " + c + "`, but " + c + " is neither a unit data nor "
-                        + "exposed. Java cannot build it: no factory is generated and its decoder is not "
-                        + "public. Expose " + c + ", or make it a unit data.");
+                throw CompileException.of(
+                        Diagnostic.of("E1305", "e1305.msg").at(spec.pos())
+                                .args(spec.name(), c).hint("e1305.hint").build(),
+                        "Injected behavior `" + spec.name() + "` declares `constructs " + c + "`, but "
+                                + c + " is neither a unit data nor exposed. Java cannot build it: no"
+                                + " factory is generated and its decoder is not public. Expose " + c
+                                + ", or make it a unit data.");
             }
         }
     }
@@ -643,7 +740,9 @@ public final class TypeChecker {
                 String stage = stages.get(i);
                 Integer n = arity.get(stage);
                 if (n != null && n != 1) {
-                    throw new CompileException(pipe.pos(),
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.pipe.multiinput").title("check.pipe.title")
+                                    .at(pipe.pos()).args(stage, n, pipe.name()).build(),
                             "`" + stage + "` takes " + n + " inputs, so it cannot follow `>->` in `"
                                     + pipe.name() + "`. Every stage after the first takes one input: "
                                     + "call it inline or open the branches with `match` instead "
@@ -798,7 +897,10 @@ public final class TypeChecker {
                 continue;
             }
             if (!inProgress.add(s)) {
-                throw new CompileException(pos, "pipeline `" + s + "` composes with itself (a cycle)");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.pipe.selfcompose").title("check.pipe.title")
+                                .at(pos).args(s).build(),
+                        "pipeline `" + s + "` composes with itself (a cycle)");
             }
             flattenInto(sub, pipeStages, out, inProgress, pos);
             inProgress.remove(s);
@@ -810,13 +912,21 @@ public final class TypeChecker {
     public static Sig stageSig(String stage, Map<String, Sig> sigs, Map<String, Ast.Def> symbols,
                                SourcePos pos) {
         if (stage.endsWith(".decoder") || stage.endsWith(".encoder")) {
-            throw new CompileException(pos, "decode/encode are boundary edges, not pipeline stages; "
-                    + "`>->` composes behaviors only (spec 14.1)");
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.pipe.boundary").title("check.pipe.title").at(pos).build(),
+                    "decode/encode are boundary edges, not pipeline stages; `>->` composes behaviors"
+                            + " only (spec 14.1)");
         }
         Sig s = sigs.get(stage);
         if (s == null) {
-            throw new CompileException(pos, "unknown behavior `" + stage + "` in pipeline"
-                    + Suggest.hint(stage, sigs.keySet()));
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.unknown.behavior.msg")
+                            .title("check.unknown.title")
+                            .at(pos, stage.length())
+                            .args(stage)
+                            .suggestion(Suggest.candidate(stage, sigs.keySet()))
+                            .build(),
+                    "unknown behavior `" + stage + "` in pipeline" + Suggest.hint(stage, sigs.keySet()));
         }
         return s;
     }
@@ -839,9 +949,14 @@ public final class TypeChecker {
             Set<String> inferred = leafCases(out, symbols);
             Set<String> declared = leafCases(successType(pipe.declaredOut(), symbols), symbols);
             if (!inferred.equals(declared)) {
-                throw new CompileException(pipe.pos(), "E1604", "behavior " + pipe.name()
-                        + " declares -> " + caseList(declared) + ", but the pipeline produces "
-                        + caseList(inferred) + ". Update the declared output or handle the case.");
+                throw CompileException.of(
+                        Diagnostic.of("E1604", "e1604.msg").at(pipe.pos())
+                                .args(pipe.name(), caseList(declared), caseList(inferred))
+                                .hint("e1604.hint")
+                                .build(),
+                        "behavior " + pipe.name() + " declares -> " + caseList(declared)
+                                + ", but the pipeline produces " + caseList(inferred)
+                                + ". Update the declared output or handle the case.");
             }
         }
         // the pipeline takes whatever its first stage takes (spec 14.1)
@@ -914,7 +1029,12 @@ public final class TypeChecker {
                 }
             }
             if (consumed.isEmpty()) {
-                throw new CompileException(pos, "E1701",
+                throw CompileException.of(
+                        Diagnostic.of("E1701", "e1701.msg")
+                                .at(pos)
+                                .diff(Type.show(mainline), Type.show(in))
+                                .hint("e1701.hint")
+                                .build(),
                         "Cannot compose behaviors: no output case of the left behavior is accepted by "
                                 + "the right behavior's input. Left output: " + mainline + ", right input: " + in);
             }
@@ -922,7 +1042,12 @@ public final class TypeChecker {
             return g.out();
         }
         if (!mainline.equals(in)) {
-            throw new CompileException(pos, "E1701",
+            throw CompileException.of(
+                    Diagnostic.of("E1701", "e1701.msg")
+                            .at(pos)
+                            .diff(Type.show(mainline), Type.show(in))
+                            .hint("e1701.hint")
+                            .build(),
                     "Cannot compose behaviors. Left output: " + mainline + ", right input: " + in);
         }
         return g.out();
@@ -966,7 +1091,9 @@ public final class TypeChecker {
                                                Map<String, ReqSig> reqSigs) {
         if (e instanceof Ast.Call call && allBehaviors.contains(call.fn())
                 && !reqSigs.containsKey(call.fn())) {
-            throw new CompileException(call.pos(),
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.call.nonrequired").title("check.impl.title")
+                            .at(call.pos(), call.fn().length()).build(),
                     "only required behaviors can be called from a body; compose others with `>->`");
         }
         forEachChild(e, c -> rejectNonRequiredCalls(c, allBehaviors, reqSigs));
@@ -1041,8 +1168,11 @@ public final class TypeChecker {
         // abort); that is exempt and may sit anywhere (e.g. `let money = 金額(500)`).
         if (e instanceof Ast.NewData nd && isInvariantBearing(nd.typeName(), symbols)
                 && !isConstantNewtypeConstruct(nd, symbols)) {
-            throw new CompileException(nd.pos(), "invariant-bearing `" + nd.typeName()
-                    + "` can only be constructed as the behavior's result expression");
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.construct.invariant").title("check.construct.title")
+                            .at(nd.pos(), nd.typeName().length()).args(nd.typeName()).build(),
+                    "invariant-bearing `" + nd.typeName()
+                            + "` can only be constructed as the behavior's result expression");
         }
         switch (e) {
             case Ast.NewData nd -> nd.inits().forEach(i -> forbidInvariantConstruct(i.value(), symbols));
@@ -1210,11 +1340,16 @@ public final class TypeChecker {
                 // Some/None are the built-in Option cases (ADR-0011); a user data of the same name
                 // would make a `| Some v` pattern ambiguous between Option and the user case, so the
                 // declaration is rejected here rather than allowed to collide (ADR-0035).
-                throw new CompileException(def.pos(), "`" + def.name()
-                        + "` is a built-in Option case and cannot be declared as a data type");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.sum.optioncase").title("check.sum.title")
+                                .at(def.pos(), def.name().length()).args(def.name()).build(),
+                        "`" + def.name() + "` is a built-in Option case and cannot be declared as a data type");
             }
             if (symbols.put(def.name(), def) != null) {
-                throw new CompileException(def.pos(), "duplicate data `" + def.name() + "`");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.dup.data").title("check.duplicate.title")
+                                .at(def.pos()).args(def.name()).build(),
+                        "duplicate data `" + def.name() + "`");
             }
         }
         return symbols;
@@ -1223,7 +1358,9 @@ public final class TypeChecker {
     private static void checkSum(Ast.SumData sum, Map<String, Ast.Def> symbols) {
         for (String caseName : sum.cases()) {
             if (!symbols.containsKey(caseName)) {
-                throw new CompileException(sum.pos(),
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.sum.unknowncase").title("check.sum.title")
+                                .at(sum.pos()).args(caseName, sum.name()).build(),
                         "unknown case `" + caseName + "` in sum `" + sum.name() + "`");
             }
         }
@@ -1233,7 +1370,9 @@ public final class TypeChecker {
             for (Ast.Variant v : disc.variants()) {
                 Ast.Def caseDef = symbols.get(v.caseType());
                 if (caseDef == null || !dispatchable.contains(v.caseType())) {
-                    throw new CompileException(v.pos(),
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.codec.notcase").title("check.codec.title")
+                                    .at(v.pos()).args(v.caseType(), sum.name()).build(),
                             "variant `" + v.caseType() + "` is not a case of `" + sum.name() + "`");
                 }
                 // a unit-data case has an implicit (field-less) decoder generated on its class;
@@ -1242,7 +1381,9 @@ public final class TypeChecker {
                         || (caseDef instanceof Ast.Data d && d.decoder().isPresent())
                         || (caseDef instanceof Ast.SumData s && s.decoder().isPresent());
                 if (!caseDecodes) {
-                    throw new CompileException(v.pos(),
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.codec.needdecoder").title("check.codec.title")
+                                    .at(v.pos()).args(v.caseType()).build(),
                             "variant `" + v.caseType() + "` needs a decoder");
                 }
             }
@@ -1252,7 +1393,9 @@ public final class TypeChecker {
             Set<String> encodable = leafCases(Type.ref(sum.name()), symbols);
             for (Ast.EncVariant v : enc.variants()) {
                 if (!encodable.contains(v.caseType())) {
-                    throw new CompileException(v.pos(),
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.codec.notcase").title("check.codec.title")
+                                    .at(v.pos()).args(v.caseType(), sum.name()).build(),
                             "`" + v.caseType() + "` is not a case of `" + sum.name() + "`");
                 }
                 Ast.Def caseDef = symbols.get(v.caseType());
@@ -1260,13 +1403,18 @@ public final class TypeChecker {
                         || (caseDef instanceof Ast.Data d && d.encoder().isPresent())
                         || (caseDef instanceof Ast.SumData s && s.encoder().isPresent());
                 if (!caseEncodes) {
-                    throw new CompileException(v.pos(), "case `" + v.caseType() + "` needs an encoder");
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.codec.needencoder").title("check.codec.title")
+                                    .at(v.pos()).args(v.caseType()).build(),
+                            "case `" + v.caseType() + "` needs an encoder");
                 }
                 covered.add(v.caseType());
             }
             for (String caseName : encodable) {
                 if (!covered.contains(caseName)) {
-                    throw new CompileException(enc.pos(),
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.codec.missingcase").title("check.codec.title")
+                                    .at(enc.pos()).args(sum.name(), caseName).build(),
                             "encoder for `" + sum.name() + "` is missing case `" + caseName + "`");
                 }
             }
@@ -1278,19 +1426,26 @@ public final class TypeChecker {
         Map<String, Type> types = new LinkedHashMap<>();
         for (String inc : data.includes()) {
             if (!(symbols.get(inc) instanceof Ast.Data id)) {
-                throw new CompileException(data.pos(),
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.spread.notproduct").title("check.construct.title")
+                                .at(data.pos()).args(inc).build(),
                         "cannot spread `..." + inc + "` (not a product data)");
             }
             for (Map.Entry<String, Type> e : fieldTypes(id, symbols).entrySet()) {
                 if (types.put(e.getKey(), e.getValue()) != null) {
-                    throw new CompileException(data.pos(), "E1004", "Field `" + e.getKey()
-                            + "` from `..." + inc + "` conflicts with a field of `" + data.name() + "`.");
+                    throw CompileException.of(
+                            Diagnostic.of("E1004", "e1004.msg").at(data.pos())
+                                    .args(e.getKey(), inc, data.name()).build(),
+                            "Field `" + e.getKey() + "` from `..." + inc + "` conflicts with a field of `"
+                                    + data.name() + "`.");
                 }
             }
         }
         for (Ast.Field f : data.fields()) {
             if (types.put(f.name(), resolveType(f.type(), symbols)) != null) {
-                throw new CompileException(f.pos(), "E1004",
+                throw CompileException.of(
+                        Diagnostic.of("E1004", "e1004.dup").at(f.pos())
+                                .args(f.name(), data.name()).build(),
                         "duplicate field `" + f.name() + "` in `" + data.name() + "`");
             }
         }
@@ -1321,9 +1476,13 @@ public final class TypeChecker {
         for (Ast.Def def : module.defs()) {
             if (def instanceof Ast.Data data
                     && mandatoryReaches(data.name(), data.name(), symbols, new HashSet<>())) {
-                throw new CompileException(data.pos(), "data `" + data.name() + "` cannot be constructed:"
-                        + " it needs a value of itself through a mandatory field, with no `?` or `List`"
-                        + " to bottom out — make the self-referring field optional (`?`) or a `List`.");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.construct.self").title("check.construct.title")
+                                .at(data.pos()).args(data.name()).build(),
+                        "data `" + data.name() + "` cannot be constructed:"
+                                + " it needs a value of itself through a mandatory field, with no `?` or"
+                                + " `List` to bottom out — make the self-referring field optional (`?`)"
+                                + " or a `List`.");
             }
         }
     }
@@ -1354,16 +1513,20 @@ public final class TypeChecker {
 
         for (Map.Entry<String, Type> e : fields.entrySet()) {
             if (containsTuple(e.getValue())) {
-                throw new CompileException(data.pos(), "a tuple cannot be a data field (`"
-                        + data.name() + "." + e.getKey() + "`): a tuple has no external representation, "
-                        + "so it cannot cross a decoder/encoder boundary (ADR-0036). Use a named data.");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.field.tuple").title("check.boundary.title")
+                                .at(data.pos()).args(data.name(), e.getKey()).build(),
+                        "a tuple cannot be a data field (`" + data.name() + "." + e.getKey()
+                                + "`): a tuple has no external representation, so it cannot cross a"
+                                + " decoder/encoder boundary (ADR-0036). Use a named data.");
             }
         }
 
         data.invariant().ifPresent(expr -> {
             Type t = typeOf(expr, fields, data, symbols);
             if (t != Type.BOOL) {
-                throw new CompileException(expr.pos(), "E1101",
+                throw CompileException.of(
+                        Diagnostic.of("E1101", "e1101.msg").at(expr.pos()).args(Type.show(t)).build(),
                         "Invariant expression must have type Bool. Found: " + t);
             }
         });
@@ -1434,7 +1597,9 @@ public final class TypeChecker {
                 boolean hasDecoder = (def instanceof Ast.Data dd && dd.decoder().isPresent())
                         || (def instanceof Ast.SumData s && s.decoder().isPresent());
                 if (!hasDecoder) {
-                    throw new CompileException(d.pos(),
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.codec.nodecoder").title("check.codec.title")
+                                    .at(d.pos()).args(d.typeName()).build(),
                             "`" + d.typeName() + "` has no decoder to call `" + d.typeName() + ".decoder`");
                 }
                 yield Type.ref(d.typeName());
@@ -1450,7 +1615,9 @@ public final class TypeChecker {
     private static void checkConstruct(Ast.Construct c, Ast.Data data, Map<String, Type> fields,
                                        Map<String, Type> env, Map<String, Ast.Def> symbols) {
         if (!c.typeName().equals(data.name())) {
-            throw new CompileException(c.pos(),
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.codec.mustconstruct").title("check.codec.title")
+                            .at(c.pos()).args(data.name(), c.typeName()).build(),
                     "decoder for `" + data.name() + "` must construct `" + data.name()
                             + "`, but constructs `" + c.typeName() + "`");
         }
@@ -1464,16 +1631,25 @@ public final class TypeChecker {
         Map<String, Ast.FieldInit> byName = new HashMap<>();
         for (Ast.FieldInit init : inits) {
             if (byName.put(init.name(), init) != null) {
-                throw new CompileException(init.pos(), "duplicate field `" + init.name() + "`");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.dup.field").title("check.duplicate.title")
+                                .at(init.pos()).args(init.name()).build(),
+                        "duplicate field `" + init.name() + "`");
             }
             Type ft = fields.get(init.name());
             if (ft == null) {
-                throw new CompileException(init.pos(),
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.construct.nofield").title("check.construct.title")
+                                .at(init.pos(), init.name().length()).args(init.name(), typeName).build(),
                         "`" + init.name() + "` is not a field of `" + typeName + "`");
             }
             Type vt = typeOf(init.value(), env, data, symbols, reqs);
             if (!assignable(vt, ft, symbols)) {   // a case value widens to its sum-typed field (spec 8.3)
-                throw new CompileException(init.pos(),
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.field.type").title("check.type.mismatch.title")
+                                .at(init.pos(), init.name().length())
+                                .args(init.name(), Type.show(ft), Type.show(vt))
+                                .diff(Type.show(vt), Type.show(ft)).build(),
                         "field `" + init.name() + "` expects " + ft + " but got " + vt);
             }
         }
@@ -1481,7 +1657,10 @@ public final class TypeChecker {
         for (String sp : spreads) {
             if (!(env.get(sp) instanceof Type.Ref ref)
                     || !(symbols.get(ref.name()) instanceof Ast.Data sd)) {
-                throw new CompileException(pos, "spread `.." + sp + "` must be a data value");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.spread.notdata").title("check.construct.title")
+                                .at(pos).args(sp).build(),
+                        "spread `.." + sp + "` must be a data value");
             }
             provided.putAll(fieldTypes(sd, symbols));
         }
@@ -1491,12 +1670,18 @@ public final class TypeChecker {
             }
             Type pv = provided.get(f.getKey());
             if (pv == null) {
-                throw new CompileException(pos, "E1005",
+                throw CompileException.of(
+                        Diagnostic.of("E1005", "e1005.msg").at(pos)
+                                .args(typeName, f.getKey()).hint("e1005.hint").build(),
                         "construction of `" + typeName + "` is missing field `" + f.getKey() + "`");
             }
             if (!assignable(pv, f.getValue(), symbols)) {
-                throw new CompileException(pos, "spread provides `" + f.getKey() + "` as " + pv
-                        + " but `" + typeName + "` needs " + f.getValue());
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.spread.provides").title("check.type.mismatch.title")
+                                .at(pos).args(f.getKey(), Type.show(pv), typeName, Type.show(f.getValue()))
+                                .diff(Type.show(pv), Type.show(f.getValue())).build(),
+                        "spread provides `" + f.getKey() + "` as " + pv + " but `" + typeName + "` needs "
+                                + f.getValue());
             }
         }
     }
@@ -1520,13 +1705,19 @@ public final class TypeChecker {
             case Ast.IsoTextRaw t -> {
                 Type at = typeOf(t.arg(), env, data, symbols);
                 if (at != Type.DATE && at != Type.DATETIME) {
-                    throw new CompileException(t.pos(), "ISO text encoder expects Date or DateTime, got " + at);
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.codec.iso").title("check.codec.title")
+                                    .at(t.pos()).args(Type.show(at)).build(),
+                            "ISO text encoder expects Date or DateTime, got " + at);
                 }
             }
             case Ast.OptionRaw o -> {
                 Type at = typeOf(o.access(), env, data, symbols);
                 if (!(at instanceof Type.OptionOf oo)) {
-                    throw new CompileException(o.pos(), "optional encoder expects an Option, got " + at);
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.codec.option").title("check.codec.title")
+                                    .at(o.pos()).args(Type.show(at)).build(),
+                            "optional encoder expects an Option, got " + at);
                 }
                 Map<String, Type> inner = new HashMap<>(env);
                 inner.put(o.elemVar(), oo.element());
@@ -1542,7 +1733,9 @@ public final class TypeChecker {
                 boolean hasEncoder = (encDef instanceof Ast.Data ed && ed.encoder().isPresent())
                         || (encDef instanceof Ast.SumData sd && sd.encoder().isPresent());
                 if (!hasEncoder) {
-                    throw new CompileException(e.pos(),
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.codec.noencoder").title("check.codec.title")
+                                    .at(e.pos()).args(e.typeName()).build(),
                             "`" + e.typeName() + "` has no encoder to call `" + e.typeName() + ".encode`");
                 }
                 requireType(e.arg(), Type.ref(e.typeName()), env, data, symbols, NO_REQS,
@@ -1551,21 +1744,30 @@ public final class TypeChecker {
             case Ast.ListEnc le -> {
                 Type st = typeOf(le.source(), env, data, symbols);
                 if (!(st instanceof Type.ListOf lo)) {
-                    throw new CompileException(le.pos(), "list(...) source must be a List, got " + st);
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.codec.listsource").title("check.codec.title")
+                                    .at(le.pos()).args(Type.show(st)).build(),
+                            "list(...) source must be a List, got " + st);
                 }
                 checkEncElem(le.elem(), lo.element(), le.pos(), symbols);
             }
             case Ast.SetEnc se -> {
                 Type st = typeOf(se.source(), env, data, symbols);
                 if (!(st instanceof Type.SetOf so)) {
-                    throw new CompileException(se.pos(), "set encoder source must be a Set, got " + st);
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.codec.setsource").title("check.codec.title")
+                                    .at(se.pos()).args(Type.show(st)).build(),
+                            "set encoder source must be a Set, got " + st);
                 }
                 checkEncElem(se.elem(), so.element(), se.pos(), symbols);
             }
             case Ast.MapEnc me -> {
                 Type st = typeOf(me.source(), env, data, symbols);
                 if (!(st instanceof Type.MapOf mo)) {
-                    throw new CompileException(me.pos(), "map encoder source must be a Map, got " + st);
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.codec.mapsource").title("check.codec.title")
+                                    .at(me.pos()).args(Type.show(st)).build(),
+                            "map encoder source must be a Map, got " + st);
                 }
                 checkEncElem(me.elem(), mo.value(), me.pos(), symbols);
             }
@@ -1577,7 +1779,9 @@ public final class TypeChecker {
         switch (elem) {
             case Ast.PrimEnc p -> {
                 if (!elemType.equals(primType(p.kind()))) {
-                    throw new CompileException(pos,
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.codec.elemenc").title("check.codec.title")
+                                    .at(pos).args(p.kind().toString(), Type.show(elemType)).build(),
                             "element encoder " + p.kind() + " does not match " + elemType);
                 }
             }
@@ -1587,7 +1791,9 @@ public final class TypeChecker {
                 boolean hasEncoder = (def instanceof Ast.Data dd && dd.encoder().isPresent())
                         || (def instanceof Ast.SumData sd && sd.encoder().isPresent());
                 if (!elemType.equals(Type.ref(d.typeName())) || !hasEncoder) {
-                    throw new CompileException(pos,
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.codec.elemenc").title("check.codec.title")
+                                    .at(pos).args("`" + d.typeName() + "`", Type.show(elemType)).build(),
                             "element encoder `" + d.typeName() + "` does not match " + elemType);
                 }
             }
@@ -1621,18 +1827,30 @@ public final class TypeChecker {
             case Ast.TupleGet tg -> {
                 Type tt = typeOf(tg.tuple(), env, data, symbols, reqs);
                 if (!(tt instanceof Type.TupleOf to)) {
-                    throw new CompileException(tg.pos(), "a tuple pattern needs a tuple, got " + tt);
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.tuple.pattern").title("check.type.mismatch.title")
+                                    .at(tg.pos()).args(Type.show(tt)).build(),
+                            "a tuple pattern needs a tuple, got " + tt);
                 }
                 if (to.elements().size() != tg.arity()) {   // exact arity, in either direction (Elm)
-                    throw new CompileException(tg.pos(), "this pattern binds " + tg.arity()
-                            + " name(s) but the tuple has " + to.elements().size() + " element(s)");
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.tuple.arity").title("check.type.mismatch.title")
+                                    .at(tg.pos()).args(tg.arity(), to.elements().size()).build(),
+                            "this pattern binds " + tg.arity()
+                                    + " name(s) but the tuple has " + to.elements().size() + " element(s)");
                 }
                 yield to.elements().get(tg.index());
             }
             case Ast.Neg neg -> {
                 Type t = typeOf(neg.operand(), env, data, symbols, reqs);
                 if (t != Type.INT && t != Type.DECIMAL) {
-                    throw new CompileException(neg.pos(), "unary minus needs an Int or Decimal, got " + t);
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.neg.msg")
+                                    .title("check.neg.title")
+                                    .at(neg.pos(), width(neg.operand()))
+                                    .args(Type.show(t))
+                                    .build(),
+                            "unary minus needs an Int or Decimal, got " + t);
                 }
                 yield t;
             }
@@ -1653,7 +1871,9 @@ public final class TypeChecker {
             // reached only where a block escapes: it may be passed as an argument, or bound to a
             // `let` and applied, but it is not a value that can be returned or stored, because that
             // would need a runtime closure (spec 12.5)
-            case Ast.Block block -> throw new CompileException(block.pos(),
+            case Ast.Block block -> throw CompileException.of(
+                    Diagnostic.of(null, "check.block.notvalue").title("check.block.title")
+                            .at(block.pos()).build(),
                     "a block is not a value: it may be passed as an argument or bound to a `let` and "
                             + "applied, but it cannot be returned or stored in a data (spec 12.5)");
             case Ast.Var v -> {
@@ -1669,15 +1889,24 @@ public final class TypeChecker {
                     throw new CompileException(v.pos(), "E1301",
                             "`null` is not part of the language. Use an optional field with `?`.");
                 }
-                throw new CompileException(v.pos(), "unknown identifier `" + v.name() + "`"
-                        + Suggest.hint(v.name(), env.keySet()));
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.unknown.name.msg")
+                                .title("check.unknown.title")
+                                .at(v.pos(), v.name().length())
+                                .args(v.name())
+                                .suggestion(Suggest.candidate(v.name(), env.keySet()))
+                                .build(),
+                        "unknown identifier `" + v.name() + "`" + Suggest.hint(v.name(), env.keySet()));
             }
             case Ast.FieldAccess fa -> typeOfFieldAccess(fa, env, data, symbols, reqs);
             case Ast.Call call -> typeOfCall(call, env, data, symbols, reqs);
             case Ast.Binary bin -> typeOfBinary(bin, env, data, symbols, reqs);
             case Ast.NewData nd -> {
                 if (!(symbols.get(nd.typeName()) instanceof Ast.Data owner)) {
-                    throw new CompileException(nd.pos(), "cannot construct `" + nd.typeName() + "`");
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.construct.no").title("check.construct.title")
+                                    .at(nd.pos(), nd.typeName().length()).args(nd.typeName()).build(),
+                            "cannot construct `" + nd.typeName() + "`");
                 }
                 checkConstruction(nd.typeName(), nd.inits(), nd.spreads(), nd.pos(),
                         fieldTypes(owner, symbols), env, data, symbols, reqs);
@@ -1700,7 +1929,17 @@ public final class TypeChecker {
                     names.addAll(namesOf(et));
                     yield Type.union(names);
                 }
-                throw new CompileException(iff.pos(), "if branches disagree: " + tt + " vs " + et);
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.if.msg")
+                                .title("check.if.title")
+                                .at(iff.pos(), 2)
+                                .secondary(Region.ofWidth(iff.then().pos(), width(iff.then())),
+                                        "check.if.then", Type.show(tt))
+                                .secondary(Region.ofWidth(iff.els().pos(), width(iff.els())),
+                                        "check.if.else", Type.show(et))
+                                .hint("check.if.hint")
+                                .build(),
+                        "if branches disagree: " + tt + " vs " + et);
             }
             case Ast.ListLit lit -> {
                 if (lit.elements().isEmpty()) {
@@ -1806,7 +2045,13 @@ public final class TypeChecker {
             names.addAll(namesOf(b));
             return Type.union(names);
         }
-        throw new CompileException(pos, "list elements disagree on type: " + a + " vs " + b);
+        throw CompileException.of(
+                Diagnostic.of(null, "check.list.msg")
+                        .title("check.list.title")
+                        .at(pos)
+                        .hint("check.list.hint", Type.show(a), Type.show(b))
+                        .build(),
+                "list elements disagree on type: " + a + " vs " + b);
     }
 
     private static Type typeOfMatch(Ast.Match m, Map<String, Type> env, Ast.Data data,
@@ -1819,7 +2064,10 @@ public final class TypeChecker {
             return typeOfCasesMatch(m, union.members(), "union " + union, st, env, data, symbols, reqs);
         }
         if (!(st instanceof Type.Ref ref) || !(symbols.get(ref.name()) instanceof Ast.SumData sum)) {
-            throw new CompileException(m.pos(), "match requires a sum-typed value, got " + st);
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.match.notsum").title("check.match.title")
+                            .at(m.pos(), 5).args(Type.show(st)).build(),
+                    "match requires a sum-typed value, got " + st);
         }
         return typeOfCasesMatch(m, new HashSet<>(sum.cases()), "data `" + sum.name() + "`",
                 st, env, data, symbols, reqs);
@@ -1837,24 +2085,37 @@ public final class TypeChecker {
         for (Ast.Case c : m.cases()) {
             for (String caseName : c.caseTypes()) {
                 if (!cases.contains(caseName)) {
-                    throw new CompileException(c.pos(), "`" + caseName + "` is not a case of " + what);
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.match.notcase").title("check.match.title")
+                                    .at(c.pos()).args(caseName, what).build(),
+                            "`" + caseName + "` is not a case of " + what);
                 }
                 if (!covered.add(caseName)) {
-                    throw new CompileException(c.pos(), "`" + caseName + "` is matched by more than one case");
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.match.overlap").title("check.match.title")
+                                    .at(c.pos()).args(caseName).build(),
+                            "`" + caseName + "` is matched by more than one case");
                 }
             }
             Type bindType = c.caseTypes().size() == 1 ? caseBindType(c.caseTypes().get(0)) : scrutinee;
             branchType = mergeBranch(m, branchType,
                     typeOf(c.body(), bound(env, c.binding(), bindType), data, symbols, reqs), c);
         }
+        List<String> missing = new ArrayList<>();
         for (String caseName : cases) {
             if (!covered.contains(caseName)) {
-                throw new CompileException(m.pos(), "E1201",
-                        "Non-exhaustive match for " + what + ". Missing case: " + caseName);
+                missing.add(caseName);
             }
         }
+        if (!missing.isEmpty()) {
+            missing.sort(null);
+            throw nonExhaustive(m.pos(), what, missing);
+        }
         if (branchType == null) {
-            throw new CompileException(m.pos(), "match has no cases");
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.match.nocases").title("check.match.title")
+                            .at(m.pos(), 5).build(),
+                    "match has no cases");
         }
         return branchType;
     }
@@ -1867,25 +2128,32 @@ public final class TypeChecker {
         Type branchType = null;
         for (Ast.Case c : m.cases()) {
             if (c.caseTypes().size() != 1) {
-                throw new CompileException(c.pos(), "or-patterns are not allowed in an Option match;"
-                        + " use separate Some and None cases");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.match.option.orpattern").title("check.match.title")
+                                .at(c.pos()).build(),
+                        "or-patterns are not allowed in an Option match; use separate Some and None cases");
             }
             String caseType = c.caseTypes().get(0);
             Type bind = switch (caseType) {
                 case "Some" -> element;
                 case "None" -> null;
-                default -> throw new CompileException(c.pos(),
+                default -> throw CompileException.of(
+                        Diagnostic.of(null, "check.match.option.notcase").title("check.match.title")
+                                .at(c.pos()).args(caseType).build(),
                         "`" + caseType + "` is not a case of Option; use Some or None");
             };
             covered.add(caseType);
             branchType = mergeBranch(m, branchType,
                     typeOf(c.body(), bound(env, c.binding(), bind), data, symbols, reqs), c);
         }
+        List<String> missing = new ArrayList<>();
         for (String caseName : List.of("Some", "None")) {
             if (!covered.contains(caseName)) {
-                throw new CompileException(m.pos(), "E1201",
-                        "Non-exhaustive match for Option. Missing case: " + caseName);
+                missing.add(caseName);
             }
+        }
+        if (!missing.isEmpty()) {
+            throw nonExhaustive(m.pos(), "Option", missing);
         }
         return branchType;
     }
@@ -1931,7 +2199,10 @@ public final class TypeChecker {
             names.addAll(namesOf(bt));
             return Type.union(names);
         }
-        throw new CompileException(c.pos(),
+        throw CompileException.of(
+                Diagnostic.of(null, "check.match.branchtypes").title("check.match.title")
+                        .at(c.pos()).args(Type.show(branchType), Type.show(bt))
+                        .diff(Type.show(bt), Type.show(branchType)).build(),
                 "match branches disagree: " + branchType + " vs " + bt);
     }
 
@@ -1945,7 +2216,10 @@ public final class TypeChecker {
                 return ft;
             }
         }
-        throw new CompileException(fa.pos(), "cannot access field `" + fa.field() + "` on this value");
+        throw CompileException.of(
+                Diagnostic.of(null, "check.access").title("check.type.mismatch.title")
+                        .at(fa.pos(), fa.field().length()).args(fa.field()).build(),
+                "cannot access field `" + fa.field() + "` on this value");
     }
 
     private static Type typeOfCall(Ast.Call call, Map<String, Type> env, Ast.Data data,
@@ -1956,8 +2230,12 @@ public final class TypeChecker {
         Prelude.IntrinsicSig intrinsic = Prelude.intrinsics().get(call.fn());
         if (intrinsic != null) {
             if (args.size() != intrinsic.params().size()) {
-                throw new CompileException(call.pos(), call.fn() + " takes " + intrinsic.params().size()
-                        + " argument(s) but is called with " + args.size());
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.arity").title("check.arity.title")
+                                .at(call.pos(), call.fn().length())
+                                .args(call.fn(), intrinsic.params().size(), args.size()).build(),
+                        call.fn() + " takes " + intrinsic.params().size()
+                                + " argument(s) but is called with " + args.size());
             }
             Map<String, Type> bindings = new HashMap<>();
             for (int i = 0; i < args.size(); i++) {
@@ -1972,9 +2250,10 @@ public final class TypeChecker {
             // empty-list literal (element `Nothing`) is fine: it sorts to itself, so let it through.
             if (intrinsic.key().equals("list.sort") && result instanceof Type.ListOf lo
                     && !(lo.element() instanceof Type.Nothing) && !isOrdered(lo.element())) {
-                throw new CompileException(call.pos(), "sort needs a list of ordered values "
-                        + "(Int, String, Decimal, Date, or DateTime), but the element is " + lo.element()
-                        + " — sort its ordered field instead (e.g. map to `.value` first)");
+                throw needsOrdered(call.pos(), "sort", lo.element(),
+                        "sort needs a list of ordered values (Int, String, Decimal, Date, or DateTime),"
+                                + " but the element is " + lo.element()
+                                + " — sort its ordered field instead (e.g. map to `.value` first)");
             }
             return result;
         }
@@ -1988,7 +2267,7 @@ public final class TypeChecker {
                 arity(call, 1);
                 Type t = typeOf(args.get(0), env, data, symbols, reqs);
                 if (!(t instanceof Type.ListOf)) {
-                    throw new CompileException(call.pos(),
+                    throw expects(call.pos(), "List.length", "kind.list", t,
                             "argument of List.length must be a List but is " + t);
                 }
                 yield Type.INT;
@@ -1997,16 +2276,17 @@ public final class TypeChecker {
                 arity(call, 1);
                 Type t = typeOf(args.get(0), env, data, symbols, reqs);
                 if (!(t instanceof Type.ListOf lo)) {
-                    throw new CompileException(call.pos(),
+                    throw expects(call.pos(), call.fn(), "kind.list", t,
                             "argument of " + call.fn() + " must be a List but is " + t);
                 }
                 // Like `sort`, max/min compare by natural order, so the element must be an ordered
                 // primitive (Souther has no type classes); a data / newtype element is not Comparable.
                 // The empty-list literal (element `Nothing`) is fine — its result is `None`.
                 if (!isBottom(lo.element()) && !isOrdered(lo.element())) {
-                    throw new CompileException(call.pos(), call.fn() + " needs a list of ordered values "
-                            + "(Int, String, Decimal, Date, or DateTime), but the element is "
-                            + lo.element() + " — compare its ordered field instead");
+                    throw needsOrdered(call.pos(), call.fn(), lo.element(),
+                            call.fn() + " needs a list of ordered values (Int, String, Decimal, Date,"
+                                    + " or DateTime), but the element is " + lo.element()
+                                    + " — compare its ordered field instead");
                 }
                 yield Type.option(lo.element());
             }
@@ -2014,11 +2294,14 @@ public final class TypeChecker {
                 arity(call, 2);   // find(p, xs): predicate first, list last (F#/Elm order)
                 Type t = typeOf(args.get(1), env, data, symbols, reqs);
                 if (!(t instanceof Type.ListOf lo)) {
-                    throw new CompileException(call.pos(), "List.find expects a List, got " + t);
+                    throw expects(call.pos(), "List.find", "kind.list", t,
+                            "List.find expects a List, got " + t);
                 }
                 Type pr = blockType(call, args.get(0), List.of(lo.element()), env, data, symbols, reqs);
                 if (pr != Type.BOOL) {
-                    throw new CompileException(call.pos(),
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.fn.predicatebool").title("check.fn.title")
+                                    .at(call.pos()).args("List.find", Type.show(pr)).build(),
                             "List.find's predicate must return Bool, but returns " + pr);
                 }
                 yield Type.option(lo.element());
@@ -2027,12 +2310,17 @@ public final class TypeChecker {
                 arity(call, 2);   // sortBy(key, xs): key first, list last (F#/Elm order)
                 Type t = typeOf(args.get(1), env, data, symbols, reqs);
                 if (!(t instanceof Type.ListOf lo)) {
-                    throw new CompileException(call.pos(), "List.sortBy expects a List, got " + t);
+                    throw expects(call.pos(), "List.sortBy", "kind.list", t,
+                            "List.sortBy expects a List, got " + t);
                 }
                 Type keyT = blockType(call, args.get(0), List.of(lo.element()), env, data, symbols, reqs);
                 if (!isBottom(keyT) && !isOrdered(keyT)) {
-                    throw new CompileException(call.pos(), "List.sortBy's key must be an ordered value "
-                            + "(Int, String, Decimal, Date, or DateTime), but returns " + keyT);
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.ordered.key").title("check.type.mismatch.title")
+                                    .at(call.pos()).args("List.sortBy", Type.show(keyT))
+                                    .hint("check.ordered.hint").build(),
+                            "List.sortBy's key must be an ordered value (Int, String, Decimal, Date, or"
+                                    + " DateTime), but returns " + keyT);
                 }
                 yield Type.list(lo.element());
             }
@@ -2043,7 +2331,8 @@ public final class TypeChecker {
                 // fold(step, seed, xs): step block first, list last (F#/Elm order, spec §pipe)
                 Type src = typeOf(args.get(2), env, data, symbols, reqs);
                 if (!(src instanceof Type.ListOf lo)) {
-                    throw new CompileException(call.pos(), "fold expects a List, got " + src);
+                    throw expects(call.pos(), "fold", "kind.list", src,
+                            "fold expects a List, got " + src);
                 }
                 Type acc = typeOf(args.get(1), env, data, symbols, reqs);
                 Type bt = blockType(call, args.get(0), List.of(acc, lo.element()), env, data, symbols, reqs);
@@ -2054,13 +2343,19 @@ public final class TypeChecker {
                     // (a no-op fold) leaves the type a bottom; keep the seed type then, as the backend
                     // recovers it, rather than reject it. A different shape is a genuine mismatch.
                     if (!sameKind(acc, bt)) {
-                        throw new CompileException(call.pos(), "fold seeded with an empty collection must "
-                                + "grow a value of that collection's shape, but its block returns " + bt);
+                        throw CompileException.of(
+                                Diagnostic.of(null, "check.fold.shape").title("check.type.mismatch.title")
+                                        .at(call.pos()).args(Type.show(bt)).build(),
+                                "fold seeded with an empty collection must grow a value of that"
+                                        + " collection's shape, but its block returns " + bt);
                     }
                     yield Type.mentions(bt, TypeChecker::isBottom) ? acc : bt;
                 }
                 if (!bt.equals(acc) && absorbEmptyList(acc, bt) == null) {
-                    throw new CompileException(call.pos(),
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.fold.acctype").title("check.type.mismatch.title")
+                                    .at(call.pos()).args(Type.show(acc), Type.show(bt))
+                                    .diff(Type.show(bt), Type.show(acc)).build(),
                             "fold's block must return the accumulator type " + acc + ", got " + bt);
                 }
                 yield acc;
@@ -2069,7 +2364,8 @@ public final class TypeChecker {
                 arity(call, 2);
                 Type first = typeOf(args.get(1), env, data, symbols, reqs);   // get(index, xs): list last
                 if (!(first instanceof Type.ListOf lo)) {
-                    throw new CompileException(call.pos(), "List.get expects a List, got " + first);
+                    throw expects(call.pos(), "List.get", "kind.list", first,
+                            "List.get expects a List, got " + first);
                 }
                 requireType(args.get(0), Type.INT, env, data, symbols, reqs, "index of List.get");
                 yield Type.option(lo.element());
@@ -2078,7 +2374,8 @@ public final class TypeChecker {
                 arity(call, 2);
                 Type first = typeOf(args.get(1), env, data, symbols, reqs);   // get(key, m): map last
                 if (!(first instanceof Type.MapOf mo)) {
-                    throw new CompileException(call.pos(), "Map.get expects a Map, got " + first);
+                    throw expects(call.pos(), "Map.get", "kind.map", first,
+                            "Map.get expects a Map, got " + first);
                 }
                 // A bottom key type is a `Map.empty`-seeded accumulator whose key is not fixed yet;
                 // the block growing it — `Map.get(k, acc)` in a groupBy fold — supplies the real key,
@@ -2128,8 +2425,12 @@ public final class TypeChecker {
                 // reaches here — NewtypeDesugar has lowered it to a NewData literal.
                 if (env.get(call.fn()) instanceof Type.FnOf fn) {
                     if (args.size() != fn.params().size()) {
-                        throw new CompileException(call.pos(), "`" + call.fn() + "` takes "
-                                + fn.params().size() + " argument(s) but is applied to " + args.size());
+                        throw CompileException.of(
+                                Diagnostic.of(null, "check.arity").title("check.arity.title")
+                                        .at(call.pos(), call.fn().length())
+                                        .args(call.fn(), fn.params().size(), args.size()).build(),
+                                "`" + call.fn() + "` takes " + fn.params().size()
+                                        + " argument(s) but is applied to " + args.size());
                     }
                     for (int i = 0; i < args.size(); i++) {
                         requireType(args.get(i), fn.params().get(i), env, data, symbols, reqs,
@@ -2140,22 +2441,33 @@ public final class TypeChecker {
                 // a qualified name that matched no stdlib builtin/intrinsic above is a wrong stdlib
                 // call (spec §stdlib) — report it as such, not as a missing behavior.
                 if (call.fn().indexOf('.') >= 0) {
-                    throw new CompileException(call.pos(), "`" + call.fn()
-                            + "` is not a standard-library function.");
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.stdlib.notfunction").title("check.unknown.title")
+                                    .at(call.pos(), call.fn().length()).args(call.fn()).build(),
+                            "`" + call.fn() + "` is not a standard-library function.");
                 }
                 // a required behavior called inline (spec 12.2, 13): type it as its success case
                 ReqSig callee = reqs.get(call.fn());
                 if (callee == null) {
                     String qualified = Prelude.qualifiedFor(call.fn());
                     if (qualified != null) {
-                        throw new CompileException(call.pos(), "`" + call.fn() + "` is a standard-library "
-                                + "function and must be called qualified, as `" + qualified + "` (spec §stdlib).");
+                        throw CompileException.of(
+                                Diagnostic.of(null, "check.stdlib.qualified.msg")
+                                        .title("check.unknown.title").at(call.pos(), call.fn().length())
+                                        .args(call.fn(), qualified).build(),
+                                "`" + call.fn() + "` is a standard-library function and must be called"
+                                        + " qualified, as `" + qualified + "` (spec §stdlib).");
                     }
-                    throw new CompileException(call.pos(), "E1401", "`" + call.fn()
-                            + "` is not a behavior or builtin"
-                            + Suggest.hint(call.fn(), reqs.keySet())
-                            + ". Calling arbitrary JVM methods is not "
-                            + "allowed; declare a behavior without a `let` and implement it from Java.");
+                    throw CompileException.of(
+                            Diagnostic.of("E1401", "e1401.msg").at(call.pos(), call.fn().length())
+                                    .args(call.fn())
+                                    .suggestion(Suggest.candidate(call.fn(), reqs.keySet()))
+                                    .hint("e1401.hint")
+                                    .build(),
+                            "`" + call.fn() + "` is not a behavior or builtin"
+                                    + Suggest.hint(call.fn(), reqs.keySet())
+                                    + ". Calling arbitrary JVM methods is not allowed; declare a behavior"
+                                    + " without a `let` and implement it from Java.");
                 }
                 if (callee.param() == null) {
                     arity(call, 0);            // `() -> R`, e.g. 現在時刻() (spec 13.1)
@@ -2210,9 +2522,11 @@ public final class TypeChecker {
                 Type lt = typeOf(bin.left(), env, data, symbols, reqs);
                 Type rt = typeOf(bin.right(), env, data, symbols, reqs);
                 if (!(lt == rt && isOrdered(lt))) {
-                    throw new CompileException(bin.pos(), "operand of comparison must be two ordered "
-                            + "values of the same type (Int, String, Decimal, Date, or DateTime), got "
-                            + lt + " and " + rt);
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.compare.ordered").title("check.type.mismatch.title")
+                                    .at(bin.pos()).args(Type.show(lt), Type.show(rt)).build(),
+                            "operand of comparison must be two ordered values of the same type (Int,"
+                                    + " String, Decimal, Date, or DateTime), got " + lt + " and " + rt);
                 }
                 yield Type.BOOL;
             }
@@ -2222,7 +2536,9 @@ public final class TypeChecker {
                 // scale/mode. Case handling for a zero divisor is the `divide`/`remainder` functions.
                 Type lt = typeOf(bin.left(), env, data, symbols, reqs);
                 if (lt != Type.INT && lt != Type.DECIMAL) {
-                    throw new CompileException(bin.pos(),
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.arith.operand").title("check.type.mismatch.title")
+                                    .at(bin.pos()).args(Type.show(lt)).build(),
                             "operand of arithmetic must be Int or Decimal, got " + lt);
                 }
                 requireType(bin.right(), lt, env, data, symbols, reqs, "operand of arithmetic");
@@ -2236,7 +2552,17 @@ public final class TypeChecker {
                 Type lt = bottomAsEmptyList(typeOf(bin.left(), env, data, symbols, reqs));
                 Type rt = bottomAsEmptyList(typeOf(bin.right(), env, data, symbols, reqs));
                 if (!(lt instanceof Type.ListOf lo) || !(rt instanceof Type.ListOf ro)) {
-                    throw new CompileException(bin.pos(), "`++` needs two lists, got " + lt + " and " + rt);
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.concat.msg")
+                                    .title("check.concat.title")
+                                    .at(bin.pos(), 2)
+                                    .secondary(Region.ofWidth(bin.left().pos(), width(bin.left())),
+                                            "check.operand", Type.show(lt))
+                                    .secondary(Region.ofWidth(bin.right().pos(), width(bin.right())),
+                                            "check.operand", Type.show(rt))
+                                    .args(Type.show(lt), Type.show(rt))
+                                    .build(),
+                            "`++` needs two lists, got " + lt + " and " + rt);
                 }
                 yield Type.list(unifyElem(lo.element(), ro.element(), bin.pos()));
             }
@@ -2251,7 +2577,17 @@ public final class TypeChecker {
                 // bottom rather than reject the comparison. (A whole empty list `[]` stays a type error
                 // against a non-list, so this does not loosen `[] == 5`.)
                 if (!lt.equals(rt) && !isBottom(lt) && !isBottom(rt)) {
-                    throw new CompileException(bin.pos(), "cannot compare " + lt + " with " + rt);
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.compare.msg")
+                                    .title("check.compare.title")
+                                    .at(bin.pos(), 2)
+                                    .secondary(Region.ofWidth(bin.left().pos(), width(bin.left())),
+                                            "check.operand", Type.show(lt))
+                                    .secondary(Region.ofWidth(bin.right().pos(), width(bin.right())),
+                                            "check.operand", Type.show(rt))
+                                    .args(Type.show(lt), Type.show(rt))
+                                    .build(),
+                            "cannot compare " + lt + " with " + rt);
                 }
                 yield Type.BOOL;
             }
@@ -2273,7 +2609,10 @@ public final class TypeChecker {
         arity(call, 2);
         Type lt = typeOf(call.args().get(0), env, data, symbols, reqs);
         if (lt != Type.INT && lt != Type.DECIMAL) {
-            throw new CompileException(call.pos(), call.fn() + " expects Int or Decimal, got " + lt);
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.arith.expects").title("check.type.mismatch.title")
+                            .at(call.pos(), call.fn().length()).args(call.fn(), Type.show(lt)).build(),
+                    call.fn() + " expects Int or Decimal, got " + lt);
         }
         requireType(call.args().get(1), lt, env, data, symbols, reqs, "argument 2 of " + call.fn());
         return compare ? Type.INT : lt;
@@ -2294,23 +2633,36 @@ public final class TypeChecker {
             // stands in for a block: check its shape and yield its result type.
             if (typeOf(arg, env, data, symbols, reqs) instanceof Type.FnOf fn) {
                 if (fn.params().size() != paramTypes.size()) {
-                    throw new CompileException(arg.pos(), call.fn() + " calls its function with "
-                            + paramTypes.size() + " argument(s), but it takes " + fn.params().size());
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.fn.callarity").title("check.fn.title")
+                                    .at(arg.pos()).args(call.fn(), paramTypes.size(), fn.params().size())
+                                    .build(),
+                            call.fn() + " calls its function with " + paramTypes.size()
+                                    + " argument(s), but it takes " + fn.params().size());
                 }
                 for (int i = 0; i < paramTypes.size(); i++) {
                     if (!assignable(paramTypes.get(i), fn.params().get(i), symbols)) {
-                        throw new CompileException(arg.pos(), call.fn() + "'s element type "
-                                + paramTypes.get(i) + " is not acceptable to the function, which takes "
-                                + fn.params().get(i));
+                        throw CompileException.of(
+                                Diagnostic.of(null, "check.fn.argtype").title("check.fn.title")
+                                        .at(arg.pos()).args(call.fn(), Type.show(paramTypes.get(i)),
+                                                Type.show(fn.params().get(i))).build(),
+                                call.fn() + "'s element type " + paramTypes.get(i)
+                                        + " is not acceptable to the function, which takes "
+                                        + fn.params().get(i));
                     }
                 }
                 return fn.result();
             }
-            throw new CompileException(arg.pos(),
-                    call.fn() + " expects a block, e.g. `" + call.fn() + "((acc, x) -> ..., seed, xs)` (spec 12.5)");
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.fn.expectsblock").title("check.fn.title")
+                            .at(arg.pos()).args(call.fn()).build(),
+                    call.fn() + " expects a block, e.g. `" + call.fn()
+                            + "((acc, x) -> ..., seed, xs)` (spec 12.5)");
         }
         if (block.params().size() != paramTypes.size()) {
-            throw new CompileException(block.pos(),
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.fn.blockarity").title("check.fn.title")
+                            .at(block.pos()).args(paramTypes.size(), block.params().size()).build(),
                     "this block takes " + paramTypes.size() + " parameter(s), got "
                             + block.params().size());
         }
@@ -2357,16 +2709,22 @@ public final class TypeChecker {
         List<List<Type>> uses = new ArrayList<>();
         collectApplications(name, body, env, data, symbols, reqs, uses);
         if (uses.isEmpty()) {
-            throw new CompileException(body.pos(), "cannot infer the type of the function `" + name
-                    + "`: apply it (as `" + name + "(x)`) at least once so its parameter types are "
-                    + "known. A function passed on rather than applied — e.g. to a combinator — must "
-                    + "be written inline instead (`map(xs, x -> ...)`)");
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.fn.noinfer").title("check.fn.title")
+                            .at(body.pos()).args(name).build(),
+                    "cannot infer the type of the function `" + name + "`: apply it (as `" + name
+                            + "(x)`) at least once so its parameter types are known. A function passed"
+                            + " on rather than applied — e.g. to a combinator — must be written inline"
+                            + " instead (`map(xs, x -> ...)`)");
         }
         List<Type> first = uses.get(0);
         for (List<Type> u : uses) {
             if (!u.equals(first)) {
-                throw new CompileException(body.pos(), "the function `" + name
-                        + "` is applied with different argument types: " + first + " vs " + u);
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.fn.difftypes").title("check.fn.title")
+                                .at(body.pos()).args(name, first.toString(), u.toString()).build(),
+                        "the function `" + name + "` is applied with different argument types: "
+                                + first + " vs " + u);
             }
         }
         return first;
@@ -2395,8 +2753,11 @@ public final class TypeChecker {
         return switch (value) {
             case Ast.Block b -> {
                 if (b.params().size() != paramTypes.size()) {
-                    throw new CompileException(b.pos(), "this lambda takes " + b.params().size()
-                            + " parameter(s) but is applied with " + paramTypes.size());
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.fn.lambdaarity").title("check.fn.title")
+                                    .at(b.pos()).args(b.params().size(), paramTypes.size()).build(),
+                            "this lambda takes " + b.params().size() + " parameter(s) but is applied with "
+                                    + paramTypes.size());
                 }
                 Map<String, Type> inner = new HashMap<>(env);
                 for (int i = 0; i < paramTypes.size(); i++) {
@@ -2409,8 +2770,10 @@ public final class TypeChecker {
                 Type t = typeFunctionValue(iff.then(), paramTypes, env, data, symbols, reqs);
                 Type f = typeFunctionValue(iff.els(), paramTypes, env, data, symbols, reqs);
                 if (!t.equals(f)) {
-                    throw new CompileException(iff.pos(), "the two branches produce different function "
-                            + "types: " + t + " vs " + f);
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.fn.branchtypes").title("check.fn.title")
+                                    .at(iff.pos(), 2).args(Type.show(t), Type.show(f)).build(),
+                            "the two branches produce different function types: " + t + " vs " + f);
                 }
                 yield t;
             }
@@ -2441,8 +2804,11 @@ public final class TypeChecker {
 
     private static void rejectBuiltinShadow(String name, SourcePos pos) {
         if (BUILTIN_VALUES.contains(name)) {
-            throw new CompileException(pos, "`" + name + "` is a built-in value and cannot be used as "
-                    + "a binding name — it would shadow the built-in; choose another name");
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.builtin.shadow").title("check.reserved.title")
+                            .at(pos, name.length()).args(name).build(),
+                    "`" + name + "` is a built-in value and cannot be used as a binding name — it would"
+                            + " shadow the built-in; choose another name");
         }
     }
 
@@ -2478,14 +2844,39 @@ public final class TypeChecker {
      * bare — not an ordinary expression (spec 18.3). */
     private static void requireRoundingMode(Ast.Expr e) {
         if (!(e instanceof Ast.Var v) || !ROUNDING_MODES.contains(v.name())) {
-            throw new CompileException(e.pos(), "the rounding mode of `divide` must be one of "
-                    + "HALF_UP, HALF_EVEN, HALF_DOWN, UP, DOWN, CEILING, FLOOR (spec 18.3)");
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.divide.rounding").title("check.type.mismatch.title")
+                            .at(e.pos()).build(),
+                    "the rounding mode of `divide` must be one of HALF_UP, HALF_EVEN, HALF_DOWN, UP,"
+                            + " DOWN, CEILING, FLOOR (spec 18.3)");
         }
+    }
+
+    /** A stdlib argument-type error: {@code subject} (a function name) expects a container of kind
+     * {@code kindKey} (a localized phrase such as "a List"), but got {@code actual}. */
+    private static CompileException expects(SourcePos pos, String subject, String kindKey, Type actual,
+                                            String legacy) {
+        return CompileException.of(
+                Diagnostic.of(null, "check.expects").title("check.type.mismatch.title").at(pos)
+                        .args(subject, Localizable.of(kindKey), Type.show(actual)).build(),
+                legacy);
+    }
+
+    /** A stdlib error where a list's element (or a key) must be an ordered primitive to sort/compare. */
+    private static CompileException needsOrdered(SourcePos pos, String subject, Type element, String legacy) {
+        return CompileException.of(
+                Diagnostic.of(null, "check.ordered").title("check.type.mismatch.title").at(pos)
+                        .args(subject, Localizable.of("kind.ordered.list"), Type.show(element))
+                        .hint("check.ordered.hint").build(),
+                legacy);
     }
 
     private static void arity(Ast.Call call, int n) {
         if (call.args().size() != n) {
-            throw new CompileException(call.pos(),
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.arity").title("check.arity.title")
+                            .at(call.pos(), call.fn().length())
+                            .args(call.fn(), n, call.args().size()).build(),
                     call.fn() + " expects " + n + " argument(s), got " + call.args().size());
         }
     }
@@ -2494,8 +2885,43 @@ public final class TypeChecker {
                                     Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs, String what) {
         Type actual = typeOf(e, env, data, symbols, reqs);
         if (!assignable(actual, expected, symbols)) {   // a case widens to its sum (spec 8.3)
-            throw new CompileException(e.pos(), what + " must be " + expected + " but is " + actual);
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.type.mismatch.msg")
+                            .title("check.type.mismatch.title")
+                            .at(e.pos(), width(e))
+                            .args(what)
+                            .diff(Type.show(actual), Type.show(expected))
+                            .hint("check.type.mismatch.hint")
+                            .build(),
+                    what + " must be " + expected + " but is " + actual);
         }
+    }
+
+    /** A non-exhaustive-match error (E1201) listing every missing case. The legacy message names the
+     * first missing case, as it did before, so callers reading the text are unchanged. */
+    private static CompileException nonExhaustive(SourcePos pos, String what, List<String> missing) {
+        return CompileException.of(
+                Diagnostic.of("E1201", "e1201.msg")
+                        .at(pos, 5)
+                        .args(what)
+                        .hint("e1201.hint", String.join(", ", missing))
+                        .build(),
+                "Non-exhaustive match for " + what + ". Missing case: " + missing.get(0));
+    }
+
+    /** A best-effort caret width for {@code e}: the token length when the node is a leaf whose source
+     * text is known, otherwise 1. The renderer underlines this many columns from the node's start. */
+    private static int width(Ast.Expr e) {
+        return switch (e) {
+            case Ast.Var v -> v.name().length();
+            case Ast.StringLit s -> s.value().length() + 2;
+            case Ast.IntLit i -> Long.toString(i.value()).length();
+            case Ast.BoolLit b -> b.value() ? 4 : 5;
+            case Ast.DecimalLit d -> d.value().toPlainString().length() + 1;
+            case Ast.FieldAccess fa -> fa.field().length();
+            case Ast.Call c -> c.fn().length();
+            default -> 1;
+        };
     }
 
     /** Resolves a helper parameter's written type: an ordinary type or a function type. */
@@ -2524,7 +2950,10 @@ public final class TypeChecker {
         Set<String> names = new HashSet<>();
         for (Type m : members) {
             if (!(m instanceof Type.Ref r)) {
-                throw new CompileException(ret.pos(), "union members must be data types");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.union.members").title("check.boundary.title")
+                                .at(ret.pos()).build(),
+                        "union members must be data types");
             }
             names.add(r.name());
         }
@@ -2631,7 +3060,11 @@ public final class TypeChecker {
                 } else if (arg == Type.NOTHING) {
                     // the empty bottom absorbs into the concrete binding already learned
                 } else if (!assignable(arg, bound, symbols) && !assignable(bound, arg, symbols)) {
-                    throw new CompileException(pos, what + ": expected " + bound + " but got " + arg);
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.generic.arg").title("check.type.mismatch.title")
+                                    .at(pos).args(what, Type.show(bound), Type.show(arg))
+                                    .diff(Type.show(arg), Type.show(bound)).build(),
+                            what + ": expected " + bound + " but got " + arg);
                 }
             }
             case Type.ListOf p when arg instanceof Type.ListOf a ->
@@ -2658,7 +3091,11 @@ public final class TypeChecker {
             }
             default -> {
                 if (!assignable(arg, param, symbols)) {
-                    throw new CompileException(pos, what + ": expected " + param + " but got " + arg);
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.generic.arg").title("check.type.mismatch.title")
+                                    .at(pos).args(what, Type.show(param), Type.show(arg))
+                                    .diff(Type.show(arg), Type.show(param)).build(),
+                            what + ": expected " + param + " but got " + arg);
                 }
             }
         }
@@ -2730,32 +3167,47 @@ public final class TypeChecker {
             // 制約違反 is no longer a writable case: an invariant violation aborts (spec 7.3, 9.4).
             case "List" -> {
                 if (ref.arg() == null) {
-                    throw new CompileException(ref.pos(), "List needs a type argument, e.g. List<Int>");
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.typearg.list").title("check.typearg.title")
+                                    .at(ref.pos(), 4).build(),
+                            "List needs a type argument, e.g. List<Int>");
                 }
                 yield Type.list(resolveType(ref.arg(), symbols));
             }
             case "Set" -> {
                 if (ref.arg() == null) {
-                    throw new CompileException(ref.pos(), "Set needs a type argument, e.g. Set<String>");
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.typearg.set").title("check.typearg.title")
+                                    .at(ref.pos(), 3).build(),
+                            "Set needs a type argument, e.g. Set<String>");
                 }
                 yield Type.set(resolveType(ref.arg(), symbols));
             }
             case "Option" -> {
                 if (ref.arg() == null) {
-                    throw new CompileException(ref.pos(), "Option needs a type argument");
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.typearg.option").title("check.typearg.title")
+                                    .at(ref.pos(), 6).build(),
+                            "Option needs a type argument");
                 }
                 yield Type.option(resolveType(ref.arg(), symbols));
             }
             case "Map" -> {
                 if (ref.arg() == null) {
-                    throw new CompileException(ref.pos(), "Map needs a value type, e.g. Map<String, Int>");
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.typearg.map").title("check.typearg.title")
+                                    .at(ref.pos(), 3).build(),
+                            "Map needs a value type, e.g. Map<String, Int>");
                 }
                 Type key = ref.tupleElems() == null
                         ? Type.STRING : resolveType(ref.tupleElems().get(0), symbols);
                 if (!(key == Type.STRING || key instanceof Type.Var
                         || (key instanceof Type.Ref r && isStringNewtype(r.name(), symbols)))) {
-                    throw new CompileException(ref.pos(), "a Map key must be String or a String-backed"
-                            + " newtype (`data X = String`), got " + key + " (ADR-0040)");
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.map.key").title("check.boundary.title")
+                                    .at(ref.pos(), 3).args(Type.show(key)).build(),
+                            "a Map key must be String or a String-backed newtype (`data X = String`), got "
+                                    + key + " (ADR-0040)");
                 }
                 yield Type.map(key, resolveType(ref.arg(), symbols));
             }
@@ -2766,8 +3218,14 @@ public final class TypeChecker {
                 if (symbols.containsKey(ref.name())) {
                     yield Type.ref(ref.name());
                 }
-                throw new CompileException(ref.pos(), "unknown type `" + ref.name() + "`"
-                        + Suggest.hint(ref.name(), symbols.keySet()));
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.unknown.type.msg")
+                                .title("check.unknown.title")
+                                .at(ref.pos(), ref.name().length())
+                                .args(ref.name())
+                                .suggestion(Suggest.candidate(ref.name(), symbols.keySet()))
+                                .build(),
+                        "unknown type `" + ref.name() + "`" + Suggest.hint(ref.name(), symbols.keySet()));
             }
         };
     }

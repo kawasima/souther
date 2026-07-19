@@ -1,6 +1,7 @@
 package net.unit8.souther.compiler.check;
 
 import net.unit8.souther.compiler.CompileException;
+import net.unit8.souther.compiler.diag.Diagnostic;
 import net.unit8.souther.compiler.Prelude;
 import net.unit8.souther.compiler.SourcePos;
 import net.unit8.souther.compiler.ast.Ast;
@@ -124,8 +125,12 @@ public final class HelperInliner {
                     yield new Ast.Call(call.fn(), args, call.pos());
                 }
                 if (args.size() != helper.params().size()) {
-                    throw new CompileException(call.pos(), "helper `let " + helper.name() + "` takes "
-                            + helper.params().size() + " argument(s) but is called with " + args.size());
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.helper.arity").title("check.arity.title")
+                                    .at(call.pos(), call.fn().length())
+                                    .args(helper.name(), helper.params().size(), args.size()).build(),
+                            "helper `let " + helper.name() + "` takes " + helper.params().size()
+                                    + " argument(s) but is called with " + args.size());
                 }
                 int k = counter++;
                 Map<String, String> subst = new HashMap<>();
@@ -156,8 +161,11 @@ public final class HelperInliner {
                             // substitution — only the enclosing helper body is.
                             scopedLambdas.put(f, new Ast.FnDef(f, lparams, null, null, lambda.body(), lambda.pos()));
                         } else {
-                            throw new CompileException(arg.pos(), "the function passed to `" + p.name()
-                                    + "` of `let " + helper.name() + "` must be a named function or a lambda");
+                            throw CompileException.of(
+                                    Diagnostic.of(null, "check.fn.mustbenamed").title("check.fn.title")
+                                            .at(arg.pos()).args(p.name(), helper.name()).build(),
+                                    "the function passed to `" + p.name() + "` of `let " + helper.name()
+                                            + "` must be a named function or a lambda");
                         }
                     } else {
                         String f = "$" + k + "_" + p.name();
@@ -197,9 +205,11 @@ public final class HelperInliner {
                 // are untyped, so their types flow in from the arguments at expansion. No runtime
                 // closure is built as long as the lambda does not escape.
                 if (mentions(lambda.body(), li.name())) {
-                    throw new CompileException(lambda.pos(), "the lambda bound to `" + li.name()
-                            + "` refers to itself; a recursive lambda would not bottom out when "
-                            + "expanded inline");
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.fn.recursivelambda").title("check.fn.title")
+                                    .at(lambda.pos()).args(li.name()).build(),
+                            "the lambda bound to `" + li.name() + "` refers to itself; a recursive lambda"
+                                    + " would not bottom out when expanded inline");
                 }
                 List<Ast.FnParam> params = new ArrayList<>();
                 for (String p : lambda.params()) {

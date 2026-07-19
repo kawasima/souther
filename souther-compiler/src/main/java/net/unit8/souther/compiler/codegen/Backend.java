@@ -1,6 +1,7 @@
 package net.unit8.souther.compiler.codegen;
 
 import net.unit8.souther.compiler.CompileException;
+import net.unit8.souther.compiler.diag.Diagnostic;
 import net.unit8.souther.compiler.ast.Ast;
 import net.unit8.souther.compiler.check.Type;
 import net.unit8.souther.compiler.check.TypeChecker;
@@ -119,14 +120,19 @@ public final class Backend {
         for (Ast.BehaviorDef bd : module.behaviors()) {
             String cls = behaviorClass(bd.name());
             if (localTypes.contains(cls)) {
-                throw new CompileException(bd.pos(), "behavior `" + bd.name()
-                        + "` generates class `" + cls + "`, which collides with data `" + cls
-                        + "` (spec 19.5); rename one so their class names differ");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.behavior.collision.data").title("check.duplicate.title")
+                                .at(bd.pos()).args(bd.name(), cls).build(),
+                        "behavior `" + bd.name() + "` generates class `" + cls + "`, which collides with"
+                                + " data `" + cls + "` (spec 19.5); rename one so their class names differ");
             }
             String prev = behaviorClassOwner.put(cls, bd.name());
             if (prev != null) {
-                throw new CompileException(bd.pos(), "behaviors `" + prev + "` and `" + bd.name()
-                        + "` both generate class `" + cls + "` (spec 19.5); rename one");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.behavior.collision.behavior").title("check.duplicate.title")
+                                .at(bd.pos()).args(prev, bd.name(), cls).build(),
+                        "behaviors `" + prev + "` and `" + bd.name() + "` both generate class `" + cls
+                                + "` (spec 19.5); rename one");
             }
         }
         // A behavior whose output is an anonymous union gets a generated sealed interface

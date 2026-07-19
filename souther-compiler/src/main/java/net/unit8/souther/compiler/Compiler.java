@@ -1,6 +1,7 @@
 package net.unit8.souther.compiler;
 
 import net.unit8.souther.compiler.ast.Ast;
+import net.unit8.souther.compiler.diag.Diagnostic;
 import net.unit8.souther.compiler.check.Exposing;
 import net.unit8.souther.compiler.check.HelperInliner;
 import net.unit8.souther.compiler.check.Lower;
@@ -74,9 +75,12 @@ public final class Compiler {
                 continue;   // cannot evaluate at compile time; the run-time check still applies
             }
             if (!holds) {
-                throw new CompileException(c.pos(), "`" + c.typeName() + "("
-                        + (c.value() instanceof String s ? "\"" + s + "\"" : c.value())
-                        + ")` violates its invariant.");
+                String shown = c.typeName() + "("
+                        + (c.value() instanceof String s ? "\"" + s + "\"" : c.value()) + ")";
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.const.invariant").title("check.construct.title")
+                                .at(c.pos()).args(shown).build(),
+                        "`" + shown + "` violates its invariant.");
             }
         }
     }
@@ -98,17 +102,21 @@ public final class Compiler {
     private static void rejectReservedNamespace(Ast.Module m) {
         String n = m.name();
         if (n.equals(RESERVED_NAMESPACE) || n.startsWith(RESERVED_NAMESPACE + ".")) {
-            throw new CompileException(m.pos(), "module `" + n + "` is in the reserved `"
-                    + RESERVED_NAMESPACE + "` namespace: the compiler ships souther.string / "
-                    + "souther.list / souther.map / souther.bool, and a user module cannot take a "
-                    + "reserved name.");
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.module.reserved").title("check.module.title")
+                            .at(m.pos()).args(n).build(),
+                    "module `" + n + "` is in the reserved `" + RESERVED_NAMESPACE + "` namespace: the"
+                            + " compiler ships souther.string / souther.list / souther.map / souther.bool,"
+                            + " and a user module cannot take a reserved name.");
         }
         // The short qualifiers are how the standard library is reached (`List.map`, `import String`);
         // a user module by one of these names would shadow the library and could not be imported.
         if (Prelude.isQualifier(n)) {
-            throw new CompileException(m.pos(), "module `" + n + "` uses a name reserved for the "
-                    + "standard-library qualifier `" + n + "` (as in `" + n + ".…` / `import " + n
-                    + " { … }`); pick another module name.");
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.module.qualifier").title("check.module.title")
+                            .at(m.pos()).args(n).build(),
+                    "module `" + n + "` uses a name reserved for the standard-library qualifier `" + n
+                            + "` (as in `" + n + ".…` / `import " + n + " { … }`); pick another module name.");
         }
     }
 
@@ -124,7 +132,10 @@ public final class Compiler {
         Map<String, Ast.Module> byName = new LinkedHashMap<>();
         for (Ast.Module m : parsed) {
             if (byName.put(m.name(), m) != null) {
-                throw new CompileException(m.pos(), "duplicate module `" + m.name() + "`");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.module.duplicate").title("check.module.title")
+                                .at(m.pos()).args(m.name()).build(),
+                        "duplicate module `" + m.name() + "`");
             }
         }
         detectCycles(parsed, byName);
@@ -240,13 +251,18 @@ public final class Compiler {
         for (Ast.Import imp : m.imports()) {
             Ast.Module src = registry.get(imp.module());
             if (src == null) {
-                throw new CompileException(imp.pos(), "unknown module `" + imp.module() + "`");
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.import.unknownmodule").title("check.module.title")
+                                .at(imp.pos()).args(imp.module()).build(),
+                        "unknown module `" + imp.module() + "`");
             }
             Map<String, Ast.Def> srcDefs = TypeChecker.symbols(src);
             Set<String> exposed = exposedBaseNames(src);
             for (String name : imp.names()) {
                 if (!exposed.contains(name)) {
-                    throw new CompileException(imp.pos(),
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.import.notexposed").title("check.module.title")
+                                    .at(imp.pos()).args(name, imp.module()).build(),
                             "`" + name + "` is not exposed by `" + imp.module() + "`");
                 }
                 Ast.Def d = srcDefs.get(name);
@@ -256,11 +272,15 @@ public final class Compiler {
                     if (behaviorNames(src).contains(name)) {
                         continue;
                     }
-                    throw new CompileException(imp.pos(),
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.import.notdefined").title("check.module.title")
+                                    .at(imp.pos()).args(name, imp.module()).build(),
                             "`" + name + "` is not defined in `" + imp.module() + "`");
                 }
                 if (defs.put(name, d) != null) {
-                    throw new CompileException(imp.pos(),
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.import.conflict").title("check.module.title")
+                                    .at(imp.pos()).args(name).build(),
                             "imported `" + name + "` conflicts with a local definition");
                 }
             }

@@ -110,6 +110,35 @@ public sealed interface Type
         return new Var(name);
     }
 
+    /** A user-facing rendering of {@code t} in surface syntax: {@code Int}, {@code List<Int>},
+     * {@code A | B}, {@code (A, B)}, {@code T?}. Used by diagnostics; unlike the record {@code toString}
+     * it reads the way the source is written. */
+    static String show(Type t) {
+        return switch (t) {
+            case Prim p -> switch (p) {
+                case INT -> "Int";
+                case STRING -> "String";
+                case BOOL -> "Bool";
+                case DECIMAL -> "Decimal";
+                case DATE -> "Date";
+                case DATETIME -> "DateTime";
+                case RAW -> "Raw";
+            };
+            case Ref r -> r.name();
+            case Var v -> "'" + v.name();
+            case Nothing ignored -> "_";
+            case ListOf l -> "List<" + show(l.element()) + ">";
+            case SetOf s -> "Set<" + show(s.element()) + ">";
+            case OptionOf o -> show(o.element()) + "?";
+            case MapOf m -> "Map<" + show(m.key()) + ", " + show(m.value()) + ">";
+            case Union u -> String.join(" | ", u.members());
+            case TupleOf tu -> "(" + tu.elements().stream().map(Type::show)
+                    .collect(java.util.stream.Collectors.joining(", ")) + ")";
+            case FnOf f -> "(" + f.params().stream().map(Type::show)
+                    .collect(java.util.stream.Collectors.joining(", ")) + ") -> " + show(f.result());
+        };
+    }
+
     /** Whether {@code t}, or any type nested inside it, satisfies {@code p}. Tests {@code t} itself
      * first, then recurses through the collection types ({@code List}/{@code Set}/{@code Option}
      * element, {@code Map} key and value, {@code Tuple} members). The single tree walk both

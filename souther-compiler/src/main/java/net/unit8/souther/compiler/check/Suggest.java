@@ -15,6 +15,13 @@ final class Suggest {
 
     /** {@code " (did you mean `X`?)"} for the closest candidate within bound, or {@code ""}. */
     static String hint(String name, Collection<String> candidates) {
+        String best = candidate(name, candidates);
+        return best == null ? "" : " (did you mean `" + best + "`?)";
+    }
+
+    /** The closest in-scope candidate to {@code name} within the closeness bound, or {@code null}.
+     * The structured form of {@link #hint}, for a diagnostic's {@code suggestion} field. */
+    static String candidate(String name, Collection<String> candidates) {
         String best = null;
         int bestDistance = Integer.MAX_VALUE;
         for (String candidate : candidates) {
@@ -28,9 +35,9 @@ final class Suggest {
             }
         }
         if (best != null && bestDistance <= 2 && bestDistance < name.length()) {
-            return " (did you mean `" + best + "`?)";
+            return best;
         }
-        return "";
+        return null;
     }
 
     /** Levenshtein edit distance (insert/delete/substitute), on Unicode code points. */

@@ -1,6 +1,7 @@
 package net.unit8.souther.compiler.check;
 
 import net.unit8.souther.compiler.CompileException;
+import net.unit8.souther.compiler.diag.Diagnostic;
 import net.unit8.souther.compiler.Prelude;
 import net.unit8.souther.compiler.ast.Ast;
 
@@ -52,7 +53,9 @@ public final class Exposing {
             for (String name : imp.names()) {
                 String qualified = imp.module() + "." + name;
                 if (!Prelude.hasQualified(qualified)) {
-                    throw new CompileException(imp.pos(),
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.import.notstdfn").title("check.module.title")
+                                    .at(imp.pos()).args(name, imp.module()).build(),
                             "`" + name + "` is not a function in the standard library module `"
                                     + imp.module() + "` (spec §stdlib).");
                 }
@@ -61,9 +64,11 @@ public final class Exposing {
                 }
                 String prior = exposed.putIfAbsent(name, qualified);
                 if (prior != null && !prior.equals(qualified)) {
-                    throw new CompileException(imp.pos(), "`" + name + "` is exposed from both `"
-                            + prior + "` and `" + qualified + "` — call it qualified instead of "
-                            + "importing both (spec §stdlib).");
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.import.ambiguous").title("check.module.title")
+                                    .at(imp.pos()).args(name, prior, qualified).build(),
+                            "`" + name + "` is exposed from both `" + prior + "` and `" + qualified
+                                    + "` — call it qualified instead of importing both (spec §stdlib).");
                 }
             }
         }
