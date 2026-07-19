@@ -327,6 +327,24 @@ public final class Backend {
     }
 
     /**
+     * Adds the source-level {@code Behavior<I, O>} signature to a generated single-input
+     * behavior. Its erased JVM {@code apply} descriptor remains {@code Object -> Object}, but
+     * Java callers then receive the declared input and outcome types without a cast.
+     */
+    private void withBehaviorSignature(ClassBuilder cb, Type input, Type output, String behaviorName) {
+        ClassDesc inputRef = refTypeOrNull(input, behaviorName);
+        ClassDesc outputRef = refTypeOrNull(output, behaviorName);
+        if (inputRef == null || outputRef == null) {
+            return;
+        }
+        String beh = CD_Behavior.descriptorString();
+        beh = beh.substring(0, beh.length() - 1); // drop trailing ';' to insert type args
+        String sig = CD_Object.descriptorString() + beh + "<"
+                + inputRef.descriptorString() + outputRef.descriptorString() + ">;";
+        cb.with(SignatureAttribute.of(ClassSignature.parseFrom(sig)));
+    }
+
+    /**
      * Behavior-result interfaces to generate (spec 19.8): for each behavior whose output is an
      * anonymous union, maps {@code <behavior名>結果} to its leaf cases — the {@code permits} list and
      * the set of case classes that {@code implements} it. A named-sum output is already a sealed
@@ -440,6 +458,8 @@ public final class Backend {
             cb.withFlags(pub(spec.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             if (n == 1) {
                 cb.withInterfaceSymbols(CD_Behavior); // single-input behaviors compose with >->
+                withBehaviorSignature(cb, successType(spec.params().getFirst().type()),
+                        successType(spec.ret()), spec.name());
             }
             emitInjection(cb, cdB, injected);
             cb.withMethodBody("apply", mtdApply, ClassFile.ACC_PUBLIC, code -> {
@@ -534,6 +554,8 @@ public final class Backend {
             cb.withFlags(pub(pipe.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
             if (arity == 1) {
                 cb.withInterfaceSymbols(CD_Behavior);   // only single-input pipelines compose
+                TypeChecker.Sig sig = TypeChecker.stageSig(pipe.name(), sigs, symbols, pipe.pos());
+                withBehaviorSignature(cb, sig.ins().getFirst(), sig.out(), pipe.name());
             }
             emitInjection(cb, cdP, reqStages);
 

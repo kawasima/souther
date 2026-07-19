@@ -51,6 +51,12 @@ class CompileBehaviorResultTest {
         assertTrue(result.isAssignableFrom(loader.loadClass("demo.Pricey")));
     }
 
+    @Test
+    void implementedBehaviorDeclaresItsGenericInputAndOutcomeTypes() throws Exception {
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
+        assertBehaviorSignature(loader.loadClass("demo.Classify"), "demo.Draft", "demo.Classify結果");
+    }
+
     private static final String INJECTED = """
             module demo
             exposing ( Member )
@@ -68,13 +74,16 @@ class CompileBehaviorResultTest {
     @Test
     void injectedBaseDeclaresTheResultInterfaceAsItsGenericReturnType() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(INJECTED), getClass().getClassLoader());
-        Class<?> base = loader.loadClass("demo.FindMember");
-        java.lang.reflect.Type[] ifaces = base.getGenericInterfaces();
+        assertBehaviorSignature(loader.loadClass("demo.FindMember"), "demo.Id", "demo.FindMember結果");
+    }
+
+    private static void assertBehaviorSignature(Class<?> behavior, String inputName, String outputName) {
+        java.lang.reflect.Type[] ifaces = behavior.getGenericInterfaces();
         assertEquals(1, ifaces.length);
         ParameterizedType pt = (ParameterizedType) ifaces[0];
         assertEquals(Behavior.class, pt.getRawType());
         java.lang.reflect.Type[] args = pt.getActualTypeArguments();
-        assertEquals("demo.Id", ((Class<?>) args[0]).getName());
-        assertEquals("demo.FindMember結果", ((Class<?>) args[1]).getName());
+        assertEquals(inputName, ((Class<?>) args[0]).getName());
+        assertEquals(outputName, ((Class<?>) args[1]).getName());
     }
 }

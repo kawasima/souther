@@ -6,7 +6,6 @@ package app.ordering.web;
 
 import example.ordering.在庫不足;
 import example.ordering.注文;
-import example.ordering.注文を処理する;
 import example.ordering.注文を処理する結果;
 import example.ordering.注文確定;
 
@@ -14,6 +13,7 @@ import net.unit8.raoh.Err;
 import net.unit8.raoh.Issue;
 import net.unit8.raoh.Ok;
 import net.unit8.raoh.Path;
+import net.unit8.souther.runtime.Behavior;
 
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.ResponseEntity;
@@ -42,10 +42,10 @@ import java.util.Map;
 @RequestMapping("/orders")
 public final class OrderController {
 
-    private final 注文を処理する pipeline;
+    private final Behavior<注文, 注文を処理する結果> pipeline;
     private final TransactionTemplate tx;
 
-    public OrderController(注文を処理する pipeline, TransactionTemplate tx) {
+    public OrderController(Behavior<注文, 注文を処理する結果> pipeline, TransactionTemplate tx) {
         this.pipeline = pipeline;
         this.tx = tx;
     }
@@ -63,7 +63,7 @@ public final class OrderController {
             // decode 成功：トランザクションの中でパイプラインを走らせ、出力ケースで巻き戻しと HTTP を
             // 同時に畳む。プラットフォーム障害の例外はここを素通りし、TransactionTemplate が自動
             // ロールバックして onPlatformFailure が受ける。
-            case Ok<注文>(var order) -> tx.execute(status -> switch ((注文を処理する結果) pipeline.apply(order)) {
+            case Ok<注文>(var order) -> tx.execute(status -> switch (pipeline.apply(order)) {
                 case 注文確定 confirmed ->
                         // encode は素の Map（外部表現。spec 6）。Spring/Jackson がそのまま JSON 化する。
                         ResponseEntity.status(201).body(注文確定.encoder().encode(confirmed));

@@ -4,8 +4,12 @@ import app.ordering.JooqAllocateStock;
 import app.ordering.JooqRecordOrder;
 
 import example.ordering.在庫を引き当てる;
+import example.ordering.注文;
 import example.ordering.注文を処理する;
+import example.ordering.注文を処理する結果;
 import example.ordering.注文を記録する;
+
+import net.unit8.souther.runtime.Behavior;
 
 import org.jooq.DSLContext;
 import org.jooq.conf.RenderQuotedNames;
@@ -59,7 +63,8 @@ public class OrderingConfig {
      * それを満たす実装を bind で注入する（spec 19.5）。
      */
     @Bean
-    public 注文を処理する 注文を処理する(注文を記録する 記録, 在庫を引き当てる 引当) {
+    public Behavior<注文, 注文を処理する結果> 注文を処理する(
+            注文を記録する 記録, 在庫を引き当てる 引当) {
         return 注文を処理する.bind(記録, 引当);
     }
 }
