@@ -210,7 +210,8 @@ public interface Ast {
     record Bind(String name, String key, DecRef ref, SourcePos pos) implements Ast {}
 
     /** The decoder referenced by a bind: a primitive, another data's {@code .decoder}, or a list. */
-    sealed interface DecRef extends Ast permits PrimDecRef, DataDecRef, ListDecRef, OptionDecRef, MapDecRef {}
+    sealed interface DecRef extends Ast
+            permits PrimDecRef, DataDecRef, ListDecRef, SetDecRef, OptionDecRef, MapDecRef {}
 
     record PrimDecRef(PrimKind kind, SourcePos pos) implements DecRef {}
 
@@ -218,6 +219,9 @@ public interface Ast {
 
     /** {@code list(<elementDecRef>)} */
     record ListDecRef(DecRef element, SourcePos pos) implements DecRef {}
+
+    /** {@code set(<elementDecRef>)} — a list decoder deduplicated into a Set on decode (ADR-0009). */
+    record SetDecRef(DecRef element, SourcePos pos) implements DecRef {}
 
     /** An optional field decoder: absent/null becomes {@code None}, present decodes {@code element}. */
     record OptionDecRef(DecRef element, SourcePos pos) implements DecRef {}
@@ -249,7 +253,7 @@ public interface Ast {
     /** A Raw-building expression. */
     sealed interface RawExpr extends Ast
             permits TextRaw, IntRaw, BoolRaw, DecimalRaw, IsoTextRaw, ObjectRaw, EncodeRaw, ListEnc,
-                    OptionRaw, MapEnc {}
+                    SetEnc, OptionRaw, MapEnc {}
 
     /** Encodes a {@code Map<String, T>} to a {@code Raw.Object}, each value via {@code elem}. */
     record MapEnc(Expr source, EncElem elem, SourcePos pos) implements RawExpr {}
@@ -277,6 +281,9 @@ public interface Ast {
 
     /** {@code list(expr, <elemEnc>)} — encode a {@code List<T>} to a Raw.List. */
     record ListEnc(Expr source, EncElem elem, SourcePos pos) implements RawExpr {}
+
+    /** Encodes a {@code Set} as a JSON array: the set is listed, then each element encoded. */
+    record SetEnc(Expr source, EncElem elem, SourcePos pos) implements RawExpr {}
 
     /** How to encode a list element: a primitive or another data's {@code .encode}. */
     sealed interface EncElem extends Ast permits PrimEnc, DataEnc {}

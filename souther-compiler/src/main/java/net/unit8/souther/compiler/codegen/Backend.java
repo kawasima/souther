@@ -18,6 +18,9 @@ import java.lang.classfile.attribute.PermittedSubclassesAttribute;
 import java.lang.classfile.attribute.SignatureAttribute;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDescs;
+import java.lang.constant.DirectMethodHandleDesc;
+import java.lang.constant.DynamicCallSiteDesc;
+import java.lang.constant.MethodHandleDesc;
 import java.lang.constant.MethodTypeDesc;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,6 +46,7 @@ public final class Backend {
     private static final ClassDesc CD_CharSequence = ClassDesc.of("java.lang.CharSequence");
     private static final ClassDesc CD_Map = ClassDesc.of("java.util.Map");
     private static final ClassDesc CD_List = ClassDesc.of("java.util.List");
+    private static final ClassDesc CD_Set = ClassDesc.of("java.util.Set");
     private static final ClassDesc CD_LinkedHashMap = ClassDesc.of("java.util.LinkedHashMap");
     private static final ClassDesc CD_ArrayList = ClassDesc.of("java.util.ArrayList");
     private static final ClassDesc CD_Collection = ClassDesc.of("java.util.Collection");
@@ -77,6 +81,7 @@ public final class Backend {
     private static final ClassDesc CD_Lists = ClassDesc.of("net.unit8.souther.runtime.Lists");
     private static final ClassDesc CD_Strings = ClassDesc.of("net.unit8.souther.runtime.Strings");
     private static final ClassDesc CD_Maps = ClassDesc.of("net.unit8.souther.runtime.Maps");
+    private static final ClassDesc CD_Sets = ClassDesc.of("net.unit8.souther.runtime.Sets");
     private static final ClassDesc CD_Temporals = ClassDesc.of("net.unit8.souther.runtime.Temporals");
     private static final ClassDesc CD_Option = ClassDesc.of("net.unit8.souther.runtime.Option");
     private static final ClassDesc CD_OptionSome = CD_Option.nested("Some");
@@ -158,6 +163,22 @@ public final class Backend {
     private static final MethodTypeDesc MTD_Rfail = MethodTypeDesc.of(CD_RResult, CD_RPath, CD_String, CD_String);
     private static final MethodTypeDesc MTD_Rencode_leaf = MethodTypeDesc.of(CD_REncoder);
     private static final MethodTypeDesc MTD_Rencode_list = MethodTypeDesc.of(CD_REncoder, CD_REncoder);
+    private static final ClassDesc CD_Function = ClassDesc.of("java.util.function.Function");
+    /** {@code Decoder.map(Function)}: turns a {@code Decoder<I, List<T>>} into a {@code Decoder<I, Set<T>>}. */
+    private static final MethodTypeDesc MTD_Rdecoder_map = MethodTypeDesc.of(CD_RDecoder, CD_Function);
+    /** {@code LambdaMetafactory.metafactory} — the bootstrap that materialises a method reference as a
+     *  functional-interface instance, so {@code Sets::fromList} becomes a {@code Function} for {@code map}. */
+    private static final DirectMethodHandleDesc BSM_METAFACTORY = MethodHandleDesc.ofMethod(
+            DirectMethodHandleDesc.Kind.STATIC,
+            ClassDesc.of("java.lang.invoke.LambdaMetafactory"), "metafactory",
+            MethodTypeDesc.of(
+                    ClassDesc.of("java.lang.invoke.CallSite"),
+                    ClassDesc.of("java.lang.invoke.MethodHandles").nested("Lookup"),
+                    ClassDesc.of("java.lang.String"),
+                    ClassDesc.of("java.lang.invoke.MethodType"),
+                    ClassDesc.of("java.lang.invoke.MethodType"),
+                    ClassDesc.of("java.lang.invoke.MethodHandle"),
+                    ClassDesc.of("java.lang.invoke.MethodType")));
     private static final MethodTypeDesc MTD_Rencode_variant =
             MethodTypeDesc.of(CD_MapEncVariant, CD_Class, CD_String, CD_REncoder);
     private static final MethodTypeDesc MTD_Rencode_discriminate =
@@ -199,6 +220,20 @@ public final class Backend {
     private static ClassDesc srcLeafOwner(Src s) { return s == Src.JSON ? CD_JsonDecoders : CD_ObjectDecoders; }
     /** list()/map() combinator owner (JSON has its own; map/jOOQ leaf values are Objects). */
     private static ClassDesc srcListOwner(Src s) { return s == Src.JSON ? CD_JsonDecoders : CD_ObjectDecoders; }
+
+    /** The {@code invokedynamic} call site that produces a {@code Function} wrapping
+     *  {@code Sets::fromList} (a {@code List -> Set} dedup), for {@code Decoder.map} in a Set decoder. */
+    private static DynamicCallSiteDesc setFromListCallSite() {
+        DirectMethodHandleDesc impl = MethodHandleDesc.ofMethod(
+                DirectMethodHandleDesc.Kind.STATIC, CD_Sets, "fromList",
+                MethodTypeDesc.of(CD_Set, CD_List));
+        return DynamicCallSiteDesc.of(
+                BSM_METAFACTORY, "apply",
+                MethodTypeDesc.of(CD_Function),               // no captures: () -> Function
+                MethodTypeDesc.of(CD_Object, CD_Object),      // samMethodType: (Object) -> Object
+                impl,                                         // implMethod: Sets.fromList(List) -> Set
+                MethodTypeDesc.of(CD_Set, CD_List));          // instantiatedMethodType: (List) -> Set
+    }
 
     // Generated classes aren't loadable while we compile, so stack-map merging (e.g. an
     // `if` producing a union of two data types) can't resolve their common supertype.
@@ -1495,6 +1530,7 @@ public final class Backend {
             case Ast.EncodeRaw ignored -> CD_Object;
             case Ast.OptionRaw ignored -> CD_Object;
             case Ast.ListEnc ignored -> CD_Object;
+            case Ast.SetEnc ignored -> CD_Object;
             case Ast.MapEnc ignored -> CD_Object;
         };
     }
@@ -1548,6 +1584,7 @@ public final class Backend {
     private boolean jsonOkType(Type t, Set<String> seen) {
         if (t instanceof Type.OptionOf o) return jsonOkType(o.element(), seen);
         if (t instanceof Type.ListOf l) return jsonOkType(l.element(), seen);
+        if (t instanceof Type.SetOf s) return jsonOkType(s.element(), seen);
         if (t instanceof Type.MapOf m) return jsonOkType(m.value(), seen);
         if (t instanceof Type.Ref r) return jsonOk(r.name(), seen);
         return true;
@@ -1581,7 +1618,8 @@ public final class Backend {
 
     private boolean flatColumn(Type t) {
         if (t instanceof Type.OptionOf o) return flatColumn(o.element());
-        if (t instanceof Type.ListOf || t instanceof Type.MapOf || t instanceof Type.Union) return false;
+        if (t instanceof Type.ListOf || t instanceof Type.MapOf || t instanceof Type.SetOf
+                || t instanceof Type.Union) return false;
         if (t instanceof Type.Ref r) {
             return symbols.get(r.name()) instanceof Ast.Data d
                     && d.decoder().orElse(null) instanceof Ast.PrimDecoder;   // newtype column only
@@ -1805,6 +1843,7 @@ public final class Backend {
             case Ast.PrimDecRef p -> TypeChecker.primType(p.kind());
             case Ast.DataDecRef d -> Type.ref(d.typeName());
             case Ast.ListDecRef l -> Type.list(bindType(l.element()));
+            case Ast.SetDecRef s -> Type.set(bindType(s.element()));
             case Ast.OptionDecRef o -> Type.option(bindType(o.element()));
             case Ast.MapDecRef mp -> Type.map(bindType(mp.value()));
         };
@@ -1832,6 +1871,12 @@ public final class Backend {
             case Ast.ListDecRef l -> {
                 emitDecoderObject(code, l.element(), src);
                 code.invokestatic(srcListOwner(src), "list", MTD_listDec);
+            }
+            case Ast.SetDecRef s -> {
+                emitDecoderObject(code, s.element(), src);
+                code.invokestatic(srcListOwner(src), "list", MTD_listDec);   // Decoder<I, List<T>>
+                code.invokedynamic(setFromListCallSite());                   // Function: List -> Set
+                code.invokeinterface(CD_RDecoder, "map", MTD_Rdecoder_map);  // Decoder<I, Set<T>> (dedup)
             }
             case Ast.OptionDecRef o -> throw new CompileException(o.pos(),
                     "optional is only supported as a direct object field");
@@ -1985,6 +2030,13 @@ public final class Backend {
                 code.invokestatic(CD_MapEncoders, "list", MTD_Rencode_list);
                 gen.expr(le.source());
                 code.invokeinterface(CD_REncoder, "encode", MTD_Rencode);
+            }
+            case Ast.SetEnc se -> {
+                pushElemEncoder(code, se.elem());
+                code.invokestatic(CD_MapEncoders, "list", MTD_Rencode_list);   // Encoder for an array
+                gen.expr(se.source());                                          // the Set value
+                code.invokestatic(CD_Sets, "toList", MethodTypeDesc.of(CD_List, CD_Set));   // Set -> List
+                code.invokeinterface(CD_REncoder, "encode", MTD_Rencode);      // encode the array
             }
             case Ast.MapEnc me -> {
                 pushElemEncoder(code, me.elem());
@@ -2667,6 +2719,77 @@ public final class Backend {
                     Type v = elem instanceof Type.TupleOf tp ? tp.elements().get(1) : Type.NOTHING;
                     return Type.map(v);
                 }
+                case "set.singleton" -> {
+                    Type vt = genExpr(call.args().get(0));   // element
+                    box(code, vt);
+                    code.invokestatic(CD_Sets, "singleton",
+                            MethodTypeDesc.of(CD_Set, ConstantDescs.CD_Object));
+                    return Type.set(vt);
+                }
+                case "set.insert" -> {
+                    Type vt = genExpr(call.args().get(0));   // element
+                    box(code, vt);
+                    Type st = genExpr(call.args().get(1));   // set (last, [#pipe])
+                    code.invokestatic(CD_Sets, "insert",
+                            MethodTypeDesc.of(CD_Set, ConstantDescs.CD_Object, CD_Set));
+                    Type existing = ((Type.SetOf) st).element();
+                    return Type.set(existing instanceof Type.Nothing ? vt : existing);
+                }
+                case "set.remove" -> {
+                    Type vt = genExpr(call.args().get(0));   // element
+                    box(code, vt);
+                    Type st = genExpr(call.args().get(1));   // set
+                    code.invokestatic(CD_Sets, "remove",
+                            MethodTypeDesc.of(CD_Set, ConstantDescs.CD_Object, CD_Set));
+                    return st;
+                }
+                case "set.contains" -> {
+                    Type vt = genExpr(call.args().get(0));   // element
+                    box(code, vt);
+                    genExpr(call.args().get(1));             // set
+                    code.invokestatic(CD_Sets, "contains",
+                            MethodTypeDesc.of(ConstantDescs.CD_boolean, ConstantDescs.CD_Object, CD_Set));
+                    return Type.BOOL;
+                }
+                case "set.union" -> {
+                    Type at = genExpr(call.args().get(0));
+                    Type bt = genExpr(call.args().get(1));
+                    code.invokestatic(CD_Sets, "union", MethodTypeDesc.of(CD_Set, CD_Set, CD_Set));
+                    return setUnionType(at, bt);
+                }
+                case "set.intersect" -> {
+                    Type at = genExpr(call.args().get(0));
+                    genExpr(call.args().get(1));
+                    code.invokestatic(CD_Sets, "intersect", MethodTypeDesc.of(CD_Set, CD_Set, CD_Set));
+                    return at;
+                }
+                case "set.difference" -> {
+                    Type at = genExpr(call.args().get(0));
+                    genExpr(call.args().get(1));
+                    code.invokestatic(CD_Sets, "difference", MethodTypeDesc.of(CD_Set, CD_Set, CD_Set));
+                    return at;
+                }
+                case "set.isEmpty" -> {
+                    genExpr(call.args().get(0));
+                    code.invokestatic(CD_Sets, "isEmpty",
+                            MethodTypeDesc.of(ConstantDescs.CD_boolean, CD_Set));
+                    return Type.BOOL;
+                }
+                case "set.size" -> {
+                    genExpr(call.args().get(0));
+                    code.invokestatic(CD_Sets, "size", MethodTypeDesc.of(ConstantDescs.CD_long, CD_Set));
+                    return Type.INT;
+                }
+                case "set.toList" -> {
+                    Type st = genExpr(call.args().get(0));
+                    code.invokestatic(CD_Sets, "toList", MethodTypeDesc.of(CD_List, CD_Set));
+                    return Type.list(((Type.SetOf) st).element());
+                }
+                case "set.fromList" -> {
+                    Type lt = genExpr(call.args().get(0));
+                    code.invokestatic(CD_Sets, "fromList", MethodTypeDesc.of(CD_Set, CD_List));
+                    return Type.set(((Type.ListOf) lt).element());
+                }
                 // Date / DateTime arithmetic. Int is a long on the JVM, so the count is already a
                 // long and needs no conversion. The date/date-time being operated on is the last
                 // argument ([#pipe]); it is emitted first as the receiver of the plus* call.
@@ -2703,6 +2826,14 @@ public final class Backend {
          * {@code add<Unit>(count, t)} becomes {@code t.plus<Unit>(count)}. The temporal is the last
          * argument ([#pipe]) and is emitted first as the receiver; the count is an {@code Int} (a
          * long), which {@code plus*} takes directly. */
+        /** The element type of a set union: the concrete side when the other is the empty-set bottom,
+         * else the left (the checker has already required the two to agree). */
+        private Type setUnionType(Type a, Type b) {
+            Type ae = ((Type.SetOf) a).element();
+            Type be = ((Type.SetOf) b).element();
+            return Type.set(ae instanceof Type.Nothing ? be : ae);
+        }
+
         private Type temporalPlus(Core.Call call, ClassDesc temporal, String method, Type result) {
             genExpr(call.args().get(1));             // the date / date-time (receiver)
             genExpr(call.args().get(0));             // the count (long)
@@ -2745,6 +2876,10 @@ public final class Backend {
                 case "Map.empty" -> {
                     code.invokestatic(CD_Maps, "empty", MethodTypeDesc.of(CD_Map));
                     return Type.map(Type.NOTHING);   // element type fixed by context, like `[]`
+                }
+                case "Set.empty" -> {
+                    code.invokestatic(CD_Sets, "empty", MethodTypeDesc.of(CD_Set));
+                    return Type.set(Type.NOTHING);   // element type fixed by context, like `[]`
                 }
                 case "Int.add", "Int.subtract", "Int.multiply",
                      "Decimal.add", "Decimal.subtract", "Decimal.multiply" -> {
@@ -3246,6 +3381,7 @@ public final class Backend {
         if (type instanceof Type.OptionOf) return CD_Option;
         if (type instanceof Type.ListOf) return CD_List;
         if (type instanceof Type.MapOf) return CD_Map;
+        if (type instanceof Type.SetOf) return CD_Set;
         if (type instanceof Type.Union) return CD_Object;
         if (type instanceof Type.FnOf) return CD_Fn;
         if (type instanceof Type.TupleOf) return CD_Object.arrayType();   // a tuple is an Object[]

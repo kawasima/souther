@@ -5,8 +5,8 @@ package net.unit8.souther.compiler.check;
  * or a reference to a named data type. {@code Type.INT} etc. remain usable as constants.
  */
 public sealed interface Type
-        permits Type.Prim, Type.Ref, Type.ListOf, Type.MapOf, Type.OptionOf, Type.Union, Type.FnOf,
-                Type.Var, Type.Nothing, Type.TupleOf {
+        permits Type.Prim, Type.Ref, Type.ListOf, Type.MapOf, Type.SetOf, Type.OptionOf, Type.Union,
+                Type.FnOf, Type.Var, Type.Nothing, Type.TupleOf {
 
     enum Prim implements Type { INT, STRING, BOOL, DECIMAL, DATE, DATETIME, RAW }
 
@@ -30,6 +30,10 @@ public sealed interface Type
 
     /** A {@code Map<String, value>} — string-keyed, per spec 7.2. */
     record MapOf(Type value) implements Type {}
+
+    /** A {@code Set<element>} — an unordered collection with no duplicate elements, compared by value
+     * equality (ADR-0009). Its external representation is a JSON array, deduplicated on decode. */
+    record SetOf(Type element) implements Type {}
 
     /** An optional value {@code Option<element>} — the desugaring of a {@code T?} field (spec 7.4). */
     record OptionOf(Type element) implements Type {}
@@ -76,6 +80,10 @@ public sealed interface Type
 
     static Type map(Type value) {
         return new MapOf(value);
+    }
+
+    static Type set(Type element) {
+        return new SetOf(element);
     }
 
     static Type union(java.util.Set<String> members) {

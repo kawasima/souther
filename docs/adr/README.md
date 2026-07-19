@@ -53,3 +53,4 @@ specification is in Japanese.
 | [0036](0036-tuples-and-exposing-parentheses.md) | Tuples `(a, b)` are expression-level first-class values; a module's `exposing`/`import` lists use parentheses | `[#tuple]`, `[#modules]`, `[#delimiters]` |
 | [0037](0037-tuple-types-in-signatures.md) | Tuple types are writable in helper/stdlib signatures, not at a codec boundary | `[#tuple]`, `[#stdlib-map]` |
 | [0038](0038-user-recursion-over-self-referential-data.md) | User helpers may recurse over self-referential data; a recursive helper is lowered to a method | `[#fn-declaration]`, `[#algebraic-types]` |
+| [0039](0039-set-collection-type.md) | Set is a collection type; its external representation is a deduplicated array | `[#collections]`, `[#stdlib-set]` |

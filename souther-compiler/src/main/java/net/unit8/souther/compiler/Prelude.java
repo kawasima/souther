@@ -37,13 +37,14 @@ public final class Prelude {
     /** The bundled prelude sources, in load order. */
     private static final List<String> RESOURCES =
             List.of("/souther/bool.sou", "/souther/string.sou", "/souther/map.sou", "/souther/list.sou",
-                    "/souther/date.sou", "/souther/datetime.sou");
+                    "/souther/set.sou", "/souther/date.sou", "/souther/datetime.sou");
 
     /** Reserved module name → short qualifier (spec §stdlib). {@code souther.list} → {@code List}. */
     private static final Map<String, String> MODULE_TO_ALIAS = Map.of(
             "souther.list", "List",
             "souther.string", "String",
             "souther.map", "Map",
+            "souther.set", "Set",
             "souther.bool", "Bool",
             "souther.date", "Date",
             "souther.datetime", "DateTime");
@@ -54,14 +55,14 @@ public final class Prelude {
     private static final Set<String> BUILTINS = Set.of(
             "List.fold", "List.length", "List.get",
             "String.length",
-            "Map.get", "Map.empty",
+            "Map.get", "Map.empty", "Set.empty",
             "Int.compare", "Int.remainder", "Int.divide", "Int.add", "Int.subtract", "Int.multiply",
             "Decimal.add", "Decimal.subtract", "Decimal.multiply", "Decimal.divide", "Decimal.compare");
 
     /** Every qualifier a call may carry: the four prelude modules plus the arithmetic built-in
      *  namespaces {@code Int}/{@code Decimal} (spec §stdlib). */
     private static final Set<String> QUALIFIERS =
-            Set.of("List", "String", "Map", "Bool", "Int", "Decimal", "Date", "DateTime");
+            Set.of("List", "String", "Map", "Set", "Bool", "Int", "Decimal", "Date", "DateTime");
 
     /** A shipped primitive: its declared signature and the backend key naming its bytecode. */
     public record IntrinsicSig(String name, List<Type> params, Type result, String key) {
@@ -139,7 +140,7 @@ public final class Prelude {
         // checker built-ins have no prelude source; list their bare→qualified hints explicitly.
         BARE_TO_QUALIFIED.put("length", "List.length` or `String.length");
         BARE_TO_QUALIFIED.put("get", "List.get` or `Map.get");
-        BARE_TO_QUALIFIED.put("empty", "Map.empty");
+        BARE_TO_QUALIFIED.put("empty", "Map.empty` or `Set.empty");
         BARE_TO_QUALIFIED.put("fold", "List.fold");
         BARE_TO_QUALIFIED.put("compare", "Int.compare` or `Decimal.compare");
         BARE_TO_QUALIFIED.put("remainder", "Int.remainder");

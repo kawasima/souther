@@ -355,11 +355,12 @@ The `+hashCode+` of a data containing `+Decimal+` is computed after dropping sca
 ----
 List<T>
 Map<String, T>
+Set<T>
 ----
 
-Collections are immutable.
+Collections are immutable. A `+List+` is ordered and may repeat; a `+Set+` is unordered with no duplicate elements, compared by value equality (<<primitives>>, ADR-0009); a `+Map+` is string-keyed. A `+Set+`'s external representation is a JSON array, deduplicated on decode (ADR-0039).
 
-Collections are *covariant* in their element. A case `+A+` may be used as its sum `+S+` (<<sum-data>>), so `+List<A>+` may be passed where `+List<S>+` is expected, `+Map<String, A>+` where `+Map<String, S>+` is expected, and `+A?+` where `+S?+` is expected. This is sound because collections are immutable and there is no room to write a sibling case later. Covariance of mutable arrays (Java) is unsound because writes are a hole; that is the difference. This is the same position as Scala's immutable `+List+` and Kotlin's read-only `+List+`. Covariance applies only in the case→sum direction; sibling cases (`+A+` and `+B+`) are unrelated.
+Collections are *covariant* in their element. A case `+A+` may be used as its sum `+S+` (<<sum-data>>), so `+List<A>+` may be passed where `+List<S>+` is expected, `+Set<A>+` where `+Set<S>+` is expected, `+Map<String, A>+` where `+Map<String, S>+` is expected, and `+A?+` where `+S?+` is expected. This is sound because collections are immutable and there is no room to write a sibling case later. Covariance of mutable arrays (Java) is unsound because writes are a hole; that is the difference. This is the same position as Scala's immutable `+List+` and Kotlin's read-only `+List+`. Covariance applies only in the case→sum direction; sibling cases (`+A+` and `+B+`) are unrelated.
 
 [#algebraic-types]
 === Built-in algebraic and auxiliary types
@@ -1629,13 +1630,13 @@ An outside-world dependency is declared as a behavior with no implementation, an
 [#reserved-namespace]
 === Reserved namespace
 
-The standard library is bundled with the compiler and referenced by short qualifiers — `+List+` (list), `+String+` (string), `+Map+` (map), `+Bool+` (boolean), `+Int+` / `+Decimal+` (numbers), `+Date+` / `+DateTime+` (temporal). Every function is called through this qualifier: `+List.map(f, xs)+`, `+String.trim(s)+`, `+List.length(xs)+`. There is no automatic import — names are not delivered implicitly. What may be written bare is operators (`+==+` `+<+` `+{plus}{plus}+`, etc.), `+if+` / `+match+`, literals, and the current module's helpers. Argument order follows the convention of <<pipe>> (primary subject last).
+The standard library is bundled with the compiler and referenced by short qualifiers — `+List+` (list), `+Map+` (map), `+Set+` (set), `+String+` (string), `+Bool+` (boolean), `+Int+` / `+Decimal+` (numbers), `+Date+` / `+DateTime+` (temporal). Every function is called through this qualifier: `+List.map(f, xs)+`, `+String.trim(s)+`, `+List.length(xs)+`. There is no automatic import — names are not delivered implicitly. What may be written bare is operators (`+==+` `+<+` `+{plus}{plus}+`, etc.), `+if+` / `+match+`, literals, and the current module's helpers. Argument order follows the convention of <<pipe>> (primary subject last).
 
 To call a name bare, import it explicitly: writing `+import List ( map, filter )+` lets you write `+map(f, xs)+` unqualified thereafter. As in Elm's `+import List exposing (map)+`, qualified access always works, and `+import+` is only sugar to elide the qualifier. Importing the same bare name from two modules is ambiguous, so qualify one of them (e.g. `+String.length+` and `+List.length+` used together in one module; <<imports>>).
 
 Qualifiers such as `+List+` denote a module only in expression position, distinct from the type-position `+List<T>+` (angle brackets), which does not conflict (as in Elm). `+length+` / `+get+` span `+String+` and `+List+`, and `+List+` and `+Map+`, but they become distinct names `+String.length+` / `+List.length+`, `+List.get+` / `+Map.get+`, so they are not overloads but each module's own function.
 
-The entity the short qualifier denotes is placed in the reserved namespaces `+souther.string+` / `+souther.list+` / `+souther.map+` / `+souther.bool+` / `+souther.date+` / `+souther.datetime+`. The `+souther+` namespace is reserved, and a user module MUST NOT name itself under it — `+module souther.foo+` is a compile error. Only the reserved namespace holds core's privileges (generics, recursion, intrinsics), and this is the line preventing a user from granting them to itself (the boundedness of <<algebraic-types>>). A name that merely starts with the string `+souther+`, such as `+southernmost+`, is an ordinary user name, not under this namespace.
+The entity the short qualifier denotes is placed in the reserved namespaces `+souther.string+` / `+souther.list+` / `+souther.map+` / `+souther.set+` / `+souther.bool+` / `+souther.date+` / `+souther.datetime+`. The `+souther+` namespace is reserved, and a user module MUST NOT name itself under it — `+module souther.foo+` is a compile error. Only the reserved namespace holds core's privileges (generics, recursion, intrinsics), and this is the line preventing a user from granting them to itself (the boundedness of <<algebraic-types>>). A name that merely starts with the string `+souther+`, such as `+southernmost+`, is an ordinary user name, not under this namespace.
 
 [#type-variables]
 ==== Type variables
@@ -1798,6 +1799,22 @@ toList  fromList                                 // convert to / from entry tupl
 `+toList(m)+` is the entries as a `+List<(String, V)>+` — a list of key/value tuples in iteration order — and `+fromList(entries)+` builds a map back (a later entry wins on a duplicate key). The tuple type in these signatures is allowed because a signature is not a codec boundary (<<tuple>>, ADR-0037).
 
 `+fold+` / `+map+` / `+update+` — the operations that take a step function — are a future addition; they need the inlined-step lowering `+List.fold+` uses.
+
+[#stdlib-set]
+=== Set
+
+A `+Set<'a>+` is unordered with no duplicates, compared by value equality (<<collections>>, ADR-0039). It is immutable, so the building operations return a fresh set.
+
+[,text]
+----
+empty  singleton  insert  remove  contains       // build / query
+union  intersect  difference                      // algebra
+isEmpty  size  toList  fromList                   // convert
+----
+
+`+empty+` is the empty set — like `+[]+` and `+Map.empty+`, its element type is fixed by context, so it is a built-in taking no argument. `+singleton(v)+` is a one-element set; `+insert(v, s)+` adds `+v+`; `+remove(v, s)+` drops it (leaving `+s+` unchanged when absent); `+contains(v, s)+` tests membership. `+union+` / `+intersect+` / `+difference(a, b)+` are the set algebra (`+difference+` is `+a+` minus `+b+`). `+toList(s)+` lists the members in first-seen order and `+fromList(xs)+` builds a set, dropping duplicates. The set operated on is last (<<pipe>>), so `+s |> Set.insert(x)+` reads left to right.
+
+A `+Set+` field decodes from a JSON array and deduplicates it (a repeated element is dropped, not an error — as in Elm's `+Set.fromList+`); it encodes back to an array in first-seen order.
 
 [#stdlib-bool]
 === Bool

@@ -599,6 +599,7 @@ public final class TypeChecker {
             case Type.TupleOf ignored -> true;
             case Type.ListOf l -> containsTuple(l.element());
             case Type.MapOf m -> containsTuple(m.value());
+            case Type.SetOf s -> containsTuple(s.element());
             case Type.OptionOf o -> containsTuple(o.element());
             default -> false;
         };
@@ -1433,6 +1434,7 @@ public final class TypeChecker {
 
     private static Type decRefType(Ast.DecRef ref, Map<String, Ast.Def> symbols) {
         return switch (ref) {
+            case Ast.SetDecRef s -> Type.set(decRefType(s.element(), symbols));
             case Ast.PrimDecRef p -> primType(p.kind());
             case Ast.DataDecRef d -> {
                 Ast.Def def = symbols.get(d.typeName());
@@ -1557,6 +1559,13 @@ public final class TypeChecker {
                     throw new CompileException(le.pos(), "list(...) source must be a List, got " + st);
                 }
                 checkEncElem(le.elem(), lo.element(), le.pos(), symbols);
+            }
+            case Ast.SetEnc se -> {
+                Type st = typeOf(se.source(), env, data, symbols);
+                if (!(st instanceof Type.SetOf so)) {
+                    throw new CompileException(se.pos(), "set encoder source must be a Set, got " + st);
+                }
+                checkEncElem(se.elem(), so.element(), se.pos(), symbols);
             }
             case Ast.MapEnc me -> {
                 Type st = typeOf(me.source(), env, data, symbols);
@@ -1983,6 +1992,10 @@ public final class TypeChecker {
                 arity(call, 0);
                 // like `[]`, the empty map's value type is a bottom fixed by context (ADR-0028)
                 yield Type.map(Type.NOTHING);
+            }
+            case "Set.empty" -> {
+                arity(call, 0);
+                yield Type.set(Type.NOTHING);   // empty set's element type fixed by context (ADR-0028)
             }
             case "Int.add", "Int.subtract", "Int.multiply",
                  "Decimal.add", "Decimal.subtract", "Decimal.multiply" ->
@@ -2468,6 +2481,9 @@ public final class TypeChecker {
         if (from instanceof Type.MapOf a && to instanceof Type.MapOf b) {
             return assignable(a.value(), b.value(), symbols);
         }
+        if (from instanceof Type.SetOf a && to instanceof Type.SetOf b) {
+            return assignable(a.element(), b.element(), symbols);
+        }
         if (from instanceof Type.OptionOf a && to instanceof Type.OptionOf b) {
             return assignable(a.element(), b.element(), symbols);
         }
@@ -2513,6 +2529,8 @@ public final class TypeChecker {
                     unify(p.element(), a.element(), bindings, symbols, pos, what);
             case Type.MapOf p when arg instanceof Type.MapOf a ->
                     unify(p.value(), a.value(), bindings, symbols, pos, what);
+            case Type.SetOf p when arg instanceof Type.SetOf a ->
+                    unify(p.element(), a.element(), bindings, symbols, pos, what);
             case Type.OptionOf p when arg instanceof Type.OptionOf a ->
                     unify(p.element(), a.element(), bindings, symbols, pos, what);
             case Type.TupleOf p when arg instanceof Type.TupleOf a
@@ -2541,6 +2559,7 @@ public final class TypeChecker {
             case Type.Var v -> bindings.getOrDefault(v.name(), v);
             case Type.ListOf l -> Type.list(substitute(l.element(), bindings));
             case Type.MapOf m -> Type.map(substitute(m.value(), bindings));
+            case Type.SetOf s -> Type.set(substitute(s.element(), bindings));
             case Type.OptionOf o -> Type.option(substitute(o.element(), bindings));
             case Type.FnOf f -> {
                 List<Type> params = new ArrayList<>();
@@ -2596,6 +2615,12 @@ public final class TypeChecker {
                     throw new CompileException(ref.pos(), "List needs a type argument, e.g. List<Int>");
                 }
                 yield Type.list(resolveType(ref.arg(), symbols));
+            }
+            case "Set" -> {
+                if (ref.arg() == null) {
+                    throw new CompileException(ref.pos(), "Set needs a type argument, e.g. Set<String>");
+                }
+                yield Type.set(resolveType(ref.arg(), symbols));
             }
             case "Option" -> {
                 if (ref.arg() == null) {

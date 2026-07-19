@@ -471,6 +471,12 @@ public final class Parser {
             expect(TokenType.GT);
             return new Ast.TypeRef("List", arg, n.pos());
         }
+        if (n.text().equals("Set") && check(TokenType.LT)) {
+            advance();
+            Ast.TypeRef arg = parseTypeRef();
+            expect(TokenType.GT);
+            return new Ast.TypeRef("Set", arg, n.pos());
+        }
         if (n.text().equals("Map") && check(TokenType.LT)) {
             advance();
             Ast.TypeRef key = parseTypeRef();

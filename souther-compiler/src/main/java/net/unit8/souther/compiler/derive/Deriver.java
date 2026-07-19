@@ -138,6 +138,9 @@ public final class Deriver {
         if (t instanceof Type.ListOf lo) {
             return new Ast.ListDecRef(decRef(lo.element(), d, pos), pos);
         }
+        if (t instanceof Type.SetOf so) {
+            return new Ast.SetDecRef(decRef(so.element(), d, pos), pos);
+        }
         if (t instanceof Type.OptionOf oo) {
             return new Ast.OptionDecRef(decRef(oo.element(), d, pos), pos);
         }
@@ -211,6 +214,9 @@ public final class Deriver {
         }
         if (t instanceof Type.ListOf lo) {
             return new Ast.ListEnc(access, encElem(lo.element(), d, pos), pos);
+        }
+        if (t instanceof Type.SetOf so) {
+            return new Ast.SetEnc(access, encElem(so.element(), d, pos), pos);
         }
         if (t instanceof Type.OptionOf oo) {
             String elemVar = "$opt";
