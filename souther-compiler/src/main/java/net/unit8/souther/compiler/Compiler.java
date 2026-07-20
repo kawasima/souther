@@ -1,5 +1,6 @@
 package net.unit8.souther.compiler;
 
+import net.unit8.souther.compiler.diag.CompileException;
 import net.unit8.souther.compiler.ast.Ast;
 import net.unit8.souther.compiler.diag.Diagnostic;
 import net.unit8.souther.compiler.check.Exposing;
@@ -8,8 +9,8 @@ import net.unit8.souther.compiler.check.Lower;
 import net.unit8.souther.compiler.check.NewtypeDesugar;
 import net.unit8.souther.compiler.check.TypeChecker;
 import net.unit8.souther.compiler.codegen.Backend;
+import net.unit8.souther.compiler.frontend.CstFrontend;
 import net.unit8.souther.compiler.derive.Deriver;
-import net.unit8.souther.compiler.syntax.Parser;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,7 +41,7 @@ public final class Compiler {
 
     /** As {@link #compile(String)}, but a header-less source is named {@code defaultModuleName}. */
     public static Map<String, byte[]> compile(String source, String defaultModuleName) {
-        Ast.Module raw = Parser.parse(source, defaultModuleName);
+        Ast.Module raw = CstFrontend.parse(source, defaultModuleName);
         rejectReservedNamespace(raw);
         Ast.Module module = Deriver.derive(Exposing.rewrite(raw));
         module = HelperInliner.forModule(module).withInlinedInvariants(module);
@@ -125,7 +126,7 @@ public final class Compiler {
         List<Ast.Module> parsed = new ArrayList<>();
         for (String s : sources) {
             // A module linked by imports must be named; `null` forbids omitting the header here.
-            Ast.Module raw = Parser.parse(s, null);
+            Ast.Module raw = CstFrontend.parse(s, null);
             rejectReservedNamespace(raw);
             parsed.add(Exposing.rewrite(raw));
         }

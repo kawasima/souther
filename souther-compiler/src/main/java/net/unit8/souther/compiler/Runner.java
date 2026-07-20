@@ -3,7 +3,7 @@ package net.unit8.souther.compiler;
 import net.unit8.souther.compiler.ast.Ast;
 import net.unit8.souther.compiler.check.Type;
 import net.unit8.souther.compiler.check.TypeChecker;
-import net.unit8.souther.compiler.syntax.Parser;
+import net.unit8.souther.compiler.frontend.CstFrontend;
 
 import net.unit8.raoh.Err;
 import net.unit8.raoh.Issue;
@@ -99,7 +99,7 @@ public final class Runner {
         String moduleName = moduleName(file);
 
         Map<String, byte[]> classes = Compiler.compile(source, moduleName);
-        Ast.Module module = Parser.parse(source, moduleName);
+        Ast.Module module = CstFrontend.parse(source, moduleName);
         Map<String, Ast.Def> symbols = TypeChecker.symbols(module);
         Map<String, TypeChecker.Sig> sigs = TypeChecker.signatures(module, symbols);
 

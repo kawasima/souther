@@ -18,6 +18,20 @@
     </description>
 
     <dependencies>
+        <!-- souther-syntax carries the lossless CST and the diagnostics (SourcePos, CompileException,
+             Diagnostic) the whole pipeline is built on. -->
+        <dependency>
+            <groupId>net.unit8.souther</groupId>
+            <artifactId>souther-syntax</artifactId>
+        </dependency>
+        <!-- souther-fmt is test-only here: the formatter is not part of the compiler pipeline, but its
+             tests live alongside the rest of the tooling tests, where the example/prelude corpus is
+             reachable. -->
+        <dependency>
+            <groupId>net.unit8.souther</groupId>
+            <artifactId>souther-fmt</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- souther-runtime is `provided`: the compiler loads a generated `$Ctfe.check` class to
              verify a constant newtype construction at compile time (CTFE, ADR-0032), and a
              lambda-bearing invariant's bytecode references the runtime `Fn`. It is not bundled;

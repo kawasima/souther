@@ -1,0 +1,56 @@
+{
+  "name": "souther",
+  "displayName": "Souther",
+  "description": "Souther language support: syntax highlighting and the language server.",
+  "version": "0.1.0",
+  "publisher": "unit8",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:souther"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "souther",
+        "aliases": [
+          "Souther"
+        ],
+        "extensions": [
+          ".sou"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "souther",
+        "scopeName": "source.souther",
+        "path": "./syntaxes/souther.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Souther",
+      "properties": {
+        "souther.server.jar": {
+          "type": "string",
+          "default": "",
+          "description": "Path to souther-lsp.jar. Defaults to server/souther-lsp.jar inside the extension."
+        },
+        "souther.server.java": {
+          "type": "string",
+          "default": "java",
+          "description": "The java executable used to launch the language server."
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  }
+}

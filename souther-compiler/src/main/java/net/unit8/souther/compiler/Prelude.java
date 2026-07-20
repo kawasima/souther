@@ -3,7 +3,7 @@ package net.unit8.souther.compiler;
 import net.unit8.souther.compiler.ast.Ast;
 import net.unit8.souther.compiler.check.Type;
 import net.unit8.souther.compiler.check.TypeChecker;
-import net.unit8.souther.compiler.syntax.Parser;
+import net.unit8.souther.compiler.frontend.CstFrontend;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -116,7 +116,7 @@ public final class Prelude {
     private static void load() {
         Map<String, Ast.Def> noSymbols = Map.of();   // prelude signatures use only primitives / 'a
         for (String resource : RESOURCES) {
-            Ast.Module module = Parser.parse(read(resource));
+            Ast.Module module = CstFrontend.parse(read(resource));
             String alias = MODULE_TO_ALIAS.get(module.name());
             if (alias == null) {
                 throw new IllegalStateException("prelude resource " + resource

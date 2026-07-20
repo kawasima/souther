@@ -1,6 +1,6 @@
 package net.unit8.souther.compiler.check;
 
-import net.unit8.souther.compiler.CompileException;
+import net.unit8.souther.compiler.diag.CompileException;
 import net.unit8.souther.compiler.diag.Diagnostic;
 import net.unit8.souther.compiler.Prelude;
 import net.unit8.souther.compiler.ast.Ast;

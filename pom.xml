@@ -22,7 +22,10 @@
 
     <modules>
         <module>souther-runtime</module>
+        <module>souther-syntax</module>
         <module>souther-compiler</module>
+        <module>souther-fmt</module>
+        <module>souther-lsp</module>
         <module>souther-cli</module>
     </modules>
 
@@ -57,7 +60,17 @@
             </dependency>
             <dependency>
                 <groupId>net.unit8.souther</groupId>
+                <artifactId>souther-syntax</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.unit8.souther</groupId>
                 <artifactId>souther-compiler</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.unit8.souther</groupId>
+                <artifactId>souther-fmt</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

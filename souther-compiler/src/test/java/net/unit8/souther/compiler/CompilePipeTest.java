@@ -1,5 +1,7 @@
 package net.unit8.souther.compiler;
 
+import net.unit8.souther.compiler.diag.CompileException;
+
 import net.unit8.souther.runtime.Behavior;
 
 import org.junit.jupiter.api.Test;

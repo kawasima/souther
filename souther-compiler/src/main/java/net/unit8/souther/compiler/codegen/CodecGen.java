@@ -1,6 +1,6 @@
 package net.unit8.souther.compiler.codegen;
 
-import net.unit8.souther.compiler.CompileException;
+import net.unit8.souther.compiler.diag.CompileException;
 import net.unit8.souther.compiler.ast.Ast;
 import net.unit8.souther.compiler.check.Type;
 import net.unit8.souther.compiler.check.TypeChecker;

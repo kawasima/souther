@@ -1,0 +1,74 @@
+{
+  "$schema" : "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name" : "Souther",
+  "scopeName" : "source.souther",
+  "fileTypes" : [ "sou" ],
+  "patterns" : [ {
+    "include" : "#comments"
+  }, {
+    "include" : "#strings"
+  }, {
+    "include" : "#decimal"
+  }, {
+    "include" : "#integer"
+  }, {
+    "include" : "#booleans"
+  }, {
+    "include" : "#declaration-keywords"
+  }, {
+    "include" : "#control-keywords"
+  }, {
+    "include" : "#type-variable"
+  }, {
+    "include" : "#qualifiers"
+  }, {
+    "include" : "#operators"
+  } ],
+  "repository" : {
+    "comments" : {
+      "name" : "comment.line.double-slash.souther",
+      "match" : "//.*$"
+    },
+    "strings" : {
+      "name" : "string.quoted.double.souther",
+      "begin" : "\"",
+      "end" : "\"",
+      "patterns" : [ {
+        "name" : "constant.character.escape.souther",
+        "match" : "\\\\."
+      } ]
+    },
+    "decimal" : {
+      "name" : "constant.numeric.decimal.souther",
+      "match" : "\\b[0-9]+(\\.[0-9]+)?m\\b"
+    },
+    "integer" : {
+      "name" : "constant.numeric.integer.souther",
+      "match" : "\\b[0-9]+\\b"
+    },
+    "booleans" : {
+      "name" : "constant.language.boolean.souther",
+      "match" : "\\b(false|true)\\b"
+    },
+    "declaration-keywords" : {
+      "name" : "keyword.declaration.souther",
+      "match" : "\\b(behavior|data|exposing|import|let|module)\\b"
+    },
+    "control-keywords" : {
+      "name" : "keyword.control.souther",
+      "match" : "\\b(as|constructs|else|if|invariant|match|require|requires|then|with)\\b"
+    },
+    "type-variable" : {
+      "name" : "variable.other.generic.souther",
+      "match" : "'[A-Za-z][A-Za-z0-9_]*"
+    },
+    "qualifiers" : {
+      "name" : "support.class.souther",
+      "match" : "\\b(List|String|Map|Set|Bool|Int|Decimal|Date|DateTime)\\b(?=\\s*\\.)"
+    },
+    "operators" : {
+      "name" : "keyword.operator.souther",
+      "match" : ">->|\\|>|\\.\\.\\.|->|<-|\\+\\+|==|/=|<=|>=|&&|\\|\\||\\+|-|\\*|/|=|<|>|\\||\\?"
+    }
+  }
+}

@@ -1,11 +1,13 @@
 package net.unit8.souther.compiler;
 
+import net.unit8.souther.compiler.diag.CompileException;
+
 import net.unit8.souther.compiler.ast.Ast;
 import net.unit8.souther.compiler.check.Lower;
 import net.unit8.souther.compiler.check.TypeChecker;
 import net.unit8.souther.compiler.codegen.Backend;
 import net.unit8.souther.compiler.derive.Deriver;
-import net.unit8.souther.compiler.syntax.Parser;
+import net.unit8.souther.compiler.frontend.CstFrontend;
 
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +27,7 @@ class CompileTypeVariableTest {
 
     /** Compiles a core (reserved-namespace) module directly, bypassing the user-facing guard. */
     private static Map<String, byte[]> compileCore(String src) {
-        Ast.Module m = Deriver.derive(Parser.parse(src));
+        Ast.Module m = Deriver.derive(CstFrontend.parse(src));
         TypeChecker.check(m);
         return Backend.generate(Lower.run(m));
     }

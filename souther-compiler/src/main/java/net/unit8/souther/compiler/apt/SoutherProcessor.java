@@ -1,6 +1,6 @@
 package net.unit8.souther.compiler.apt;
 
-import net.unit8.souther.compiler.CompileException;
+import net.unit8.souther.compiler.diag.CompileException;
 import net.unit8.souther.compiler.Compiler;
 
 import javax.annotation.processing.AbstractProcessor;

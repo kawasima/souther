@@ -1,8 +1,8 @@
 package net.unit8.souther.compiler.derive;
 
-import net.unit8.souther.compiler.CompileException;
+import net.unit8.souther.compiler.diag.CompileException;
 import net.unit8.souther.compiler.diag.Diagnostic;
-import net.unit8.souther.compiler.SourcePos;
+import net.unit8.souther.compiler.diag.SourcePos;
 import net.unit8.souther.compiler.ast.Ast;
 import net.unit8.souther.compiler.check.Type;
 import net.unit8.souther.compiler.check.TypeChecker;

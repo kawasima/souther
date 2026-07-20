@@ -1,5 +1,7 @@
 package net.unit8.souther.compiler;
 
+import net.unit8.souther.compiler.diag.CompileException;
+
 import net.unit8.raoh.Err;
 import net.unit8.raoh.Ok;
 import net.unit8.raoh.Result;

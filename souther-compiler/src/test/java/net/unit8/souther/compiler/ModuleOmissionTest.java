@@ -1,6 +1,8 @@
 package net.unit8.souther.compiler;
 
-import net.unit8.souther.compiler.syntax.Parser;
+import net.unit8.souther.compiler.diag.CompileException;
+
+import net.unit8.souther.compiler.frontend.CstFrontend;
 
 import org.junit.jupiter.api.Test;
 
@@ -25,17 +27,17 @@ class ModuleOmissionTest {
 
     @Test
     void parseDefaultsAHeaderlessModuleToMain() {
-        assertEquals("Main", Parser.parse(HEADERLESS).name());
+        assertEquals("Main", CstFrontend.parse(HEADERLESS).name());
     }
 
     @Test
     void parseUsesTheGivenDefaultNameWhenTheHeaderIsOmitted() {
-        assertEquals("hello", Parser.parse(HEADERLESS, "hello").name());
+        assertEquals("hello", CstFrontend.parse(HEADERLESS, "hello").name());
     }
 
     @Test
     void anExplicitHeaderStillWins() {
-        assertEquals("demo", Parser.parse("module demo\n" + HEADERLESS, "ignored").name());
+        assertEquals("demo", CstFrontend.parse("module demo\n" + HEADERLESS, "ignored").name());
     }
 
     @Test
@@ -52,6 +54,6 @@ class ModuleOmissionTest {
 
     @Test
     void aNullDefaultMakesTheHeaderRequired() {
-        assertThrows(RuntimeException.class, () -> Parser.parse(HEADERLESS, null));
+        assertThrows(RuntimeException.class, () -> CstFrontend.parse(HEADERLESS, null));
     }
 }

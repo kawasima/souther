@@ -1,5 +1,6 @@
 package net.unit8.souther.compiler;
 
+import net.unit8.souther.compiler.diag.CompileException;
 import net.unit8.souther.compiler.diag.Diagnostic;
 import net.unit8.souther.compiler.diag.DiagnosticRenderer;
 import net.unit8.souther.compiler.diag.HumanRenderer;

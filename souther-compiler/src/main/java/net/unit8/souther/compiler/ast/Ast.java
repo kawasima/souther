@@ -1,6 +1,6 @@
 package net.unit8.souther.compiler.ast;
 
-import net.unit8.souther.compiler.SourcePos;
+import net.unit8.souther.compiler.diag.SourcePos;
 
 import java.util.ArrayList;
 import java.util.List;

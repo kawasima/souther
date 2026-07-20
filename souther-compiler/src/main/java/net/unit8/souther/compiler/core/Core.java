@@ -1,6 +1,6 @@
 package net.unit8.souther.compiler.core;
 
-import net.unit8.souther.compiler.SourcePos;
+import net.unit8.souther.compiler.diag.SourcePos;
 import net.unit8.souther.compiler.ast.Ast;
 
 import java.math.BigDecimal;
