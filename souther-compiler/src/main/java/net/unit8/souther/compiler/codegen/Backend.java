@@ -140,6 +140,30 @@ public final class Backend {
         // in caseToSums before the data classes are generated, so each case class picks the interface
         // up in withInterfaceSymbols. The interface classes themselves are emitted below.
         Map<String, List<String>> behaviorResults = b.behaviorResultInterfaces(module, importedSigs);
+        // A generated result union is a sealed interface, so all its permitted case classes must be
+        // in this module's package (JVM: an unnamed-module sealed type permits only same-package
+        // subclasses). A `>->` whose departed case comes from an imported behavior would need that
+        // upstream case to join this union, which it cannot. Reject it with a clear message rather
+        // than emit permits pointing at a case class that is never generated here (E1606).
+        for (Map.Entry<String, List<String>> e : behaviorResults.entrySet()) {
+            for (String caseName : e.getValue()) {
+                if (localTypes.contains(caseName)) {
+                    continue;
+                }
+                Ast.BehaviorDef owner = module.behaviors().stream()
+                        .filter(bd -> (behaviorClass(bd.name()) + "結果").equals(e.getKey()))
+                        .findFirst().orElse(null);
+                String bname = owner != null ? owner.name() : e.getKey();
+                throw CompileException.of(
+                        Diagnostic.of("E1606", "e1606.msg").title("e1606.title")
+                                .at(owner != null ? owner.pos() : module.pos())
+                                .args(bname, caseName).hint("e1606.hint").build(),
+                        "the output union of `" + bname + "` includes `" + caseName
+                                + "`, a case declared in another module; a generated result union can"
+                                + " only permit cases from its own module — consume it at the boundary,"
+                                + " or re-express it as a local case");
+            }
+        }
         behaviorResults.forEach((resultName, cases) -> {
             for (String caseName : cases) {
                 caseToSums.computeIfAbsent(caseName, k -> new ArrayList<>()).add(resultName);
