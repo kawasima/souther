@@ -145,4 +145,54 @@ class CompileFakeTest {
                 """;
         assertDoesNotThrow(() -> Compiler.compile(ok));
     }
+
+    // --- a dependency that returns a sum, faked per case ---------------------------------------
+
+    private static final String RESERVE = """
+            module demo
+            import String ( length )
+
+            data OrderId = String
+                invariant length(value) > 0
+
+            data Confirmed = { id: OrderId }
+            data OutOfStock
+
+            behavior reserve : (id: OrderId) -> Confirmed | OutOfStock
+
+            behavior place : (id: OrderId) -> Confirmed | OutOfStock
+                requires reserve
+
+            let place (id, reserve) = reserve(id)
+            """;
+
+    @Test
+    void aSumReturningDependencyIsFakedPerCase() {
+        // Each fake row names one case of the sum, decoded against that case (the declared sum has no
+        // single decoder): a record case, and a unit case as the `_` default.
+        String ok = RESERVE + """
+                fake reserve
+                  | (OrderId("ok")) -> Confirmed { id = OrderId("ok") }
+                  | _               -> OutOfStock
+
+                example place
+                  | "reserved"     : (OrderId("ok")) -> Confirmed { id = OrderId("ok") }
+                  | "out of stock" : (OrderId("no")) -> OutOfStock
+                """;
+        assertDoesNotThrow(() -> Compiler.compile(ok));
+    }
+
+    @Test
+    void aSumFakeStillCatchesAMismatch() {
+        // The fake maps "ok" to Confirmed, so asserting OutOfStock for it does not hold.
+        String bad = RESERVE + """
+                fake reserve
+                  | (OrderId("ok")) -> Confirmed { id = OrderId("ok") }
+                  | _               -> OutOfStock
+
+                example place
+                  | (OrderId("ok")) -> OutOfStock
+                """;
+        assertEquals("E1905", err(bad).diagnostic().code());
+    }
 }

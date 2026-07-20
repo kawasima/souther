@@ -176,7 +176,7 @@ class CompileExampleTest {
         net.unit8.souther.compiler.check.TypeChecker.check(module, symbols, java.util.Map.of(), lowered);
         var classes = net.unit8.souther.compiler.codegen.Backend.generate(lowered);
         var sigs = net.unit8.souther.compiler.check.TypeChecker.signatures(module, symbols);
-        var fails = ExampleVerifier.check(module, symbols, sigs, classes);
+        var fails = ExampleVerifier.check(module, symbols, sigs, java.util.Map.of(), classes);
         assertEquals(2, fails.size());
     }
 }

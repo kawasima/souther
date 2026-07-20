@@ -38,14 +38,17 @@ import java.util.Set;
 public final class ExampleVerifier {
 
     /** Evaluates every example in {@code module}; returns one diagnostic per failing example row
-     * (empty when all pass). Does not throw for a failed example — the caller aggregates. */
+     * (empty when all pass). Does not throw for a failed example — the caller aggregates.
+     * {@code importedPackages} maps an imported type's bare name to its declaring module, so a
+     * fixture of an imported type decodes against that module's package (a cross-module example). */
     public static List<Diagnostic> check(Ast.Module module, Map<String, Ast.Def> symbols,
-                                         Map<String, TypeChecker.Sig> sigs, Map<String, byte[]> classes) {
+                                         Map<String, TypeChecker.Sig> sigs,
+                                         Map<String, String> importedPackages, Map<String, byte[]> classes) {
         if (module.examples().isEmpty()) {
             return List.of();
         }
         MemoryClassLoader loader = new MemoryClassLoader(classes, ExampleVerifier.class.getClassLoader());
-        ExampleVerifier v = new ExampleVerifier(module, symbols, sigs, loader);
+        ExampleVerifier v = new ExampleVerifier(module, symbols, sigs, importedPackages, loader);
         List<Diagnostic> failures = new ArrayList<>();
         for (Ast.Example ex : module.examples()) {
             try {
@@ -61,8 +64,9 @@ public final class ExampleVerifier {
 
     /** Runs {@link #check} and, if any example failed, fails the build with an aggregated error. */
     public static void verify(Ast.Module module, Map<String, Ast.Def> symbols,
-                              Map<String, TypeChecker.Sig> sigs, Map<String, byte[]> classes) {
-        List<Diagnostic> failures = check(module, symbols, sigs, classes);
+                              Map<String, TypeChecker.Sig> sigs,
+                              Map<String, String> importedPackages, Map<String, byte[]> classes) {
+        List<Diagnostic> failures = check(module, symbols, sigs, importedPackages, classes);
         if (failures.isEmpty()) {
             return;
         }
@@ -98,13 +102,16 @@ public final class ExampleVerifier {
     private final Ast.Module module;
     private final Map<String, Ast.Def> symbols;
     private final Map<String, TypeChecker.Sig> sigs;
+    private final Map<String, String> importedPackages;
     private final MemoryClassLoader loader;
 
     private ExampleVerifier(Ast.Module module, Map<String, Ast.Def> symbols,
-                            Map<String, TypeChecker.Sig> sigs, MemoryClassLoader loader) {
+                            Map<String, TypeChecker.Sig> sigs,
+                            Map<String, String> importedPackages, MemoryClassLoader loader) {
         this.module = module;
         this.symbols = symbols;
         this.sigs = sigs;
+        this.importedPackages = importedPackages;
         this.loader = loader;
     }
 
@@ -261,7 +268,7 @@ public final class ExampleVerifier {
         for (Ast.With w : row.withs()) {
             if (w.dep().equals(depName)) {
                 try {
-                    return constantProxy(decode(outType, raw(w.value())));
+                    return constantProxy(decode(fixtureType(w.value(), outType), raw(w.value())));
                 } catch (FixtureException fe) {
                     out.add(fakeMissingDiag(target, depName, row,
                             "the `with " + depName + "` value could not be built: " + fe.getMessage()));
@@ -305,7 +312,9 @@ public final class ExampleVerifier {
         Object[] def = {null};
         try {
             for (Ast.FakeRow r : fk.rows()) {
-                Object value = decode(outType, raw(r.output()));
+                // A dependency that returns a sum has no single decoder; each row names one case,
+                // so decode the row's output against that case's type (as an expected value is).
+                Object value = decode(fixtureType(r.output(), outType), raw(r.output()));
                 if (r.isDefault()) {
                     hasDefault[0] = true;
                     def[0] = value;
@@ -420,6 +429,14 @@ public final class ExampleVerifier {
         return null;   // a literal expected (a primitive output)
     }
 
+    /** The concrete type a fixture construction asserts — the case named by a record/newtype/unit
+     * expression — or {@code declared} for a literal. A sum-returning dependency's fake row names one
+     * case, so its output decodes against that case, not the declared sum (which has no decoder). */
+    private Type fixtureType(Ast.Expr e, Type declared) {
+        String arm = expectedArm(e);
+        return arm != null ? Type.ref(arm) : declared;
+    }
+
     private String describeExpected(Ast.Expr expected) {
         String arm = expectedArm(expected);
         return arm != null ? arm : String.valueOf(rawOrNull(expected));
@@ -470,6 +487,7 @@ public final class ExampleVerifier {
             case Ast.Neg n -> negate(raw(n.operand()));
             case Ast.Binary bin -> fold(bin);
             case Ast.Call c -> newtypeInner(c);
+            case Ast.Var v -> unitInput(v.name());
             case Ast.NewData nd -> record(nd);
             case Ast.ListLit l -> {
                 List<Object> out = new ArrayList<>();
@@ -480,6 +498,15 @@ public final class ExampleVerifier {
             }
             default -> throw new FixtureException("an example fixture must be a literal or a construction");
         };
+    }
+
+    /** A bare name in a fixture is only meaningful as a unit case (no fields); its decoder ignores
+     * the input (a unit carries no data), so an empty map stands in as the neutral form. */
+    private Object unitInput(String name) {
+        if (symbols.get(name) instanceof Ast.UnitData) {
+            return Map.of();
+        }
+        throw new FixtureException("`" + name + "` is not a value a fixture can name");
     }
 
     private Object newtypeInner(Ast.Call c) {
@@ -567,8 +594,10 @@ public final class ExampleVerifier {
             };
         }
         if (type instanceof Type.Ref ref) {
+            // An imported type's decoder lives in its declaring module's package, not this one's.
+            String pkg = importedPackages.getOrDefault(ref.name(), module.name());
             try {
-                Class<?> c = loader.loadClass(module.name() + "." + ref.name());
+                Class<?> c = loader.loadClass(pkg + "." + ref.name());
                 return (Decoder<Object, ?>) c.getMethod("decoder").invoke(null);
             } catch (ReflectiveOperationException e) {
                 throw new FixtureException("no decoder for `" + ref.name() + "`");

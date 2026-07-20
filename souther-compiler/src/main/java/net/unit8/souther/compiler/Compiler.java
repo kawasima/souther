@@ -58,7 +58,7 @@ public final class Compiler {
         Map<String, byte[]> out = Backend.generate(lowered);
         verifyConstConstructions(module, TypeChecker.symbols(module), out);
         Map<String, Ast.Def> symbols = TypeChecker.symbols(module);
-        ExampleVerifier.verify(module, symbols, TypeChecker.signatures(module, symbols), out);
+        ExampleVerifier.verify(module, symbols, TypeChecker.signatures(module, symbols), Map.of(), out);
         return out;
     }
 
@@ -196,7 +196,7 @@ public final class Compiler {
             verifyConstConstructions(m, symbols, out);
             Map<String, TypeChecker.Sig> sigs =
                     TypeChecker.signatures(m, symbols, importedBehaviorSigs(m, derived));
-            ExampleVerifier.verify(m, symbols, sigs, out);
+            ExampleVerifier.verify(m, symbols, sigs, importedPackages(m), out);
         }
         return out;
     }
