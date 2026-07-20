@@ -20,7 +20,7 @@ class ModuleOmissionTest {
 
     private static final String HEADERLESS = """
             behavior greet : (name: String) -> String
-            let greet (name) = String.concat("Hello, ", name)
+            let greet (name) = "Hello, " ++ name
             """;
 
     @Test

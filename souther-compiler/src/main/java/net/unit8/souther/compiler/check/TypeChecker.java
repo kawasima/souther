@@ -2545,12 +2545,19 @@ public final class TypeChecker {
                 yield lt;
             }
             case CONCAT -> {
+                // `++` is Elm's appendable operator: two strings concatenate to a string, two lists to
+                // a list (spec 18.1). Strings are checked first, before the empty-list absorption below.
+                Type lraw = typeOf(bin.left(), env, data, symbols, reqs);
+                Type rraw = typeOf(bin.right(), env, data, symbols, reqs);
+                if (lraw == Type.STRING && rraw == Type.STRING) {
+                    yield Type.STRING;
+                }
                 // A bottom operand ({@code Nothing}) is a list read from an accumulator an empty
                 // collection seed grows — the value at a key of a `Map.empty`-seeded fold, whose element
                 // type is not fixed yet. At run time it is a list, so read it as the empty list and let
                 // the other operand fix the element type, as `[] ++ xs` does.
-                Type lt = bottomAsEmptyList(typeOf(bin.left(), env, data, symbols, reqs));
-                Type rt = bottomAsEmptyList(typeOf(bin.right(), env, data, symbols, reqs));
+                Type lt = bottomAsEmptyList(lraw);
+                Type rt = bottomAsEmptyList(rraw);
                 if (!(lt instanceof Type.ListOf lo) || !(rt instanceof Type.ListOf ro)) {
                     throw CompileException.of(
                             Diagnostic.of(null, "check.concat.msg")
@@ -2562,7 +2569,7 @@ public final class TypeChecker {
                                             "check.operand", Type.show(rt))
                                     .args(Type.show(lt), Type.show(rt))
                                     .build(),
-                            "`++` needs two lists, got " + lt + " and " + rt);
+                            "`++` needs two lists or two strings, got " + lt + " and " + rt);
                 }
                 yield Type.list(unifyElem(lo.element(), ro.element(), bin.pos()));
             }

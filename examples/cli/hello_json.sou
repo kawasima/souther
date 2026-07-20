@@ -11,4 +11,4 @@ data Message = { text: String }
 behavior greet : (greeting: Greeting) -> Message
     constructs Message
 
-let greet (greeting) = Message { text = String.concat("Hello, ", greeting.name) }
+let greet (greeting) = Message { text = "Hello, " ++ greeting.name }

@@ -164,13 +164,14 @@ final class Intrinsics {
         t.put("string.endsWith", jdk(CD_String, "endsWith", mtd(bool, CD_String), order(1, 0), Type.BOOL));
         t.put("string.substring", new JdkVirtual(CD_String, "substring", mtd(CD_String, intCd, intCd),
                 order(2, 0, 1), Set.of(0, 1), Type.STRING));
-        t.put("string.concat", jdk(CD_String, "concat", mtd(CD_String, CD_String), order(0, 1), Type.STRING));
+        t.put("string.append", jdk(CD_String, "concat", mtd(CD_String, CD_String), order(0, 1), Type.STRING));
         // String — Strings runtime statics (descriptor derived).
         t.put("string.split", rt(CD_Strings, "split", order(1, 0), ts -> Type.list(Type.STRING)));
         t.put("string.join", rt(CD_Strings, "join", order(1, 0), ts -> Type.STRING));
         t.put("string.replace", rt(CD_Strings, "replace", order(2, 0, 1), ts -> Type.STRING));
         t.put("string.words", rt(CD_Strings, "words", order(0), ts -> Type.list(Type.STRING)));
         t.put("string.fromInt", rt(CD_Strings, "fromInt", order(0), ts -> Type.STRING));
+        t.put("string.concat", rt(CD_Strings, "concat", order(0), ts -> Type.STRING));
 
         // List
         t.put("list.sort", rt(CD_Lists, "sort", order(0), ts -> ts.get(0)));

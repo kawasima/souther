@@ -6,8 +6,9 @@ module souther.string
 // String, which a single keyed intrinsic does not express.
 //
 // Argument order follows F#/Elm (spec §pipe): the string being examined or rewritten comes last, so
-// `s |> String.trim |> String.contains("@")` reads top to bottom. `concat` joins two strings and is
-// symmetric, so it keeps its plain order.
+// `s |> String.trim |> String.contains("@")` reads top to bottom. `append` joins two strings in
+// their written order (Elm `String.append`); the `++` operator is the common form, `append a b == a
+// ++ b`. `concat` flattens a `List<String>` (Elm `String.concat`).
 let trim (s: String) : String = intrinsic "string.trim"
 let lowercase (s: String) : String = intrinsic "string.lowercase"
 let uppercase (s: String) : String = intrinsic "string.uppercase"
@@ -15,7 +16,7 @@ let contains (sub: String, s: String) : Bool = intrinsic "string.contains"
 let startsWith (prefix: String, s: String) : Bool = intrinsic "string.startsWith"
 let endsWith (suffix: String, s: String) : Bool = intrinsic "string.endsWith"
 let substring (from: Int, to: Int, s: String) : String = intrinsic "string.substring"
-let concat (a: String, b: String) : String = intrinsic "string.concat"
+let append (a: String, b: String) : String = intrinsic "string.append"
 
 // Split / join / replace and rendering an Int, ported from Elm's String module (the subset that
 // fits Souther's types — the Char/Maybe/Float-shaped functions do not). `split` keeps empty pieces;
@@ -25,3 +26,6 @@ let join (sep: String, xs: List<String>) : String = intrinsic "string.join"
 let replace (target: String, replacement: String, s: String) : String = intrinsic "string.replace"
 let words (s: String) : List<String> = intrinsic "string.words"
 let fromInt (n: Int) : String = intrinsic "string.fromInt"
+
+// `concat` joins a `List<String>` with no separator (Elm `String.concat`); it is `join("", xs)`.
+let concat (xs: List<String>) : String = intrinsic "string.concat"

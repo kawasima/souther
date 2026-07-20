@@ -72,7 +72,7 @@ mvn -pl souther-cli -am -DskipTests install
 
 # hello.sou  (no module header needed)
 #   behavior greet : (name: String) -> String
-#   let greet (name) = String.concat("Hello, ", name)
+#   let greet (name) = "Hello, " ++ name
 ./souther-cli/target/souther run hello.sou --behavior greet --input '"world"'
 # => "Hello, world"
 ```

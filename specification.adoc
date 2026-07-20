@@ -269,7 +269,7 @@ Operators and symbols: `+=+` `+|+` `+>->+` `+|>+` `+?+` `+->+` `+.+` `+...+` `+[
 
 Comparison, logic, arithmetic: `+==+` `+/=+` `+<+` `+<=+` `+>+` `+>=+` `+&&+` `+||+` `{plus}` `+-+` `+*+` `+/+` (`+/+` is division; `+/=+` is inequality; negation is not a prefix operator but `+not+` in `+souther.bool+`; <<stdlib-bool>>).
 
-Lists: `+[+` `+]+` (literal and guard comprehension), `{plus}{plus}` (concatenation). Rules are in <<stdlib-list>>.
+Lists: `+[+` `+]+` (literal and guard comprehension), `{plus}{plus}` (concatenation, of two lists or two strings; <<stdlib-list>>).
 
 `+>->+` is associative (<<type-routing>>). `+|>+` is the value pipe, threading a value through functions — `+e |> f(a)+` is `+f(a, e)+` (<<pipe>>).
 
@@ -1688,11 +1688,13 @@ The right side admits only a function call or a function name; `+e |> 3+` is a c
 
 [,text]
 ----
-length  trim  lowercase  uppercase  contains  startsWith  endsWith  substring  concat
-split    join  replace    words      fromInt
+length  trim  lowercase  uppercase  contains  startsWith  endsWith  substring  append
+split    join  replace    words      fromInt   concat
 ----
 
-The lower row is the core of Elm's String module expressible in Souther's types (which lack `+Char+` / `+Maybe+` / `+Float+`). `+split(sep, s)+` splits by a separator into `+List<String>+`, keeping empty pieces (`+split(",", "a,,b")+` is `+["a", "", "b"]+`). `+words(s)+` splits by runs of whitespace, dropping empty pieces. `+join(sep, xs)+` joins with a separator. `+replace(target, replacement, s)+` replaces every occurrence of `+target+`. `+fromInt(n)+` makes an `+Int+` a decimal string. The primary subject string is last (<<pipe>>). Elm functions depending on `+Char+` or `+Maybe+` (such as `+String.map+` and `+toInt+`, which returns `+Maybe+`) are not ported, as there is no corresponding type.
+`+append(a, b)+` joins two strings in their written order (Elm `+String.append+`); the `{plus}{plus}` operator is the common form, `+append(a, b)+` equals `+a {plus}{plus} b+` (<<stdlib-list>>).
+
+The lower row is the core of Elm's String module expressible in Souther's types (which lack `+Char+` / `+Maybe+` / `+Float+`). `+split(sep, s)+` splits by a separator into `+List<String>+`, keeping empty pieces (`+split(",", "a,,b")+` is `+["a", "", "b"]+`). `+words(s)+` splits by runs of whitespace, dropping empty pieces. `+join(sep, xs)+` joins with a separator. `+replace(target, replacement, s)+` replaces every occurrence of `+target+`. `+fromInt(n)+` makes an `+Int+` a decimal string. `+concat(xs)+` joins a `+List<String>+` with no separator (Elm `+String.concat+`, equal to `+join("", xs)+`). The primary subject string is last (<<pipe>>). Elm functions depending on `+Char+` or `+Maybe+` (such as `+String.map+` and `+toInt+`, which returns `+Maybe+`) are not ported, as there is no corresponding type.
 
 [#stdlib-int]
 === Int
@@ -1742,7 +1744,7 @@ A list is made by a literal or a guard comprehension.
 
 An empty literal `+[]+` may also be written. It has no element type of its own; its type is decided by context — the counterpart of `{plus}{plus}`, the other branch of an `+if+` / `+match+`, the seed a `+fold+` grows, or a `+List<T>+` a field or return value requires. An empty list does not depend on elements at runtime, so this is always sound. To transcribe a DSL bullet list, a guard comprehension (empty if the condition is false) is natural.
 
-`{plus}{plus}` is concatenation. Both sides MUST be lists.
+`{plus}{plus}` is concatenation (Elm's appendable). Both sides MUST be two lists or two strings: two lists give a list, two strings give a string (`+"a" {plus}{plus} "b"+` is `+"ab"+`, the operator form of `+String.append+`; <<stdlib-string>>). A mixed pair (a list and a string, or either with a non-list non-string) is a type error.
 
 The element type is folded if the same, and widened to a sum of cases if different data (the same direction as <<sum-data>>).
 

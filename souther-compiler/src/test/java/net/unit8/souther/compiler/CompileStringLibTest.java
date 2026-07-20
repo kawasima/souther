@@ -6,24 +6,25 @@ import net.unit8.raoh.Ok;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** The String standard library beyond length/trim/lowercase (spec 18.1). */
 class CompileStringLibTest {
 
     @Test
-    void concatUppercaseAndSubstringInABehavior() throws Exception {
+    void appendOperatorUppercaseAndSubstringInABehavior() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                import String ( concat, uppercase, substring )
+                import String ( uppercase, substring )
 
                 data Name = String
                 data Greeting = String
 
                 behavior greet : (n: Name) -> Greeting constructs Greeting
 
-                let greet (n) = Greeting { value = concat(concat("hi ", uppercase(substring(0, 3, n.value))), "!") }
+                let greet (n) = Greeting { value = "hi " ++ uppercase(substring(0, 3, n.value)) ++ "!" }
                 """), getClass().getClassLoader());
 
         Object name = Codecs.decoded(loader, "demo.Name", "robert");
@@ -32,6 +33,77 @@ class CompileStringLibTest {
 
         // Greeting has a single String field, so it is a newtype: encodes as bare Text
         assertEquals("hi ROB!", Codecs.encode(loader, "demo.Greeting", greeting));
+    }
+
+    @Test
+    void appendFunctionAndConcatOfAList() throws Exception {
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
+                module demo
+
+                import String ( append, concat )
+
+                data In = { name: String, parts: List<String> }
+                data Out = {
+                    greeting: String
+                    , joined: String
+                }
+
+                behavior run : (i: In) -> Out constructs Out
+
+                let run (i) = Out {
+                    greeting = append("Hello, ", i.name),
+                    joined = concat(i.parts)
+                }
+                """), getClass().getClassLoader());
+
+        Object in = Codecs.decoded(loader, "demo.In",
+                java.util.Map.of("name", "world", "parts", java.util.List.of("a", "b", "c")));
+        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, in);
+
+        java.util.Map<?, ?> m = (java.util.Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
+        assertEquals("Hello, world", m.get("greeting"), "append joins two strings in order");
+        assertEquals("abc", m.get("joined"), "concat flattens a List<String> with no separator");
+    }
+
+    @Test
+    void concatOfAnEmptyListIsTheEmptyString() throws Exception {
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
+                module demo
+
+                import String ( concat )
+
+                data In = { parts: List<String> }
+                data Out = String
+
+                behavior run : (i: In) -> Out constructs Out
+
+                let run (i) = Out { value = concat(i.parts) }
+                """), getClass().getClassLoader());
+
+        Object in = Codecs.decoded(loader, "demo.In",
+                java.util.Map.of("parts", java.util.List.of()));
+        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, in);
+
+        // Out has a single String field, so it is a newtype: encodes as bare Text
+        assertEquals("", Codecs.encode(loader, "demo.Out", out), "concat([]) is the empty string");
+    }
+
+    @Test
+    void appendingAStringToAListIsRejected() {
+        // `++` is Elm's appendable: two lists or two strings, never a mix (spec 18.1).
+        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile("""
+                module demo
+
+                data Bad = String
+
+                behavior run : (b: Bad) -> Bad constructs Bad
+
+                let run (b) = Bad { value = b.value ++ [1] }
+                """));
+        assertTrue(e.getMessage().contains("two lists or two strings"),
+                "the diagnostic should name both admissible operand shapes: " + e.getMessage());
     }
 
     @Test
@@ -72,7 +144,7 @@ class CompileStringLibTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
                 module demo
 
-                import String ( words, concat, fromInt )
+                import String ( words, fromInt )
 
                 data In = {
                     text: String
@@ -87,7 +159,7 @@ class CompileStringLibTest {
 
                 let run (i) = Out {
                     tokens = words(i.text),
-                    label = concat("item-", fromInt(i.n))
+                    label = "item-" ++ fromInt(i.n)
                 }
                 """), getClass().getClassLoader());
 

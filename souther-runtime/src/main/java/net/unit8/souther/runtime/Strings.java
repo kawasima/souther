@@ -38,6 +38,12 @@ public final class Strings {
         return String.join(sep, xs);
     }
 
+    /** Joins a list of strings with no separator (Elm {@code String.concat}):
+     *  {@code concat(["a", "b", "c"]) == "abc"}. This is {@code join(xs, "")}. */
+    public static String concat(List<String> xs) {
+        return join(xs, "");
+    }
+
     /** Replaces every literal occurrence of {@code target} (Elm {@code String.replace}). An empty
      *  {@code target} leaves the string unchanged rather than splicing between every character. */
     public static String replace(String s, String target, String replacement) {

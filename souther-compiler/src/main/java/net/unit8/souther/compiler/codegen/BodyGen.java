@@ -959,6 +959,13 @@ final class BodyGen {
                 case CONCAT -> {
                     Type lt = genExpr(bin.left());
                     Type rt = genExpr(bin.right());
+                    // `++` over two strings is Elm's appendable on String; the checker guarantees both
+                    // sides are String here, so emit `a.concat(b)` rather than the list join.
+                    if (lt == Type.STRING) {
+                        code.invokevirtual(CD_String, "concat",
+                                MethodTypeDesc.of(CD_String, CD_String));
+                        return Type.STRING;
+                    }
                     code.invokestatic(CD_Lists, "concat", MTD_Lists_concat);
                     // the empty list contributes no element type; take the result's from the other
                     // side, so a `[] ++ [x]` chain does not leave the element as `Nothing` (ADR-0028)

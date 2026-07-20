@@ -28,7 +28,7 @@ class RunnerTest {
     void drivesAHeaderlessHelloWorldByName() throws Exception {
         Path file = write("hello.sou", """
                 behavior greet : (name: String) -> String
-                let greet (name) = String.concat("Hello, ", name)
+                let greet (name) = "Hello, " ++ name
                 """);
         assertEquals("\"Hello, world\"", Runner.run(file, "greet", "\"world\""));
     }
@@ -37,7 +37,7 @@ class RunnerTest {
     void selectsTheSoleRunnableBehaviorWhenNoneNamed() throws Exception {
         Path file = write("hello.sou", """
                 behavior greet : (name: String) -> String
-                let greet (name) = String.concat("Hi, ", name)
+                let greet (name) = "Hi, " ++ name
                 """);
         assertEquals("\"Hi, Souther\"", Runner.run(file, null, "\"Souther\""));
     }
