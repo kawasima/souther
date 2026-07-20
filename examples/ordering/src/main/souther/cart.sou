@@ -1,0 +1,91 @@
+// The pricing half of the checkout example, kept in its own module. `quote` is pure: it prices a
+// cart with the list combinators map / filter / fold / all / any and the empty list [] — none of
+// which is built in; souther.list derives them from fold (ADR-0028), fold being the one privileged
+// loop. This module has no injected behavior and no `let`-with-`requires`, so its `example`s need no
+// `fake` — a pure behavior is examined directly.
+//
+// example.ordering imports this module (`import example.cart (...)`) and composes `quote >-> place`
+// across the two modules. Both .sou under src/main/souther are compiled together by one processor
+// run, so the cross-module import resolves at build time.
+// exposing lists the module's cross-module interface (like an .mli / .d.ts): example.ordering
+// imports some of these, and the Java boundary references the rest (it matches quote's EmptyCart /
+// InvalidQuantity cases when checkout departs). A module with no exposing exports nothing to import.
+module example.cart exposing (
+    Sku,
+    LineItem,
+    Cart,
+    PricedCart,
+    EmptyCart,
+    InvalidQuantity,
+    quote
+)
+import List ( map, filter, fold, all, any, length )
+
+// Sku's invariant needs String.length; `length` imported bare above is List.length, so this one
+// stays qualified (a bare name may not resolve to two libraries at once).
+data Sku = String
+    invariant String.length(value) > 0
+
+data LineItem =
+    { sku: Sku
+    , quantity: Int
+    , unitPrice: Int
+    }
+
+data Cart =
+    { open: Bool
+    , items: List<LineItem>
+    }
+
+// The success case carries the priced lines forward: example.ordering's recordOrder persists them,
+// so `quote`'s output has to hold the items, not just a summary. `total` and `highValue` are the
+// summary the boundary shows.
+data PricedCart =
+    { items: List<LineItem>
+    , total: Int
+    , highValue: Bool
+    }
+data EmptyCart
+data InvalidQuantity = { invalidCount: Int }
+
+behavior quote : (c: Cart) -> PricedCart | EmptyCart | InvalidQuantity
+    constructs PricedCart, EmptyCart, InvalidQuantity
+
+let quote (c) = {
+    require length(activeItems(c)) >= 1 else EmptyCart
+    require all(i -> i.quantity >= 1, activeItems(c))
+        else InvalidQuantity { invalidCount = length(filter(i -> i.quantity < 1, activeItems(c))) }
+    PricedCart {
+        items = activeItems(c),
+        total = subtotal(activeItems(c)),
+        highValue = any(i -> i.unitPrice >= 100000, activeItems(c))
+    }
+}
+
+// A closed cart prices nothing. [] takes its element type from context (the other arm is
+// List<LineItem>).
+let activeItems (c: Cart) = if c.open then c.items else []
+
+// Each line's amount (map), summed with fold. lineAmount maps one line to an Int.
+let lineAmount (i: LineItem) = i.quantity * i.unitPrice
+let subtotal (xs: List<LineItem>) = fold((acc, x) -> acc + x, 0, map(lineAmount, xs))
+
+// A pure behavior is examined with no fake. The threshold cases fix which arm quote takes.
+example quote
+    | "all lines valid -> a priced cart" :
+        (Cart { open = true, items =
+            [ LineItem { sku = Sku("apple"), quantity = 2, unitPrice = 150 }
+            , LineItem { sku = Sku("tv"), quantity = 1, unitPrice = 200000 } ] })
+        -> PricedCart { items =
+            [ LineItem { sku = Sku("apple"), quantity = 2, unitPrice = 150 }
+            , LineItem { sku = Sku("tv"), quantity = 1, unitPrice = 200000 } ]
+            , total = 200300, highValue = true }
+    | "a closed cart -> empty" :
+        (Cart { open = false, items =
+            [ LineItem { sku = Sku("apple"), quantity = 2, unitPrice = 150 } ] })
+        -> EmptyCart
+    | "a zero-quantity line -> invalid" :
+        (Cart { open = true, items =
+            [ LineItem { sku = Sku("apple"), quantity = 2, unitPrice = 150 }
+            , LineItem { sku = Sku("tv"), quantity = 0, unitPrice = 200000 } ] })
+        -> InvalidQuantity { invalidCount = 1 }

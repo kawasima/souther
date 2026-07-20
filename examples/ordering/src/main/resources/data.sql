@@ -1,2 +1,4 @@
--- 商品 ITEM-A の初期在庫 10。テストは @BeforeEach でこの状態に戻す。
-MERGE INTO stock (item_id, qty) KEY(item_id) VALUES ('ITEM-A', 10);
+-- Initial stock per sku. The tests reset to this state in @BeforeEach.
+-- apple has plenty; tv is scarce, so a cart that orders more than 3 tvs is out of stock.
+MERGE INTO stock (sku, qty) KEY(sku) VALUES ('apple', 10);
+MERGE INTO stock (sku, qty) KEY(sku) VALUES ('tv', 3);

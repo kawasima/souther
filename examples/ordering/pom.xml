@@ -12,11 +12,18 @@
     <artifactId>ordering</artifactId>
 
     <description>
-        注文＋在庫引当の例。ordering.sou から生成した型を Spring Boot + jOOQ の境界コードから使い、
-        実際に Boot を起動し H2 に接続してトランザクション制御を見せる。パイプライン
-        注文を記録する >-> 在庫を引き当てる の後段が 在庫不足 ケースを返したら、前段で INSERT 済みの
-        注文行をトランザクションで巻き戻す（プログラマティックに setRollbackOnly）。失敗はケース、
-        巻き戻しは境界の判断であって例外ではない。他の example と違い provided ではなく実行する。
+        The checkout example, and the multi-module case: two Souther modules (example.cart and
+        example.ordering) live under src/main/souther and are compiled together in one build, with
+        ordering importing cart's PricedCart. cart.sou prices a cart purely with list combinators
+        (quote). ordering.sou records and reserves over the DB (place), and shows `fake` + `example`:
+        place's record-then-reserve sequencing is checked at compile time with the injected behaviors
+        faked, no database involved. The two modules are composed at the Java boundary (quote, then
+        place for a priced cart) — each keeps its own single-module sealed output. The generated types
+        are used from Spring Boot + jOOQ boundary code: it actually starts Boot, connects to H2, and
+        shows transaction control. When a later line of the order is out of stock, the recorded rows
+        and the earlier lines' stock decrements all roll back (programmatic setRollbackOnly). A failure
+        is a case; the rollback is the boundary's decision, not an exception. Unlike the other examples
+        this one is not `provided` — it runs.
     </description>
 
     <!-- この例は「実行する」ので、Spring Boot 4 系（Spring 7）を実バージョンで解決する。

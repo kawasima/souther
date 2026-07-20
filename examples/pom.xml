@@ -19,7 +19,6 @@
         <module>email</module>
         <module>contact</module>
         <module>expense</module>
-        <module>cart</module>
         <module>tagging</module>
         <module>inventory</module>
         <module>sales</module>

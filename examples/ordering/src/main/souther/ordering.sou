@@ -1,53 +1,78 @@
+// The ordering half of the checkout example: the DB-backed, transactional side. It imports
+// example.cart's PricedCart — the multi-module case, two Souther modules compiled together in one
+// build with a value flowing from one to the other. place is a `let` that `requires` the two injected
+// DB behaviors, so it is also the showcase for `fake` + `example`: the record-then-reserve sequencing
+// is checked at compile time with the DB behaviors faked, no database involved. At run time the jOOQ
+// implementations are injected.
+//
+// The two modules are composed at the Java boundary, not by `>->`: cart's quote and this module's
+// place have different failure vocabularies (EmptyCart / InvalidQuantity vs OutOfStock), and a case
+// from an already-compiled upstream module cannot implement a downstream module's sealed union — so
+// each behavior keeps its own single-module sealed output, and the boundary runs quote, then place.
+//
+// exposing is omitted, so every generated class is public — the Spring/jOOQ boundary in Java uses
+// all of these types.
 module example.ordering
 import String ( length )
-// exposing 句を省いたモジュールは生成クラスがすべて public になる（4章）。
-// この例は全型を Java（Spring Boot の境界コード）から使うので、あえて全公開にしている。
+import example.cart ( Sku, LineItem, PricedCart )
 
-// --- 値の型（単一プリミティブ newtype ＋ invariant）---
-data 商品ID = String
+data OrderId = String
     invariant length(value) > 0
 
-data 数量 = Int
-    invariant value > 0
-
-data 注文ID = String
-    invariant length(value) > 0
-
-// --- 入力：1商品ぶんの注文 ---
-data 注文 =
-    { 商品: 商品ID
-    , 個数: 数量
+// What recordOrder persists: the priced lines (imported from cart) plus the assigned order id.
+data RecordedOrder =
+    { orderId: OrderId
+    , items: List<LineItem>
+    , total: Int
     }
 
-// --- 前段の成功ケース：採番された注文を受け付けた（まだ在庫は引き当てていない）---
-// 後段 在庫を引き当てる の入力型がこれ。型ルーティングでここだけが後段へ流れる（14.2）。
-data 注文受付 =
-    { 注文番号: 注文ID
-    , 商品: 商品ID
-    , 個数: 数量
+// The confirmed order the boundary returns on success.
+data ConfirmedOrder =
+    { orderId: OrderId
+    , total: Int
     }
 
-// --- 後段の成功ケース：在庫を引き当て、注文が確定した ---
-data 注文確定 =
-    { 注文番号: 注文ID
-    , 残在庫: Int
-    }
+// The domain failure of reservation. A unit data (no fields): the injected Java implementation
+// builds it through the protected factory it inherits. A platform failure (DB down) is not this —
+// it is an exception the Java binding throws and Souther passes through (ADR-0029).
+data OutOfStock
 
-// --- ドメインの失敗ケース（ただの単位 data。error でも Result でもない）---
-// 単位 data なので、注入した Java 実装は継承した protected ファクトリで作れる（2.1 / 13.3）。
-// 「DB不通」のようなプラットフォーム障害はここに置かない ── それはドメインの帰結ではなく、
-// Java Binding が投げる例外として Souther を素通りする（言語には例外が無いが、境界の Java は投げうる）。
-data 在庫不足
+// --- injected DB behaviors (no `let`; implementation comes from Java) ---
+// An injected behavior always writes `constructs`: the declaration is the input to factory generation.
+behavior recordOrder : (order: PricedCart) -> RecordedOrder
+    constructs RecordedOrder
 
-// --- 外界依存その1：注文を記録する（INSERT）。実装は Java 注入（let を書かない。13.2）---
-// 出力はドメインの帰結だけ。DB ダウン等のプラットフォーム障害は Java 側が例外を投げ、Souther が素通りする。
-behavior 注文を記録する : (注文: 注文) -> 注文受付
+behavior reserveStock : (recorded: RecordedOrder) -> ConfirmedOrder | OutOfStock
+    constructs ConfirmedOrder, OutOfStock
 
-// --- 外界依存その2：在庫を引き当てる（UPDATE）。実装は Java 注入 ---
-// 在庫が足りれば 注文確定、足りなければ 在庫不足。プラットフォーム障害はケースにせず例外で抜ける。
-behavior 在庫を引き当てる : (受付: 注文受付) -> 注文確定 | 在庫不足
+// --- place: record then reserve, in one pipeline ---
+// A `let` that `requires` the two injected behaviors (they arrive as arguments after the business
+// input, in declaration order). Its input is cart's PricedCart. Sequencing two DB writes is what a
+// service method does, and being a `let`-with-`requires` is exactly what makes it fakeable below.
+behavior place : (order: PricedCart) -> ConfirmedOrder | OutOfStock
+    requires recordOrder, reserveStock
 
-// --- 合成：記録 → 引き当て。注文受付（前段の成功）が後段の入力型に一致して流れる（型ルーティング、14.2）。
-//     要求集合 {注文を記録する, 在庫を引き当てる} はコンパイラが推論する。
-// 注文を処理する : 注文 -> 注文確定 | 在庫不足
-behavior 注文を処理する = 注文を記録する >-> 在庫を引き当てる
+let place (order, recordOrder, reserveStock) = reserveStock(recordOrder(order))
+
+// --- fake + example: the record-then-reserve sequencing, checked at compile time with no DB ---
+// place `requires` recordOrder and reserveStock, so an example of it supplies a fake for each: an
+// input->output table matched by value equality, with a `_` default. The input PricedCart is an
+// imported type; its fixture is decoded against example.cart. The happy row threads a real order id
+// through both fakes; the `_` rows drive the OutOfStock path.
+fake recordOrder
+    | (PricedCart { items = [ LineItem { sku = Sku("apple"), quantity = 2, unitPrice = 150 } ], total = 300, highValue = false })
+        -> RecordedOrder { orderId = OrderId("order-1"), items = [ LineItem { sku = Sku("apple"), quantity = 2, unitPrice = 150 } ], total = 300 }
+    | _ -> RecordedOrder { orderId = OrderId("order-oos"), items = [], total = 0 }
+
+fake reserveStock
+    | (RecordedOrder { orderId = OrderId("order-1"), items = [ LineItem { sku = Sku("apple"), quantity = 2, unitPrice = 150 } ], total = 300 })
+        -> ConfirmedOrder { orderId = OrderId("order-1"), total = 300 }
+    | _ -> OutOfStock
+
+example place
+    | "records then reserves within one pipeline" :
+        (PricedCart { items = [ LineItem { sku = Sku("apple"), quantity = 2, unitPrice = 150 } ], total = 300, highValue = false })
+        -> ConfirmedOrder { orderId = OrderId("order-1"), total = 300 }
+    | "reservation reports out of stock" :
+        (PricedCart { items = [ LineItem { sku = Sku("apple"), quantity = 999, unitPrice = 150 } ], total = 149850, highValue = true })
+        -> OutOfStock
