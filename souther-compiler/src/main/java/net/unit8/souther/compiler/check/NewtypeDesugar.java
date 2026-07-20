@@ -28,7 +28,7 @@ public final class NewtypeDesugar {
                     body, fn.pos()));
         }
         return new Ast.Module(m.name(), m.exposing(), m.exposedOutputs(), m.imports(),
-                m.defs(), m.behaviors(), fns, m.examples(), m.exampleFileTarget(), m.pos());
+                m.defs(), m.behaviors(), fns, m.examples(), m.fakes(), m.exampleFileTarget(), m.pos());
     }
 
     private static Ast.Expr go(Ast.Expr e, Map<String, Ast.Def> symbols) {

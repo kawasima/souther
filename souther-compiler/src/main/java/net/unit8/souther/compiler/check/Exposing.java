@@ -91,7 +91,7 @@ public final class Exposing {
         }
         return new Ast.Module(module.name(), module.exposing(), module.exposedOutputs(),
                 keptImports, defs, module.behaviors(), fns,
-                module.examples(), module.exampleFileTarget(), module.pos());
+                module.examples(), module.fakes(), module.exampleFileTarget(), module.pos());
     }
 
     private Ast.Def rewriteDef(Ast.Def def) {

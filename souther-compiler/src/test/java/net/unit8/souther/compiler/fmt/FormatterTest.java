@@ -155,6 +155,40 @@ class FormatterTest {
     }
 
     @Test
+    void canonicalFormOfAFakeAndWith() {
+        String messy = "module demo\n"
+                + "data R={ x:Int }\n"
+                + "behavior clock:()->String\n"
+                + "behavior f:(r:R)->R requires clock constructs R\n"
+                + "let f (r,clock)=r\n"
+                + "fake lookup\n|(R{x=1})->R{x=2}\n| _ ->R{x=0}\n"
+                + "example f\n|(R{x=1}) with clock=\"t\" ->R{x=1}\n";
+        String expected = """
+                module demo
+
+                data R =
+                    { x: Int
+                    }
+
+                behavior clock : () -> String
+
+                behavior f : (r: R) -> R
+                    requires clock
+                    constructs R
+
+                let f (r, clock) = r
+
+                fake lookup
+                    | (R { x = 1 }) -> R { x = 2 }
+                    | _ -> R { x = 0 }
+
+                example f
+                    | (R { x = 1 }) with clock = "t" -> R { x = 1 }
+                """;
+        assertEquals(expected, Formatter.format(messy));
+    }
+
+    @Test
     void canonicalFormOfAnAttachedExampleFile() {
         String messy = "examples for demo\nexample f\n|(M{n=1})->M{n=1}\n";
         String expected = """

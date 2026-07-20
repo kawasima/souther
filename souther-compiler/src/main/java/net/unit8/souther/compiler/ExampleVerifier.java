@@ -28,10 +28,12 @@ import java.util.Set;
  * expected arm (a bare type name) or value (a construction/literal). A failing example fails the
  * build, exactly as a false constant invariant does in {@link Compiler#verifyConstConstructions}.
  *
- * <p>Only a behavior with a {@code let} body and no {@code requires} (spec 13.1) can be evaluated;
- * an injected, {@code >->}, or dependency-taking target is refused with a reason ({@code E1902}).
- * Inputs and expected values are fixtures — literals, newtype constructions, and record
- * constructions — not computed expressions.
+ * <p>A behavior with a {@code let} body is evaluable; an injected or {@code >->} target is refused
+ * ({@code E1902}). A {@code requires} dependency is satisfied by a fake supplied at the example: a
+ * {@code with dep = value} on the row (a constant/value dependency) or a {@code fake dep | table}
+ * declaration (an input-keyed function dependency). Each fake is a {@code Behavior} proxy passed to
+ * the generated behavior's injecting constructor — it produces no run-time class. Inputs, expected
+ * values, and fake entries are fixtures — literals, newtype constructions, and record constructions.
  */
 public final class ExampleVerifier {
 
@@ -122,15 +124,26 @@ public final class ExampleVerifier {
         }
     }
 
-    /** The target as a runnable behavior (a {@code let} body, no {@code requires}), or null. */
+    /** The target as an evaluable behavior (a {@code let} body); its {@code requires} are satisfied
+     * by fakes at the example (checked per row), or null when it has no in-language body. */
     private Ast.SpecBehavior runnableBehavior(String name) {
-        Set<String> implemented = new java.util.HashSet<>();
-        for (Ast.FnDef f : module.fns()) {
-            implemented.add(f.name());
-        }
         for (Ast.BehaviorDef b : module.behaviors()) {
-            if (b instanceof Ast.SpecBehavior spec && spec.name().equals(name)
-                    && implemented.contains(name) && spec.requires().isEmpty()) {
+            if (b instanceof Ast.SpecBehavior spec && spec.name().equals(name) && hasFn(name)) {
+                return spec;
+            }
+        }
+        return null;
+    }
+
+    private boolean hasFn(String name) {
+        return module.fns().stream().anyMatch(f -> f.name().equals(name));
+    }
+
+    /** The injected behavior named {@code name} in this module (a SpecBehavior with no {@code let}),
+     * i.e. a valid target for a fake; null if not found or not injected. */
+    private Ast.SpecBehavior injectedSpec(String name) {
+        for (Ast.BehaviorDef b : module.behaviors()) {
+            if (b instanceof Ast.SpecBehavior spec && spec.name().equals(name) && !hasFn(name)) {
                 return spec;
             }
         }
@@ -150,13 +163,8 @@ public final class ExampleVerifier {
             known = true;
             if (b instanceof Ast.PipeBehavior) {
                 reason = "it is a `>->` pipeline";
-            } else if (b instanceof Ast.SpecBehavior spec) {
-                boolean implemented = module.fns().stream().anyMatch(f -> f.name().equals(name));
-                if (!implemented) {
-                    reason = "it is injected from Java (no `let`)";
-                } else if (!spec.requires().isEmpty()) {
-                    reason = "it requires injected dependencies (" + String.join(", ", spec.requires()) + ")";
-                }
+            } else if (b instanceof Ast.SpecBehavior && !hasFn(name)) {
+                reason = "it is injected from Java (no `let`) — fake it, do not example it";
             }
         }
         boolean isHelper = module.fns().stream().anyMatch(f -> f.name().equals(name)
@@ -204,9 +212,17 @@ public final class ExampleVerifier {
                     .hint("check.example.arm.hint", String.join(", ", outCases)).build());
             return;
         }
+        Object[] fakes = resolveFakes(spec, row, out);
+        if (fakes == null) {
+            return;   // a fake was missing/invalid; the diagnostic is already reported
+        }
         Object result;
         try {
-            result = invoke(target, args);
+            result = invoke(spec, args, fakes);
+        } catch (FakeMissException fm) {
+            out.add(Diagnostic.of("E1909", "check.fake.miss").title("check.example.title")
+                    .at(row.pos()).args(fm.getMessage()).build());
+            return;
         } catch (AbortException ae) {
             out.add(mismatch(row, describeExpected(row.expected()), "aborted: " + ae.getMessage()));
             return;
@@ -214,6 +230,137 @@ public final class ExampleVerifier {
         if (!matches(row.expected(), result)) {
             out.add(mismatch(row, describeExpected(row.expected()), describeActual(result)));
         }
+    }
+
+    // --- fakes for a behavior's requires ------------------------------------------------------
+
+    /** Builds a {@code Behavior} proxy for each of {@code spec}'s requires, in declared order; null
+     * (with a diagnostic reported) when one is missing or invalid. */
+    private Object[] resolveFakes(Ast.SpecBehavior spec, Ast.ExampleRow row, List<Diagnostic> out) {
+        List<String> reqs = spec.requires();
+        Object[] proxies = new Object[reqs.size()];
+        for (int i = 0; i < reqs.size(); i++) {
+            Object p = resolveFake(spec.name(), reqs.get(i), row, out);
+            if (p == null) {
+                return null;
+            }
+            proxies[i] = p;
+        }
+        return proxies;
+    }
+
+    private Object resolveFake(String target, String depName, Ast.ExampleRow row, List<Diagnostic> out) {
+        Ast.SpecBehavior dep = injectedSpec(depName);
+        if (dep == null) {
+            out.add(fakeMissingDiag(target, depName, row, "`" + depName
+                    + "` is not an injected behavior of this module"));
+            return null;
+        }
+        Type outType = TypeChecker.successType(dep.ret(), symbols);
+        // a value fake given inline on the row: `with dep = value`
+        for (Ast.With w : row.withs()) {
+            if (w.dep().equals(depName)) {
+                try {
+                    return constantProxy(decode(outType, raw(w.value())));
+                } catch (FixtureException fe) {
+                    out.add(fakeMissingDiag(target, depName, row,
+                            "the `with " + depName + "` value could not be built: " + fe.getMessage()));
+                    return null;
+                }
+            }
+        }
+        // a function fake given as a `fake dep | table` declaration
+        for (Ast.Fake fk : module.fakes()) {
+            if (fk.target().equals(depName)) {
+                return tableProxy(fk, dep, outType, out);
+            }
+        }
+        out.add(fakeMissingDiag(target, depName, row, "add `with " + depName
+                + " = ...` on the row, or a `fake " + depName + "` table"));
+        return null;
+    }
+
+    private Diagnostic fakeMissingDiag(String target, String depName, Ast.ExampleRow row, String detail) {
+        return Diagnostic.of("E1908", "check.fake.missing").title("check.example.title")
+                .at(row.pos()).args(target, depName)
+                .hint("check.fake.missing.hint", detail).build();
+    }
+
+    /** Precomputes a function fake's input→output table (decoded fixtures) and returns a proxy that
+     * looks an actual input up by value equality, falling back to the {@code _} default or a miss. */
+    private Object tableProxy(Ast.Fake fk, Ast.SpecBehavior dep, Type outType, List<Diagnostic> out) {
+        List<Type> paramTypes = new ArrayList<>();
+        for (Ast.Param p : dep.params()) {
+            paramTypes.add(TypeChecker.successType(p.type(), symbols));
+        }
+        if (paramTypes.size() > 1) {
+            out.add(Diagnostic.of("E1908", "check.fake.missing").title("check.example.title")
+                    .at(fk.pos()).args(fk.target(), fk.target())
+                    .hint("check.fake.missing.hint", "a fake for a multi-argument dependency is not supported")
+                    .build());
+            return null;
+        }
+        List<Object[]> entries = new ArrayList<>();   // {key, value}; key is null for a 0-arg dep
+        boolean[] hasDefault = {false};
+        Object[] def = {null};
+        try {
+            for (Ast.FakeRow r : fk.rows()) {
+                Object value = decode(outType, raw(r.output()));
+                if (r.isDefault()) {
+                    hasDefault[0] = true;
+                    def[0] = value;
+                } else {
+                    Object key = paramTypes.isEmpty() ? null
+                            : decode(paramTypes.get(0), raw(r.inputs().get(0)));
+                    entries.add(new Object[] {key, value});
+                }
+            }
+        } catch (FixtureException fe) {
+            out.add(Diagnostic.of("E1908", "check.fake.missing").title("check.example.title")
+                    .at(fk.pos()).args(fk.target(), fk.target())
+                    .hint("check.fake.missing.hint", "a fake row could not be built: " + fe.getMessage())
+                    .build());
+            return null;
+        }
+        String depName = fk.target();
+        return behaviorProxy(a -> {
+            Object input = a.length > 0 ? a[0] : null;
+            for (Object[] e : entries) {
+                if (java.util.Objects.equals(e[0], input)) {
+                    return e[1];
+                }
+            }
+            if (hasDefault[0]) {
+                return def[0];
+            }
+            throw new FakeMissException("`" + depName + "` has no output for " + input);
+        });
+    }
+
+    private Object constantProxy(Object value) {
+        return behaviorProxy(a -> value);
+    }
+
+    /** A {@code Behavior} proxy whose {@code apply} runs {@code body}. Reflective so the runtime
+     * (souther-runtime, `provided`) may be absent, in which case the LinkageError is caught upstream. */
+    private Object behaviorProxy(java.util.function.Function<Object[], Object> body) {
+        Class<?> iface;
+        try {
+            iface = loader.loadClass("net.unit8.souther.runtime.Behavior");
+        } catch (ClassNotFoundException e) {
+            throw new NoClassDefFoundError("net.unit8.souther.runtime.Behavior");
+        }
+        return java.lang.reflect.Proxy.newProxyInstance(loader, new Class<?>[] {iface}, (proxy, method, a) -> {
+            if (method.getName().equals("apply")) {
+                return body.apply(a == null ? new Object[0] : a);
+            }
+            return switch (method.getName()) {
+                case "toString" -> "fake";
+                case "hashCode" -> System.identityHashCode(proxy);
+                case "equals" -> proxy == (a != null && a.length > 0 ? a[0] : null);
+                default -> null;
+            };
+        });
     }
 
     private Diagnostic mismatch(Ast.ExampleRow row, String expected, String actual) {
@@ -432,16 +579,28 @@ public final class ExampleVerifier {
 
     // --- invoke the behavior ------------------------------------------------------------------
 
-    private Object invoke(String behavior, Object[] args) {
-        String className = module.name() + "." + behaviorClass(behavior);
+    private Object invoke(Ast.SpecBehavior spec, Object[] args, Object[] fakes) {
+        String className = module.name() + "." + behaviorClass(spec.name());
         try {
             Class<?> c = loader.loadClass(className);
-            Object instance = c.getConstructor().newInstance();
+            Object instance;
+            if (spec.requires().isEmpty()) {
+                instance = c.getConstructor().newInstance();
+            } else {
+                // the generated behavior's injecting constructor takes one Behavior per requires
+                Class<?> behaviorIface = loader.loadClass("net.unit8.souther.runtime.Behavior");
+                Class<?>[] ctorParams = new Class<?>[fakes.length];
+                java.util.Arrays.fill(ctorParams, behaviorIface);
+                instance = c.getConstructor(ctorParams).newInstance(fakes);
+            }
             Class<?>[] paramTypes = new Class<?>[args.length];
             java.util.Arrays.fill(paramTypes, Object.class);
             return c.getMethod("apply", paramTypes).invoke(instance, args);
         } catch (java.lang.reflect.InvocationTargetException ite) {
             Throwable cause = ite.getCause();
+            if (cause instanceof FakeMissException fm) {
+                throw fm;   // a fake did not cover an input — reported as its own diagnostic
+            }
             throw new AbortException(cause == null ? "aborted" : String.valueOf(cause.getMessage()));
         } catch (ReflectiveOperationException e) {
             throw new AbortException(String.valueOf(e.getMessage()));
@@ -462,6 +621,13 @@ public final class ExampleVerifier {
     /** The behavior aborted while evaluating a row (e.g. an invariant violation) — a failed example. */
     private static final class AbortException extends RuntimeException {
         AbortException(String message) {
+            super(message);
+        }
+    }
+
+    /** A fake table had no output for an input the behavior asked for (and no {@code _} default). */
+    private static final class FakeMissException extends RuntimeException {
+        FakeMissException(String message) {
             super(message);
         }
     }

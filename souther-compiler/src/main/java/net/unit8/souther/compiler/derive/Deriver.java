@@ -47,7 +47,7 @@ public final class Deriver {
         }
         return new Ast.Module(module.name(), module.exposing(), module.exposedOutputs(),
                 module.imports(), defs, module.behaviors(), module.fns(),
-                module.examples(), module.exampleFileTarget(), module.pos());
+                module.examples(), module.fakes(), module.exampleFileTarget(), module.pos());
     }
 
     private static Ast.Data deriveData(Ast.Data d, Map<String, Ast.Def> symbols, boolean isCase) {

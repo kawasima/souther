@@ -143,14 +143,16 @@ public final class Compiler {
         // module. It is never a module of its own, so it never enters `byName`.
         List<Ast.Module> parsed = new ArrayList<>();
         Map<String, List<Ast.Example>> attached = new LinkedHashMap<>();
+        Map<String, List<Ast.Fake>> attachedFakes = new LinkedHashMap<>();
         for (Ast.Module m : allParsed) {
             if (m.exampleFileTarget() != null) {
                 attached.computeIfAbsent(m.exampleFileTarget(), k -> new ArrayList<>()).addAll(m.examples());
+                attachedFakes.computeIfAbsent(m.exampleFileTarget(), k -> new ArrayList<>()).addAll(m.fakes());
             } else {
                 parsed.add(m);
             }
         }
-        parsed = mergeAttachedExamples(parsed, attached);
+        parsed = mergeAttachedExamples(parsed, attached, attachedFakes);
 
         Map<String, Ast.Module> byName = new LinkedHashMap<>();
         for (Ast.Module m : parsed) {
@@ -199,37 +201,40 @@ public final class Compiler {
         return out;
     }
 
-    /** Rebuilds each module with the examples from its attached {@code examples for} files appended;
-     * an attached file whose target module is absent is E1907. */
+    /** Rebuilds each module with the examples and fakes from its attached {@code examples for} files
+     * appended; an attached file whose target module is absent is E1907. */
     private static List<Ast.Module> mergeAttachedExamples(
-            List<Ast.Module> modules, Map<String, List<Ast.Example>> attached) {
-        if (attached.isEmpty()) {
+            List<Ast.Module> modules, Map<String, List<Ast.Example>> attached,
+            Map<String, List<Ast.Fake>> attachedFakes) {
+        if (attached.isEmpty() && attachedFakes.isEmpty()) {
             return modules;
-        }
-        Map<String, Ast.Module> byName = new LinkedHashMap<>();
-        for (Ast.Module m : modules) {
-            byName.putIfAbsent(m.name(), m);
         }
         List<Ast.Module> out = new ArrayList<>();
         for (Ast.Module m : modules) {
             List<Ast.Example> extra = attached.remove(m.name());
-            if (extra == null || extra.isEmpty()) {
+            List<Ast.Fake> extraFakes = attachedFakes.remove(m.name());
+            if ((extra == null || extra.isEmpty()) && (extraFakes == null || extraFakes.isEmpty())) {
                 out.add(m);
                 continue;
             }
-            List<Ast.Example> merged = new ArrayList<>(m.examples());
-            merged.addAll(extra);
+            List<Ast.Example> mergedEx = new ArrayList<>(m.examples());
+            if (extra != null) {
+                mergedEx.addAll(extra);
+            }
+            List<Ast.Fake> mergedFk = new ArrayList<>(m.fakes());
+            if (extraFakes != null) {
+                mergedFk.addAll(extraFakes);
+            }
             out.add(new Ast.Module(m.name(), m.exposing(), m.exposedOutputs(), m.imports(),
-                    m.defs(), m.behaviors(), m.fns(), merged, m.exampleFileTarget(), m.pos()));
+                    m.defs(), m.behaviors(), m.fns(), mergedEx, mergedFk, m.exampleFileTarget(), m.pos()));
         }
-        if (!attached.isEmpty()) {
-            String target = attached.keySet().iterator().next();
-            List<Ast.Example> orphan = attached.get(target);
-            SourcePos pos = orphan.isEmpty() ? null : orphan.get(0).pos();
+        String orphan = !attached.isEmpty() ? attached.keySet().iterator().next()
+                : (!attachedFakes.isEmpty() ? attachedFakes.keySet().iterator().next() : null);
+        if (orphan != null) {
             throw CompileException.of(
                     Diagnostic.of("E1907", "check.example.notarget").title("check.example.title")
-                            .at(pos).args(target).build(),
-                    "an `examples for " + target + "` file names a module that is not being compiled");
+                            .at((SourcePos) null).args(orphan).build(),
+                    "an `examples for " + orphan + "` file names a module that is not being compiled");
         }
         return out;
     }

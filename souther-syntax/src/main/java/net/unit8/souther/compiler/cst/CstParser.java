@@ -77,6 +77,8 @@ public final class CstParser {
                 fnDef();
             } else if (atContextual("example")) {
                 exampleDef();
+            } else if (atContextual("fake")) {
+                fakeDef();
             } else {
                 recoverTopLevel();
             }
@@ -94,7 +96,8 @@ public final class CstParser {
         do {
             bump();
         } while (!at(SyntaxKind.EOF) && !at(SyntaxKind.DATA_KW) && !at(SyntaxKind.BEHAVIOR_KW)
-                && !at(SyntaxKind.LET_KW) && !at(SyntaxKind.IMPORT_KW) && !atContextual("example"));
+                && !at(SyntaxKind.LET_KW) && !at(SyntaxKind.IMPORT_KW)
+                && !atContextual("example") && !atContextual("fake"));
         finish();
     }
 
@@ -452,8 +455,58 @@ public final class CstParser {
             bump();   // :
         }
         argList();   // the input tuple, reusing ARG_LIST
+        if (at(SyntaxKind.WITH_KW)) {
+            withClause();   // supplies fakes for the target's requires (value dependencies)
+        }
         expect(SyntaxKind.ARROW);
         expr();      // expected
+        finish();
+    }
+
+    /** {@code with <dep> = <expr> (, <dep> = <expr>)*} — value fakes for a behavior's requires. */
+    private void withClause() {
+        start(SyntaxKind.WITH_CLAUSE);
+        bump();   // with
+        withBinding();
+        while (eat(SyntaxKind.COMMA)) {
+            withBinding();
+        }
+        finish();
+    }
+
+    private void withBinding() {
+        start(SyntaxKind.WITH_BINDING);
+        expect(SyntaxKind.IDENT);   // the injected dependency name
+        expect(SyntaxKind.ASSIGN);
+        expr();                     // its faked value
+        finish();
+    }
+
+    /** {@code fake <injected> | rows} — a function fake: a table of input→output rows for an injected
+     * dependency. {@code fake} is contextual; the target is the second identifier. */
+    private void fakeDef() {
+        start(SyntaxKind.FAKE_DEF);
+        bump();   // fake
+        expect(SyntaxKind.IDENT);   // target injected behavior
+        if (!at(SyntaxKind.PIPE)) {
+            error("parse.fake.row", "a fake needs at least one `|` row");
+        }
+        while (eat(SyntaxKind.PIPE)) {
+            fakeRow();
+        }
+        finish();
+    }
+
+    /** {@code ( args ) -> output} or {@code _ -> output} (a default). */
+    private void fakeRow() {
+        start(SyntaxKind.FAKE_ROW);
+        if (atContextual("_")) {
+            bump();   // _  (the wildcard default; `_` lexes as an identifier)
+        } else {
+            argList();
+        }
+        expect(SyntaxKind.ARROW);
+        expr();
         finish();
     }
 

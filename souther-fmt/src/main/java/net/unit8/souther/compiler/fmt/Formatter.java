@@ -82,7 +82,8 @@ public final class Formatter {
     private static boolean isTopLevel(SyntaxKind k) {
         return k == SyntaxKind.MODULE_HEADER || k == SyntaxKind.IMPORT_DECL
                 || k == SyntaxKind.DATA_DEF || k == SyntaxKind.BEHAVIOR_DEF || k == SyntaxKind.FN_DEF
-                || k == SyntaxKind.EXAMPLE_DEF || k == SyntaxKind.EXAMPLES_FILE_HEADER;
+                || k == SyntaxKind.EXAMPLE_DEF || k == SyntaxKind.EXAMPLES_FILE_HEADER
+                || k == SyntaxKind.FAKE_DEF;
     }
 
     private Doc item(SyntaxNode n) {
@@ -94,6 +95,7 @@ public final class Formatter {
             case FN_DEF -> fnDef(n);
             case EXAMPLES_FILE_HEADER -> examplesFileHeader(n);
             case EXAMPLE_DEF -> exampleDef(n);
+            case FAKE_DEF -> fakeDef(n);
             default -> text(n.text().strip());
         };
     }
@@ -126,10 +128,48 @@ public final class Formatter {
             args.add(expr(a));
         }
         parts.add(concat(text("("), Doc.join(text(", "), args), text(")")));
+        n.child(SyntaxKind.WITH_CLAUSE).ifPresent(clause -> {
+            List<Doc> binds = new ArrayList<>();
+            for (SyntaxNode b : childNodes(clause, SyntaxKind.WITH_BINDING)) {
+                binds.add(concat(text(firstIdent(b)), text(" = "), expr(firstExprChildOpt(b).orElseThrow())));
+            }
+            parts.add(concat(text(" with "), Doc.join(text(", "), binds)));
+        });
         parts.add(text(" -> "));
         List<SyntaxNode> expected = exprChildren(n);   // the row's expr child that is not the ARG_LIST
         if (!expected.isEmpty()) {
             parts.add(expr(expected.get(0)));
+        }
+        return concat(parts);
+    }
+
+    private Doc fakeDef(SyntaxNode n) {
+        List<SyntaxToken> ids = idents(n);   // ["fake", target]
+        String target = ids.size() >= 2 ? ids.get(1).text() : "";
+        List<Doc> rows = new ArrayList<>();
+        for (SyntaxNode row : childNodes(n, SyntaxKind.FAKE_ROW)) {
+            rows.add(concat(HARDLINE, fakeRow(row)));
+        }
+        return concat(text("fake "), text(target), nest(INDENT, concat(rows)));
+    }
+
+    private Doc fakeRow(SyntaxNode n) {
+        List<Doc> parts = new ArrayList<>();
+        parts.add(text("| "));
+        var args = n.child(SyntaxKind.ARG_LIST);
+        if (args.isPresent()) {
+            List<Doc> as = new ArrayList<>();
+            for (SyntaxNode a : exprChildren(args.get())) {
+                as.add(expr(a));
+            }
+            parts.add(concat(text("("), Doc.join(text(", "), as), text(")")));
+        } else {
+            parts.add(text("_"));   // the default row
+        }
+        parts.add(text(" -> "));
+        List<SyntaxNode> outs = exprChildren(n);
+        if (!outs.isEmpty()) {
+            parts.add(expr(outs.get(0)));
         }
         return concat(parts);
     }

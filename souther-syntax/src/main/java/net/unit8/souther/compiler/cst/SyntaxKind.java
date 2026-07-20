@@ -74,8 +74,14 @@ public enum SyntaxKind {
 
     // --- nodes: example ---
     EXAMPLE_DEF,            // example <target> | row | row ...
-    EXAMPLE_ROW,            // [ "desc" : ] ( args ) -> expected
+    EXAMPLE_ROW,            // [ "desc" : ] ( args ) [with binding, ...] -> expected
     EXAMPLES_FILE_HEADER,   // examples for <module.path>   (attached example file)
+    WITH_CLAUSE,            // with <dep> = <expr> (, <dep> = <expr>)*
+    WITH_BINDING,           // <dep> = <expr>
+
+    // --- nodes: fake ---
+    FAKE_DEF,              // fake <injected> | row | row ...
+    FAKE_ROW,             // ( args ) -> output   |   _ -> output (a default)
 
     // --- nodes: types ---
     RET_TYPE,

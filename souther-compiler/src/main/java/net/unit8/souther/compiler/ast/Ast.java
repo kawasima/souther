@@ -35,8 +35,25 @@ public interface Ast {
                   List<BehaviorDef> behaviors,
                   List<FnDef> fns,
                   List<Example> examples,
+                  List<Fake> fakes,
                   String exampleFileTarget,
                   SourcePos pos) implements Ast {}
+
+    /**
+     * {@code fake <injected> | (in) -> out | ...} — a test double for an injected behavior, used to
+     * evaluate an example of a behavior that {@code requires} it. The rows form an input→output
+     * table matched by value equality; a {@code _ -> out} row is the default when no input matches
+     * (otherwise a miss is an error). A fake produces no run-time class (it is a proxy at evaluation).
+     */
+    record Fake(String target, List<FakeRow> rows, SourcePos pos) implements Ast {}
+
+    /** One fake row: input argument expressions mapped to an output, or the default ({@code inputs}
+     * null / {@code isDefault} true). */
+    record FakeRow(List<Expr> inputs, Expr output, boolean isDefault, SourcePos pos) implements Ast {}
+
+    /** {@code with <dep> = <value>} on an example row — a value fake for an injected dependency
+     * (a zero-argument behavior whose faked result is a constant). */
+    record With(String dep, Expr value, SourcePos pos) implements Ast {}
 
     /**
      * {@code example <target> | row ...} — compile-time-checked examples for a behavior or a pure
@@ -53,7 +70,8 @@ public interface Ast {
      * expected result. A bare {@link Var} expected asserts only the result arm (the case); a
      * {@link NewData}, a {@link Call} (a newtype constructor), or a literal asserts the whole value.
      */
-    record ExampleRow(String description, List<Expr> inputs, Expr expected, SourcePos pos) implements Ast {}
+    record ExampleRow(String description, List<Expr> inputs, List<With> withs, Expr expected,
+                      SourcePos pos) implements Ast {}
 
     /** {@code import <module> ( name, ... )} — an explicit, non-wildcard import (spec 4). */
     record Import(String module, List<String> names, SourcePos pos) implements Ast {}

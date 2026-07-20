@@ -1545,9 +1545,33 @@ Types make totality and the case set exhaustive (<<match>>, <<unmarked-sum>>); a
 [#example-evaluable]
 === What can carry an example
 
-Only a behavior with a `+let+` implementation and an empty `+requires+` is evaluated (<<fn>>, <<requires>>): its result is a function of its inputs alone. An injected behavior (no `+let+`), a `+>->+` composition, or a behavior with `+requires+` cannot be evaluated and is a compile error (<<e1902>>). An external dependency written as an input rather than an injected behavior keeps the behavior example-able (<<purity>>).
+A behavior with a `+let+` implementation is evaluated (<<fn>>). An injected behavior (no `+let+`, <<injected-behavior>>) or a `+>->+` composition cannot be — you fake an injected behavior, you do not example it (<<e1902>>). A behavior's `+requires+` dependencies are supplied by fakes at the example (<<example-fakes>>).
 
 An input and an expected value are fixtures: literals, newtype applications, and record constructions. A row's argument is decoded into the behavior's parameter type through that type's derived Decoder (<<decoder>>), so a fixture that breaks an invariant is rejected (<<e1903>>).
+
+[#example-fakes]
+=== Faking a requires dependency
+
+To evaluate a behavior that `+requires+` an injected dependency (<<requires>>), the example supplies a fake for it. Best is to need none: an outside-world value written as an *input* rather than an injected behavior keeps the behavior example-able with no fake (<<purity>>). When a dependency stays injected, a fake stands in, scoped to the example and never shipped (no run-time class is produced).
+
+A *value dependency* — one whose faked result is a constant — is given on the row with `+with+`:
+
+[,text]
+----
+example 事前承認する
+    | (事前承認待ち { ... }, 従業員ID("boss-1")) with 現在時刻 = "2026-07-20T09:00" -> 事前承認済み
+----
+
+A *function dependency* — one whose result varies with its input — is given by a `+fake+` declaration: an input→output table matched by value equality, defaulting to a `+_+` row or, absent one, a miss error (<<e1909>>).
+
+[,text]
+----
+fake 上長を探す
+    | (従業員ID("e-1")) -> 従業員ID("boss-1")
+    | _               -> 従業員ID("unknown")
+----
+
+Each requires dependency of the target must have a fake — a `+with+` on the row or a `+fake+` table — or it is a compile error (<<e1908>>). A fake, like an example, is written inline or in an attached `+examples for+` file, and is local to its module. `+fake+` is a contextual keyword.
 
 [#example-placement]
 === Inline or an attached file
@@ -2290,7 +2314,7 @@ error E1902:
 hint: an example runs a behavior with a `let` body and no `requires`; here it requires injected dependencies (現在時刻).
 ----
 
-Emitted when an `+example+` targets a behavior that has no in-language implementation to evaluate: an injected behavior, a `+>->+` composition, or one with a non-empty `+requires+` (<<example-evaluable>>).
+Emitted when an `+example+` targets a behavior that has no in-language implementation to evaluate: an injected behavior or a `+>->+` composition (<<example-evaluable>>). A `+requires+` dependency is not a reason — it is supplied by a fake (<<example-fakes>>).
 
 [#e1903]
 === Example input cannot be built
@@ -2349,6 +2373,29 @@ error E1907:
 ----
 
 Emitted when an attached `+examples for <module>+` file names a target module that is not among the compiled modules (<<example-placement>>).
+
+[#e1908]
+=== A requires dependency has no fake
+
+[,text]
+----
+error E1908:
+`事前承認する` requires `現在時刻`, but no fake was supplied for it.
+hint: add `with 現在時刻 = ...` on the row, or a `fake 現在時刻` table
+----
+
+Emitted when an example targets a behavior whose `+requires+` dependency has neither a `+with+` on the row nor a `+fake+` declaration (<<example-fakes>>).
+
+[#e1909]
+=== A fake has no output for an input
+
+[,text]
+----
+error E1909:
+A fake had no output for an input: `上長を探す` has no output for 従業員ID("e-9")
+----
+
+Emitted when a `+fake+` table is asked for an input it does not list and has no `+_+` default row (<<example-fakes>>).
 
 [#example]
 == Example: the business-trip application model

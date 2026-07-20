@@ -73,6 +73,7 @@ public final class AstBuilder {
         List<Ast.BehaviorDef> behaviors = new ArrayList<>();
         List<Ast.FnDef> fns = new ArrayList<>();
         List<Ast.Example> examples = new ArrayList<>();
+        List<Ast.Fake> fakes = new ArrayList<>();
         for (SyntaxNode n : file.childNodes()) {
             switch (n.kind()) {
                 case IMPORT_DECL -> imports.add(importDecl(n));
@@ -80,11 +81,12 @@ public final class AstBuilder {
                 case BEHAVIOR_DEF -> behaviors.add(behaviorDef(n));
                 case FN_DEF -> fns.add(fnDef(n));
                 case EXAMPLE_DEF -> examples.add(example(n));
+                case FAKE_DEF -> fakes.add(fake(n));
                 default -> { /* MODULE_HEADER handled above; ERROR nodes are reported already */ }
             }
         }
         return new Ast.Module(name, exposing, exposedOutputs, imports, defs, behaviors, fns,
-                examples, null, pos);
+                examples, fakes, null, pos);
     }
 
     /** An {@code examples for <module>} file: an example-only contribution to its target module. Any
@@ -95,9 +97,11 @@ public final class AstBuilder {
         moduleName = target;
         SourcePos pos = pos(header);
         List<Ast.Example> examples = new ArrayList<>();
+        List<Ast.Fake> fakes = new ArrayList<>();
         for (SyntaxNode n : file.childNodes()) {
             switch (n.kind()) {
                 case EXAMPLE_DEF -> examples.add(example(n));
+                case FAKE_DEF -> fakes.add(fake(n));
                 case EXAMPLES_FILE_HEADER -> { /* the header itself */ }
                 case IMPORT_DECL, DATA_DEF, BEHAVIOR_DEF, FN_DEF -> throw CompileException.of(
                         Diagnostic.of("E1906", "check.example.file.only").title("check.example.title")
@@ -107,7 +111,7 @@ public final class AstBuilder {
             }
         }
         return new Ast.Module(target, List.of(), new HashMap<>(), List.of(), List.of(), List.of(),
-                List.of(), examples, target, pos);
+                List.of(), examples, fakes, target, pos);
     }
 
     /** {@code example <target> | rows...}. The contextual {@code example} lexes as an identifier, so
@@ -133,9 +137,44 @@ public final class AstBuilder {
                 inputs.add(expr(a));
             }
         });
+        List<Ast.With> withs = new ArrayList<>();
+        n.child(SyntaxKind.WITH_CLAUSE).ifPresent(clause -> {
+            for (SyntaxNode b : childNodes(clause, SyntaxKind.WITH_BINDING)) {
+                withs.add(new Ast.With(firstIdentText(b), expr(firstExprChild(b)), pos(b)));
+            }
+        });
+        // the expected is the row's own expr child (ARG_LIST holds the inputs; WITH_CLAUSE the fakes)
         List<SyntaxNode> expectedNodes = exprChildren(n);
         Ast.Expr expected = expectedNodes.isEmpty() ? null : expr(expectedNodes.get(0));
-        return new Ast.ExampleRow(description, inputs, expected, pos(n));
+        return new Ast.ExampleRow(description, inputs, withs, expected, pos(n));
+    }
+
+    /** {@code fake <target> | rows}. The contextual {@code fake} lexes as an identifier, so the
+     * target is the second identifier token. */
+    private Ast.Fake fake(SyntaxNode n) {
+        List<SyntaxToken> idents = identTokens(n);
+        String target = idents.size() >= 2 ? idents.get(1).text() : "";
+        SourcePos pos = idents.size() >= 2 ? posOf(idents.get(1)) : pos(n);
+        List<Ast.FakeRow> rows = new ArrayList<>();
+        for (SyntaxNode row : childNodes(n, SyntaxKind.FAKE_ROW)) {
+            rows.add(fakeRow(row));
+        }
+        return new Ast.Fake(target, rows, pos);
+    }
+
+    /** {@code ( args ) -> out} or {@code _ -> out}. A row with no {@code ARG_LIST} is the default. */
+    private Ast.FakeRow fakeRow(SyntaxNode n) {
+        Optional<SyntaxNode> args = n.child(SyntaxKind.ARG_LIST);
+        List<Ast.Expr> inputs = new ArrayList<>();
+        args.ifPresent(list -> {
+            for (SyntaxNode a : exprChildren(list)) {
+                inputs.add(expr(a));
+            }
+        });
+        boolean isDefault = args.isEmpty();
+        List<SyntaxNode> exprs = exprChildren(n);   // the output (not inside ARG_LIST)
+        Ast.Expr output = exprs.isEmpty() ? null : expr(exprs.get(0));
+        return new Ast.FakeRow(isDefault ? null : inputs, output, isDefault, pos(n));
     }
 
     private void readExposing(SyntaxNode clause, List<String> names, Map<String, Ast.RetType> outputs) {
