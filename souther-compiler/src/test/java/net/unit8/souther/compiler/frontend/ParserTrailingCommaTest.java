@@ -1,7 +1,5 @@
 package net.unit8.souther.compiler.frontend;
 
-import net.unit8.souther.compiler.frontend.CstFrontend;
-
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;

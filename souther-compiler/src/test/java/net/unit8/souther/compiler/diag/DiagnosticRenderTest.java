@@ -1,9 +1,6 @@
 package net.unit8.souther.compiler.diag;
 
-import net.unit8.souther.compiler.diag.CompileException;
 import net.unit8.souther.compiler.Compiler;
-import net.unit8.souther.compiler.diag.SourcePos;
-
 import org.junit.jupiter.api.Test;
 
 import java.util.Locale;
