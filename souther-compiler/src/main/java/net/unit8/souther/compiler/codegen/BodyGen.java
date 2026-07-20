@@ -145,6 +145,21 @@ final class BodyGen {
             }
         }
 
+        /** Opens a single-value newtype on the stack to its underlying value (recursively, so a
+         * newtype over a newtype reaches the base primitive), returning that value's type; leaves a
+         * non-newtype operand untouched. Used so comparison operators read the value a newtype wraps. */
+        private Type unwrapNewtypeValue(Type t) {
+            if (t instanceof Type.Ref ref
+                    && symbols.get(ref.name()) instanceof Ast.Data d && d.newtype()) {
+                Type inner = fieldTypes(d).get("value");
+                if (inner != null) {
+                    emitFieldRead(code, d.name(), "value", inner);
+                    return unwrapNewtypeValue(inner);
+                }
+            }
+            return t;
+        }
+
         private static String captureField(int i) {
             return "c" + i;
         }
@@ -975,8 +990,11 @@ final class BodyGen {
                     return lt;
                 }
                 default -> {
-                    Type lt = genExpr(bin.left());
-                    genExpr(bin.right());
+                    // A single-value newtype compares by its underlying value: open each operand to
+                    // that value right after it is pushed, then the primitive comparison below applies
+                    // (金額 <= 金額, 金額 <= 100 — the checker allows only same newtype or a bare literal).
+                    Type lt = unwrapNewtypeValue(genExpr(bin.left()));
+                    unwrapNewtypeValue(genExpr(bin.right()));
                     boolean ordering = switch (bin.op()) {
                         case LT, LE, GT, GE -> true;
                         default -> false;

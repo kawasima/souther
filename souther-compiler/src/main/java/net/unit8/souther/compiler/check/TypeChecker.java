@@ -2518,15 +2518,18 @@ public final class TypeChecker {
                 // The ordered primitives: Int numerically, String lexicographically, Decimal by
                 // value, Date/DateTime in time. Unlike Elm (which orders only Int/Float/Char/String
                 // because it rides JavaScript), Souther sits on the JVM where BigDecimal/LocalDate/
-                // LocalDateTime are Comparable, so it orders them too. Both operands share the type.
+                // LocalDateTime are Comparable, so it orders them too. A single-value newtype over an
+                // ordered type is ordered by that value; the operands stay the same newtype (nominal),
+                // except that a bare literal takes the other side's newtype from context.
                 Type lt = typeOf(bin.left(), env, data, symbols, reqs);
                 Type rt = typeOf(bin.right(), env, data, symbols, reqs);
-                if (!(lt == rt && isOrdered(lt))) {
+                if (!orderedComparable(lt, rt, bin.left(), bin.right(), symbols)) {
                     throw CompileException.of(
                             Diagnostic.of(null, "check.compare.ordered").title("check.type.mismatch.title")
                                     .at(bin.pos()).args(Type.show(lt), Type.show(rt)).build(),
                             "operand of comparison must be two ordered values of the same type (Int,"
-                                    + " String, Decimal, Date, or DateTime), got " + lt + " and " + rt);
+                                    + " String, Decimal, Date, DateTime, or a newtype over one of these),"
+                                    + " got " + lt + " and " + rt);
                 }
                 yield Type.BOOL;
             }
@@ -2583,7 +2586,8 @@ public final class TypeChecker {
                 // element type (ADR-0028). At run time it holds the other operand's type, so absorb the
                 // bottom rather than reject the comparison. (A whole empty list `[]` stays a type error
                 // against a non-list, so this does not loosen `[] == 5`.)
-                if (!lt.equals(rt) && !isBottom(lt) && !isBottom(rt)) {
+                if (!lt.equals(rt) && !eqCoercible(lt, rt, bin.left(), bin.right(), symbols)
+                        && !isBottom(lt) && !isBottom(rt)) {
                     throw CompileException.of(
                             Diagnostic.of(null, "check.compare.msg")
                                     .title("check.compare.title")
@@ -2607,6 +2611,64 @@ public final class TypeChecker {
     private static boolean isOrdered(Type t) {
         return t == Type.INT || t == Type.STRING || t == Type.DECIMAL
                 || t == Type.DATE || t == Type.DATETIME;
+    }
+
+    /** The underlying base of a type: itself, or — for a single-value newtype ({@code data X = Y}) —
+     * the base of its {@code value} type, recursively (so {@code 管理職 = レベル = Int} bases to Int).
+     * A newtype's value is what its comparison and equality read. */
+    private static Type base(Type t, Map<String, Ast.Def> symbols) {
+        if (isSingleValueNewtype(t, symbols)) {
+            Type inner = fieldTypes((Ast.Data) symbols.get(((Type.Ref) t).name()), symbols).get("value");
+            if (inner != null) {
+                return base(inner, symbols);
+            }
+        }
+        return t;
+    }
+
+    private static boolean isSingleValueNewtype(Type t, Map<String, Ast.Def> symbols) {
+        return t instanceof Type.Ref ref
+                && symbols.get(ref.name()) instanceof Ast.Data d && d.newtype();
+    }
+
+    /** A source literal (Int/Decimal/String/Bool, or a negated literal) — the only thing allowed to
+     * take a newtype from the other operand. A variable of the underlying type is not (write the
+     * newtype construction, e.g. {@code 金額(x)}). */
+    private static boolean isLiteralExpr(Ast.Expr e) {
+        return e instanceof Ast.IntLit || e instanceof Ast.DecimalLit
+                || e instanceof Ast.StringLit || e instanceof Ast.BoolLit
+                || (e instanceof Ast.Neg n && isLiteralExpr(n.operand()));
+    }
+
+    /** Whether {@code <}/{@code <=}/{@code >}/{@code >=} may compare the operands: both must reduce to
+     * the same ordered base, and be either the same nominal type or a newtype paired with a bare
+     * literal of its base (so {@code 金額 <= 金額} and {@code 金額 <= 100} pass, {@code 金額 <= 数量}
+     * and {@code 金額 <= (Int variable)} do not). */
+    private static boolean orderedComparable(Type lt, Type rt, Ast.Expr le, Ast.Expr re,
+                                             Map<String, Ast.Def> symbols) {
+        Type lb = base(lt, symbols);
+        if (!isOrdered(lb) || !lb.equals(base(rt, symbols))) {
+            return false;
+        }
+        if (lt.equals(rt)) {
+            return true;
+        }
+        return literalPairsNewtype(lt, rt, le, re, symbols);
+    }
+
+    /** Whether {@code ==}/{@code /=} may pair a newtype with a bare literal of its base type (the
+     * same-type and bottom cases are handled by the caller). */
+    private static boolean eqCoercible(Type lt, Type rt, Ast.Expr le, Ast.Expr re,
+                                       Map<String, Ast.Def> symbols) {
+        return base(lt, symbols).equals(base(rt, symbols))
+                && literalPairsNewtype(lt, rt, le, re, symbols);
+    }
+
+    /** One side is a single-value newtype and the other is a bare literal (not itself a newtype). */
+    private static boolean literalPairsNewtype(Type lt, Type rt, Ast.Expr le, Ast.Expr re,
+                                               Map<String, Ast.Def> symbols) {
+        return (isSingleValueNewtype(lt, symbols) && !isSingleValueNewtype(rt, symbols) && isLiteralExpr(re))
+                || (isSingleValueNewtype(rt, symbols) && !isSingleValueNewtype(lt, symbols) && isLiteralExpr(le));
     }
 
     /** A binary numeric op over two Int or two Decimal operands (spec 18.2, 18.3). {@code compare}

@@ -342,7 +342,19 @@ require 承認者ID == 申請.申請者.上長ID      // two 従業員ID built s
 
 Only *values of the same type* may be compared. Comparing different types is a compile error.
 
-Ordering (`+<+` `+<=+` `+>+` `+>=+`) is defined for `+Int+` (numeric), `+String+` (lexicographic), `+Decimal+` (by value, ignoring scale), and `+Date+` / `+DateTime+` (chronological). Data and sums have no ordering. Elm gives ordering only to `+Int+` / `+Float+` / `+Char+` / `+String+`, and dates are opaque types reduced to `+Int+` (milliseconds) before comparison, because it stands on JavaScript. Souther stands on the JVM, where `+BigDecimal+` / `+LocalDate+` / `+LocalDateTime+` are all `+Comparable+`, so it gives ordering to these as well. Both sides MUST be the same type.
+Ordering (`+<+` `+<=+` `+>+` `+>=+`) is defined for `+Int+` (numeric), `+String+` (lexicographic), `+Decimal+` (by value, ignoring scale), and `+Date+` / `+DateTime+` (chronological). A sum has no ordering, and neither does a product data. A single-value newtype (`+data X = Y+`; <<newtype>>) over one of the ordered types *is* ordered — by the value it wraps. Elm gives ordering only to `+Int+` / `+Float+` / `+Char+` / `+String+`, and dates are opaque types reduced to `+Int+` (milliseconds) before comparison, because it stands on JavaScript. Souther stands on the JVM, where `+BigDecimal+` / `+LocalDate+` / `+LocalDateTime+` are all `+Comparable+`, so it gives ordering to these as well.
+
+[#newtype-comparison]
+===== Comparing a newtype
+
+A single-value newtype is compared by the value it wraps, for both equality and ordering, so `+.value+` is not written — `+value+` is the newtype's implicit inner name, not something a caller spells out. The nominal boundary is kept:
+
+* Two of the *same* newtype compare their wrapped values: `+金額 <= 金額+`, `+金額 == 金額+`.
+* A *bare literal* of the wrapped type takes that newtype from the other operand: `+金額 <= 100+`, `+金額 == 0+` (the `+100+` is a `+金額+`). This mirrors how `+[]+` takes its element type from context (<<algebraic-types>>).
+* Two *different* newtypes over the same base do not compare: `+金額 <= 数量+` is a compile error, even though both wrap `+Int+`.
+* A non-literal value of the wrapped type is not taken implicitly: `+金額 <= n+` (where `+n+` is an `+Int+`) is a compile error — write `+金額 <= 金額(n)+`.
+
+The wrapped type must itself be ordered for `+<+` / `+<=+` / `+>+` / `+>=+`; equality works over any wrapped type. Arithmetic on a newtype is not defined.
 
 `+Decimal+` ignores scale. `+1.0+` and `+1.00+` are equal.
 
