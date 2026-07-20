@@ -19,6 +19,9 @@ public enum SyntaxKind {
     LINE_COMMENT,
 
     // --- keywords ---
+    // `example` / `examples` / `for` are NOT reserved (they would collide with the `example.*`
+    // package/module names): the parser recognizes them by text at top-level position, like the
+    // contextual `intrinsic` / `decoder` / `from`.
     MODULE_KW, IMPORT_KW, EXPOSING_KW, DATA_KW, INVARIANT_KW, AS_KW, LET_KW, REQUIRE_KW, ELSE_KW,
     TRUE_KW, FALSE_KW, IF_KW, THEN_KW, BEHAVIOR_KW, REQUIRES_KW, CONSTRUCTS_KW, MATCH_KW, WITH_KW,
 
@@ -68,6 +71,11 @@ public enum SyntaxKind {
     FN_PARAM_LIST,
     FN_PARAM,
     INTRINSIC_BODY,
+
+    // --- nodes: example ---
+    EXAMPLE_DEF,            // example <target> | row | row ...
+    EXAMPLE_ROW,            // [ "desc" : ] ( args ) -> expected
+    EXAMPLES_FILE_HEADER,   // examples for <module.path>   (attached example file)
 
     // --- nodes: types ---
     RET_TYPE,

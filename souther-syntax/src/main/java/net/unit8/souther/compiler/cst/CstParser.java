@@ -60,7 +60,9 @@ public final class CstParser {
     private GreenNode parseSourceFile() {
         Frame file = new Frame(SyntaxKind.SOURCE_FILE);
         stack.push(file);
-        if (at(SyntaxKind.MODULE_KW)) {
+        if (atContextual("examples")) {
+            examplesFileHeader();
+        } else if (at(SyntaxKind.MODULE_KW)) {
             moduleHeader();
         }
         while (at(SyntaxKind.IMPORT_KW)) {
@@ -73,6 +75,8 @@ public final class CstParser {
                 behaviorDef();
             } else if (at(SyntaxKind.LET_KW)) {
                 fnDef();
+            } else if (atContextual("example")) {
+                exampleDef();
             } else {
                 recoverTopLevel();
             }
@@ -85,12 +89,12 @@ public final class CstParser {
     /** Wraps stray tokens (until the next top-level starter) in an ERROR node so the tree stays
      * whole even when the source is malformed. */
     private void recoverTopLevel() {
-        error("parse.topdef", "expected data, behavior, or let");
+        error("parse.topdef", "expected data, behavior, let, or example");
         start(SyntaxKind.ERROR_TOKEN);
         do {
             bump();
         } while (!at(SyntaxKind.EOF) && !at(SyntaxKind.DATA_KW) && !at(SyntaxKind.BEHAVIOR_KW)
-                && !at(SyntaxKind.LET_KW) && !at(SyntaxKind.IMPORT_KW));
+                && !at(SyntaxKind.LET_KW) && !at(SyntaxKind.IMPORT_KW) && !atContextual("example"));
         finish();
     }
 
@@ -405,6 +409,52 @@ public final class CstParser {
         } else {
             retType();
         }
+    }
+
+    // --- example ---
+
+    /** {@code examples for <module.path>} — the header of an attached example-only file. {@code for}
+     * is a contextual soft-keyword (a bare identifier), so the {@code example.*} module namespace is
+     * unaffected. */
+    private void examplesFileHeader() {
+        start(SyntaxKind.EXAMPLES_FILE_HEADER);
+        bump();   // examples
+        if (atContextual("for")) {
+            bump();   // for
+        } else {
+            error("parse.examples.for", "expected `for` after `examples`");
+        }
+        qualifiedName();   // target module path
+        finish();
+    }
+
+    /** {@code example <target>} then one-or-more {@code |}-led rows. {@code example} is a contextual
+     * soft-keyword; the target names a behavior or a pure helper in this module. */
+    private void exampleDef() {
+        start(SyntaxKind.EXAMPLE_DEF);
+        bump();   // example
+        expect(SyntaxKind.IDENT);   // target name
+        if (!at(SyntaxKind.PIPE)) {
+            error("parse.example.row", "an example needs at least one `|` row");
+        }
+        while (eat(SyntaxKind.PIPE)) {
+            exampleRow();
+        }
+        finish();
+    }
+
+    /** {@code [ "desc" : ] ( args ) -> expected} — an argument list, then the expected result
+     * (a bare type name asserts the arm; a construction/literal asserts the whole value). */
+    private void exampleRow() {
+        start(SyntaxKind.EXAMPLE_ROW);
+        if (at(SyntaxKind.STRING_LIT) && nth(1) == SyntaxKind.COLON) {
+            bump();   // "description"
+            bump();   // :
+        }
+        argList();   // the input tuple, reusing ARG_LIST
+        expect(SyntaxKind.ARROW);
+        expr();      // expected
+        finish();
     }
 
     // --- types ---
@@ -966,6 +1016,13 @@ public final class CstParser {
 
     private boolean at(SyntaxKind kind) {
         return current() == kind;
+    }
+
+    /** True when the current meaningful token is an identifier with the given text — used for the
+     * contextual soft-keywords {@code example} / {@code examples} / {@code for}, which stay ordinary
+     * identifiers everywhere else. */
+    private boolean atContextual(String text) {
+        return at(SyntaxKind.IDENT) && tokenText(mi(0)).equals(text);
     }
 
     private boolean eat(SyntaxKind kind) {

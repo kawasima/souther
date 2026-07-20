@@ -1502,6 +1502,46 @@ A derived Decoder's field accesses are mutually independent and collect all fail
 
 Accumulation (applicative) is inside the decode boundary; case propagation is behavior composition. They belong to different layers. Because decode is not a `+>->+` stage, the two never mix on the same sum (<<sequential-composition>>). Accumulation holds because a Decoder's field accesses are mutually independent (do not depend on a prior value).
 
+[#examples]
+== Examples
+
+An `+example+` attaches compile-time-checked test rows to a behavior. It is evaluated as part of compilation: a row that does not hold is a compile error (<<e1905>>), so a stale example cannot survive a build. An `+example+` is not exposed and produces no run-time class.
+
+[,text]
+----
+example 提出する
+    | "上限内なら提出できる" :
+        (申請準備中 { 申請者 = 従業員ID("e-001"), 予定費用 = 金額(50000) }, "2026-07-20T09:00")
+            -> 提出済み
+    | "上限超過は却下" :
+        (申請準備中 { 申請者 = 従業員ID("e-001"), 予定費用 = 金額(100001) }, "2026-07-20T09:00")
+            -> 却下 { 理由 = "high_cost" }
+----
+
+An `+example+` names a target behavior, then lists one or more `+|+`-led rows. A row is an optional description string (a business-case name, followed by `+:+`), an input argument tuple, `+->+`, and an expected result. `+example+`, `+examples+`, and `+for+` are contextual keywords, not reserved words, so they do not collide with an identifier or the `+example.*+` namespace.
+
+[#example-expected]
+=== The expected result
+
+The expected side asserts at one of two granularities.
+
+* A bare type name (`+-> 提出済み+`) asserts only the *arm* — which case of the output sum the result is — and ignores its fields.
+* A construction (`+-> 却下 { 理由 = "high_cost" }+`), a newtype application (`+-> 金額(0)+`), or a literal asserts the *whole value* by structural equality.
+
+Types make totality and the case set exhaustive (<<match>>, <<unmarked-sum>>); an `+example+` fixes the value rule for a representative input — which arm, or which value, a given input yields.
+
+[#example-evaluable]
+=== What can carry an example
+
+Only a behavior with a `+let+` implementation and an empty `+requires+` is evaluated (<<fn>>, <<requires>>): its result is a function of its inputs alone. An injected behavior (no `+let+`), a `+>->+` composition, or a behavior with `+requires+` cannot be evaluated and is a compile error (<<e1902>>). An external dependency written as an input rather than an injected behavior keeps the behavior example-able (<<purity>>).
+
+An input and an expected value are fixtures: literals, newtype applications, and record constructions. A row's argument is decoded into the behavior's parameter type through that type's derived Decoder (<<decoder>>), so a fixture that breaks an invariant is rejected (<<e1903>>).
+
+[#example-placement]
+=== Inline or an attached file
+
+The base form is written inline, in the same source as the behavior. To keep fixtures out of the model source, examples may instead be written in an attached file that begins with `+examples for <module>+` and contains only `+example+` declarations. The compiler merges an attached file into its target module; it is not a module of its own and needs no `+import+` (it sees the target module's names directly). An attached file that names a module not being compiled is <<e1907>>; one that contains anything other than an `+example+` is <<e1906>>.
+
 [#control-flow]
 == Control structures
 
@@ -2216,6 +2256,87 @@ Expose 保存データ, or make it a unit data.
 ----
 
 Emitted when a data that is neither a unit nor exposed is listed in the `+constructs+` of an injection-subject behavior (implemented from Java; <<java-base-class>>), because Java would have no way to create that value.
+
+[#e1901]
+=== Example target is not a behavior
+
+[,text]
+----
+error E1901:
+`存在しない` is not a behavior in this module, so this example has no target.
+----
+
+Emitted when an `+example+` names a target that is not a behavior of the module (<<examples>>).
+
+[#e1902]
+=== Example target is not evaluable
+
+[,text]
+----
+error E1902:
+`事前承認する` cannot be evaluated as an example.
+hint: an example runs a behavior with a `let` body and no `requires`; here it requires injected dependencies (現在時刻).
+----
+
+Emitted when an `+example+` targets a behavior that has no in-language implementation to evaluate: an injected behavior, a `+>->+` composition, or one with a non-empty `+requires+` (<<example-evaluable>>).
+
+[#e1903]
+=== Example input cannot be built
+
+[,text]
+----
+error E1903:
+Input #1 of `提出する` could not be built: value must be >= 0
+----
+
+Emitted when a row's input fixture cannot be decoded into the parameter type — a wrong arity, an unsupported form, or a value that breaks the type's invariant (<<example-evaluable>>).
+
+[#e1904]
+=== Expected arm is not a result case
+
+[,text]
+----
+error E1904:
+`申請準備中` is not one of the result cases of `提出する`.
+hint: expected one of: 提出済み, 却下
+----
+
+Emitted when a row's expected arm is not one of the target behavior's output cases (<<example-expected>>).
+
+[#e1905]
+=== Example does not hold
+
+[,text]
+----
+error E1905:
+This example does not hold.
+found: 提出済み
+expected: 却下
+----
+
+Emitted when a row's evaluated result does not match the expected arm or value. Every failing row of a build is reported.
+
+[#e1906]
+=== An examples file contains non-example declarations
+
+[,text]
+----
+error E1906:
+An `examples for` file may contain only examples, not data, behavior, let, or import.
+----
+
+Emitted when a file that begins with `+examples for+` contains anything other than `+example+` declarations (<<example-placement>>).
+
+[#e1907]
+=== Examples file names an absent module
+
+[,text]
+----
+error E1907:
+`examples for example.nope` names a module that is not being compiled.
+----
+
+Emitted when an attached `+examples for <module>+` file names a target module that is not among the compiled modules (<<example-placement>>).
 
 [#example]
 == Example: the business-trip application model

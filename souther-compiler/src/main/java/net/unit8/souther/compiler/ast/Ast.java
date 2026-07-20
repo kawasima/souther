@@ -34,7 +34,26 @@ public interface Ast {
                   List<Def> defs,
                   List<BehaviorDef> behaviors,
                   List<FnDef> fns,
+                  List<Example> examples,
+                  String exampleFileTarget,
                   SourcePos pos) implements Ast {}
+
+    /**
+     * {@code example <target> | row ...} — compile-time-checked examples for a behavior or a pure
+     * helper. Whether written inline in the module or in an attached {@code examples for}
+     * file, examples end up on {@link Module#examples()} (the compiler merges an attached file into
+     * its target module). {@code exampleFileTarget} on a {@link Module} is non-null exactly when the
+     * module was parsed from an {@code examples for <module>} file: it names the target and marks the
+     * module as an example-only contribution, not a module of its own.
+     */
+    record Example(String target, List<ExampleRow> rows, SourcePos pos) implements Ast {}
+
+    /**
+     * One example row: an optional business description, the input argument expressions, and the
+     * expected result. A bare {@link Var} expected asserts only the result arm (the case); a
+     * {@link NewData}, a {@link Call} (a newtype constructor), or a literal asserts the whole value.
+     */
+    record ExampleRow(String description, List<Expr> inputs, Expr expected, SourcePos pos) implements Ast {}
 
     /** {@code import <module> ( name, ... )} — an explicit, non-wildcard import (spec 4). */
     record Import(String module, List<String> names, SourcePos pos) implements Ast {}

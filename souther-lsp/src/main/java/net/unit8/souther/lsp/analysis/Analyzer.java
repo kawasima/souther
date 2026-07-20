@@ -52,6 +52,11 @@ public final class Analyzer {
             if (!module.imports().isEmpty()) {
                 return out;   // a multi-module program can't be resolved from a single file yet
             }
+            if (module.exampleFileTarget() != null) {
+                return out;   // an `examples for` file needs its target module, absent from one file
+            }
+            // A self-contained module compiles fully here, so its inline `example`s are evaluated
+            // on save and a failing one (E1805) surfaces as an editor diagnostic.
             Compiler.compile(text, "Main");
         } catch (CompileException e) {
             out.add(fromCompile(lines, e));

@@ -1,0 +1,10 @@
+// フィクスチャをモデル本体から外したいときは、example 専用の付属ファイルに置ける。
+// `examples for` で対象モジュールを名指しし、コンパイラが businesstrip.sou の example とマージする。
+// import は不要（同一モジュールなので behavior / data を裸で参照できる）。
+examples for example.businesstrip
+
+// 境界値の下端も固定しておく。
+example 提出する
+    | "境界値 100000 ちょうどは提出できる" :
+        (申請準備中 { 申請者 = 従業員ID("e-002"), 予定費用 = 金額(100000) }, "2026-07-20T10:00")
+            -> 提出済み

@@ -91,7 +91,7 @@ public final class HelperInliner {
             }
         }
         return new Ast.Module(m.name(), m.exposing(), m.exposedOutputs(), m.imports(),
-                defs, m.behaviors(), m.fns(), m.pos());
+                defs, m.behaviors(), m.fns(), m.examples(), m.exampleFileTarget(), m.pos());
     }
 
     /** Looks up a helper by name across the prelude and the module's own helpers, or null if the

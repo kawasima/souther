@@ -3,6 +3,7 @@ package net.unit8.souther.compiler;
 import net.unit8.souther.compiler.diag.CompileException;
 import net.unit8.souther.compiler.ast.Ast;
 import net.unit8.souther.compiler.diag.Diagnostic;
+import net.unit8.souther.compiler.diag.SourcePos;
 import net.unit8.souther.compiler.check.Exposing;
 import net.unit8.souther.compiler.check.HelperInliner;
 import net.unit8.souther.compiler.check.Lower;
@@ -42,6 +43,12 @@ public final class Compiler {
     /** As {@link #compile(String)}, but a header-less source is named {@code defaultModuleName}. */
     public static Map<String, byte[]> compile(String source, String defaultModuleName) {
         Ast.Module raw = CstFrontend.parse(source, defaultModuleName);
+        if (raw.exampleFileTarget() != null) {
+            throw CompileException.of(
+                    Diagnostic.of("E1907", "check.example.notarget").title("check.example.title")
+                            .at(raw.pos()).args(raw.exampleFileTarget()).build(),
+                    "an `examples for " + raw.exampleFileTarget() + "` file has no target module to attach to");
+        }
         rejectReservedNamespace(raw);
         Ast.Module module = Deriver.derive(Exposing.rewrite(raw));
         module = HelperInliner.forModule(module).withInlinedInvariants(module);
@@ -50,6 +57,8 @@ public final class Compiler {
         TypeChecker.check(module, TypeChecker.symbols(module), Map.of(), lowered);
         Map<String, byte[]> out = Backend.generate(lowered);
         verifyConstConstructions(module, TypeChecker.symbols(module), out);
+        Map<String, Ast.Def> symbols = TypeChecker.symbols(module);
+        ExampleVerifier.verify(module, symbols, TypeChecker.signatures(module, symbols), out);
         return out;
     }
 
@@ -123,13 +132,26 @@ public final class Compiler {
 
     /** Compiles a set of modules together, resolving explicit imports and rejecting cycles. */
     public static Map<String, byte[]> compileModules(List<String> sources) {
-        List<Ast.Module> parsed = new ArrayList<>();
+        List<Ast.Module> allParsed = new ArrayList<>();
         for (String s : sources) {
             // A module linked by imports must be named; `null` forbids omitting the header here.
             Ast.Module raw = CstFrontend.parse(s, null);
             rejectReservedNamespace(raw);
-            parsed.add(Exposing.rewrite(raw));
+            allParsed.add(Exposing.rewrite(raw));
         }
+        // An `examples for <module>` file contributes only examples: merge each into its target
+        // module. It is never a module of its own, so it never enters `byName`.
+        List<Ast.Module> parsed = new ArrayList<>();
+        Map<String, List<Ast.Example>> attached = new LinkedHashMap<>();
+        for (Ast.Module m : allParsed) {
+            if (m.exampleFileTarget() != null) {
+                attached.computeIfAbsent(m.exampleFileTarget(), k -> new ArrayList<>()).addAll(m.examples());
+            } else {
+                parsed.add(m);
+            }
+        }
+        parsed = mergeAttachedExamples(parsed, attached);
+
         Map<String, Ast.Module> byName = new LinkedHashMap<>();
         for (Ast.Module m : parsed) {
             if (byName.put(m.name(), m) != null) {
@@ -164,10 +186,50 @@ public final class Compiler {
             TypeChecker.check(m, symbols, importedSigs, lowered);
             out.putAll(Backend.generate(lowered, symbols, importedPackages(m), importedSigs, importedInjected));
         }
-        // every module's classes are now present, so CTFE can resolve cross-module references
+        // every module's classes are now present, so CTFE and example evaluation can resolve
+        // cross-module references
         for (Ast.Module original : parsed) {
             Ast.Module m = derived.get(original.name());
-            verifyConstConstructions(m, visibleDefs(m, derived), out);
+            Map<String, Ast.Def> symbols = visibleDefs(m, derived);
+            verifyConstConstructions(m, symbols, out);
+            Map<String, TypeChecker.Sig> sigs =
+                    TypeChecker.signatures(m, symbols, importedBehaviorSigs(m, derived));
+            ExampleVerifier.verify(m, symbols, sigs, out);
+        }
+        return out;
+    }
+
+    /** Rebuilds each module with the examples from its attached {@code examples for} files appended;
+     * an attached file whose target module is absent is E1907. */
+    private static List<Ast.Module> mergeAttachedExamples(
+            List<Ast.Module> modules, Map<String, List<Ast.Example>> attached) {
+        if (attached.isEmpty()) {
+            return modules;
+        }
+        Map<String, Ast.Module> byName = new LinkedHashMap<>();
+        for (Ast.Module m : modules) {
+            byName.putIfAbsent(m.name(), m);
+        }
+        List<Ast.Module> out = new ArrayList<>();
+        for (Ast.Module m : modules) {
+            List<Ast.Example> extra = attached.remove(m.name());
+            if (extra == null || extra.isEmpty()) {
+                out.add(m);
+                continue;
+            }
+            List<Ast.Example> merged = new ArrayList<>(m.examples());
+            merged.addAll(extra);
+            out.add(new Ast.Module(m.name(), m.exposing(), m.exposedOutputs(), m.imports(),
+                    m.defs(), m.behaviors(), m.fns(), merged, m.exampleFileTarget(), m.pos()));
+        }
+        if (!attached.isEmpty()) {
+            String target = attached.keySet().iterator().next();
+            List<Ast.Example> orphan = attached.get(target);
+            SourcePos pos = orphan.isEmpty() ? null : orphan.get(0).pos();
+            throw CompileException.of(
+                    Diagnostic.of("E1907", "check.example.notarget").title("check.example.title")
+                            .at(pos).args(target).build(),
+                    "an `examples for " + target + "` file names a module that is not being compiled");
         }
         return out;
     }

@@ -56,7 +56,8 @@ public final class Lower {
             }
         }
         return new Ast.Module(module.name(), module.exposing(), module.exposedOutputs(),
-                module.imports(), defs, module.behaviors(), fns, module.pos());
+                module.imports(), defs, module.behaviors(), fns,
+                module.examples(), module.exampleFileTarget(), module.pos());
     }
 
     /** Post-order rewrite: desugar the children first, then the node itself if it is a comprehension. */

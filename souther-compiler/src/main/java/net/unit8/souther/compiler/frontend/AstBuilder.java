@@ -45,6 +45,10 @@ public final class AstBuilder {
     // --- module ---
 
     private Ast.Module module(SyntaxNode file, String defaultModuleName) {
+        Optional<SyntaxNode> exampleFile = file.child(SyntaxKind.EXAMPLES_FILE_HEADER);
+        if (exampleFile.isPresent()) {
+            return exampleFileModule(file, exampleFile.get());
+        }
         Optional<SyntaxNode> header = file.child(SyntaxKind.MODULE_HEADER);
         String name;
         SourcePos pos;
@@ -68,16 +72,70 @@ public final class AstBuilder {
         List<Ast.Def> defs = new ArrayList<>();
         List<Ast.BehaviorDef> behaviors = new ArrayList<>();
         List<Ast.FnDef> fns = new ArrayList<>();
+        List<Ast.Example> examples = new ArrayList<>();
         for (SyntaxNode n : file.childNodes()) {
             switch (n.kind()) {
                 case IMPORT_DECL -> imports.add(importDecl(n));
                 case DATA_DEF -> defs.add(dataDef(n));
                 case BEHAVIOR_DEF -> behaviors.add(behaviorDef(n));
                 case FN_DEF -> fns.add(fnDef(n));
+                case EXAMPLE_DEF -> examples.add(example(n));
                 default -> { /* MODULE_HEADER handled above; ERROR nodes are reported already */ }
             }
         }
-        return new Ast.Module(name, exposing, exposedOutputs, imports, defs, behaviors, fns, pos);
+        return new Ast.Module(name, exposing, exposedOutputs, imports, defs, behaviors, fns,
+                examples, null, pos);
+    }
+
+    /** An {@code examples for <module>} file: an example-only contribution to its target module. Any
+     * non-example declaration in it is E1906. The returned {@link Ast.Module} carries only examples
+     * and its {@code exampleFileTarget}; the compiler merges it into the target. */
+    private Ast.Module exampleFileModule(SyntaxNode file, SyntaxNode header) {
+        String target = qualifiedNameText(header.child(SyntaxKind.QUALIFIED_NAME).orElseThrow());
+        moduleName = target;
+        SourcePos pos = pos(header);
+        List<Ast.Example> examples = new ArrayList<>();
+        for (SyntaxNode n : file.childNodes()) {
+            switch (n.kind()) {
+                case EXAMPLE_DEF -> examples.add(example(n));
+                case EXAMPLES_FILE_HEADER -> { /* the header itself */ }
+                case IMPORT_DECL, DATA_DEF, BEHAVIOR_DEF, FN_DEF -> throw CompileException.of(
+                        Diagnostic.of("E1906", "check.example.file.only").title("check.example.title")
+                                .at(pos(n)).build(),
+                        "an `examples for` file may contain only examples");
+                default -> { /* ERROR nodes already reported */ }
+            }
+        }
+        return new Ast.Module(target, List.of(), new HashMap<>(), List.of(), List.of(), List.of(),
+                List.of(), examples, target, pos);
+    }
+
+    /** {@code example <target> | rows...}. The contextual {@code example} lexes as an identifier, so
+     * the target is the second identifier token. */
+    private Ast.Example example(SyntaxNode n) {
+        List<SyntaxToken> idents = identTokens(n);
+        String target = idents.size() >= 2 ? idents.get(1).text() : "";
+        SourcePos pos = idents.size() >= 2 ? posOf(idents.get(1)) : pos(n);
+        List<Ast.ExampleRow> rows = new ArrayList<>();
+        for (SyntaxNode row : childNodes(n, SyntaxKind.EXAMPLE_ROW)) {
+            rows.add(exampleRow(row));
+        }
+        return new Ast.Example(target, rows, pos);
+    }
+
+    /** {@code [ "desc" : ] ( inputs ) -> expected}. The description is a leading string token; the
+     * inputs are the {@code ARG_LIST}'s expressions; the expected is the remaining expression. */
+    private Ast.ExampleRow exampleRow(SyntaxNode n) {
+        String description = n.token(SyntaxKind.STRING_LIT).map(t -> stringValue(t.text())).orElse(null);
+        List<Ast.Expr> inputs = new ArrayList<>();
+        n.child(SyntaxKind.ARG_LIST).ifPresent(list -> {
+            for (SyntaxNode a : exprChildren(list)) {
+                inputs.add(expr(a));
+            }
+        });
+        List<SyntaxNode> expectedNodes = exprChildren(n);
+        Ast.Expr expected = expectedNodes.isEmpty() ? null : expr(expectedNodes.get(0));
+        return new Ast.ExampleRow(description, inputs, expected, pos(n));
     }
 
     private void readExposing(SyntaxNode clause, List<String> names, Map<String, Ast.RetType> outputs) {

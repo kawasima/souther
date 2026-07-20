@@ -81,7 +81,8 @@ public final class Formatter {
 
     private static boolean isTopLevel(SyntaxKind k) {
         return k == SyntaxKind.MODULE_HEADER || k == SyntaxKind.IMPORT_DECL
-                || k == SyntaxKind.DATA_DEF || k == SyntaxKind.BEHAVIOR_DEF || k == SyntaxKind.FN_DEF;
+                || k == SyntaxKind.DATA_DEF || k == SyntaxKind.BEHAVIOR_DEF || k == SyntaxKind.FN_DEF
+                || k == SyntaxKind.EXAMPLE_DEF || k == SyntaxKind.EXAMPLES_FILE_HEADER;
     }
 
     private Doc item(SyntaxNode n) {
@@ -91,8 +92,46 @@ public final class Formatter {
             case DATA_DEF -> dataDef(n);
             case BEHAVIOR_DEF -> behaviorDef(n);
             case FN_DEF -> fnDef(n);
+            case EXAMPLES_FILE_HEADER -> examplesFileHeader(n);
+            case EXAMPLE_DEF -> exampleDef(n);
             default -> text(n.text().strip());
         };
+    }
+
+    // --- example ---
+
+    private Doc examplesFileHeader(SyntaxNode n) {
+        return concat(text("examples for "), qualifiedName(n.child(SyntaxKind.QUALIFIED_NAME).orElseThrow()));
+    }
+
+    private Doc exampleDef(SyntaxNode n) {
+        List<SyntaxToken> ids = idents(n);   // ["example", target]
+        String target = ids.size() >= 2 ? ids.get(1).text() : "";
+        List<Doc> rows = new ArrayList<>();
+        for (SyntaxNode row : childNodes(n, SyntaxKind.EXAMPLE_ROW)) {
+            rows.add(concat(HARDLINE, exampleRow(row)));
+        }
+        return concat(text("example "), text(target), nest(INDENT, concat(rows)));
+    }
+
+    private Doc exampleRow(SyntaxNode n) {
+        List<Doc> parts = new ArrayList<>();
+        parts.add(text("| "));
+        n.token(SyntaxKind.STRING_LIT).ifPresent(desc -> {
+            parts.add(text(desc.text()));
+            parts.add(text(" : "));
+        });
+        List<Doc> args = new ArrayList<>();
+        for (SyntaxNode a : n.child(SyntaxKind.ARG_LIST).map(this::exprChildren).orElse(List.of())) {
+            args.add(expr(a));
+        }
+        parts.add(concat(text("("), Doc.join(text(", "), args), text(")")));
+        parts.add(text(" -> "));
+        List<SyntaxNode> expected = exprChildren(n);   // the row's expr child that is not the ARG_LIST
+        if (!expected.isEmpty()) {
+            parts.add(expr(expected.get(0)));
+        }
+        return concat(parts);
     }
 
     private Doc moduleHeader(SyntaxNode n) {

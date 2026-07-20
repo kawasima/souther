@@ -90,7 +90,8 @@ public final class Exposing {
                     pass.rw(fn.body()), fn.pos()));
         }
         return new Ast.Module(module.name(), module.exposing(), module.exposedOutputs(),
-                keptImports, defs, module.behaviors(), fns, module.pos());
+                keptImports, defs, module.behaviors(), fns,
+                module.examples(), module.exampleFileTarget(), module.pos());
     }
 
     private Ast.Def rewriteDef(Ast.Def def) {

@@ -16,3 +16,4 @@ target/
 # Scratch
 /tmp/
 *.log
+/editors/

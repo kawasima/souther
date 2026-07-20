@@ -137,4 +137,18 @@ class AnalyzerTest {
         // a broken buffer must yield diagnostics, not an exception
         assertTrue(!analyzer.diagnostics("module\ndata = = {{{").isEmpty());
     }
+
+    @Test
+    void aFailingInlineExampleIsReportedOnSave() {
+        // a self-contained module is compiled on save, so a failing `example` surfaces as E1905
+        String src = "module demo\n"
+                + "data M = { n: Int }\n"
+                + "behavior f : (x: M) -> M\n"
+                + "let f (x) = x\n"
+                + "example f\n"
+                + "  | (M { n = 1 }) -> M { n = 2 }\n";
+        List<LspDiagnostic> diags = analyzer.diagnostics(src);
+        assertEquals(1, diags.size(), diags.toString());
+        assertEquals("E1905", diags.get(0).code());
+    }
 }

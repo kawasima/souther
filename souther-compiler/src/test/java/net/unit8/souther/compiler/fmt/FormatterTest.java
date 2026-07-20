@@ -127,4 +127,42 @@ class FormatterTest {
                 """;
         assertEquals(expected, Formatter.format(messy));
     }
+
+    @Test
+    void canonicalFormOfAnExample() {
+        String messy = "module demo\n"
+                + "data M={ n:Int }\n"
+                + "behavior f:(x:M)->M constructs M\n"
+                + "let f (x)=x\n"
+                + "example f\n"
+                + "| \"holds\":(M{n=1})->M{n=1}\n";
+        String expected = """
+                module demo
+
+                data M =
+                    { n: Int
+                    }
+
+                behavior f : (x: M) -> M
+                    constructs M
+
+                let f (x) = x
+
+                example f
+                    | "holds" : (M { n = 1 }) -> M { n = 1 }
+                """;
+        assertEquals(expected, Formatter.format(messy));
+    }
+
+    @Test
+    void canonicalFormOfAnAttachedExampleFile() {
+        String messy = "examples for demo\nexample f\n|(M{n=1})->M{n=1}\n";
+        String expected = """
+                examples for demo
+
+                example f
+                    | (M { n = 1 }) -> M { n = 1 }
+                """;
+        assertEquals(expected, Formatter.format(messy));
+    }
 }
