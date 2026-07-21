@@ -63,7 +63,7 @@
         <dependency>
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>3.1.5</version>
+            <version>3.2.1</version>
         </dependency>
         <!-- jOOQ (provided by raoh-jooq) is needed at runtime to load/verify a generated
              recordDecoder()'s $DecRecord bytecode in tests. -->
