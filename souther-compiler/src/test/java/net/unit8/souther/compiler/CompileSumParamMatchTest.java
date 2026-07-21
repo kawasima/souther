@@ -93,6 +93,50 @@ class CompileSumParamMatchTest {
             """;
 
     @Test
+    void aFoldSeededWithACaseAcceptsAnEmptyList() throws Exception {
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(PRICING), getClass().getClassLoader());
+        Object behavior = loader.loadClass("demo.PriceLines" + "$Impl").getConstructor().newInstance();
+        // no lines -> the seed is returned unchanged, an empty PricedCart, typed at the union
+        Object emptyIn = Codecs.decoded(loader, "demo.In", Map.of("lines", List.of()));
+        Map<?, ?> empty = (Map<?, ?>) Codecs.encode(loader, "demo.PricedCart", Codecs.apply(behavior, emptyIn));
+        assertEquals(0, ((List<?>) empty.get("lines")).size());
+    }
+
+    @Test
+    void aFoldBlockThatAssumesTheSeedsNarrowCaseIsRejected() {
+        // `bump`'s accumulator is declared as the narrow case `Ok`, but the fold grows it to `R`.
+        // At the widened type the block is not a fixpoint (R is not assignable to Ok), so it is rejected
+        // rather than accepted into an unsound fold that could read `acc.n` on a `Bad`.
+        assertThrows(CompileException.class, () -> Compiler.compile("""
+                module demo
+                import List ( fold )
+                data Ok = { n: Int }
+                data Bad = { why: Int }
+                data R = Ok | Bad
+                data In = { xs: List<Int> }
+                behavior go : (i: In) -> Ok | Bad constructs Ok, Bad
+                let go (i) = fold((acc, x) -> bump(acc, x), Ok { n = 0 }, i.xs)
+                let bump (acc: Ok, x: Int) : R =
+                    if x > 0 then Ok { n = acc.n + x } else Bad { why = x }
+                """));
+    }
+
+    @Test
+    void aFoldGrowingAListToAWiderElementIsNotWidenedAsASum() {
+        // The seed is `List<A>` and the block returns `List<A | B>`. That target is a list, not a sum,
+        // so the sum-widening branch does not apply and the accumulator-type mismatch still holds.
+        assertThrows(CompileException.class, () -> Compiler.compile("""
+                module demo
+                import List ( fold )
+                data A = { x: Int }
+                data B = { y: Int }
+                data AB = A | B
+                let go (xs: List<Int>) : List<A> = fold((acc, x) -> acc ++ [pick(x)], [A { x = 0 }], xs)
+                let pick (x: Int) : AB = if x > 0 then A { x = x } else B { y = x }
+                """));
+    }
+
+    @Test
     void perLineFailingLoadAggregatesWithFoldAndMatch() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(PRICING), getClass().getClassLoader());
         Object behavior = loader.loadClass("demo.PriceLines" + "$Impl").getConstructor().newInstance();
