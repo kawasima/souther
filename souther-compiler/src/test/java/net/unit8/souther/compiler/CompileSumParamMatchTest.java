@@ -1,5 +1,7 @@
 package net.unit8.souther.compiler;
 
+import net.unit8.souther.compiler.diag.CompileException;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -7,6 +9,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * A helper whose value parameter is declared as a sum keeps that declared type when the helper is
@@ -46,7 +49,7 @@ class CompileSumParamMatchTest {
     @Test
     void aMismatchedCaseArgumentIsStillRejected() {
         // C is not a member of S; passing it to `use` must still fail.
-        org.junit.jupiter.api.Assertions.assertThrows(Exception.class, () -> Compiler.compile("""
+        assertThrows(CompileException.class, () -> Compiler.compile("""
                 module demo
                 data A = { x: Int }
                 data B = { y: Int }
