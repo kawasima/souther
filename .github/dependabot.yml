@@ -5,8 +5,23 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    groups:
+      maven-plugins:
+        patterns:
+          - "org.apache.maven.plugins:*"
+          - "org.sonatype.central:*"
+      maven-dependencies:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "org.apache.maven.plugins:*"
+          - "org.sonatype.central:*"
 
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - "*"
