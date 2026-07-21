@@ -41,7 +41,7 @@ class SalesTest {
                 明細("GRAPE", 3, 1500),
                 明細("APPLE", 1, 60),
                 明細("APPLE", 5, 900)));
-        Object 結果 = new 集計する().apply(注);
+        Object 結果 = 集計する.of().apply(注);
 
         レポート レ = assertInstanceOf(レポート.class, 結果);
         Map<String, Object> encoded = レポート.encoder().encode(レ);
@@ -54,6 +54,6 @@ class SalesTest {
 
     @Test
     void 明細が無い注文は空注文へ() {
-        assertInstanceOf(空注文.class, new 集計する().apply(decode(List.of())));
+        assertInstanceOf(空注文.class, 集計する.of().apply(decode(List.of())));
     }
 }

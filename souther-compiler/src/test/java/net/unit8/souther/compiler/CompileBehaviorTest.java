@@ -36,7 +36,7 @@ class CompileBehaviorTest {
 
         Object member = Codecs.decoded(loader, "demo.Member", Map.of("id", "m-1", "name", "bob"));
 
-        Object behavior = loader.loadClass("demo.ToResponse").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.ToResponse" + "$Impl").getConstructor().newInstance();
         Object response = Codecs.apply(behavior, member);
 
         Map<?, ?> encoded = (Map<?, ?>) Codecs.encode(loader, "demo.Response", response);

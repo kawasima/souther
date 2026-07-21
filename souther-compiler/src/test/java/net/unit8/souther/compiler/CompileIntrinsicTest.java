@@ -34,7 +34,7 @@ class CompileIntrinsicTest {
     void theTrimIntrinsicRunsAsAStdlibFunction() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
         Object in = Codecs.decoded(loader, "demo.In", Map.of("s", "  hi  "));
-        Object out = Codecs.apply(loader.loadClass("demo.Clean")
+        Object out = Codecs.apply(loader.loadClass("demo.Clean" + "$Impl")
                 .getConstructor().newInstance(), in);
         assertEquals("hi", ((Map<?, ?>) Codecs.encode(loader, "demo.Out", out)).get("s"), "trim strips surrounding whitespace");
     }
@@ -72,7 +72,7 @@ class CompileIntrinsicTest {
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
         Object s = Codecs.decoded(loader, "demo.Store", Map.of("byName", Map.of("a", Map.of("n", 42L))));
-        Object out = Codecs.apply(loader.loadClass("demo.FirstValue")
+        Object out = Codecs.apply(loader.loadClass("demo.FirstValue" + "$Impl")
                 .getConstructor().newInstance(), s);
         assertEquals(42L, ((Map<?, ?>) Codecs.encode(loader, "demo.Out", out)).get("n"), "values(m) is List<Item>, so x.n is an Int");
     }

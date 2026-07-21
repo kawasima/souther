@@ -35,7 +35,7 @@ class InventoryTest {
     void 棚卸はsum_sort_isEmptyで総額とコード一覧と品切れ有無を出す() {
         // APPLE 3×120=360、MELON 1×800=800。総額 1160。品切れ（数量0）は無い。
         在庫 在 = decode(List.of(品目("MELON", 1, 800), 品目("APPLE", 3, 120)));
-        Object 結果 = new 棚卸する().apply(在);
+        Object 結果 = 棚卸する.of().apply(在);
 
         棚卸 卸 = assertInstanceOf(棚卸.class, 結果);
         Map<String, Object> encoded = 棚卸.encoder().encode(卸);
@@ -47,13 +47,13 @@ class InventoryTest {
     @Test
     void 数量0の品目があると品切れなしが偽になる() {
         在庫 在 = decode(List.of(品目("APPLE", 3, 120), 品目("MELON", 0, 800)));
-        棚卸 卸 = assertInstanceOf(棚卸.class, new 棚卸する().apply(在));
+        棚卸 卸 = assertInstanceOf(棚卸.class, 棚卸する.of().apply(在));
         assertEquals(false, 棚卸.encoder().encode(卸).get("品切れなし"));
     }
 
     @Test
     void 品目が無い在庫は空在庫へ() {
-        assertInstanceOf(空在庫.class, new 棚卸する().apply(decode(List.of())));
+        assertInstanceOf(空在庫.class, 棚卸する.of().apply(decode(List.of())));
     }
 
     @Test
@@ -62,7 +62,7 @@ class InventoryTest {
         品目コード melon = ((Ok<品目コード>) 品目コード.decoder().decode("MELON", Path.ROOT)).value();
         品目コード grape = ((Ok<品目コード>) 品目コード.decoder().decode("GRAPE", Path.ROOT)).value();
 
-        assertEquals(true, 取扱.encoder().encode((取扱) new 取扱う().apply(在, melon)).get("あり"));
-        assertEquals(false, 取扱.encoder().encode((取扱) new 取扱う().apply(在, grape)).get("あり"));
+        assertEquals(true, 取扱.encoder().encode((取扱) 取扱う.of().apply(在, melon)).get("あり"));
+        assertEquals(false, 取扱.encoder().encode((取扱) 取扱う.of().apply(在, grape)).get("あり"));
     }
 }

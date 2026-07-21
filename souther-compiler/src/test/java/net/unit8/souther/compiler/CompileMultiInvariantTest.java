@@ -28,7 +28,7 @@ class CompileMultiInvariantTest {
 
     private static Object make(long v, BytesClassLoader loader) throws Exception {
         Object in = Codecs.decoded(loader, "demo.In", v);
-        Object make = loader.loadClass("demo.Make").getConstructor().newInstance();
+        Object make = loader.loadClass("demo.Make" + "$Impl").getConstructor().newInstance();
         return Codecs.apply(make, in);
     }
 

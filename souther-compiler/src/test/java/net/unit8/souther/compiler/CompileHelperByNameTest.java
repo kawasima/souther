@@ -45,7 +45,7 @@ class CompileHelperByNameTest {
     @Test
     void allWithAHelperPassedByName() throws Exception {
         BytesClassLoader loader = loader();
-        Object check = loader.loadClass("demo.Check").getDeclaredConstructor().newInstance();
+        Object check = loader.loadClass("demo.Check" + "$Impl").getDeclaredConstructor().newInstance();
 
         assertEquals(Boolean.TRUE, run(loader, check, List.of(1L, 2L, 3L)).get("ok"));
         assertEquals(Boolean.FALSE, run(loader, check, List.of(1L, -2L, 3L)).get("ok"));
@@ -69,7 +69,7 @@ class CompileHelperByNameTest {
                 let run (i) = Out { total = fold(add, 0, i.ns) }
                 """), getClass().getClassLoader());
         Object in = Codecs.decoded(loader, "demo.In", Map.of("ns", List.of(1L, 2L, 3L)));
-        Object out = Codecs.apply(loader.loadClass("demo.Run").getDeclaredConstructor().newInstance(), in);
+        Object out = Codecs.apply(loader.loadClass("demo.Run" + "$Impl").getDeclaredConstructor().newInstance(), in);
         assertEquals(6L, ((Map<?, ?>) Codecs.encode(loader, "demo.Out", out)).get("total"));
     }
 }

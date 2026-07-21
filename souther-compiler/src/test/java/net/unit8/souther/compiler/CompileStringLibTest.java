@@ -30,7 +30,7 @@ class CompileStringLibTest {
                 """), getClass().getClassLoader());
 
         Object name = Codecs.decoded(loader, "demo.Name", "robert");
-        Object behavior = loader.loadClass("demo.Greet").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Greet" + "$Impl").getConstructor().newInstance();
         Object greeting = Codecs.apply(behavior, name);
 
         // Greeting has a single String field, so it is a newtype: encodes as bare Text
@@ -60,7 +60,7 @@ class CompileStringLibTest {
 
         Object in = Codecs.decoded(loader, "demo.In",
                 java.util.Map.of("name", "world", "parts", java.util.List.of("a", "b", "c")));
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, in);
 
         java.util.Map<?, ?> m = (java.util.Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
@@ -85,7 +85,7 @@ class CompileStringLibTest {
 
         Object in = Codecs.decoded(loader, "demo.In",
                 java.util.Map.of("parts", java.util.List.of()));
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, in);
 
         // Out has a single String field, so it is a newtype: encodes as bare Text
@@ -132,7 +132,7 @@ class CompileStringLibTest {
                 """), getClass().getClassLoader());
 
         Object raw = Codecs.decoded(loader, "demo.Raw", "a,b,,c");
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, raw);
 
         java.util.Map<?, ?> m = (java.util.Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
@@ -166,7 +166,7 @@ class CompileStringLibTest {
                 """), getClass().getClassLoader());
 
         Object in = Codecs.decoded(loader, "demo.In", java.util.Map.of("text", "  the  quick fox ", "n", 42L));
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, in);
 
         java.util.Map<?, ?> m = (java.util.Map<?, ?>) Codecs.encode(loader, "demo.Out", out);

@@ -31,7 +31,7 @@ class TaggingTest {
     void 空白と大小と空片が混ざった入力を辞書順の正規形にする() {
         // "Scala,  FP ,  DDD " → split → 各片 trim+lowercase → 空片除外 → sort。
         タグ入力 入力 = decode("Scala,  FP ,  DDD ");
-        Object 結果 = new 正規化().apply(入力);
+        Object 結果 = 正規化.of().apply(入力);
 
         タグ集合 集合 = assertInstanceOf(タグ集合.class, 結果);
         Map<String, Object> encoded = タグ集合.encoder().encode(集合);
@@ -43,6 +43,6 @@ class TaggingTest {
     void 空白とカンマだけの入力はタグ無しへ() {
         // trim すると全片が空になり、filter が全部落とす → length 0 → タグ無し。
         タグ入力 入力 = decode("  , ,,  ");
-        assertInstanceOf(タグ無し.class, new 正規化().apply(入力));
+        assertInstanceOf(タグ無し.class, 正規化.of().apply(入力));
     }
 }

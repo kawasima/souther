@@ -47,7 +47,7 @@ class CompileModuleChainTest {
 
         BytesClassLoader loader = new BytesClassLoader(classes, getClass().getClassLoader());
         Object five = Codecs.decoded(loader, "a.N", 5L);
-        Object quad = loader.loadClass("c.Quad").getConstructor().newInstance();
+        Object quad = loader.loadClass("c.Quad" + "$Impl").getConstructor().newInstance();
         Object r = Codecs.apply(quad, five);
 
         assertEquals(5L, Codecs.encode(loader, "a.N", r), "inc is identity, so quad round-trips 5 through the chain");
@@ -77,7 +77,7 @@ class CompileModuleChainTest {
     @Test
     void aDepartedImportedCaseInACompositionUnionIsRejected() {
         // checkout's output is Receipt | Empty; Empty is imported from pa, so it cannot be a member of
-        // pb's sealed Checkout結果.
+        // pb's sealed CheckoutResult.
         CompileException e = assertThrows(CompileException.class,
                 () -> Compiler.compileModules(List.of(PA, PB)));
         assertEquals("E1606", e.diagnostic().code());

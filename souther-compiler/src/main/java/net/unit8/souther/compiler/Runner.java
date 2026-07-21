@@ -276,7 +276,8 @@ public final class Runner {
     // --- reflection helpers -------------------------------------------------------------------
 
     private static Object invoke(MemoryClassLoader loader, String pkg, String behavior, Object[] args) {
-        String className = pkg + "." + behaviorClass(behavior);
+        // The public name is an interface; its no-arg constructor and erased apply live on the $Impl.
+        String className = pkg + "." + behaviorClass(behavior) + "$Impl";
         try {
             Class<?> c = loader.loadClass(className);
             Object instance = c.getConstructor().newInstance();

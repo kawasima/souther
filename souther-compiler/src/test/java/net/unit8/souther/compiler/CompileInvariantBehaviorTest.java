@@ -41,7 +41,7 @@ class CompileInvariantBehaviorTest {
     @Test
     void constructionSucceedsWhenInvariantHolds() throws Exception {
         BytesClassLoader loader = loader();
-        Object discount = loader.loadClass("demo.Discount").getConstructor().newInstance();
+        Object discount = loader.loadClass("demo.Discount" + "$Impl").getConstructor().newInstance();
         Object r = Codecs.apply(discount, draft(loader, 3000));
         assertEquals("demo.Adjusted", r.getClass().getName(), "3000 - 2000 = 1000 >= 0");
 
@@ -51,7 +51,7 @@ class CompileInvariantBehaviorTest {
     @Test
     void invariantViolationAborts() throws Exception {
         BytesClassLoader loader = loader();
-        Object discount = loader.loadClass("demo.Discount").getConstructor().newInstance();
+        Object discount = loader.loadClass("demo.Discount" + "$Impl").getConstructor().newInstance();
         // 100 - 2000 = -1900 violates cost >= 0, so the construction aborts rather than returning
         ConstraintViolation v = assertThrows(ConstraintViolation.class,
                 () -> Codecs.apply(discount, draft(loader, 100)));
@@ -83,7 +83,7 @@ class CompileInvariantBehaviorTest {
                 }
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
-        Object adjust = loader.loadClass("demo.Adjust").getConstructor().newInstance();
+        Object adjust = loader.loadClass("demo.Adjust" + "$Impl").getConstructor().newInstance();
 
         // the guard fails, so the else branch builds Adjusted { cost: 999 - 2000 = -1001 },
         // which breaks cost >= 0 — it must abort, not come back as an Adjusted

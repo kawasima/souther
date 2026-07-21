@@ -46,7 +46,7 @@ class CompileLambdaLetTest {
     @Test
     void lambdaBoundWithLetAndApplied() throws Exception {
         BytesClassLoader loader = loader();
-        Object check = loader.loadClass("demo.Check").getDeclaredConstructor().newInstance();
+        Object check = loader.loadClass("demo.Check" + "$Impl").getDeclaredConstructor().newInstance();
 
         assertEquals(6L, run(loader, check, 5L));
         assertEquals(1L, run(loader, check, 0L));

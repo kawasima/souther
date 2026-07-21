@@ -47,7 +47,7 @@ class CompileMapLibTest {
                 """), getClass().getClassLoader());
 
         Object in = Codecs.decoded(loader, "demo.In", Map.of("base", Map.of("a", 1L, "c", 3L)));
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, in);
 
         Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
@@ -94,7 +94,7 @@ class CompileMapLibTest {
                 """), getClass().getClassLoader());
 
         Object in = Codecs.decoded(loader, "demo.In", Map.of("stock", Map.of("a", 10L, "b", 20L)));
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, in);
 
         Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
@@ -137,7 +137,7 @@ class CompileMapLibTest {
                 """), getClass().getClassLoader());
 
         Object in = Codecs.decoded(loader, "demo.In", Map.of("stock", Map.of()));
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, in);
 
         Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);

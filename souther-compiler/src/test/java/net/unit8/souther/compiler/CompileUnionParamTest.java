@@ -34,7 +34,7 @@ class CompileUnionParamTest {
         // SubPre is a named sum; its cases are adjacently tagged ({type, value}), so the input to
         // finish is decoded through the sum decoder rather than a bare case value (spec 10.3, 12.2).
         Object arg = Codecs.decoded(loader, "demo.SubPre", Map.of("type", caseType, "value", n));
-        Object done = Codecs.apply(loader.loadClass("demo.Finish")
+        Object done = Codecs.apply(loader.loadClass("demo.Finish" + "$Impl")
                 .getConstructor().newInstance(), arg);
         // Done is a single-field newtype, so its encoder yields the bare Long.
         return (Long) Codecs.encode(loader, "demo.Done", done);

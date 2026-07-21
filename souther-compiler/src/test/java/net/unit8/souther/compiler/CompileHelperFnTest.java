@@ -39,7 +39,7 @@ class CompileHelperFnTest {
     @Test
     void behaviorInlinesAPureHelper() throws Exception {
         BytesClassLoader loader = loader();
-        Object bill = loader.loadClass("demo.Bill").getDeclaredConstructor().newInstance();
+        Object bill = loader.loadClass("demo.Bill" + "$Impl").getDeclaredConstructor().newInstance();
 
         Object order = decode(loader, "Order", java.util.Map.of("price", 6L, "rate", 7L));
         Object r = Codecs.apply(bill, order);
@@ -128,7 +128,7 @@ class CompileHelperFnTest {
                 let taxed (price: Int, rate: Int) = price * withRate(rate)
                 let withRate (rate: Int) = rate * rate
                 """), getClass().getClassLoader());
-        Object bill = loader.loadClass("demo.Bill").getDeclaredConstructor().newInstance();
+        Object bill = loader.loadClass("demo.Bill" + "$Impl").getDeclaredConstructor().newInstance();
         Object order = decode(loader, "Order", java.util.Map.of("price", 2L, "rate", 3L));
         Object r = Codecs.apply(bill, order);
         java.util.Map<?, ?> receipt = (java.util.Map<?, ?>) Codecs.encode(loader, "demo.Receipt", r);

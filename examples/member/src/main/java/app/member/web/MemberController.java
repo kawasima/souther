@@ -7,7 +7,6 @@ package app.member.web;
 import example.member.会員ID;
 import example.member.会員なし;
 import example.member.会員を照会し整形する;
-import example.member.会員を照会し整形する結果;
 import example.member.会員表示;
 import example.member.保存データ不正;
 
@@ -56,8 +55,8 @@ public final class MemberController {
         // 2. パイプラインを走らせ、ドメインの出力ケースを畳んで HTTP へ。
         //    会員なし/保存データ不正 は findMember から整形段を素通りしてここへ届く（sealed で網羅的）。
         //    DB ダウン等のプラットフォーム障害はここに来ず、例外として抜ける（onPlatformFailure が受ける）。
-        //    束縛済みパイプラインは型消去のため apply(Object):Object。出力は 会員を照会し整形する結果。
-        return switch ((会員を照会し整形する結果) 照会.apply(memberId)) {
+        //    照会 は interface（会員を照会し整形する）なので apply は型付き。出力は 会員を照会し整形するResult。
+        return switch (照会.apply(memberId)) {
             case 会員表示 v ->
                     // encode は素の Map（外部表現。spec 6）を返す。Spring/Jackson がそのまま JSON 化する。
                     ResponseEntity.ok(会員表示.encoder().encode(v));

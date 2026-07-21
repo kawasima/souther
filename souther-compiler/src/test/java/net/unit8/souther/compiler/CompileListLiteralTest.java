@@ -25,7 +25,7 @@ class CompileListLiteralTest {
                 let pick (x) = [x.a] ++ [x.b | x.b > 0]
                 """), getClass().getClassLoader());
         Object in = Codecs.decoded(loader, "demo.In", Map.of("a", a, "b", b));
-        Object behavior = loader.loadClass("demo.Pick").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Pick" + "$Impl").getConstructor().newInstance();
         return (List<?>) Codecs.apply(behavior, in);
     }
 
@@ -55,7 +55,7 @@ class CompileListLiteralTest {
     private List<?> reasons(long cost) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(REASONS), getClass().getClassLoader());
         Object in = Codecs.decoded(loader, "demo.In", Map.of("cost", cost));
-        Object behavior = loader.loadClass("demo.Reasons").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Reasons" + "$Impl").getConstructor().newInstance();
         return (List<?>) Codecs.apply(behavior, in);
     }
 

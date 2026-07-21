@@ -37,7 +37,7 @@ class CompileDecimalDivideTest {
 
     private static Object apply(BigDecimal a, BigDecimal b, BytesClassLoader loader) throws Exception {
         Object p = Codecs.decoded(loader, "demo.Pair", Map.of("a", a, "b", b));
-        Object divv = loader.loadClass("demo.Divv").getConstructor().newInstance();
+        Object divv = loader.loadClass("demo.Divv" + "$Impl").getConstructor().newInstance();
         return Codecs.apply(divv, p);
     }
 

@@ -37,7 +37,7 @@ class CompileMapTupleTest {
                 """), getClass().getClassLoader());
 
         Object in = Codecs.decoded(loader, "demo.In", Map.of("m", Map.of("x", 5L, "y", 7L)));
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, in);
 
         Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);

@@ -136,7 +136,7 @@ class CompileSpecChapter23Test {
 
         Object clock = java.lang.reflect.Proxy.newProxyInstance(loader,
                 new Class<?>[]{Behavior.class}, (p, m, a) -> java.time.LocalDateTime.parse("2026-07-15T12:00:00"));
-        Object 事前承認する = loader.loadClass("example.businesstrip.事前承認する")
+        Object 事前承認する = loader.loadClass("example.businesstrip.事前承認する" + "$Impl")
                 .getConstructor(Behavior.class).newInstance(clock);
         var apply = 事前承認する.getClass().getMethod("apply", Object.class, Object.class);
 

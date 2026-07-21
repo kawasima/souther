@@ -32,7 +32,7 @@ class CompileCaseWideningTest {
         Object a = Codecs.decoded(loader, "demo.A", Map.of("x", 5L, "tag", 1L));
 
         Object wrap = Codecs.apply(
-                loader.loadClass("demo.MakeWrap").getConstructor().newInstance(), a);
+                loader.loadClass("demo.MakeWrap" + "$Impl").getConstructor().newInstance(), a);
 
         Map<?, ?> out = (Map<?, ?>) Codecs.encode(loader, "demo.Wrap", wrap);
         Map<?, ?> it = (Map<?, ?>) out.get("it");

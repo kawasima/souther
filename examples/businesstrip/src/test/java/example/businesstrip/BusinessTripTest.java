@@ -41,7 +41,7 @@ class BusinessTripTest {
                                 "ID", "e-3")));
         社員 一般社員 = ((Ok<社員>) 社員.decoder().decode(組織図, Path.ROOT)).value();
 
-        決裁レベル レベル = (決裁レベル) new 決裁レベルを測る().apply(一般社員);
+        決裁レベル レベル = 決裁レベルを測る.of().apply(一般社員);
 
         // e-1 は 2 階層上（課長・部長）に承認者を持つ。頂点 e-3 は 0。
         assertEquals(2L, 決裁レベル.encoder().encode(レベル));

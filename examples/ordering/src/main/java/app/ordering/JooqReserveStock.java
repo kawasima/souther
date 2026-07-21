@@ -1,5 +1,5 @@
 // The jOOQ implementation of the injected behavior reserveStock. It extends the generated abstract
-// base ReserveStock (Behavior<RecordedOrder, ReserveStock結果>, where the result is
+// base ReserveStock (Behavior<RecordedOrder, ReserveStockResult>, where the result is
 // ConfirmedOrder | OutOfStock). It reserves stock for every line of the order; if any single line is
 // short, it returns OutOfStock and writes nothing further.
 //
@@ -11,7 +11,7 @@ package app.ordering;
 import example.ordering.ConfirmedOrder;
 import example.ordering.RecordedOrder;
 import example.ordering.ReserveStock;
-import example.ordering.ReserveStock結果;
+import example.ordering.ReserveStockResult;
 
 import net.unit8.raoh.Err;
 import net.unit8.raoh.Ok;
@@ -49,7 +49,7 @@ public final class JooqReserveStock extends ReserveStock {
 
     @Override
     @SuppressWarnings("unchecked")
-    public ReserveStock結果 apply(RecordedOrder recorded) {
+    public ReserveStockResult apply(RecordedOrder recorded) {
         Map<String, Object> in = RecordedOrder.encoder().encode(recorded);
         String orderId = (String) in.get("orderId");
         long total = ((Number) in.get("total")).longValue();

@@ -41,7 +41,7 @@ class CompileClosureTest {
     @Test
     void aLambdaChosenAtRuntimeDispatchesThroughFn() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        Object check = loader.loadClass("demo.Check").getDeclaredConstructor().newInstance();
+        Object check = loader.loadClass("demo.Check" + "$Impl").getDeclaredConstructor().newInstance();
 
         assertEquals(110L, run(loader, check, 10L, true));
         assertEquals(11L, run(loader, check, 10L, false));
@@ -66,7 +66,7 @@ class CompileClosureTest {
     @Test
     void aClosureCapturesAFreeVariable() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(CAPTURING), getClass().getClassLoader());
-        Object check = loader.loadClass("demo.Check").getDeclaredConstructor().newInstance();
+        Object check = loader.loadClass("demo.Check" + "$Impl").getDeclaredConstructor().newInstance();
 
         assertEquals(110L, run(loader, check, 10L, true));    // 100 + 10
         assertEquals(90L, run(loader, check, 10L, false));    // 100 - 10
@@ -110,7 +110,7 @@ class CompileClosureTest {
     @Test
     void aMultiParameterClosure() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MULTIARG), getClass().getClassLoader());
-        Object check = loader.loadClass("demo.Check").getDeclaredConstructor().newInstance();
+        Object check = loader.loadClass("demo.Check" + "$Impl").getDeclaredConstructor().newInstance();
 
         Object plus = Codecs.decoded(loader, "demo.Pair", Map.of("a", 7L, "b", 3L, "plus", true));
         Object minus = Codecs.decoded(loader, "demo.Pair", Map.of("a", 7L, "b", 3L, "plus", false));
@@ -138,7 +138,7 @@ class CompileClosureTest {
     @Test
     void aClosureThatConstructsAData() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(CONSTRUCTING), getClass().getClassLoader());
-        Object check = loader.loadClass("demo.Check").getDeclaredConstructor().newInstance();
+        Object check = loader.loadClass("demo.Check" + "$Impl").getDeclaredConstructor().newInstance();
 
         Object up = Codecs.decoded(loader, "demo.In", Map.of("v", 10L, "up", true));
         Object down = Codecs.decoded(loader, "demo.In", Map.of("v", 10L, "up", false));
@@ -173,7 +173,7 @@ class CompileClosureTest {
     @Test
     void aHelperReturnsACapturingClosure() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(RETURNING), getClass().getClassLoader());
-        Object check = loader.loadClass("demo.Check").getDeclaredConstructor().newInstance();
+        Object check = loader.loadClass("demo.Check" + "$Impl").getDeclaredConstructor().newInstance();
 
         Object order = Codecs.decoded(loader, "demo.Order", Map.of("v", 10L));
         Object r = Codecs.apply(check, order);

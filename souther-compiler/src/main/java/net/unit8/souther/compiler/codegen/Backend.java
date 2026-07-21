@@ -136,7 +136,7 @@ public final class Backend {
             }
         }
         // A behavior whose output is an anonymous union gets a generated sealed interface
-        // <behavior名>結果 that its cases implement (spec 19.8). Register those case->interface links
+        // <behavior名>Result that its cases implement (spec 19.8). Register those case->interface links
         // in caseToSums before the data classes are generated, so each case class picks the interface
         // up in withInterfaceSymbols. The interface classes themselves are emitted below.
         Map<String, List<String>> behaviorResults = b.behaviorResultInterfaces(module, importedSigs);
@@ -151,7 +151,7 @@ public final class Backend {
                     continue;
                 }
                 Ast.BehaviorDef owner = module.behaviors().stream()
-                        .filter(bd -> (behaviorClass(bd.name()) + "結果").equals(e.getKey()))
+                        .filter(bd -> CodegenContext.behaviorResultClass(bd.name()).equals(e.getKey()))
                         .findFirst().orElse(null);
                 String bname = owner != null ? owner.name() : e.getKey();
                 throw CompileException.of(
@@ -220,14 +220,28 @@ public final class Backend {
                 case Ast.SpecBehavior spec -> {
                     Ast.FnDef fn = fns.get(spec.name());
                     if (fn != null) {
-                        out.put(module.name() + "." + behaviorClass(spec.name()),
+                        // a fn-implemented behavior: the $Impl holds the logic, the public interface
+                        // (behaviorClass) is what Java code declares (spec 19.8).
+                        out.put(module.name() + "." + CodegenContext.behaviorImplClass(spec.name()),
                                 b.generateSpecFn(spec, fn, requiredNames, requiredSuccess, requiredParam));
+                        List<Type> pts = new ArrayList<>();
+                        for (Ast.Param p : spec.params()) {
+                            pts.add(b.successType(p.type()));
+                        }
+                        out.put(module.name() + "." + behaviorClass(spec.name()),
+                                b.generateBehaviorInterface(spec.name(), pts, b.successType(spec.ret()),
+                                        spec.requires()));
                     }
                     // else: injection target — its abstract base was generated above (spec 13.3)
                 }
-                case Ast.PipeBehavior pipe ->
-                        out.put(module.name() + "." + behaviorClass(pipe.name()),
-                                b.generatePipe(pipe, requiredNames, sigs, behaviorDeps, pipeStages));
+                case Ast.PipeBehavior pipe -> {
+                    out.put(module.name() + "." + CodegenContext.behaviorImplClass(pipe.name()),
+                            b.generatePipe(pipe, requiredNames, sigs, behaviorDeps, pipeStages));
+                    TypeChecker.Sig sig = TypeChecker.stageSig(pipe.name(), sigs, symbols, pipe.pos());
+                    out.put(module.name() + "." + behaviorClass(pipe.name()),
+                            b.generateBehaviorInterface(pipe.name(), sig.ins(), sig.out(),
+                                    behaviorDeps.getOrDefault(pipe.name(), List.of())));
+                }
             }
         }
         if (!recHelpers.isEmpty()) {
@@ -268,7 +282,9 @@ public final class Backend {
         });
     }
 
-    /** Emits injected required-behavior fields plus the matching constructor (or a no-arg ctor). */
+    /** Emits injected required-behavior fields plus the matching constructor (or a no-arg ctor) on a
+     * behavior's {@code $Impl}. The {@code of()}/{@code bind()} factories live on the public interface
+     * ({@link #emitBehaviorFactory}), not here. */
     private void emitInjection(ClassBuilder cb, ClassDesc cdX, List<String> requireds) {
         if (requireds.isEmpty()) {
             emitPublicCtor(cb);
@@ -292,20 +308,41 @@ public final class Backend {
             }
             code.return_();
         });
+    }
 
-        // bind(<named required interfaces>) -> this behavior (spec 19.5)
-        ClassDesc[] bindParams = new ClassDesc[requireds.size()];
-        for (int i = 0; i < requireds.size(); i++) {
-            bindParams[i] = cdBehavior(requireds.get(i));
+    /**
+     * Emits the static factory a Java caller uses to build a fn/pipe behavior, on its public
+     * interface (spec 19.5). {@code of()} for a behavior with no {@code requires}; {@code bind(<named
+     * required interfaces>)} for one that injects dependencies. Both return the interface type and
+     * construct the {@code $Impl}, so the caller never names the implementation class.
+     */
+    private void emitBehaviorFactory(ClassBuilder cb, ClassDesc cdI, ClassDesc cdImpl,
+                                     List<String> requireds) {
+        if (requireds.isEmpty()) {
+            cb.withMethodBody("of", MethodTypeDesc.of(cdI),
+                    ClassFile.ACC_PUBLIC | ClassFile.ACC_STATIC, code -> {
+                        code.new_(cdImpl);
+                        code.dup();
+                        code.invokespecial(cdImpl, "<init>", MTD_void);
+                        code.areturn();
+                    });
+            return;
         }
-        cb.withMethodBody("bind", MethodTypeDesc.of(cdX, bindParams),
+        ClassDesc[] bindParams = new ClassDesc[requireds.size()];
+        ClassDesc[] ctorParams = new ClassDesc[requireds.size()];
+        for (int i = 0; i < requireds.size(); i++) {
+            bindParams[i] = cdBehavior(requireds.get(i));   // the required's public interface / base
+            ctorParams[i] = CD_Behavior;
+        }
+        MethodTypeDesc ctorDesc = MethodTypeDesc.of(ConstantDescs.CD_void, ctorParams);
+        cb.withMethodBody("bind", MethodTypeDesc.of(cdI, bindParams),
                 ClassFile.ACC_PUBLIC | ClassFile.ACC_STATIC, code -> {
-                    code.new_(cdX);
+                    code.new_(cdImpl);
                     code.dup();
                     for (int i = 0; i < requireds.size(); i++) {
                         code.aload(i);
                     }
-                    code.invokespecial(cdX, "<init>", ctorDesc);
+                    code.invokespecial(cdImpl, "<init>", ctorDesc);
                     code.areturn();
                 });
     }
@@ -319,7 +356,7 @@ public final class Backend {
      * package (no in-package placement required).
      *
      * <p>When both the input and output map to a concrete reference type, the base carries a
-     * generic {@code Behavior<In, Out>} signature (spec 19.8, 24) — {@code Out} is the {@code <名>結果}
+     * generic {@code Behavior<In, Out>} signature (spec 19.8, 24) — {@code Out} is the {@code <名>Result}
      * interface for an anonymous union output — so a Java author writes the real return type rather
      * than {@code Object}. If either side is a list/option/map (no single reference class), the
      * signature is omitted and the raw interface stands.
@@ -375,8 +412,73 @@ public final class Backend {
     }
 
     /**
+     * The public interface a Java caller declares for a fn/pipe behavior (spec 19.8). It hides the
+     * generated {@code <名>Result} union: the caller writes the behavior name and switches over the
+     * cases. A single-input behavior's interface {@code extends Behavior<In, Out>} — so it composes
+     * with {@code >->} and its {@code apply} return type is typed by inheritance; a multi-input one is
+     * a standalone functional interface declaring a typed, multi-argument {@code apply}. Both carry the
+     * static {@code of()}/{@code bind(...)} factory that builds the {@code $Impl}.
+     */
+    private byte[] generateBehaviorInterface(String name, List<Type> paramTypes, Type retType,
+                                             List<String> requires) {
+        ClassDesc cdI = cdBehavior(name);
+        ClassDesc cdImpl = cdBehaviorImpl(name);
+        boolean single = paramTypes.size() == 1;
+        return build(cdI, cb -> {
+            cb.withFlags(pub(name) | ClassFile.ACC_INTERFACE | ClassFile.ACC_ABSTRACT);
+            if (single) {
+                cb.withInterfaceSymbols(CD_Behavior);   // extends Behavior<In, Out> (raw if untyped)
+                withBehaviorSignature(cb, paramTypes.getFirst(), retType, name);
+            } else {
+                // no Behavior supertype (it takes one argument): declare the typed apply directly
+                cb.withMethod("apply", typedApplyDesc(name, paramTypes, retType),
+                        ClassFile.ACC_PUBLIC | ClassFile.ACC_ABSTRACT, mb -> { });
+            }
+            emitBehaviorFactory(cb, cdI, cdImpl, requires);
+        });
+    }
+
+    /** The interface-facing apply descriptor for a multi-input behavior: each param and the return
+     * mapped to its reference type, a list/option/map degraded to {@code Object}. */
+    private MethodTypeDesc typedApplyDesc(String name, List<Type> paramTypes, Type retType) {
+        ClassDesc[] p = new ClassDesc[paramTypes.size()];
+        for (int i = 0; i < p.length; i++) {
+            ClassDesc r = refTypeOrNull(paramTypes.get(i), name);
+            p[i] = r != null ? r : CD_Object;
+        }
+        ClassDesc ret = refTypeOrNull(retType, name);
+        return MethodTypeDesc.of(ret != null ? ret : CD_Object, p);
+    }
+
+    /** Emits the covariant bridge that satisfies a multi-input interface's typed apply by delegating
+     * to the erased {@code apply(Object...)Object} the body lives on. Skipped when the typed and
+     * erased descriptors coincide (every param and the return degraded to {@code Object}), because
+     * then the erased apply already implements the interface method. */
+    private void emitTypedApplyBridge(ClassBuilder cb, ClassDesc cdImpl, MethodTypeDesc typed) {
+        int n = typed.parameterCount();
+        ClassDesc[] erasedParams = new ClassDesc[n];
+        java.util.Arrays.fill(erasedParams, CD_Object);
+        MethodTypeDesc erased = MethodTypeDesc.of(CD_Object, erasedParams);
+        if (typed.equals(erased)) {
+            return;
+        }
+        cb.withMethodBody("apply", typed, ClassFile.ACC_PUBLIC, code -> {
+            code.aload(0);
+            for (int i = 0; i < n; i++) {
+                code.aload(i + 1);
+            }
+            code.invokevirtual(cdImpl, "apply", erased);
+            ClassDesc ret = typed.returnType();
+            if (!ret.equals(CD_Object)) {
+                code.checkcast(ret);
+            }
+            code.areturn();
+        });
+    }
+
+    /**
      * Behavior-result interfaces to generate (spec 19.8): for each behavior whose output is an
-     * anonymous union, maps {@code <behavior名>結果} to its leaf cases — the {@code permits} list and
+     * anonymous union, maps {@code <behavior名>Result} to its leaf cases — the {@code permits} list and
      * the set of case classes that {@code implements} it. A named-sum output is already a sealed
      * interface (19.3) and a single-case output uses that case's own type, so neither gets one. Case
      * order is sorted for deterministic bytecode.
@@ -392,7 +494,7 @@ public final class Backend {
             }
             List<String> cases = new ArrayList<>(TypeChecker.leafCases(sig.out(), symbols));
             Collections.sort(cases);
-            results.put(behaviorClass(bd.name()) + "結果", cases);
+            results.put(CodegenContext.behaviorResultClass(bd.name()), cases);
         }
         return results;
     }
@@ -416,7 +518,7 @@ public final class Backend {
 
     /**
      * The single reference class a behavior's input or output success type maps to, for a generic
-     * {@code Behavior<In, Out>} signature: the {@code <名>結果} interface for an anonymous union, the
+     * {@code Behavior<In, Out>} signature: the {@code <名>Result} interface for an anonymous union, the
      * named data/sum for a single case, the boxed class for a primitive. Returns {@code null} for a
      * list/option/map, which has no single reference class to name here.
      */
@@ -440,6 +542,10 @@ public final class Backend {
         return ctx.cdBehavior(name);
     }
 
+    private ClassDesc cdBehaviorImpl(String name) {
+        return ctx.cdBehaviorImpl(name);
+    }
+
 
     private ClassDesc caseClass(String typeName) {
         return ctx.caseClass(typeName);
@@ -458,7 +564,7 @@ public final class Backend {
      */
     private byte[] generateSpecFn(Ast.SpecBehavior spec, Ast.FnDef fn, Set<String> requiredNames,
                                   Map<String, Type> requiredSuccess, Map<String, Type> requiredParam) {
-        ClassDesc cdB = cdBehavior(spec.name());
+        ClassDesc cdB = cdBehaviorImpl(spec.name());   // the $Impl behind the public interface
         int n = spec.params().size();
         // declared requires, validated to equal what the fn calls (E1602/E1603); the same order is
         // used by pipeline callers (requirementSets), so the injected fields line up.
@@ -470,11 +576,8 @@ public final class Backend {
         MethodTypeDesc mtdApply = MethodTypeDesc.of(CD_Object, applyParams);
         return build(cdB, cb -> {
             cb.withFlags(pub(spec.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
-            if (n == 1) {
-                cb.withInterfaceSymbols(CD_Behavior); // single-input behaviors compose with >->
-                withBehaviorSignature(cb, successType(spec.params().getFirst().type()),
-                        successType(spec.ret()), spec.name());
-            }
+            // implements its public interface (which itself extends Behavior for a single-input one)
+            cb.withInterfaceSymbols(cdBehavior(spec.name()));
             emitInjection(cb, cdB, injected);
             cb.withMethodBody("apply", mtdApply, ClassFile.ACC_PUBLIC, code -> {
                 BodyGen gen = new BodyGen(ctx, code, null, cdB, n + 1);
@@ -489,6 +592,13 @@ public final class Backend {
                 }
                 gen.emitTail(Core.of(fn.body()), cdB, requiredNames, requiredSuccess);
             });
+            if (n != 1) {
+                List<Type> pts = new ArrayList<>();
+                for (Ast.Param p : spec.params()) {
+                    pts.add(successType(p.type()));
+                }
+                emitTypedApplyBridge(cb, cdB, typedApplyDesc(spec.name(), pts, successType(spec.ret())));
+            }
         });
     }
 
@@ -551,7 +661,7 @@ public final class Backend {
     private byte[] generatePipe(Ast.PipeBehavior pipe, Set<String> requiredNames,
                                 Map<String, TypeChecker.Sig> sigs, Map<String, List<String>> behaviorDeps,
                                 Map<String, List<String>> pipeStages) {
-        ClassDesc cdP = cdBehavior(pipe.name());
+        ClassDesc cdP = cdBehaviorImpl(pipe.name());   // the $Impl behind the public interface
         // Flatten nested pipeline stages so the routing is over leaf behaviors (spec 14.2): a named
         // intermediate `half = split >-> work` inlines to `split, work`, which keeps a retired case
         // retired across the composition, making `>->` associative.
@@ -566,11 +676,8 @@ public final class Backend {
 
         return build(cdP, cb -> {
             cb.withFlags(pub(pipe.name()) | ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
-            if (arity == 1) {
-                cb.withInterfaceSymbols(CD_Behavior);   // only single-input pipelines compose
-                TypeChecker.Sig sig = TypeChecker.stageSig(pipe.name(), sigs, symbols, pipe.pos());
-                withBehaviorSignature(cb, sig.ins().getFirst(), sig.out(), pipe.name());
-            }
+            // implements its public interface (which itself extends Behavior for a single-input one)
+            cb.withInterfaceSymbols(cdBehavior(pipe.name()));
             emitInjection(cb, cdP, reqStages);
 
             cb.withMethodBody("apply", mtdApply, ClassFile.ACC_PUBLIC, code -> {
@@ -608,6 +715,10 @@ public final class Backend {
                 code.aload(1);
                 code.areturn();
             });
+            if (arity != 1) {
+                TypeChecker.Sig sig = TypeChecker.stageSig(pipe.name(), sigs, symbols, pipe.pos());
+                emitTypedApplyBridge(cb, cdP, typedApplyDesc(pipe.name(), sig.ins(), sig.out()));
+            }
         });
     }
 
@@ -630,7 +741,8 @@ public final class Backend {
         }
         ClassDesc[] params = new ClassDesc[arity];
         java.util.Arrays.fill(params, CD_Object);
-        code.invokevirtual(cdBehavior(stage), "apply", MethodTypeDesc.of(CD_Object, params));
+        // a multi-input first stage is a fn/pipe behavior; call the erased apply on its $Impl
+        code.invokevirtual(cdBehaviorImpl(stage), "apply", MethodTypeDesc.of(CD_Object, params));
         code.astore(1);
     }
 
@@ -655,7 +767,7 @@ public final class Backend {
             code.getfield(cdP, stage, CD_Behavior);
             return;
         }
-        ClassDesc cdStage = cdBehavior(stage);
+        ClassDesc cdStage = cdBehaviorImpl(stage);   // instantiate the $Impl, not the interface
         code.new_(cdStage);
         code.dup();
         List<String> deps = behaviorDeps.getOrDefault(stage, List.of());

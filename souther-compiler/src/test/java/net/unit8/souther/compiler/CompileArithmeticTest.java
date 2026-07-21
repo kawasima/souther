@@ -25,7 +25,7 @@ class CompileArithmeticTest {
 
         Object in = Codecs.decoded(loader, "demo.In", 5L);
 
-        Object compute = loader.loadClass("demo.Compute").getConstructor().newInstance();
+        Object compute = loader.loadClass("demo.Compute" + "$Impl").getConstructor().newInstance();
         // apply returns the output case value directly (no Result wrapper)
         Object out = Codecs.apply(compute, in);
 

@@ -38,7 +38,7 @@ class CompileListLibTest {
                 }
                 """), getClass().getClassLoader());
 
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, decodeIn(loader, List.of(1L, 2L, 3L)));
 
         Map<?, ?> m = encode(loader, out);
@@ -66,7 +66,7 @@ class CompileListLibTest {
                 let run (i) = Out { xs = sort([]) }
                 """), getClass().getClassLoader());
 
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, decodeIn(loader, List.of()));
         assertEquals(List.of(), ((Map<?, ?>) Codecs.encode(loader, "demo.Out", out)).get("xs"));
     }
@@ -95,7 +95,7 @@ class CompileListLibTest {
                 """), getClass().getClassLoader());
 
         Object in = Codecs.decoded(loader, "demo.In", Map.of("tags", List.of("gamma", "alpha", "beta")));
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, in);
 
         Map<?, ?> m = encode(loader, out);
@@ -121,7 +121,7 @@ class CompileListLibTest {
                 let run (i) = Out { ys = distinct(i.ns) }
                 """), getClass().getClassLoader());
 
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, decodeIn(loader, List.of(3L, 1L, 3L, 2L, 1L)));
         assertEquals(List.of(3L, 1L, 2L), encode(loader, out).get("ys"));
     }
@@ -146,7 +146,7 @@ class CompileListLibTest {
                 }
                 """), getClass().getClassLoader());
 
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, decodeIn(loader, List.of(50L, 200L, 10L, 300L, 100L)));
         Map<?, ?> m = encode(loader, out);
         assertEquals(List.of(200L, 300L, 100L), m.get("big"));
@@ -177,7 +177,7 @@ class CompileListLibTest {
                 }
                 """), getClass().getClassLoader());
 
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, decodeIn(loader, List.of(3L, -1L, 5L, -2L, 8L)));
         Map<?, ?> m = encode(loader, out);
         assertEquals(2L, m.get("groups"), "two buckets: pos and neg");
@@ -205,7 +205,7 @@ class CompileListLibTest {
                 }
                 """), getClass().getClassLoader());
 
-        Object run = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object run = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Map<?, ?> m = encode(loader, Codecs.apply(run, decodeIn(loader, List.of(3L, 9L, 1L, 7L))));
         assertEquals(9L, m.get("hi"));
         assertEquals(1L, m.get("lo"));
@@ -236,7 +236,7 @@ class CompileListLibTest {
                 }
                 """), getClass().getClassLoader());
 
-        Object run = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object run = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Map<?, ?> hit = encode(loader, Codecs.apply(run, decodeIn(loader, List.of(3L, 50L, 200L, 400L))));
         assertEquals(200L, hit.get("firstBig"), "the first element >= 100, in order");
         assertEquals(true, hit.get("found"));
@@ -263,7 +263,7 @@ class CompileListLibTest {
                 }
                 """), getClass().getClassLoader());
 
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, decodeIn(loader, List.of(3L, 1L, 4L, 1L, 5L)));
         assertEquals(List.of(5L, 4L, 3L, 1L, 1L), encode(loader, out).get("byNegation"));
     }

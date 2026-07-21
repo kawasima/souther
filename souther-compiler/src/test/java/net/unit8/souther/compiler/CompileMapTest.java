@@ -50,7 +50,7 @@ class CompileMapTest {
         Result<?> r = Codecs.decode(loader, "demo.Scores", Map.of("byName", Map.of("a", 7L)));
         assertTrue(r instanceof Ok);
         Object scores = ((Ok<?>) r).value();
-        Object behavior = loader.loadClass("demo.LookupA").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.LookupA" + "$Impl").getConstructor().newInstance();
         Object answer = Codecs.apply(behavior, scores);
 
         Map<?, ?> out = (Map<?, ?>) Codecs.encode(loader, "demo.Answer", answer);

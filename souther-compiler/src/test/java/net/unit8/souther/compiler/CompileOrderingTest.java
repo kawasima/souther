@@ -56,7 +56,7 @@ class CompileOrderingTest {
                 Map.entry("t1", LocalDateTime.parse("2026-07-18T10:00:00")),
                 Map.entry("t2", LocalDateTime.parse("2026-07-18T09:00:00"))));
 
-        Object out = Codecs.apply(loader.loadClass("demo.Run").getConstructor().newInstance(), in);
+        Object out = Codecs.apply(loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance(), in);
         Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals(true, m.get("decEqByValue"), "1.50 >= 1.5 (scale ignored)");
         assertEquals(false, m.get("decLt"), "1.50 is not < 1.5");

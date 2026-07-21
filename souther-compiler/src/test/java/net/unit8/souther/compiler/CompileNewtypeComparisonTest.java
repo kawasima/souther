@@ -36,7 +36,7 @@ class CompileNewtypeComparisonTest {
                 """ + body;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(model), getClass().getClassLoader());
         Object m = Codecs.decoded(loader, "demo.見積", Map.of("額", amount, "予算", budget));
-        Object 判定 = loader.loadClass("demo.判定").getConstructor().newInstance();
+        Object 判定 = loader.loadClass("demo.判定" + "$Impl").getConstructor().newInstance();
         Object r = 判定.getClass().getMethod("apply", Object.class).invoke(判定, m);
         return r.getClass().getName();
     }

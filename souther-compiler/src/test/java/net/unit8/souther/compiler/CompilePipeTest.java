@@ -41,7 +41,7 @@ class CompilePipeTest {
     @Test
     void composesDependencyFreeBehaviors() throws Exception {
         BytesClassLoader loader = loader();
-        Object ab = loader.loadClass("demo.Ab").getConstructor().newInstance();
+        Object ab = loader.loadClass("demo.Ab" + "$Impl").getConstructor().newInstance();
         // apply returns the output case value directly
         Object out = Codecs.apply(ab, decode(loader, "Wrap", "hi"));
 
@@ -57,7 +57,7 @@ class CompilePipeTest {
         Object mid = Codecs.decoded(loader, "demo.Mid", "hello");
         Behavior<Object, Object> fetch = w -> mid;
 
-        Object handle = loader.loadClass("demo.Handle")
+        Object handle = loader.loadClass("demo.Handle" + "$Impl")
                 .getConstructor(Behavior.class).newInstance(fetch);
         Object out = Codecs.apply(handle, decode(loader, "Wrap", "ignored"));
 
@@ -128,7 +128,7 @@ class CompilePipeTest {
                 behavior rejectAndSendBack = reject >-> sendBack
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
-        Class<?> flow = loader.loadClass("demo.RejectAndSendBack");
+        Class<?> flow = loader.loadClass("demo.RejectAndSendBack$Impl");
         // the pipeline takes what its first stage takes, so it is not a one-input Behavior
         var apply = flow.getMethod("apply", Object.class, Object.class);
 

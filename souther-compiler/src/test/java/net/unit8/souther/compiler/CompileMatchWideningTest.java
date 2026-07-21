@@ -42,7 +42,7 @@ class CompileMatchWideningTest {
                 new BytesClassLoader(Compiler.compile(MODULE), CompileMatchWideningTest.class.getClassLoader());
         Object b = Codecs.decoded(loader, "demo.Both", Map.of("type", "B", "v", 7L));
 
-        Object pick = loader.loadClass("demo.Pick").getConstructor().newInstance();
+        Object pick = loader.loadClass("demo.Pick" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(pick, b);
 
         // the B case produced an OutB { b: 7 }; OutB is a single-Int-field newtype, so it encodes bare

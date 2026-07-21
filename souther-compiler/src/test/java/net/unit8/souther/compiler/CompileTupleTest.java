@@ -29,7 +29,7 @@ class CompileTupleTest {
                 """.formatted(body);
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
         Object in = Codecs.decoded(loader, "demo.In", Map.of("x", x, "y", y));
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, in);
         return (Long) ((Map<?, ?>) Codecs.encode(loader, "demo.Out", out)).get("r");
     }
@@ -140,7 +140,7 @@ class CompileTupleTest {
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
         Object in = Codecs.decoded(loader, "demo.In", Map.of("ns", java.util.List.of(1L, 2L, 3L)));
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, in);
         Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals(6L, m.get("total"));

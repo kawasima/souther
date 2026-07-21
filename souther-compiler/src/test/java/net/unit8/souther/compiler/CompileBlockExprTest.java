@@ -25,7 +25,7 @@ class CompileBlockExprTest {
 
     private long apply(BytesClassLoader loader, long in) throws Exception {
         Object n = Codecs.decoded(loader, "demo.N", in);
-        Object f = loader.loadClass("demo.F").getConstructor().newInstance();
+        Object f = loader.loadClass("demo.F" + "$Impl").getConstructor().newInstance();
         Object r = Codecs.apply(f, n);
         return (long) Codecs.encode(loader, "demo.N", r);
     }

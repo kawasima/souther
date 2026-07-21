@@ -53,7 +53,7 @@ class CompileCallTest {
         // the injected required behavior returns a Member value directly
         Behavior<Object, Object> findMember = id -> ((Ok<?>) memberDecoder.decode(
                 Map.of("id", "m-1"), Path.ROOT)).value();
-        Object handle = loader.loadClass("demo.Handle").getConstructor(Behavior.class).newInstance(findMember);
+        Object handle = loader.loadClass("demo.Handle" + "$Impl").getConstructor(Behavior.class).newInstance(findMember);
 
         Object r = Codecs.apply(handle, decode(loader, "Id", "q"));
         Map<?, ?> resp = (Map<?, ?>) Codecs.encode(loader, "demo.Resp", r);

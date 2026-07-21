@@ -609,7 +609,9 @@ public final class ExampleVerifier {
     // --- invoke the behavior ------------------------------------------------------------------
 
     private Object invoke(Ast.SpecBehavior spec, Object[] args, Object[] fakes) {
-        String className = module.name() + "." + behaviorClass(spec.name());
+        // The public name is now an interface; the fields, constructor and erased apply live on its
+        // $Impl (spec 19.8). Instantiate and call apply on the $Impl.
+        String className = module.name() + "." + behaviorClass(spec.name()) + "$Impl";
         try {
             Class<?> c = loader.loadClass(className);
             Object instance;

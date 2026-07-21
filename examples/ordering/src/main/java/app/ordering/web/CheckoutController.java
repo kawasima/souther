@@ -14,16 +14,15 @@ import example.cart.Cart;
 import example.cart.EmptyCart;
 import example.cart.InvalidQuantity;
 import example.cart.PricedCart;
-import example.cart.Quote結果;
+import example.cart.Quote;
 import example.ordering.ConfirmedOrder;
 import example.ordering.OutOfStock;
-import example.ordering.Place結果;
+import example.ordering.Place;
 
 import net.unit8.raoh.Err;
 import net.unit8.raoh.Issue;
 import net.unit8.raoh.Ok;
 import net.unit8.raoh.Path;
-import net.unit8.souther.runtime.Behavior;
 
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.ResponseEntity;
@@ -55,12 +54,12 @@ import java.util.Map;
 @RequestMapping("/checkout")
 public final class CheckoutController {
 
-    private final Behavior<Cart, Quote結果> quote;
-    private final Behavior<PricedCart, Place結果> place;
+    private final Quote quote;
+    private final Place place;
     private final TransactionTemplate tx;
 
-    public CheckoutController(Behavior<Cart, Quote結果> quote,
-                              Behavior<PricedCart, Place結果> place,
+    public CheckoutController(Quote quote,
+                              Place place,
                               TransactionTemplate tx) {
         this.quote = quote;
         this.place = place;

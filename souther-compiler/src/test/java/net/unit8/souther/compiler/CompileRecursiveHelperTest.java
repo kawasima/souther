@@ -40,7 +40,7 @@ class CompileRecursiveHelperTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(ORG), getClass().getClassLoader());
         Object e = Codecs.decoded(loader, "demo.Employee", employee);
 
-        Object behavior = loader.loadClass("demo.MeasureDepth").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.MeasureDepth" + "$Impl").getConstructor().newInstance();
         Object depth = Codecs.apply(behavior, e);
 
         return (long) Codecs.encode(loader, "demo.Depth", depth);
@@ -91,7 +91,7 @@ class CompileRecursiveHelperTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MUTUAL), getClass().getClassLoader());
         Object n = Codecs.decoded(loader, "demo.N", 5L);
 
-        Object behavior = loader.loadClass("demo.CountHops").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.CountHops" + "$Impl").getConstructor().newInstance();
         Object steps = Codecs.apply(behavior, n);
 
         assertEquals(5L, (long) Codecs.encode(loader, "demo.Steps", steps));
@@ -172,7 +172,7 @@ class CompileRecursiveHelperTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
         Object e = Codecs.decoded(loader, "demo.E", Map.of("name", "root"));
 
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object tag = Codecs.apply(behavior, e);
 
         assertEquals("root", Codecs.encode(loader, "demo.Tag", tag));

@@ -35,7 +35,7 @@ class CompileOptionMatchTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
         Object trip = Codecs.decoded(loader, "demo.Trip", tripObject);
 
-        Object behavior = loader.loadClass("demo.ApproverLabel").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.ApproverLabel" + "$Impl").getConstructor().newInstance();
         Object label = Codecs.apply(behavior, trip);
 
         // Label is a single-field newtype, so its encoder yields the bare String.

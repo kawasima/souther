@@ -36,7 +36,7 @@ class CompileMatchTest {
     private Object run(BytesClassLoader loader, Map<String, Object> contactInput) throws Exception {
         Object contact = Codecs.decoded(loader, "demo.Contact", contactInput);
 
-        Object behavior = loader.loadClass("demo.ContactValue").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.ContactValue" + "$Impl").getConstructor().newInstance();
         Object label = Codecs.apply(behavior, contact);
 
         // Label is a single-field newtype, so its encoder yields the bare String.

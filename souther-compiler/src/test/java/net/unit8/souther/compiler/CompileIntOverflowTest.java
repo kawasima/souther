@@ -32,7 +32,7 @@ class CompileIntOverflowTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(module(bodyExpr)),
                 CompileIntOverflowTest.class.getClassLoader());
         Object in = Codecs.decoded(loader, "demo.In", input);
-        Object compute = loader.loadClass("demo.Compute").getConstructor().newInstance();
+        Object compute = loader.loadClass("demo.Compute" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(compute, in);
         return Codecs.encode(loader, "demo.Out", out);
     }

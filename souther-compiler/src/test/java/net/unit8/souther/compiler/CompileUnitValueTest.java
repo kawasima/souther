@@ -29,7 +29,7 @@ class CompileUnitValueTest {
     private List<?> marks(boolean on) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
         Object flag = Codecs.decoded(loader, "demo.Flag", on);   // Flag is a single-Bool newtype: bare bool
-        return (List<?>) Codecs.apply(loader.loadClass("demo.Marks")
+        return (List<?>) Codecs.apply(loader.loadClass("demo.Marks" + "$Impl")
                 .getConstructor().newInstance(), flag);
     }
 

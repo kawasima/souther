@@ -32,7 +32,7 @@ class CompileDecimalMathTest {
         Object a = Codecs.decoded(loader, "demo.Price", new BigDecimal("1.5"));
         Object b = Codecs.decoded(loader, "demo.Price", new BigDecimal("2.25"));
 
-        Object behavior = loader.loadClass("demo.MakeQuote").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.MakeQuote" + "$Impl").getConstructor().newInstance();
         Object quote = behavior.getClass()
                 .getMethod("apply", Object.class, Object.class).invoke(behavior, a, b);
 

@@ -40,7 +40,7 @@ class CompileSetCodecTest {
 
         // the array has a duplicate "a" — the Set decoder drops it
         Object in = Codecs.decoded(loader, "demo.In", Map.of("tags", List.of("a", "b", "a", "c")));
-        Object behavior = loader.loadClass("demo.Run").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, in);
 
         Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);

@@ -61,7 +61,7 @@ class CompileBusinessTripTest {
     }
 
     private Object submit(BytesClassLoader loader, Object draft, String at) throws Exception {
-        Object 提出する = loader.loadClass("example.businesstrip.提出する").getConstructor().newInstance();
+        Object 提出する = loader.loadClass("example.businesstrip.提出する" + "$Impl").getConstructor().newInstance();
         return 提出する.getClass()
                 .getMethod("apply", Object.class, Object.class)
                 .invoke(提出する, draft, at);

@@ -48,7 +48,7 @@ class CompileFunctionParamTest {
     @Test
     void functionTypedParamPassedToCombinator() throws Exception {
         BytesClassLoader loader = loader();
-        Object check = loader.loadClass("demo.Check").getDeclaredConstructor().newInstance();
+        Object check = loader.loadClass("demo.Check" + "$Impl").getDeclaredConstructor().newInstance();
 
         assertEquals(Boolean.TRUE, run(loader, check, List.of(1L, 2L, 3L)).get("ok"));
         assertEquals(Boolean.FALSE, run(loader, check, List.of(1L, -2L, 3L)).get("ok"));

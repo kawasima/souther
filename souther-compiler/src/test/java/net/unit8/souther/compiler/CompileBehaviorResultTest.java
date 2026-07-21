@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Spec 19.8: a behavior whose output is an anonymous union (`-> A | B`) gets a generated
- * sealed interface {@code <behavior名>結果} whose {@code permits} are the union cases, and every
+ * sealed interface {@code <behavior名>Result} whose {@code permits} are the union cases, and every
  * case data implements it.
  */
 class CompileBehaviorResultTest {
@@ -35,9 +35,9 @@ class CompileBehaviorResultTest {
     @Test
     void anonymousUnionOutputGeneratesASealedResultInterface() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        Class<?> result = loader.loadClass("demo.Classify結果");
-        assertTrue(result.isInterface(), "結果 must be an interface");
-        assertTrue(result.isSealed(), "結果 must be sealed");
+        Class<?> result = loader.loadClass("demo.ClassifyResult");
+        assertTrue(result.isInterface(), "Result must be an interface");
+        assertTrue(result.isSealed(), "Result must be sealed");
         Set<String> permitted = Arrays.stream(result.getPermittedSubclasses())
                 .map(Class::getName).collect(Collectors.toSet());
         assertEquals(Set.of("demo.Cheap", "demo.Pricey"), permitted);
@@ -46,7 +46,7 @@ class CompileBehaviorResultTest {
     @Test
     void eachCaseImplementsTheResultInterface() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        Class<?> result = loader.loadClass("demo.Classify結果");
+        Class<?> result = loader.loadClass("demo.ClassifyResult");
         assertTrue(result.isAssignableFrom(loader.loadClass("demo.Cheap")));
         assertTrue(result.isAssignableFrom(loader.loadClass("demo.Pricey")));
     }
@@ -54,7 +54,7 @@ class CompileBehaviorResultTest {
     @Test
     void implementedBehaviorDeclaresItsGenericInputAndOutcomeTypes() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        assertBehaviorSignature(loader.loadClass("demo.Classify"), "demo.Draft", "demo.Classify結果");
+        assertBehaviorSignature(loader.loadClass("demo.Classify"), "demo.Draft", "demo.ClassifyResult");
     }
 
     private static final String INJECTED = """
@@ -70,11 +70,11 @@ class CompileBehaviorResultTest {
             """;
 
     /** Spec 19.8/24: the abstract base a Java implementation extends declares the result interface
-     *  as its {@code Behavior} return type, so the author writes {@code findMember結果 apply(Id)}. */
+     *  as its {@code Behavior} return type, so the author writes {@code findMemberResult apply(Id)}. */
     @Test
     void injectedBaseDeclaresTheResultInterfaceAsItsGenericReturnType() throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(INJECTED), getClass().getClassLoader());
-        assertBehaviorSignature(loader.loadClass("demo.FindMember"), "demo.Id", "demo.FindMember結果");
+        assertBehaviorSignature(loader.loadClass("demo.FindMember"), "demo.Id", "demo.FindMemberResult");
     }
 
     private static void assertBehaviorSignature(Class<?> behavior, String inputName, String outputName) {

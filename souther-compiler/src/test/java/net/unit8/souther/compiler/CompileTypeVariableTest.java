@@ -48,7 +48,7 @@ class CompileTypeVariableTest {
                 """;
         BytesClassLoader loader = new BytesClassLoader(compileCore(core), getClass().getClassLoader());
         Object in = Codecs.decoded(loader, "souther.gen.In", Map.of("v", 7L));
-        Object out = Codecs.apply(loader.loadClass("souther.gen.Echo")
+        Object out = Codecs.apply(loader.loadClass("souther.gen.Echo" + "$Impl")
                 .getConstructor().newInstance(), in);
         assertEquals(7L, ((Map<?, ?>) Codecs.encode(loader, "souther.gen.Out", out)).get("v"),
                 "identity returns its argument unchanged");

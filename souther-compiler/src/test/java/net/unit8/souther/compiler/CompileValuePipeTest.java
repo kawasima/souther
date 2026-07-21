@@ -32,7 +32,7 @@ class CompileValuePipeTest {
                 let run (x) = %s
                 """.formatted(body)), getClass().getClassLoader());
         Object in = Codecs.decoded(loader, "demo.In", Map.of("v", v));
-        return (Long) Codecs.apply(loader.loadClass("demo.Run")
+        return (Long) Codecs.apply(loader.loadClass("demo.Run" + "$Impl")
                 .getConstructor().newInstance(), in);
     }
 
@@ -71,7 +71,7 @@ class CompileValuePipeTest {
                 let run (x) = x.ns |> List.sum
                 """), getClass().getClassLoader());
         Object in = Codecs.decoded(loader, "demo.In", Map.of("ns", List.of(1L, 2L, 3L)));
-        long r = (Long) Codecs.apply(loader.loadClass("demo.Run")
+        long r = (Long) Codecs.apply(loader.loadClass("demo.Run" + "$Impl")
                 .getConstructor().newInstance(), in);
         assertEquals(6L, r);
     }

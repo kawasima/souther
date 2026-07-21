@@ -40,7 +40,7 @@ class CompileOrPatternTest {
     void anOrPatternRunsOneBodyForEveryAlternative() throws Exception {
         BytesClassLoader loader =
                 new BytesClassLoader(Compiler.compile(ROUTING), CompileOrPatternTest.class.getClassLoader());
-        Object classify = loader.loadClass("demo.Classify").getConstructor().newInstance();
+        Object classify = loader.loadClass("demo.Classify" + "$Impl").getConstructor().newInstance();
 
         // A and B take the same (Lo) case; C takes the other (Hi) — the or-pattern fires for both A and B
         assertEquals("demo.Lo", apply(loader, classify, "A").getClass().getName());

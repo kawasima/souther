@@ -23,7 +23,7 @@ class CompileIfTest {
 
     private String classify(BytesClassLoader loader, long n) throws Exception {
         Object in = Codecs.decoded(loader, "demo.In", n);
-        Object behavior = loader.loadClass("demo.Classify").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.Classify" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(behavior, in);
         // Out is a single-field newtype, so its encoder yields the bare String.
         return (String) Codecs.encode(loader, "demo.Out", out);

@@ -29,7 +29,7 @@ class CompileDivideTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
         Object pair = Codecs.decoded(loader, "demo.Pair", Map.of("a", a, "b", b));
         Object outcome = Codecs.apply(
-                loader.loadClass("demo.DivideThem").getConstructor().newInstance(), pair);
+                loader.loadClass("demo.DivideThem" + "$Impl").getConstructor().newInstance(), pair);
         return (Map<?, ?>) Codecs.encode(loader, "demo.Outcome", outcome);
     }
 

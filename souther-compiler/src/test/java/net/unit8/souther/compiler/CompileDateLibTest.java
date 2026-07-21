@@ -53,7 +53,7 @@ class CompileDateLibTest {
                 "start", LocalDate.parse("2026-07-19"),
                 "at", LocalDateTime.parse("2026-07-19T10:30:45")));
         Object out = Codecs.apply(
-                loader.loadClass("demo.Run").getConstructor().newInstance(), in);
+                loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance(), in);
 
         Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
         assertEquals("2026-07-22", m.get("plusDays"));

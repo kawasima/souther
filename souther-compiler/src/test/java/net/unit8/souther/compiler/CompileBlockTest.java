@@ -39,7 +39,7 @@ class CompileBlockTest {
 
     private Object run(String name, Object arg) throws Exception {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
-        Object b = loader.loadClass("demo." + name).getConstructor().newInstance();
+        Object b = loader.loadClass("demo." + name + "$Impl").getConstructor().newInstance();
         return Codecs.apply(b, arg);
     }
 

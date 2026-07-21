@@ -31,7 +31,7 @@ class CompileListGetTest {
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(MODULE), getClass().getClassLoader());
         Object bag = Codecs.decoded(loader, "demo.Bag", Map.of("items", List.of(items)));
 
-        Object behavior = loader.loadClass("demo.FirstValue").getConstructor().newInstance();
+        Object behavior = loader.loadClass("demo.FirstValue" + "$Impl").getConstructor().newInstance();
         Object label = Codecs.apply(behavior, bag);
 
         // Label is a single-field newtype, so its encoder yields the bare String.

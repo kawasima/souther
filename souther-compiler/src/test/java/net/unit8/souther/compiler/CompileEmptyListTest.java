@@ -24,7 +24,7 @@ class CompileEmptyListTest {
     }
 
     private Map<?, ?> run(BytesClassLoader loader, Object in) throws Exception {
-        Object r = Codecs.apply(loader.loadClass("demo.Work").getDeclaredConstructor().newInstance(), in);
+        Object r = Codecs.apply(loader.loadClass("demo.Work" + "$Impl").getDeclaredConstructor().newInstance(), in);
         return (Map<?, ?>) Codecs.encode(loader, "demo.Out", r);
     }
 

@@ -6,13 +6,10 @@ import app.ordering.JooqReserveStock;
 import example.cart.Cart;
 import example.cart.PricedCart;
 import example.cart.Quote;
-import example.cart.Quote結果;
 import example.ordering.Place;
-import example.ordering.Place結果;
 import example.ordering.RecordOrder;
 import example.ordering.ReserveStock;
 
-import net.unit8.souther.runtime.Behavior;
 
 import org.jooq.DSLContext;
 import org.jooq.conf.RenderQuotedNames;
@@ -55,8 +52,8 @@ public class OrderingConfig {
 
     /** cart's pricing behavior. It is pure (no requires), so it needs no injection. */
     @Bean
-    public Behavior<Cart, Quote結果> quote() {
-        return new Quote();
+    public Quote quote() {
+        return Quote.of();
     }
 
     // --- the injected outside-world implementations (DSLContext is injected by autoconfig) ---
@@ -76,7 +73,7 @@ public class OrderingConfig {
      * after quote prices the cart.
      */
     @Bean
-    public Behavior<PricedCart, Place結果> place(RecordOrder recordOrder, ReserveStock reserveStock) {
+    public Place place(RecordOrder recordOrder, ReserveStock reserveStock) {
         return Place.bind(recordOrder, reserveStock);
     }
 }

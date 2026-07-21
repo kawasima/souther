@@ -38,7 +38,7 @@ class CompileModuleBehaviorTest {
 
         Object five = Codecs.decoded(loader, "m.a.N", 5L);
 
-        Object twice = loader.loadClass("m.b.Twice").getConstructor().newInstance();
+        Object twice = loader.loadClass("m.b.Twice" + "$Impl").getConstructor().newInstance();
         Object r = Codecs.apply(twice, five);
 
         // inc twice: 5 -> 6 -> 7. N is a newtype, so its encoder yields the bare Long.

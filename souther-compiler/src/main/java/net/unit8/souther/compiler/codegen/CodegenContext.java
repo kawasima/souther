@@ -65,6 +65,14 @@ final class CodegenContext {
         return ClassDesc.of(typePackage.getOrDefault(name, pkg) + "." + behaviorClass(name));
     }
 
+    /** The implementation class behind a fn/pipe behavior's public interface: {@code <名>$Impl}.
+     * The interface (named {@link #behaviorClass}) is what Java code declares; the {@code $Impl}
+     * holds the fields, constructor and {@code apply}, and is what a pipeline instantiates. Injected
+     * behaviors have no {@code $Impl} (their abstract base is the named class). */
+    ClassDesc cdBehaviorImpl(String name) {
+        return ClassDesc.of(typePackage.getOrDefault(name, pkg) + "." + behaviorImplClass(name));
+    }
+
     /**
      * The generated class simple-name for a behavior: its name with the first letter capitalized
      * (spec 19.5). A Japanese leading character has no upper-case form, so a Japanese-named behavior
@@ -77,6 +85,18 @@ final class CodegenContext {
             return name;
         }
         return Character.toUpperCase(name.charAt(0)) + name.substring(1);
+    }
+
+    /** The {@code $Impl} simple-name for a fn/pipe behavior (see {@link #cdBehaviorImpl}). */
+    static String behaviorImplClass(String name) {
+        return behaviorClass(name) + "$Impl";
+    }
+
+    /** The generated result-union simple-name for a behavior with an anonymous-union output
+     * (spec 19.8): {@code <名>Result}. Only the union case gets one; a named-sum or single-case
+     * output uses that type directly. */
+    static String behaviorResultClass(String name) {
+        return behaviorClass(name) + "Result";
     }
 
     /** The JVM class for an output case: the built-in {@code DivisionByZero}, otherwise the
@@ -113,13 +133,13 @@ final class CodegenContext {
 
     /**
      * The single reference class a behavior's input or output success type maps to, for a generic
-     * {@code Behavior<In, Out>} signature: the {@code <名>結果} interface for an anonymous union, the
+     * {@code Behavior<In, Out>} signature: the {@code <名>Result} interface for an anonymous union, the
      * named data/sum for a single case, the boxed class for a primitive. Returns {@code null} for a
      * list/option/map, which has no single reference class to name here.
      */
     ClassDesc refTypeOrNull(Type t, String behaviorName) {
         if (t instanceof Type.Union) {
-            return cd(behaviorClass(behaviorName) + "結果");
+            return cd(behaviorResultClass(behaviorName));
         }
         if (t instanceof Type.Ref r) {
             return cd(r.name());

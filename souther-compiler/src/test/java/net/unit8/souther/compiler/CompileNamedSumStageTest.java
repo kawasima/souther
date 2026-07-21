@@ -42,7 +42,7 @@ class CompileNamedSumStageTest {
         // A is a case of AB, so it decodes from an object; v > 0 makes classify pass it through
         Object a = Codecs.decoded(loader, "demo.A", java.util.Map.of("v", 5L));
 
-        Object pipe = loader.loadClass("demo.Pipe").getConstructor().newInstance();
+        Object pipe = loader.loadClass("demo.Pipe" + "$Impl").getConstructor().newInstance();
         Object out = Codecs.apply(pipe, a);
 
         // A routed into handleA, producing OutA { a: 5 }

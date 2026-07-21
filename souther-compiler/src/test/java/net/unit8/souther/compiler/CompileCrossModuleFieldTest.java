@@ -40,7 +40,7 @@ class CompileCrossModuleFieldTest {
         Object req = Codecs.decoded(loader, "b.申請",
                 Map.of("申請者", Map.of("id", "e-1", "上長ID", "e-2")));
 
-        Object beh = loader.loadClass("b.上長IDを得る").getConstructor().newInstance();
+        Object beh = loader.loadClass("b.上長IDを得る" + "$Impl").getConstructor().newInstance();
         Object r = Codecs.apply(beh, req);
 
         // 上長ID is 従業員ID (a newtype from module a); its encoder yields the bare String.
@@ -71,7 +71,7 @@ class CompileCrossModuleFieldTest {
 
         Object base = Codecs.decoded(loader, "base_m.Base", Map.of("a", "A", "b", "B"));
 
-        Object beh = loader.loadClass("derived_m.拡張する").getConstructor().newInstance();
+        Object beh = loader.loadClass("derived_m.拡張する" + "$Impl").getConstructor().newInstance();
         Object r = Codecs.apply(beh, base);
 
         Map<?, ?> out = (Map<?, ?>) Codecs.encode(loader, "derived_m.Derived", r);
