@@ -157,6 +157,36 @@ final class JvmTypes {
         return descs.toArray(new ClassDesc[0]);
     }
 
+    /**
+     * The generic type signature for a container-typed field or accessor
+     * ({@code List<E>} / {@code Set<E>} / {@code Map<K,V>} / {@code Option<E>}), or {@code null} for a
+     * type whose raw descriptor already names it fully (a scalar, a data reference, a union). Attached
+     * as a {@code Signature} attribute so a Java consumer recovers the element type instead of a raw
+     * {@code List} it has to cast out of.
+     */
+    static String genericSig(Type type, CodegenContext ctx) {
+        return switch (type) {
+            case Type.ListOf l -> "Ljava/util/List<" + refSig(l.element(), ctx) + ">;";
+            case Type.SetOf s -> "Ljava/util/Set<" + refSig(s.element(), ctx) + ">;";
+            case Type.OptionOf o -> "Lnet/unit8/souther/runtime/Option<" + refSig(o.element(), ctx) + ">;";
+            case Type.MapOf m -> "Ljava/util/Map<" + refSig(m.key(), ctx) + refSig(m.value(), ctx) + ">;";
+            default -> null;
+        };
+    }
+
+    /**
+     * An element type's signature as a reference (generic arguments are never primitive, so a
+     * primitive element takes its boxed class — {@code Int} is {@code Long}, {@code Bool} is
+     * {@code Boolean}). A nested container recurses ({@code List<List<E>>}); any other type's raw
+     * descriptor is already a reference.
+     */
+    private static String refSig(Type element, CodegenContext ctx) {
+        String nested = genericSig(element, ctx);
+        if (nested != null) return nested;
+        ClassDesc boxed = boxedPrim(element);
+        return (boxed != null ? boxed : jvmType(element, ctx)).descriptorString();
+    }
+
     /** Unboxes/casts the {@code Object} on the stack to {@code type}'s JVM form and stores it in
      * {@code slot}. */
     static void unbox(CodeBuilder code, Type type, int slot, CodegenContext ctx) {

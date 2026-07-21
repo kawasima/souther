@@ -7,7 +7,10 @@ import net.unit8.souther.compiler.check.TypeChecker;
 import java.lang.classfile.ClassBuilder;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.Label;
+import java.lang.classfile.MethodSignature;
+import java.lang.classfile.Signature;
 import java.lang.classfile.attribute.PermittedSubclassesAttribute;
+import java.lang.classfile.attribute.SignatureAttribute;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDescs;
 import java.lang.constant.MethodTypeDesc;
@@ -56,7 +59,7 @@ final class ValueClassGen {
                 cb.withInterfaceSymbols(ifaces);
             }
             for (Map.Entry<String, Type> f : fields.entrySet()) {
-                cb.withField(f.getKey(), jvmType(f.getValue()), ClassFile.ACC_FINAL);
+                emitField(cb, f.getKey(), f.getValue());
             }
             emitCtor(cb, cdName, fields);
             emitValueEquality(cb, cdName, fields);
@@ -279,19 +282,36 @@ final class ValueClassGen {
         for (Map.Entry<String, Type> f : fields.entrySet()) {
             Type ft = f.getValue();
             ClassDesc fd = jvmType(ft);
-            cb.withMethodBody(f.getKey(), MethodTypeDesc.of(fd),
-                    ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL, code -> {
-                        code.aload(0);
-                        code.getfield(cdName, f.getKey(), fd);
-                        if (ft == Type.INT) {
-                            code.lreturn();
-                        } else if (ft == Type.BOOL) {
-                            code.ireturn();
-                        } else {
-                            code.areturn();
-                        }
+            String sig = JvmTypes.genericSig(ft, ctx);
+            cb.withMethod(f.getKey(), MethodTypeDesc.of(fd),
+                    ClassFile.ACC_PUBLIC | ClassFile.ACC_FINAL, mb -> {
+                        if (sig != null) mb.with(SignatureAttribute.of(MethodSignature.parseFrom("()" + sig)));
+                        mb.withCode(code -> {
+                            code.aload(0);
+                            code.getfield(cdName, f.getKey(), fd);
+                            if (ft == Type.INT) {
+                                code.lreturn();
+                            } else if (ft == Type.BOOL) {
+                                code.ireturn();
+                            } else {
+                                code.areturn();
+                            }
+                        });
                     });
         }
+    }
+
+    /**
+     * Emits a {@code final} backing field. A container field ({@code List}/{@code Set}/{@code Map}/
+     * {@code Option}) also gets a generic {@code Signature} so its element type survives to a Java
+     * reader; a field whose raw descriptor already names it fully gets none.
+     */
+    private void emitField(ClassBuilder cb, String name, Type type) {
+        String sig = JvmTypes.genericSig(type, ctx);
+        cb.withField(name, jvmType(type), fb -> {
+            fb.withFlags(ClassFile.ACC_FINAL);
+            if (sig != null) fb.with(SignatureAttribute.of(Signature.parseFrom(sig)));
+        });
     }
 
     /**
