@@ -11,6 +11,7 @@
 
     <name>Souther</name>
     <description>Souther: a JVM language that turns SMDD spec models into implementation models.</description>
+    <url>https://github.com/kawasima/souther</url>
 
     <licenses>
         <license>
@@ -20,6 +21,14 @@
         </license>
     </licenses>
 
+    <developers>
+        <developer>
+            <id>kawasima</id>
+            <name>kawasima</name>
+            <url>https://github.com/kawasima</url>
+        </developer>
+    </developers>
+
     <modules>
         <module>souther-runtime</module>
         <module>souther-syntax</module>
@@ -28,6 +37,13 @@
         <module>souther-lsp</module>
         <module>souther-cli</module>
     </modules>
+
+    <scm>
+        <connection>scm:git:https://github.com/kawasima/souther.git</connection>
+        <developerConnection>scm:git:git@github.com:kawasima/souther.git</developerConnection>
+        <url>https://github.com/kawasima/souther</url>
+        <tag>HEAD</tag>
+    </scm>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -94,4 +110,73 @@
             </plugins>
         </pluginManagement>
     </build>
+
+    <profiles>
+        <!-- Activate for a Central release: `mvn -Prelease deploy`. Attaches sources and
+             javadoc, GPG-signs every artifact, and publishes the reactor to the Sonatype
+             Central Portal (autoPublish=false, so the bundle is reviewed in the Portal before
+             release). Normal build/test is untouched. -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>3.3.1</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>3.11.2</version>
+                        <configuration>
+                            <doclint>none</doclint>
+                            <failOnError>false</failOnError>
+                            <quiet>true</quiet>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.7</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.7.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>false</autoPublish>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

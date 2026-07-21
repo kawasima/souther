@@ -94,4 +94,23 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- The really-executable jar is a distributable binary, not a library; keep it out of
+             the Central bundle (distribute via GitHub Releases instead). -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <configuration>
+                            <skipPublishing>true</skipPublishing>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
