@@ -39,7 +39,7 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <dependency><groupId>org.springframework</groupId><artifactId>spring-context</artifactId><version>7.0.8</version></dependency>
+            <dependency><groupId>org.springframework</groupId><artifactId>spring-context</artifactId><version>6.1.20</version></dependency>
             <dependency><groupId>org.springframework</groupId><artifactId>spring-tx</artifactId><version>7.0.8</version></dependency>
             <dependency><groupId>org.springframework</groupId><artifactId>spring-web</artifactId><version>7.0.8</version></dependency>
             <dependency><groupId>org.springframework</groupId><artifactId>spring-webmvc</artifactId><version>7.0.8</version></dependency>
