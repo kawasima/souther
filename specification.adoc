@@ -2029,7 +2029,7 @@ When a behavior's output is an anonymous union (`+-> 会員 | 会員なし+`), a
 ----
 // when findMember is -> 会員 | 会員なし (the behavior of §13.3 and chapter 24)
 sealed interface FindMemberResult permits 会員, 会員なし {}
-// 会員 and 会員なし implement it; the behavior interface FindMember extends Behavior<会員ID, FindMemberResult>
+// 会員 and 会員なし implement it; the injected behavior's abstract base FindMember implements Behavior<会員ID, FindMemberResult>
 ----
 
 There are two cases where it is not generated. If the output is a named sum data, that is itself a sealed interface (<<jvm-sum>>) and is the return type. If the output is a single case, that case type is the return type.
