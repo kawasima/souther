@@ -1212,7 +1212,7 @@ The type comes from the behavior. The `+let+` side only names its arguments, cor
 
 Arguments are the behavior's argument list followed by `+requires+` in declaration order. A `+let+` is the pre-injection function and a behavior's type is the post-injection type, so a `+let+` has as many more arguments as there are `+requires+` (<<requires>>). If `+requires+` is empty, both have the same arguments.
 
-A `+let+` with no corresponding behavior is a *helper*. Not being a domain behavior, it does not pollute the behavior list, cannot be placed in a `+>->+` stage, and does not appear in `+exposing+`. It writes its own type.
+A `+let+` with no corresponding behavior is a *helper*. Not being a domain behavior, it does not pollute the behavior list, cannot be placed in a `+>->+` stage, and does not appear in `+exposing+`. It states its own type, though a non-recursive helper may leave a value parameter's type to be inferred from its call sites (below).
 
 [,text]
 ----
@@ -1229,7 +1229,7 @@ The body is an expression. `+{ ... }+` is a block expression (<<block-expression
 ==== Rules
 
 * A `+let+` with a same-named behavior does not write argument types; the type comes from the behavior. A count mismatch is a compile error.
-* A `+let+` with no same-named behavior (a helper) MUST write argument types.
+* A helper (a `+let+` with no same-named behavior) states its own argument types, with one inference: a *non-recursive* helper is inline-expanded at each call site (spec 12.5), so a *value* parameter with no annotation takes its type from how it is called, and that type MUST agree at every call site — a helper is monomorphic (ADR-0050). A *function-typed* parameter MUST be written; a function cannot be inferred from a bare name at the call site. A parameter that no call site can type — an uncalled helper, or an argument bound outside the visible scope — MUST be annotated. A *recursive* helper is lowered to a method rather than inlined (below), so it writes all of its argument types.
 * A helper *may recurse* (self- and mutual recursion; ADR-0038). A non-recursive helper is inline-expanded at its call site; a recursive helper is not inlined but lowered to a method — self- and mutual calls become plain method calls. Traversal of self-referential data that `+fold+` cannot write (climbing the manager chain to the root, counting tree depth) is written this way.
 * A recursive helper MUST *declare its return type* (above). Without a declaration it is a compile error.
 * A recursive helper MUST be *pure*: it MUST NOT call an injected behavior (`+requires+`). An effect touching the outside world is placed on the behavior that calls the helper.
@@ -2069,7 +2069,7 @@ Construct  FieldInit  Expression  Case  RawExpr  DecRef  Block
 
 Behavior definition nodes are two, corresponding to the two right-hand sides of <<behavior>>. `+SpecBehavior+` holds only input type, output type, and `+constructs+`, with no body. If a same-named `+FnDef+` exists it is the implementation; otherwise it is subject to Java injection (<<injected-behavior>>). `+PipeBehavior+` holds the sequence of stage names. It is itself the implementation, so it takes no `+FnDef+` and is not injected; its type is computed from the stages (<<type-routing>>). Composition vs. simple is distinguished by these two nodes, so later stages need not re-read the right-hand side to tell them apart.
 
-`+FnDef+` holds argument names and a body. If a same-named `+SpecBehavior+` exists the type comes from it; otherwise it is a helper `+let+` and holds its own argument types (<<fn-declaration>>).
+`+FnDef+` holds argument names and a body. If a same-named `+SpecBehavior+` exists the type comes from it; otherwise it is a helper `+let+` and holds its own argument types, except that a non-recursive helper may leave a value parameter's type to call-site inference (<<fn-declaration>>).
 
 A `+SumData+` case holds only a reference to a named data (<<sum-data>>). A `+...+` spread inherits taken-in fields and invariants flatly. `+DecoderDef+` / `+EncoderDef+` are filled by derivation from a data's shape (<<decoder>>, <<encoder>>). `+require+` and `+let+` are desugared, so they do not appear in the AST; they appear as an `+if+` and as block bindings (<<require>>, <<block-expression>>).
 
@@ -2605,7 +2605,7 @@ The language core is implemented. The following are future extensions, or curren
 * A human-readable Java-source backend, incremental compilation, LSP / IDE plugins, source maps. The Core layer (<<compiler-pipeline>>) is backend-neutral, so a Java-source backend can be written from it.
 * JSON Schema generation, Wasm output, JavaScript output, asynchronous outside-world dependencies.
 * Hand-written decoder / encoder syntax. A different key name, normalization, or business-specific discriminator is handled by a boundary-side custom codec (Java side).
-* Advanced (global) type inference. The current design is declarative: a behavior takes its type from the specification, and a helper writes its own type (<<fn-declaration>>).
+* Advanced (global) type inference. The current design is declarative: a behavior takes its type from the specification, and a helper states its own type — apart from the local call-site inference of a non-recursive helper's value parameters (<<fn-declaration>>).
 * Storing a function in a data field. A function cannot be mapped to an external representation, so placing one would create an exception to decoder / encoder derivation (<<decoder>>, <<encoder>>) (<<blocks>>).
 * Optimization that narrows generation by usage of input sources (currently decoders are generated for the sources a data's shape supports; <<codec-generation>>).
 * jOOQ flatness limit: a jOOQ `+Record+` row is flat, so a jOOQ decoder is not generated for a type with nested data / List / Map. Decoders for bare-value / Map / JSON sources are generated. This is a limit inherent to jOOQ rows and is largely permanent.

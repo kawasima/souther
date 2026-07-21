@@ -163,7 +163,7 @@ public final class TypeChecker {
         }
         // Helper fns (no matching behavior) are expanded inline at each call site (spec 12.5); a
         // helper is checked standalone against its own declared parameter types (spec 13.1).
-        checkHelpers(inliner, symbols, reqSigs, recursiveHelperFns);
+        checkHelpers(inliner, symbols, reqSigs, recursiveHelperFns, module);
         // What each recursive helper constructs, transitively — a recursive helper is not inlined, so
         // its constructions are attributed to the behavior that calls it (spec 12.5).
         Map<String, Set<String>> recHelperConstructs =
@@ -270,21 +270,46 @@ public final class TypeChecker {
      * repeated here.
      */
     private static void checkHelpers(HelperInliner inliner, Map<String, Ast.Def> symbols,
-                                     Map<String, ReqSig> reqSigs, Map<String, Type> recursiveHelperFns) {
+                                     Map<String, ReqSig> reqSigs, Map<String, Type> recursiveHelperFns,
+                                     Ast.Module module) {
+        // Call sites that inference reads argument types from, built once for the whole module (each is
+        // a top-level fn body with the environment its parameters bind).
+        List<CallScope> callScopes = inferenceScopes(module, symbols);
         for (Ast.FnDef h : inliner.helpers().values()) {
+            boolean recursive = recursiveHelperFns.containsKey(h.name());
             Map<String, Type> env = new HashMap<>();
-            for (Ast.FnParam p : h.params()) {
-                if (p.type() == null) {
-                    throw CompileException.of(
-                            Diagnostic.of(null, "check.helper.annotate").title("check.helper.title")
-                                    .at(p.pos(), p.name().length()).args(h.name(), p.name()).build(),
-                            "helper `let " + h.name() + "` must annotate parameter `" + p.name()
-                                    + "` with its type (spec 13.1)");
-                }
+            List<Integer> inferred = new ArrayList<>();
+            for (int i = 0; i < h.params().size(); i++) {
+                Ast.FnParam p = h.params().get(i);
                 rejectBuiltinShadow(p.name(), p.pos());
+                if (p.type() == null) {
+                    if (recursive) {
+                        // a recursive helper is lowered to a method, not inlined, so no call site
+                        // expands it — its parameter types cannot be inferred and must be declared.
+                        throw CompileException.of(
+                                Diagnostic.of(null, "check.helper.annotate").title("check.helper.title")
+                                        .at(p.pos(), p.name().length()).args(h.name(), p.name()).build(),
+                                "helper `let " + h.name() + "` must annotate parameter `" + p.name()
+                                        + "` with its type (spec 13.1)");
+                    }
+                    // a non-recursive helper is inline-expanded at each call site, so a value
+                    // parameter's type is inferred from how it is called (spec 13.1).
+                    inferred.add(i);
+                    continue;
+                }
                 env.put(p.name(), resolveParamType(p.type(), symbols));
             }
             rejectBuiltinShadowing(h.body());
+            if (!inferred.isEmpty()) {
+                // Infer the un-annotated value parameters from the helper's call sites, monomorphic
+                // across them, then complete the env and run the same standalone check an annotated
+                // helper gets — so a mis-declared return type or a mis-passed function argument in the
+                // body is caught here, at the helper, not only where it is later inlined.
+                Map<Integer, Type> types = inferHelperParams(h, inferred, callScopes, inliner, symbols, reqSigs);
+                for (int idx : inferred) {
+                    env.put(h.params().get(idx).name(), types.get(idx));
+                }
+            }
             Ast.Expr body = inliner.inline(h.body());
             // a helper that returns a function (e.g. `let adder (n) = (x) -> x + n`) has no application
             // here to infer the lambda's parameter types from; it is checked where it is inlined and
@@ -317,6 +342,159 @@ public final class TypeChecker {
                 }
             }
         }
+    }
+
+    /** A top-level fn body paired with the environment its parameters bind — a place inference reads
+     * a helper call's argument types from. */
+    private record CallScope(Ast.Expr body, Map<String, Type> env) {}
+
+    /**
+     * The call scopes inference reads argument types from: every top-level fn body with the
+     * environment its parameters bind. A behavior-backed fn takes its parameter types from its
+     * behavior; a helper fn from its own annotations, leaving an un-annotated parameter (itself still
+     * being inferred) out, so an argument that refers to one simply won't type. Built once per module.
+     */
+    private static List<CallScope> inferenceScopes(Ast.Module module, Map<String, Ast.Def> symbols) {
+        Map<String, Ast.SpecBehavior> specs = new HashMap<>();
+        for (Ast.BehaviorDef b : module.behaviors()) {
+            if (b instanceof Ast.SpecBehavior s) {
+                specs.put(s.name(), s);
+            }
+        }
+        List<CallScope> scopes = new ArrayList<>();
+        for (Ast.FnDef fn : module.fns()) {
+            Map<String, Type> base = new HashMap<>();
+            Ast.SpecBehavior spec = specs.get(fn.name());
+            if (spec != null) {
+                for (int i = 0; i < spec.params().size() && i < fn.params().size(); i++) {
+                    base.put(fn.params().get(i).name(), successType(spec.params().get(i).type(), symbols));
+                }
+            } else {
+                for (Ast.FnParam p : fn.params()) {
+                    if (p.type() != null) {
+                        base.put(p.name(), resolveParamType(p.type(), symbols));
+                    }
+                }
+            }
+            scopes.add(new CallScope(fn.body(), base));
+        }
+        return scopes;
+    }
+
+    /**
+     * Infers a non-recursive helper's un-annotated value parameters from its call sites and enforces
+     * that the helper is monomorphic. A parameter must be typeable at some call site (a helper with no
+     * call site, or one whose argument cannot be typed here, is asked to annotate), and its type must
+     * agree across all call sites (Int at one site and String at another is a compile error, not an
+     * inline-expanded polymorphism). Returns the inferred type of each parameter index; the caller
+     * completes the env and runs the standalone body check.
+     */
+    private static Map<Integer, Type> inferHelperParams(Ast.FnDef h, List<Integer> inferred,
+            List<CallScope> scopes, HelperInliner inliner, Map<String, Ast.Def> symbols,
+            Map<String, ReqSig> reqSigs) {
+        Map<Integer, Type> unified = new HashMap<>();
+        Map<Integer, Ast.Expr> untypeable = new HashMap<>();
+        for (CallScope scope : scopes) {
+            collectHelperCalls(scope.body(), scope.env(), h.name(), symbols, reqSigs, inliner, (call, env) -> {
+                if (call.args().size() != h.params().size()) {
+                    return;   // an arity mismatch is reported by the inliner
+                }
+                for (int idx : inferred) {
+                    Type t;
+                    try {
+                        t = typeOf(inliner.inline(call.args().get(idx)), env, null, symbols, reqSigs);
+                    } catch (CompileException ignored) {
+                        untypeable.putIfAbsent(idx, call.args().get(idx));
+                        continue;
+                    }
+                    Type prev = unified.get(idx);
+                    if (prev == null) {
+                        unified.put(idx, t);
+                    } else {
+                        Type wider = widerType(prev, t, symbols);
+                        if (wider == null) {
+                            Ast.FnParam p = h.params().get(idx);
+                            throw CompileException.of(
+                                    Diagnostic.of(null, "check.helper.conflict").title("check.helper.title")
+                                            .at(p.pos(), p.name().length())
+                                            .args(h.name(), p.name(), Type.show(prev), Type.show(t)).build(),
+                                    "helper `let " + h.name() + "` parameter `" + p.name()
+                                            + "` is used at conflicting types (" + Type.show(prev) + " and "
+                                            + Type.show(t) + "); a helper is monomorphic — annotate it");
+                        }
+                        unified.put(idx, wider);
+                    }
+                }
+            });
+        }
+        for (int idx : inferred) {
+            if (unified.containsKey(idx)) {
+                continue;
+            }
+            Ast.FnParam p = h.params().get(idx);
+            Ast.Expr sample = untypeable.get(idx);
+            boolean looksFunction = sample instanceof Ast.Block
+                    || (sample instanceof Ast.Var v
+                        && (inliner.helpers().containsKey(v.name()) || reqSigs.containsKey(v.name())));
+            if (looksFunction) {
+                // a function reached the parameter, but a function type cannot be inferred from a bare
+                // name or a lambda at the call site — the annotation is required (spec 13.1).
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.helper.fnparam").title("check.helper.title")
+                                .at(p.pos(), p.name().length()).args(h.name(), p.name()).build(),
+                        "helper `let " + h.name() + "` parameter `" + p.name() + "` receives a function;"
+                                + " a function-typed parameter must be annotated with its type (spec 13.1)");
+            }
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.helper.infer").title("check.helper.title")
+                            .at(p.pos(), p.name().length()).args(h.name(), p.name()).build(),
+                    "helper `let " + h.name() + "` parameter `" + p.name() + "` cannot be inferred from"
+                            + " its call sites; annotate it with its type (spec 13.1)");
+        }
+        return unified;
+    }
+
+    /**
+     * Walks an expression for calls to {@code target}, carrying the local environment so a call
+     * argument can be typed in scope. Only {@code let} bindings extend the environment here; other
+     * binding forms descend with the enclosing scope, so an argument that refers to a match binding or
+     * a lambda parameter simply won't type — the parameter then falls back to requiring an annotation.
+     */
+    private static void collectHelperCalls(Ast.Expr e, Map<String, Type> env, String target,
+            Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs, HelperInliner inliner,
+            java.util.function.BiConsumer<Ast.Call, Map<String, Type>> onCall) {
+        if (e instanceof Ast.Call call) {
+            if (call.fn().equals(target)) {
+                onCall.accept(call, env);
+            }
+            for (Ast.Expr a : call.args()) {
+                collectHelperCalls(a, env, target, symbols, reqs, inliner, onCall);
+            }
+            return;
+        }
+        if (e instanceof Ast.LetIn li) {
+            collectHelperCalls(li.value(), env, target, symbols, reqs, inliner, onCall);
+            Map<String, Type> inner = new HashMap<>(env);
+            try {
+                inner.put(li.name(), typeOf(inliner.inline(li.value()), env, null, symbols, reqs));
+            } catch (CompileException ignored) {
+                // an untypeable value leaves its name unbound; a later reference just won't infer.
+            }
+            collectHelperCalls(li.body(), inner, target, symbols, reqs, inliner, onCall);
+            return;
+        }
+        forEachChild(e, c -> collectHelperCalls(c, env, target, symbols, reqs, inliner, onCall));
+    }
+
+    /** The wider of two types when one is assignable to the other, else null (an irreconcilable pair). */
+    private static Type widerType(Type a, Type b, Map<String, Ast.Def> symbols) {
+        if (assignable(a, b, symbols)) {
+            return b;
+        }
+        if (assignable(b, a, symbols)) {
+            return a;
+        }
+        return null;
     }
 
     /**
@@ -420,7 +598,9 @@ public final class TypeChecker {
         List<Type> declared = new ArrayList<>();
         boolean hasFn = false;
         for (Ast.FnParam p : h.params()) {
-            Type pt = resolveParamType(p.type(), symbols);
+            // an unannotated value parameter is inferred from its call sites (spec 13.1); it is never a
+            // function parameter, so leave its slot null and treat it as a non-function argument here.
+            Type pt = p.type() == null ? null : resolveParamType(p.type(), symbols);
             declared.add(pt);
             hasFn |= pt instanceof Type.FnOf;
         }
@@ -431,7 +611,7 @@ public final class TypeChecker {
         // `List<'a>` collection — so the function parameters become concrete before the check.
         Map<String, Type> bind = new HashMap<>();
         for (int i = 0; i < declared.size(); i++) {
-            if (declared.get(i) instanceof Type.FnOf) {
+            if (declared.get(i) == null || declared.get(i) instanceof Type.FnOf) {
                 continue;
             }
             try {

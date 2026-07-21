@@ -123,16 +123,17 @@ public final class Backend {
                 throw CompileException.of(
                         Diagnostic.of(null, "check.behavior.collision.data").title("check.duplicate.title")
                                 .at(bd.pos()).args(bd.name(), cls).build(),
-                        "behavior `" + bd.name() + "` generates class `" + cls + "`, which collides with"
-                                + " data `" + cls + "` (spec 19.5); rename one so their class names differ");
+                        "behavior `" + bd.name() + "`'s first letter is capitalized to form the JVM class `"
+                                + cls + "` (spec 19.5), which collides with data `" + cls
+                                + "`; rename one so their class names differ");
             }
             String prev = behaviorClassOwner.put(cls, bd.name());
             if (prev != null) {
                 throw CompileException.of(
                         Diagnostic.of(null, "check.behavior.collision.behavior").title("check.duplicate.title")
                                 .at(bd.pos()).args(prev, bd.name(), cls).build(),
-                        "behaviors `" + prev + "` and `" + bd.name() + "` both generate class `" + cls
-                                + "` (spec 19.5); rename one");
+                        "behaviors `" + prev + "` and `" + bd.name() + "` both capitalize to the same JVM"
+                                + " class `" + cls + "` (spec 19.5); rename one so their class names differ");
             }
         }
         // A behavior whose output is an anonymous union gets a generated sealed interface
