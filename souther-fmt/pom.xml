@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>souther-fmt</artifactId>
+    <name>Souther Formatter</name>
 
     <description>
         The Souther source formatter: a single-canonical-form (gofmt-style) pretty-printer over the

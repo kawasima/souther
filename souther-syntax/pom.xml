@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>souther-syntax</artifactId>
+    <name>Souther Syntax</name>
 
     <description>
         The Souther front-end: the lossless concrete syntax tree (lexer, recovering parser, red/green

@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>souther-cli</artifactId>
+    <name>Souther CLI</name>
 
     <description>Bundles the compiler, runtime, and their dependencies into one really-executable
         jar so `souther` runs a .sou file without a Maven build.</description>

@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>souther-compiler</artifactId>
+    <name>Souther Compiler</name>
 
     <description>
         The Souther compiler: lexer, parser, type checker, and a ClassFile-API backend

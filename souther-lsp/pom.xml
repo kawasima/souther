@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>souther-lsp</artifactId>
+    <name>Souther Language Server</name>
 
     <description>
         The Souther language server: a hand-rolled LSP over stdio. Inbound messages are decoded with
