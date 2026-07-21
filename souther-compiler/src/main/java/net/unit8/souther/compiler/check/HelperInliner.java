@@ -138,6 +138,7 @@ public final class HelperInliner {
                 Map<String, Ast.FnDef> scopedLambdas = new HashMap<>();   // lambdas given to fn params
                 List<String> letNames = new ArrayList<>();
                 List<Ast.Expr> letValues = new ArrayList<>();
+                List<Ast.ParamType> letTypes = new ArrayList<>();
                 for (int i = 0; i < helper.params().size(); i++) {
                     Ast.FnParam p = helper.params().get(i);
                     Ast.Expr arg = args.get(i);
@@ -172,6 +173,10 @@ public final class HelperInliner {
                         subst.put(p.name(), f);
                         letNames.add(f);
                         letValues.add(arg);
+                        // carry the parameter's declared type onto the binding, so a value known to
+                        // be a sum (an annotated `s: S`) is not narrowed to the argument's specific
+                        // case when the body is re-checked inline — a `match s` inside still sees S.
+                        letTypes.add(p.type());
                     }
                 }
                 scopedLambdas.forEach(helpers::put);
@@ -183,7 +188,7 @@ public final class HelperInliner {
                 scopedLambdas.keySet().forEach(helpers::remove);
                 // wrap innermost-first so the value parameters bind in declared order
                 for (int i = letNames.size() - 1; i >= 0; i--) {
-                    body = new Ast.LetIn(letNames.get(i), letValues.get(i), body, call.pos());
+                    body = new Ast.LetIn(letNames.get(i), letValues.get(i), letTypes.get(i), body, call.pos());
                 }
                 yield body;
             }
@@ -227,10 +232,10 @@ public final class HelperInliner {
                 // escapes, which needs a runtime closure. Keep the binding so the "a block is not a
                 // value" check reports it.
                 yield mentions(body, li.name())
-                        ? new Ast.LetIn(li.name(), inline(lambda), body, li.pos())
+                        ? new Ast.LetIn(li.name(), inline(lambda), li.declaredType(), body, li.pos())
                         : body;
             }
-            case Ast.LetIn li -> new Ast.LetIn(li.name(), inline(li.value()), inline(li.body()), li.pos());
+            case Ast.LetIn li -> new Ast.LetIn(li.name(), inline(li.value()), li.declaredType(), inline(li.body()), li.pos());
             case Ast.ListLit lit -> new Ast.ListLit(inlineList(lit.elements()), lit.pos());
             case Ast.Tuple tup -> new Ast.Tuple(inlineList(tup.elements()), tup.pos());
             case Ast.TupleGet tg -> new Ast.TupleGet(inline(tg.tuple()), tg.index(), tg.arity(), tg.pos());
@@ -343,7 +348,7 @@ public final class HelperInliner {
             case Ast.LetIn li -> {
                 Ast.Expr value = rename(li.value(), subst, fnParams, at);
                 Ast.Expr body = rename(li.body(), without(subst, li.name()), fnParams, at);
-                yield new Ast.LetIn(li.name(), value, body, at(at, li.pos()));
+                yield new Ast.LetIn(li.name(), value, li.declaredType(), body, at(at, li.pos()));
             }
             case Ast.ListLit lit -> new Ast.ListLit(renameList(lit.elements(), subst, fnParams, at), at(at, lit.pos()));
             case Ast.Tuple tup -> new Ast.Tuple(renameList(tup.elements(), subst, fnParams, at), at(at, tup.pos()));
