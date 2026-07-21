@@ -2044,7 +2044,21 @@ public final class TypeChecker {
                     List<Type> paramTypes = inferFnParamTypes(li.name(), li.body(), env, data, symbols, reqs);
                     inner.put(li.name(), typeFunctionValue(li.value(), paramTypes, env, data, symbols, reqs));
                 } else {
-                    inner.put(li.name(), typeOf(li.value(), env, data, symbols, reqs));
+                    Type valueType = typeOf(li.value(), env, data, symbols, reqs);
+                    Type bindType = valueType;
+                    if (li.declaredType() instanceof Ast.RetType rt) {
+                        // A binding carrying an inlined helper's declared parameter type. When that type
+                        // is a sum, keep it: a case argument widens to its sum (spec 8.3), so a `match`
+                        // in the body still sees the sum rather than the argument's specific case. Other
+                        // declared types (a type variable in a generic prelude helper, a record, a list)
+                        // are left to the argument's own type, which monomorphisation and the call-site
+                        // check already handle.
+                        Type declared = resolveParamType(rt, symbols);
+                        if (isSumType(declared, symbols) && assignable(valueType, declared, symbols)) {
+                            bindType = declared;
+                        }
+                    }
+                    inner.put(li.name(), bindType);
                 }
                 yield typeOf(li.body(), inner, data, symbols, reqs);
             }
@@ -2531,14 +2545,24 @@ public final class TypeChecker {
                     }
                     yield Type.mentions(bt, TypeChecker::isBottom) ? acc : bt;
                 }
-                if (!bt.equals(acc) && absorbEmptyList(acc, bt) == null) {
-                    throw CompileException.of(
-                            Diagnostic.of(null, "check.fold.acctype").title("check.type.mismatch.title")
-                                    .at(call.pos()).args(Type.show(acc), Type.show(bt))
-                                    .diff(Type.show(bt), Type.show(acc)).build(),
-                            "fold's block must return the accumulator type " + acc + ", got " + bt);
+                if (bt.equals(acc) || absorbEmptyList(acc, bt) != null) {
+                    yield acc;
                 }
-                yield acc;
+                // The seed is a specific case (e.g. a `Success`) and the block grows the accumulator
+                // into its sum (`Success | Failure`): the accumulator's real type is that sum. Re-type
+                // the block at the wider sum — a block that assumed the seed's narrower case is now
+                // rejected — and, if it is a fixpoint there, use it. This is what lets a per-element
+                // failing load be aggregated with a `fold` seeded by the success case. Restricted to a
+                // sum target, so a covariant list/map/tuple widening is not silently accepted here.
+                if (isSumType(bt, symbols) && assignable(acc, bt, symbols)
+                        && blockType(call, args.get(0), List.of(bt, lo.element()), env, data, symbols, reqs).equals(bt)) {
+                    yield bt;
+                }
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.fold.acctype").title("check.type.mismatch.title")
+                                .at(call.pos()).args(Type.show(acc), Type.show(bt))
+                                .diff(Type.show(bt), Type.show(acc)).build(),
+                        "fold's block must return the accumulator type " + acc + ", got " + bt);
             }
             case "List.get" -> {
                 arity(call, 2);
@@ -3246,6 +3270,13 @@ public final class TypeChecker {
             return true;
         }
         return sup instanceof Type.Union u && u.members().containsAll(namesOf(sub));
+    }
+
+    /** Whether {@code t} is a sum: an anonymous union, or a reference to a named {@code data X = A | B}.
+     * A case→sum widening only matters for these — not for a covariant list/map/tuple. */
+    private static boolean isSumType(Type t, Map<String, Ast.Def> symbols) {
+        return t instanceof Type.Union
+                || (t instanceof Type.Ref r && symbols.get(r.name()) instanceof Ast.SumData);
     }
 
     /** Whether a {@code from} value can be assigned where {@code to} is expected. Lists are

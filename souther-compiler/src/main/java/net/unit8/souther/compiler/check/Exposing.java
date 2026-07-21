@@ -132,7 +132,7 @@ public final class Exposing {
                 }
                 yield new Ast.NewData(nd.typeName(), inits, nd.spreads(), nd.pos());
             }
-            case Ast.LetIn li -> new Ast.LetIn(li.name(), rw(li.value()), rw(li.body()), li.pos());
+            case Ast.LetIn li -> new Ast.LetIn(li.name(), rw(li.value()), li.declaredType(), rw(li.body()), li.pos());
             case Ast.Block bl -> new Ast.Block(bl.params(), rw(bl.body()), bl.pos());
             case Ast.ListLit ll -> {
                 List<Ast.Expr> elems = new ArrayList<>();
