@@ -308,6 +308,7 @@ final class BodyGen {
                     ClassDesc cdType = cd(nd.typeName());
                     Map<String, Type> flds = fieldTypes((Ast.Data) symbols.get(nd.typeName()));
                     emitFieldValues(flds, nd.inits(), nd.spreads());
+                    emitLine(nd);   // re-pin: a field init may have moved the line off the construction
                     code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(flds)));
                     code.invokestatic(CD_ConstraintViolation, "orThrow", MTD_orThrow);
                     code.areturn();
@@ -683,6 +684,7 @@ final class BodyGen {
                 // invariant runs and orThrow either yields the value or aborts with a
                 // ConstraintViolation. orThrow returns Object, so narrow it back to the value type.
                 emitFieldValues(flds, nd.inits(), nd.spreads());
+                emitLine(nd);   // re-pin: a field init may have moved the line off the construction
                 code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(flds)));
                 code.invokestatic(CD_ConstraintViolation, "orThrow", MTD_orThrow);
                 code.checkcast(cdType);

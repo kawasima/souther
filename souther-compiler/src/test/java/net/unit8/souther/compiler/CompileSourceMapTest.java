@@ -40,4 +40,31 @@ class CompileSourceMapTest {
         assertEquals("demo.sou", frame.getFileName(), "the stack frame names the .sou source file");
         assertEquals(5, frame.getLineNumber(), "the stack frame points to the construction's line");
     }
+
+    @Test
+    void aMultiLineConstructionAbortPointsAtTheConstructionNotTheLastField() throws Exception {
+        // 金額( opens on line 6; its argument x - 100 sits on line 7. The abort must be pinned to the
+        // construction (line 6), not the last field-init line, which emitting fields would otherwise
+        // leave bound.
+        String src = """
+                module demo
+                data 金額 = Int
+                    invariant value >= 0
+                behavior make : (x: Int) -> 金額 constructs 金額
+                let make (x) =
+                    金額(
+                        x - 100
+                    )
+                """;
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Object impl = loader.loadClass("demo.Make$Impl").getConstructor().newInstance();
+
+        ConstraintViolation v = assertThrows(ConstraintViolation.class, () -> Codecs.apply(impl, 50L));
+
+        StackTraceElement frame = Arrays.stream(v.getStackTrace())
+                .filter(f -> f.getClassName().startsWith("demo."))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no generated frame: " + Arrays.toString(v.getStackTrace())));
+        assertEquals(6, frame.getLineNumber(), "the abort points at the construction, not the field-init line");
+    }
 }
