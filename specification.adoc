@@ -1242,7 +1242,7 @@ The body is an expression. `+{ ... }+` is a block expression (<<block-expression
 * A `+let+` may implement a behavior only when both are in the *same module*. A behavior of another module may be imported and called, but its implementation MUST NOT be given by a `+let+` in another module. This is the line that keeps the name-binding rule from conflicting with separate compilation.
 * A helper `+let+` may construct data, but its construction set is inferred transitively and MUST be included in the calling behavior's `+constructs+` (<<constructs>>, <<blocks>>). It cannot be placed in a `+>->+` stage or written in `+exposing+`, because it does not appear in the spec DSL.
 * A function type (`+(A) -> B+`) may be written only in a `+let+` argument position. It MUST NOT be written in a data field (<<blocks>>) or a behavior output. A behavior output is a sum of business results, and a function is not a business result.
-* A `+let+` may return a function (`+let adder (n: Int) = (x) -> x + n+`). An escaping function — a return value or a runtime choice — becomes a closure capturing free variables (<<blocks>>). If only passed or applied on the spot, it is expandable and no closure is needed. The return type is inferred, so no type is written even when returning a function. A lambda argument type is not written either — it is inferred from how it is applied (a local rule, separate from the advanced type inference of <<future-work>>).
+* A `+let+` may return a function (`+let adder (n: Int) = (x) -> x + n+`). An escaping function — a return value or a runtime choice — becomes a closure capturing free variables (<<blocks>>). If only passed or applied on the spot, it is expandable and no closure is needed. The return type is inferred, so no type is written even when returning a function. A lambda argument type is not written either — it is inferred from how it is applied (a local rule, distinct from global type inference, which the declarative design does not do — a behavior takes its type from the specification and a helper states its own, <<fn-declaration>>).
 
 [#injected-behavior]
 === A behavior with no implementation — outside-world dependency
@@ -2607,9 +2607,7 @@ The language core is implemented. The following are future extensions, or curren
 
 * A full formal grammar (BNF). The key delimiters and precedence are stated ahead in <<delimiters>>.
 * Incremental compilation.
-* JSON Schema generation, Wasm output, JavaScript output. An asynchronous outside-world dependency at the Java boundary is a possible extension: the language itself stays synchronous (<<out-of-scope>>), but a Java Binding that touches the outside world could return asynchronously.
-* Hand-written decoder / encoder syntax. A different key name, normalization, or business-specific discriminator is handled by a boundary-side custom codec (Java side).
-* Advanced (global) type inference. The current design is declarative: a behavior takes its type from the specification, and a helper states its own type — apart from the local call-site inference of a non-recursive helper's value parameters (<<fn-declaration>>).
+* An asynchronous outside-world dependency at the Java boundary: the language itself stays synchronous (<<out-of-scope>>), but a Java Binding that touches the outside world could return asynchronously.
 * Optimization that narrows generation by usage of input sources (currently decoders are generated for the sources a data's shape supports; <<codec-generation>>).
 * jOOQ flatness limit: a jOOQ `+Record+` row is flat, so a jOOQ decoder is not generated for a type with nested data / List / Map. Decoders for bare-value / Map / JSON sources are generated. This is a limit inherent to jOOQ rows and is largely permanent.
 
