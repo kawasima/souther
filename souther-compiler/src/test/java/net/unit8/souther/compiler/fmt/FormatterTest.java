@@ -129,6 +129,22 @@ class FormatterTest {
     }
 
     @Test
+    void formattingKeepsThePartialModifier() {
+        // `partial` is a helper modifier; dropping it flips the helper from opted-out to
+        // totality-checked, which changes program meaning. The formatter must emit it.
+        String source = "module demo\n"
+                + "data N = Int\n"
+                + "data Out = Int\n"
+                + "partial let spin (n: Int): Int = spin(n)\n"
+                + "behavior run : (n: N) -> Out constructs Out\n"
+                + "let run (n) = Out(spin(n.value))\n";
+        String formatted = Formatter.format(source);
+        assertEquals(code(source), code(formatted), "the code token stream changed");
+        assertTrue(formatted.contains("partial let spin"), "formatter dropped `partial`:\n" + formatted);
+        assertTrue(CstParser.parse(formatted).errors().isEmpty(), "formatted output does not re-parse");
+    }
+
+    @Test
     void canonicalFormOfAnExample() {
         String messy = "module demo\n"
                 + "data M={ n:Int }\n"

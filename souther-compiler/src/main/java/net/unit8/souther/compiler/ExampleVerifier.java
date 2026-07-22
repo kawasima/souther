@@ -647,7 +647,7 @@ public final class ExampleVerifier {
         try {
             return task.get(EXAMPLE_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
         } catch (java.util.concurrent.TimeoutException te) {
-            worker.interrupt();
+            task.cancel(true);   // best-effort: marks the task cancelled and interrupts the worker
             throw new NonTerminationException("did not finish within " + EXAMPLE_TIMEOUT_MS + "ms");
         } catch (java.util.concurrent.ExecutionException ee) {
             Throwable cause = ee.getCause();
