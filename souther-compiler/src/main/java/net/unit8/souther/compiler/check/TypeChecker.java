@@ -97,6 +97,13 @@ public final class TypeChecker {
                 specNames.add(b.name());
                 rejectAnonymousUnionParams(spec);
                 rejectTupleIO(spec);
+                List<String> outputCases = new ArrayList<>();
+                for (Ast.TypeRef t : spec.ret().cases()) {
+                    outputCases.add(t.name());
+                }
+                rejectDuplicateNames(outputCases, "the behavior output", spec.pos());
+                rejectDuplicateNames(spec.requires(), "`requires`", spec.pos());
+                rejectDuplicateNames(spec.constructs(), "`constructs`", spec.pos());
             }
         }
         // A data is Java-buildable from outside iff the whole module is public (no `exposing`) or
@@ -1535,7 +1542,23 @@ public final class TypeChecker {
         return symbols;
     }
 
+    /** Rejects a name listed more than once in a declaration ({@code where}). The duplicate is
+     * meaningless and, left to codegen, would emit a duplicate JVM member — a duplicate method,
+     * field, or implemented interface, i.e. a malformed class file. */
+    private static void rejectDuplicateNames(List<String> names, String where, SourcePos pos) {
+        Set<String> seen = new HashSet<>();
+        for (String n : names) {
+            if (!seen.add(n)) {
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.dup.name").title("check.duplicate.title")
+                                .at(pos).args(n, where).build(),
+                        "`" + n + "` is listed more than once in " + where);
+            }
+        }
+    }
+
     private static void checkSum(Ast.SumData sum, Map<String, Ast.Def> symbols) {
+        rejectDuplicateNames(sum.cases(), "the sum `" + sum.name() + "`", sum.pos());
         for (String caseName : sum.cases()) {
             if (!symbols.containsKey(caseName)) {
                 throw CompileException.of(
