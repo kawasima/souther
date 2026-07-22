@@ -284,16 +284,22 @@ public final class Backend {
                 int n = h.params().size();
                 ClassDesc[] params = new ClassDesc[n];
                 java.util.Arrays.fill(params, CD_Object);
-                cb.withMethodBody(h.name(), MethodTypeDesc.of(CD_Object, params), ClassFile.ACC_STATIC,
+                cb.withMethodBody(CodegenContext.recursiveHelperMethod(h.name()),
+                        MethodTypeDesc.of(CD_Object, params), ClassFile.ACC_STATIC,
                         code -> {
                     BodyGen gen = new BodyGen(ctx, code, null, cdFns, n);
                     for (int i = 0; i < n; i++) {
-                        Type pt = successType((Ast.RetType) h.params().get(i).type());
+                        // a function parameter arrives as an Fn value (a closure); every other parameter
+                        // as its boxed value. resolveParamType handles both shapes.
+                        Type pt = TypeChecker.resolveParamType(h.params().get(i).type(), symbols);
                         code.aload(i);
                         int slot = gen.slot(pt);
                         unbox(code, pt, slot);
                         gen.bind(h.params().get(i).name(), slot, pt);
                     }
+                    // A tail-position call to this same helper loops back here instead of recursing,
+                    // so a self-tail-recursive helper runs in constant stack.
+                    gen.beginSelfRecursion(h.name(), h.params());
                     gen.emitTail(Core.of(h.body()), cdFns, Set.of(), Map.of());
                 });
             }

@@ -32,12 +32,12 @@ calls exactly as Elm forbids arbitrary JS (ADR-0008), so only the Elm shape is c
 
 Concretely:
 
-- The irreducible primitives — string operations, arithmetic (already operators), one list
-  fold, the map accessors — are declared in `core` with an intrinsic body:
-  `let length (s: String): Int = intrinsic "string.length"`. The backend emits the JVM
-  primitive for each key. Writing an `intrinsic` body is a privilege of `core`.
-- The derivable layer is written in Souther over the kernel. The one irreducible loop is
-  `fold`, and the four combinators are `souther.list` helpers over it:
+- The irreducible primitives — string operations, arithmetic (already operators), the list
+  and map accessors (`List.get`, `List.length`, `Map.get`) — are declared in `core` with an
+  intrinsic body: `let length (s: String): Int = intrinsic "string.length"`. The backend emits
+  the JVM primitive for each key. Writing an `intrinsic` body is a privilege of `core`.
+- The derivable layer is written in Souther over the kernel. `fold` is a recursive helper over
+  `List.get` (ADR-0051), and the four combinators are `souther.list` helpers over it:
   `let all (p: ('a) -> Bool, xs: List<'a>) = fold((acc, x) -> acc && p(x), true, xs)`, and
   `map`/`filter` the same, seeding an empty list `[]` and growing it. Each expands inline at
   its call site, where its type variables resolve to concrete types, so `map(x -> ..., xs)`
@@ -104,3 +104,4 @@ which is left for later.
 - ADR-0008 (asymmetric interop — why the Elm Kernel model, not F#'s open interop)
 - ADR-0010 (no user generics — amended: generics live in a privileged core)
 - ADR-0004 (derived codecs — why no traversal of recursive data)
+- ADR-0051 (`fold` is a recursive helper over `List.get`, not a kernel loop)

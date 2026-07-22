@@ -92,6 +92,13 @@ final class CodegenContext {
         return behaviorClass(name) + "$Impl";
     }
 
+    /** The {@code $Fns} method name for a recursive helper. A module-own helper keeps its bare name;
+     * a prelude recursive helper reached under a qualified name ({@code List.foldFrom}) has the dot
+     * mangled to {@code $}, since a JVM method name cannot contain a dot. */
+    static String recursiveHelperMethod(String name) {
+        return name.replace('.', '$');
+    }
+
     /** The generated result-union simple-name for a behavior with an anonymous-union output
      * (spec 19.8): {@code <名>Result}. Only the union case gets one; a named-sum or single-case
      * output uses that type directly. */

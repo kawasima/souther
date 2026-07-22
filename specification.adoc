@@ -1868,7 +1868,7 @@ all(r -> 軽微か(r), 理由リスト)
 
 If an injected thing is called from within a block, its requirement appears in the enclosing behavior's `+requires+` (<<requires>>).
 
-Of these, only `+List.fold+` is primitive. `+map+` / `+filter+` / `+all+` / `+any+` are self-language `+let+`s that `+souther.list+` derives from `+List.fold+` (<<stdlib>>, ADR-0028), expanded at the call site. `+map+` / `+filter+` seed with an empty list `+[]+` and grow it; `+all+` / `+any+` fold a `+Bool+`. `+List.length+` / `+String.length+`, `+List.get+` / `+Map.get+` were once a single overload but split into separate module functions by qualification — a `+length+` spanning `+String+` and `+List+` is called by each name.
+None of these is a compiler primitive. `+List.fold+` is a recursive `+let+` in `+souther.list+`: it walks the list with `+List.get+`, threads an accumulator, and takes its step as a function value (<<blocks>>). Its tail-recursive self-call is compiled to a loop, so it reads as a loop would — as `+fold+` is written in Elm or F# (<<stdlib>>, ADR-0051). `+map+` / `+filter+` / `+all+` / `+any+` are `+let+`s derived from it, expanded at the call site: `+map+` / `+filter+` seed with an empty list `+[]+` and grow it, `+all+` / `+any+` fold a `+Bool+`. `+List.length+` / `+String.length+` and `+List.get+` / `+Map.get+` are separate module functions, reached by their qualifier.
 
 The lower row is also ported from Elm's List module; except `+sort+`, all are self-language `+let+`s derived from `+List.fold+`. `+reverse+` extends the seed to the front, `+sum+` / `+product+` fold numbers, `+concat+` folds with `{plus}{plus}` and flattens nesting (Elm's `+List.concat+`), and `+member+` folds with `+==+` so it works for comparable elements. `+isEmpty+` looks at length. Only `+sort+` is a primitive that cannot be derived from `+fold+` (as in Elm) — self-language sorting needs, besides comparison, a place to hold intermediate results, which `+fold+` does not give; it sorts by the element's natural order. Elements MUST be an ordered type (`+Int+` / `+String+` / `+Decimal+` / `+Date+` / `+DateTime+`; <<primitives>>), and passing a list of data or newtype to `+sort+` is a compile error (they have no ordering, so it is rejected up front rather than at runtime; to sort them, map to an ordered field first with `+List.map+`).
 
@@ -1891,7 +1891,7 @@ fold  map  update                                // higher-order
 
 `+toList(m)+` is the entries as a `+List<(String, V)>+` — a list of key/value tuples in the map's iteration order — and `+fromList(entries)+` builds a map back (a later entry wins on a duplicate key). Iteration order is a deterministic, implementation-defined hash order (not insertion order): the same set of keys always yields the same order, so encoding is reproducible, but a program must not depend on which order that is. The tuple type in these signatures is allowed because a signature is not a codec boundary (<<tuple>>, ADR-0037).
 
-`+fold+` / `+map+` / `+update+` are the operations that take a step function. `+Map+` adds no privileged loop of its own: `+fold(step, seed, m)+` runs `+List.fold+` over the entries (`+toList+`), so the one list-fold loop stays the sole primitive, and the entries combine in the map's deterministic hash order. Its step is `+(acc, key, value)+` (F#'s `+Map.fold+` folder is `+state key value+`, Elm's `+Dict.foldl+` is `+k v acc+`). `+map(f, m)+` keeps the keys and rewrites the values (`+(key, value) -> value+`, Elm's `+Dict.map+` / F#'s `+Map.map+`), growing a fresh map through `+fold+`. `+update(key, f, m)+` rewrites the value under one key with `+f+` and is a no-op when the key is absent. Its step is `+('a) -> 'a+`, not Elm's `+Maybe v -> Maybe v+`: `+Option+` is not surface-writable (ADR-0011), so a step cannot return one — insert a new key with `+insert+`, drop one with `+remove+`, and let `+update+` cover changing what is already there.
+`+fold+` / `+map+` / `+update+` are the operations that take a step function. `+Map.fold(step, seed, m)+` is layered on `+List.fold+` over the entries (`+toList+`) rather than walking the map itself, and the entries combine in the map's deterministic hash order. Its step is `+(acc, key, value)+` (F#'s `+Map.fold+` folder is `+state key value+`, Elm's `+Dict.foldl+` is `+k v acc+`). `+map(f, m)+` keeps the keys and rewrites the values (`+(key, value) -> value+`, Elm's `+Dict.map+` / F#'s `+Map.map+`), growing a fresh map through `+fold+`. `+update(key, f, m)+` rewrites the value under one key with `+f+` and is a no-op when the key is absent. Its step is `+('a) -> 'a+`, not Elm's `+Maybe v -> Maybe v+`: `+Option+` is not surface-writable (ADR-0011), so a step cannot return one — insert a new key with `+insert+`, drop one with `+remove+`, and let `+update+` cover changing what is already there.
 
 [#stdlib-set]
 === Set
@@ -2048,13 +2048,13 @@ The model author does not write this type name in Souther source; they only writ
 ----
 Source -> Lexer -> Parser -> AST
   -> Derive (fill decoder/encoder into the AST from a data's shape)
-  -> Lower (behavior / let bodies -> Core IR: helper inlining, desugaring, fold shaping)
+  -> Lower (behavior / let bodies -> Core IR: helper inlining, desugaring)
   -> Type Check
        name resolution / construction-authority check / requirement-set check and composition inference / exhaustiveness check / invariant type check
   -> ClassFile Backend -> .class (direct bytecode generation)
 ----
 
-Behavior and `+let+` bodies are lowered to a Core IR — helper inlining, surface desugaring, and `+fold+` shaping happen once here — and the backend emits from it. Data definitions and derived decoders / encoders stay at the AST level; there is no separate Domain IR / Decoder IR / Encoder IR. Type checking verifies construction authority, requirement sets, exhaustiveness, and invariants together: the surface checks read the AST, and the body check reads the lowered Core. The backend generates `+.class+` with the Class-File API (`+java.lang.classfile+`) and does not go through javac.
+Behavior and `+let+` bodies are lowered to a Core IR — helper inlining and surface desugaring happen once here — and the backend emits from it. Data definitions and derived decoders / encoders stay at the AST level; there is no separate Domain IR / Decoder IR / Encoder IR. Type checking verifies construction authority, requirement sets, exhaustiveness, and invariants together: the surface checks read the AST, and the body check reads the lowered Core. The backend generates `+.class+` with the Class-File API (`+java.lang.classfile+`) and does not go through javac.
 
 [#ast-tracking]
 == Information tracked by the AST and backend

@@ -144,6 +144,8 @@ final class JvmTypes {
         if (type instanceof Type.MapOf) return CD_Map;
         if (type instanceof Type.SetOf) return CD_Set;
         if (type instanceof Type.Union) return CD_Object;
+        if (type instanceof Type.Var) return CD_Object;   // a type variable is erased to Object
+        if (type instanceof Type.Nothing) return CD_Object;   // an empty collection's element bottom
         if (type instanceof Type.FnOf) return CD_Fn;
         if (type instanceof Type.TupleOf) return CD_Object.arrayType();   // a tuple is an Object[]
         return ctx.caseClass(((Type.Ref) type).name());

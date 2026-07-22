@@ -82,6 +82,13 @@ final class BodyGen {
         /** The last line already bound in this method's {@code LineNumberTable}; skips consecutive
          * same-line entries. Fresh per method, since one {@code BodyGen} emits one method's code. */
         private int lastEmittedLine = -1;
+        /** Set while emitting a recursive helper method: the helper's name, its parameters, and the
+         * label bound at the body entry. A tail-position call to this same helper reassigns the
+         * parameter slots and jumps to {@code tcoEntry} rather than recursing, so a self-tail-recursive
+         * helper runs in constant stack. Null for any other body (a behavior never self-recurses). */
+        private String tcoName;
+        private List<Ast.FnParam> tcoParams;
+        private Label tcoEntry;
 
         BodyGen(CodegenContext ctx, CodeBuilder code, Ast.Data data, ClassDesc cdName, int firstSlot) {
             this.ctx = ctx;
@@ -304,6 +311,9 @@ final class BodyGen {
                     code.labelBinding(elseL);
                     emitTail(iff.els(), cdB, requiredNames, requiredSuccess);
                 }
+                case Core.Match m -> emitTailMatch(m, cdB, requiredNames, requiredSuccess);
+                case Core.Call call when tcoName != null && call.fn().equals(tcoName)
+                        && call.args().size() == tcoParams.size() -> emitSelfTailCall(call);
                 case Core.NewData nd when TypeChecker.isInvariantBearing(nd.typeName(), symbols) -> {
                     ClassDesc cdType = cd(nd.typeName());
                     Map<String, Type> flds = fieldTypes((Ast.Data) symbols.get(nd.typeName()));
@@ -319,6 +329,38 @@ final class BodyGen {
                     code.areturn();
                 }
             }
+        }
+
+        /** Marks the entry of a self-tail-recursive helper. The parameters are already bound to their
+         * slots; a later tail-position self-call jumps back here after reassigning them, so the helper
+         * loops instead of recursing (see {@link #emitTail} and {@link #emitSelfTailCall}). */
+        void beginSelfRecursion(String name, List<Ast.FnParam> params) {
+            this.tcoName = name;
+            this.tcoParams = params;
+            this.tcoEntry = code.newLabel();
+            code.labelBinding(tcoEntry);
+        }
+
+        /** A tail-position call to the helper being emitted: recompute the arguments — each still reads
+         * the current parameter slots — then overwrite the slots and loop. Arguments are pushed
+         * left-to-right and stored in reverse so no slot is overwritten before every argument has been
+         * read (e.g. {@code loop(acc + n, n - 1)} reads both {@code acc} and {@code n}). */
+        private void emitSelfTailCall(Core.Call call) {
+            List<Var> params = new ArrayList<>(tcoParams.size());
+            for (Ast.FnParam p : tcoParams) {
+                params.add(env.get(p.name()));
+            }
+            for (int i = 0; i < call.args().size(); i++) {
+                Type at = genExpr(call.args().get(i));
+                Type pt = params.get(i).type();
+                if (isReference(pt) && !isReference(at)) {
+                    box(code, at);
+                }
+            }
+            for (int i = call.args().size() - 1; i >= 0; i--) {
+                store(code, params.get(i).slot(), params.get(i).type());
+            }
+            code.goto_(tcoEntry);
         }
 
         /** Pushes each field's value in declaration order: an explicit initializer, else the field
@@ -386,101 +428,6 @@ final class BodyGen {
             code.aaload();
             castFromObject(code, et);
             return et;
-        }
-
-        /**
-         * Emits {@code fold} (spec 18.4) — the one privileged list loop — inlining the block's body
-         * into an index loop that threads the accumulator. Every other combinator (map/filter/all/any)
-         * is a prelude helper written in terms of this (ADR-0028, souther.list), so it arrives here
-         * already expanded into a fold.
-         *
-         * <p>No closure is built: a block is second-class (spec 12.5), so it cannot outlive the call
-         * and there is nothing to capture it into. A required behavior called from the body reads the
-         * enclosing behavior's injected field, which is why the requirement belongs to that behavior.
-         */
-        private Type fold(Core.Fold f) {
-            Type srcType = genExpr(f.source());
-            Type elemType = ((Type.ListOf) srcType).element();
-            int srcSlot = slot(Type.STRING);
-            code.astore(srcSlot);
-
-            // The accumulator lives in a slot typed to the seed (a long for Int, an int for Bool,
-            // a reference otherwise), so it stays unboxed across iterations — no Long.valueOf /
-            // longValue round-trip per element, which keeps the loop friendly to the JIT.
-            Type seedType = genExpr(f.seed());   // emits the seed value
-            Type accType = resolveAccType(f, seedType, elemType);
-            int accSlot = slot(accType);
-            store(code, accSlot, accType);
-
-            // When the source is the empty-list literal, its element type is a Nothing bottom
-            // (ADR-0028): there is no element to fetch, and the loop is dead code — `fold f z []` is
-            // `z`. Emit no loop at all and load the accumulator, still the seed, below. Faithfully
-            // emitting the body would unbox the Nothing element (as `acc + x` does with `x`), which
-            // has no JVM form and would crash the backend.
-            if (!mentionsNothing(elemType)) {
-                // Walk the source with an Iterator rather than get(i): a List value is a persistent
-                // vector, whose iterator yields each element in O(1) amortized, whereas get(i)
-                // descends the trie (O(log n)) on every step. The one privileged list loop stays a
-                // single pass over the source.
-                int itSlot = slot(Type.STRING);
-                code.aload(srcSlot);
-                code.invokeinterface(CD_List, "iterator", MTD_iterator);
-                code.astore(itSlot);
-
-                Label test = code.newLabel();
-                Label done = code.newLabel();
-                code.labelBinding(test);
-                code.aload(itSlot);
-                code.invokeinterface(CD_Iterator, "hasNext", MTD_hasNext);
-                code.ifeq(done);
-
-                code.aload(itSlot);
-                code.invokeinterface(CD_Iterator, "next", MTD_Object);
-                int elemSlot = slot(elemType);
-                unbox(code, elemType, elemSlot);
-                // bind the block's parameters — the accumulator and this element — for this iteration.
-                // The accumulator param reads straight from its typed slot; the block never writes the
-                // slot, so binding the param to it directly is safe (the new value is stored below).
-                // The block's parameter names are scoped to the block: a nested fold reuses the same
-                // names (the derived combinators all bind `acc`/`x`), so save any outer binding these
-                // shadow and restore it after the body, or the outer `acc` would resolve to the inner
-                // fold's slot.
-                Var prevAcc = env.get(f.params().get(0));
-                Var prevElem = env.get(f.params().get(1));
-                bind(f.params().get(0), accSlot, accType);
-                bind(f.params().get(1), elemSlot, elemType);
-                genExpr(f.body());
-                restore(f.params().get(0), prevAcc);
-                restore(f.params().get(1), prevElem);
-                store(code, accSlot, accType);
-
-                code.goto_(test);
-                code.labelBinding(done);
-            }
-
-            load(code, accSlot, accType);
-            return accType;
-        }
-
-        /**
-         * The accumulator's type — the type of the slot the fold carries across iterations. Usually
-         * it is the seed's type. But an empty-collection seed ({@code []}, {@code Map.empty}, or a
-         * tuple of them) carries no element/key/value type of its own (ADR-0028); that type is on the
-         * block that grows the accumulator, not on the seed. When the block only <em>writes</em> the
-         * accumulator ({@code acc ++ [f(x)]}) the untyped slot survives, but when it <em>reads</em> it
-         * through a nested combinator ({@code any(e -> e == x, acc)}) the backend would unbox a
-         * {@code Nothing} element and crash. So for such a seed we ask the checker for the block's
-         * result type — the type the accumulator resolves to — exactly as the checker types this fold.
-         */
-        private Type resolveAccType(Core.Fold f, Type seedType, Type elemType) {
-            if (!mentionsNothing(seedType)) {
-                return seedType;
-            }
-            Map<String, Type> inner = typesEnv();
-            inner.put(f.params().get(0), seedType);
-            inner.put(f.params().get(1), elemType);
-            Type resolved = TypeChecker.typeOf(f.body().toAst(), inner, data, symbols, reqSigs());
-            return mentionsNothing(resolved) ? seedType : resolved;
         }
 
         /** Whether {@code t} still carries the empty-collection bottom {@link Type#NOTHING} — an
@@ -575,7 +522,6 @@ final class BodyGen {
                     code.labelBinding(end);
                     yield tt;
                 }
-                case Core.Fold f -> fold(f);
                 case Core.ListLit lit -> listLit(lit);
                 case Core.Tuple t -> tuple(t);
                 case Core.TupleGet tg -> tupleGet(tg);
@@ -616,62 +562,93 @@ final class BodyGen {
             Type branchType = null;
             for (Core.Case c : m.cases()) {
                 Label nextCase = code.newLabel();
-                List<String> cases = c.caseTypes();
-                if (element != null) {
-                    // Option match: a single Some/None case (or-patterns are rejected by the checker)
-                    String caseName = cases.get(0);
-                    code.aload(sSlot);
-                    code.instanceOf(caseName.equals("Some") ? CD_OptionSome : CD_OptionNone);
-                    code.ifeq(nextCase);
-                    if (caseName.equals("Some")) {
-                        // unwrap Some(v) -> v, bound to the element type
-                        code.aload(sSlot);
-                        code.checkcast(CD_OptionSome);
-                        code.invokevirtual(CD_OptionSome, "value", MTD_Object);
-                        int bslot = slot(element);
-                        unbox(code, element, bslot);
-                        if (c.binding() != null) {
-                            bind(c.binding(), bslot, element);
-                        }
-                    }
-                } else if (cases.size() == 1) {
-                    code.aload(sSlot);
-                    code.instanceOf(matchCaseClass(cases.get(0)));
-                    code.ifeq(nextCase);
-                    if (c.binding() != null) {
-                        // a data case binds the instance; a primitive case (e.g. Int) unboxes the value
-                        Type bt = TypeChecker.caseBindType(cases.get(0));
-                        code.aload(sSlot);
-                        int bslot = slot(bt);
-                        unbox(code, bt, bslot);
-                        bind(c.binding(), bslot, bt);
-                    }
-                } else {
-                    // or-pattern: run the body if the value is any of the cases; the binding (if any)
-                    // is the scrutinee's sum type, which every alternative already is
-                    Label body = code.newLabel();
-                    for (String caseName : cases) {
-                        code.aload(sSlot);
-                        code.instanceOf(matchCaseClass(caseName));
-                        code.ifne(body);
-                    }
-                    code.goto_(nextCase);
-                    code.labelBinding(body);
-                    if (c.binding() != null) {
-                        bind(c.binding(), sSlot, st);
-                    }
-                }
+                emitCaseGuard(c, sSlot, st, element, nextCase);
                 branchType = genExpr(c.body());
                 code.goto_(end);
                 code.labelBinding(nextCase);
             }
-            // Exhaustive by construction; this fallback is unreachable.
+            emitMatchFallthrough();
+            code.labelBinding(end);
+            return branchType;
+        }
+
+        /** Emits {@code match} in tail position: each arm body is emitted through {@link #emitTail}, so
+         * a tail-position self-call inside an arm (as a self-hosted fold makes, matching {@code
+         * List.get}) loops rather than recursing. Each arm returns (or tail-loops), so no join label is
+         * needed — the next arm's dispatch follows its predecessor's {@code nextCase}. */
+        private void emitTailMatch(Core.Match m, ClassDesc cdB, Set<String> requiredNames,
+                                   Map<String, Type> requiredSuccess) {
+            Type st = genExpr(m.scrutinee());
+            int sSlot = slot(st);
+            store(code, sSlot, st);
+            Type element = st instanceof Type.OptionOf oo ? oo.element() : null;
+            for (Core.Case c : m.cases()) {
+                Label nextCase = code.newLabel();
+                emitCaseGuard(c, sSlot, st, element, nextCase);
+                emitTail(c.body(), cdB, requiredNames, requiredSuccess);
+                code.labelBinding(nextCase);
+            }
+            emitMatchFallthrough();
+        }
+
+        /** The {@code instanceof} dispatch and case binding for one {@code match} arm; on no match,
+         * jumps to {@code nextCase}. Shared by value-position {@link #match} and tail-position
+         * {@link #emitTailMatch} so the two stay in step. */
+        private void emitCaseGuard(Core.Case c, int sSlot, Type st, Type element, Label nextCase) {
+            List<String> cases = c.caseTypes();
+            if (element != null) {
+                // Option match: a single Some/None case (or-patterns are rejected by the checker)
+                String caseName = cases.get(0);
+                code.aload(sSlot);
+                code.instanceOf(caseName.equals("Some") ? CD_OptionSome : CD_OptionNone);
+                code.ifeq(nextCase);
+                if (caseName.equals("Some")) {
+                    // unwrap Some(v) -> v, bound to the element type
+                    code.aload(sSlot);
+                    code.checkcast(CD_OptionSome);
+                    code.invokevirtual(CD_OptionSome, "value", MTD_Object);
+                    int bslot = slot(element);
+                    unbox(code, element, bslot);
+                    if (c.binding() != null) {
+                        bind(c.binding(), bslot, element);
+                    }
+                }
+            } else if (cases.size() == 1) {
+                code.aload(sSlot);
+                code.instanceOf(matchCaseClass(cases.get(0)));
+                code.ifeq(nextCase);
+                if (c.binding() != null) {
+                    // a data case binds the instance; a primitive case (e.g. Int) unboxes the value
+                    Type bt = TypeChecker.caseBindType(cases.get(0));
+                    code.aload(sSlot);
+                    int bslot = slot(bt);
+                    unbox(code, bt, bslot);
+                    bind(c.binding(), bslot, bt);
+                }
+            } else {
+                // or-pattern: run the body if the value is any of the cases; the binding (if any)
+                // is the scrutinee's sum type, which every alternative already is
+                Label body = code.newLabel();
+                for (String caseName : cases) {
+                    code.aload(sSlot);
+                    code.instanceOf(matchCaseClass(caseName));
+                    code.ifne(body);
+                }
+                code.goto_(nextCase);
+                code.labelBinding(body);
+                if (c.binding() != null) {
+                    bind(c.binding(), sSlot, st);
+                }
+            }
+        }
+
+        /** The unreachable tail of a {@code match}: it is exhaustive by construction (the checker), so
+         * falling past every arm throws rather than returning a bogus value. */
+        private void emitMatchFallthrough() {
             code.new_(CD_IllegalStateException);
             code.dup();
             code.invokespecial(CD_IllegalStateException, "<init>", MTD_void);
             code.athrow();
-            code.labelBinding(end);
-            return branchType;
         }
 
         private Type newData(Core.NewData nd) {
@@ -737,7 +714,6 @@ final class BodyGen {
             if (intrinsic != null) {
                 return Intrinsics.emit(this, intrinsic.key(), call);
             }
-            // A fold is a Core.Fold, never a Core.Call, so it does not appear here (see genExpr).
             switch (call.fn()) {
                 case "String.length" -> {
                     genExpr(call.args().get(0));
@@ -855,16 +831,77 @@ final class BodyGen {
 
         /** Calls a recursive helper as a static method on {@code $Fns} (spec 13.1): each argument is
          * evaluated and boxed, the {@code invokestatic} returns {@code Object}, and the result is cast
-         * back to the helper's declared return type. A self- or mutual call reaches here the same way. */
+         * back to the helper's declared return type. A self- or mutual call reaches here the same way.
+         * A function parameter is passed as a first-class {@code Fn} value (a closure): the argument
+         * block is materialised rather than evaluated as a plain value, and an {@code Fn} is already a
+         * reference, so it fits the {@code Object} slot without boxing. */
         private Type recursiveHelperCall(Core.Call call, Ast.FnDef h) {
-            for (Core arg : call.args()) {
-                Type at = genExpr(arg);
-                box(code, at);
+            // Resolve the helper's type variables from the value arguments, so a function argument is
+            // materialised at concrete parameter types — foldFrom's step is `(acc, x)` at the seed's
+            // and the list element's types — matching how the checker typed this call. A monomorphic
+            // helper leaves the bindings empty and every type is already concrete.
+            List<Type> declared = new ArrayList<>();
+            for (Ast.FnParam p : h.params()) {
+                declared.add(TypeChecker.resolveParamType(p.type(), symbols));
+            }
+            Map<String, Type> bind = new HashMap<>();
+            for (int i = 0; i < call.args().size(); i++) {
+                if (!(declared.get(i) instanceof Type.FnOf)) {
+                    Type at = TypeChecker.typeOf(call.args().get(i).toAst(), typesEnvWithHelpers(), data, symbols, reqSigs());
+                    TypeChecker.unify(declared.get(i), at, bind, symbols, call.pos(), "argument " + (i + 1));
+                }
+            }
+            // An empty-collection seed binds the accumulator to a bottom; the step grows it to the
+            // concrete type, which the block's result gives — refine the binding before the step is
+            // materialised, so the closure is typed at the concrete accumulator, not the bottom seed.
+            for (int i = 0; i < call.args().size(); i++) {
+                if (declared.get(i) instanceof Type.FnOf fn0
+                        && call.args().get(i).toAst() instanceof Ast.Block block) {
+                    // A case-seeded accumulator grown to its sum: widen the binding so the step closure's
+                    // accumulator parameter is the sum, not the narrow seed case — else its apply would
+                    // checkcast a later case (a NotFound) to the seed's case (PricedCart) and crash.
+                    if (fn0.result() instanceof Type.Var accVar) {
+                        Type sum = TypeChecker.enclosingSum(TypeChecker.substitute(fn0.result(), bind), symbols);
+                        if (sum != null) {
+                            bind.put(accVar.name(), sum);
+                        }
+                    }
+                    Type.FnOf fp = (Type.FnOf) TypeChecker.substitute(fn0, bind);
+                    Map<String, Type> inner = typesEnvWithHelpers();
+                    for (int j = 0; j < block.params().size(); j++) {
+                        inner.put(block.params().get(j), fp.params().get(j));
+                    }
+                    Type got = TypeChecker.typeOf(block.body(), inner, data, symbols, reqSigs());
+                    TypeChecker.refineBottom(fn0.result(), got, bind);
+                }
+            }
+            for (int i = 0; i < call.args().size(); i++) {
+                Type pi = TypeChecker.substitute(declared.get(i), bind);
+                if (pi instanceof Type.FnOf fn) {
+                    boolean stepDead = false;
+                    for (Type p : fn.params()) {
+                        stepDead |= p instanceof Type.Nothing;   // an element of an empty-literal list
+                    }
+                    if (stepDead) {
+                        // A step parameter is a bare Nothing: it is the element of an empty-literal
+                        // list, so there are no elements and the step never runs — foldFrom over `[]`
+                        // yields the seed. Pass a null Fn rather than materialise a closure that would
+                        // unbox the bottom element (as `acc + x` does with `x`) and crash. An empty
+                        // *seed* (a `List<Nothing>` accumulator) is a reference and still materialises.
+                        code.aconst_null();
+                    } else {
+                        emitFunctionValue(call.args().get(i).toAst(), fn.params());
+                    }
+                } else {
+                    Type at = genExpr(call.args().get(i));
+                    box(code, at);
+                }
             }
             ClassDesc[] params = new ClassDesc[call.args().size()];
             java.util.Arrays.fill(params, CD_Object);
-            code.invokestatic(ClassDesc.of(pkg + ".$Fns"), call.fn(), MethodTypeDesc.of(CD_Object, params));
-            Type rt = successType(h.declaredReturn());
+            code.invokestatic(ClassDesc.of(pkg + ".$Fns"), CodegenContext.recursiveHelperMethod(call.fn()),
+                    MethodTypeDesc.of(CD_Object, params));
+            Type rt = TypeChecker.substitute(successType(h.declaredReturn()), bind);
             castFromObject(code, rt);
             return rt;
         }
@@ -1113,6 +1150,20 @@ final class BodyGen {
             return t;
         }
 
+        /** {@link #typesEnv} plus the recursive helpers' signatures, so re-typing an expression that
+         * calls one (a nested {@code foldFrom} in a fold's seed) resolves it as a function. */
+        private Map<String, Type> typesEnvWithHelpers() {
+            Map<String, Type> t = typesEnv();
+            ctx.recursiveHelpers.forEach((name, h) -> {
+                List<Type> params = new ArrayList<>();
+                for (Ast.FnParam p : h.params()) {
+                    params.add(TypeChecker.resolveParamType(p.type(), symbols));
+                }
+                t.put(name, Type.fn(params, successType(h.declaredReturn())));
+            });
+            return t;
+        }
+
         /** Emits a function value — a lambda, or an {@code if} that selects one — leaving an
          * {@link net.unit8.souther.runtime.Fn} on the stack (spec §blocks). */
         private Type emitFunctionValue(Ast.Expr value, List<Type> paramTypes) {
@@ -1145,7 +1196,7 @@ final class BodyGen {
         /** Compiles a lambda to a synthetic {@code Fn} class and emits {@code new} of it, passing the
          * captured free variables (and any injected behaviors it calls) to its constructor. */
         private Type emitLambda(Ast.Block block, List<Type> paramTypes) {
-            Map<String, Type> inner = typesEnv();
+            Map<String, Type> inner = typesEnvWithHelpers();
             for (int i = 0; i < paramTypes.size(); i++) {
                 inner.put(block.params().get(i), paramTypes.get(i));
             }
