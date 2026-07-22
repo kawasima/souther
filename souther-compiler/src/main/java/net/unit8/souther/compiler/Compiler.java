@@ -54,6 +54,7 @@ public final class Compiler {
         Ast.Module module = Deriver.derive(Exposing.rewrite(raw));
         module = HelperInliner.forModule(module).withInlinedInvariants(module);
         module = NewtypeDesugar.rewrite(module, TypeChecker.symbols(module));
+        module = Compiler.injectRecursivePrelude(module);
         Ast.Module lowered = Lower.run(module);
         TypeChecker.checkOrThrow(module, TypeChecker.symbols(module), Map.of(), lowered);
         Map<String, byte[]> out = Backend.generate(lowered);
@@ -61,6 +62,25 @@ public final class Compiler {
         Map<String, Ast.Def> symbols = TypeChecker.symbols(module);
         ExampleVerifier.verify(module, symbols, TypeChecker.signatures(module, symbols), Map.of(), out);
         return out;
+    }
+
+    /**
+     * Adds the prelude recursive helpers a module reaches (e.g. {@code souther.list}'s {@code
+     * foldFrom}) to the module as its own fns, under their qualified names. A recursive prelude helper
+     * cannot be inlined — it would expand forever — so it is emitted as one of the module's methods,
+     * the same as a module-own recursive helper. Only the reached ones are injected; a module that
+     * never folds gets none.
+     */
+    private static Ast.Module injectRecursivePrelude(Ast.Module module) {
+        Map<String, Ast.FnDef> injected = HelperInliner.forModule(module).injectedRecursiveHelpers();
+        if (injected.isEmpty()) {
+            return module;
+        }
+        List<Ast.FnDef> fns = new ArrayList<>(module.fns());
+        fns.addAll(injected.values());
+        return new Ast.Module(module.name(), module.exposing(), module.exposedOutputs(),
+                module.imports(), module.defs(), module.behaviors(), fns, module.examples(),
+                module.fakes(), module.exampleFileTarget(), module.pos());
     }
 
     /**
@@ -185,6 +205,7 @@ public final class Compiler {
             Map<String, Ast.Def> symbols = visibleDefs(m, derived);
             Map<String, TypeChecker.Sig> importedSigs = importedBehaviorSigs(m, derived);
             Set<String> importedInjected = importedInjectedBehaviors(m, derived);
+            m = injectRecursivePrelude(m);
             Ast.Module lowered = Lower.run(m);
             TypeChecker.checkOrThrow(m, symbols, importedSigs, lowered);
             out.putAll(Backend.generate(lowered, symbols, importedPackages(m), importedSigs, importedInjected));
@@ -289,6 +310,7 @@ public final class Compiler {
                 Map<String, Ast.Def> symbols = visibleDefs(m, derived);
                 Map<String, TypeChecker.Sig> importedSigs = importedBehaviorSigs(m, derived);
                 Set<String> importedInjected = importedInjectedBehaviors(m, derived);
+                m = injectRecursivePrelude(m);
                 Ast.Module lowered = Lower.run(m);
                 List<Diagnostic> typeErrors = TypeChecker.check(m, symbols, importedSigs, lowered);
                 if (!typeErrors.isEmpty()) {

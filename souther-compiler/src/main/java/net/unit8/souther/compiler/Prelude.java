@@ -50,10 +50,12 @@ public final class Prelude {
             "souther.datetime", "DateTime");
 
     /** The checker built-ins, by qualified name — the primitives that have no prelude source because
-     *  they are overloaded (length/get) or need a bespoke loop/codegen (fold), plus arithmetic. They
-     *  are reached qualified like everything else (spec §stdlib). */
+     *  they are overloaded (length/get) or need bespoke codegen (get/find/sortBy), plus arithmetic.
+     *  {@code fold} is not among them: it is an ordinary recursive helper in {@code souther.list}
+     *  ({@code foldFrom}) that takes its step as a closure. They are reached qualified like everything
+     *  else (spec §stdlib). */
     private static final Set<String> BUILTINS = Set.of(
-            "List.fold", "List.length", "List.get", "List.max", "List.min", "List.find", "List.sortBy",
+            "List.length", "List.get", "List.max", "List.min", "List.find", "List.sortBy",
             "String.length",
             "Map.get", "Map.empty", "Set.empty",
             "Int.compare", "Int.remainder", "Int.divide", "Int.add", "Int.subtract", "Int.multiply",
@@ -89,12 +91,18 @@ public final class Prelude {
         return QUALIFIERS.contains(qualifier);
     }
 
+    /** Names that are sugar for another standard-library call, recognised as library functions but
+     *  rewritten before inlining: {@code List.fold(step, seed, xs)} is {@code List.foldFrom(step, seed,
+     *  xs, 0)} (the walk from the head). */
+    private static final Set<String> SUGARED = Set.of("List.fold");
+
     /** Whether {@code qualifiedName} (e.g. {@code "List.map"}) is a standard-library function —
-     *  a prelude helper, a prelude intrinsic, or a checker built-in. */
+     *  a prelude helper, a prelude intrinsic, a checker built-in, or a sugar for one. */
     public static boolean hasQualified(String qualifiedName) {
         return HELPERS.containsKey(qualifiedName)
                 || INTRINSICS.containsKey(qualifiedName)
-                || BUILTINS.contains(qualifiedName);
+                || BUILTINS.contains(qualifiedName)
+                || SUGARED.contains(qualifiedName);
     }
 
     /** The helper functions of the prelude (inlined at call sites), keyed by qualified name. */

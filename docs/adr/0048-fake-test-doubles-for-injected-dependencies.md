@@ -16,9 +16,9 @@ handlers (Unison, Koka, OCaml, Eff) provide an implementation at the *use scope*
 ZIO/Cats build a test `ZLayer` and `provide` it; the Haskell handle pattern passes a record of stub
 functions; F# passes stub functions, but its first advice is *dependency rejection* — move the
 dependency to an input so no double is needed. Two lessons: the double is supplied at the use scope
-(not global), and the best double is none. A third constraint is Souther's own: users have no
-first-class functions (lambdas are second-class), so a function-shaped double is more naturally
-*data* than a function.
+(not global), and the best double is none. A third constraint is Souther's own: a function value
+cannot be stored in a `data` field or a behavior's input/output (ADR-0025), so a function-shaped
+double is more naturally *data* than a function.
 
 ## Decision
 
@@ -52,9 +52,9 @@ latter is a sign the dependency should become an input.
 - An example can now evaluate a behavior that `requires` an injected dependency, extending compile-
   time example checking to the effectful core of a domain — while the injected behavior's real
   implementation stays Java at the boundary.
-- The function-dependency fake is data (a lookup table), which fits Souther's no-first-class-functions
-  stance and is exactly what a test needs — concrete answers for concrete inputs — with a loud miss
-  rather than a silent default.
+- The function-dependency fake is data (a lookup table), which fits a function value not being
+  storable in a data field (ADR-0025) and is exactly what a test needs — concrete answers for
+  concrete inputs — with a loud miss rather than a silent default.
 - Nothing new ships: a fake is a proxy at evaluation and adds no class to the output. (The existing
   CTFE `$Ctfe` helper does ship; a fake deliberately does not follow that.)
 - The design pushes modelers toward dependency rejection: the cleanest example has no fake because the

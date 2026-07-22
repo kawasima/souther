@@ -59,13 +59,82 @@ public final class HelperInliner {
         helpers.putAll(own);
         HelperInliner inliner = new HelperInliner(helpers, own);
         inliner.classifyRecursion();
+        inliner.computeReferencedPreludeRecursive(module);
         return inliner;
     }
 
-    /** The module's own helpers that recurse (self or mutual) and so are lowered to methods rather
-     * than inlined (spec 13.1). A call to one is left standing by {@link #inline}. */
+    /** Prelude recursive helpers this module reaches, by qualified name (`List.foldFrom`). A prelude
+     * recursive helper is not inlined (it would expand forever); instead it is emitted as one of this
+     * module's own methods, exactly like a module-own recursive helper (see {@link
+     * #injectedRecursiveHelpers}). Only the ones actually reached are emitted. */
+    private final Set<String> referencedPreludeRecursive = new java.util.LinkedHashSet<>();
+
+    /** Walks the module's fn bodies and data invariants, collecting the prelude recursive helpers they
+     * reach transitively — those must be emitted as this module's own methods. */
+    private void computeReferencedPreludeRecursive(Ast.Module module) {
+        Set<String> reachable = new HashSet<>();
+        java.util.Deque<String> work = new java.util.ArrayDeque<>();
+        for (Ast.FnDef fn : module.fns()) {
+            collectHelperCalls(fn.body(), reachable);
+        }
+        for (Ast.Def d : module.defs()) {
+            if (d instanceof Ast.Data data && data.invariant().isPresent()) {
+                collectHelperCalls(data.invariant().get(), reachable);
+            }
+        }
+        for (Ast.Example ex : module.examples()) {
+            for (Ast.ExampleRow row : ex.rows()) {
+                row.inputs().forEach(in -> collectHelperCalls(in, reachable));
+                collectHelperCalls(row.expected(), reachable);
+            }
+        }
+        work.addAll(reachable);
+        while (!work.isEmpty()) {
+            Ast.FnDef def = helpers.get(work.poll());
+            if (def == null) {
+                continue;
+            }
+            Set<String> calls = new HashSet<>();
+            collectHelperCalls(def.body(), calls);
+            for (String c : calls) {
+                if (reachable.add(c)) {
+                    work.add(c);
+                }
+            }
+        }
+        for (String name : reachable) {
+            if (recursive.contains(name) && !own.containsKey(name)) {
+                referencedPreludeRecursive.add(name);
+            }
+        }
+    }
+
+    /** The recursive helpers this module emits as methods: its own recursive helpers plus the prelude
+     * recursive helpers it reaches (spec 13.1). A call to any of them is left standing by {@link
+     * #inline}. The internal {@code recursive} set additionally holds prelude recursive helpers the
+     * module does not reach, so {@code inline} never expands one that slips in through a nested body. */
     public Set<String> recursiveHelpers() {
-        return recursive;
+        Set<String> result = new java.util.LinkedHashSet<>();
+        for (String name : recursive) {
+            if (own.containsKey(name)) {
+                result.add(name);
+            }
+        }
+        result.addAll(referencedPreludeRecursive);
+        return result;
+    }
+
+    /** The prelude recursive helpers this module reaches, renamed to their qualified names so they are
+     * emitted as the module's own methods — a prelude {@code let foldFrom} is reached as {@code
+     * List.foldFrom}, and its self-call already reads {@code List.foldFrom}. */
+    public Map<String, Ast.FnDef> injectedRecursiveHelpers() {
+        Map<String, Ast.FnDef> out = new java.util.LinkedHashMap<>();
+        for (String qualified : referencedPreludeRecursive) {
+            Ast.FnDef def = helpers.get(qualified);
+            out.put(qualified, new Ast.FnDef(qualified, def.params(), def.declaredReturn(),
+                    def.intrinsicKey(), def.body(), def.pos()));
+        }
+        return out;
     }
 
     /** The module's own helper fns, keyed by name (for the standalone signature check). The
@@ -107,13 +176,46 @@ public final class HelperInliner {
      * argument index. The other combinators (map/filter/all/any) are ordinary prelude helpers derived
      * from fold (ADR-0028), so they need no such desugaring — a name reaches their function parameter
      * directly. */
-    private static final Map<String, Integer> BLOCK_ARG = Map.of("List.fold", 0);
+    private static final Map<String, Integer> BLOCK_ARG = Map.of("List.foldFrom", 0);
+
+    /** {@code List.fold(step, seed, xs)} is sugar for {@code List.foldFrom(step, seed, xs, 0)} — the
+     * walk from the head. Rewriting it here, before inlining, means the step reaches {@code foldFrom}
+     * (the one recursive helper) directly rather than through a wrapper that would pass the function on
+     * as a value. */
+    private static Ast.Call desugarFold(Ast.Call call) {
+        if (!call.fn().equals("List.fold") || call.args().size() != 3) {
+            return call;
+        }
+        List<Ast.Expr> args = new ArrayList<>(call.args());
+        args.add(new Ast.IntLit(0, call.pos()));
+        return new Ast.Call("List.foldFrom", args, call.pos());
+    }
+
+    /** Inlines a recursive helper's own body, expanding the non-recursive helper calls it makes while
+     * leaving its own parameters alone. A parameter that shares a module helper's name — {@code
+     * foldFrom}'s function parameter {@code step} in a module that also defines a helper {@code step} —
+     * is a parameter application, not a call to that helper, so the same-named helpers are hidden while
+     * the body is expanded. */
+    public Ast.Expr inlineRecursiveBody(Ast.FnDef h) {
+        Map<String, Ast.FnDef> shadowed = new HashMap<>();
+        for (Ast.FnParam p : h.params()) {
+            Ast.FnDef hidden = helpers.remove(p.name());
+            if (hidden != null) {
+                shadowed.put(p.name(), hidden);
+            }
+        }
+        try {
+            return inline(h.body());
+        } finally {
+            helpers.putAll(shadowed);
+        }
+    }
 
     /** Rewrites every helper call in {@code e} to its inlined body. */
     public Ast.Expr inline(Ast.Expr e) {
         return switch (e) {
             case Ast.Call rawCall -> {
-                Ast.Call call = desugarNamedBlock(rawCall);
+                Ast.Call call = desugarNamedBlock(desugarFold(rawCall));
                 List<Ast.Expr> args = new ArrayList<>();
                 for (Ast.Expr a : call.args()) {
                     args.add(inline(a));
@@ -410,7 +512,11 @@ public final class HelperInliner {
      * recursive iff it can reach itself through helper calls; every member of a mutual cycle is
      * reached from itself, so all are marked. */
     private void classifyRecursion() {
-        for (String name : own.keySet()) {
+        // Both a module's own helpers and the shipped prelude helpers are scanned: `souther.list`'s
+        // `foldFrom` is a recursive prelude helper, and it must be left standing (lowered to a method,
+        // not inlined) exactly as a module-own recursive helper is, or the inliner would expand its
+        // self-call forever.
+        for (String name : helpers.keySet()) {
             if (reaches(name, name, new HashSet<>())) {
                 recursive.add(name);
             }
@@ -453,8 +559,13 @@ public final class HelperInliner {
     }
 
     private void collectHelperCalls(Ast.Expr e, Set<String> out) {
-        if (e instanceof Ast.Call call && helpers.containsKey(call.fn())) {
-            out.add(call.fn());
+        if (e instanceof Ast.Call call) {
+            // `List.fold` desugars to `List.foldFrom` before inlining, so a body that folds reaches the
+            // recursive `foldFrom` — recursion classification and prelude-injection must see that.
+            String fn = call.fn().equals("List.fold") ? "List.foldFrom" : call.fn();
+            if (helpers.containsKey(fn)) {
+                out.add(fn);
+            }
         }
         forEachChild(e, c -> collectHelperCalls(c, out));
     }

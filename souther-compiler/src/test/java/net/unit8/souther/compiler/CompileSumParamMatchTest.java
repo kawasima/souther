@@ -153,4 +153,27 @@ class CompileSumParamMatchTest {
         Map<?, ?> bad = (Map<?, ?>) Codecs.encode(loader, "demo.NotFound", Codecs.apply(behavior, badIn));
         assertEquals(9L, bad.get("missing"));
     }
+
+    @Test
+    void aCaseSeededFoldThatStaysInThatCaseIsNotWidenedToItsSum() throws Exception {
+        // `Cart` is a case of `R = Cart | Err`, but this fold seeds `Cart`, reads its field, and always
+        // returns a `Cart` — it never grows to the sum. The accumulator stays `Cart`, so the behavior
+        // may declare its output as the narrow `Cart`. (A fold is only widened to the sum when its step
+        // actually matches on, or grows into, that sum.)
+        String src = """
+                module demo
+                import List ( fold )
+                data Cart = { total: Int }
+                data Err = { code: Int }
+                data R = Cart | Err
+                data In = { xs: List<Int> }
+                behavior total : (i: In) -> Cart constructs Cart
+                let total (i) = fold((acc, x) -> Cart { total = acc.total + x }, Cart { total = 0 }, i.xs)
+                """;
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Object behavior = loader.loadClass("demo.Total" + "$Impl").getConstructor().newInstance();
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("xs", List.of(1L, 2L, 3L, 4L)));
+        Map<?, ?> out = (Map<?, ?>) Codecs.encode(loader, "demo.Cart", Codecs.apply(behavior, in));
+        assertEquals(10L, out.get("total"));
+    }
 }

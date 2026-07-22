@@ -389,7 +389,9 @@ public final class TypeChecker {
                     env.put(h.params().get(idx).name(), types.get(idx));
                 }
             }
-            Ast.Expr body = inliner.inline(h.body());
+            // a recursive helper hides its own parameters from helper resolution while its body is
+            // expanded (foldFrom's `step` is a parameter, not a same-named user helper).
+            Ast.Expr body = recursive ? inliner.inlineRecursiveBody(h) : inliner.inline(h.body());
             // a helper that returns a function (e.g. `let adder (n) = (x) -> x + n`) has no application
             // here to infer the lambda's parameter types from; it is checked where it is inlined and
             // applied (spec §blocks).
@@ -603,16 +605,8 @@ public final class TypeChecker {
                             "helper `let " + name + "` must annotate parameter `" + p.name()
                                     + "` with its type (spec 13.1)");
                 }
-                if (p.type() instanceof Ast.FnType) {
-                    // a recursive helper is a static method, and a function value cannot be passed to
-                    // one (a block is not a value, spec 12.5); reject the function parameter directly.
-                    throw CompileException.of(
-                            Diagnostic.of(null, "check.rechelper.fnparam").title("check.helper.title")
-                                    .at(p.pos(), p.name().length()).args(name, p.name()).build(),
-                            "recursive helper `let " + name + "` cannot take the function parameter `"
-                                    + p.name() + "` — a recursive helper is a method and a function"
-                                    + " cannot be passed to it");
-                }
+                // a recursive helper is a static method taking its parameters as values; a function
+                // parameter is passed as a first-class Fn (a closure), applied inside the method.
                 params.add(resolveParamType(p.type(), symbols));
             }
             sigs.put(name, Type.fn(params, successType(h.declaredReturn(), symbols)));
@@ -808,19 +802,20 @@ public final class TypeChecker {
             env.put(fn.params().get(i).name(), successType(spec.params().get(i).type(), symbols));
         }
         Type output = successType(spec.ret(), symbols);
+        // recursive helpers this behavior calls resolve through their signatures (spec 13.1); merged
+        // only for typing, so construction/requires walks below still see the business params alone.
+        Map<String, Type> tenv = new HashMap<>(env);
+        tenv.putAll(recursiveHelperFns);
         // Check functions passed to helper parameters (e.g. a combinator's predicate) against their
         // declared types first, so a mismatch names the parameter, not the derivation it expands to.
-        checkFunctionArgs(fn.body(), env, symbols, reqSigs, inliner);
+        // A nested fold reaches `List.foldFrom` inside a block, so its signature must be in scope here.
+        checkFunctionArgs(fn.body(), tenv, symbols, reqSigs, inliner);
         // The body arrives with helper calls already expanded (the Lower stage, ADR-0021): it is
         // checked as one expression, so a helper's constructions and injected calls count toward this
         // behavior's permission and requires — exactly as if the code had been written inline (12.5).
         Ast.Expr body = inlinedBody;
         rejectNonRequiredCalls(body, allBehaviors, reqSigs);
 
-        // recursive helpers this behavior calls resolve through their signatures (spec 13.1); merged
-        // only for typing, so construction/requires walks below still see the business params alone.
-        Map<String, Type> tenv = new HashMap<>(env);
-        tenv.putAll(recursiveHelperFns);
         Type rt = typeOf(body, tenv, null, symbols, reqSigs);
         if (!assignable(rt, output, symbols)) {
             throw CompileException.of(
@@ -2199,6 +2194,27 @@ public final class TypeChecker {
      * (the {@code partition} shape). Beyond the whole empty list {@link #absorbEmptyList} handles, it
      * joins same-arity tuples element-wise. Returns {@code null} when the two do not reconcile, so the
      * caller falls through to its ordinary rules. */
+    /** Refines the type-variable bindings from a function argument's actual result: where the
+     * function's declared result is a type variable and its current binding is unknown or an
+     * empty-collection bottom, replace it with the concrete result the step grows. This is how a
+     * {@code foldFrom} seeded with {@code []} recovers its accumulator type — the block returns the
+     * grown list, not the bottom the seed carried. A composite result (a tuple of accumulators, as
+     * {@code partition}/{@code distinct} fold) refines position by position. */
+    public static void refineBottom(Type declaredResult, Type got, Map<String, Type> bind) {
+        if (declaredResult instanceof Type.Var v) {
+            Type cur = bind.get(v.name());
+            if ((cur == null || Type.mentions(cur, TypeChecker::isBottom))
+                    && !Type.mentions(got, TypeChecker::isBottom)) {
+                bind.put(v.name(), got);
+            }
+        } else if (declaredResult instanceof Type.TupleOf dt && got instanceof Type.TupleOf gt
+                && dt.elements().size() == gt.elements().size()) {
+            for (int i = 0; i < dt.elements().size(); i++) {
+                refineBottom(dt.elements().get(i), gt.elements().get(i), bind);
+            }
+        }
+    }
+
     private static Type absorbBottom(Type a, Type b) {
         if (a.equals(b)) {
             return a;
@@ -2514,7 +2530,7 @@ public final class TypeChecker {
                     throw expects(call.pos(), "List.find", "kind.list", t,
                             "List.find expects a List, got " + t);
                 }
-                Type pr = blockType(call, args.get(0), List.of(lo.element()), env, data, symbols, reqs);
+                Type pr = blockType(call.fn(), args.get(0), List.of(lo.element()), env, data, symbols, reqs);
                 if (pr != Type.BOOL) {
                     throw CompileException.of(
                             Diagnostic.of(null, "check.fn.predicatebool").title("check.fn.title")
@@ -2530,7 +2546,7 @@ public final class TypeChecker {
                     throw expects(call.pos(), "List.sortBy", "kind.list", t,
                             "List.sortBy expects a List, got " + t);
                 }
-                Type keyT = blockType(call, args.get(0), List.of(lo.element()), env, data, symbols, reqs);
+                Type keyT = blockType(call.fn(), args.get(0), List.of(lo.element()), env, data, symbols, reqs);
                 if (!isBottom(keyT) && !isOrdered(keyT)) {
                     throw CompileException.of(
                             Diagnostic.of(null, "check.ordered.key").title("check.type.mismatch.title")
@@ -2540,52 +2556,6 @@ public final class TypeChecker {
                                     + " DateTime), but returns " + keyT);
                 }
                 yield Type.list(lo.element());
-            }
-            // map/filter/all/any are no longer built in: they are prelude helpers derived from fold
-            // (ADR-0028, souther.list), so a call to one is expanded inline before it reaches here.
-            case Core.FOLD -> {
-                arity(call, 3);
-                // fold(step, seed, xs): step block first, list last (F#/Elm order, spec §pipe)
-                Type src = typeOf(args.get(2), env, data, symbols, reqs);
-                if (!(src instanceof Type.ListOf lo)) {
-                    throw expects(call.pos(), "fold", "kind.list", src,
-                            "fold expects a List, got " + src);
-                }
-                Type acc = typeOf(args.get(1), env, data, symbols, reqs);
-                Type bt = blockType(call, args.get(0), List.of(acc, lo.element()), env, data, symbols, reqs);
-                if (Type.mentions(acc, TypeChecker::isBottom)) {
-                    // The seed is an empty collection ([], Map.empty, Set.empty, or a tuple of them):
-                    // its element/key/value types are bottoms, so the accumulator's real type is the
-                    // one the block grows it into — the same shape. A block that never grows the seed
-                    // (a no-op fold) leaves the type a bottom; keep the seed type then, as the backend
-                    // recovers it, rather than reject it. A different shape is a genuine mismatch.
-                    if (!sameKind(acc, bt)) {
-                        throw CompileException.of(
-                                Diagnostic.of(null, "check.fold.shape").title("check.type.mismatch.title")
-                                        .at(call.pos()).args(Type.show(bt)).build(),
-                                "fold seeded with an empty collection must grow a value of that"
-                                        + " collection's shape, but its block returns " + bt);
-                    }
-                    yield Type.mentions(bt, TypeChecker::isBottom) ? acc : bt;
-                }
-                if (bt.equals(acc) || absorbEmptyList(acc, bt) != null) {
-                    yield acc;
-                }
-                // The seed is a specific case (e.g. a `Success`) and the block grows the accumulator
-                // into its sum (`Success | Failure`): the accumulator's real type is that sum. Re-type
-                // the block at the wider sum — a block that assumed the seed's narrower case is now
-                // rejected — and, if it is a fixpoint there, use it. This is what lets a per-element
-                // failing load be aggregated with a `fold` seeded by the success case. Restricted to a
-                // sum target, so a covariant list/map/tuple widening is not silently accepted here.
-                if (isSumType(bt, symbols) && assignable(acc, bt, symbols)
-                        && blockType(call, args.get(0), List.of(bt, lo.element()), env, data, symbols, reqs).equals(bt)) {
-                    yield bt;
-                }
-                throw CompileException.of(
-                        Diagnostic.of(null, "check.fold.acctype").title("check.type.mismatch.title")
-                                .at(call.pos()).args(Type.show(acc), Type.show(bt))
-                                .diff(Type.show(bt), Type.show(acc)).build(),
-                        "fold's block must return the accumulator type " + acc + ", got " + bt);
             }
             case "List.get" -> {
                 arity(call, 2);
@@ -2659,11 +2629,30 @@ public final class TypeChecker {
                                 "`" + call.fn() + "` takes " + fn.params().size()
                                         + " argument(s) but is applied to " + args.size());
                     }
+                    // Resolve the signature's type variables from the value (non-function) arguments
+                    // first — a generic recursive helper like `foldFrom(step, seed, xs, i)` fixes `'acc`
+                    // from the seed and `'a` from the list. An empty-collection seed ([], Map.empty)
+                    // binds the accumulator to a bottom; the step's result then grows it to the concrete
+                    // type, so a function argument's result refines the binding (as the old fold did).
+                    Map<String, Type> bind = new HashMap<>();
                     for (int i = 0; i < args.size(); i++) {
-                        requireType(args.get(i), fn.params().get(i), env, data, symbols, reqs,
-                                "argument " + (i + 1) + " of " + call.fn());
+                        if (!(fn.params().get(i) instanceof Type.FnOf)) {
+                            Type at = typeOf(args.get(i), env, data, symbols, reqs);
+                            unify(fn.params().get(i), at, bind, symbols, call.pos(), "argument " + (i + 1));
+                        }
                     }
-                    yield fn.result();
+                    for (int i = 0; i < args.size(); i++) {
+                        if (fn.params().get(i) instanceof Type.FnOf fp0) {
+                            resolveStepBinding(call.fn(), fp0, args.get(i), bind, env, data, symbols, reqs);
+                        }
+                    }
+                    for (int i = 0; i < args.size(); i++) {
+                        if (!(fn.params().get(i) instanceof Type.FnOf)) {
+                            requireType(args.get(i), substitute(fn.params().get(i), bind), env, data,
+                                    symbols, reqs, "argument " + (i + 1) + " of " + call.fn());
+                        }
+                    }
+                    yield substitute(fn.result(), bind);
                 }
                 // a qualified name that matched no stdlib builtin/intrinsic above is a wrong stdlib
                 // call (spec §stdlib) — report it as such, not as a missing behavior.
@@ -2910,7 +2899,61 @@ public final class TypeChecker {
      * whatever it calls — which flows outward into the enclosing behavior's, so nothing about
      * requirements has to be written down (spec 29).
      */
-    private static Type blockType(Ast.Call call, Ast.Expr arg, List<Type> paramTypes,
+    /**
+     * Resolves the accumulator type for one function argument (a fold's step) of a helper call,
+     * updating {@code bind}. The step is first typed at the accumulator the value arguments fixed —
+     * the seed's type, which may be a narrow case. That type stands when the step is a fixpoint there
+     * (it reads the seed's fields and returns the same case). Only when the narrow case does not type
+     * (the step matches on the accumulator, which needs its sum) or is not a fixpoint (the step grows
+     * the accumulator into its sum) is the accumulator widened to the sum that case belongs to, and the
+     * step re-typed there. An empty-collection seed's bottom is refined from the block's result along
+     * the way. Shared by the checker's call typing and the backend's step materialization, so the two
+     * resolve identically.
+     */
+    public static void resolveStepBinding(String fnName, Type.FnOf declaredStep, Ast.Expr stepArg,
+                                          Map<String, Type> bind, Map<String, Type> env, Ast.Data data,
+                                          Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
+        Type.FnOf narrow = (Type.FnOf) substitute(declaredStep, bind);
+        Type narrowGot = null;
+        CompileException narrowFailed = null;
+        try {
+            narrowGot = blockType(fnName, stepArg, narrow.params(), env, data, symbols, reqs);
+        } catch (CompileException e) {
+            narrowFailed = e;
+        }
+        if (narrowGot != null) {
+            refineBottom(declaredStep.result(), narrowGot, bind);
+            Type want = substitute(declaredStep.result(), bind);
+            if (want instanceof Type.Var || assignable(narrowGot, want, symbols)) {
+                return;   // the narrow accumulator is a fixpoint
+            }
+        }
+        // The step matches on, or grows the accumulator into, the sum the seed's case belongs to.
+        if (declaredStep.result() instanceof Type.Var accVar) {
+            Type sum = enclosingSum(substitute(declaredStep.result(), bind), symbols);
+            if (sum != null) {
+                Map<String, Type> widened = new HashMap<>(bind);
+                widened.put(accVar.name(), sum);
+                Type got = blockType(fnName, stepArg,
+                        ((Type.FnOf) substitute(declaredStep, widened)).params(), env, data, symbols, reqs);
+                if (assignable(got, sum, symbols)) {
+                    bind.put(accVar.name(), sum);
+                    return;
+                }
+            }
+        }
+        if (narrowGot == null) {
+            throw narrowFailed;   // the narrow type errored and there was no sum to fall back to
+        }
+        throw CompileException.of(
+                Diagnostic.of(null, "check.fn.argtype").title("check.fn.title")
+                        .at(stepArg.pos()).args(fnName, Type.show(narrowGot),
+                                Type.show(substitute(declaredStep.result(), bind))).build(),
+                "the step of " + fnName + " returns " + Type.show(narrowGot)
+                        + ", but the accumulator is " + Type.show(substitute(declaredStep.result(), bind)));
+    }
+
+    private static Type blockType(String fnName, Ast.Expr arg, List<Type> paramTypes,
                                   Map<String, Type> env, Ast.Data data,
                                   Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
         if (!(arg instanceof Ast.Block block)) {
@@ -2920,18 +2963,18 @@ public final class TypeChecker {
                 if (fn.params().size() != paramTypes.size()) {
                     throw CompileException.of(
                             Diagnostic.of(null, "check.fn.callarity").title("check.fn.title")
-                                    .at(arg.pos()).args(call.fn(), paramTypes.size(), fn.params().size())
+                                    .at(arg.pos()).args(fnName, paramTypes.size(), fn.params().size())
                                     .build(),
-                            call.fn() + " calls its function with " + paramTypes.size()
+                            fnName + " calls its function with " + paramTypes.size()
                                     + " argument(s), but it takes " + fn.params().size());
                 }
                 for (int i = 0; i < paramTypes.size(); i++) {
                     if (!assignable(paramTypes.get(i), fn.params().get(i), symbols)) {
                         throw CompileException.of(
                                 Diagnostic.of(null, "check.fn.argtype").title("check.fn.title")
-                                        .at(arg.pos()).args(call.fn(), Type.show(paramTypes.get(i)),
+                                        .at(arg.pos()).args(fnName, Type.show(paramTypes.get(i)),
                                                 Type.show(fn.params().get(i))).build(),
-                                call.fn() + "'s element type " + paramTypes.get(i)
+                                fnName + "'s element type " + paramTypes.get(i)
                                         + " is not acceptable to the function, which takes "
                                         + fn.params().get(i));
                     }
@@ -2940,8 +2983,8 @@ public final class TypeChecker {
             }
             throw CompileException.of(
                     Diagnostic.of(null, "check.fn.expectsblock").title("check.fn.title")
-                            .at(arg.pos()).args(call.fn()).build(),
-                    call.fn() + " expects a block, e.g. `" + call.fn()
+                            .at(arg.pos()).args(fnName).build(),
+                    fnName + " expects a block, e.g. `" + fnName
                             + "((acc, x) -> ..., seed, xs)` (spec 12.5)");
         }
         if (block.params().size() != paramTypes.size()) {
@@ -3286,7 +3329,26 @@ public final class TypeChecker {
 
     /** Whether {@code t} is a sum: an anonymous union, or a reference to a named {@code data X = A | B}.
      * A case→sum widening only matters for these — not for a covariant list/map/tuple. */
-    private static boolean isSumType(Type t, Map<String, Ast.Def> symbols) {
+    /** The sum type that {@code t}'s case belongs to, or null when {@code t} is not a case of a named
+     * sum. A {@code fold} whose seed is a case ({@code PricedCart}) and whose step grows and matches the
+     * accumulator at the sum ({@code PricedCart | NotFound}) is typed at that sum, not the seed case. */
+    public static Type enclosingSum(Type t, Map<String, Ast.Def> symbols) {
+        if (!(t instanceof Type.Ref ref) || symbols.get(ref.name()) instanceof Ast.SumData) {
+            return null;
+        }
+        // A case may belong to more than one sum; pick by name so the choice is deterministic across
+        // runs rather than dependent on the symbol map's iteration order.
+        String chosen = null;
+        for (Ast.Def d : symbols.values()) {
+            if (d instanceof Ast.SumData sum && sum.cases().contains(ref.name())
+                    && (chosen == null || sum.name().compareTo(chosen) < 0)) {
+                chosen = sum.name();
+            }
+        }
+        return chosen == null ? null : Type.ref(chosen);
+    }
+
+    public static boolean isSumType(Type t, Map<String, Ast.Def> symbols) {
         return t instanceof Type.Union
                 || (t instanceof Type.Ref r && symbols.get(r.name()) instanceof Ast.SumData);
     }
@@ -3339,7 +3401,7 @@ public final class TypeChecker {
      * monomorphises a generic intrinsic — {@code values(m: Map<String, 'a>): List<'a>} learns
      * {@code 'a} from the map so {@link #substitute} can resolve the {@code List<'a>} result.
      */
-    private static void unify(Type param, Type arg, Map<String, Type> bindings,
+    public static void unify(Type param, Type arg, Map<String, Type> bindings,
                               Map<String, Ast.Def> symbols, SourcePos pos, String what) {
         switch (param) {
             case Type.Var v -> {
@@ -3394,7 +3456,7 @@ public final class TypeChecker {
     }
 
     /** Replaces the type variables bound by {@link #unify} in a result type. */
-    private static Type substitute(Type t, Map<String, Type> bindings) {
+    public static Type substitute(Type t, Map<String, Type> bindings) {
         return switch (t) {
             case Type.Var v -> bindings.getOrDefault(v.name(), v);
             case Type.ListOf l -> Type.list(substitute(l.element(), bindings));

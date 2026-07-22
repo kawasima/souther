@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -59,6 +60,57 @@ class CompileRecursiveHelperTest {
     @Test
     void aLeafEmployeeHasDepthOne() throws Exception {
         assertEquals(1L, measure(Map.of("name", "solo")));
+    }
+
+    @Test
+    void aSelfTailRecursiveHelperRunsInConstantStack() throws Exception {
+        // loop(acc, n) = if n == 0 then acc else loop(acc + n, n - 1) is tail-recursive: the
+        // self-call is the whole else-branch. A million-deep recursion must run as a loop (the
+        // tail self-call reuses the frame), so it returns rather than overflowing the JVM stack.
+        String src = """
+                module demo
+                data N = Int
+                data Out = Int
+                behavior run : (n: N) -> Out constructs Out
+                let loop (acc: Int, n: Int): Int = if n == 0 then acc else loop(acc + n, n - 1)
+                let run (n) = Out(loop(0, n.value))
+                """;
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Object n = Codecs.decoded(loader, "demo.N", 1_000_000L);
+
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, n);
+
+        assertEquals(500000500000L, (long) Codecs.encode(loader, "demo.Out", out));
+    }
+
+    @Test
+    void aSelfTailRecursiveHelperInAMatchArmRunsInConstantStack() throws Exception {
+        // The tail position is a match arm: sumFrom walks the list by index, recursing in the `Some`
+        // arm of `match get(i, xs)`. TCO must reach into match arms, or a deep walk overflows the
+        // stack. This is the shape a self-hosted fold takes (List.get returns an Option).
+        String src = """
+                module demo
+                data Bag = { xs: List<Int> }
+                data Out = Int
+                behavior run : (b: Bag) -> Out constructs Out
+                let sumFrom (acc: Int, xs: List<Int>, i: Int): Int =
+                    match List.get(i, xs) with
+                        | Some x -> sumFrom(acc + x, xs, i + 1)
+                        | None -> acc
+                let run (b) = Out(sumFrom(0, b.xs, 0))
+                """;
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        java.util.List<Long> xs = new java.util.ArrayList<>();
+        for (long j = 1; j <= 200_000; j++) {
+            xs.add(j);
+        }
+        Object bag = Codecs.decoded(loader, "demo.Bag", Map.of("xs", xs));
+
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, bag);
+
+        assertEquals(20000100000L, (long) Codecs.encode(loader, "demo.Out", out));
     }
 
     @Test
@@ -138,9 +190,10 @@ class CompileRecursiveHelperTest {
     }
 
     @Test
-    void aRecursiveHelperCannotTakeAFunctionParameter() {
-        // A recursive helper is a static method; a function value cannot be passed to it, so a
-        // function-typed parameter is rejected with a message about that, not "a block is not a value".
+    void aRecursiveHelperCanTakeAFunctionParameter() throws Exception {
+        // A recursive helper takes its function parameter as a first-class Fn value (a closure),
+        // applied inside the method — the same way a self-hosted fold takes its step. count(n, f)
+        // sums f(n) + f(n-1) + ... + f(1); with the identity function that is n*(n+1)/2.
         String src = """
                 module demo
                 data N = Int
@@ -149,9 +202,54 @@ class CompileRecursiveHelperTest {
                 let count (n: Int, f: (Int) -> Int): Int = if n == 0 then 0 else f(n) + count(n - 1, f)
                 let run (n) = Out(count(n.value, (x) -> x))
                 """;
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Object n = Codecs.decoded(loader, "demo.N", 5L);
+
+        Object behavior = loader.loadClass("demo.Run" + "$Impl").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, n);
+
+        assertEquals(15L, (long) Codecs.encode(loader, "demo.Out", out));
+    }
+
+    @Test
+    void aClosurePassedToARecursiveHelperMayCallAnInjectedBehavior() {
+        // A recursive helper's own body is pure, but a closure passed to it is behavior code: it may
+        // call an injected behavior, and the requirement is the caller's — `run` declares `requires now`.
+        // The recursive helper `loopy` stays pure; it only applies the closure it is handed.
+        String src = """
+                module demo
+                data N = Int
+                data Out = Int
+                behavior now : () -> N
+                behavior run : (n: N) -> Out requires now constructs Out
+                let loopy (f: (Int) -> Int, n: Int): Int = if n == 0 then 0 else f(n) + loopy(f, n - 1)
+                let run (n, now) = Out(loopy((x) -> {
+                    let c = now()
+                    x + c.value
+                }, n.value))
+                """;
+        assertDoesNotThrow(() -> Compiler.compile(src));
+    }
+
+    @Test
+    void aClosureCallingAnInjectedBehaviorStillNeedsTheBehaviorToDeclareRequires() {
+        // The effect a closure performs is attributed to the behavior that builds it: `run` reaches
+        // `now` through the closure but does not declare `requires now`, so it is E1602 — the same rule
+        // any injected call in a behavior obeys, not a recursive-helper-specific one.
+        String src = """
+                module demo
+                data N = Int
+                data Out = Int
+                behavior now : () -> N
+                behavior run : (n: N) -> Out constructs Out
+                let loopy (f: (Int) -> Int, n: Int): Int = if n == 0 then 0 else f(n) + loopy(f, n - 1)
+                let run (n) = Out(loopy((x) -> {
+                    let c = now()
+                    x + c.value
+                }, n.value))
+                """;
         CompileException ex = assertThrows(CompileException.class, () -> Compiler.compile(src));
-        assertTrue(ex.getMessage().contains("count") && ex.getMessage().contains("function"),
-                ex.getMessage());
+        assertTrue(ex.getMessage().contains("now") && ex.getMessage().contains("requires"), ex.getMessage());
     }
 
     @Test

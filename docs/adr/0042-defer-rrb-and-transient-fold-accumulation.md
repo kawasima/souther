@@ -6,8 +6,8 @@ Status: Accepted
 
 A `List` value is a persistent bit-mapped vector trie and a `Map`/`Set` a persistent CHAMP trie, so
 the fold-derived combinators grow their result by structural sharing rather than whole-collection
-copying — which is what turned `map`/`filter`/`groupBy` from O(n²) into O(n) (ADR-0028 keeps
-`List.fold` the one privileged loop these are written over). On top of that baseline a performance
+copying — which is what turned `map`/`filter`/`groupBy` from O(n²) into O(n) (`List.fold` is the one
+recursive helper these are written over, ADR-0028, ADR-0051). On top of that baseline a performance
 review listed several further optimizations. Two of them were built or scoped and then set aside;
 this ADR records why, so they are not re-proposed without new evidence.
 
@@ -67,7 +67,8 @@ cost/benefit," not "never" — reopen it with a workload, not on principle.
 
 ## References
 
-- ADR-0028 (the stdlib is Souther over one privileged `List.fold`; the fold path this ADR chooses not
+- ADR-0028 (the stdlib is Souther over an intrinsic kernel; the fold path this ADR chooses not
   to further optimize)
+- ADR-0051 (`fold` is a recursive helper, not a privileged loop)
 - ADR-0039 (Set is a collection type; the persistent-collection backing these decisions sit on)
 - Prior art: Bagwell & Rompf, *RRB-Trees: Efficient Immutable Vectors*; Steindorfer & Vinju, *Optimizing Hash-Array Mapped Tries* (CHAMP)

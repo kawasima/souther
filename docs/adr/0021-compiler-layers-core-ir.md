@@ -5,8 +5,8 @@ Status: Accepted; implemented (supersedes the MVP "no separate IR" stance record
 Implemented: the **Lower** stage (`check/Lower.java`) inlines each behavior body once —
 both the type checker's body check and the backend consume it, so the backend no longer
 inlines — and desugars list comprehensions. A structural **Core IR** (`core/Core.java`)
-carries the lowered behavior-body language, with `fold` made an explicit node; the backend
-emits every expression from Core (`genExpr`), and the AST `expr` is a thin `Core.of`
+carries the lowered behavior-body language; the backend emits every expression from Core
+(`genExpr`), and the AST `expr` is a thin `Core.of`
 adapter kept for the codec paths, which are still AST-level.
 
 Core is **structural, not typed**: the backend infers types as it emits. One consequence
@@ -38,7 +38,7 @@ The "no IR" stance has three costs that now bite:
   convenient: some as standalone AST rewrites before checking (`Exposing`, invariant
   inlining, `NewtypeDesugar`), some interleaved into type checking (helper inlining,
   branch widening, pipeline flattening), and some hand-written inside the emitter
-  (`fold` to a counted loop, `match` to an `instanceof` chain, closure conversion,
+  (tail recursion to a loop, `match` to an `instanceof` chain, closure conversion,
   intrinsic dispatch). There is no single place a transformation belongs.
 - **Some work is done twice.** Helper inlining is reconstructed independently in both
   the type checker and the backend from the same engine, because there is no shared
@@ -57,7 +57,7 @@ is deferred — see the implementation note above.)
 3. **Derive** — fill decoders/encoders into the AST from each data's shape (today
    `Deriver`). Stays at AST level.
 4. **Lower** — the surface AST to Core IR. The one place every body-level transformation
-   happens, once: helper inlining, the remaining desugars, `fold`-to-loop shaping,
+   happens, once: helper inlining, the remaining desugars,
    `match` lowering, closure conversion, intrinsic lowering, and — when it lands —
    monomorphization of generic helpers. It precedes the body check because a behavior's
    permission and `requires` are defined on the inlined body (`[#blocks]`), so the check is
