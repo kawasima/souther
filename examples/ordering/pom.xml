@@ -28,8 +28,9 @@
 
     <!-- この例は「実行する」ので、Spring Boot 4 系（Spring 7）を実バージョンで解決する。
          初回ビルドは Boot のスターターを取りに行くため、他の例と違いネットワークが要る
-         （2 回目以降は ~/.m2 に載るので -o でも回る）。親が spring-web/webmvc/context/tx を
-         5.3.15 に固定しているので、重なる座標だけ子で Boot 版に明示上書きする（子の明示 > 親の明示）。 -->
+         （2 回目以降は ~/.m2 に載るので -o でも回る）。この子は spring-boot-dependencies の BOM を
+         import していて、spring-web/webmvc/context/tx がそこと重なる。Boot の BOM が別の Spring
+         パッチを指しても 7.0.8 に固定できるよう、この 4 つだけ子で明示上書きする（子の明示 > import BOM > 親の明示）。 -->
     <dependencyManagement>
         <dependencies>
             <dependency>
