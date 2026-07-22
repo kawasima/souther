@@ -105,9 +105,8 @@ The original decision (MVP), superseded by the above:
 > on the AST, and the ClassFile backend emits `.class` directly from the AST via
 > `java.lang.classfile`, not through javac. Derived decoders/encoders are filled into
 > the AST from the data shape and generated as Raoh combinator calls directly as
-> bytecode. Room is left to insert an IR at this stage if a future backend needs it (for
-> example, a human-readable Java-source backend). The MVP does not carry one, so there
-> is less machinery to keep in step with the language.
+> bytecode. Room is left to insert an IR at this stage if a future backend needs it. The
+> MVP does not carry one, so there is less machinery to keep in step with the language.
 
 ## References
 
