@@ -61,8 +61,7 @@ final class Descriptors {
         if (pkg.isEmpty()) {
             return "source.sou";
         }
-        int dot = pkg.lastIndexOf('.');
-        return (dot >= 0 ? pkg.substring(dot + 1) : pkg) + ".sou";
+        return pkg.substring(pkg.lastIndexOf('.') + 1) + ".sou";
     }
 
     static final ClassDesc CD_Object = ConstantDescs.CD_Object;

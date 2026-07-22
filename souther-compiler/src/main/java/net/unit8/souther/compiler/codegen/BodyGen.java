@@ -79,6 +79,9 @@ final class BodyGen {
         private Set<String> reqNames = Set.of();
         private Map<String, Type> reqSuccess = Map.of();
         private Map<String, Type> reqParam = Map.of();
+        /** The last line already bound in this method's {@code LineNumberTable}; skips consecutive
+         * same-line entries. Fresh per method, since one {@code BodyGen} emits one method's code. */
+        private int lastEmittedLine = -1;
 
         BodyGen(CodegenContext ctx, CodeBuilder code, Ast.Data data, ClassDesc cdName, int firstSlot) {
             this.ctx = ctx;
@@ -485,6 +488,19 @@ final class BodyGen {
             return Type.mentions(t, x -> x instanceof Type.Nothing);
         }
 
+        /** Binds the bytecode that follows to {@code e}'s source line, for the {@code LineNumberTable}
+         * (spec 19.1). Every {@code Core} node keeps its {@code SourcePos}, so a runtime stack trace
+         * — an invariant abort above all — points back to the {@code .sou} line. Consecutive nodes on
+         * the same line (a subexpression tree, or a tail node re-lined by {@code genExpr}) collapse to
+         * one entry. */
+        private void emitLine(Core e) {
+            int line = e.pos() != null ? e.pos().line() : 0;
+            if (line > 0 && line != lastEmittedLine) {
+                code.lineNumber(line);
+                lastEmittedLine = line;
+            }
+        }
+
         /**
          * Emits a Core expression — the single expression emitter (ADR-0021); every node kind is
          * handled here. A {@code let} whose value is a runtime-selected function still asks the
@@ -492,16 +508,6 @@ final class BodyGen {
          * parameter types, so those calls go through {@link Core#toAst()}: Core is untyped and type
          * inference lives in the checker, so the backend reuses it rather than re-deriving types.
          */
-        /** Binds the bytecode that follows to {@code e}'s source line, for the {@code LineNumberTable}
-         * (spec 19.1). Every {@code Core} node keeps its {@code SourcePos}, so a runtime stack trace
-         * — an invariant abort above all — points back to the {@code .sou} line. */
-        private void emitLine(Core e) {
-            int line = e.pos() != null ? e.pos().line() : 0;
-            if (line > 0) {
-                code.lineNumber(line);
-            }
-        }
-
         Type genExpr(Core e) {
             emitLine(e);
             return switch (e) {
