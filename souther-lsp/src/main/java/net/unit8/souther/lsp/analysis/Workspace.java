@@ -23,8 +23,13 @@ public final class Workspace {
 
     private final List<Path> roots = new ArrayList<>();
 
+    /** The last on-disk scan ({@code uri -> text}), or {@code null} when it must be re-read. Cached so
+     * an edit to an open buffer does not re-walk and re-read the whole workspace on every keystroke. */
+    private Map<String, String> diskScan;
+
     /** Records the workspace roots from their {@code file://} URIs; non-file URIs are ignored. */
     public void setRoots(List<String> rootUris) {
+        diskScan = null;   // the set of files to scan changed
         roots.clear();
         for (String uri : rootUris) {
             if (uri == null) {
@@ -47,6 +52,21 @@ public final class Workspace {
      * and an open document outside the roots is still included.
      */
     public ModuleGraph snapshot(Map<String, String> openBuffers) {
+        if (diskScan == null) {
+            diskScan = scanDisk();
+        }
+        Map<String, String> sources = new LinkedHashMap<>(diskScan);
+        sources.putAll(openBuffers);
+        return ModuleGraph.of(sources);
+    }
+
+    /** Invalidates the cached disk scan, so the next {@link #snapshot} re-reads the workspace. Called
+     * when the client reports on-disk changes ({@code workspace/didChangeWatchedFiles}). */
+    public void markChanged() {
+        diskScan = null;
+    }
+
+    private Map<String, String> scanDisk() {
         Map<String, String> sources = new LinkedHashMap<>();
         for (Path root : roots) {
             if (!Files.isDirectory(root)) {
@@ -60,8 +80,7 @@ public final class Workspace {
                 throw new UncheckedIOException(e);
             }
         }
-        sources.putAll(openBuffers);
-        return ModuleGraph.of(sources);
+        return sources;
     }
 
     private static String readOrEmpty(Path p) {
