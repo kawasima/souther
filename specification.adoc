@@ -818,6 +818,8 @@ When the discriminator key or tag is business-specific (reading `+"status"+` and
 
 When the default derivation is insufficient (a different key name, normalization, default filling, a business-specific discriminator, persistence version branching), write a Decoder on the Java side that assembles the external representation and calls the data's (invariant-checking) construction. The `+JdbcFindMember+` calling `+会員.decoder()+` in <<java-example>> is this form. External-representation conversion stays confined to the boundary and is not brought into domain definitions.
 
+A business-specific sum tag does not mean rebuilding the case decoders. Souther generates a public per-case decoder (`+提出済み.decoder()+`) and a sum decoder that is only a `+discriminate("type", …)+` over them (<<sum-discrimination>>). The boundary keeps the per-case decoders and rewrites just that one layer with its own key and tags — reading `+"status"+` and dispatching `+"draft"+` / `+"submitted"+` is `+discriminate("status", variant("draft", 申請準備中.decoder()), variant("submitted", 提出済み.decoder()))+`. Field assembly and invariant checks are reused; only the tag table is written. The encoder side is less symmetric: the derived sum encoder bundles the tag with each case's encoding, so a custom sum encoder re-tags each case's Map itself.
+
 [#decoder-error]
 === Decoder errors
 
