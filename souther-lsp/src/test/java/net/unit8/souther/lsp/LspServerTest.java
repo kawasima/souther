@@ -8,6 +8,8 @@ import tools.jackson.databind.json.JsonMapper;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -51,6 +53,50 @@ class LspServerTest {
         JsonNode diagnostics = publish.get("params").get("diagnostics");
         assertTrue(diagnostics.size() > 0, "expected at least one diagnostic");
         assertEquals("souther", diagnostics.get(0).get("source").asString());
+    }
+
+    @Test
+    void diagnosticsResolveAcrossModulesFromTheWorkspaceRoot() throws Exception {
+        Path dir = Files.createTempDirectory("lsp");
+        Files.writeString(dir.resolve("a.sou"), "module a exposing ( N )\ndata N = { v: Int }\n");
+        String bText = "module b\nimport a ( N )\ndata M = { n: Int }\n"
+                + "behavior f : (x: M) -> M\nlet f (x) = x\n"
+                + "example f\n  | (M { n = 1 }) -> M { n = 2 }\n";   // failing example (E1905)
+        Path b = dir.resolve("b.sou");
+        Files.writeString(b, bText);
+        String bUri = b.toUri().toString();
+
+        byte[] input = frames(
+                message(1, "initialize", Map.of("rootUri", dir.toUri().toString())),
+                message(null, "initialized", Map.of()),
+                message(null, "textDocument/didOpen", Map.of(
+                        "textDocument", Map.of("uri", bUri, "text", bText))));
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        new LspServer(new MessageConnection(new ByteArrayInputStream(input), out)).run();
+
+        // the importing module used to bail; now it resolves a against the root and reports E1905
+        JsonNode publish = readFrames(out.toByteArray()).stream()
+                .filter(m -> m.has("method")
+                        && m.get("method").asString().equals("textDocument/publishDiagnostics"))
+                .filter(m -> m.get("params").get("uri").asString().equals(bUri))
+                .reduce((first, second) -> second).orElse(null);   // the latest publish for b
+        assertNotNull(publish, "expected a publishDiagnostics for b");
+        JsonNode diagnostics = publish.get("params").get("diagnostics");
+        assertTrue(diagnostics.size() > 0, "the cross-module compile surfaces the failing example");
+        assertEquals("E1905", diagnostics.get(0).get("code").asString());
+    }
+
+    @Test
+    void capabilitiesAdvertiseReferences() {
+        byte[] input = frames(message(1, "initialize", Map.of()));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        new LspServer(new MessageConnection(new ByteArrayInputStream(input), out)).run();
+
+        JsonNode caps = readFrames(out.toByteArray()).stream()
+                .filter(m -> m.has("id") && m.get("id").asInt() == 1).findFirst().orElseThrow()
+                .get("result").get("capabilities");
+        assertTrue(caps.get("referencesProvider").asBoolean(), "references is advertised");
     }
 
     // --- helpers: build and read framed JSON-RPC messages ---

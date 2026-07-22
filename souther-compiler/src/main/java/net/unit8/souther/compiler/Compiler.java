@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -199,6 +200,228 @@ public final class Compiler {
             ExampleVerifier.verify(m, symbols, sigs, importedPackages(m), out);
         }
         return out;
+    }
+
+    /**
+     * Links a module set like {@link #compileModules}, but collects diagnostics per source — keyed by
+     * the caller's id (the LSP passes a document URI) — instead of throwing on the first error. This is
+     * the entry point the LSP uses to publish diagnostics per file across a workspace.
+     *
+     * <p>Modules are compiled in dependency order (imports first); a module's first compile error is
+     * recorded under its source id and its downstream importers are skipped, so an error surfaces once
+     * at its origin rather than cascading. Examples are then evaluated per source: a module's inline
+     * examples land on that module's id, and an {@code examples for X} file's examples land on that
+     * file's id — never on the target module. A source with no problem maps to an empty list.
+     */
+    public static Map<String, List<Diagnostic>> diagnoseModules(Map<String, String> sourcesById) {
+        return diagnoseModules(sourcesById, Set.of());
+    }
+
+    /**
+     * As {@link #diagnoseModules(Map)}, but {@code brokenModuleNames} lists modules the caller has
+     * already found unparseable (a file the LSP holds out of the compile because of its own syntax
+     * errors). Their importers are skipped rather than told the module is unknown — the error belongs
+     * to the broken file, which reports it separately, not to the importer.
+     */
+    public static Map<String, List<Diagnostic>> diagnoseModules(Map<String, String> sourcesById,
+                                                                Set<String> brokenModuleNames) {
+        Map<String, List<Diagnostic>> result = new LinkedHashMap<>();
+        for (String id : sourcesById.keySet()) {
+            result.put(id, new ArrayList<>());
+        }
+
+        // Parse each source, splitting real modules from `examples for` files. A parse-stage error
+        // (a type variable in a user module, say) is recorded against that source's id.
+        Map<String, Ast.Module> moduleById = new LinkedHashMap<>();
+        Map<String, Ast.Module> exampleFileById = new LinkedHashMap<>();
+        Set<String> failed = new HashSet<>(brokenModuleNames);   // module names whose source is broken
+        for (Map.Entry<String, String> e : sourcesById.entrySet()) {
+            try {
+                Ast.Module raw = CstFrontend.parse(e.getValue(), null);
+                if (raw.exampleFileTarget() != null) {
+                    exampleFileById.put(e.getKey(), raw);
+                } else {
+                    rejectReservedNamespace(raw);
+                    moduleById.put(e.getKey(), Exposing.rewrite(raw));
+                }
+            } catch (CompileException ex) {
+                result.get(e.getKey()).add(ex.diagnostic());
+                String name = moduleNameFromHeader(e.getValue());
+                if (name != null) {
+                    failed.add(name);   // a source that will not parse cannot satisfy an importer
+                }
+            }
+        }
+
+        // Index modules by name, tracking the source id each name came from; a duplicate name is an
+        // error on the offending source.
+        Map<String, Ast.Module> byName = new LinkedHashMap<>();
+        Map<String, String> idByName = new LinkedHashMap<>();
+        for (Map.Entry<String, Ast.Module> e : moduleById.entrySet()) {
+            Ast.Module m = e.getValue();
+            if (byName.containsKey(m.name())) {
+                result.get(e.getKey()).add(Diagnostic.of(null, "check.module.duplicate")
+                        .title("check.module.title").at(m.pos()).args(m.name()).build());
+                continue;
+            }
+            byName.put(m.name(), m);
+            idByName.put(m.name(), e.getKey());
+        }
+
+        List<Ast.Module> order = dependencyOrder(byName, idByName, result);
+
+        // Compile each module (no example evaluation yet). Retain the derived module and its resolution
+        // context so examples can be evaluated afterwards, once every module's bytecode is present.
+        Map<String, Ast.Module> derived = new LinkedHashMap<>();
+        Map<String, byte[]> out = new LinkedHashMap<>();
+        Map<String, VerifyContext> ready = new LinkedHashMap<>();
+        for (Ast.Module original : order) {
+            if (importsAnyFailed(original, failed)) {
+                failed.add(original.name());
+                continue;   // an importer of a broken module is skipped, not cascaded
+            }
+            try {
+                Ast.Module d = Deriver.derive(original, visibleDefs(original, byName));
+                d = HelperInliner.forModule(d).withInlinedInvariants(d);
+                derived.put(original.name(), d);   // visible to its own newtype constructors during desugar
+                Ast.Module m = NewtypeDesugar.rewrite(d, visibleDefs(d, derived));
+                derived.put(original.name(), m);
+                Map<String, Ast.Def> symbols = visibleDefs(m, derived);
+                Map<String, TypeChecker.Sig> importedSigs = importedBehaviorSigs(m, derived);
+                Set<String> importedInjected = importedInjectedBehaviors(m, derived);
+                Ast.Module lowered = Lower.run(m);
+                TypeChecker.check(m, symbols, importedSigs, lowered);
+                out.putAll(Backend.generate(lowered, symbols, importedPackages(m), importedSigs, importedInjected));
+                verifyConstConstructions(m, symbols, out);
+                Map<String, TypeChecker.Sig> sigs =
+                        TypeChecker.signatures(m, symbols, importedBehaviorSigs(m, derived));
+                ready.put(original.name(), new VerifyContext(m, symbols, sigs, importedPackages(m)));
+            } catch (CompileException e) {
+                result.get(idByName.get(original.name())).add(e.diagnostic());
+                failed.add(original.name());
+            }
+        }
+
+        // Fakes from `examples for` files are shared with the target module (its own examples may use
+        // them), so gather them per target before evaluating any examples.
+        Map<String, List<Ast.Fake>> attachedFakes = new LinkedHashMap<>();
+        for (Ast.Module f : exampleFileById.values()) {
+            attachedFakes.computeIfAbsent(f.exampleFileTarget(), k -> new ArrayList<>()).addAll(f.fakes());
+        }
+
+        // A module's own inline examples, attributed to the module's source.
+        for (Map.Entry<String, VerifyContext> e : ready.entrySet()) {
+            VerifyContext ctx = e.getValue();
+            List<Ast.Fake> fakes = mergedFakes(ctx.module().fakes(), attachedFakes.get(e.getKey()));
+            result.get(idByName.get(e.getKey())).addAll(evaluate(ctx, ctx.module().examples(), fakes, out));
+        }
+
+        // Each `examples for` file's examples, attributed to that file — a target that is absent (not
+        // merely broken) is E1907.
+        for (Map.Entry<String, Ast.Module> e : exampleFileById.entrySet()) {
+            Ast.Module f = e.getValue();
+            VerifyContext ctx = ready.get(f.exampleFileTarget());
+            if (ctx == null) {
+                if (!byName.containsKey(f.exampleFileTarget())) {
+                    result.get(e.getKey()).add(Diagnostic.of("E1907", "check.example.notarget")
+                            .title("check.example.title").at(f.pos()).args(f.exampleFileTarget()).build());
+                }
+                continue;
+            }
+            List<Ast.Fake> fakes = mergedFakes(ctx.module().fakes(), attachedFakes.get(f.exampleFileTarget()));
+            result.get(e.getKey()).addAll(evaluate(ctx, f.examples(), fakes, out));
+        }
+
+        Map<String, List<Diagnostic>> frozen = new LinkedHashMap<>();
+        for (Map.Entry<String, List<Diagnostic>> e : result.entrySet()) {
+            frozen.put(e.getKey(), List.copyOf(e.getValue()));
+        }
+        return frozen;
+    }
+
+    /** The resolution context a module's examples evaluate against, retained from its compile pass. */
+    private record VerifyContext(Ast.Module module, Map<String, Ast.Def> symbols,
+                                 Map<String, TypeChecker.Sig> sigs, Map<String, String> importedPackages) {}
+
+    /** Evaluates {@code examples} against {@code ctx}'s module (its defs and bytecode), using
+     * {@code fakes} for any {@code requires} dependencies; returns one diagnostic per failing row. */
+    private static List<Diagnostic> evaluate(VerifyContext ctx, List<Ast.Example> examples,
+                                             List<Ast.Fake> fakes, Map<String, byte[]> classes) {
+        Ast.Module m = ctx.module();
+        Ast.Module toCheck = new Ast.Module(m.name(), m.exposing(), m.exposedOutputs(), m.imports(),
+                m.defs(), m.behaviors(), m.fns(), examples, fakes, m.exampleFileTarget(), m.pos());
+        return ExampleVerifier.check(toCheck, ctx.symbols(), ctx.sigs(), ctx.importedPackages(), classes);
+    }
+
+    private static List<Ast.Fake> mergedFakes(List<Ast.Fake> own, List<Ast.Fake> attached) {
+        if (attached == null || attached.isEmpty()) {
+            return own;
+        }
+        List<Ast.Fake> all = new ArrayList<>(own);
+        all.addAll(attached);
+        return all;
+    }
+
+    private static boolean importsAnyFailed(Ast.Module m, Set<String> failed) {
+        for (Ast.Import imp : m.imports()) {
+            if (failed.contains(imp.module())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The module name from a source's {@code module <name>} header, for identifying a source that will
+     * not parse (so its importers can be skipped, and the LSP can map a broken file to its module).
+     * {@code null} if no header token is found. */
+    public static String moduleNameFromHeader(String source) {
+        java.util.regex.Matcher mt = java.util.regex.Pattern
+                .compile("(?m)^\\s*module\\s+([\\p{L}\\p{N}_.]+)").matcher(source);
+        return mt.find() ? mt.group(1) : null;
+    }
+
+    /** Modules in dependency order (each module after the modules it imports). A cycle is E1501,
+     * recorded on the source of the module where the back edge is found; cyclic modules are left out
+     * of the order. */
+    private static List<Ast.Module> dependencyOrder(Map<String, Ast.Module> byName,
+                                                    Map<String, String> idByName,
+                                                    Map<String, List<Diagnostic>> result) {
+        List<Ast.Module> order = new ArrayList<>();
+        Set<String> done = new HashSet<>();
+        Set<String> onStack = new LinkedHashSet<>();
+        for (Ast.Module m : byName.values()) {
+            orderVisit(m.name(), byName, idByName, done, onStack, order, result);
+        }
+        return order;
+    }
+
+    private static void orderVisit(String name, Map<String, Ast.Module> byName, Map<String, String> idByName,
+                                   Set<String> done, Set<String> onStack, List<Ast.Module> order,
+                                   Map<String, List<Diagnostic>> result) {
+        if (done.contains(name)) {
+            return;
+        }
+        Ast.Module m = byName.get(name);
+        if (m == null) {
+            return;
+        }
+        onStack.add(name);
+        for (Ast.Import imp : m.imports()) {
+            if (onStack.contains(imp.module())) {
+                result.get(idByName.get(name)).add(
+                        new CompileException(imp.pos(), "E1501", "Cyclic module dependency detected.")
+                                .diagnostic());
+                onStack.remove(name);
+                done.add(name);
+                return;   // leave the cyclic module out of the order
+            }
+            if (byName.containsKey(imp.module())) {
+                orderVisit(imp.module(), byName, idByName, done, onStack, order, result);
+            }
+        }
+        onStack.remove(name);
+        done.add(name);
+        order.add(m);
     }
 
     /** Rebuilds each module with the examples and fakes from its attached {@code examples for} files

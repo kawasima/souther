@@ -2,6 +2,7 @@ package net.unit8.souther.lsp.analysis;
 
 import net.unit8.souther.lsp.protocol.DocumentSymbol;
 import net.unit8.souther.lsp.protocol.Hover;
+import net.unit8.souther.lsp.protocol.Location;
 import net.unit8.souther.lsp.protocol.LspDiagnostic;
 import net.unit8.souther.lsp.protocol.Position;
 import net.unit8.souther.lsp.protocol.Range;
@@ -130,6 +131,162 @@ class AnalyzerTest {
         Optional<Hover> hover = analyzer.hover(RESOLVE_SRC, new Position(1, 15));
         assertTrue(hover.isPresent());
         assertTrue(hover.get().contents().contains("id: String"), hover.get().contents());
+    }
+
+    @Test
+    void diagnosticsAcrossModulesLandOnTheOwningFile() {
+        String a = "module a exposing ( N )\ndata N = { v: Int }\n";
+        String b = "module b\nimport a ( N )\ndata M = { n: Int }\n"
+                + "behavior f : (x: M) -> M\nlet f (x) = x\n"
+                + "example f\n  | (M { n = 1 }) -> M { n = 2 }\n";   // identity f, so the example fails
+        ModuleGraph graph = ModuleGraph.of(java.util.Map.of("file:///a.sou", a, "file:///b.sou", b));
+
+        java.util.Map<String, List<LspDiagnostic>> diags = analyzer.diagnostics(graph);
+
+        assertEquals(List.of(), diags.get("file:///a.sou"), "the clean imported module has no diagnostics");
+        assertEquals(1, diags.get("file:///b.sou").size(), diags.get("file:///b.sou").toString());
+        assertEquals("E1905", diags.get("file:///b.sou").get(0).code());
+    }
+
+    @Test
+    void diagnosticsDoNotBailWhenAModuleImportsAnother() {
+        // the single-file path returns nothing on an import; the workspace path resolves it and finds
+        // the importing module clean
+        String a = "module a exposing ( N )\ndata N = { v: Int }\n";
+        String b = "module b\nimport a ( N )\ndata M = { n: Int }\n"
+                + "behavior f : (x: M) -> M\nlet f (x) = x\n";
+        ModuleGraph graph = ModuleGraph.of(java.util.Map.of("file:///a.sou", a, "file:///b.sou", b));
+
+        java.util.Map<String, List<LspDiagnostic>> diags = analyzer.diagnostics(graph);
+
+        assertEquals(List.of(), diags.get("file:///b.sou"), "a valid importing module is clean");
+    }
+
+    @Test
+    void aFailingExampleMessageIncludesExpectedAndActual() {
+        String a = "module a\ndata M = { n: Int }\nbehavior f : (x: M) -> M\nlet f (x) = x\n"
+                + "example f\n  | (M { n = 1 }) -> M { n = 2 }\n";
+        ModuleGraph graph = ModuleGraph.of(java.util.Map.of("file:///a.sou", a));
+
+        List<LspDiagnostic> diags = analyzer.diagnostics(graph).get("file:///a.sou");
+
+        assertEquals(1, diags.size(), diags.toString());
+        assertEquals("E1905", diags.get(0).code());
+        String msg = diags.get(0).message();
+        assertTrue(msg.contains("expected") && msg.contains("was"),
+                "the example message keeps the expected/actual detail: " + msg);
+    }
+
+    @Test
+    void aSyntaxErrorInAnImportedFileDoesNotCascadeToItsImporter() {
+        String a = "module a exposing ( N )\ndata N = { name String }\n";   // missing `:` — a syntax error
+        String b = "module b\nimport a ( N )\nbehavior f : (n: N) -> N\nlet f (n) = n\n";
+        ModuleGraph graph = ModuleGraph.of(java.util.Map.of("file:///a.sou", a, "file:///b.sou", b));
+
+        java.util.Map<String, List<LspDiagnostic>> diags = analyzer.diagnostics(graph);
+
+        assertTrue(!diags.get("file:///a.sou").isEmpty(), "the broken file shows its own syntax error");
+        assertEquals(List.of(), diags.get("file:///b.sou"),
+                "the importer is not told the (broken but present) module is unknown");
+    }
+
+    @Test
+    void examplesForFileFailuresLandOnThatFileNotTheModule() {
+        String a = "module a exposing ( M, f )\ndata M = { n: Int }\n"
+                + "behavior f : (x: M) -> M\nlet f (x) = x\n";
+        String aExamples = "examples for a\nexample f\n  | (M { n = 1 }) -> M { n = 2 }\n";   // fails
+        ModuleGraph graph = ModuleGraph.of(java.util.Map.of(
+                "file:///a.sou", a, "file:///a.examples.sou", aExamples));
+
+        java.util.Map<String, List<LspDiagnostic>> diags = analyzer.diagnostics(graph);
+
+        assertEquals(List.of(), diags.get("file:///a.sou"), "the module file itself is clean");
+        assertEquals(1, diags.get("file:///a.examples.sou").size(),
+                diags.get("file:///a.examples.sou").toString());
+        assertEquals("E1905", diags.get("file:///a.examples.sou").get(0).code());
+    }
+
+    @Test
+    void definitionResolvesAcrossAnImport() {
+        String a = "module a exposing ( N )\ndata N = { v: Int }\n";
+        String b = "module b\nimport a ( N )\nbehavior f : (n: N) -> N\nlet f (n) = n\n";
+        ModuleGraph graph = ModuleGraph.of(java.util.Map.of("file:///a.sou", a, "file:///b.sou", b));
+
+        // the `N` param-type reference in b's behavior signature is at line 2, character 17
+        Optional<Location> target = analyzer.definition("file:///b.sou", new Position(2, 17), graph);
+
+        assertTrue(target.isPresent(), "expected a cross-module definition");
+        assertEquals("file:///a.sou", target.get().uri(), "N is defined in module a");
+        assertEquals(1, target.get().range().start().line(), "the `data N` declaration is on line 1");
+        assertEquals(5, target.get().range().start().character(), "at the name `N`");
+    }
+
+    @Test
+    void definitionStillResolvesWithinTheSameFile() {
+        String a = "module a exposing ( N )\ndata N = { v: Int }\n";
+        String b = "module b\nimport a ( N )\ndata Thing = { id: String }\n"
+                + "behavior use : (t: Thing) -> Thing\nlet use (t) = t\n";
+        ModuleGraph graph = ModuleGraph.of(java.util.Map.of("file:///a.sou", a, "file:///b.sou", b));
+
+        // the `Thing` reference in b's own signature (line 3, char 19) resolves within b
+        Optional<Location> target = analyzer.definition("file:///b.sou", new Position(3, 19), graph);
+
+        assertTrue(target.isPresent());
+        assertEquals("file:///b.sou", target.get().uri());
+        assertEquals(2, target.get().range().start().line(), "the `data Thing` declaration is on line 2");
+    }
+
+    @Test
+    void referencesFindTypeUsagesAcrossModules() {
+        String a = "module a exposing ( N )\ndata N = { v: Int }\n";
+        String b = "module b\nimport a ( N )\nbehavior f : (n: N) -> N\nlet f (n) = n\n";
+        ModuleGraph graph = ModuleGraph.of(java.util.Map.of("file:///a.sou", a, "file:///b.sou", b));
+
+        // cursor on the `data N` declaration in a (line 1, char 5)
+        List<Location> refs = analyzer.references("file:///a.sou", new Position(1, 5), graph, true);
+
+        assertEquals(java.util.Set.of("file:///a.sou:1:5", "file:///b.sou:2:17", "file:///b.sou:2:23"),
+                keys(refs), refs.toString());
+    }
+
+    @Test
+    void referencesFindValueUsagesAcrossModules() {
+        String a = "module a exposing ( N, g )\n"
+                + "data N = { v: Int }\n"
+                + "behavior g : (n: N) -> N\n"
+                + "let g (n) = n\n";
+        String b = "module b\nimport a ( N, g )\nbehavior h = g >-> g\n";   // two uses of a.g
+        ModuleGraph graph = ModuleGraph.of(java.util.Map.of("file:///a.sou", a, "file:///b.sou", b));
+
+        // cursor on the first `g` use in b's composition (line 2, char 13); declaration excluded
+        List<Location> refs = analyzer.references("file:///b.sou", new Position(2, 13), graph, false);
+
+        assertEquals(java.util.Set.of("file:///b.sou:2:13", "file:///b.sou:2:19"), keys(refs), refs.toString());
+    }
+
+    @Test
+    void referencesToAValueExcludeAShadowingParam() {
+        String a = "module a exposing ( N, g )\n"
+                + "data N = { v: Int }\n"
+                + "behavior g : (n: N) -> N\n"
+                + "let g (n) = n\n";
+        // c imports g but also binds a param named g; the body `g` is the param, not a.g
+        String c = "module c\nimport a ( N, g )\nbehavior k : (g: N) -> N\nlet k (g) = g\n";
+        ModuleGraph graph = ModuleGraph.of(java.util.Map.of("file:///a.sou", a, "file:///c.sou", c));
+
+        // cursor on a's `behavior g` declaration (line 2, char 9)
+        List<Location> refs = analyzer.references("file:///a.sou", new Position(2, 9), graph, true);
+
+        // only a's own two declarations (behavior g, let g); c contributes nothing — its `g` is shadowed
+        assertEquals(java.util.Set.of("file:///a.sou:2:9", "file:///a.sou:3:4"), keys(refs), refs.toString());
+    }
+
+    private static java.util.Set<String> keys(List<Location> refs) {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        for (Location l : refs) {
+            out.add(l.uri() + ":" + l.range().start().line() + ":" + l.range().start().character());
+        }
+        return out;
     }
 
     @Test
