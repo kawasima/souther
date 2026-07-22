@@ -6,6 +6,8 @@ import net.unit8.souther.runtime.ConstraintViolation;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -13,9 +15,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * A newtype name applied to one argument constructs the wrapper: {@code 金額(500)} — the type name
  * in call position is its constructor. A constant argument is checked against the invariant at
- * compile time, so {@code 金額(-5)} is a compile error rather than a runtime abort; such a
- * construction cannot abort and so is legal anywhere, including a non-tail {@code let}. A newtype
- * with no invariant wraps any value, constant or runtime.
+ * compile time, so {@code 金額(-5)} is a compile error rather than a runtime abort. A runtime
+ * argument goes through the invariant-checking {@code __construct} wherever it is written — the
+ * behavior's result, a non-tail {@code let}, or a {@code match} arm — holding when valid and
+ * aborting on violation. A newtype with no invariant wraps any value, constant or runtime.
  */
 class CompileNewtypeConstructTest {
 
@@ -199,9 +202,9 @@ class CompileNewtypeConstructTest {
     }
 
     @Test
-    void runtimeInvariantConstructionOutsideTailIsForbidden() {
-        // a runtime-argument invariant construction may only be the behavior's result (its abort is
-        // the outcome); in a non-tail let binding it is a compile error
+    void runtimeConstructionInANonTailLetConstructsAndAbortsOnViolation() throws Exception {
+        // a runtime-argument invariant construction is no longer restricted to tail position: bound in
+        // a non-tail let it still goes through __construct — holding when valid, aborting on violation
         String src = """
                 module demo
                 data 金額 = Int
@@ -212,7 +215,34 @@ class CompileNewtypeConstructTest {
                     y
                 }
                 """;
-        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile(src));
-        assertTrue(e.getMessage().contains("result expression"), e.getMessage());
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Object big = Codecs.decoded(loader, "demo.金額", 500L);
+        assertEquals(400L, encode(loader, "金額", apply(loader, "Bad", big)));
+        Object small = Codecs.decoded(loader, "demo.金額", 50L);
+        assertThrows(ConstraintViolation.class, () -> apply(loader, "Bad", small));
+    }
+
+    @Test
+    void runtimeConstructionInAMatchArmConstructsAndAbortsOnViolation() throws Exception {
+        // a match arm is not tail, yet an invariant-bearing construction inside one now goes through
+        // __construct: it holds for a valid runtime value and aborts on a violation
+        String src = """
+                module demo
+                data 金額 = Int
+                    invariant value >= 0
+                data Add = { n: Int }
+                data Sub = { n: Int }
+                data Op = Add | Sub
+                behavior run : (op: Op) -> 金額 constructs 金額
+                let run (op) =
+                    match op with
+                        | Add as a -> 金額(a.n)
+                        | Sub as s -> 金額(s.n)
+                """;
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Object add5 = Codecs.decoded(loader, "demo.Op", Map.of("type", "Add", "n", 5L));
+        assertEquals(5L, encode(loader, "金額", apply(loader, "Run", add5)));
+        Object addNeg = Codecs.decoded(loader, "demo.Op", Map.of("type", "Add", "n", -5L));
+        assertThrows(ConstraintViolation.class, () -> apply(loader, "Run", addNeg));
     }
 }

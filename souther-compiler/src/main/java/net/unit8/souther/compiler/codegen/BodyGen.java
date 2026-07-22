@@ -659,6 +659,17 @@ final class BodyGen {
             Ast.Data owner = (Ast.Data) symbols.get(nd.typeName());
             Map<String, Type> flds = fieldTypes(owner);
             ClassDesc cdType = cd(nd.typeName());
+            if (TypeChecker.isInvariantBearing(nd.typeName(), symbols)) {
+                // In value position (a match arm, a non-tail let, a call argument, ...) the checked
+                // construction goes through __construct just as it does in tail (see emitTail): the
+                // invariant runs and orThrow either yields the value or aborts with a
+                // ConstraintViolation. orThrow returns Object, so narrow it back to the value type.
+                emitFieldValues(flds, nd.inits(), nd.spreads());
+                code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(flds)));
+                code.invokestatic(CD_ConstraintViolation, "orThrow", MTD_orThrow);
+                code.checkcast(cdType);
+                return Type.ref(nd.typeName());
+            }
             code.new_(cdType);
             code.dup();
             emitFieldValues(flds, nd.inits(), nd.spreads());

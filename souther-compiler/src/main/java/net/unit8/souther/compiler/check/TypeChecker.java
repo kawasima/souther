@@ -790,8 +790,6 @@ public final class TypeChecker {
                 }
             }
         }
-        checkInvariantConstructInTail(body, symbols);
-
         // The requires clause must match what the fn actually calls (spec 12.6): missing -> E1602,
         // extra -> E1603.
         List<String> actual = requiredCalls(body, reqSigs.keySet());
@@ -1241,35 +1239,6 @@ public final class TypeChecker {
     }
 
     /**
-     * Constructing an invariant-bearing data goes through {@code __construct}, and on violation it
-     * aborts (spec 7.3, 9.4). The backend only emits that checked construction (and its abort) in
-     * tail position, so for now allow an invariant-bearing construction there and nowhere else.
-     * This is a backend limitation, not a semantic rule — a violation aborts wherever it happens.
-     *
-     * <p>{@code e} is in tail position, as are the branches of an {@code if} and the body of a
-     * {@code let}. A desugared {@code require} (spec 16.4) is an {@code if}, so the construction
-     * after a guard stays in tail position. {@code match} cases are not treated as tail: the
-     * backend emits a match as a value-producing expression, which does not yet route the checked
-     * construction.
-     */
-    private static void checkInvariantConstructInTail(Ast.Expr e, Map<String, Ast.Def> symbols) {
-        switch (e) {
-            case Ast.If iff -> {
-                forbidInvariantConstruct(iff.cond(), symbols);
-                checkInvariantConstructInTail(iff.then(), symbols);
-                checkInvariantConstructInTail(iff.els(), symbols);
-            }
-            case Ast.LetIn li -> {
-                forbidInvariantConstruct(li.value(), symbols);
-                checkInvariantConstructInTail(li.body(), symbols);
-            }
-            case Ast.NewData nd when isInvariantBearing(nd.typeName(), symbols) ->
-                    nd.inits().forEach(i -> forbidInvariantConstruct(i.value(), symbols));
-            default -> forbidInvariantConstruct(e, symbols);
-        }
-    }
-
-    /**
      * Only required behaviors may be called from a body; other behaviors compose with {@code >->}
      * (spec 14.1). Checked up front so the diagnostic names the rule rather than reporting the
      * behavior as an unknown function.
@@ -1347,47 +1316,6 @@ public final class TypeChecker {
 
     public static boolean isInvariantBearing(String typeName, Map<String, Ast.Def> symbols) {
         return symbols.get(typeName) instanceof Ast.Data d && !effectiveInvariants(d, symbols).isEmpty();
-    }
-
-    private static void forbidInvariantConstruct(Ast.Expr e, Map<String, Ast.Def> symbols) {
-        // An invariant-bearing construction outside the tail is forbidden — its abort must be the
-        // behavior's result — unless a newtype's constant value is verified by CTFE (which cannot
-        // abort); that is exempt and may sit anywhere (e.g. `let money = 金額(500)`).
-        if (e instanceof Ast.NewData nd && isInvariantBearing(nd.typeName(), symbols)
-                && !isConstantNewtypeConstruct(nd, symbols)) {
-            throw CompileException.of(
-                    Diagnostic.of(null, "check.construct.invariant").title("check.construct.title")
-                            .at(nd.pos(), nd.typeName().length()).args(nd.typeName()).build(),
-                    "invariant-bearing `" + nd.typeName()
-                            + "` can only be constructed as the behavior's result expression");
-        }
-        switch (e) {
-            case Ast.NewData nd -> nd.inits().forEach(i -> forbidInvariantConstruct(i.value(), symbols));
-            case Ast.FieldAccess fa -> forbidInvariantConstruct(fa.target(), symbols);
-            case Ast.Call call -> call.args().forEach(a -> forbidInvariantConstruct(a, symbols));
-            case Ast.Binary bin -> {
-                forbidInvariantConstruct(bin.left(), symbols);
-                forbidInvariantConstruct(bin.right(), symbols);
-            }
-            case Ast.Match m -> {
-                forbidInvariantConstruct(m.scrutinee(), symbols);
-                m.cases().forEach(c -> forbidInvariantConstruct(c.body(), symbols));
-            }
-            case Ast.If iff -> {
-                forbidInvariantConstruct(iff.cond(), symbols);
-                forbidInvariantConstruct(iff.then(), symbols);
-                forbidInvariantConstruct(iff.els(), symbols);
-            }
-            case Ast.ListLit lit -> lit.elements().forEach(el -> forbidInvariantConstruct(el, symbols));
-            case Ast.ListComp comp -> {
-                forbidInvariantConstruct(comp.element(), symbols);
-                comp.guards().forEach(g -> forbidInvariantConstruct(g, symbols));
-            }
-            case Ast.Block b -> forbidInvariantConstruct(b.body(), symbols);   // a lambda / block body
-            case Ast.Tuple tup -> tup.elements().forEach(el -> forbidInvariantConstruct(el, symbols));
-            case Ast.TupleGet tg -> forbidInvariantConstruct(tg.tuple(), symbols);
-            default -> { }
-        }
     }
 
     /**
@@ -2720,17 +2648,6 @@ public final class TypeChecker {
             return ConstEval.eval(nd.inits().get(0).value());
         }
         return Optional.empty();
-    }
-
-    /**
-     * True when a newtype construction's argument is a compile-time constant. Such a construction is
-     * verified after codegen (CTFE): it either passes — and cannot abort, so it is exempt from the
-     * tail restriction and may sit anywhere (e.g. {@code let money = 金額(500)}) — or it fails as a
-     * compile error regardless of where it sits.
-     */
-    private static boolean isConstantNewtypeConstruct(Ast.NewData nd, Map<String, Ast.Def> symbols) {
-        return symbols.get(nd.typeName()) instanceof Ast.Data nt && nt.newtype()
-                && newtypeConstantArg(nd).isPresent();
     }
 
     private static Type typeOfBinary(Ast.Binary bin, Map<String, Type> env, Ast.Data data,
