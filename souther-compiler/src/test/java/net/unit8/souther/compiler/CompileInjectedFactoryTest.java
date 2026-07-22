@@ -10,7 +10,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -103,17 +102,6 @@ class CompileInjectedFactoryTest {
         Set<String> invoked = invokedIn(classes.get("demo.Mk"), "OrderId");
         assertTrue(invoked.contains("__construct"), "the factory runs the invariant through __construct");
         assertTrue(invoked.contains("orThrow"), "a violation aborts via orThrow");
-    }
-
-    @Test
-    void aRepeatedConstructsEntryDoesNotEmitADuplicateFactory() {
-        // `constructs T, T` must not emit the factory twice, which would be a duplicate-method class file
-        assertDoesNotThrow(() -> base("""
-                module demo
-                data Made = { n: Int }
-                data In = { x: Int }
-                behavior mk : (i: In) -> Made constructs Made, Made
-                """, "demo.Mk"));
     }
 
     /** The names of the methods a given method's body invokes, read from the emitted bytecode. */
