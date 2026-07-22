@@ -2601,15 +2601,13 @@ var result = handle.apply(rawInput);
 ----
 
 [#future-work]
-== Future extensions and current limitations
+== Future extensions
 
-The language core is implemented. The following are future extensions, or current limitations of tooling and boundary codecs — distinct from what is permanently absent (<<out-of-scope>>).
+The language core is implemented. The following are future extensions — distinct from what is permanently absent (<<out-of-scope>>).
 
 * A full formal grammar (BNF). The key delimiters and precedence are stated ahead in <<delimiters>>.
 * Incremental compilation.
 * An asynchronous outside-world dependency at the Java boundary: the language itself stays synchronous (<<out-of-scope>>), but a Java Binding that touches the outside world could return asynchronously.
-* Optimization that narrows generation by usage of input sources (currently decoders are generated for the sources a data's shape supports; <<codec-generation>>).
-* jOOQ flatness limit: a jOOQ `+Record+` row is flat, so a jOOQ decoder is not generated for a type with nested data / List / Map. Decoders for bare-value / Map / JSON sources are generated. This is a limit inherent to jOOQ rows and is largely permanent.
 
 [#non-functional]
 == Non-functional requirements
