@@ -13,10 +13,8 @@ import java.util.List;
  * <p>Core is the surface expression AST after the {@link net.unit8.souther.compiler.check.Lower}
  * stage has inlined helpers and desugared surface-only forms. It differs from the AST in what it
  * makes explicit: a construct the backend used to re-detect and shape during emission becomes its
- * own node here, so the backend only emits. The first such node is {@link Fold} — the one
- * privileged list loop (spec 18.4, ADR-0028) — which the AST carries as an ordinary
- * {@code List.fold} call. Later slices add explicit nodes for {@code match} lowering and closure
- * conversion, and drop the corresponding special cases from the emitter.
+ * own node here, so the backend only emits. Later slices add explicit nodes for {@code match}
+ * lowering and closure conversion, and drop the corresponding special cases from the emitter.
  *
  * <p>Core is structural, not typed: the backend infers types as it emits, as it does from the AST
  * today. A surface-only node (a list comprehension) never appears — the Lower stage has already
@@ -30,8 +28,7 @@ public sealed interface Core {
      * Rebuilds the equivalent surface expression. Two callers need AST rather than Core: the codec
      * emitter, which is AST-level, reaches the shared value emitter through {@code Core.of} then here;
      * and the backend's closure path, which asks the type checker (AST-based) about a runtime-selected
-     * function, since Core is untyped. {@code of} and {@code toAst} round-trip (a fold call becomes
-     * {@link Fold} and back).
+     * function, since Core is untyped. {@code of} and {@code toAst} round-trip.
      */
     default Ast.Expr toAst() {
         return switch (this) {
@@ -64,10 +61,6 @@ public sealed interface Core {
                 }
                 yield new Ast.Match(m.scrutinee().toAst(), cases, m.pos());
             }
-            // fold(step, seed, xs): step block first, list last — the inverse of `of` (F#/Elm order).
-            case Fold f -> new Ast.Call(FOLD, List.of(
-                    new Ast.Block(f.params(), f.body().toAst(), f.pos()),
-                    f.seed().toAst(), f.source().toAst()), f.pos());
         };
     }
 
@@ -102,8 +95,8 @@ public sealed interface Core {
 
     record LetIn(String name, Core value, Core body, SourcePos pos) implements Core {}
 
-    /** A second-class block: the operand of a {@link Fold}, or an escaping lambda a {@code let}
-     * binds (a closure). Kept as its own node until closure conversion gets an explicit Core form. */
+    /** A second-class block: a step passed to a recursive combinator, or an escaping lambda a {@code
+     * let} binds (a closure). Kept as its own node until closure conversion gets an explicit Core form. */
     record Block(List<String> params, Core body, SourcePos pos) implements Core {}
 
     record ListLit(List<Core> elements, SourcePos pos) implements Core {}
@@ -123,17 +116,6 @@ public sealed interface Core {
     record Case(List<String> caseTypes, String binding, Core body, SourcePos pos) {}
 
     record Match(Core scrutinee, List<Case> cases, SourcePos pos) implements Core {}
-
-    /**
-     * {@code fold(source, seed, (acc, x) -> body)} — the one privileged list loop (spec 18.4). Made
-     * explicit so the backend emits an index loop without re-detecting the {@code List.fold} call and
-     * unpacking its block argument.
-     */
-    record Fold(Core source, Core seed, List<String> params, Core body, SourcePos pos)
-            implements Core {}
-
-    /** The qualified name of the fold intrinsic (spec 18.4); its third argument is the loop block. */
-    String FOLD = "List.fold";
 
     /** Translates a lowered behavior body (helpers inlined, surface forms desugared) to Core. */
     static Core of(Ast.Expr e) {
@@ -161,11 +143,6 @@ public sealed interface Core {
     }
 
     private static Core ofCall(Ast.Call c) {
-        if (c.fn().equals(FOLD) && c.args().size() == 3 && c.args().get(0) instanceof Ast.Block block) {
-            // fold(step, seed, xs): the step block is first, the list last (F#/Elm order, spec §pipe)
-            return new Fold(of(c.args().get(2)), of(c.args().get(1)), block.params(),
-                    of(block.body()), c.pos());
-        }
         return new Call(c.fn(), ofAll(c.args()), c.pos());
     }
 

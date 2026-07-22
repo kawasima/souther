@@ -321,7 +321,8 @@ public final class Formatter {
         String name = firstIdent(n);
         Doc params = fnParamList(n.child(SyntaxKind.FN_PARAM_LIST).orElseThrow());
         Doc ret = n.child(SyntaxKind.RET_TYPE).map(rt -> concat(text(": "), retType(rt))).orElse(Doc.NIL);
-        Doc head = concat(text("let "), text(name), text(" "), params, ret);
+        Doc keyword = n.child(SyntaxKind.PARTIAL_MODIFIER).isPresent() ? text("partial let ") : text("let ");
+        Doc head = concat(keyword, text(name), text(" "), params, ret);
 
         var intrinsic = n.child(SyntaxKind.INTRINSIC_BODY);
         if (intrinsic.isPresent()) {

@@ -42,8 +42,13 @@ public final class Lower {
             // inlined (non-recursive calls expanded, recursive calls left standing, spec 13.1). A
             // non-recursive helper is fully inlined at its call sites and never emitted — drop it.
             if (behaviorNames.contains(fn.name()) || recursive.contains(fn.name())) {
+                // a recursive helper expands its own body with its parameters hidden from helper
+                // resolution (foldFrom's `step` is a parameter, not a same-named user helper).
+                Ast.Expr expanded = recursive.contains(fn.name())
+                        ? inliner.inlineRecursiveBody(fn)
+                        : inliner.inline(fn.body());
                 fns.add(new Ast.FnDef(fn.name(), fn.params(), fn.declaredReturn(), fn.intrinsicKey(),
-                        desugar(inliner.inline(fn.body())), fn.pos()));
+                        desugar(expanded), fn.partial(), fn.pos()));
             }
         }
         List<Ast.Def> defs = new ArrayList<>();

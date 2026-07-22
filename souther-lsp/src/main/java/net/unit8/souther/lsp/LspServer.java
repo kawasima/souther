@@ -2,8 +2,11 @@ package net.unit8.souther.lsp;
 
 import net.unit8.souther.lsp.analysis.Analyzer;
 import net.unit8.souther.lsp.analysis.DocumentStore;
+import net.unit8.souther.lsp.analysis.ModuleGraph;
+import net.unit8.souther.lsp.analysis.Workspace;
 import net.unit8.souther.lsp.protocol.DocumentSymbol;
 import net.unit8.souther.lsp.protocol.Hover;
+import net.unit8.souther.lsp.protocol.Location;
 import net.unit8.souther.lsp.protocol.LspDiagnostic;
 import net.unit8.souther.lsp.protocol.Position;
 import net.unit8.souther.lsp.protocol.Range;
@@ -31,6 +34,8 @@ public final class LspServer {
     private final MessageConnection conn;
     private final DocumentStore documents = new DocumentStore();
     private final Analyzer analyzer = new Analyzer();
+    private final Workspace workspace = new Workspace();
+    private int nextRequestId = 1;
 
     public LspServer(MessageConnection conn) {
         this.conn = conn;
@@ -63,18 +68,24 @@ public final class LspServer {
     /** Returns true when the server should stop (on {@code exit}). */
     private boolean dispatch(String method, JsonNode id, JsonNode params) {
         switch (method) {
-            case "initialize" -> respond(id, initializeResult());
-            case "initialized", "$/setTrace", "workspace/didChangeConfiguration" -> { /* no-op */ }
+            case "initialize" -> { captureRoots(params); respond(id, initializeResult()); }
+            case "initialized" -> registerFileWatchers();
+            case "$/setTrace", "workspace/didChangeConfiguration" -> { /* no-op */ }
             case "textDocument/didOpen" -> InboundDecoders.decode(InboundDecoders.DID_OPEN, params)
-                    .ifPresent(p -> { documents.open(p.uri(), p.text()); publishDiagnostics(p.uri()); });
+                    .ifPresent(p -> { documents.open(p.uri(), p.text()); publishAll(); });
             case "textDocument/didChange" -> InboundDecoders.decode(InboundDecoders.DID_CHANGE, params)
-                    .ifPresent(p -> { documents.change(p.uri(), p.text()); publishDiagnostics(p.uri()); });
+                    .ifPresent(p -> { documents.change(p.uri(), p.text()); publishAll(); });
             case "textDocument/didClose" -> InboundDecoders.decode(InboundDecoders.DOC_REF, params)
                     .ifPresent(p -> { documents.close(p.uri()); clearDiagnostics(p.uri()); });
+            case "workspace/didChangeWatchedFiles" -> {
+                workspace.markChanged();   // a file changed on disk; drop the cached scan and re-read
+                publishAll();
+            }
             case "textDocument/documentSymbol" -> respond(id, documentSymbols(params));
             case "textDocument/semanticTokens/full" -> respond(id, semanticTokens(params));
             case "textDocument/hover" -> respond(id, hover(params));
             case "textDocument/definition" -> respond(id, definition(params));
+            case "textDocument/references" -> respond(id, references(params));
             case "shutdown" -> respond(id, null);
             case "exit" -> { return true; }
             default -> {
@@ -88,12 +99,36 @@ public final class LspServer {
 
     // --- capabilities ---
 
+    /** Records the workspace roots the client announces, from {@code workspaceFolders} (preferred) or
+     * the legacy {@code rootUri}, so the analyzer can resolve names across the whole module set. */
+    private void captureRoots(JsonNode params) {
+        if (params == null || params.isNull()) {
+            return;
+        }
+        List<String> roots = new ArrayList<>();
+        JsonNode folders = params.get("workspaceFolders");
+        if (folders != null && folders.isArray()) {
+            for (JsonNode folder : folders) {
+                JsonNode uri = folder.get("uri");
+                if (uri != null && !uri.isNull()) {
+                    roots.add(uri.asString());
+                }
+            }
+        }
+        JsonNode rootUri = params.get("rootUri");
+        if (roots.isEmpty() && rootUri != null && !rootUri.isNull()) {
+            roots.add(rootUri.asString());
+        }
+        workspace.setRoots(roots);
+    }
+
     private Map<String, Object> initializeResult() {
         Map<String, Object> capabilities = new LinkedHashMap<>();
         capabilities.put("textDocumentSync", 1);   // 1 = full document sync
         capabilities.put("documentSymbolProvider", true);
         capabilities.put("hoverProvider", true);
         capabilities.put("definitionProvider", true);
+        capabilities.put("referencesProvider", true);
         Map<String, Object> semanticTokens = new LinkedHashMap<>();
         semanticTokens.put("legend", Map.of("tokenTypes", Analyzer.TOKEN_TYPES,
                 "tokenModifiers", List.of()));
@@ -159,13 +194,40 @@ public final class LspServer {
     private Object definition(JsonNode params) {
         Params.PositionParams p = InboundDecoders.decode(InboundDecoders.POSITION_PARAMS, params)
                 .orElse(null);
-        String text = p == null ? null : documents.get(p.uri());
-        if (text == null) {
+        if (p == null || documents.get(p.uri()) == null) {
             return null;
         }
-        return analyzer.definition(text, p.position())
-                .<Object>map(range -> Map.of("uri", p.uri(), "range", rangeJson(range)))
+        ModuleGraph graph = workspace.snapshot(documents.openDocuments());
+        return analyzer.definition(p.uri(), p.position(), graph)
+                .<Object>map(loc -> Map.of("uri", loc.uri(), "range", rangeJson(loc.range())))
                 .orElse(null);
+    }
+
+    private Object references(JsonNode params) {
+        Params.PositionParams p = InboundDecoders.decode(InboundDecoders.POSITION_PARAMS, params)
+                .orElse(null);
+        if (p == null || documents.get(p.uri()) == null) {
+            return List.of();
+        }
+        boolean includeDeclaration = includeDeclaration(params);
+        ModuleGraph graph = workspace.snapshot(documents.openDocuments());
+        List<Object> out = new ArrayList<>();
+        for (Location loc : analyzer.references(p.uri(), p.position(), graph, includeDeclaration)) {
+            out.add(Map.of("uri", loc.uri(), "range", rangeJson(loc.range())));
+        }
+        return out;
+    }
+
+    /** The {@code context.includeDeclaration} flag of a references request; defaults to true. */
+    private static boolean includeDeclaration(JsonNode params) {
+        if (params == null) {
+            return true;
+        }
+        JsonNode context = params.get("context");
+        if (context == null || context.get("includeDeclaration") == null) {
+            return true;
+        }
+        return context.get("includeDeclaration").asBoolean();
     }
 
     // --- semantic tokens ---
@@ -186,13 +248,19 @@ public final class LspServer {
 
     // --- diagnostics ---
 
-    private void publishDiagnostics(String uri) {
-        String text = documents.get(uri);
-        if (text == null) {
-            return;
+    /** Recomputes diagnostics for the whole workspace and publishes each open document's set — an edit
+     * to one module can change what its importers report, so every open file is refreshed together. */
+    private void publishAll() {
+        ModuleGraph graph = workspace.snapshot(documents.openDocuments());
+        Map<String, List<LspDiagnostic>> byUri = analyzer.diagnostics(graph);
+        for (String uri : documents.uris()) {
+            publish(uri, byUri.getOrDefault(uri, List.of()));
         }
+    }
+
+    private void publish(String uri, List<LspDiagnostic> diagnostics) {
         List<Object> items = new ArrayList<>();
-        for (LspDiagnostic d : analyzer.diagnostics(text)) {
+        for (LspDiagnostic d : diagnostics) {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("range", rangeJson(d.range()));
             item.put("severity", d.severity());
@@ -239,6 +307,29 @@ public final class LspServer {
     private void notify(String method, Object params) {
         Map<String, Object> message = new LinkedHashMap<>();
         message.put("jsonrpc", "2.0");
+        message.put("method", method);
+        message.put("params", params);
+        conn.write(JSON.writeValueAsString(message));
+    }
+
+    /** Asks the client to watch the workspace's {@code .sou} files and report on-disk changes via
+     * {@code workspace/didChangeWatchedFiles}, so the cached disk scan is invalidated when a file is
+     * created, edited, or deleted outside the editor rather than relying on the client watching by
+     * default. The registration response is a no-op here (dropped by {@link #run}); a client without
+     * dynamic registration simply ignores the request. */
+    private void registerFileWatchers() {
+        Map<String, Object> registration = new LinkedHashMap<>();
+        registration.put("id", "souther-sou-watcher");
+        registration.put("method", "workspace/didChangeWatchedFiles");
+        registration.put("registerOptions",
+                Map.of("watchers", List.of(Map.of("globPattern", "**/*.sou"))));
+        sendRequest("client/registerCapability", Map.of("registrations", List.of(registration)));
+    }
+
+    private void sendRequest(String method, Object params) {
+        Map<String, Object> message = new LinkedHashMap<>();
+        message.put("jsonrpc", "2.0");
+        message.put("id", "souther-" + nextRequestId++);
         message.put("method", method);
         message.put("params", params);
         conn.write(JSON.writeValueAsString(message));

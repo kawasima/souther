@@ -25,7 +25,7 @@ public final class NewtypeDesugar {
         for (Ast.FnDef fn : m.fns()) {
             Ast.Expr body = fn.body() == null ? null : go(fn.body(), symbols);
             fns.add(new Ast.FnDef(fn.name(), fn.params(), fn.declaredReturn(), fn.intrinsicKey(),
-                    body, fn.pos()));
+                    body, fn.partial(), fn.pos()));
         }
         return new Ast.Module(m.name(), m.exposing(), m.exposedOutputs(), m.imports(),
                 m.defs(), m.behaviors(), fns, m.examples(), m.fakes(), m.exampleFileTarget(), m.pos());
@@ -65,7 +65,7 @@ public final class NewtypeDesugar {
             case Ast.ListComp comp ->
                     new Ast.ListComp(go(comp.element(), symbols), mapExprs(comp.guards(), symbols), comp.pos());
             case Ast.LetIn li ->
-                    new Ast.LetIn(li.name(), go(li.value(), symbols), go(li.body(), symbols), li.pos());
+                    new Ast.LetIn(li.name(), go(li.value(), symbols), li.declaredType(), go(li.body(), symbols), li.pos());
             case Ast.If iff ->
                     new Ast.If(go(iff.cond(), symbols), go(iff.then(), symbols), go(iff.els(), symbols), iff.pos());
             case Ast.Block b -> new Ast.Block(b.params(), go(b.body(), symbols), b.pos());

@@ -5,8 +5,8 @@ Status: Accepted; implemented (supersedes the MVP "no separate IR" stance record
 Implemented: the **Lower** stage (`check/Lower.java`) inlines each behavior body once —
 both the type checker's body check and the backend consume it, so the backend no longer
 inlines — and desugars list comprehensions. A structural **Core IR** (`core/Core.java`)
-carries the lowered behavior-body language, with `fold` made an explicit node; the backend
-emits every expression from Core (`genExpr`), and the AST `expr` is a thin `Core.of`
+carries the lowered behavior-body language; the backend emits every expression from Core
+(`genExpr`), and the AST `expr` is a thin `Core.of`
 adapter kept for the codec paths, which are still AST-level.
 
 Core is **structural, not typed**: the backend infers types as it emits. One consequence
@@ -38,15 +38,13 @@ The "no IR" stance has three costs that now bite:
   convenient: some as standalone AST rewrites before checking (`Exposing`, invariant
   inlining, `NewtypeDesugar`), some interleaved into type checking (helper inlining,
   branch widening, pipeline flattening), and some hand-written inside the emitter
-  (`fold` to a counted loop, `match` to an `instanceof` chain, closure conversion,
+  (tail recursion to a loop, `match` to an `instanceof` chain, closure conversion,
   intrinsic dispatch). There is no single place a transformation belongs.
 - **Some work is done twice.** Helper inlining is reconstructed independently in both
   the type checker and the backend from the same engine, because there is no shared
   lowered form to compute once and reuse.
 - **There is no home for what comes next.** Monomorphizing generic stdlib helpers
-  (ADR-0010) needs a lowering target, and it has nowhere to go on the surface AST. A
-  backend-neutral representation would also make the Java-source backend the original
-  decision anticipated actually feasible.
+  (ADR-0010) needs a lowering target, and it has nowhere to go on the surface AST.
 
 ## Decision
 
@@ -59,7 +57,7 @@ is deferred — see the implementation note above.)
 3. **Derive** — fill decoders/encoders into the AST from each data's shape (today
    `Deriver`). Stays at AST level.
 4. **Lower** — the surface AST to Core IR. The one place every body-level transformation
-   happens, once: helper inlining, the remaining desugars, `fold`-to-loop shaping,
+   happens, once: helper inlining, the remaining desugars,
    `match` lowering, closure conversion, intrinsic lowering, and — when it lands —
    monomorphization of generic helpers. It precedes the body check because a behavior's
    permission and `requires` are defined on the inlined body (`[#blocks]`), so the check is
@@ -76,7 +74,7 @@ is deferred — see the implementation note above.)
 
 **Scope.** Core covers the behavior/`let` body language — the expressions that become
 bytecode. Data definitions and derived codecs stay at AST level for now and may move to
-Core later, when a codec-level transformation or the Java-source backend needs them.
+Core later, when a codec-level transformation needs them.
 
 **Invariants.** (1) All body-level lowering happens once, in Lower. (2) The backend
 emits from Core and never rewrites during emission. (3) The performance stance is to
@@ -91,8 +89,6 @@ job is to remove JIT-hostile patterns, not to be a middle-end optimizer.
 - Helper inlining is computed once in Lower instead of twice.
 - Monomorphization has a defined place (a Lower pass over Core). Generics work builds on
   this layer rather than bolting onto the surface AST.
-- Core is backend-neutral, so the Java-source backend the MVP anticipated becomes
-  feasible from Core rather than from the emitter.
 - The cost is a second representation to keep in step with the language. It is bounded:
   Core is only the expression language, not data or codecs, and the surface AST remains
   the single source for those.
@@ -109,9 +105,8 @@ The original decision (MVP), superseded by the above:
 > on the AST, and the ClassFile backend emits `.class` directly from the AST via
 > `java.lang.classfile`, not through javac. Derived decoders/encoders are filled into
 > the AST from the data shape and generated as Raoh combinator calls directly as
-> bytecode. Room is left to insert an IR at this stage if a future backend needs it (for
-> example, a human-readable Java-source backend). The MVP does not carry one, so there
-> is less machinery to keep in step with the language.
+> bytecode. Room is left to insert an IR at this stage if a future backend needs it. The
+> MVP does not carry one, so there is less machinery to keep in step with the language.
 
 ## References
 

@@ -128,10 +128,18 @@ public interface Ast {
      * declares its return type and names a primitive: {@code let trim (s: String): String =
      * intrinsic "string.trim"} — its {@code body} is null, {@code declaredReturn} its result type,
      * and {@code intrinsicKey} the backend key. Intrinsics are written only in the {@code souther}
-     * namespace.
+     * namespace. {@code partial} marks a helper that opts out of the totality check (spec
+     * §fn-declaration): a recursive helper is checked for structural recursion unless it is
+     * {@code partial}.
      */
     record FnDef(String name, List<FnParam> params, RetType declaredReturn, String intrinsicKey,
-                 Expr body, SourcePos pos) implements Ast {
+                 Expr body, boolean partial, SourcePos pos) implements Ast {
+        /** A fn with no {@code partial} marker (the common case; totality-checked if recursive). */
+        public FnDef(String name, List<FnParam> params, RetType declaredReturn, String intrinsicKey,
+                     Expr body, SourcePos pos) {
+            this(name, params, declaredReturn, intrinsicKey, body, false, pos);
+        }
+
         public boolean isIntrinsic() {
             return intrinsicKey != null;
         }
@@ -358,7 +366,12 @@ public interface Ast {
      * (spec 16.1). Nesting the rest of the body inside keeps {@code value} from being evaluated
      * when an enclosing {@code if} (a desugared {@code require}) takes the other branch.
      */
-    record LetIn(String name, Expr value, Expr body, SourcePos pos) implements Expr {}
+    record LetIn(String name, Expr value, ParamType declaredType, Expr body, SourcePos pos) implements Expr {
+        /** An ordinary {@code let x = e}: the bound name takes {@code e}'s inferred type. */
+        public LetIn(String name, Expr value, Expr body, SourcePos pos) {
+            this(name, value, null, body, pos);
+        }
+    }
 
     /** A list literal {@code [e1, e2, ...]} (one or more elements of the same type). */
     record ListLit(List<Expr> elements, SourcePos pos) implements Expr {}
@@ -434,7 +447,7 @@ public interface Ast {
             case Binary b -> new Binary(b.op(), f.apply(b.left()), f.apply(b.right()), b.pos());
             case Call c -> new Call(c.fn(), mapExprs(c.args(), f), c.pos());
             case If iff -> new If(f.apply(iff.cond()), f.apply(iff.then()), f.apply(iff.els()), iff.pos());
-            case LetIn li -> new LetIn(li.name(), f.apply(li.value()), f.apply(li.body()), li.pos());
+            case LetIn li -> new LetIn(li.name(), f.apply(li.value()), li.declaredType(), f.apply(li.body()), li.pos());
             case Block bl -> new Block(bl.params(), f.apply(bl.body()), bl.pos());
             case ListLit l -> new ListLit(mapExprs(l.elements(), f), l.pos());
             case ListComp comp -> new ListComp(f.apply(comp.element()), mapExprs(comp.guards(), f), comp.pos());

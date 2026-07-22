@@ -112,4 +112,34 @@ class CompileOrPatternTest {
                 """;
         assertDoesNotThrow(() -> Compiler.compile(module));
     }
+
+    @Test
+    void aCaseBindingDoesNotLeakIntoALaterArmThatReusesTheName() throws Exception {
+        // The `Some x` arm binds `x` to the wrapped Thing; the `None` arm's `x` is the outer `let x`.
+        // The binding is scoped to its arm, so a `None` input must read the outer `x` (the fallback),
+        // not the slot the `Some` arm bound — a codegen leak would load an uninitialized Thing slot.
+        String src = """
+                module demo
+                data Thing = { v: Int }
+                data Wrap = { inner: Thing?, fallback: Int }
+                data Out = Int
+                behavior pick : (w: Wrap) -> Out constructs Out
+                let pick (w) = {
+                    let x = w.fallback
+                    Out(match w.inner with
+                        | Some x -> x.v
+                        | None -> x)
+                }
+                """;
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Object behavior = loader.loadClass("demo.Pick" + "$Impl").getConstructor().newInstance();
+
+        // inner = None -> the None arm returns the outer x (the fallback)
+        Object none = Codecs.decoded(loader, "demo.Wrap", Map.of("fallback", 42L));
+        assertEquals(42L, (long) Codecs.encode(loader, "demo.Out", Codecs.apply(behavior, none)));
+
+        // inner = Some { v = 7 } -> the Some arm returns x.v
+        Object some = Codecs.decoded(loader, "demo.Wrap", Map.of("fallback", 42L, "inner", Map.of("v", 7L)));
+        assertEquals(7L, (long) Codecs.encode(loader, "demo.Out", Codecs.apply(behavior, some)));
+    }
 }

@@ -7,6 +7,7 @@ import net.unit8.souther.compiler.cst.CstParser;
 import net.unit8.souther.compiler.cst.LineIndex;
 import net.unit8.souther.compiler.diag.CompileException;
 import net.unit8.souther.compiler.diag.Diagnostic;
+import net.unit8.souther.compiler.diag.DiagnosticRenderer;
 import net.unit8.souther.compiler.diag.Region;
 import net.unit8.souther.compiler.diag.SourcePos;
 import net.unit8.souther.compiler.cst.SyntaxElement;
@@ -16,13 +17,19 @@ import net.unit8.souther.compiler.cst.SyntaxToken;
 import net.unit8.souther.compiler.frontend.CstFrontend;
 import net.unit8.souther.lsp.protocol.DocumentSymbol;
 import net.unit8.souther.lsp.protocol.Hover;
+import net.unit8.souther.lsp.protocol.Location;
 import net.unit8.souther.lsp.protocol.LspDiagnostic;
 import net.unit8.souther.lsp.protocol.Position;
 import net.unit8.souther.lsp.protocol.Range;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * The language-analysis core, independent of the LSP transport: pure functions from source text to
@@ -66,8 +73,256 @@ public final class Analyzer {
         return out;
     }
 
+    /**
+     * Diagnostics for every file in a workspace, resolved across imports the way the batch compiler
+     * links a module set. Each file's syntax errors come from its own recovering parse; a file with a
+     * syntax error stays out of the shared compile (it cannot join the graph). The remaining files are
+     * compiled together, and each semantic diagnostic is published on the file of the module that owns
+     * it — so an error in an imported module lands on that module's document, not on its importer.
+     */
+    public Map<String, List<LspDiagnostic>> diagnostics(ModuleGraph graph) {
+        Map<String, List<LspDiagnostic>> out = new LinkedHashMap<>();
+        Map<String, String> compileSet = new LinkedHashMap<>();   // uri -> text, syntactically clean only
+        Set<String> brokenModules = new HashSet<>();   // names of files held out for their syntax errors
+
+        for (String uri : graph.uris()) {
+            String text = graph.text(uri);
+            LineIndex lines = new LineIndex(text);
+            List<LspDiagnostic> syntax = new ArrayList<>();
+            for (CstError e : CstParser.parse(text).errors()) {
+                syntax.add(new LspDiagnostic(range(lines, e.offset(), e.offset() + e.width()),
+                        LspDiagnostic.ERROR, null, e.legacyMessage()));
+            }
+            out.put(uri, syntax);
+            if (syntax.isEmpty()) {
+                compileSet.put(uri, text);   // a syntactically broken file cannot join the compile
+            } else {
+                String name = Compiler.moduleNameFromHeader(text);
+                if (name != null) {
+                    brokenModules.add(name);   // present but unparseable; importers skip, not cascade
+                }
+            }
+        }
+
+        Map<String, List<Diagnostic>> byUri;
+        try {
+            byUri = Compiler.diagnoseModules(compileSet, brokenModules);
+        } catch (RuntimeException e) {
+            return out;   // analysis must never crash the server
+        }
+        for (Map.Entry<String, List<Diagnostic>> e : byUri.entrySet()) {
+            List<LspDiagnostic> list = out.get(e.getKey());
+            if (list == null) {
+                continue;
+            }
+            LineIndex lines = new LineIndex(graph.text(e.getKey()));
+            for (Diagnostic d : e.getValue()) {
+                list.add(fromDiagnostic(lines, d));
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Go-to-definition across the workspace: resolves the identifier under the cursor to the document
+     * and name range of the top-level definition it names. A name defined in the current file resolves
+     * locally; otherwise it is resolved through the file's imports to the module that exposes it, and
+     * the target's own document supplies the range.
+     */
+    public Optional<Location> definition(String uri, Position pos, ModuleGraph graph) {
+        String text = graph.text(uri);
+        if (text == null) {
+            return Optional.empty();
+        }
+        LineIndex lines = new LineIndex(text);
+        SyntaxNode root = CstParser.parse(text).root();
+        SyntaxToken ident = identAt(root, lines.offsetOf(pos.line(), pos.character()));
+        if (ident == null) {
+            return Optional.empty();
+        }
+        SyntaxNode local = declaringDef(root, ident.text());
+        if (local != null) {
+            SyntaxToken name = nameToken(local);
+            return name == null ? Optional.empty() : Optional.of(new Location(uri, tokenRange(lines, name)));
+        }
+        String targetModule = importedFrom(text, ident.text());
+        if (targetModule == null) {
+            return Optional.empty();
+        }
+        String targetUri = uriOfModule(graph, targetModule);
+        if (targetUri == null) {
+            return Optional.empty();
+        }
+        String targetText = graph.text(targetUri);
+        SyntaxNode def = declaringDef(CstParser.parse(targetText).root(), ident.text());
+        if (def == null) {
+            return Optional.empty();
+        }
+        SyntaxToken name = nameToken(def);
+        return name == null ? Optional.empty()
+                : Optional.of(new Location(targetUri, tokenRange(new LineIndex(targetText), name)));
+    }
+
+    /**
+     * Find-references across the workspace: every use of the top-level symbol the cursor names, in the
+     * defining module and in every module that imports it. Resolution respects namespaces — a type
+     * mention and a value of the same spelling are different symbols — and scope: a use inside a
+     * definition that binds the name locally (a param or a {@code let}) is that local, not the symbol,
+     * and is excluded. The declaration itself is included only when {@code includeDeclaration} is set.
+     */
+    public List<Location> references(String uri, Position pos, ModuleGraph graph, boolean includeDeclaration) {
+        String text = graph.text(uri);
+        if (text == null) {
+            return List.of();
+        }
+        SyntaxNode root = CstParser.parse(text).root();
+        SyntaxToken ident = identAt(root, new LineIndex(text).offsetOf(pos.line(), pos.character()));
+        if (ident == null) {
+            return List.of();
+        }
+        String name = ident.text();
+        String definingModule = declaringDef(root, name) != null
+                ? Compiler.moduleNameFromHeader(text) : importedFrom(text, name);
+        if (definingModule == null) {
+            return List.of();
+        }
+        String definingUri = uriOfModule(graph, definingModule);
+        if (definingUri == null) {
+            return List.of();
+        }
+        boolean isType = isTypeDef(declaringDef(CstParser.parse(graph.text(definingUri)).root(), name));
+
+        List<Location> out = new ArrayList<>();
+        for (String u : graph.uris()) {
+            String t = graph.text(u);
+            boolean owns = definingModule.equals(Compiler.moduleNameFromHeader(t));
+            if (!owns && !definingModule.equals(importedFrom(t, name))) {
+                continue;   // this file neither defines nor imports the symbol
+            }
+            collectReferences(CstParser.parse(t).root(), name, isType, u, new LineIndex(t),
+                    includeDeclaration && owns, out);
+        }
+        return out;
+    }
+
+    private boolean isTypeDef(SyntaxNode def) {
+        return def != null && def.kind() == SyntaxKind.DATA_DEF;
+    }
+
+    /** Node kinds where an identifier names a type. */
+    private static final java.util.Set<SyntaxKind> TYPE_POSITIONS = java.util.Set.of(
+            SyntaxKind.TYPE_REF, SyntaxKind.TYPE_ARGS, SyntaxKind.SUM_BODY, SyntaxKind.NEWTYPE_BODY,
+            SyntaxKind.CONSTRUCTS_CLAUSE, SyntaxKind.REQUIRES_CLAUSE, SyntaxKind.NEW_DATA_EXPR);
+
+    /** Node kinds where an identifier binds a value name (a param or a {@code let}). */
+    private static final java.util.Set<SyntaxKind> VALUE_BINDINGS = java.util.Set.of(
+            SyntaxKind.PARAM, SyntaxKind.FN_PARAM, SyntaxKind.LAMBDA_EXPR, SyntaxKind.LET_STMT);
+
+    /** Appends every occurrence of {@code name} in {@code root} that refers to the target symbol. A
+     * value use inside a top-level definition that binds {@code name} locally is shadowed and skipped. */
+    private void collectReferences(SyntaxNode root, String name, boolean isType, String uri,
+                                   LineIndex lines, boolean includeDeclaration, List<Location> out) {
+        for (SyntaxNode def : root.childNodes()) {
+            if (def.kind() == SyntaxKind.MODULE_HEADER || def.kind() == SyntaxKind.IMPORT_DECL) {
+                continue;   // names in the header's exposing list or an import list are not uses
+            }
+            boolean shadows = !isType && defBindsName(def, name);
+            collectInNode(def, name, isType, uri, lines, includeDeclaration, shadows, out);
+        }
+    }
+
+    private void collectInNode(SyntaxNode node, String name, boolean isType, String uri, LineIndex lines,
+                               boolean includeDeclaration, boolean shadowed, List<Location> out) {
+        SyntaxKind parent = node.kind();
+        for (SyntaxElement e : node.children()) {
+            if (e instanceof SyntaxNode child) {
+                collectInNode(child, name, isType, uri, lines, includeDeclaration, shadowed, out);
+            } else {
+                SyntaxToken t = (SyntaxToken) e;
+                if (t.kind() != SyntaxKind.IDENT || !t.text().equals(name)) {
+                    continue;
+                }
+                if (isDeclarationName(node, t)) {
+                    if (includeDeclaration) {
+                        out.add(new Location(uri, tokenRange(lines, t)));
+                    }
+                } else if (isType) {
+                    if (TYPE_POSITIONS.contains(parent)) {
+                        out.add(new Location(uri, tokenRange(lines, t)));
+                    }
+                } else if (!VALUE_BINDINGS.contains(parent) && !TYPE_POSITIONS.contains(parent) && !shadowed) {
+                    out.add(new Location(uri, tokenRange(lines, t)));
+                }
+            }
+        }
+    }
+
+    /** Whether {@code t} is the name token of the top-level definition {@code node}. */
+    private boolean isDeclarationName(SyntaxNode node, SyntaxToken t) {
+        return (node.kind() == SyntaxKind.DATA_DEF || node.kind() == SyntaxKind.BEHAVIOR_DEF
+                || node.kind() == SyntaxKind.FN_DEF) && t == nameToken(node);
+    }
+
+    /** Whether a top-level definition binds {@code name} as a param or a {@code let} anywhere inside it. */
+    private boolean defBindsName(SyntaxNode def, String name) {
+        for (SyntaxElement e : def.children()) {
+            if (e instanceof SyntaxNode child) {
+                if (VALUE_BINDINGS.contains(child.kind())) {
+                    SyntaxToken bound = firstIdent(child);
+                    if (bound != null && bound.text().equals(name)) {
+                        return true;
+                    }
+                }
+                if (defBindsName(child, name)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private SyntaxToken firstIdent(SyntaxNode node) {
+        for (SyntaxElement e : node.children()) {
+            if (e instanceof SyntaxToken t && t.kind() == SyntaxKind.IDENT) {
+                return t;
+            }
+            if (e instanceof SyntaxNode child) {
+                SyntaxToken inner = firstIdent(child);
+                if (inner != null) {
+                    return inner;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** The module a name is imported from in {@code text}, or {@code null} if no import exposes it. */
+    private String importedFrom(String text, String name) {
+        try {
+            for (Ast.Import imp : CstFrontend.parse(text, "Main").imports()) {
+                if (imp.names().contains(name)) {
+                    return imp.module();
+                }
+            }
+        } catch (RuntimeException e) {
+            // a file that does not parse cleanly resolves no imports; go-to-def simply misses
+        }
+        return null;
+    }
+
+    /** The document URI of the module declared with {@code moduleName}, or {@code null} if none. */
+    private String uriOfModule(ModuleGraph graph, String moduleName) {
+        for (String uri : graph.uris()) {
+            if (moduleName.equals(Compiler.moduleNameFromHeader(graph.text(uri)))) {
+                return uri;
+            }
+        }
+        return null;
+    }
+
     /** Go-to-definition within one document: resolves the identifier under the cursor to the name
-     * range of the top-level definition it names, if any. Cross-module resolution is future work. */
+     * range of the top-level definition it names, if any. The workspace-aware
+     * {@link #definition(String, Position, ModuleGraph)} resolves across imports as well. */
     public Optional<Range> definition(String text, Position pos) {
         LineIndex lines = new LineIndex(text);
         SyntaxNode root = CstParser.parse(text).root();
@@ -358,9 +613,24 @@ public final class Analyzer {
 
     private LspDiagnostic fromCompile(LineIndex lines, CompileException e) {
         Diagnostic d = e.diagnostic();
-        Range range = rangeOf(lines, d);
-        String code = d == null ? null : d.code();
-        return new LspDiagnostic(range, LspDiagnostic.ERROR, code, cleanMessage(e.getMessage()));
+        if (d != null) {
+            return fromDiagnostic(lines, d);
+        }
+        return new LspDiagnostic(rangeOf(lines, null), LspDiagnostic.ERROR, null,
+                cleanMessage(e.getMessage()));
+    }
+
+    /** An LSP diagnostic from a structured {@link Diagnostic}: its range from the region, its code
+     * from the stable identity, its message rendered from the catalog (or the compatibility literal).
+     * A found-vs-expected diff (a type mismatch, a failing example) is appended, since the catalog body
+     * alone omits the two values — the detail the editor needs to see what went wrong. */
+    private LspDiagnostic fromDiagnostic(LineIndex lines, Diagnostic d) {
+        String message = DiagnosticRenderer.body(d, Locale.ENGLISH);
+        if (d.diff() != null) {
+            message = message + " (expected " + d.diff().expectedType()
+                    + ", but was " + d.diff().actualType() + ")";
+        }
+        return new LspDiagnostic(rangeOf(lines, d), LspDiagnostic.ERROR, d.code(), message);
     }
 
     private Range rangeOf(LineIndex lines, Diagnostic d) {

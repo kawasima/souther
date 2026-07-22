@@ -12,10 +12,6 @@ import example.ordering.OrderId;
 import example.ordering.RecordOrder;
 import example.ordering.RecordedOrder;
 
-import net.unit8.raoh.Err;
-import net.unit8.raoh.Ok;
-import net.unit8.raoh.Path;
-
 import org.jooq.DSLContext;
 
 import java.util.List;
@@ -70,15 +66,11 @@ public final class JooqRecordOrder extends RecordOrder {
                     .execute();
         }
 
-        // RecordedOrder holds fields, so build it through the decoder from a neutral Map (spec 8.5):
-        // the lines are the same neutral maps read above; OrderId's invariant is re-checked here.
-        Map<String, Object> raw = Map.of("orderId", orderId, "items", items, "total", total);
-        return switch (RecordedOrder.decoder().decode(raw, Path.ROOT)) {
-            case Ok<RecordedOrder> ok -> ok.value();
-            case Err<RecordedOrder> e ->
-                    // A freshly minted id and just-read lines, so this cannot fail; if it does it is a
-                    // bug, not a domain outcome (spec 13.4).
-                    throw new IllegalStateException("failed to build RecordedOrder: " + e.issues().asList());
-        };
+        // recordOrder constructs RecordedOrder, OrderId, so the base hands out a typed factory for
+        // each. Build the RecordedOrder directly from the values already in hand — the priced lines
+        // are p.items() as they are — with no encode/decode round-trip. Each factory runs the type's
+        // invariant through __construct (OrderId must be non-empty); a violation aborts, which here
+        // would be a bug, not a domain outcome (spec 13.4).
+        return RecordedOrder(OrderId(orderId), p.items(), total);
     }
 }

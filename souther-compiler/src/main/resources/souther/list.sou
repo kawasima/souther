@@ -1,10 +1,11 @@
 module souther.list
 
-// The list combinators (ADR-0028), derived from the one privileged loop primitive `List.fold`. Each
-// is a helper expanded inline at its call site, where the type variables resolve to the concrete
-// argument types — no polymorphic method is emitted. `map`/`filter` seed the empty list `[]` and
-// grow it as the block runs; `all`/`any` fold a `Bool`. Passing a lambda to the `f`/`p` parameter is
-// fine: it is β-reduced inside the fold, so `List.map(x -> ..., xs)` reads as a loop would.
+// The list combinators (ADR-0028), derived from `List.fold` — itself an ordinary recursive helper
+// (`foldFrom`, below), not a compiler primitive. Each is a helper expanded inline at its call site,
+// where the type variables resolve to the concrete argument types — no polymorphic method is emitted.
+// `map`/`filter` seed the empty list `[]` and grow it as the block runs; `all`/`any` fold a `Bool`.
+// Passing a lambda to the `f`/`p` parameter is fine: it is β-reduced inside the fold, so
+// `List.map(x -> ..., xs)` reads as a loop would.
 //
 // Argument order follows F#/Elm (spec §pipe): the function or predicate comes first and the list —
 // the value being transformed — comes last, so `xs |> List.map(f) |> List.filter(p)` reads top to
@@ -13,6 +14,16 @@ module souther.list
 // Names are qualified (`List.fold`, `List.length`): the standard library carries no bare names — you
 // reach it through `List.`/`String.`/`Map.`/`Bool.` (spec §stdlib). `++` and `==` are operators, so
 // they stay bare, and `f(x)` calls a parameter, not the library.
+// `foldFrom` is an ordinary recursive helper, not a privileged loop: it walks the list by index and
+// threads the accumulator, exactly as fold is written in Elm or F#. The step is a first-class function
+// value (a closure), applied per element; the self-call is in tail position, so the backend turns the
+// recursion into a loop (no per-element stack frame). `List.get` gives the base case: `None` past the
+// end of the list yields the seed. Every combinator below is derived from it.
+let foldFrom (step: ('acc, 'a) -> 'acc, seed: 'acc, xs: List<'a>, i: Int) : 'acc =
+    match List.get(i, xs) with
+        | Some x -> List.foldFrom(step, step(seed, x), xs, i + 1)
+        | None -> seed
+
 let map (f: ('a) -> 'b, xs: List<'a>) = List.fold((acc, x) -> acc ++ [f(x)], [], xs)
 let filter (keep: ('a) -> Bool, xs: List<'a>) = List.fold((acc, x) -> if keep(x) then acc ++ [x] else acc, [], xs)
 let all (p: ('a) -> Bool, xs: List<'a>) = List.fold((acc, x) -> acc && p(x), true, xs)

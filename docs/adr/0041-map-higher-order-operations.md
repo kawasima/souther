@@ -11,9 +11,9 @@ Status: Accepted
 key's value without leaving the language for a Java binding. Elm's `Dict` and F#'s `Map` both carry
 `fold`, `map`, and `update`, and the specification already named these three as the missing piece.
 
-Two of Souther's own rules shape how they can be added. The standard library is written in Souther
-over one privileged loop, `List.fold` (ADR-0028); a second privileged loop for maps would be a new
-primitive to justify. And `Option` is not a surface-writable type (ADR-0011): a value cannot be
+Two of Souther's own rules shape how they can be added. The standard library iterates through one
+recursive helper, `List.fold` (ADR-0028, ADR-0051); a separate map recursion would be a second thing
+to walk and keep correct. And `Option` is not a surface-writable type (ADR-0011): a value cannot be
 written as `Some v`, `None` is not a value expression, and a bare value does not wrap into an
 `Option` position in the language. So a step function cannot return an `Option`.
 
@@ -22,8 +22,8 @@ written as `Some v`, `None` is not a value expression, and a bare value does not
 Add `fold`, `map`, and `update` to `souther.map`, all self-hosted — no new intrinsic, no map loop.
 
 - **`fold(step, seed, m)` folds `List.fold` over the entries.** `Map.fold` is
-  `List.fold(step', seed, Map.toList(m))`: the one list-fold loop stays the sole primitive, and the
-  entries combine in the map's deterministic hash order (`toList`'s order, [#stdlib-map]), so a fold
+  `List.fold(step', seed, Map.toList(m))`: it reuses the list fold rather than walking the map itself,
+  and the entries combine in the map's deterministic hash order (`toList`'s order, [#stdlib-map]), so a fold
   that combines its values reproduces the same result each run. The step is `(acc, key, value)`, the
   key and value passed separately — F#'s `Map.fold` folder is `state key value`, Elm's `Dict.foldl`
   is `k v acc`. The entry tuple `toList` yields is destructured inside the fold and handed on.
@@ -56,7 +56,8 @@ the value-step form (a value step is the `Just v -> Just (f v)` case of it).
 
 ## References
 
-- ADR-0028 (the stdlib is Souther over one privileged `List.fold`; `Map.fold` adds no second loop)
+- ADR-0028 (the stdlib is Souther over an intrinsic kernel; `Map.fold` reuses `List.fold`)
+- ADR-0051 (`fold` is a recursive helper, not a privileged loop)
 - ADR-0011 (`Option` is not a surface-writable type — why `update`'s step is `value -> value`)
 - ADR-0037 (tuple types in signatures — `toList`'s `List<(K, V)>`, which `fold` destructures)
 - ADR-0040 (typed map keys — the key a step receives is `String` or a String-backed newtype)

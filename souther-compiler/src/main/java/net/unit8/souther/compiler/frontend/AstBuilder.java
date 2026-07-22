@@ -315,6 +315,7 @@ public final class AstBuilder {
             }
         });
         Ast.RetType declaredReturn = n.child(SyntaxKind.RET_TYPE).map(this::retType).orElse(null);
+        boolean partial = n.child(SyntaxKind.PARTIAL_MODIFIER).isPresent();
 
         Optional<SyntaxNode> intrinsic = n.child(SyntaxKind.INTRINSIC_BODY);
         if (intrinsic.isPresent()) {
@@ -324,10 +325,10 @@ public final class AstBuilder {
                                 + " namespace may declare one (ADR-0028)");
             }
             String key = stringValue(intrinsic.get().token(SyntaxKind.STRING_LIT).orElseThrow().text());
-            return new Ast.FnDef(name, params, declaredReturn, key, null, pos);
+            return new Ast.FnDef(name, params, declaredReturn, key, null, partial, pos);
         }
         SyntaxNode bodyNode = onlyExpr(n);
-        return new Ast.FnDef(name, params, declaredReturn, null, expr(bodyNode), pos);
+        return new Ast.FnDef(name, params, declaredReturn, null, expr(bodyNode), partial, pos);
     }
 
     private Ast.FnParam fnParam(SyntaxNode p) {

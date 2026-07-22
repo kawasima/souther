@@ -160,9 +160,10 @@ Souther does not have the following. These are design decisions, not features to
 * exceptions (see below)
 * null
 * threads
-* asynchronous processing
+* asynchronous processing in the language
 * inheritance
 * structural intersection types (`+A & B+`; see <<union-intersection>>)
+* a function stored in a data field (it has no external representation, so it would break decoder / encoder derivation; <<decoder>>, <<encoder>>, <<blocks>>)
 * reflection
 * macros
 * type classes
@@ -644,7 +645,7 @@ data 費用明細 = 費目
 
 `+data X = Y+` is equivalent to having a single field `+value: Y+`. Construction applies the value to the type name, `+X(v)+` (`+金額(500)+`, `+会員ID("m-01")+`), equal to `+X { value = v }+`. Reference is `+x.value+`; an invariant refers to the inside as `+value+`. The difference from `+data X = { value: Y }+` (with braces) is *the external representation only*: `+data X = Y+` reads and writes `+Y+`'s representation bare (`+従業員ID+` is `+"e-01"+`), while `+data X = { value: Y }+` becomes an Object `+{"value": "e-01"}+`.
 
-The constructor `+X(v)+` is written with parentheses like function application. Juxtaposition `+X v+` is not adopted, because Souther's application is uniformly `+f(x)+` and because, absent a capitalization rule on identifiers, `+金額 -5+` would be ambiguous between construction and subtraction (ADR-0032). An invariant violation aborts like any other data construction (<<violation-destination>>). A construction whose argument is a compile-time constant statically verified to satisfy the invariant cannot abort, so it may appear anywhere in the type body; a construction where a constant breaks the invariant, such as `+金額(-5)+`, is a compile error. A construction passing a runtime value is limited, like any other invariant-bearing construction, to a behavior's result position, and aborts there on violation.
+The constructor `+X(v)+` is written with parentheses like function application. Juxtaposition `+X v+` is not adopted, because Souther's application is uniformly `+f(x)+` and because, absent a capitalization rule on identifiers, `+金額 -5+` would be ambiguous between construction and subtraction (ADR-0032). An invariant violation aborts like any other data construction (<<violation-destination>>). A construction whose argument is a compile-time constant statically verified to satisfy the invariant cannot abort, so it may appear anywhere in the type body; a construction where a constant breaks the invariant, such as `+金額(-5)+`, is a compile error. A construction passing a runtime value may appear wherever an expression may — a behavior's result, a non-tail `+let+`, a `+match+` arm — and aborts on violation.
 
 Whether it is a newtype is *decided by this syntax*, not inferred from the single-field shape. Adding a field to `+data 金額 = { value: Int }+` does not silently change its representation (`+{...}+` is always an Object, even with a single field). For the bare representation, write `+data 金額 = Int+`.
 
@@ -817,6 +818,8 @@ When the discriminator key or tag is business-specific (reading `+"status"+` and
 === Custom boundary codec
 
 When the default derivation is insufficient (a different key name, normalization, default filling, a business-specific discriminator, persistence version branching), write a Decoder on the Java side that assembles the external representation and calls the data's (invariant-checking) construction. The `+JdbcFindMember+` calling `+会員.decoder()+` in <<java-example>> is this form. External-representation conversion stays confined to the boundary and is not brought into domain definitions.
+
+A business-specific sum tag does not mean rebuilding the case decoders. Souther generates a public per-case decoder (`+提出済み.decoder()+`) and a sum decoder that is only a `+discriminate("type", …)+` over them (<<sum-discrimination>>). The boundary keeps the per-case decoders and rewrites just that one layer with its own key and tags — reading `+"status"+` and dispatching `+"draft"+` / `+"submitted"+` is `+discriminate("status", variant("draft", 申請準備中.decoder()), variant("submitted", 提出済み.decoder()))+`. Field assembly and invariant checks are reused; only the tag table is written. The encoder side is less symmetric: the derived sum encoder bundles the tag with each case's encoding, so a custom sum encoder re-tags each case's Map itself.
 
 [#decoder-error]
 === Decoder errors
@@ -1232,14 +1235,14 @@ The body is an expression. `+{ ... }+` is a block expression (<<block-expression
 * A helper (a `+let+` with no same-named behavior) states its own argument types, with one inference: a *non-recursive* helper is inline-expanded at each call site (spec 12.5), so a *value* parameter with no annotation takes its type from how it is called, and that type MUST agree at every call site — a helper is monomorphic (ADR-0050). A *function-typed* parameter MUST be written; a function cannot be inferred from a bare name at the call site. A parameter that no call site can type — an uncalled helper, or an argument bound outside the visible scope — MUST be annotated. A *recursive* helper is lowered to a method rather than inlined (below), so it writes all of its argument types.
 * A helper *may recurse* (self- and mutual recursion; ADR-0038). A non-recursive helper is inline-expanded at its call site; a recursive helper is not inlined but lowered to a method — self- and mutual calls become plain method calls. Traversal of self-referential data that `+fold+` cannot write (climbing the manager chain to the root, counting tree depth) is written this way.
 * A recursive helper MUST *declare its return type* (above). Without a declaration it is a compile error.
-* A recursive helper MUST be *pure*: it MUST NOT call an injected behavior (`+requires+`). An effect touching the outside world is placed on the behavior that calls the helper.
-* Termination is not checked. Non-terminating recursion overflows the JVM stack, and `+StackOverflowError+` propagates through as a platform failure (<<java-impl-rules>>, ADR-0029). There is no depth limit or fuel.
+* A recursive helper MUST be *pure*: its own body MUST NOT call an injected behavior (`+requires+`). It MAY apply a function argument that does — the effect is then the caller's, declared in the caller's `+requires+` and carried in by the closure (<<blocks>>). An effect touching the outside world is placed on the behavior that calls the helper, or on the function it is handed.
+* Recursion is *total by default* (ADR-0052). A recursive helper MUST be *structurally recursive*: a recursive call passes, in some argument position, a strictly smaller part of a parameter. That part comes from a `+match+` on a field or a case (`+match s.上司 with | Some b -> 深さ(b)+` passes the unwrapped `+社員+` — an org chart, or a two-`+Option+`-field binary tree), or from an element handed to a standard-library list combinator's closure over a list that is part of a parameter (`+List.fold((acc, c) -> acc + 深さ(c), 0, t.children)+` — an element of `+t.children+` is smaller than `+t+`, so an n-ary `+List<T>+`-children tree is total). Either way it bottoms out on the finite self-referential data. A helper that is not structurally recursive is a compile error (E2001). Write `+partial let f ...+` to opt out: a `+partial+` helper is not checked and may not terminate. Numeric (`+n - 1+`) and index (`+List.get(i, xs)+` with `+i + 1+`) recursion is not structural — Souther has no inductive `+Nat+` — so it MUST be `+partial+`; counting is otherwise written with `+fold+`. There is no way to *claim* totality on non-structural recursion; `+partial+` only disclaims it. The standard library's `+List.foldFrom+` is trusted total. Mutual recursion is not yet checked (a non-`+partial+` mutually-recursive helper is rejected). An `+example+` is evaluated within a time budget, so a `+partial+` recursion that does not terminate is reported rather than hanging the compiler.
 * A local lambda (`+let f = (x) -> ...+`) cannot recurse. Recursion is a property of a named module helper.
 * Two `+let+`s MUST NOT be written for one behavior.
 * A `+let+` may implement a behavior only when both are in the *same module*. A behavior of another module may be imported and called, but its implementation MUST NOT be given by a `+let+` in another module. This is the line that keeps the name-binding rule from conflicting with separate compilation.
 * A helper `+let+` may construct data, but its construction set is inferred transitively and MUST be included in the calling behavior's `+constructs+` (<<constructs>>, <<blocks>>). It cannot be placed in a `+>->+` stage or written in `+exposing+`, because it does not appear in the spec DSL.
 * A function type (`+(A) -> B+`) may be written only in a `+let+` argument position. It MUST NOT be written in a data field (<<blocks>>) or a behavior output. A behavior output is a sum of business results, and a function is not a business result.
-* A `+let+` may return a function (`+let adder (n: Int) = (x) -> x + n+`). An escaping function — a return value or a runtime choice — becomes a closure capturing free variables (<<blocks>>). If only passed or applied on the spot, it is expandable and no closure is needed. The return type is inferred, so no type is written even when returning a function. A lambda argument type is not written either — it is inferred from how it is applied (a local rule, separate from the advanced type inference of <<future-work>>).
+* A `+let+` may return a function (`+let adder (n: Int) = (x) -> x + n+`). An escaping function — a return value or a runtime choice — becomes a closure capturing free variables (<<blocks>>). If only passed or applied on the spot, it is expandable and no closure is needed. The return type is inferred, so no type is written even when returning a function. A lambda argument type is not written either — it is inferred from how it is applied (a local rule, distinct from global type inference, which the declarative design does not do — a behavior takes its type from the specification and a helper states its own, <<fn-declaration>>).
 
 [#injected-behavior]
 === A behavior with no implementation — outside-world dependency
@@ -1865,7 +1868,7 @@ all(r -> 軽微か(r), 理由リスト)
 
 If an injected thing is called from within a block, its requirement appears in the enclosing behavior's `+requires+` (<<requires>>).
 
-Of these, only `+List.fold+` is primitive. `+map+` / `+filter+` / `+all+` / `+any+` are self-language `+let+`s that `+souther.list+` derives from `+List.fold+` (<<stdlib>>, ADR-0028), expanded at the call site. `+map+` / `+filter+` seed with an empty list `+[]+` and grow it; `+all+` / `+any+` fold a `+Bool+`. `+List.length+` / `+String.length+`, `+List.get+` / `+Map.get+` were once a single overload but split into separate module functions by qualification — a `+length+` spanning `+String+` and `+List+` is called by each name.
+None of these is a compiler primitive. `+List.fold+` is a recursive `+let+` in `+souther.list+`: it walks the list with `+List.get+`, threads an accumulator, and takes its step as a function value (<<blocks>>). Its tail-recursive self-call is compiled to a loop, so it reads as a loop would — as `+fold+` is written in Elm or F# (<<stdlib>>, ADR-0051). `+map+` / `+filter+` / `+all+` / `+any+` are `+let+`s derived from it, expanded at the call site: `+map+` / `+filter+` seed with an empty list `+[]+` and grow it, `+all+` / `+any+` fold a `+Bool+`. `+List.length+` / `+String.length+` and `+List.get+` / `+Map.get+` are separate module functions, reached by their qualifier.
 
 The lower row is also ported from Elm's List module; except `+sort+`, all are self-language `+let+`s derived from `+List.fold+`. `+reverse+` extends the seed to the front, `+sum+` / `+product+` fold numbers, `+concat+` folds with `{plus}{plus}` and flattens nesting (Elm's `+List.concat+`), and `+member+` folds with `+==+` so it works for comparable elements. `+isEmpty+` looks at length. Only `+sort+` is a primitive that cannot be derived from `+fold+` (as in Elm) — self-language sorting needs, besides comparison, a place to hold intermediate results, which `+fold+` does not give; it sorts by the element's natural order. Elements MUST be an ordered type (`+Int+` / `+String+` / `+Decimal+` / `+Date+` / `+DateTime+`; <<primitives>>), and passing a list of data or newtype to `+sort+` is a compile error (they have no ordering, so it is rejected up front rather than at runtime; to sort them, map to an ordered field first with `+List.map+`).
 
@@ -1888,7 +1891,7 @@ fold  map  update                                // higher-order
 
 `+toList(m)+` is the entries as a `+List<(String, V)>+` — a list of key/value tuples in the map's iteration order — and `+fromList(entries)+` builds a map back (a later entry wins on a duplicate key). Iteration order is a deterministic, implementation-defined hash order (not insertion order): the same set of keys always yields the same order, so encoding is reproducible, but a program must not depend on which order that is. The tuple type in these signatures is allowed because a signature is not a codec boundary (<<tuple>>, ADR-0037).
 
-`+fold+` / `+map+` / `+update+` are the operations that take a step function. `+Map+` adds no privileged loop of its own: `+fold(step, seed, m)+` runs `+List.fold+` over the entries (`+toList+`), so the one list-fold loop stays the sole primitive, and the entries combine in the map's deterministic hash order. Its step is `+(acc, key, value)+` (F#'s `+Map.fold+` folder is `+state key value+`, Elm's `+Dict.foldl+` is `+k v acc+`). `+map(f, m)+` keeps the keys and rewrites the values (`+(key, value) -> value+`, Elm's `+Dict.map+` / F#'s `+Map.map+`), growing a fresh map through `+fold+`. `+update(key, f, m)+` rewrites the value under one key with `+f+` and is a no-op when the key is absent. Its step is `+('a) -> 'a+`, not Elm's `+Maybe v -> Maybe v+`: `+Option+` is not surface-writable (ADR-0011), so a step cannot return one — insert a new key with `+insert+`, drop one with `+remove+`, and let `+update+` cover changing what is already there.
+`+fold+` / `+map+` / `+update+` are the operations that take a step function. `+Map.fold(step, seed, m)+` is layered on `+List.fold+` over the entries (`+toList+`) rather than walking the map itself, and the entries combine in the map's deterministic hash order. Its step is `+(acc, key, value)+` (F#'s `+Map.fold+` folder is `+state key value+`, Elm's `+Dict.foldl+` is `+k v acc+`). `+map(f, m)+` keeps the keys and rewrites the values (`+(key, value) -> value+`, Elm's `+Dict.map+` / F#'s `+Map.map+`), growing a fresh map through `+fold+`. `+update(key, f, m)+` rewrites the value under one key with `+f+` and is a no-op when the key is absent. Its step is `+('a) -> 'a+`, not Elm's `+Maybe v -> Maybe v+`: `+Option+` is not surface-writable (ADR-0011), so a step cannot return one — insert a new key with `+insert+`, drop one with `+remove+`, and let `+update+` cover changing what is already there.
 
 [#stdlib-set]
 === Set
@@ -2045,17 +2048,18 @@ The model author does not write this type name in Souther source; they only writ
 ----
 Source -> Lexer -> Parser -> AST
   -> Derive (fill decoder/encoder into the AST from a data's shape)
+  -> Lower (behavior / let bodies -> Core IR: helper inlining, desugaring)
   -> Type Check
        name resolution / construction-authority check / requirement-set check and composition inference / exhaustiveness check / invariant type check
   -> ClassFile Backend -> .class (direct bytecode generation)
 ----
 
-Type checking is done on the AST, verifying construction authority, requirement sets, exhaustiveness, and invariants together. There is no independent Domain IR / Decoder IR / Encoder IR; the backend emits bytecode directly from the AST. The backend generates `+.class+` with the Class-File API (`+java.lang.classfile+`) and does not go through javac. If another backend such as Java source generation is needed in the future, there is room to insert an IR at this stage.
+Behavior and `+let+` bodies are lowered to a Core IR — helper inlining and surface desugaring happen once here — and the backend emits from it. Data definitions and derived decoders / encoders stay at the AST level; there is no separate Domain IR / Decoder IR / Encoder IR. Type checking verifies construction authority, requirement sets, exhaustiveness, and invariants together: the surface checks read the AST, and the body check reads the lowered Core. The backend generates `+.class+` with the Class-File API (`+java.lang.classfile+`) and does not go through javac.
 
 [#ast-tracking]
 == Information tracked by the AST and backend
 
-There is no independent intermediate representation (<<compiler-pipeline>>); the following is held as the AST and the type-check results.
+Apart from the Core IR that behavior and `+let+` bodies are lowered to (<<compiler-pipeline>>), the compiler keeps no separate intermediate representation; the following is held as the AST and the type-check results.
 
 [#ast-nodes]
 === AST definition nodes
@@ -2083,7 +2087,7 @@ input type  output type (sum of possible business results)  requirement set  con
 
 The output type is a single type or a sum. `+SpecBehavior+` takes these four from the declaration — the requirement set is also taken from `+requires+` and reconciled with the set inferred from the `+let+` (<<requires>>). `+PipeBehavior+` computes input and output types from the stage sequence (<<type-routing>>) and infers the requirement set as the union over stages (<<composition-with-requirements>>).
 
-The body is not here. A behavior has no body; the `+FnDef+` holds it (<<behavior>>, <<ast-nodes>>). The backend combines this behavior-side information with the `+FnDef+`'s body to generate bytecode directly from the AST.
+The body is not here. A behavior has no body; the `+FnDef+` holds it (<<behavior>>, <<ast-nodes>>). The backend combines this behavior-side information with the `+FnDef+`'s body, lowered to Core (<<compiler-pipeline>>), to generate bytecode.
 
 [#compile-errors]
 == Compile errors
@@ -2597,18 +2601,12 @@ var result = handle.apply(rawInput);
 ----
 
 [#future-work]
-== Future extensions and current limitations
+== Future extensions
 
-The language core is implemented. The following are future extensions, or current limitations of tooling and boundary codecs — distinct from what is permanently absent (<<out-of-scope>>).
+The language core is implemented. The following are future extensions — distinct from what is permanently absent (<<out-of-scope>>).
 
 * A full formal grammar (BNF). The key delimiters and precedence are stated ahead in <<delimiters>>.
-* A human-readable Java-source backend, incremental compilation, LSP / IDE plugins, source maps. The Core layer (<<compiler-pipeline>>) is backend-neutral, so a Java-source backend can be written from it.
-* JSON Schema generation, Wasm output, JavaScript output, asynchronous outside-world dependencies.
-* Hand-written decoder / encoder syntax. A different key name, normalization, or business-specific discriminator is handled by a boundary-side custom codec (Java side).
-* Advanced (global) type inference. The current design is declarative: a behavior takes its type from the specification, and a helper states its own type — apart from the local call-site inference of a non-recursive helper's value parameters (<<fn-declaration>>).
-* Storing a function in a data field. A function cannot be mapped to an external representation, so placing one would create an exception to decoder / encoder derivation (<<decoder>>, <<encoder>>) (<<blocks>>).
-* Optimization that narrows generation by usage of input sources (currently decoders are generated for the sources a data's shape supports; <<codec-generation>>).
-* jOOQ flatness limit: a jOOQ `+Record+` row is flat, so a jOOQ decoder is not generated for a type with nested data / List / Map. Decoders for bare-value / Map / JSON sources are generated. This is a limit inherent to jOOQ rows and is largely permanent.
+* Incremental compilation.
 
 [#non-functional]
 == Non-functional requirements

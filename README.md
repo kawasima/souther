@@ -50,7 +50,7 @@ The complete runnable example is in [`examples/businesstrip/`](examples/business
 
 ## Try it
 
-Souther requires JDK 25 and Maven. The compiler uses the JDK Class-File API; generated `.class` files target Java 21 and later.
+Souther requires JDK 25 and Maven. The compiler uses the finalized JDK Class-File API (JDK 24+), so JDK 25 is a build-time toolchain, not a runtime floor: generated `.class` files and `souther-runtime` target Java 21, so an application consuming Souther's output runs on Java 21 and later. Because `SoutherProcessor` generates bytecode during the host build (see [`examples/README.md`](examples/README.md)), a project that runs it as an annotation processor also needs JDK 25 as its build toolchain, even though its production runtime stays on Java 21+.
 
 ```sh
 # Build the runtime and compiler, and run the tests.
@@ -126,7 +126,7 @@ Souther is deliberately small:
 
 It intentionally does not provide exceptions, `null`, mutable state, asynchronous execution, arbitrary JVM calls, type classes or higher-kinded types, a package manager, or a REPL. These omissions keep construction paths, value constraints, and outside-world dependencies tractable.
 
-Not yet implemented: a Java-source backend, incremental compilation, an LSP, source maps, static invariant proofs, handwritten codec syntax, and JSON Schema / Wasm / JavaScript output.
+Not yet implemented: incremental compilation, static invariant proofs, handwritten codec syntax, and JSON Schema / Wasm / JavaScript output. Generated classes carry `SourceFile` / `LineNumberTable` debug info, so a runtime stack trace (an invariant abort above all) points back to the `.sou` source line. An LSP server ships (`souther-lsp`); its name resolution is per-module, and workspace-wide (cross-module) resolution is future work.
 
 ## Details and examples
 
