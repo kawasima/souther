@@ -2607,7 +2607,6 @@ The language core is implemented. The following are future extensions — distin
 
 * A full formal grammar (BNF). The key delimiters and precedence are stated ahead in <<delimiters>>.
 * Incremental compilation.
-* An asynchronous outside-world dependency at the Java boundary: the language itself stays synchronous (<<out-of-scope>>), but a Java Binding that touches the outside world could return asynchronously.
 
 [#non-functional]
 == Non-functional requirements
