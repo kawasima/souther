@@ -40,7 +40,7 @@ data OutOfStock
 // --- injected DB behaviors (no `let`; implementation comes from Java) ---
 // An injected behavior always writes `constructs`: the declaration is the input to factory generation.
 behavior recordOrder : (order: PricedCart) -> RecordedOrder
-    constructs RecordedOrder
+    constructs RecordedOrder, OrderId
 
 behavior reserveStock : (recorded: RecordedOrder) -> ConfirmedOrder | OutOfStock
     constructs ConfirmedOrder, OutOfStock

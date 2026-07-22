@@ -12,6 +12,7 @@ import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassSignature;
 import java.lang.classfile.CodeBuilder;
 import java.lang.classfile.Label;
+import java.lang.classfile.MethodSignature;
 import java.lang.classfile.attribute.PermittedSubclassesAttribute;
 import java.lang.classfile.attribute.SignatureAttribute;
 import java.lang.constant.ClassDesc;
@@ -199,10 +200,26 @@ public final class Backend {
                 requiredSuccess.put(spec.name(), b.successType(spec.ret()));
                 requiredParam.put(spec.name(),
                         spec.params().size() == 1 ? b.successType(spec.params().get(0).type()) : null);
+                // Unit output cases get a no-arg factory (a unit has nothing to validate, so it is
+                // built directly). A field-bearing constructed type gets a typed factory, but only
+                // when the behavior declares it in `constructs` — that declaration is the authority
+                // to build it (spec 2.7), and unlike a unit it cannot be told apart from a decoded
+                // pass-through output (会員) by shape alone.
                 List<String> unitCases = new ArrayList<>();
                 for (Ast.TypeRef t : spec.ret().cases()) {
                     if (b.symbols.get(t.name()) instanceof Ast.UnitData) {
                         unitCases.add(t.name());
+                    }
+                }
+                List<Ast.Data> dataConstructs = new ArrayList<>();
+                Set<String> seenConstruct = new HashSet<>();
+                if (spec.constructs() != null) {
+                    for (String tn : spec.constructs()) {
+                        // a field-bearing data or newtype; de-duplicated so a repeated `constructs`
+                        // entry does not emit the factory method twice (a duplicate-method class file)
+                        if (b.symbols.get(tn) instanceof Ast.Data data && seenConstruct.add(tn)) {
+                            dataConstructs.add(data);
+                        }
                     }
                 }
                 ClassDesc inputRef = spec.params().size() == 1
@@ -210,7 +227,7 @@ public final class Backend {
                         : null;
                 ClassDesc outputRef = b.refTypeOrNull(b.successType(spec.ret()), spec.name());
                 out.put(module.name() + "." + behaviorClass(spec.name()),
-                        b.generateRequiredBase(spec.name(), unitCases, inputRef, outputRef));
+                        b.generateRequiredBase(spec.name(), unitCases, dataConstructs, inputRef, outputRef));
             }
         }
         Map<String, TypeChecker.Sig> sigs = TypeChecker.signatures(module, b.symbols, importedSigs);
@@ -351,10 +368,16 @@ public final class Backend {
     /**
      * Generates the abstract base class for a required behavior (spec 13.3): an abstract
      * {@code Behavior} that a Java implementation extends. The base exposes a {@code protected}
-     * factory for each declared unit-data output case — the only sanctioned way for the
-     * implementation to mint those cases (spec 2.1). The data constructors stay non-public, so
-     * a subclass can build exactly this behavior's declared cases and nothing else, from any
-     * package (no in-package placement required).
+     * factory for what the implementation may build (spec 2.1). The two kinds are sourced differently.
+     * A unit output case gets a no-arg factory: a unit has no invariant to validate, so it is built
+     * directly, and it is taken from the output cases (an injected behavior may leave {@code constructs}
+     * implicit, and a unit is safe to hand out either way). A field-bearing type gets a typed factory
+     * built through its {@code __construct} so the invariant is checked, but only when the behavior
+     * declares it in {@code constructs}: that declaration is the authority to build it (spec 2.7), and
+     * unlike a unit it cannot be told apart from a decoded pass-through output by shape alone. The typed
+     * factory lets the implementation compose already-held values into its declared output without
+     * round-tripping through the decoder. The data constructors stay non-public, so a subclass builds
+     * exactly these and nothing else, from any package.
      *
      * <p>When both the input and output map to a concrete reference type, the base carries a
      * generic {@code Behavior<In, Out>} signature (spec 19.8, 24) — {@code Out} is the {@code <名>Result}
@@ -362,7 +385,7 @@ public final class Backend {
      * than {@code Object}. If either side is a list/option/map (no single reference class), the
      * signature is omitted and the raw interface stands.
      */
-    private byte[] generateRequiredBase(String name, List<String> unitCases,
+    private byte[] generateRequiredBase(String name, List<String> unitCases, List<Ast.Data> dataConstructs,
                                         ClassDesc inputRef, ClassDesc outputRef) {
         ClassDesc cdR = cdBehavior(name);
         return build(cdR, cb -> {
@@ -382,16 +405,69 @@ public final class Backend {
                 code.return_();
             });
             for (String caseName : unitCases) {
-                ClassDesc caseCd = cd(caseName);
-                cb.withMethodBody(caseName, MethodTypeDesc.of(caseCd),
-                        ClassFile.ACC_PROTECTED | ClassFile.ACC_FINAL, code -> {
-                            code.new_(caseCd);
-                            code.dup();
-                            code.invokespecial(caseCd, "<init>", MTD_void);
-                            code.areturn();
-                        });
+                emitUnitFactory(cb, caseName);
+            }
+            for (Ast.Data data : dataConstructs) {   // a field-bearing data or a newtype
+                emitDataFactory(cb, data);
             }
         });
+    }
+
+    /** A no-arg factory for a unit case: the ctor runs nothing, so it is built directly. */
+    private void emitUnitFactory(ClassBuilder cb, String typeName) {
+        ClassDesc caseCd = cd(typeName);
+        cb.withMethodBody(typeName, MethodTypeDesc.of(caseCd),
+                ClassFile.ACC_PROTECTED | ClassFile.ACC_FINAL, code -> {
+                    code.new_(caseCd);
+                    code.dup();
+                    code.invokespecial(caseCd, "<init>", MTD_void);
+                    code.areturn();
+                });
+    }
+
+    /** A factory taking the data's fields (in declaration order) and building it through
+     * {@code __construct}, so the invariant is checked and a violation aborts (spec 7.3) — the same
+     * path an in-domain construction takes, not a decode of an external representation. */
+    private void emitDataFactory(ClassBuilder cb, Ast.Data data) {
+        ClassDesc cdType = cd(data.name());
+        Map<String, Type> fields = ctx.fieldTypes(data);
+        ClassDesc[] fieldDs = fieldDescs(fields, ctx);
+        String sig = factorySignature(fields, cdType);
+        cb.withMethod(data.name(), MethodTypeDesc.of(cdType, fieldDs),
+                ClassFile.ACC_PROTECTED | ClassFile.ACC_FINAL, mb -> {
+                    if (sig != null) mb.with(SignatureAttribute.of(MethodSignature.parseFrom(sig)));
+                    mb.withCode(code -> {
+                        int slot = 1;   // slot 0 is `this`
+                        for (Type t : fields.values()) {
+                            load(code, slot, t);
+                            slot += width(t);
+                        }
+                        code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDs));
+                        code.invokestatic(CD_ConstraintViolation, "orThrow", MTD_orThrow);
+                        code.checkcast(cdType);
+                        code.areturn();
+                    });
+                });
+    }
+
+    /** A generic method {@code Signature} for a factory whose fields include a container
+     * (List/Set/Map/Option), else {@code null}. Mirrors the value-class accessor signature (spec 8.5)
+     * so a Java caller passes {@code List<Line>} rather than a raw {@code List}. A non-container field
+     * keeps its plain descriptor; the signature erases to the method's descriptor either way. */
+    private String factorySignature(Map<String, Type> fields, ClassDesc ret) {
+        boolean anyContainer = false;
+        StringBuilder sb = new StringBuilder("(");
+        for (Type t : fields.values()) {
+            String g = JvmTypes.genericSig(t, ctx);
+            if (g != null) {
+                anyContainer = true;
+                sb.append(g);
+            } else {
+                sb.append(jvmType(t, ctx).descriptorString());
+            }
+        }
+        sb.append(")").append(ret.descriptorString());
+        return anyContainer ? sb.toString() : null;
     }
 
     /**
