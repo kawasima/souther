@@ -87,7 +87,7 @@ public final class Exposing {
         List<Ast.FnDef> fns = new ArrayList<>();
         for (Ast.FnDef fn : module.fns()) {
             fns.add(new Ast.FnDef(fn.name(), fn.params(), fn.declaredReturn(), fn.intrinsicKey(),
-                    pass.rw(fn.body()), fn.pos()));
+                    pass.rw(fn.body()), fn.partial(), fn.pos()));
         }
         return new Ast.Module(module.name(), module.exposing(), module.exposedOutputs(),
                 keptImports, defs, module.behaviors(), fns,

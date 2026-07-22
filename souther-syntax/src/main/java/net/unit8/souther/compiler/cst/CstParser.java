@@ -73,7 +73,8 @@ public final class CstParser {
                 dataDef();
             } else if (at(SyntaxKind.BEHAVIOR_KW)) {
                 behaviorDef();
-            } else if (at(SyntaxKind.LET_KW)) {
+            } else if (at(SyntaxKind.LET_KW)
+                    || (atContextual("partial") && nth(1) == SyntaxKind.LET_KW)) {
                 fnDef();
             } else if (atContextual("example")) {
                 exampleDef();
@@ -345,6 +346,11 @@ public final class CstParser {
 
     private void fnDef() {
         start(SyntaxKind.FN_DEF);
+        if (atContextual("partial")) {
+            start(SyntaxKind.PARTIAL_MODIFIER);
+            bump();   // partial (a contextual soft-keyword, kept out of the fn name)
+            finish();
+        }
         bump();   // let
         expect(SyntaxKind.IDENT);
         fnParamList();
