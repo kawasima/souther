@@ -31,8 +31,9 @@ aborts on violation, exactly like an invariant-bearing product `値引き済み 
 When the argument is a compile-time constant and the invariant folds to `true`, the
 construction cannot abort: it is checked at compile time — so `金額(-5)` is a compile error,
 not a runtime abort — and may sit anywhere, including a non-tail `let money = 金額(500)`. A
-runtime argument to an invariant-bearing newtype stays restricted to the behavior's result
-position (its abort is the outcome), like any invariant-bearing construction.
+runtime argument to an invariant-bearing newtype may likewise sit wherever an expression may —
+the behavior's result, a non-tail `let`, a `match` arm — and aborts on violation, like any
+invariant-bearing construction.
 
 ## Consequences
 
@@ -43,8 +44,8 @@ emits, per invariant-bearing newtype, a Raoh-free `$Ctfe.check(value)` that runs
 invariant bytecode `__construct` runs, and after codegen the compiler loads it and runs each
 recorded constant. A violation is a compile error, with no second evaluator that could
 disagree with run time. The backend emits a plain construction when the newtype has no
-invariant, and the checked `__construct` (which aborts on violation) for a runtime argument
-in tail position.
+invariant, and the checked `__construct` (which aborts on violation) for a runtime argument,
+whether it sits in tail or value position.
 
 CTFE couples the compiler to `souther-runtime` (a `provided` dependency): it loads generated
 code, and a lambda-bearing invariant's bytecode references the runtime `Fn`. When the class
