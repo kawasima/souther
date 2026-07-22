@@ -44,9 +44,7 @@ The "no IR" stance has three costs that now bite:
   the type checker and the backend from the same engine, because there is no shared
   lowered form to compute once and reuse.
 - **There is no home for what comes next.** Monomorphizing generic stdlib helpers
-  (ADR-0010) needs a lowering target, and it has nowhere to go on the surface AST. A
-  backend-neutral representation would also make the Java-source backend the original
-  decision anticipated actually feasible.
+  (ADR-0010) needs a lowering target, and it has nowhere to go on the surface AST.
 
 ## Decision
 
@@ -76,7 +74,7 @@ is deferred — see the implementation note above.)
 
 **Scope.** Core covers the behavior/`let` body language — the expressions that become
 bytecode. Data definitions and derived codecs stay at AST level for now and may move to
-Core later, when a codec-level transformation or the Java-source backend needs them.
+Core later, when a codec-level transformation needs them.
 
 **Invariants.** (1) All body-level lowering happens once, in Lower. (2) The backend
 emits from Core and never rewrites during emission. (3) The performance stance is to
@@ -91,8 +89,6 @@ job is to remove JIT-hostile patterns, not to be a middle-end optimizer.
 - Helper inlining is computed once in Lower instead of twice.
 - Monomorphization has a defined place (a Lower pass over Core). Generics work builds on
   this layer rather than bolting onto the surface AST.
-- Core is backend-neutral, so the Java-source backend the MVP anticipated becomes
-  feasible from Core rather than from the emitter.
 - The cost is a second representation to keep in step with the language. It is bounded:
   Core is only the expression language, not data or codecs, and the surface AST remains
   the single source for those.

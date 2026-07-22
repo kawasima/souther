@@ -2052,7 +2052,7 @@ Source -> Lexer -> Parser -> AST
   -> ClassFile Backend -> .class (direct bytecode generation)
 ----
 
-Type checking is done on the AST, verifying construction authority, requirement sets, exhaustiveness, and invariants together. There is no independent Domain IR / Decoder IR / Encoder IR; the backend emits bytecode directly from the AST. The backend generates `+.class+` with the Class-File API (`+java.lang.classfile+`) and does not go through javac. If another backend such as Java source generation is needed in the future, there is room to insert an IR at this stage.
+Type checking is done on the AST, verifying construction authority, requirement sets, exhaustiveness, and invariants together. There is no independent Domain IR / Decoder IR / Encoder IR; the backend emits bytecode directly from the AST. The backend generates `+.class+` with the Class-File API (`+java.lang.classfile+`) and does not go through javac.
 
 [#ast-tracking]
 == Information tracked by the AST and backend
@@ -2604,7 +2604,7 @@ var result = handle.apply(rawInput);
 The language core is implemented. The following are future extensions, or current limitations of tooling and boundary codecs — distinct from what is permanently absent (<<out-of-scope>>).
 
 * A full formal grammar (BNF). The key delimiters and precedence are stated ahead in <<delimiters>>.
-* A human-readable Java-source backend, incremental compilation. The Core layer (<<compiler-pipeline>>) is backend-neutral, so a Java-source backend can be written from it. (Generated classes already carry `+SourceFile+` / `+LineNumberTable+` debug info, so a stack trace points back to the `+.sou+` line.)
+* Incremental compilation.
 * Workspace-wide (cross-module) name resolution in the LSP. The `+souther-lsp+` server ships and resolves names within a single module; diagnostics and go-to-definition across imported modules are future work.
 * JSON Schema generation, Wasm output, JavaScript output, asynchronous outside-world dependencies.
 * Hand-written decoder / encoder syntax. A different key name, normalization, or business-specific discriminator is handled by a boundary-side custom codec (Java side).
