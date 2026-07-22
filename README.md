@@ -50,7 +50,7 @@ The complete runnable example is in [`examples/businesstrip/`](examples/business
 
 ## Try it
 
-Souther requires JDK 25 and Maven. The compiler uses the JDK Class-File API; generated `.class` files target Java 21 and later.
+Souther requires JDK 25 and Maven. The compiler uses the finalized JDK Class-File API (JDK 24+), so JDK 25 is a build-time toolchain, not a runtime floor: generated `.class` files and `souther-runtime` target Java 21, so an application consuming Souther's output runs on Java 21 and later. Because `SoutherProcessor` generates bytecode during the host build (see [`examples/README.md`](examples/README.md)), a project that runs it as an annotation processor also needs JDK 25 as its build toolchain, even though its production runtime stays on Java 21+.
 
 ```sh
 # Build the runtime and compiler, and run the tests.
