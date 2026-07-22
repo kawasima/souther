@@ -245,4 +245,29 @@ class CompileNewtypeConstructTest {
         Object addNeg = Codecs.decoded(loader, "demo.Op", Map.of("type", "Add", "n", -5L));
         assertThrows(ConstraintViolation.class, () -> apply(loader, "Run", addNeg));
     }
+
+    @Test
+    void runtimeProductConstructionInAMatchArmConstructsAndAbortsOnViolation() throws Exception {
+        // the value-position path keys on isInvariantBearing, which also covers a multi-field product:
+        // 値引き済み { 額 = ... } built in a match arm holds for a valid value and aborts on a violation
+        String src = """
+                module demo
+                data 値引き済み = { 額: Int }
+                    invariant 額 >= 0
+                data Add = { n: Int }
+                data Sub = { n: Int }
+                data Cmd = Add | Sub
+                behavior run : (c: Cmd) -> 値引き済み constructs 値引き済み
+                let run (c) =
+                    match c with
+                        | Add as a -> 値引き済み { 額 = a.n }
+                        | Sub as s -> 値引き済み { 額 = s.n }
+                """;
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Object add5 = Codecs.decoded(loader, "demo.Cmd", Map.of("type", "Add", "n", 5L));
+        Map<?, ?> encoded = (Map<?, ?>) encode(loader, "値引き済み", apply(loader, "Run", add5));
+        assertEquals(5L, encoded.get("額"));
+        Object addNeg = Codecs.decoded(loader, "demo.Cmd", Map.of("type", "Add", "n", -5L));
+        assertThrows(ConstraintViolation.class, () -> apply(loader, "Run", addNeg));
+    }
 }
