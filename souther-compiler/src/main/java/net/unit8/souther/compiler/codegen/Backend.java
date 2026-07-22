@@ -12,6 +12,7 @@ import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassSignature;
 import java.lang.classfile.CodeBuilder;
 import java.lang.classfile.Label;
+import java.lang.classfile.MethodSignature;
 import java.lang.classfile.attribute.PermittedSubclassesAttribute;
 import java.lang.classfile.attribute.SignatureAttribute;
 import java.lang.constant.ClassDesc;
@@ -431,18 +432,42 @@ public final class Backend {
         ClassDesc cdType = cd(data.name());
         Map<String, Type> fields = ctx.fieldTypes(data);
         ClassDesc[] fieldDs = fieldDescs(fields, ctx);
-        cb.withMethodBody(data.name(), MethodTypeDesc.of(cdType, fieldDs),
-                ClassFile.ACC_PROTECTED | ClassFile.ACC_FINAL, code -> {
-                    int slot = 1;   // slot 0 is `this`
-                    for (Type t : fields.values()) {
-                        load(code, slot, t);
-                        slot += width(t);
-                    }
-                    code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDs));
-                    code.invokestatic(CD_ConstraintViolation, "orThrow", MTD_orThrow);
-                    code.checkcast(cdType);
-                    code.areturn();
+        String sig = factorySignature(fields, cdType);
+        cb.withMethod(data.name(), MethodTypeDesc.of(cdType, fieldDs),
+                ClassFile.ACC_PROTECTED | ClassFile.ACC_FINAL, mb -> {
+                    if (sig != null) mb.with(SignatureAttribute.of(MethodSignature.parseFrom(sig)));
+                    mb.withCode(code -> {
+                        int slot = 1;   // slot 0 is `this`
+                        for (Type t : fields.values()) {
+                            load(code, slot, t);
+                            slot += width(t);
+                        }
+                        code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDs));
+                        code.invokestatic(CD_ConstraintViolation, "orThrow", MTD_orThrow);
+                        code.checkcast(cdType);
+                        code.areturn();
+                    });
                 });
+    }
+
+    /** A generic method {@code Signature} for a factory whose fields include a container
+     * (List/Set/Map/Option), else {@code null}. Mirrors the value-class accessor signature (spec 8.5)
+     * so a Java caller passes {@code List<Line>} rather than a raw {@code List}. A non-container field
+     * keeps its plain descriptor; the signature erases to the method's descriptor either way. */
+    private String factorySignature(Map<String, Type> fields, ClassDesc ret) {
+        boolean anyContainer = false;
+        StringBuilder sb = new StringBuilder("(");
+        for (Type t : fields.values()) {
+            String g = JvmTypes.genericSig(t, ctx);
+            if (g != null) {
+                anyContainer = true;
+                sb.append(g);
+            } else {
+                sb.append(jvmType(t, ctx).descriptorString());
+            }
+        }
+        sb.append(")").append(ret.descriptorString());
+        return anyContainer ? sb.toString() : null;
     }
 
     /**

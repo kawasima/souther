@@ -75,6 +75,21 @@ class CompileInjectedFactoryTest {
     }
 
     @Test
+    void aContainerFactoryParameterCarriesItsElementType() throws Exception {
+        // Like the value-class accessor (#17), the factory's List parameter carries List<Line>, so a
+        // Java caller does not pass a raw List.
+        Class<?> mk = base("""
+                module demo
+                data Line = { n: Int }
+                data Bag = { lines: List<Line> }
+                data In = { x: Int }
+                behavior mk : (i: In) -> Bag constructs Bag
+                """, "demo.Mk");
+        Method factory = mk.getDeclaredMethod("Bag", java.util.List.class);
+        assertEquals("java.util.List<demo.Line>", factory.getGenericParameterTypes()[0].getTypeName());
+    }
+
+    @Test
     void theFieldBearingFactoryBuildsThroughConstructNotTheRawConstructor() throws Exception {
         // The factory must route through __construct (which checks the invariant) and orThrow (which
         // aborts on a violation), not the raw non-checking constructor. Verify the emitted bytecode.
