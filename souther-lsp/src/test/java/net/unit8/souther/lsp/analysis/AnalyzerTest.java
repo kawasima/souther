@@ -163,6 +163,19 @@ class AnalyzerTest {
     }
 
     @Test
+    void workspaceDiagnosticsReportEverySemanticErrorInAFile() {
+        // two behaviors, each with an unbound name — the type checker recovers past the first
+        String m = "module m\ndata N = { v: Int }\n"
+                + "behavior f : (n: N) -> N\nlet f (n) = bogusOne\n"
+                + "behavior g : (n: N) -> N\nlet g (n) = bogusTwo\n";
+        ModuleGraph graph = ModuleGraph.of(java.util.Map.of("file:///m.sou", m));
+
+        List<LspDiagnostic> diags = analyzer.diagnostics(graph).get("file:///m.sou");
+
+        assertEquals(2, diags.size(), diags.toString());
+    }
+
+    @Test
     void aFailingExampleMessageIncludesExpectedAndActual() {
         String a = "module a\ndata M = { n: Int }\nbehavior f : (x: M) -> M\nlet f (x) = x\n"
                 + "example f\n  | (M { n = 1 }) -> M { n = 2 }\n";

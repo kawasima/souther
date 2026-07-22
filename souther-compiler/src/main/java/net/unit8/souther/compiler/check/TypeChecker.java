@@ -29,22 +29,71 @@ public final class TypeChecker {
 
     private TypeChecker() {}
 
-    public static void check(Ast.Module module) {
-        check(module, symbols(module));
-    }
-
-    /** Type-checks a module against {@code symbols} (own definitions plus any imported ones). */
-    public static void check(Ast.Module module, Map<String, Ast.Def> symbols) {
-        check(module, symbols, Map.of());
+    /** Type-checks a self-contained module against its own symbols, collecting every error. */
+    public static List<Diagnostic> check(Ast.Module module) {
+        return check(module, symbols(module), Map.of(), Lower.run(module));
     }
 
     /**
-     * Type-checks a module. {@code importedSigs} carries the signatures of behaviors imported from
-     * other modules (spec 4, 14), so a composition can name an imported behavior as a stage.
+     * Type-checks {@code module} and, if any error was found, throws the first — the fail-fast entry
+     * point for the CLI and the annotation processor, which stop at the first error. The recovering
+     * {@link #check(Ast.Module, Map, Map, Ast.Module)} collects every error for the LSP instead.
      */
-    public static void check(Ast.Module module, Map<String, Ast.Def> symbols,
-                             Map<String, Sig> importedSigs) {
-        check(module, symbols, importedSigs, Lower.run(module));
+    public static void checkOrThrow(Ast.Module module, Map<String, Ast.Def> symbols,
+                                    Map<String, Sig> importedSigs, Ast.Module lowered) {
+        List<CompileException> errors = checkCollecting(module, symbols, importedSigs, lowered);
+        if (!errors.isEmpty()) {
+            throw errors.get(0);   // the original exception, so its rendered message is unchanged
+        }
+    }
+
+    /** Every error found in {@code module}, recovering past each so the whole module is checked; the
+     * originating exceptions in the order they were found (so the first is the one the old fail-fast
+     * check would have thrown), deduped. */
+    private static List<CompileException> checkCollecting(Ast.Module module, Map<String, Ast.Def> symbols,
+                                                          Map<String, Sig> importedSigs, Ast.Module lowered) {
+        List<CompileException> errors = new ArrayList<>();
+        try {
+            checkRecovering(module, symbols, importedSigs, lowered, errors);
+        } catch (CompileException e) {
+            // A structural / prerequisite check (a duplicate name, an `exposing` violation, a module
+            // cycle) is fail-fast: it can leave later phases without the state they read, so its first
+            // error is recorded and the rest of the module is abandoned. Per-definition and
+            // per-behavior errors are collected instead, so one broken body does not hide another.
+            // An unresolvable type can still poison a later phase and abort here — reporting every such
+            // error needs an error-type bottom (issue #37 follow-up), out of this change's scope.
+            errors.add(e);
+        }
+        return deduped(errors);
+    }
+
+    /** Runs one independent unit's check, recording its first error instead of throwing so the next
+     * unit is still checked — the recovery boundary that lets a module report more than one error. */
+    private static void collect(List<CompileException> errors, Runnable unitCheck) {
+        try {
+            unitCheck.run();
+        } catch (CompileException e) {
+            errors.add(e);
+        }
+    }
+
+    /** Collected errors as a stable set in first-seen order: one per (code, message, region), so the
+     * same underlying error reported by two phases is shown once. */
+    private static List<CompileException> deduped(List<CompileException> errors) {
+        Map<String, CompileException> unique = new LinkedHashMap<>();
+        for (CompileException e : errors) {
+            unique.putIfAbsent(dedupKey(e.diagnostic()), e);
+        }
+        return new ArrayList<>(unique.values());
+    }
+
+    private static String dedupKey(Diagnostic d) {
+        if (d == null) {
+            return "null";
+        }
+        Region r = d.region();
+        String at = r == null ? "" : r.start() + ":" + r.end();
+        return d.code() + "|" + d.messageKey() + "|" + d.literalMessage() + "|" + at;
     }
 
     /**
@@ -54,8 +103,25 @@ public final class TypeChecker {
      * helper check and the function-argument check still read the original bodies, which carry the
      * un-inlined helper calls they inspect.
      */
-    public static void check(Ast.Module module, Map<String, Ast.Def> symbols,
+    public static List<Diagnostic> check(Ast.Module module, Map<String, Ast.Def> symbols,
                              Map<String, Sig> importedSigs, Ast.Module lowered) {
+        List<Diagnostic> out = new ArrayList<>();
+        for (CompileException e : checkCollecting(module, symbols, importedSigs, lowered)) {
+            out.add(e.diagnostic());
+        }
+        return out;
+    }
+
+    /**
+     * The check phases, appending to {@code errors} rather than returning them. Contract: each
+     * independent per-definition or per-behavior check MUST be run through {@link #collect} so its
+     * failure is recorded and the next unit is still checked. Only a phase that builds state a later
+     * phase reads (the {@code fns} map, the {@code exposed} set, {@code reqSigs}, {@code sigs}) may
+     * throw straight out — its caller treats that as fail-fast and abandons the module.
+     */
+    private static void checkRecovering(Ast.Module module, Map<String, Ast.Def> symbols,
+                                        Map<String, Sig> importedSigs, Ast.Module lowered,
+                                        List<CompileException> errors) {
         Map<String, Ast.Expr> loweredBodies = new HashMap<>();
         for (Ast.FnDef fn : lowered.fns()) {
             loweredBodies.put(fn.name(), fn.body());
@@ -73,13 +139,15 @@ public final class TypeChecker {
             }
         }
         for (Ast.Def def : module.defs()) {
-            switch (def) {
-                case Ast.Data data -> checkData(data, symbols);
-                case Ast.SumData sum -> checkSum(sum, symbols);
-                case Ast.UnitData _ -> { }
-            }
+            collect(errors, () -> {
+                switch (def) {
+                    case Ast.Data data -> checkData(data, symbols);
+                    case Ast.SumData sum -> checkSum(sum, symbols);
+                    case Ast.UnitData _ -> { }
+                }
+            });
         }
-        checkNoUninhabitableCycle(module, symbols);
+        collect(errors, () -> checkNoUninhabitableCycle(module, symbols));
         Map<String, Ast.FnDef> fns = new HashMap<>();
         for (Ast.FnDef fn : module.fns()) {
             if (fns.put(fn.name(), fn) != null) {
@@ -169,8 +237,9 @@ public final class TypeChecker {
             }
         }
         // Helper fns (no matching behavior) are expanded inline at each call site (spec 12.5); a
-        // helper is checked standalone against its own declared parameter types (spec 13.1).
-        checkHelpers(inliner, symbols, reqSigs, recursiveHelperFns, module);
+        // helper is checked standalone against its own declared parameter types (spec 13.1). Recovered
+        // so a broken helper does not hide the behavior-body errors checked below.
+        collect(errors, () -> checkHelpers(inliner, symbols, reqSigs, recursiveHelperFns, module));
         // What each recursive helper constructs, transitively — a recursive helper is not inlined, so
         // its constructions are attributed to the behavior that calls it (spec 12.5).
         Map<String, Set<String>> recHelperConstructs =
@@ -179,29 +248,32 @@ public final class TypeChecker {
             if (b instanceof Ast.SpecBehavior spec) {
                 Ast.FnDef fn = fns.get(spec.name());
                 if (fn != null) {
-                    checkSpecFn(spec, fn, loweredBodies.get(spec.name()), symbols, allBehaviors,
-                            reqSigs, inliner, recursiveHelperFns, recHelperConstructs);
+                    collect(errors, () -> checkSpecFn(spec, fn, loweredBodies.get(spec.name()), symbols,
+                            allBehaviors, reqSigs, inliner, recursiveHelperFns, recHelperConstructs));
                 }
             }
         }
         // A fn matching a pipeline is rejected (a pipeline is already its own implementation, so it
         // cannot also have a fn body — spec 13.1). A fn matching a SpecBehavior is that behavior's
-        // implementation (checked above); any other fn is a helper (checked by checkHelpers).
-        for (Ast.FnDef fn : module.fns()) {
-            if (!specNames.contains(fn.name()) && allBehaviors.contains(fn.name())) {
-                throw CompileException.of(
-                        Diagnostic.of(null, "check.impl.compose").title("check.impl.title")
-                                .at(fn.pos()).args(fn.name()).build(),
-                        "`let " + fn.name() + "` cannot implement the composition `behavior " + fn.name()
-                                + "`, which is already its own implementation (spec 13.1)");
+        // implementation (checked above); any other fn is a helper (checked by checkHelpers). These
+        // terminal validations build no state, so each is recovered independently.
+        collect(errors, () -> {
+            for (Ast.FnDef fn : module.fns()) {
+                if (!specNames.contains(fn.name()) && allBehaviors.contains(fn.name())) {
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.impl.compose").title("check.impl.title")
+                                    .at(fn.pos()).args(fn.name()).build(),
+                            "`let " + fn.name() + "` cannot implement the composition `behavior " + fn.name()
+                                    + "`, which is already its own implementation (spec 13.1)");
+                }
             }
-        }
-        checkStagesAreSingleInput(module);
-        // validates composition types (imported behaviors resolve as stages via importedSigs)
-        Map<String, Sig> sigs = signatures(module, symbols, importedSigs);
+        });
+        collect(errors, () -> checkStagesAreSingleInput(module));
         // an exposed composition must declare its output in `exposing`, matching the inferred one
-        // (spec 14.5, ADR-0024), so a far-away change cannot grow a published output silently
-        checkExposedPipeOutputs(module, exposed, sigs, symbols);
+        // (spec 14.5, ADR-0024), so a far-away change cannot grow a published output silently.
+        // `signatures` builds the map `checkExposedPipeOutputs` reads, so it stays fail-fast.
+        collect(errors, () -> checkExposedPipeOutputs(module,
+                exposed, signatures(module, symbols, importedSigs), symbols));
     }
 
     /**

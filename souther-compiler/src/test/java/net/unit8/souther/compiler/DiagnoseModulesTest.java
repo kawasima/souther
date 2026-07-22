@@ -35,6 +35,21 @@ class DiagnoseModulesTest {
             """;
 
     @Test
+    void collectsEverySemanticErrorInAModuleNotJustTheFirst() {
+        // two behaviors, each with an unbound name in its body — independent errors in separate defs
+        String m = """
+                module m
+                data N = { v: Int }
+                behavior f : (n: N) -> N
+                let f (n) = bogusOne
+                behavior g : (n: N) -> N
+                let g (n) = bogusTwo
+                """;
+        Map<String, List<Diagnostic>> diags = Compiler.diagnoseModules(Map.of("m", m));
+        assertEquals(2, diags.get("m").size(), diags.get("m").toString());
+    }
+
+    @Test
     void attributesAFailingExampleToTheModuleThatHasIt() {
         Map<String, List<Diagnostic>> diags = Compiler.diagnoseModules(Map.of("a", A, "b", B_FAILING_EXAMPLE));
         assertEquals(List.of(), diags.get("a"), "the clean imported module has no diagnostics");
