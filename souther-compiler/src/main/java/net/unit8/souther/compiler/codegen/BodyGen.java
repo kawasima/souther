@@ -256,6 +256,7 @@ final class BodyGen {
          * construction path.
          */
         void emitTail(Core e, ClassDesc cdB, Set<String> requiredNames, Map<String, Type> requiredSuccess) {
+            emitLine(e);
             switch (e) {
                 case Core.LetIn li -> {
                     if (li.value() instanceof Core.Call call && requiredNames.contains(call.fn())) {
@@ -491,7 +492,18 @@ final class BodyGen {
          * parameter types, so those calls go through {@link Core#toAst()}: Core is untyped and type
          * inference lives in the checker, so the backend reuses it rather than re-deriving types.
          */
+        /** Binds the bytecode that follows to {@code e}'s source line, for the {@code LineNumberTable}
+         * (spec 19.1). Every {@code Core} node keeps its {@code SourcePos}, so a runtime stack trace
+         * — an invariant abort above all — points back to the {@code .sou} line. */
+        private void emitLine(Core e) {
+            int line = e.pos() != null ? e.pos().line() : 0;
+            if (line > 0) {
+                code.lineNumber(line);
+            }
+        }
+
         Type genExpr(Core e) {
+            emitLine(e);
             return switch (e) {
                 case Core.Int x -> {
                     code.loadConstant(x.value());

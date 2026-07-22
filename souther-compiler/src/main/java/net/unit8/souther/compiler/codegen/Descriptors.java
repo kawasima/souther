@@ -3,6 +3,7 @@ package net.unit8.souther.compiler.codegen;
 import java.lang.classfile.ClassBuilder;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassHierarchyResolver;
+import java.lang.classfile.attribute.SourceFileAttribute;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDescs;
 import java.lang.constant.DirectMethodHandleDesc;
@@ -43,8 +44,25 @@ final class Descriptors {
     static byte[] build(ClassDesc cd, Consumer<ClassBuilder> handler) {
         return CF.build(cd, cb -> {
             cb.withVersion(ClassFile.JAVA_21_VERSION, 0);
+            cb.with(SourceFileAttribute.of(sourceFileName(cd)));
             handler.accept(cb);
         });
+    }
+
+    /**
+     * The {@code .sou} source file a generated class came from, for its {@code SourceFile} attribute:
+     * the module's simple name plus {@code .sou}. A class's package is its module name (a class is
+     * {@code module + "." + name}), so the file name is derived from {@link ClassDesc#packageName()}
+     * without threading the original path down. A single-file module named after its file (ADR-0043)
+     * makes this exact; a multi-segment module resolves to its last segment.
+     */
+    private static String sourceFileName(ClassDesc cd) {
+        String pkg = cd.packageName();
+        if (pkg.isEmpty()) {
+            return "source.sou";
+        }
+        int dot = pkg.lastIndexOf('.');
+        return (dot >= 0 ? pkg.substring(dot + 1) : pkg) + ".sou";
     }
 
     static final ClassDesc CD_Object = ConstantDescs.CD_Object;
