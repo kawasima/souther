@@ -562,8 +562,14 @@ final class BodyGen {
             Type branchType = null;
             for (Core.Case c : m.cases()) {
                 Label nextCase = code.newLabel();
+                // A case binding is scoped to its arm: save any outer binding it shadows and restore it
+                // after the arm, or a later arm reusing the name would resolve to this arm's slot.
+                Var prevBinding = c.binding() != null ? env.get(c.binding()) : null;
                 emitCaseGuard(c, sSlot, st, element, nextCase);
                 branchType = genExpr(c.body());
+                if (c.binding() != null) {
+                    restore(c.binding(), prevBinding);
+                }
                 code.goto_(end);
                 code.labelBinding(nextCase);
             }
@@ -584,8 +590,14 @@ final class BodyGen {
             Type element = st instanceof Type.OptionOf oo ? oo.element() : null;
             for (Core.Case c : m.cases()) {
                 Label nextCase = code.newLabel();
+                // A case binding is scoped to its arm (see {@link #match}): restore any outer binding it
+                // shadows before the next arm's dispatch.
+                Var prevBinding = c.binding() != null ? env.get(c.binding()) : null;
                 emitCaseGuard(c, sSlot, st, element, nextCase);
                 emitTail(c.body(), cdB, requiredNames, requiredSuccess);
+                if (c.binding() != null) {
+                    restore(c.binding(), prevBinding);
+                }
                 code.labelBinding(nextCase);
             }
             emitMatchFallthrough();
@@ -851,28 +863,15 @@ final class BodyGen {
                     TypeChecker.unify(declared.get(i), at, bind, symbols, call.pos(), "argument " + (i + 1));
                 }
             }
-            // An empty-collection seed binds the accumulator to a bottom; the step grows it to the
-            // concrete type, which the block's result gives — refine the binding before the step is
-            // materialised, so the closure is typed at the concrete accumulator, not the bottom seed.
+            // Resolve the accumulator type for each function argument exactly as the checker did — an
+            // empty-collection seed's bottom refined from the step's result, a case-seeded accumulator
+            // widened to its sum only when the step needs it — so the closure is materialised at the
+            // same types the checker validated.
             for (int i = 0; i < call.args().size(); i++) {
                 if (declared.get(i) instanceof Type.FnOf fn0
-                        && call.args().get(i).toAst() instanceof Ast.Block block) {
-                    // A case-seeded accumulator grown to its sum: widen the binding so the step closure's
-                    // accumulator parameter is the sum, not the narrow seed case — else its apply would
-                    // checkcast a later case (a NotFound) to the seed's case (PricedCart) and crash.
-                    if (fn0.result() instanceof Type.Var accVar) {
-                        Type sum = TypeChecker.enclosingSum(TypeChecker.substitute(fn0.result(), bind), symbols);
-                        if (sum != null) {
-                            bind.put(accVar.name(), sum);
-                        }
-                    }
-                    Type.FnOf fp = (Type.FnOf) TypeChecker.substitute(fn0, bind);
-                    Map<String, Type> inner = typesEnvWithHelpers();
-                    for (int j = 0; j < block.params().size(); j++) {
-                        inner.put(block.params().get(j), fp.params().get(j));
-                    }
-                    Type got = TypeChecker.typeOf(block.body(), inner, data, symbols, reqSigs());
-                    TypeChecker.refineBottom(fn0.result(), got, bind);
+                        && call.args().get(i).toAst() instanceof Ast.Block) {
+                    TypeChecker.resolveStepBinding(call.fn(), fn0, call.args().get(i).toAst(), bind,
+                            typesEnvWithHelpers(), data, symbols, reqSigs());
                 }
             }
             for (int i = 0; i < call.args().size(); i++) {

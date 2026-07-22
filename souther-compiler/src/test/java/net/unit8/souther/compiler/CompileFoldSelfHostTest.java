@@ -8,11 +8,10 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * A recursive helper may take its step as a first-class function value (a closure), applied per
- * element via {@code Fn.apply}. This is the mechanism a self-hosted fold needs: an ordinary recursive
- * helper that walks the list, the self-call in tail position so the backend loops it. These tests
- * drive the mechanism with a module-own helper of concrete types, before it is generalized and moved
- * into {@code souther.list} as the fold that replaces the former privileged loop.
+ * {@code souther.list}'s {@code foldFrom} is the self-hosted fold: an ordinary recursive helper that
+ * takes its step as a first-class function value (a closure) applied per element, walks the list, and
+ * has its tail self-call turned into a loop by the backend. These tests drive {@code List.foldFrom}
+ * directly with closure steps, including the empty-list base case.
  */
 class CompileFoldSelfHostTest {
 

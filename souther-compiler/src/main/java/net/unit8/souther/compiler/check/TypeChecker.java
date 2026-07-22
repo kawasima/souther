@@ -641,22 +641,6 @@ public final class TypeChecker {
         forEachChild(e, c -> rejectInjectedCalls(c, helper, injected));
     }
 
-    /** Rejects a call to an injected behavior inside a function value passed to a recursive helper's
-     * function parameter: the helper is pure, so the closure it receives must be pure too, or the
-     * effect would run inside the pure method (spec 13.1). The effect belongs in the behavior. */
-    private static void rejectInjectedCallsInFunctionArg(Ast.Expr e, String helper, String paramName,
-                                                         Set<String> injected) {
-        if (e instanceof Ast.Call call && injected.contains(call.fn())) {
-            throw CompileException.of(
-                    Diagnostic.of(null, "check.rechelper.pure.fnarg").title("check.helper.title")
-                            .at(call.pos(), call.fn().length()).args(paramName, helper, call.fn()).build(),
-                    "the function passed to `" + paramName + "` of recursive helper `let " + helper
-                            + "` calls the injected behavior `" + call.fn() + "`, but a recursive helper"
-                            + " is pure — put the effect in the behavior that calls this helper (spec 13.1)");
-        }
-        forEachChild(e, c -> rejectInjectedCallsInFunctionArg(c, helper, paramName, injected));
-    }
-
     /**
      * Checks each function passed to a helper's function-typed parameter against that parameter's
      * declared type, at the call site — before the helper is expanded inline. Without this, a bad
@@ -722,13 +706,6 @@ public final class TypeChecker {
                                          Map<String, Type> env, Map<String, Ast.Def> symbols,
                                          Map<String, ReqSig> reqs, HelperInliner inliner) {
         if (arg instanceof Ast.Block lambda) {
-            if (inliner.recursiveHelpers().contains(h.name())) {
-                // a recursive helper is a pure static method with no injected fields; a function value
-                // passed to it is a closure, and if it called an injected behavior the effect would run
-                // inside the pure method. A non-recursive helper is inlined, so its lambda may call one
-                // (the call lands in the enclosing behavior) — only a recursive helper's is rejected.
-                rejectInjectedCallsInFunctionArg(lambda.body(), h.name(), paramName, reqs.keySet());
-            }
             if (lambda.params().size() != want.params().size()) {
                 throw CompileException.of(
                         Diagnostic.of(null, "check.fn.blockparam.arity").title("check.fn.title")
@@ -2553,7 +2530,7 @@ public final class TypeChecker {
                     throw expects(call.pos(), "List.find", "kind.list", t,
                             "List.find expects a List, got " + t);
                 }
-                Type pr = blockType(call, args.get(0), List.of(lo.element()), env, data, symbols, reqs);
+                Type pr = blockType(call.fn(), args.get(0), List.of(lo.element()), env, data, symbols, reqs);
                 if (pr != Type.BOOL) {
                     throw CompileException.of(
                             Diagnostic.of(null, "check.fn.predicatebool").title("check.fn.title")
@@ -2569,7 +2546,7 @@ public final class TypeChecker {
                     throw expects(call.pos(), "List.sortBy", "kind.list", t,
                             "List.sortBy expects a List, got " + t);
                 }
-                Type keyT = blockType(call, args.get(0), List.of(lo.element()), env, data, symbols, reqs);
+                Type keyT = blockType(call.fn(), args.get(0), List.of(lo.element()), env, data, symbols, reqs);
                 if (!isBottom(keyT) && !isOrdered(keyT)) {
                     throw CompileException.of(
                             Diagnostic.of(null, "check.ordered.key").title("check.type.mismatch.title")
@@ -2666,29 +2643,7 @@ public final class TypeChecker {
                     }
                     for (int i = 0; i < args.size(); i++) {
                         if (fn.params().get(i) instanceof Type.FnOf fp0) {
-                            // The step may grow a case-seeded accumulator into its sum and `match` on it
-                            // (a `PricedCart` seed grown to, and matched at, `PricedCart | NotFound`), so
-                            // it does not type at the seed's narrow case. Widen the accumulator to the
-                            // sum that case belongs to and type the step there.
-                            if (fp0.result() instanceof Type.Var accVar) {
-                                Type sum = enclosingSum(substitute(fp0.result(), bind), symbols);
-                                if (sum != null) {
-                                    bind.put(accVar.name(), sum);
-                                }
-                            }
-                            Type.FnOf fp = (Type.FnOf) substitute(fp0, bind);
-                            Type got = blockType(call, args.get(i), fp.params(), env, data, symbols, reqs);
-                            refineBottom(fp0.result(), got, bind);
-                            Type want = substitute(fp0.result(), bind);
-                            if (!(want instanceof Type.Var) && !assignable(got, want, symbols)) {
-                                throw CompileException.of(
-                                        Diagnostic.of(null, "check.fn.argtype").title("check.fn.title")
-                                                .at(args.get(i).pos())
-                                                .args(call.fn(), Type.show(got), Type.show(want)).build(),
-                                        "argument " + (i + 1) + " of " + call.fn() + " returns "
-                                                + Type.show(got) + ", but the parameter expects "
-                                                + Type.show(want));
-                            }
+                            resolveStepBinding(call.fn(), fp0, args.get(i), bind, env, data, symbols, reqs);
                         }
                     }
                     for (int i = 0; i < args.size(); i++) {
@@ -2944,7 +2899,61 @@ public final class TypeChecker {
      * whatever it calls — which flows outward into the enclosing behavior's, so nothing about
      * requirements has to be written down (spec 29).
      */
-    private static Type blockType(Ast.Call call, Ast.Expr arg, List<Type> paramTypes,
+    /**
+     * Resolves the accumulator type for one function argument (a fold's step) of a helper call,
+     * updating {@code bind}. The step is first typed at the accumulator the value arguments fixed —
+     * the seed's type, which may be a narrow case. That type stands when the step is a fixpoint there
+     * (it reads the seed's fields and returns the same case). Only when the narrow case does not type
+     * (the step matches on the accumulator, which needs its sum) or is not a fixpoint (the step grows
+     * the accumulator into its sum) is the accumulator widened to the sum that case belongs to, and the
+     * step re-typed there. An empty-collection seed's bottom is refined from the block's result along
+     * the way. Shared by the checker's call typing and the backend's step materialization, so the two
+     * resolve identically.
+     */
+    public static void resolveStepBinding(String fnName, Type.FnOf declaredStep, Ast.Expr stepArg,
+                                          Map<String, Type> bind, Map<String, Type> env, Ast.Data data,
+                                          Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
+        Type.FnOf narrow = (Type.FnOf) substitute(declaredStep, bind);
+        Type narrowGot = null;
+        CompileException narrowFailed = null;
+        try {
+            narrowGot = blockType(fnName, stepArg, narrow.params(), env, data, symbols, reqs);
+        } catch (CompileException e) {
+            narrowFailed = e;
+        }
+        if (narrowGot != null) {
+            refineBottom(declaredStep.result(), narrowGot, bind);
+            Type want = substitute(declaredStep.result(), bind);
+            if (want instanceof Type.Var || assignable(narrowGot, want, symbols)) {
+                return;   // the narrow accumulator is a fixpoint
+            }
+        }
+        // The step matches on, or grows the accumulator into, the sum the seed's case belongs to.
+        if (declaredStep.result() instanceof Type.Var accVar) {
+            Type sum = enclosingSum(substitute(declaredStep.result(), bind), symbols);
+            if (sum != null) {
+                Map<String, Type> widened = new HashMap<>(bind);
+                widened.put(accVar.name(), sum);
+                Type got = blockType(fnName, stepArg,
+                        ((Type.FnOf) substitute(declaredStep, widened)).params(), env, data, symbols, reqs);
+                if (assignable(got, sum, symbols)) {
+                    bind.put(accVar.name(), sum);
+                    return;
+                }
+            }
+        }
+        if (narrowGot == null) {
+            throw narrowFailed;   // the narrow type errored and there was no sum to fall back to
+        }
+        throw CompileException.of(
+                Diagnostic.of(null, "check.fn.argtype").title("check.fn.title")
+                        .at(stepArg.pos()).args(fnName, Type.show(narrowGot),
+                                Type.show(substitute(declaredStep.result(), bind))).build(),
+                "the step of " + fnName + " returns " + Type.show(narrowGot)
+                        + ", but the accumulator is " + Type.show(substitute(declaredStep.result(), bind)));
+    }
+
+    private static Type blockType(String fnName, Ast.Expr arg, List<Type> paramTypes,
                                   Map<String, Type> env, Ast.Data data,
                                   Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs) {
         if (!(arg instanceof Ast.Block block)) {
@@ -2954,18 +2963,18 @@ public final class TypeChecker {
                 if (fn.params().size() != paramTypes.size()) {
                     throw CompileException.of(
                             Diagnostic.of(null, "check.fn.callarity").title("check.fn.title")
-                                    .at(arg.pos()).args(call.fn(), paramTypes.size(), fn.params().size())
+                                    .at(arg.pos()).args(fnName, paramTypes.size(), fn.params().size())
                                     .build(),
-                            call.fn() + " calls its function with " + paramTypes.size()
+                            fnName + " calls its function with " + paramTypes.size()
                                     + " argument(s), but it takes " + fn.params().size());
                 }
                 for (int i = 0; i < paramTypes.size(); i++) {
                     if (!assignable(paramTypes.get(i), fn.params().get(i), symbols)) {
                         throw CompileException.of(
                                 Diagnostic.of(null, "check.fn.argtype").title("check.fn.title")
-                                        .at(arg.pos()).args(call.fn(), Type.show(paramTypes.get(i)),
+                                        .at(arg.pos()).args(fnName, Type.show(paramTypes.get(i)),
                                                 Type.show(fn.params().get(i))).build(),
-                                call.fn() + "'s element type " + paramTypes.get(i)
+                                fnName + "'s element type " + paramTypes.get(i)
                                         + " is not acceptable to the function, which takes "
                                         + fn.params().get(i));
                     }
@@ -2974,8 +2983,8 @@ public final class TypeChecker {
             }
             throw CompileException.of(
                     Diagnostic.of(null, "check.fn.expectsblock").title("check.fn.title")
-                            .at(arg.pos()).args(call.fn()).build(),
-                    call.fn() + " expects a block, e.g. `" + call.fn()
+                            .at(arg.pos()).args(fnName).build(),
+                    fnName + " expects a block, e.g. `" + fnName
                             + "((acc, x) -> ..., seed, xs)` (spec 12.5)");
         }
         if (block.params().size() != paramTypes.size()) {
@@ -3327,12 +3336,16 @@ public final class TypeChecker {
         if (!(t instanceof Type.Ref ref) || symbols.get(ref.name()) instanceof Ast.SumData) {
             return null;
         }
+        // A case may belong to more than one sum; pick by name so the choice is deterministic across
+        // runs rather than dependent on the symbol map's iteration order.
+        String chosen = null;
         for (Ast.Def d : symbols.values()) {
-            if (d instanceof Ast.SumData sum && sum.cases().contains(ref.name())) {
-                return Type.ref(sum.name());
+            if (d instanceof Ast.SumData sum && sum.cases().contains(ref.name())
+                    && (chosen == null || sum.name().compareTo(chosen) < 0)) {
+                chosen = sum.name();
             }
         }
-        return null;
+        return chosen == null ? null : Type.ref(chosen);
     }
 
     public static boolean isSumType(Type t, Map<String, Ast.Def> symbols) {

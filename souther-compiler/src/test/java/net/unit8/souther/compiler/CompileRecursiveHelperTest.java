@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -211,11 +212,10 @@ class CompileRecursiveHelperTest {
     }
 
     @Test
-    void aFunctionArgumentToARecursiveHelperCannotCallAnInjectedBehavior() {
-        // A recursive helper is pure: it has no injected fields, so it cannot reach an effect. A
-        // function value passed to it must be pure too, or the effect would be smuggled in through the
-        // closure and run inside the pure method. The lambda calls the injected `now`, so it is rejected
-        // — the same rule the helper's own body obeys, extended to its function arguments.
+    void aClosurePassedToARecursiveHelperMayCallAnInjectedBehavior() {
+        // A recursive helper's own body is pure, but a closure passed to it is behavior code: it may
+        // call an injected behavior, and the requirement is the caller's — `run` declares `requires now`.
+        // The recursive helper `loopy` stays pure; it only applies the closure it is handed.
         String src = """
                 module demo
                 data N = Int
@@ -228,8 +228,28 @@ class CompileRecursiveHelperTest {
                     x + c.value
                 }, n.value))
                 """;
+        assertDoesNotThrow(() -> Compiler.compile(src));
+    }
+
+    @Test
+    void aClosureCallingAnInjectedBehaviorStillNeedsTheBehaviorToDeclareRequires() {
+        // The effect a closure performs is attributed to the behavior that builds it: `run` reaches
+        // `now` through the closure but does not declare `requires now`, so it is E1602 — the same rule
+        // any injected call in a behavior obeys, not a recursive-helper-specific one.
+        String src = """
+                module demo
+                data N = Int
+                data Out = Int
+                behavior now : () -> N
+                behavior run : (n: N) -> Out constructs Out
+                let loopy (f: (Int) -> Int, n: Int): Int = if n == 0 then 0 else f(n) + loopy(f, n - 1)
+                let run (n) = Out(loopy((x) -> {
+                    let c = now()
+                    x + c.value
+                }, n.value))
+                """;
         CompileException ex = assertThrows(CompileException.class, () -> Compiler.compile(src));
-        assertTrue(ex.getMessage().contains("now") && ex.getMessage().contains("pure"), ex.getMessage());
+        assertTrue(ex.getMessage().contains("now") && ex.getMessage().contains("requires"), ex.getMessage());
     }
 
     @Test

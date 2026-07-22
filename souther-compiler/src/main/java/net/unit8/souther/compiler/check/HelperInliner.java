@@ -82,6 +82,12 @@ public final class HelperInliner {
                 collectHelperCalls(data.invariant().get(), reachable);
             }
         }
+        for (Ast.Example ex : module.examples()) {
+            for (Ast.ExampleRow row : ex.rows()) {
+                row.inputs().forEach(in -> collectHelperCalls(in, reachable));
+                collectHelperCalls(row.expected(), reachable);
+            }
+        }
         work.addAll(reachable);
         while (!work.isEmpty()) {
             Ast.FnDef def = helpers.get(work.poll());

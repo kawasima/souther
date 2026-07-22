@@ -1,10 +1,11 @@
 module souther.list
 
-// The list combinators (ADR-0028), derived from the one privileged loop primitive `List.fold`. Each
-// is a helper expanded inline at its call site, where the type variables resolve to the concrete
-// argument types — no polymorphic method is emitted. `map`/`filter` seed the empty list `[]` and
-// grow it as the block runs; `all`/`any` fold a `Bool`. Passing a lambda to the `f`/`p` parameter is
-// fine: it is β-reduced inside the fold, so `List.map(x -> ..., xs)` reads as a loop would.
+// The list combinators (ADR-0028), derived from `List.fold` — itself an ordinary recursive helper
+// (`foldFrom`, below), not a compiler primitive. Each is a helper expanded inline at its call site,
+// where the type variables resolve to the concrete argument types — no polymorphic method is emitted.
+// `map`/`filter` seed the empty list `[]` and grow it as the block runs; `all`/`any` fold a `Bool`.
+// Passing a lambda to the `f`/`p` parameter is fine: it is β-reduced inside the fold, so
+// `List.map(x -> ..., xs)` reads as a loop would.
 //
 // Argument order follows F#/Elm (spec §pipe): the function or predicate comes first and the list —
 // the value being transformed — comes last, so `xs |> List.map(f) |> List.filter(p)` reads top to
