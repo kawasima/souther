@@ -35,6 +35,7 @@ public final class LspServer {
     private final DocumentStore documents = new DocumentStore();
     private final Analyzer analyzer = new Analyzer();
     private final Workspace workspace = new Workspace();
+    private int nextRequestId = 1;
 
     public LspServer(MessageConnection conn) {
         this.conn = conn;
@@ -68,14 +69,18 @@ public final class LspServer {
     private boolean dispatch(String method, JsonNode id, JsonNode params) {
         switch (method) {
             case "initialize" -> { captureRoots(params); respond(id, initializeResult()); }
-            case "initialized", "$/setTrace", "workspace/didChangeConfiguration" -> { /* no-op */ }
+            case "initialized" -> registerFileWatchers();
+            case "$/setTrace", "workspace/didChangeConfiguration" -> { /* no-op */ }
             case "textDocument/didOpen" -> InboundDecoders.decode(InboundDecoders.DID_OPEN, params)
                     .ifPresent(p -> { documents.open(p.uri(), p.text()); publishAll(); });
             case "textDocument/didChange" -> InboundDecoders.decode(InboundDecoders.DID_CHANGE, params)
                     .ifPresent(p -> { documents.change(p.uri(), p.text()); publishAll(); });
             case "textDocument/didClose" -> InboundDecoders.decode(InboundDecoders.DOC_REF, params)
                     .ifPresent(p -> { documents.close(p.uri()); clearDiagnostics(p.uri()); });
-            case "workspace/didChangeWatchedFiles" -> publishAll();   // a file changed on disk; re-scan
+            case "workspace/didChangeWatchedFiles" -> {
+                workspace.markChanged();   // a file changed on disk; drop the cached scan and re-read
+                publishAll();
+            }
             case "textDocument/documentSymbol" -> respond(id, documentSymbols(params));
             case "textDocument/semanticTokens/full" -> respond(id, semanticTokens(params));
             case "textDocument/hover" -> respond(id, hover(params));
@@ -302,6 +307,29 @@ public final class LspServer {
     private void notify(String method, Object params) {
         Map<String, Object> message = new LinkedHashMap<>();
         message.put("jsonrpc", "2.0");
+        message.put("method", method);
+        message.put("params", params);
+        conn.write(JSON.writeValueAsString(message));
+    }
+
+    /** Asks the client to watch the workspace's {@code .sou} files and report on-disk changes via
+     * {@code workspace/didChangeWatchedFiles}, so the cached disk scan is invalidated when a file is
+     * created, edited, or deleted outside the editor rather than relying on the client watching by
+     * default. The registration response is a no-op here (dropped by {@link #run}); a client without
+     * dynamic registration simply ignores the request. */
+    private void registerFileWatchers() {
+        Map<String, Object> registration = new LinkedHashMap<>();
+        registration.put("id", "souther-sou-watcher");
+        registration.put("method", "workspace/didChangeWatchedFiles");
+        registration.put("registerOptions",
+                Map.of("watchers", List.of(Map.of("globPattern", "**/*.sou"))));
+        sendRequest("client/registerCapability", Map.of("registrations", List.of(registration)));
+    }
+
+    private void sendRequest(String method, Object params) {
+        Map<String, Object> message = new LinkedHashMap<>();
+        message.put("jsonrpc", "2.0");
+        message.put("id", "souther-" + nextRequestId++);
         message.put("method", method);
         message.put("params", params);
         conn.write(JSON.writeValueAsString(message));

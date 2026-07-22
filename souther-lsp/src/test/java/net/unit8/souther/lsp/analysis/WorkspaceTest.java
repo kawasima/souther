@@ -41,6 +41,26 @@ class WorkspaceTest {
     }
 
     @Test
+    void snapshotReusesTheDiskScanUntilAWatchedChangeInvalidatesIt() throws Exception {
+        Path dir = Files.createTempDirectory("ws");
+        Path a = dir.resolve("a.sou");
+        Files.writeString(a, "module a\ndata N = { v: Int }\n");
+        String uri = a.toUri().toString();
+
+        Workspace ws = new Workspace();
+        ws.setRoots(List.of(dir.toUri().toString()));
+        ws.snapshot(Map.of());   // first snapshot reads disk
+
+        Files.writeString(a, "module a\ndata N = { v: String }\n");   // changed on disk, not announced
+        assertTrue(ws.snapshot(Map.of()).text(uri).contains("Int"),
+                "the cached disk scan is reused across snapshots — no re-read per keystroke");
+
+        ws.markChanged();   // workspace/didChangeWatchedFiles
+        assertTrue(ws.snapshot(Map.of()).text(uri).contains("String"),
+                "after a watched-file change the next snapshot re-reads disk");
+    }
+
+    @Test
     void anOpenBufferOverlaysTheOnDiskText() throws Exception {
         Path dir = Files.createTempDirectory("ws");
         Path a = dir.resolve("a.sou");

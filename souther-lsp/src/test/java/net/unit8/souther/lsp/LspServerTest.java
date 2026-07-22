@@ -99,6 +99,27 @@ class LspServerTest {
         assertTrue(caps.get("referencesProvider").asBoolean(), "references is advertised");
     }
 
+    @Test
+    void registersAFileWatcherForSouSourcesOnInitialized() {
+        byte[] input = frames(
+                message(1, "initialize", Map.of()),
+                message(null, "initialized", Map.of()));
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        new LspServer(new MessageConnection(new ByteArrayInputStream(input), out)).run();
+
+        JsonNode registration = readFrames(out.toByteArray()).stream()
+                .filter(m -> m.has("method")
+                        && m.get("method").asString().equals("client/registerCapability"))
+                .findFirst().orElseThrow(() -> new AssertionError("expected a client/registerCapability"))
+                .get("params").get("registrations").get(0);
+
+        assertEquals("workspace/didChangeWatchedFiles", registration.get("method").asString());
+        String glob = registration.get("registerOptions").get("watchers").get(0)
+                .get("globPattern").asString();
+        assertTrue(glob.contains("*.sou"), "watches Souther sources: " + glob);
+    }
+
     // --- helpers: build and read framed JSON-RPC messages ---
 
     private static String message(Integer id, String method, Object params) {
