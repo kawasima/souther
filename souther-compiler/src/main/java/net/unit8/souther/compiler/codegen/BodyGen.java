@@ -79,6 +79,9 @@ final class BodyGen {
         private Set<String> reqNames = Set.of();
         private Map<String, Type> reqSuccess = Map.of();
         private Map<String, Type> reqParam = Map.of();
+        /** The last line already bound in this method's {@code LineNumberTable}; skips consecutive
+         * same-line entries. Fresh per method, since one {@code BodyGen} emits one method's code. */
+        private int lastEmittedLine = -1;
 
         BodyGen(CodegenContext ctx, CodeBuilder code, Ast.Data data, ClassDesc cdName, int firstSlot) {
             this.ctx = ctx;
@@ -256,6 +259,7 @@ final class BodyGen {
          * construction path.
          */
         void emitTail(Core e, ClassDesc cdB, Set<String> requiredNames, Map<String, Type> requiredSuccess) {
+            emitLine(e);
             switch (e) {
                 case Core.LetIn li -> {
                     if (li.value() instanceof Core.Call call && requiredNames.contains(call.fn())) {
@@ -304,6 +308,7 @@ final class BodyGen {
                     ClassDesc cdType = cd(nd.typeName());
                     Map<String, Type> flds = fieldTypes((Ast.Data) symbols.get(nd.typeName()));
                     emitFieldValues(flds, nd.inits(), nd.spreads());
+                    emitLine(nd);   // re-pin: a field init may have moved the line off the construction
                     code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(flds)));
                     code.invokestatic(CD_ConstraintViolation, "orThrow", MTD_orThrow);
                     code.areturn();
@@ -484,6 +489,19 @@ final class BodyGen {
             return Type.mentions(t, x -> x instanceof Type.Nothing);
         }
 
+        /** Binds the bytecode that follows to {@code e}'s source line, for the {@code LineNumberTable}
+         * (spec 19.1). Every {@code Core} node keeps its {@code SourcePos}, so a runtime stack trace
+         * — an invariant abort above all — points back to the {@code .sou} line. Consecutive nodes on
+         * the same line (a subexpression tree, or a tail node re-lined by {@code genExpr}) collapse to
+         * one entry. */
+        private void emitLine(Core e) {
+            int line = e.pos() != null ? e.pos().line() : 0;
+            if (line > 0 && line != lastEmittedLine) {
+                code.lineNumber(line);
+                lastEmittedLine = line;
+            }
+        }
+
         /**
          * Emits a Core expression — the single expression emitter (ADR-0021); every node kind is
          * handled here. A {@code let} whose value is a runtime-selected function still asks the
@@ -492,6 +510,7 @@ final class BodyGen {
          * inference lives in the checker, so the backend reuses it rather than re-deriving types.
          */
         Type genExpr(Core e) {
+            emitLine(e);
             return switch (e) {
                 case Core.Int x -> {
                     code.loadConstant(x.value());
@@ -665,6 +684,7 @@ final class BodyGen {
                 // invariant runs and orThrow either yields the value or aborts with a
                 // ConstraintViolation. orThrow returns Object, so narrow it back to the value type.
                 emitFieldValues(flds, nd.inits(), nd.spreads());
+                emitLine(nd);   // re-pin: a field init may have moved the line off the construction
                 code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(flds)));
                 code.invokestatic(CD_ConstraintViolation, "orThrow", MTD_orThrow);
                 code.checkcast(cdType);
