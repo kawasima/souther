@@ -205,6 +205,7 @@ public final class Compiler {
             Map<String, Ast.Def> symbols = visibleDefs(m, derived);
             Map<String, TypeChecker.Sig> importedSigs = importedBehaviorSigs(m, derived);
             Set<String> importedInjected = importedInjectedBehaviors(m, derived);
+            m = injectRecursivePrelude(m);
             Ast.Module lowered = Lower.run(m);
             TypeChecker.checkOrThrow(m, symbols, importedSigs, lowered);
             out.putAll(Backend.generate(lowered, symbols, importedPackages(m), importedSigs, importedInjected));
@@ -309,6 +310,7 @@ public final class Compiler {
                 Map<String, Ast.Def> symbols = visibleDefs(m, derived);
                 Map<String, TypeChecker.Sig> importedSigs = importedBehaviorSigs(m, derived);
                 Set<String> importedInjected = importedInjectedBehaviors(m, derived);
+                m = injectRecursivePrelude(m);
                 Ast.Module lowered = Lower.run(m);
                 List<Diagnostic> typeErrors = TypeChecker.check(m, symbols, importedSigs, lowered);
                 if (!typeErrors.isEmpty()) {

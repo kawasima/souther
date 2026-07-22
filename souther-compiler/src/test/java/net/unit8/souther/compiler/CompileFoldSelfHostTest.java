@@ -39,4 +39,26 @@ class CompileFoldSelfHostTest {
     void aRecursiveHelperOverAnEmptyListYieldsTheSeed() throws Exception {
         assertEquals(0L, sum(List.of()));
     }
+
+    @Test
+    void foldCompilesAndRunsInAMultiModuleBuild() throws Exception {
+        // `foldFrom` is injected per module; a module that folds must get it even when compiled in a
+        // set (compileModules), not only on its own. An unrelated module `m.a` is compiled alongside.
+        String a = """
+                module m.a exposing ( Note )
+                data Note = { text: String }
+                """;
+        String b = """
+                module m.b
+                data Bag = { xs: List<Int> }
+                data Out = Int
+                behavior run : (b: Bag) -> Out constructs Out
+                let run (b) = Out(List.fold((acc, x) -> acc + x, 0, b.xs))
+                """;
+        Map<String, byte[]> classes = Compiler.compileModules(List.of(a, b));
+        BytesClassLoader loader = new BytesClassLoader(classes, getClass().getClassLoader());
+        Object bag = Codecs.decoded(loader, "m.b.Bag", Map.of("xs", List.of(1L, 2L, 3L, 4L)));
+        Object behavior = loader.loadClass("m.b.Run" + "$Impl").getConstructor().newInstance();
+        assertEquals(10L, (long) Codecs.encode(loader, "m.b.Out", Codecs.apply(behavior, bag)));
+    }
 }
