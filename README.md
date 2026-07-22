@@ -126,7 +126,7 @@ Souther is deliberately small:
 
 It intentionally does not provide exceptions, `null`, mutable state, asynchronous execution, arbitrary JVM calls, type classes or higher-kinded types, a package manager, or a REPL. These omissions keep construction paths, value constraints, and outside-world dependencies tractable.
 
-Not yet implemented: a Java-source backend, incremental compilation, an LSP, source maps, static invariant proofs, handwritten codec syntax, and JSON Schema / Wasm / JavaScript output.
+Not yet implemented: a Java-source backend, incremental compilation, source maps, static invariant proofs, handwritten codec syntax, and JSON Schema / Wasm / JavaScript output. An LSP server ships (`souther-lsp`); its name resolution is per-module, and workspace-wide (cross-module) resolution is future work.
 
 ## Details and examples
 
