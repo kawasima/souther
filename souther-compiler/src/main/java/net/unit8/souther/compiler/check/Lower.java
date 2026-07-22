@@ -48,7 +48,7 @@ public final class Lower {
                         ? inliner.inlineRecursiveBody(fn)
                         : inliner.inline(fn.body());
                 fns.add(new Ast.FnDef(fn.name(), fn.params(), fn.declaredReturn(), fn.intrinsicKey(),
-                        desugar(expanded), fn.pos()));
+                        desugar(expanded), fn.partial(), fn.pos()));
             }
         }
         List<Ast.Def> defs = new ArrayList<>();

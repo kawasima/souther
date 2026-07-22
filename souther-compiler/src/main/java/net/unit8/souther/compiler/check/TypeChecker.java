@@ -240,6 +240,9 @@ public final class TypeChecker {
         // helper is checked standalone against its own declared parameter types (spec 13.1). Recovered
         // so a broken helper does not hide the behavior-body errors checked below.
         collect(errors, () -> checkHelpers(inliner, symbols, reqSigs, recursiveHelperFns, module));
+        // Recursion is total by default (spec §fn-declaration): a non-`partial` recursive helper must
+        // be structurally recursive, so its examples terminate at compile time.
+        collect(errors, () -> TotalityChecker.check(inliner));
         // What each recursive helper constructs, transitively — a recursive helper is not inlined, so
         // its constructions are attributed to the behavior that calls it (spec 12.5).
         Map<String, Set<String>> recHelperConstructs =

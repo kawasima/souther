@@ -25,7 +25,7 @@ public final class NewtypeDesugar {
         for (Ast.FnDef fn : m.fns()) {
             Ast.Expr body = fn.body() == null ? null : go(fn.body(), symbols);
             fns.add(new Ast.FnDef(fn.name(), fn.params(), fn.declaredReturn(), fn.intrinsicKey(),
-                    body, fn.pos()));
+                    body, fn.partial(), fn.pos()));
         }
         return new Ast.Module(m.name(), m.exposing(), m.exposedOutputs(), m.imports(),
                 m.defs(), m.behaviors(), fns, m.examples(), m.fakes(), m.exampleFileTarget(), m.pos());

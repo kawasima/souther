@@ -128,10 +128,18 @@ public interface Ast {
      * declares its return type and names a primitive: {@code let trim (s: String): String =
      * intrinsic "string.trim"} — its {@code body} is null, {@code declaredReturn} its result type,
      * and {@code intrinsicKey} the backend key. Intrinsics are written only in the {@code souther}
-     * namespace.
+     * namespace. {@code partial} marks a helper that opts out of the totality check (spec
+     * §fn-declaration): a recursive helper is checked for structural recursion unless it is
+     * {@code partial}.
      */
     record FnDef(String name, List<FnParam> params, RetType declaredReturn, String intrinsicKey,
-                 Expr body, SourcePos pos) implements Ast {
+                 Expr body, boolean partial, SourcePos pos) implements Ast {
+        /** A fn with no {@code partial} marker (the common case; totality-checked if recursive). */
+        public FnDef(String name, List<FnParam> params, RetType declaredReturn, String intrinsicKey,
+                     Expr body, SourcePos pos) {
+            this(name, params, declaredReturn, intrinsicKey, body, false, pos);
+        }
+
         public boolean isIntrinsic() {
             return intrinsicKey != null;
         }

@@ -132,7 +132,7 @@ public final class HelperInliner {
         for (String qualified : referencedPreludeRecursive) {
             Ast.FnDef def = helpers.get(qualified);
             out.put(qualified, new Ast.FnDef(qualified, def.params(), def.declaredReturn(),
-                    def.intrinsicKey(), def.body(), def.pos()));
+                    def.intrinsicKey(), def.body(), def.partial(), def.pos()));
         }
         return out;
     }

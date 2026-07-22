@@ -72,7 +72,7 @@ class CompileRecursiveHelperTest {
                 data N = Int
                 data Out = Int
                 behavior run : (n: N) -> Out constructs Out
-                let loop (acc: Int, n: Int): Int = if n == 0 then acc else loop(acc + n, n - 1)
+                partial let loop (acc: Int, n: Int): Int = if n == 0 then acc else loop(acc + n, n - 1)
                 let run (n) = Out(loop(0, n.value))
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
@@ -94,7 +94,7 @@ class CompileRecursiveHelperTest {
                 data Bag = { xs: List<Int> }
                 data Out = Int
                 behavior run : (b: Bag) -> Out constructs Out
-                let sumFrom (acc: Int, xs: List<Int>, i: Int): Int =
+                partial let sumFrom (acc: Int, xs: List<Int>, i: Int): Int =
                     match List.get(i, xs) with
                         | Some x -> sumFrom(acc + x, xs, i + 1)
                         | None -> acc
@@ -132,8 +132,8 @@ class CompileRecursiveHelperTest {
 
             behavior countHops : (n: N) -> Steps constructs Steps
 
-            let ping (n: Int): Int = if n == 0 then 0 else pong(n - 1) + 1
-            let pong (n: Int): Int = if n == 0 then 0 else ping(n - 1) + 1
+            partial let ping (n: Int): Int = if n == 0 then 0 else pong(n - 1) + 1
+            partial let pong (n: Int): Int = if n == 0 then 0 else ping(n - 1) + 1
 
             let countHops (n) = Steps(ping(n.value))
             """;
@@ -162,7 +162,7 @@ class CompileRecursiveHelperTest {
                 behavior now : () -> N
                 behavior run : (n: N) -> Out requires now constructs Out
 
-                let loop (n: Int): Int = {
+                partial let loop (n: Int): Int = {
                     let c = now()
                     c.value + loop(n)
                 }
@@ -199,7 +199,7 @@ class CompileRecursiveHelperTest {
                 data N = Int
                 data Out = Int
                 behavior run : (n: N) -> Out constructs Out
-                let count (n: Int, f: (Int) -> Int): Int = if n == 0 then 0 else f(n) + count(n - 1, f)
+                partial let count (n: Int, f: (Int) -> Int): Int = if n == 0 then 0 else f(n) + count(n - 1, f)
                 let run (n) = Out(count(n.value, (x) -> x))
                 """;
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
@@ -222,7 +222,7 @@ class CompileRecursiveHelperTest {
                 data Out = Int
                 behavior now : () -> N
                 behavior run : (n: N) -> Out requires now constructs Out
-                let loopy (f: (Int) -> Int, n: Int): Int = if n == 0 then 0 else f(n) + loopy(f, n - 1)
+                partial let loopy (f: (Int) -> Int, n: Int): Int = if n == 0 then 0 else f(n) + loopy(f, n - 1)
                 let run (n, now) = Out(loopy((x) -> {
                     let c = now()
                     x + c.value
@@ -242,7 +242,7 @@ class CompileRecursiveHelperTest {
                 data Out = Int
                 behavior now : () -> N
                 behavior run : (n: N) -> Out constructs Out
-                let loopy (f: (Int) -> Int, n: Int): Int = if n == 0 then 0 else f(n) + loopy(f, n - 1)
+                partial let loopy (f: (Int) -> Int, n: Int): Int = if n == 0 then 0 else f(n) + loopy(f, n - 1)
                 let run (n) = Out(loopy((x) -> {
                     let c = now()
                     x + c.value
@@ -328,7 +328,7 @@ class CompileRecursiveHelperTest {
         // "arbitrary JVM methods".
         String src = """
                 module demo
-                let count (n: Int): Int = if n == 0 then 0 else count(n - 1) + 1
+                partial let count (n: Int): Int = if n == 0 then 0 else count(n - 1) + 1
                 data X = Int
                     invariant count(value) < 100
                 """;

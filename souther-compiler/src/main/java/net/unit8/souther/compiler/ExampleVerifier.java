@@ -233,6 +233,10 @@ public final class ExampleVerifier {
         } catch (AbortException ae) {
             out.add(mismatch(row, describeExpected(row.expected()), "aborted: " + ae.getMessage()));
             return;
+        } catch (NonTerminationException nt) {
+            out.add(Diagnostic.of("E1910", "check.example.nonterminating").title("check.example.title")
+                    .at(row.pos()).args(nt.getMessage()).build());
+            return;
         }
         if (!matches(row.expected(), result)) {
             out.add(mismatch(row, describeExpected(row.expected()), describeActual(result)));
@@ -608,7 +612,62 @@ public final class ExampleVerifier {
 
     // --- invoke the behavior ------------------------------------------------------------------
 
+    /** Wall-clock budget for evaluating one example row. A total behavior finishes in well under this;
+     * a `partial` recursion that does not terminate hits it, so the compiler is bounded, never hung.
+     * Overridable with the `souther.example.timeout.ms` system property for an unusually slow example. */
+    private static final long EXAMPLE_TIMEOUT_MS = readTimeoutMs();
+
+    private static long readTimeoutMs() {
+        String override = System.getProperty("souther.example.timeout.ms");
+        if (override == null) {
+            return 2000L;
+        }
+        try {
+            long ms = Long.parseLong(override.trim());
+            return ms > 0 ? ms : 2000L;
+        } catch (NumberFormatException e) {
+            return 2000L;
+        }
+    }
+
+    /**
+     * Evaluates the behavior on a daemon worker thread with a timeout. Recursion is total by default,
+     * so most code cannot loop; a `partial` recursion that does not terminate is the only risk, and
+     * this bounds it — on timeout the row is reported (E1910). A non-terminating recursion that
+     * overflows the stack instead of tail-looping is reported the same way (a non-termination, not a
+     * generic failure). The worker is interrupted best-effort; a pure compute loop has no interrupt
+     * point, so a deterministic step budget is the deferred complete fix.
+     */
     private Object invoke(Ast.SpecBehavior spec, Object[] args, Object[] fakes) {
+        java.util.concurrent.FutureTask<Object> task =
+                new java.util.concurrent.FutureTask<>(() -> invokeNow(spec, args, fakes));
+        Thread worker = new Thread(task, "souther-example-eval");
+        worker.setDaemon(true);
+        worker.start();
+        try {
+            return task.get(EXAMPLE_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (java.util.concurrent.TimeoutException te) {
+            worker.interrupt();
+            throw new NonTerminationException("did not finish within " + EXAMPLE_TIMEOUT_MS + "ms");
+        } catch (java.util.concurrent.ExecutionException ee) {
+            Throwable cause = ee.getCause();
+            if (cause instanceof FakeMissException fm) {
+                throw fm;
+            }
+            if (cause instanceof NonTerminationException nt) {
+                throw nt;   // a stack-overflowing `partial` recursion (invokeNow classified it)
+            }
+            if (cause instanceof AbortException ae) {
+                throw ae;
+            }
+            throw new AbortException(cause == null ? "aborted" : String.valueOf(cause.getMessage()));
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new AbortException("interrupted");
+        }
+    }
+
+    private Object invokeNow(Ast.SpecBehavior spec, Object[] args, Object[] fakes) {
         // The public name is now an interface; the fields, constructor and erased apply live on its
         // $Impl (spec 19.8). Instantiate and call apply on the $Impl.
         String className = module.name() + "." + behaviorClass(spec.name()) + "$Impl";
@@ -632,6 +691,11 @@ public final class ExampleVerifier {
             if (cause instanceof FakeMissException fm) {
                 throw fm;   // a fake did not cover an input — reported as its own diagnostic
             }
+            if (cause instanceof StackOverflowError) {
+                // a non-tail `partial` recursion that does not terminate — a non-termination, not a
+                // failed example (a tail-looping one is caught by the timeout instead)
+                throw new NonTerminationException("recursion overflowed the stack");
+            }
             throw new AbortException(cause == null ? "aborted" : String.valueOf(cause.getMessage()));
         } catch (ReflectiveOperationException e) {
             throw new AbortException(String.valueOf(e.getMessage()));
@@ -652,6 +716,14 @@ public final class ExampleVerifier {
     /** The behavior aborted while evaluating a row (e.g. an invariant violation) — a failed example. */
     private static final class AbortException extends RuntimeException {
         AbortException(String message) {
+            super(message);
+        }
+    }
+
+    /** Evaluating a row did not finish within the budget — a `partial` recursion it reaches may not
+     * terminate. Reported as its own diagnostic rather than hanging the compiler. */
+    private static final class NonTerminationException extends RuntimeException {
+        NonTerminationException(String message) {
             super(message);
         }
     }
