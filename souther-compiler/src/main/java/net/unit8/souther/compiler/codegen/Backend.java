@@ -210,11 +210,14 @@ public final class Backend {
                         unitCases.add(t.name());
                     }
                 }
-                List<String> dataConstructs = new ArrayList<>();
+                List<Ast.Data> dataConstructs = new ArrayList<>();
+                Set<String> seenConstruct = new HashSet<>();
                 if (spec.constructs() != null) {
                     for (String tn : spec.constructs()) {
-                        if (b.symbols.get(tn) instanceof Ast.Data) {   // field-bearing data or newtype
-                            dataConstructs.add(tn);
+                        // a field-bearing data or newtype; de-duplicated so a repeated `constructs`
+                        // entry does not emit the factory method twice (a duplicate-method class file)
+                        if (b.symbols.get(tn) instanceof Ast.Data data && seenConstruct.add(tn)) {
+                            dataConstructs.add(data);
                         }
                     }
                 }
@@ -364,13 +367,16 @@ public final class Backend {
     /**
      * Generates the abstract base class for a required behavior (spec 13.3): an abstract
      * {@code Behavior} that a Java implementation extends. The base exposes a {@code protected}
-     * factory for what the implementation may build (spec 2.1): a no-arg factory for each unit output
-     * case (a unit has nothing to validate, so it is built directly), and a typed factory for each
-     * field-bearing type the behavior declares in {@code constructs}, built through its
-     * {@code __construct} so the invariant is checked. The typed factory lets the implementation
-     * compose already-held values into its declared output without round-tripping through the decoder
-     * (spec 2.7: authority stays scoped to {@code constructs}). The data constructors stay non-public,
-     * so a subclass builds exactly these and nothing else, from any package.
+     * factory for what the implementation may build (spec 2.1). The two kinds are sourced differently.
+     * A unit output case gets a no-arg factory: a unit has no invariant to validate, so it is built
+     * directly, and it is taken from the output cases (an injected behavior may leave {@code constructs}
+     * implicit, and a unit is safe to hand out either way). A field-bearing type gets a typed factory
+     * built through its {@code __construct} so the invariant is checked, but only when the behavior
+     * declares it in {@code constructs}: that declaration is the authority to build it (spec 2.7), and
+     * unlike a unit it cannot be told apart from a decoded pass-through output by shape alone. The typed
+     * factory lets the implementation compose already-held values into its declared output without
+     * round-tripping through the decoder. The data constructors stay non-public, so a subclass builds
+     * exactly these and nothing else, from any package.
      *
      * <p>When both the input and output map to a concrete reference type, the base carries a
      * generic {@code Behavior<In, Out>} signature (spec 19.8, 24) — {@code Out} is the {@code <名>Result}
@@ -378,7 +384,7 @@ public final class Backend {
      * than {@code Object}. If either side is a list/option/map (no single reference class), the
      * signature is omitted and the raw interface stands.
      */
-    private byte[] generateRequiredBase(String name, List<String> unitCases, List<String> dataConstructs,
+    private byte[] generateRequiredBase(String name, List<String> unitCases, List<Ast.Data> dataConstructs,
                                         ClassDesc inputRef, ClassDesc outputRef) {
         ClassDesc cdR = cdBehavior(name);
         return build(cdR, cb -> {
@@ -400,10 +406,8 @@ public final class Backend {
             for (String caseName : unitCases) {
                 emitUnitFactory(cb, caseName);
             }
-            for (String typeName : dataConstructs) {
-                if (symbols.get(typeName) instanceof Ast.Data data) {
-                    emitDataFactory(cb, data);   // a field-bearing data or a newtype
-                }
+            for (Ast.Data data : dataConstructs) {   // a field-bearing data or a newtype
+                emitDataFactory(cb, data);
             }
         });
     }

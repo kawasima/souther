@@ -2,10 +2,15 @@ package net.unit8.souther.compiler;
 
 import org.junit.jupiter.api.Test;
 
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -67,6 +72,46 @@ class CompileInjectedFactoryTest {
         // and the field-bearing success case now also gets a factory
         Method done = mk.getDeclaredMethod("Done", long.class);
         assertEquals(mk.getClassLoader().loadClass("demo.Done"), done.getReturnType());
+    }
+
+    @Test
+    void theFieldBearingFactoryBuildsThroughConstructNotTheRawConstructor() throws Exception {
+        // The factory must route through __construct (which checks the invariant) and orThrow (which
+        // aborts on a violation), not the raw non-checking constructor. Verify the emitted bytecode.
+        Map<String, byte[]> classes = Compiler.compile("""
+                module demo
+                data OrderId = String
+                    invariant String.length(value) > 0
+                data In = { x: Int }
+                behavior mk : (i: In) -> OrderId constructs OrderId
+                """);
+        Set<String> invoked = invokedIn(classes.get("demo.Mk"), "OrderId");
+        assertTrue(invoked.contains("__construct"), "the factory runs the invariant through __construct");
+        assertTrue(invoked.contains("orThrow"), "a violation aborts via orThrow");
+    }
+
+    @Test
+    void aRepeatedConstructsEntryDoesNotEmitADuplicateFactory() {
+        // `constructs T, T` must not emit the factory twice, which would be a duplicate-method class file
+        assertDoesNotThrow(() -> base("""
+                module demo
+                data Made = { n: Int }
+                data In = { x: Int }
+                behavior mk : (i: In) -> Made constructs Made, Made
+                """, "demo.Mk"));
+    }
+
+    /** The names of the methods a given method's body invokes, read from the emitted bytecode. */
+    private Set<String> invokedIn(byte[] classBytes, String methodName) {
+        Set<String> names = new HashSet<>();
+        ClassFile.of().parse(classBytes).methods().stream()
+                .filter(m -> m.methodName().stringValue().equals(methodName))
+                .forEach(m -> m.code().ifPresent(code -> code.forEach(e -> {
+                    if (e instanceof InvokeInstruction inv) {
+                        names.add(inv.name().stringValue());
+                    }
+                })));
+        return names;
     }
 
     @Test
