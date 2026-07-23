@@ -36,7 +36,9 @@ Add `fold`, `map`, and `update` to `souther.map`, all self-hosted — no new int
   remove one (`Just v -> Nothing`) in the same call. In Souther that step is unwritable: `Option` is
   not a surface type (ADR-0011), so `f` can neither take nor return one. `update` therefore covers
   only the "change what is already there" case; a new key is added with `insert` and a key is dropped
-  with `remove`.
+  with `remove`. (A later addition, `upsert(key, default, f, m)`, combines insert-if-absent with
+  modify in one call while staying `Option`-free — the absent branch takes a plain value, `default`,
+  not a `Maybe` — spec §stdlib-map.)
 
 ## Consequences
 
