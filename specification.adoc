@@ -355,7 +355,7 @@ A single-value newtype is compared by the value it wraps, for both equality and 
 * Two *different* newtypes over the same base do not compare: `+金額 <= 数量+` is a compile error, even though both wrap `+Int+`.
 * A non-literal value of the wrapped type is not taken implicitly: `+金額 <= n+` (where `+n+` is an `+Int+`) is a compile error — write `+金額 <= 金額(n)+`.
 
-The wrapped type must itself be ordered for `+<+` / `+<=+` / `+>+` / `+>=+`; equality works over any wrapped type. Arithmetic on a newtype is not defined.
+The wrapped type must itself be ordered for `+<+` / `+<=+` / `+>+` / `+>=+`; equality works over any wrapped type. Arithmetic on a newtype is `+{plus}+` / `+-+` only (<<newtype-arithmetic>>).
 
 `+Decimal+` ignores scale. `+1.0+` and `+1.00+` are equal.
 
@@ -368,6 +368,17 @@ data 金額 = Decimal
 Scale is not lost from the value. An Encoder emits the scale it read, so a round trip (<<round-trip>>) is preserved. Scale is dropped *only from identity comparison*. If the number of rounding digits is a domain concern, write it as an invariant or a separate field, not as `+Decimal+` scale.
 
 The `+hashCode+` of a data containing `+Decimal+` is computed after dropping scale (`+stripTrailingZeros+`). If equality ignores scale, the hash MUST ignore it too, or using the value as a `+Map+` key breaks. Java sees the same value equality: a generated data class implements `+equals+` / `+hashCode+` from all fields and can be used as a `+Map+` key directly (<<jvm-product>>). This is distinct from Java's `+==+` (reference) and `+BigDecimal.equals+` (scale-sensitive).
+
+[#newtype-arithmetic]
+===== Arithmetic on a newtype
+
+A single-value newtype over `+Int+` or `+Decimal+` supports `+{plus}+` and `+-+`, and the result stays in the newtype: `+金額 {plus} 金額+` and `+金額 - 金額+` are `+金額+`. The operator opens each operand to its wrapped value, computes on the base, and re-wraps the result — so the result's invariant is re-checked at construction, exactly as any other construction is (<<invariant-mvp>>). A subtraction that leaves the invariant (a non-negative `+金額+` going below zero) *aborts* inside the domain (<<violation-destination>>). To make that a business result, guard it with `+require ... else+` (<<require>>); the compiler then confirms the guard discharges the construction (<<invariant-discharge>>).
+
+Operand pairing is the same as comparison (<<newtype-comparison>>): the *same* newtype, or a newtype with a bare literal of its base (`+金額 {plus} 100+`, the `+100+` taken as `+金額+`). Two *different* newtypes do not combine — `+金額 - 数量+` is a compile error even though both wrap `+Int+` — and a non-literal value of the wrapped type is not taken implicitly.
+
+`+*+` and `+/+` are *not* defined on a newtype. A product or quotient changes dimension (`+単価 * 数量+` is a `+金額+`, not a `+単価+`), which the language does not model; compute those on `+.value+` and wrap the result explicitly. Only a newtype whose value is *directly* `+Int+` or `+Decimal+` has arithmetic — a newtype over another newtype does not.
+
+Re-wrapping is a computation, not a fresh construction from raw data, so it needs no `+constructs+` (<<constructs>>) — as `+Int+` arithmetic does not "construct" an `+Int+`. A `+金額(...)+` literal construction (<<newtype>>) still does.
 
 [#collections]
 === Collection types
@@ -725,6 +736,49 @@ behavior 値引きする : (d: 見積) -> 値引き済み          // no violati
 *A behavior's output needs no slot for the violation.* Constructing an invariant-bearing data does not change the output type.
 
 If the business decides "return a different result when the amount is negative", that is not an invariant violation but a business judgment and MUST be written explicitly with `+require ... else+` (<<require>>). These are different: an invariant declares "a value passing here is always so", while `+require+` is a business branch of "if not so, return this". The former breaking is a bug; the latter not holding is an expected result.
+
+[#invariant-discharge]
+=== Discharging an invariant at compile time
+
+An invariant is checked at run time on every construction (<<invariant-mvp>>), and inside the domain a violation aborts (<<violation-destination>>). The compiler *also* checks, per behavior, whether each construction's invariant is *established* where the value is built — so a construction that must abort is caught at compile time, and one a guard makes safe is confirmed.
+
+The check is intraprocedural. Within a behavior's `+let+` body it seeds what the input types guarantee — a newtype's own invariant, a product data's invariant over its fields — which is sound because an input of type `+T+` was built through `+T+`'s checked construction. It refines that along each `+require+` / `+if+` guard (<<require>>, <<if>>), and at every construction asks whether the guards prove its invariant.
+
+* *Discharged* — the guards prove the invariant. No diagnostic; the construction cannot abort here (overflow aside).
+* *Definitely violated* — the guards prove the invariant false on a reachable path. A compile error — the path-sensitive generalization of the constant check `+金額(-5)+` (<<newtype>>).
+* *Possibly violated* — expressible but not proven. A warning: a possible abort. Guard it with `+require+`, or reify the relation into a type invariant (below).
+* *Not expressible* — an invariant outside the checked fragment. No diagnostic; the run-time check stands.
+
+[,text]
+----
+data 金額 = Decimal invariant value >= 0m
+data 引落指示 = { 残高: 金額, 額: 金額 }
+
+behavior 差引く : (指示: 引落指示) -> 金額 | 残高不足
+let 差引く (指示) = {
+    require 指示.額 <= 指示.残高
+        else 残高不足
+    指示.残高 - 指示.額          // discharged: the guard proves 残高 - 額 >= 0
+}
+----
+
+The checked fragment is bounded: the decision procedure reasons over intervals and differences (`+value >= c+`, `+a <= b+`, and the like) with no external solver. The set of *flagged* constructions is tied to that fragment, so every flagged construction has a guard the procedure can verify — an invariant it cannot express (a non-linear or otherwise relational one) is left to the run-time check rather than reported as a possible violation no guard could silence.
+
+[#invariant-reify]
+==== Reifying a cross-behavior relation
+
+The check does not cross behaviors: a relation established in one behavior is not assumed in another (<<sequential-composition>>). Inferring such a precondition would be an implicit cross-unit contract, which the language declines — `+requires+` and an exposed composition's output are always declared, not inferred (<<requires>>, ADR-0017, ADR-0024). The consistent way to carry a relation is to *reify it as a type invariant*, which the seeding then assumes downstream for free.
+
+[,text]
+----
+data 引落指示 = { 残高: 金額, 額: 金額 }
+    invariant 額 <= 残高                 // the relation lives in the type
+
+behavior 差引く : (指示: 引落指示) -> 金額
+let 差引く (指示) = 指示.残高 - 指示.額   // discharged with no guard here
+----
+
+So a possible-violation warning over the fields of one input data is a prompt to declare their relation as that data's invariant. When a value's validity is guaranteed *outside* the language — a Java-side or injected contract stronger than any type — there is no type to reify onto, and that construction keeps its run-time check.
 
 [#decoder]
 == Decoder
