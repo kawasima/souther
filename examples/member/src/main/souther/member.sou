@@ -1,5 +1,5 @@
 module example.member
-import String ( length, contains )
+import String ( length, matches )
 // exposing 句を省いたモジュールは生成クラスがすべて public になる（4章）。
 // この例は全型を Java から使うので、あえて exposing を書かず全公開にしている。
 
@@ -8,9 +8,9 @@ import String ( length, contains )
 data 会員ID = String
     invariant length(value) > 0
 
-// メールアドレス = 文字列 // @ を含む
+// メールアドレス = 文字列 // ローカル部 @ ドメイン . TLD の書式（\\s / \\. は二重バックスラッシュ）
 data メールアドレス = String
-    invariant contains("@", value)
+    invariant matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+", value)
 
 // --- 会員（直積）---
 data 会員 =
