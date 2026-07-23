@@ -763,6 +763,13 @@ final class BodyGen {
                     code.i2l();
                     return Type.INT;
                 }
+                case "String.toInt" -> {
+                    // Strings.toInt returns a boxed Long or NotANumber.INSTANCE — the Int | NotANumber
+                    // union, carried as Object (like intDivide's DivisionByZero result).
+                    genExpr(call.args().get(0));
+                    code.invokestatic(CD_Strings, "toInt", MethodTypeDesc.of(CD_Object, CD_String));
+                    return Type.union(new java.util.LinkedHashSet<>(java.util.List.of("Int", "NotANumber")));
+                }
                 case "List.length" -> {
                     genExpr(call.args().get(0));
                     code.invokeinterface(CD_List, "size", MTD_size);

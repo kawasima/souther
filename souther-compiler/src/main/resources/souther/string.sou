@@ -34,3 +34,12 @@ let fromInt (n: Int) : String = intrinsic "string.fromInt"
 
 // `concat` joins a `List<String>` with no separator (Elm `String.concat`); it is `join("", xs)`.
 let concat (xs: List<String>) : String = intrinsic "string.concat"
+
+// Character access without a `Char` type: a character is a length-1 `String`. `toChars` is Elm's
+// `String.toList` (each element a one-character string), so `List.fold` can walk the characters;
+// `toCode` is Elm's `Char.toCode` on such a character (the first code point, `-1` if empty). A digit's
+// value is `toCode(ch) - toCode("0")`. This is what makes a checksum a plain fold in a behavior.
+// (`toInt`, a case-returning parse `String -> Int | NotANumber`, is a compiler built-in — a core
+// declaration cannot yet name a primitive-headed union.)
+let toChars (s: String) : List<String> = intrinsic "string.toChars"
+let toCode (s: String) : Int = intrinsic "string.toCode"

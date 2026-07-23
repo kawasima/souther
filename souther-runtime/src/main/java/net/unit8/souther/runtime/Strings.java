@@ -83,4 +83,31 @@ public final class Strings {
     public static boolean matches(String s, String pattern) {
         return PATTERNS.computeIfAbsent(pattern, Pattern::compile).matcher(s).matches();
     }
+
+    /** The characters of {@code s} as single-character strings, one per Unicode code point
+     *  ({@code toChars("a12") == ["a", "1", "2"]}). Souther has no {@code Char}, so a character is a
+     *  length-1 {@code String}; this is what a {@code List.fold} over characters iterates. */
+    public static List<String> toChars(String s) {
+        List<String> out = new ArrayList<>();
+        s.codePoints().forEach(cp -> out.add(new String(Character.toChars(cp))));
+        return List.copyOf(out);
+    }
+
+    /** The Unicode code point of the first character of {@code s} (Elm {@code Char.toCode} on a
+     *  length-1 string), or {@code -1} for the empty string. A digit's value is {@code toCode(ch) -
+     *  toCode("0")}. */
+    public static long toCode(String s) {
+        return s.isEmpty() ? -1 : s.codePointAt(0);
+    }
+
+    /** Parses {@code s} as a decimal {@code Int}, or {@link NotANumber#INSTANCE} when it is not one
+     *  (Elm {@code String.toInt}, with a named case in place of {@code Maybe}). Returns a boxed
+     *  {@code Long} or the {@code NotANumber} singleton — the {@code Int | NotANumber} union. */
+    public static Object toInt(String s) {
+        try {
+            return Long.parseLong(s);
+        } catch (NumberFormatException e) {
+            return NotANumber.INSTANCE;
+        }
+    }
 }

@@ -62,7 +62,7 @@ public final class Prelude {
      *  a closure. They are reached qualified like everything else (spec §stdlib). */
     private static final Set<String> BUILTINS = Set.of(
             "List.length", "List.get", "List.max", "List.min", "List.find", "List.sortBy",
-            "String.length",
+            "String.length", "String.toInt",
             "Map.get", "Map.empty", "Set.empty",
             "Int.remainder", "Int.divide", "Decimal.divide");
 
@@ -154,6 +154,7 @@ public final class Prelude {
         // dual-namespace arithmetic names whose auto-derived single hint (Int, loaded first) would hide
         // the Decimal alternative.
         BARE_TO_QUALIFIED.put("length", "List.length` or `String.length");
+        BARE_TO_QUALIFIED.put("toInt", "String.toInt");
         BARE_TO_QUALIFIED.put("get", "List.get` or `Map.get");
         BARE_TO_QUALIFIED.put("empty", "Map.empty` or `Set.empty");
         BARE_TO_QUALIFIED.put("fold", "List.fold");
