@@ -1,4 +1,4 @@
-# ADR-0052: Recursion is total by default, checked by structural recursion
+# ADR-0052: Recursion is total by default, checked by size-change termination
 
 Status: Accepted. Amends ADR-0038.
 
@@ -12,17 +12,17 @@ Souther has only `Int` (a machine `long`), not an inductive `Nat`, so numeric re
 
 Recursion is **total by default**, the way Idris2's `%default total` sets it.
 
-- **Every module-own recursive helper must be structurally recursive.** A recursive call must pass, in some fixed argument position, a value that is a strictly smaller part of the corresponding parameter. That smaller part comes from one of two places: a sub-term obtained by `match` on a field or a case (`match s.上司 with | Some b -> 深さ(b)` passes `b`, the unwrapped `社員` — an org chart or a two-`Option`-field binary tree), or an element handed to a standard-library list combinator's closure over a list that is (part of) a parameter (`List.fold((acc, c) -> total(c), seed, t.children)` — an element of `t.children` is smaller than `t`, so an n-ary `List<T>`-children tree is total). Self-referential data is finite by construction (the inhabitability check), so descending on a smaller part bottoms out. A helper that is not structurally recursive is `E2001`.
+- **Every module-own recursive helper, and every group of mutually-recursive helpers, must terminate by size-change (Lee–Jones–Ben-Amram).** Each recursive call is a size-change graph relating caller parameters to callee arguments: an argument that is a strictly smaller part of a parameter is a strict (`<`) decrease, one passed through unchanged is non-increasing (`=`). Composing these graphs to a fixpoint, the recursion terminates iff every idempotent cycle strictly decreases some parameter. A strictly smaller part comes from one of two places: a sub-term obtained by `match` on a field or a case (`match s.上司 with | Some b -> 深さ(b)` passes `b`, the unwrapped `社員` — an org chart or a two-`Option`-field binary tree), or an element handed to a standard-library list combinator's closure over a list that is (part of) a parameter (`List.fold((acc, c) -> total(c), seed, t.children)` — an element of `t.children` is smaller than `t`, so an n-ary `List<T>`-children tree is total). Self-referential data is finite by construction (the inhabitability check), so a proven descent bottoms out. A helper or group that cannot be shown to terminate is `E2001`. This one analysis covers self-recursion, mutual recursion, and structural lexicographic recursion (different calls decreasing different positions).
 - **`partial` opts out.** `partial let f ...` disclaims totality: the helper is not checked and may not terminate. Numeric and index recursion are written this way. `partial` only *disclaims* totality — there is no way to *claim* it on non-structural recursion (no `assert_smaller`).
 - **The stdlib `List.foldFrom` is trusted total** and exempt. It walks the list by index, which is not structural, but it is bounded by the list length and stops at `None`; like Idris's library folds, it is the trusted base the derived combinators stand on. Only bare-named user helpers are checked.
-- **Mutual recursion is not checked yet.** A non-`partial` mutually-recursive helper is rejected conservatively (mark it `partial`); self-recursion is checked fully.
+- **Mutual recursion is checked by the same analysis.** A strongly-connected group of helpers is analyzed together; if any member is `partial`, the whole group opts out — a cycle through an unchecked member cannot be certified, so its other members are not independently certified either.
 - **Example evaluation is bounded.** A row is evaluated on a daemon thread with a wall-clock timeout (overridable with the `souther.example.timeout.ms` system property); a `partial` recursion that does not terminate is reported (`E1910`) rather than hanging the compiler, whether it tail-loops or overflows the stack. The worker is interrupted best-effort — a pure compute loop has no interrupt point, so a deterministic step budget (a counter in the generated loop) is the complete fix, deferred as a follow-up. This is a safety net for `partial` code, not a proof — total code cannot loop.
 
 ## Consequences
 
 - User recursion is total unless explicitly `partial`; the domain core is pure (effects at `requires`) and total (structural recursion, bounded `fold`), so its examples always terminate at compile time. This is Souther's totality guarantee — stronger than a Turing-complete language, and, like Idris2, achieved by a structural check with a `partial` escape.
 - Numeric counting is expressed with `fold` (bounded) or structural recursion on an ADT; a raw counting loop must be `partial`.
-- The check is the fixed-decreasing-position rule (sound, not complete): a terminating recursion that is not structurally obvious is rejected and must be `partial`.
+- The check is size-change termination (sound, not complete): it accepts any recursion whose descent is provable on the structural sub-term order — including lexicographic descent that a single-decreasing-position rule would reject — and rejects the rest, which must be `partial`.
 
 ## References
 - Specification: `[#fn-declaration]`, `[#examples]`

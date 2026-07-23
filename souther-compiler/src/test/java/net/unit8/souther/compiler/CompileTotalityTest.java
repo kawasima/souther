@@ -162,4 +162,147 @@ class CompileTotalityTest {
                 """;
         assertDoesNotThrow(() -> Compiler.compile(src));
     }
+
+    @Test
+    void treeForestMutualRecursionThroughAFoldClosureIsTotal() {
+        // `sumTree` hands a strictly smaller `t.children` to `sumForest`; `sumForest` hands each
+        // element (a strictly smaller part of that list) back to `sumTree` inside the fold closure.
+        // Every cycle strictly decreases, so the group is size-change terminating.
+        String src = """
+                module demo
+                data Tree = { children: List<Tree>, label: Int }
+                data Out = Int
+                behavior run : (t: Tree) -> Out constructs Out
+                let sumTree (t: Tree): Int = t.label + sumForest(t.children)
+                let sumForest (ts: List<Tree>): Int = List.fold((acc, x) -> acc + sumTree(x), 0, ts)
+                let run (t) = Out(sumTree(t))
+                """;
+        assertDoesNotThrow(() -> Compiler.compile(src));
+    }
+
+    @Test
+    void mutualRecursionPassingASmallerPartBothWaysIsTotal() {
+        // `f` and `g` each unwrap the other's `.c` (a strictly smaller `T`) and recurse — both
+        // directions decrease, so the cycle terminates.
+        String src = """
+                module demo
+                data T = { c: T?, n: Int }
+                data Out = Int
+                behavior run : (t: T) -> Out constructs Out
+                let f (t: T): Int = match t.c with | Some x -> g(x) | None -> t.n
+                let g (t: T): Int = match t.c with | Some x -> f(x) | None -> t.n
+                let run (t) = Out(f(t))
+                """;
+        assertDoesNotThrow(() -> Compiler.compile(src));
+    }
+
+    @Test
+    void mutualRecursionCarryingOneArgWhileTheOtherShrinksIsTotal() {
+        // `f` keeps `a` and shrinks `b`; `g` shrinks `a` and keeps `b`. No single position decreases
+        // in every call, but the composed cycle `f;g` strictly decreases on both — only full
+        // size-change termination (not a single-decreasing-position check) accepts this.
+        String src = """
+                module demo
+                data T = { c: T?, n: Int }
+                data Out = Int
+                behavior run : (t: T) -> Out constructs Out
+                let f (a: T, b: T): Int = match b.c with | Some bc -> g(a, bc) | None -> a.n
+                let g (a: T, b: T): Int = match a.c with | Some ac -> f(ac, b) | None -> b.n
+                let run (t) = Out(f(t, t))
+                """;
+        assertDoesNotThrow(() -> Compiler.compile(src));
+    }
+
+    @Test
+    void mutualRecursionWithNoDescentIsRejected() {
+        // `ping`/`pong` pass the whole parameter back and forth — no argument decreases, so the group
+        // is not size-change terminating and is rejected.
+        String src = """
+                module demo
+                data T = { n: Int }
+                data Out = Int
+                behavior run : (t: T) -> Out constructs Out
+                let ping (t: T): Int = pong(t)
+                let pong (t: T): Int = ping(t)
+                let run (t) = Out(ping(t))
+                """;
+        CompileException ex = assertThrows(CompileException.class, () -> Compiler.compile(src));
+        assertTrue("E2001".equals(ex.code()), "expected E2001, got " + ex.code() + ": " + ex.getMessage());
+        assertTrue(ex.getMessage().contains("size-change")
+                && ex.getMessage().contains("ping") && ex.getMessage().contains("pong"), ex.getMessage());
+    }
+
+    @Test
+    void numericMutualRecursionIsRejectedUnlessAMemberIsPartial() {
+        // `isEven`/`isOdd` recurse on `n - 1`, a computed value that is not a structural sub-term
+        // (Souther has no inductive Nat), so the group is rejected.
+        String src = """
+                module demo
+                data N = Int
+                data Out = Int
+                behavior run : (n: N) -> Out constructs Out
+                let isEven (n: Int): Int = if n == 0 then 1 else isOdd(n - 1)
+                let isOdd (n: Int): Int = if n == 0 then 0 else isEven(n - 1)
+                let run (n) = Out(isEven(n.value))
+                """;
+        CompileException ex = assertThrows(CompileException.class, () -> Compiler.compile(src));
+        assertTrue("E2001".equals(ex.code()), "expected E2001, got " + ex.code() + ": " + ex.getMessage());
+    }
+
+    @Test
+    void markingOneMemberPartialOptsTheWholeMutualGroupOut() {
+        // Marking `isOdd` partial opts the whole cycle out of the totality check — `isEven`, sharing
+        // the cycle, is not independently certified either.
+        String src = """
+                module demo
+                data N = Int
+                data Out = Int
+                behavior run : (n: N) -> Out constructs Out
+                let isEven (n: Int): Int = if n == 0 then 1 else isOdd(n - 1)
+                partial let isOdd (n: Int): Int = if n == 0 then 0 else isEven(n - 1)
+                let run (n) = Out(isEven(n.value))
+                """;
+        assertDoesNotThrow(() -> Compiler.compile(src));
+    }
+
+    @Test
+    void mutualRecursionCarryingAParamThroughALetAliasIsTotal() {
+        // `f` binds `a2 = a` and carries it unchanged into `g` while shrinking `b`; the `=` relation
+        // must survive the `let` alias or the cycle would be wrongly rejected though it terminates.
+        String src = """
+                module demo
+                data T = { c: T?, n: Int }
+                data Out = Int
+                behavior run : (t: T) -> Out constructs Out
+                let f (a: T, b: T): Int = {
+                    let a2 = a
+                    match b.c with | Some bc -> g(a2, bc) | None -> a2.n
+                }
+                let g (a: T, b: T): Int = match a.c with | Some ac -> f(ac, b) | None -> b.n
+                let run (t) = Out(f(t, t))
+                """;
+        assertDoesNotThrow(() -> Compiler.compile(src));
+    }
+
+    @Test
+    void structuralLexicographicSelfRecursionIsTotal() {
+        // `ack` decreases the first argument in one call and the second in the other — no single
+        // position decreases in every call, so the old single-position check rejected it. Full
+        // size-change termination accepts it: every idempotent cycle carries a strict decrease.
+        String src = """
+                module demo
+                data T = { c: T?, n: Int }
+                data Out = Int
+                behavior run : (t: T) -> Out constructs Out
+                let ack (m: T, n: T): Int =
+                    match m.c with
+                        | None -> n.n
+                        | Some mc ->
+                            match n.c with
+                                | None -> ack(mc, m)
+                                | Some nc -> ack(m, nc)
+                let run (t) = Out(ack(t, t))
+                """;
+        assertDoesNotThrow(() -> Compiler.compile(src));
+    }
 }
