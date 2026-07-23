@@ -18,12 +18,11 @@
     <modules>
         <module>email</module>
         <module>contact</module>
-        <module>expense</module>
         <module>tagging</module>
-        <module>inventory</module>
         <module>sales</module>
         <module>businesstrip</module>
         <module>member</module>
+        <module>account</module>
         <module>ordering</module>
     </modules>
 

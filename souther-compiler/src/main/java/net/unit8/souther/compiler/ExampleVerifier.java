@@ -5,6 +5,7 @@ import net.unit8.souther.compiler.check.Type;
 import net.unit8.souther.compiler.check.TypeChecker;
 import net.unit8.souther.compiler.diag.CompileException;
 import net.unit8.souther.compiler.diag.Diagnostic;
+import net.unit8.souther.compiler.diag.Messages;
 import net.unit8.souther.compiler.diag.SourcePos;
 
 import net.unit8.raoh.Err;
@@ -74,7 +75,7 @@ public final class ExampleVerifier {
         // summarize the rest in its hint so a single build surfaces every failing example.
         Diagnostic first = failures.get(0);
         if (failures.size() == 1) {
-            throw new CompileException(first, legacyOf(first));
+            throw CompileException.of(first, legacyOf(first));
         }
         Diagnostic aggregate = Diagnostic.of(first.code(), "check.example.failed.more")
                 .title("check.example.title")
@@ -84,7 +85,7 @@ public final class ExampleVerifier {
                 .diff(first.diff() == null ? "" : first.diff().actualType(),
                         first.diff() == null ? "" : first.diff().expectedType())
                 .build();
-        throw new CompileException(aggregate, failures.size() + " examples do not hold; " + legacyOf(first));
+        throw CompileException.of(aggregate, failures.size() + " examples do not hold; " + legacyOf(first));
     }
 
     /** A one-line message for a failing example, used where only the legacy string is shown (the LSP
@@ -95,6 +96,12 @@ public final class ExampleVerifier {
             // behavior actually produced.
             return "example does not hold: expected " + d.diff().expectedType()
                     + " but was " + d.diff().actualType();
+        }
+        // A diff-less failure (an input fixture that could not be built, a missing fake, a
+        // non-termination): render the diagnostic's own catalog message so the reason travels
+        // through the annotation processor, rather than collapsing to a bare "example failed".
+        if (d.messageKey() != null) {
+            return Messages.get(d.messageKey(), Messages.defaultLocale(), d.args());
         }
         return "example failed";
     }
@@ -504,9 +511,14 @@ public final class ExampleVerifier {
         };
     }
 
-    /** A bare name in a fixture is only meaningful as a unit case (no fields); its decoder ignores
-     * the input (a unit carries no data), so an empty map stands in as the neutral form. */
+    /** A bare name in a fixture is only meaningful as a unit case (no fields) or the built-in {@code
+     * None}; a unit's decoder ignores the input, so an empty map stands in, and {@code None} maps to
+     * a null, which the optional decoder reads as the absent optional (spec 8, absent/null -> None),
+     * the same as omitting a `T?` field — mirroring how a `let` body writes an empty optional. */
     private Object unitInput(String name) {
+        if (name.equals("None")) {
+            return null;
+        }
         if (symbols.get(name) instanceof Ast.UnitData) {
             return Map.of();
         }
@@ -529,7 +541,13 @@ public final class ExampleVerifier {
         }
         Map<String, Object> map = new LinkedHashMap<>();
         for (Ast.FieldInit fi : nd.inits()) {
-            map.put(fi.name(), raw(fi.value()));
+            Object v = raw(fi.value());
+            // `None` on a `T?` field yields a null; leave the key out so the optional decoder reads
+            // it as absent (spec 8, absent -> None), the same neutral form as omitting the field.
+            if (v == null) {
+                continue;
+            }
+            map.put(fi.name(), v);
         }
         return map;
     }

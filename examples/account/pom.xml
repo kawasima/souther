@@ -5,7 +5,12 @@
         <artifactId>souther-examples</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
-    <artifactId>inventory</artifactId>
+    <artifactId>account</artifactId>
+    <description>
+        口座出金の例。DB の現在残高を読んでから業務処理が動く「読む → 検査 → 書く」パターンと、
+        集計不変条件（残高 &gt;= 0）のコンパイル時 discharge を見せる。残高不足なら失敗ケース、
+        足りれば新残高を書く。新残高の非負は直前の require が discharge する。
+    </description>
     <dependencies>
         <dependency><groupId>net.unit8.souther</groupId><artifactId>souther-runtime</artifactId></dependency>
         <dependency><groupId>net.unit8.raoh</groupId><artifactId>raoh</artifactId></dependency>

@@ -47,3 +47,58 @@ let 会員を表示用に整形する (会員) = 会員表示 { id = 会員.id.v
 //     整形段を素通りして出力に残る（型ルーティング、14.2）。要求集合 {findMember} は推論される。
 // 会員を照会し整形する : 会員ID -> 会員表示 | 会員なし | 保存データ不正
 behavior 会員を照会し整形する = findMember >-> 会員を表示用に整形する
+
+// === 会員登録：DB の状態（メール重複）を読んでから登録する ===
+// 「読む → 検査 → 書く」の一意性パターン。findByEmail で既存会員を引き、居れば重複で止め、
+// 居なければ会員IDを発番して保存する。place（書き→書き）と違い、読んだ結果を match で分岐し、
+// 片方の腕だけで書き behavior を呼ぶ。
+
+data 登録要求 =
+    { メール: メールアドレス
+    , 表示名: String
+    }
+
+// 登録の成否。登録済み が本線、重複メール が失敗ケース。
+data 登録済み = { id: 会員ID }
+data 重複メール
+
+// --- 外界依存（Java 注入）---
+// findByEmail は読み：メールで会員を引く。見つからない＝会員なし が「登録可能」の合図。
+behavior findByEmail : (メール: メールアドレス) -> 会員 | 会員なし
+// 発番する は会員IDを採番する（シーケンス等）。会員ID を作るので constructs 会員ID。
+behavior 発番する : (要求: 登録要求) -> 会員ID
+    constructs 会員ID
+// saveMember は書き：会員を1件保存し、登録済みを返す。
+behavior saveMember : (会員: 会員) -> 登録済み
+    constructs 登録済み
+
+// --- 登録：読む → 検査 → 書く ---
+// findByEmail の結果を match。会員が居れば重複メールで終わり、居なければ会員を組み立てて保存する。
+// constructs は省略（会員・重複メール を本体から推論）。要求集合はこの3つが推論される。
+behavior 登録する : (要求: 登録要求) -> 登録済み | 重複メール
+    requires findByEmail, 発番する, saveMember
+
+let 登録する (要求, findByEmail, 発番する, saveMember) =
+    match findByEmail(要求.メール) with
+        | 会員 as _ -> 重複メール
+        | 会員なし   -> saveMember(会員 { id = 発番する(要求), メール = 要求.メール, 表示名 = 要求.表示名 })
+
+// --- fake + example：DB 無しで「読む→検査→書く」の分岐を検査する ---
+// 登録する は3つを requires するので、example はそれぞれに fake を与える。
+fake findByEmail
+    | (メールアドレス("dup@example.com")) -> 会員 { id = 会員ID("m-1"), メール = メールアドレス("dup@example.com"), 表示名 = "既存" }
+    | _ -> 会員なし
+
+fake 発番する
+    | _ -> 会員ID("m-100")
+
+fake saveMember
+    | _ -> 登録済み { id = 会員ID("m-100") }
+
+example 登録する
+    | "新規メールは登録できる" :
+        (登録要求 { メール = メールアドレス("new@example.com"), 表示名 = "新人" })
+            -> 登録済み { id = 会員ID("m-100") }
+    | "既存メールは重複で止まる" :
+        (登録要求 { メール = メールアドレス("dup@example.com"), 表示名 = "重複" })
+            -> 重複メール

@@ -14,6 +14,7 @@
 // all of these types.
 module example.ordering
 import String ( length )
+import List ( all, filter, find )
 import example.cart ( Sku, LineItem, PricedCart )
 
 data OrderId = String
@@ -76,3 +77,68 @@ example place
     | "reservation reports out of stock" :
         (PricedCart { items = [ LineItem { sku = Sku("apple"), quantity = 999, unitPrice = 150 } ], total = 149850, highValue = true })
         -> OutOfStock
+
+// === 在庫引当：DB の在庫状況を読んでから引き当てる ===
+// inventory 例（在庫のリスト集計）を吸収し、read → 集計チェック → write の形にした。在庫状況で
+// 現在庫のスナップショットを読み、注文の各明細が在庫数以下かを all で畳んで検査し、全行足りれば
+// 確保する。行ごとの在庫参照は find（sku 一致）で引く。member/account の単行チェックに対して、
+// これは「読んだ状態に対する複数行の集計チェック」を見せる。
+
+// スナップショット1行：sku とその現在庫。
+data 行在庫 =
+    { sku: Sku
+    , 数量: Int
+    }
+// 読んだ在庫スナップショット（注文に関係する sku 分）。
+data 在庫スナップショット = { 明細: List<行在庫> }
+
+data 引当済み = { total: Int }
+// 1行でも在庫が足りなければ引当は失敗する。
+data 在庫不足
+
+// --- 外界依存（Java 注入）---
+// 在庫状況 は読み：注文に出てくる sku の現在庫を引く。
+behavior 在庫状況 : (order: PricedCart) -> 在庫スナップショット
+    constructs 在庫スナップショット, 行在庫
+// 在庫を確保する は書き：在庫を減らし、引当済みを返す。
+behavior 在庫を確保する : (order: PricedCart) -> 引当済み
+    constructs 引当済み
+
+// snapshot から sku の現在庫を引く。無ければ 0（＝在庫なし扱い）。lambda は sku を捕捉する。
+let 現在庫 (明細: List<行在庫>, sku: Sku): Int =
+    match find(r -> r.sku == sku, 明細) with
+        | Some r -> r.数量
+        | None   -> 0
+
+// 1明細が引当可能か：現在庫が注文数量以上。
+let 引当可能 (i: LineItem, 明細: List<行在庫>): Bool = 現在庫(明細, i.sku) >= i.quantity
+
+// --- 引き当て：読む → 集計チェック → 書く ---
+// 在庫状況を読み、全明細が引当可能なら確保、1つでも足りなければ 在庫不足。all に渡す lambda は
+// ローカル snap を捕捉する。
+behavior 引き当てる : (order: PricedCart) -> 引当済み | 在庫不足
+    requires 在庫状況, 在庫を確保する
+
+let 引き当てる (order, 在庫状況, 在庫を確保する) = {
+    let snap = 在庫状況(order)
+    require all(i -> 引当可能(i, snap.明細), order.items)
+        else 在庫不足
+    在庫を確保する(order)
+}
+
+// --- fake + example：DB 無しで在庫の集計チェックを検査する ---
+fake 在庫状況
+    | (PricedCart { items = [ LineItem { sku = Sku("apple"), quantity = 2, unitPrice = 150 } ], total = 300, highValue = false })
+        -> 在庫スナップショット { 明細 = [ 行在庫 { sku = Sku("apple"), 数量 = 5 } ] }
+    | _ -> 在庫スナップショット { 明細 = [ 行在庫 { sku = Sku("apple"), 数量 = 1 } ] }
+
+fake 在庫を確保する
+    | _ -> 引当済み { total = 300 }
+
+example 引き当てる
+    | "全明細が在庫内なら確保する" :
+        (PricedCart { items = [ LineItem { sku = Sku("apple"), quantity = 2, unitPrice = 150 } ], total = 300, highValue = false })
+            -> 引当済み { total = 300 }
+    | "1明細でも在庫を超えれば在庫不足" :
+        (PricedCart { items = [ LineItem { sku = Sku("apple"), quantity = 999, unitPrice = 150 } ], total = 149850, highValue = true })
+            -> 在庫不足

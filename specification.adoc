@@ -1604,7 +1604,7 @@ Types make totality and the case set exhaustive (<<match>>, <<unmarked-sum>>); a
 
 A behavior with a `+let+` implementation is evaluated (<<fn>>). An injected behavior (no `+let+`, <<injected-behavior>>) or a `+>->+` composition cannot be — you fake an injected behavior, you do not example it (<<e1902>>). A behavior's `+requires+` dependencies are supplied by fakes at the example (<<example-fakes>>).
 
-An input and an expected value are fixtures: literals, newtype applications, and record constructions. A row's argument is decoded into the behavior's parameter type through that type's derived Decoder (<<decoder>>), so a fixture that breaks an invariant is rejected (<<e1903>>).
+An input and an expected value are fixtures: literals, newtype applications, and record constructions. A `+?+` field takes a value directly (wrapped in `+Some+`) or `+None+` for empty, the same way a `+let+` body writes an optional (<<optional>>); omitting the field reads as `+None+` too. A row's argument is decoded into the behavior's parameter type through that type's derived Decoder (<<decoder>>), so a fixture that breaks an invariant is rejected (<<e1903>>).
 
 [#example-fakes]
 === Faking a requires dependency
