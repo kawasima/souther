@@ -55,6 +55,27 @@ class CompileSumCaseEqualityTest {
     }
 
     @Test
+    void collectionsOfACaseAndItsSumDoNotCompare() {
+        // the sum↔case exemption is scalar only — it must not leak through collection covariance
+        // (`List<一般社員>` is not comparable to `List<役職>`)
+        CompileException e = assertThrows(CompileException.class, () -> Compiler.compile("""
+                module demo
+                data Junior
+                data Manager
+                data Role = Junior | Manager
+                data In = { x: Int }
+                behavior run : (i: In) -> Bool constructs Junior, Manager
+                let run (i) = {
+                    let juniors = [Junior]
+                    let roles = [Junior, Manager]
+                    juniors == roles
+                }
+                """));
+        assertTrue(e.getMessage().contains("compare"),
+                "collections of a case and its sum must not compare: " + e.getMessage());
+    }
+
+    @Test
     void twoUnrelatedNewtypesStillDoNotCompare() {
         CompileException e = assertThrows(CompileException.class, () -> Compiler.compile("""
                 module demo

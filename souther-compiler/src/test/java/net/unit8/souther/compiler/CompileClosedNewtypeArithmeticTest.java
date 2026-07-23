@@ -110,6 +110,19 @@ class CompileClosedNewtypeArithmeticTest {
     }
 
     @Test
+    void scalarDividedByANewtypeIsRejected() {
+        // `2 / n` is an inverse (money⁻¹), a dimension change — division is not commutative, so a
+        // scalar on the left is rejected (only `n / 2` scales)
+        String m = """
+                module demo
+                data N = Int
+                behavior calc : (n: N) -> N
+                let calc (n) = 2 / n
+                """;
+        assertThrows(CompileException.class, () -> Compiler.compile(m));
+    }
+
+    @Test
     void newtypeTimesNewtypeIsRejected() {
         // a product of two newtypes would change dimension (units), which is not modeled
         String m = """

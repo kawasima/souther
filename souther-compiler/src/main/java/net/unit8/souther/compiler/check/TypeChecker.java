@@ -2775,7 +2775,7 @@ public final class TypeChecker {
                 // the same base (`金額 * 2`), staying in the newtype — the dimension is unchanged.
                 // `金額 * 金額` and `金額 * 数量` (a dimension change / units, not modeled) fall through
                 // to the base path below, an error.
-                if (!addSub && scalarNewtypeArith(lt, rt, symbols)) {
+                if (!addSub && scalarNewtypeArith(lt, rt, bin.op(), symbols)) {
                     yield closedNewtypeArithResult(lt, rt, symbols);
                 }
                 if (lt != Type.INT && lt != Type.DECIMAL) {
@@ -2828,9 +2828,15 @@ public final class TypeChecker {
                 // against a non-list, so this does not loosen `[] == 5`.)
                 // A sum may also be compared with one of its cases (`役職 == 一般社員`): a case value
                 // is a value of its sum (case->sum is transparent everywhere else, spec §sum-data), so
-                // this is a sum-vs-sum comparison by case (spec §equality). `assignable` is exactly the
-                // case->sum relation, so this stays scoped (`金額 == 数量`, unrelated types, still fail).
-                boolean caseOfSum = assignable(lt, rt, symbols) || assignable(rt, lt, symbols);
+                // this is a sum-vs-sum comparison by case (spec §equality). Check the relation on the
+                // top-level case sets directly, not through `assignable` — `assignable` recurses into
+                // collections (covariance), which would wrongly let `List<一般社員> == List<役職>` compare;
+                // the exemption is only the direct sum<->case scalar relationship. Unrelated types
+                // (`金額 == 数量`) have disjoint case sets and still fail.
+                Set<String> lCases = leafCases(lt, symbols);
+                Set<String> rCases = leafCases(rt, symbols);
+                boolean caseOfSum = !lCases.isEmpty() && !rCases.isEmpty()
+                        && (lCases.containsAll(rCases) || rCases.containsAll(lCases));
                 if (!lt.equals(rt) && !eqCoercible(lt, rt, bin.left(), bin.right(), symbols)
                         && !caseOfSum && !isBottom(lt) && !isBottom(rt)) {
                     throw CompileException.of(
@@ -2933,17 +2939,20 @@ public final class TypeChecker {
     }
 
     /** Whether {@code *}/{@code /} scales a single-value numeric newtype by a plain Int/Decimal of the
-     * same base (`金額 * 2`, `2 * 金額`), staying in the newtype. Exactly one operand is such a newtype
-     * and the other is the bare base (Int/Decimal, literal or variable — a scalar is not coerced to
-     * the newtype, it stays a plain number). {@code newtype × newtype} (a dimension change / units,
-     * not modeled — spec §newtype-arithmetic) is excluded. */
-    private static boolean scalarNewtypeArith(Type lt, Type rt, Map<String, Ast.Def> symbols) {
+     * same base (`金額 * 2`, `2 * 金額`, `金額 / 2`), staying in the newtype. One operand is such a
+     * newtype and the other is the bare base (Int/Decimal, literal or variable — a scalar is not
+     * coerced to the newtype, it stays a plain number). {@code newtype × newtype} (a dimension change /
+     * units, not modeled — spec §newtype-arithmetic) is excluded. Division is not commutative: only
+     * {@code newtype / scalar} scales; {@code scalar / newtype} (`2 / 金額`) is an inverse — a
+     * dimension change — so a scalar on the left is admitted for {@code *} only. */
+    private static boolean scalarNewtypeArith(Type lt, Type rt, Ast.BinOp op, Map<String, Ast.Def> symbols) {
         Type ln = directNumericNewtypeBase(lt, symbols);
         Type rn = directNumericNewtypeBase(rt, symbols);
         if (ln != null && rn == null && rt.equals(ln)) {
-            return true;   // 金額 * 2 — the scalar is the newtype's base
+            return true;   // 金額 * 2, 金額 / 2 — newtype on the left, scalar on the right
         }
-        return rn != null && ln == null && lt.equals(rn);   // 2 * 金額
+        // scalar on the left (2 * 金額) is fine only for `*`; 2 / 金額 is an inverse, rejected.
+        return op == Ast.BinOp.MUL && rn != null && ln == null && lt.equals(rn);
     }
 
     /** The single-value numeric newtype a closed {@code +}/{@code -} over {@code lt} and {@code rt}
