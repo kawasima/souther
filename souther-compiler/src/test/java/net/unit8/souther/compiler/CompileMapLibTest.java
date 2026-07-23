@@ -145,4 +145,40 @@ class CompileMapLibTest {
         assertEquals(Map.of(), m.get("doubled"), "map over an empty map is empty");
         assertEquals(Map.of(), m.get("updated"), "update on an absent key of an empty map is empty");
     }
+
+    /** upsert collapses insert-if-absent / modify-if-present: it applies the step to a present key
+     *  and inserts the default for an absent one ([#stdlib-map]). */
+    @Test
+    void upsertInsertsWhenAbsentAndModifiesWhenPresent() throws Exception {
+        BytesClassLoader loader = new BytesClassLoader(Compiler.compile("""
+                module demo
+
+                import Map ( upsert )
+
+                data In = { counts: Map<String, Int> }
+                data Out = {
+                    bumpedPresent: Map<String, Int>
+                    , bumpedAbsent: Map<String, Int>
+                }
+
+                behavior run : (i: In) -> Out constructs Out
+
+                let run (i) = {
+                    Out {
+                        bumpedPresent = upsert("a", 1, (n) -> n + 1, i.counts),
+                        bumpedAbsent = upsert("z", 1, (n) -> n + 1, i.counts)
+                    }
+                }
+                """), getClass().getClassLoader());
+
+        Object in = Codecs.decoded(loader, "demo.In", Map.of("counts", Map.of("a", 10L, "b", 20L)));
+        Object behavior = loader.loadClass("demo.Run$Impl").getConstructor().newInstance();
+        Object out = Codecs.apply(behavior, in);
+
+        Map<?, ?> m = (Map<?, ?>) Codecs.encode(loader, "demo.Out", out);
+        assertEquals(Map.of("a", 11L, "b", 20L), m.get("bumpedPresent"),
+                "upsert applies the step to a present key");
+        assertEquals(Map.of("a", 10L, "b", 20L, "z", 1L), m.get("bumpedAbsent"),
+                "upsert inserts the default for an absent key");
+    }
 }

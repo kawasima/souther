@@ -82,6 +82,61 @@ class CompileClosedNewtypeArithmeticTest {
     }
 
     @Test
+    void scalarMultiplyStaysTheNewtype() throws Exception {
+        // `n * 2` scales a newtype by a plain scalar and stays the newtype (dimension unchanged)
+        String m = """
+                module demo
+                data N = Int
+                behavior calc : (n: N) -> N
+                let calc (n) = n * 2
+                """;
+        assertEquals(14L, run(m, "N", 7L));
+    }
+
+    @Test
+    void scalarOnTheLeftAndTruncatingDivide() throws Exception {
+        assertEquals(14L, run("""
+                module demo
+                data N = Int
+                behavior calc : (n: N) -> N
+                let calc (n) = 2 * n
+                """, "N", 7L));
+        assertEquals(3L, run("""
+                module demo
+                data N = Int
+                behavior calc : (n: N) -> N
+                let calc (n) = n / 2
+                """, "N", 7L));   // Int division truncates
+    }
+
+    @Test
+    void scalarDividedByANewtypeIsRejected() {
+        // `2 / n` is an inverse (money⁻¹), a dimension change — division is not commutative, so a
+        // scalar on the left is rejected (only `n / 2` scales)
+        String m = """
+                module demo
+                data N = Int
+                behavior calc : (n: N) -> N
+                let calc (n) = 2 / n
+                """;
+        assertThrows(CompileException.class, () -> Compiler.compile(m));
+    }
+
+    @Test
+    void newtypeTimesNewtypeIsRejected() {
+        // a product of two newtypes would change dimension (units), which is not modeled
+        String m = """
+                module demo
+                data Money = Int
+                data Qty = Int
+                data P = { m: Money, q: Qty }
+                behavior calc : (p: P) -> Money
+                let calc (p) = p.m * p.q
+                """;
+        assertThrows(CompileException.class, () -> Compiler.compile(m));
+    }
+
+    @Test
     void twoDifferentNewtypesDoNotCombine() {
         String m = """
                 module demo
@@ -98,7 +153,8 @@ class CompileClosedNewtypeArithmeticTest {
 
     @Test
     void multiplyOnANewtypeStaysRejected() {
-        // `*` changes dimension, so it is not closed over a newtype (spec §newtype-arithmetic)
+        // `newtype * newtype` changes dimension (money squared), so it is rejected — only scalar
+        // multiply by a plain number stays in the newtype (spec §newtype-arithmetic)
         String m = """
                 module demo
                 data Money = Int

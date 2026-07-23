@@ -1,6 +1,7 @@
 # ADR-0047: A single-value newtype is compared by the value it wraps
 
-Status: Accepted
+Status: Accepted. Amended — arithmetic, deferred at the time of this decision, was added later
+(see the "Arithmetic" paragraph below and spec §newtype-arithmetic / §invariant-discharge).
 
 ## Context
 
@@ -43,10 +44,21 @@ equality works over any wrapped type. The unwrap recurses, so a newtype over a n
 to its wrapped value (its `value` accessor) before the primitive comparison, so `金額 <= 金額` emits
 the same integer comparison `金額.value <= 金額.value` would.
 
-Arithmetic on a newtype (`金額 + 金額`) is out of scope here. It raises questions this decision does
-not settle — whether the result re-wraps (and re-checks the invariant, so `金額 - 金額` could abort on
-a negative), and which operators make domain sense (`+`/`-` but not `*`/`/`). Only comparison is
-adopted now.
+Arithmetic on a newtype (`金額 + 金額`) was out of scope in the original decision — only comparison
+was adopted — because it raised questions this decision did not settle: whether the result re-wraps
+(and re-checks the invariant, so `金額 - 金額` could abort on a negative), and which operators make
+domain sense. **Arithmetic was added subsequently**, resolving those questions:
+
+- Closed `+`/`-` stay in the newtype (`金額 - 金額 : 金額`): the operator opens each operand to its
+  base, computes, and re-wraps, re-checking the invariant. A `金額 - 金額` that goes negative aborts
+  inside the domain, or is *discharged* at compile time when a `require` guard establishes it (the
+  invariant-discharge check, spec §invariant-discharge).
+- Scalar `*`/`/` by a plain number of the base also stay in the newtype (`金額 * 2`) — the dimension
+  is unchanged. A product of *two* newtypes (`単価 * 数量`, a dimension change / units) is not modeled
+  and stays rejected.
+
+See spec §newtype-arithmetic. The re-wrap/invariant question is answered by the invariant-discharge
+check, and the operator question by "dimension-preserving only".
 
 ## Consequences
 
@@ -56,5 +68,7 @@ adopted now.
   literal compares against a newtype in both.
 - `金額` and `数量` remain uncomparable to each other and to a raw `Int` variable, so the nominal
   distinction that motivates newtypes is intact.
-- Arithmetic and any transparency beyond comparison remain deferred; a later change may add `+`/`-`
-  with the re-wrap/invariant question resolved.
+- Arithmetic was subsequently added on the same wrapped-value footing — closed `+`/`-` and scalar
+  `*`/`/`, re-wrapping and re-checking the invariant. The re-wrap/invariant question this decision
+  deferred is resolved by the invariant-discharge check (spec §invariant-discharge); a product of two
+  newtypes (units) remains out (no dimensions, ADR-0010).

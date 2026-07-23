@@ -2763,13 +2763,19 @@ public final class TypeChecker {
                 // scale/mode. Case handling for a zero divisor is the `divide`/`remainder` functions.
                 Type lt = typeOf(bin.left(), env, data, symbols, reqs);
                 Type rt = typeOf(bin.right(), env, data, symbols, reqs);
+                boolean addSub = bin.op() == Ast.BinOp.ADD || bin.op() == Ast.BinOp.SUB;
                 // Closed newtype arithmetic (spec §newtype-arithmetic): `+`/`-` over a single-value
                 // numeric newtype yield that newtype. The result is re-wrapped and its invariant re-checked at construction,
-                // which a behavior's guard discharges. `*`/`/` stay base-only (a product or quotient
-                // changes dimension). The operands are the same newtype, or a newtype with a bare
-                // literal of its base (as for comparison).
-                if ((bin.op() == Ast.BinOp.ADD || bin.op() == Ast.BinOp.SUB)
-                        && arithClosedNewtype(lt, rt, bin.left(), bin.right(), symbols)) {
+                // which a behavior's guard discharges. The operands are the same newtype, or a newtype
+                // with a bare literal of its base (as for comparison).
+                if (addSub && arithClosedNewtype(lt, rt, bin.left(), bin.right(), symbols)) {
+                    yield closedNewtypeArithResult(lt, rt, symbols);
+                }
+                // Scalar newtype arithmetic: `*`/`/` scale a numeric newtype by a plain Int/Decimal of
+                // the same base (`金額 * 2`), staying in the newtype — the dimension is unchanged.
+                // `金額 * 金額` and `金額 * 数量` (a dimension change / units, not modeled) fall through
+                // to the base path below, an error.
+                if (!addSub && scalarNewtypeArith(lt, rt, bin.op(), symbols)) {
                     yield closedNewtypeArithResult(lt, rt, symbols);
                 }
                 if (lt != Type.INT && lt != Type.DECIMAL) {
@@ -2820,8 +2826,19 @@ public final class TypeChecker {
                 // element type (ADR-0028). At run time it holds the other operand's type, so absorb the
                 // bottom rather than reject the comparison. (A whole empty list `[]` stays a type error
                 // against a non-list, so this does not loosen `[] == 5`.)
+                // A sum may also be compared with one of its cases (`役職 == 一般社員`): a case value
+                // is a value of its sum (case->sum is transparent everywhere else, spec §sum-data), so
+                // this is a sum-vs-sum comparison by case (spec §equality). Check the relation on the
+                // top-level case sets directly, not through `assignable` — `assignable` recurses into
+                // collections (covariance), which would wrongly let `List<一般社員> == List<役職>` compare;
+                // the exemption is only the direct sum<->case scalar relationship. Unrelated types
+                // (`金額 == 数量`) have disjoint case sets and still fail.
+                Set<String> lCases = leafCases(lt, symbols);
+                Set<String> rCases = leafCases(rt, symbols);
+                boolean caseOfSum = !lCases.isEmpty() && !rCases.isEmpty()
+                        && (lCases.containsAll(rCases) || rCases.containsAll(lCases));
                 if (!lt.equals(rt) && !eqCoercible(lt, rt, bin.left(), bin.right(), symbols)
-                        && !isBottom(lt) && !isBottom(rt)) {
+                        && !caseOfSum && !isBottom(lt) && !isBottom(rt)) {
                     throw CompileException.of(
                             Diagnostic.of(null, "check.compare.msg")
                                     .title("check.compare.title")
@@ -2919,6 +2936,23 @@ public final class TypeChecker {
             return true;        // 金額 + 100 (the literal takes 金額)
         }
         return rn != null && !isSingleValueNewtype(lt, symbols) && isLiteralExpr(le) && lt.equals(rn);
+    }
+
+    /** Whether {@code *}/{@code /} scales a single-value numeric newtype by a plain Int/Decimal of the
+     * same base (`金額 * 2`, `2 * 金額`, `金額 / 2`), staying in the newtype. One operand is such a
+     * newtype and the other is the bare base (Int/Decimal, literal or variable — a scalar is not
+     * coerced to the newtype, it stays a plain number). {@code newtype × newtype} (a dimension change /
+     * units, not modeled — spec §newtype-arithmetic) is excluded. Division is not commutative: only
+     * {@code newtype / scalar} scales; {@code scalar / newtype} (`2 / 金額`) is an inverse — a
+     * dimension change — so a scalar on the left is admitted for {@code *} only. */
+    private static boolean scalarNewtypeArith(Type lt, Type rt, Ast.BinOp op, Map<String, Ast.Def> symbols) {
+        Type ln = directNumericNewtypeBase(lt, symbols);
+        Type rn = directNumericNewtypeBase(rt, symbols);
+        if (ln != null && rn == null && rt.equals(ln)) {
+            return true;   // 金額 * 2, 金額 / 2 — newtype on the left, scalar on the right
+        }
+        // scalar on the left (2 * 金額) is fine only for `*`; 2 / 金額 is an inverse, rejected.
+        return op == Ast.BinOp.MUL && rn != null && ln == null && lt.equals(rn);
     }
 
     /** The single-value numeric newtype a closed {@code +}/{@code -} over {@code lt} and {@code rt}

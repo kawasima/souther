@@ -25,7 +25,8 @@ rather than defaulted into. This makes the `Int`/`Decimal` choice explicit in th
 
 **Arithmetic operators.** `+ - * /` work on two `Int` or two `Decimal` operands (both the
 same type, yielding that type). They coexist with the `Int.`/`Decimal.` arithmetic
-functions.
+functions. (A single-value numeric newtype later extended these on its wrapped value:
+closed `+`/`-` and scalar `*`/`/` stay in the newtype — spec §newtype-arithmetic, ADR-0047.)
 
 **Abort vs case.** The operators abort on an arithmetic error, returning a plain value:
 `+ - *` abort on `Int` overflow (unchanged), and `/` aborts on a zero divisor (a
