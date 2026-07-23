@@ -67,10 +67,17 @@ public record Diagnostic(Severity severity,
         private TypeComparison diff;
         private final List<Note> notes = new ArrayList<>();
         private String suggestion;
+        private Severity severity = Severity.ERROR;
 
         private Builder(String code, String messageKey) {
             this.code = code;
             this.messageKey = messageKey;
+        }
+
+        /** Marks this a warning: it is reported but does not fail the build. */
+        public Builder warning() {
+            this.severity = Severity.WARNING;
+            return this;
         }
 
         /** An explicit title-bar key, for an uncoded error that still deserves a named title
@@ -121,7 +128,7 @@ public record Diagnostic(Severity severity,
         }
 
         public Diagnostic build() {
-            return new Diagnostic(Severity.ERROR, code, titleKey, region, List.copyOf(secondary),
+            return new Diagnostic(severity, code, titleKey, region, List.copyOf(secondary),
                     messageKey, args, null, diff, List.copyOf(notes), suggestion);
         }
     }

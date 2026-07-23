@@ -687,6 +687,38 @@ final class BodyGen {
             return Type.ref(nd.typeName());
         }
 
+        /** The name of the single-value newtype {@code t} refers to, or {@code null}. */
+        private String newtypeNameOf(Type t) {
+            return t instanceof Type.Ref ref
+                    && symbols.get(ref.name()) instanceof Ast.Data d && d.newtype()
+                    ? d.name() : null;
+        }
+
+        /** Wraps a base value (Int/Decimal) already on the stack into a single-value newtype, running
+         * its invariant check (spec §newtype-arithmetic) — the closed-arithmetic counterpart of
+         * {@link #newData}. An invariant-bearing newtype goes through {@code __construct}/{@code orThrow}
+         * (aborts on violation, which a behavior's guard is meant to have discharged); a plain newtype
+         * is stashed and built with {@code new}/{@code <init>}. */
+        private Type wrapNewtypeValue(String ntName, Type base) {
+            Ast.Data owner = (Ast.Data) symbols.get(ntName);
+            Map<String, Type> flds = fieldTypes(owner);
+            ClassDesc cdType = cd(ntName);
+            if (TypeChecker.isInvariantBearing(ntName, symbols)) {
+                code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(flds)));
+                code.invokestatic(CD_ConstraintViolation, "orThrow", MTD_orThrow);
+                code.checkcast(cdType);
+            } else {
+                int s = slot(base);
+                store(code, s, base);
+                code.new_(cdType);
+                code.dup();
+                load(code, s, base);
+                code.invokespecial(cdType, "<init>",
+                        MethodTypeDesc.of(ConstantDescs.CD_void, fieldDescs(flds)));
+            }
+            return Type.ref(ntName);
+        }
+
         Type varType(String name) {
             return env.get(name).type();
         }
@@ -1018,8 +1050,15 @@ final class BodyGen {
                 // rounds by the default scale/mode. Case handling for a zero divisor is the
                 // divide/remainder functions, not the operator.
                 case ADD, SUB, MUL, DIV -> {
-                    Type t = genExpr(bin.left());
-                    genExpr(bin.right());
+                    // Closed newtype arithmetic (spec §newtype-arithmetic): `+`/`-` over a newtype
+                    // opens each operand to its base, computes on the base, then re-wraps the result
+                    // into the newtype (re-checking its invariant). A non-newtype operand is left as
+                    // is (unwrapNewtypeValue is a no-op). `*`/`/` never reach here as a newtype (the
+                    // checker keeps them base-only).
+                    Type lraw = genExpr(bin.left());
+                    Type t = unwrapNewtypeValue(lraw);
+                    Type rraw = genExpr(bin.right());
+                    unwrapNewtypeValue(rraw);
                     if (t == Type.DECIMAL) {
                         switch (bin.op()) {
                             case ADD -> code.invokevirtual(CD_BigDecimal, "add", MTD_bdArith);
@@ -1035,6 +1074,13 @@ final class BodyGen {
                             default  -> "divideExact";
                         };
                         code.invokestatic(CD_IntMath, m, MTD_intExact);
+                    }
+                    String nt = newtypeNameOf(lraw);
+                    if (nt == null) {
+                        nt = newtypeNameOf(rraw);
+                    }
+                    if (nt != null) {
+                        return wrapNewtypeValue(nt, t);
                     }
                     return t;
                 }

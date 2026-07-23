@@ -41,8 +41,23 @@ public final class Compiler {
         return compile(source, "Main");
     }
 
+    /** A compiled module with any non-fatal diagnostics (invariant-discharge warnings, etc.). */
+    public record Compiled(Map<String, byte[]> classes, List<Diagnostic> warnings) {}
+
+    /** Compiles and returns the classes together with any warnings (spec §invariant-discharge). */
+    public static Compiled compileWithWarnings(String source) {
+        List<Diagnostic> warnings = new ArrayList<>();
+        Map<String, byte[]> classes = compile(source, "Main", warnings);
+        return new Compiled(classes, warnings);
+    }
+
     /** As {@link #compile(String)}, but a header-less source is named {@code defaultModuleName}. */
     public static Map<String, byte[]> compile(String source, String defaultModuleName) {
+        return compile(source, defaultModuleName, new ArrayList<>());
+    }
+
+    private static Map<String, byte[]> compile(String source, String defaultModuleName,
+                                               List<Diagnostic> warningsOut) {
         Ast.Module raw = CstFrontend.parse(source, defaultModuleName);
         if (raw.exampleFileTarget() != null) {
             throw CompileException.of(
@@ -56,7 +71,7 @@ public final class Compiler {
         module = NewtypeDesugar.rewrite(module, TypeChecker.symbols(module));
         module = Compiler.injectRecursivePrelude(module);
         Ast.Module lowered = Lower.run(module);
-        TypeChecker.checkOrThrow(module, TypeChecker.symbols(module), Map.of(), lowered);
+        warningsOut.addAll(TypeChecker.checkOrThrow(module, TypeChecker.symbols(module), Map.of(), lowered));
         Map<String, byte[]> out = Backend.generate(lowered);
         verifyConstConstructions(module, TypeChecker.symbols(module), out);
         Map<String, Ast.Def> symbols = TypeChecker.symbols(module);
