@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 /**
- * The intraprocedural invariant-discharge check. It walks a behavior's body threading a
+ * The intraprocedural invariant-discharge check (spec §invariant-discharge). It walks a behavior's body threading a
  * {@link NumericDomain} — seeded from the input newtypes' invariants and refined along each
  * {@code require}/{@code if} guard (a {@code require} is already an {@code if} here) — and, at every
  * construction whose invariant is expressible in the domain, asks whether the guards

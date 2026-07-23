@@ -2763,8 +2763,8 @@ public final class TypeChecker {
                 // scale/mode. Case handling for a zero divisor is the `divide`/`remainder` functions.
                 Type lt = typeOf(bin.left(), env, data, symbols, reqs);
                 Type rt = typeOf(bin.right(), env, data, symbols, reqs);
-                // Closed newtype arithmetic: `+`/`-` over a single-value numeric newtype yield that
-                // newtype. The result is re-wrapped and its invariant re-checked at construction,
+                // Closed newtype arithmetic (spec §newtype-arithmetic): `+`/`-` over a single-value
+                // numeric newtype yield that newtype. The result is re-wrapped and its invariant re-checked at construction,
                 // which a behavior's guard discharges. `*`/`/` stay base-only (a product or quotient
                 // changes dimension). The operands are the same newtype, or a newtype with a bare
                 // literal of its base (as for comparison).
