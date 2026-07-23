@@ -372,13 +372,13 @@ The `+hashCode+` of a data containing `+Decimal+` is computed after dropping sca
 [#newtype-arithmetic]
 ===== Arithmetic on a newtype
 
-A single-value newtype over `+Int+` or `+Decimal+` supports `+{plus}+` and `+-+`, and the result stays in the newtype: `+金額 {plus} 金額+` and `+金額 - 金額+` are `+金額+`. The operator opens each operand to its wrapped value, computes on the base, and re-wraps the result — so the result's invariant is re-checked at construction, exactly as any other construction is (<<invariant-mvp>>). A subtraction that leaves the invariant (a non-negative `+金額+` going below zero) *aborts* inside the domain (<<violation-destination>>). To make that a business result, guard it with `+require ... else+` (<<require>>); the compiler then confirms the guard discharges the construction (<<invariant-discharge>>).
+A single-value newtype over `+Int+` or `+Decimal+` supports `+{plus}+` and `+-+`, and the result stays in the newtype: `+Money {plus} Money+` and `+Money - Money+` are `+Money+`. The operator opens each operand to its wrapped value, computes on the base, and re-wraps the result — so the result's invariant is re-checked at construction, exactly as any other construction is (<<invariant-mvp>>). A subtraction that leaves the invariant (a non-negative `+Money+` going below zero) *aborts* inside the domain (<<violation-destination>>). To make that a business result, guard it with `+require ... else+` (<<require>>); the compiler then confirms the guard discharges the construction (<<invariant-discharge>>).
 
-Operand pairing is the same as comparison (<<newtype-comparison>>): the *same* newtype, or a newtype with a bare literal of its base (`+金額 {plus} 100+`, the `+100+` taken as `+金額+`). Two *different* newtypes do not combine — `+金額 - 数量+` is a compile error even though both wrap `+Int+` — and a non-literal value of the wrapped type is not taken implicitly.
+Operand pairing is the same as comparison (<<newtype-comparison>>): the *same* newtype, or a newtype with a bare literal of its base (`+Money {plus} 100+`, the `+100+` taken as `+Money+`). Two *different* newtypes do not combine — `+Money - Quantity+` is a compile error even though both wrap `+Int+` — and a non-literal value of the wrapped type is not taken implicitly.
 
-`+*+` and `+/+` are *not* defined on a newtype. A product or quotient changes dimension (`+単価 * 数量+` is a `+金額+`, not a `+単価+`), which the language does not model; compute those on `+.value+` and wrap the result explicitly. Only a newtype whose value is *directly* `+Int+` or `+Decimal+` has arithmetic — a newtype over another newtype does not.
+`+*+` and `+/+` are *not* defined on a newtype. A product or quotient changes dimension (`+UnitPrice * Quantity+` is a `+Money+`, not a `+UnitPrice+`), which the language does not model; compute those on `+.value+` and wrap the result explicitly. Only a newtype whose value is *directly* `+Int+` or `+Decimal+` has arithmetic — a newtype over another newtype does not.
 
-Re-wrapping is a computation, not a fresh construction from raw data, so it needs no `+constructs+` (<<constructs>>) — as `+Int+` arithmetic does not "construct" an `+Int+`. A `+金額(...)+` literal construction (<<newtype>>) still does.
+Re-wrapping is a computation, not a fresh construction from raw data, so it needs no `+constructs+` (<<constructs>>) — as `+Int+` arithmetic does not "construct" an `+Int+`. A `+Money(...)+` literal construction (<<newtype>>) still does.
 
 [#collections]
 === Collection types
@@ -745,20 +745,20 @@ An invariant is checked at run time on every construction (<<invariant-mvp>>), a
 The check is intraprocedural. Within a behavior's `+let+` body it seeds what the input types guarantee — a newtype's own invariant, a product data's invariant over its fields — which is sound because an input of type `+T+` was built through `+T+`'s checked construction. It refines that along each `+require+` / `+if+` guard (<<require>>, <<if>>), and at every construction asks whether the guards prove its invariant.
 
 * *Discharged* — the guards prove the invariant. No diagnostic; the construction cannot abort here (overflow aside).
-* *Definitely violated* — the guards prove the invariant false on a reachable path. A compile error — the path-sensitive generalization of the constant check `+金額(-5)+` (<<newtype>>).
+* *Definitely violated* — the guards prove the invariant false on a reachable path. A compile error — the path-sensitive generalization of the constant check `+Money(-5)+` (<<newtype>>).
 * *Possibly violated* — expressible but not proven. A warning: a possible abort. Guard it with `+require+`, or reify the relation into a type invariant (below).
 * *Not expressible* — an invariant outside the checked fragment. No diagnostic; the run-time check stands.
 
 [,text]
 ----
-data 金額 = Decimal invariant value >= 0m
-data 引落指示 = { 残高: 金額, 額: 金額 }
+data Money = Decimal invariant value >= 0m
+data WithdrawRequest = { balance: Money, amount: Money }
 
-behavior 差引く : (指示: 引落指示) -> 金額 | 残高不足
-let 差引く (指示) = {
-    require 指示.額 <= 指示.残高
-        else 残高不足
-    指示.残高 - 指示.額          // discharged: the guard proves 残高 - 額 >= 0
+behavior withdraw : (req: WithdrawRequest) -> Money | InsufficientBalance
+let withdraw (req) = {
+    require req.amount <= req.balance
+        else InsufficientBalance
+    req.balance - req.amount          // discharged: the guard proves balance - amount >= 0
 }
 ----
 
@@ -771,11 +771,11 @@ The check does not cross behaviors: a relation established in one behavior is no
 
 [,text]
 ----
-data 引落指示 = { 残高: 金額, 額: 金額 }
-    invariant 額 <= 残高                 // the relation lives in the type
+data WithdrawRequest = { balance: Money, amount: Money }
+    invariant amount <= balance                 // the relation lives in the type
 
-behavior 差引く : (指示: 引落指示) -> 金額
-let 差引く (指示) = 指示.残高 - 指示.額   // discharged with no guard here
+behavior withdraw : (req: WithdrawRequest) -> Money
+let withdraw (req) = req.balance - req.amount   // discharged with no guard here
 ----
 
 So a possible-violation warning over the fields of one input data is a prompt to declare their relation as that data's invariant. When a value's validity is guaranteed *outside* the language — a Java-side or injected contract stronger than any type — there is no type to reify onto, and that construction keeps its run-time check.
