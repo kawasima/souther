@@ -112,6 +112,7 @@ final class CodegenContext {
     ClassDesc caseClass(String typeName) {
         return switch (typeName) {
             case "DivisionByZero" -> CD_DivisionByZero;
+            case "NotANumber" -> CD_NotANumber;
             default -> cd(typeName);
         };
     }

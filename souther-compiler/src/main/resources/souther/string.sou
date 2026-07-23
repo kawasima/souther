@@ -15,6 +15,11 @@ let uppercase (s: String) : String = intrinsic "string.uppercase"
 let contains (sub: String, s: String) : Bool = intrinsic "string.contains"
 let startsWith (prefix: String, s: String) : Bool = intrinsic "string.startsWith"
 let endsWith (suffix: String, s: String) : Bool = intrinsic "string.endsWith"
+
+// Whole-string regex match (Java Pattern flavour, anchored), for format-constrained values in an
+// invariant — `invariant String.matches("[0-9]{3}-[0-9]{4}", value)`. The pattern must be a string
+// literal, so a malformed regex is a compile error and the whole thing reads as a plain Bool.
+let matches (pattern: String, s: String) : Bool = intrinsic "string.matches"
 let substring (from: Int, to: Int, s: String) : String = intrinsic "string.substring"
 let append (a: String, b: String) : String = intrinsic "string.append"
 
@@ -29,3 +34,12 @@ let fromInt (n: Int) : String = intrinsic "string.fromInt"
 
 // `concat` joins a `List<String>` with no separator (Elm `String.concat`); it is `join("", xs)`.
 let concat (xs: List<String>) : String = intrinsic "string.concat"
+
+// Character access without a `Char` type: a character is a length-1 `String`. `toChars` is Elm's
+// `String.toList` (each element a one-character string), so `List.fold` can walk the characters;
+// `toCode` is Elm's `Char.toCode` on such a character (the first code point, `-1` if empty). A digit's
+// value is `toCode(ch) - toCode("0")`. This is what makes a checksum a plain fold in a behavior.
+// (`toInt`, a case-returning parse `String -> Int | NotANumber`, is a compiler built-in — a core
+// declaration cannot yet name a primitive-headed union.)
+let toChars (s: String) : List<String> = intrinsic "string.toChars"
+let toCode (s: String) : Int = intrinsic "string.toCode"

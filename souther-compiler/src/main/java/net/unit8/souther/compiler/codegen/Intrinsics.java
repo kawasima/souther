@@ -170,6 +170,9 @@ final class Intrinsics {
         t.put("string.join", rt(CD_Strings, "join", order(1, 0), ts -> Type.STRING));
         t.put("string.replace", rt(CD_Strings, "replace", order(2, 0, 1), ts -> Type.STRING));
         t.put("string.words", rt(CD_Strings, "words", order(0), ts -> Type.list(Type.STRING)));
+        t.put("string.matches", rt(CD_Strings, "matches", order(1, 0), ts -> Type.BOOL));
+        t.put("string.toChars", rt(CD_Strings, "toChars", order(0), ts -> Type.list(Type.STRING)));
+        t.put("string.toCode", rt(CD_Strings, "toCode", order(0), ts -> Type.INT));
         t.put("string.fromInt", rt(CD_Strings, "fromInt", order(0), ts -> Type.STRING));
         t.put("string.concat", rt(CD_Strings, "concat", order(0), ts -> Type.STRING));
 
@@ -221,6 +224,21 @@ final class Intrinsics {
         t.put("datetime.minutesBetween", rt(CD_Temporals, "minutesBetween", order(0, 1), ts -> Type.INT));
         t.put("datetime.toDate",
                 jdk(CD_LocalDateTime, "toLocalDate", mtd(CD_LocalDate), order(0), Type.DATE));
+
+        // Int — IntMath statics. add/subtract/multiply share the overflow-aborting kernel with the
+        // `+ - *` operators; modBy aborts on a zero divisor; compare returns -1/0/1.
+        t.put("int.add", rt(CD_IntMath, "addExact", order(0, 1), ts -> Type.INT));
+        t.put("int.subtract", rt(CD_IntMath, "subtractExact", order(0, 1), ts -> Type.INT));
+        t.put("int.multiply", rt(CD_IntMath, "multiplyExact", order(0, 1), ts -> Type.INT));
+        t.put("int.compare", rt(CD_IntMath, "compare", order(0, 1), ts -> Type.INT));
+        t.put("int.modBy", rt(CD_IntMath, "modBy", order(0, 1), ts -> Type.INT));
+
+        // Decimal — add/subtract/multiply are BigDecimal instance methods (receiver is the first arg);
+        // compare is a DecimalMath static returning -1/0/1.
+        t.put("decimal.add", jdk(CD_BigDecimal, "add", MTD_bdArith, order(0, 1), Type.DECIMAL));
+        t.put("decimal.subtract", jdk(CD_BigDecimal, "subtract", MTD_bdArith, order(0, 1), Type.DECIMAL));
+        t.put("decimal.multiply", jdk(CD_BigDecimal, "multiply", MTD_bdArith, order(0, 1), Type.DECIMAL));
+        t.put("decimal.compare", rt(CD_DecimalMath, "compare", order(0, 1), ts -> Type.INT));
 
         return Map.copyOf(t);
     }

@@ -763,6 +763,13 @@ final class BodyGen {
                     code.i2l();
                     return Type.INT;
                 }
+                case "String.toInt" -> {
+                    // Strings.toInt returns a boxed Long or NotANumber.INSTANCE — the Int | NotANumber
+                    // union, carried as Object (like intDivide's DivisionByZero result).
+                    genExpr(call.args().get(0));
+                    code.invokestatic(CD_Strings, "toInt", MethodTypeDesc.of(CD_Object, CD_String));
+                    return Type.union(new java.util.LinkedHashSet<>(java.util.List.of("Int", "NotANumber")));
+                }
                 case "List.length" -> {
                     genExpr(call.args().get(0));
                     code.invokeinterface(CD_List, "size", MTD_size);
@@ -811,39 +818,6 @@ final class BodyGen {
                 case "Set.empty" -> {
                     code.invokestatic(CD_Sets, "empty", MethodTypeDesc.of(CD_Set));
                     return Type.set(Type.NOTHING);   // element type fixed by context, like `[]`
-                }
-                case "Int.add", "Int.subtract", "Int.multiply",
-                     "Decimal.add", "Decimal.subtract", "Decimal.multiply" -> {
-                    String op = bareOp(call.fn());
-                    Type t = genExpr(call.args().get(0));
-                    genExpr(call.args().get(1));
-                    if (t == Type.DECIMAL) {
-                        code.invokevirtual(CD_BigDecimal, op,
-                                MethodTypeDesc.of(CD_BigDecimal, CD_BigDecimal));
-                    } else {
-                        // Int arithmetic aborts on overflow rather than wrapping (spec 18.2)
-                        String exact = switch (op) {
-                            case "add" -> "addExact";
-                            case "subtract" -> "subtractExact";
-                            default -> "multiplyExact";
-                        };
-                        code.invokestatic(CD_IntMath, exact, MTD_intExact);
-                    }
-                    return t;
-                }
-                case "Int.compare", "Decimal.compare" -> {
-                    Type t = genExpr(call.args().get(0));
-                    genExpr(call.args().get(1));
-                    if (t == Type.DECIMAL) {
-                        code.invokevirtual(CD_BigDecimal, "compareTo",
-                                MethodTypeDesc.of(ConstantDescs.CD_int, CD_BigDecimal));
-                    } else {
-                        code.invokestatic(CD_Long, "compare",
-                                MethodTypeDesc.of(ConstantDescs.CD_int, ConstantDescs.CD_long,
-                                        ConstantDescs.CD_long));
-                    }
-                    code.i2l();
-                    return Type.INT;
                 }
                 case "Int.divide", "Decimal.divide" -> {
                     if (call.args().size() == 4) {
@@ -935,7 +909,7 @@ final class BodyGen {
             return rt;
         }
 
-        /** The operation name from a qualified builtin call ({@code "Decimal.add"} → {@code "add"}). */
+        /** The operation name from a qualified builtin call ({@code "List.max"} → {@code "max"}). */
         private static String bareOp(String fn) {
             int dot = fn.indexOf('.');
             return dot < 0 ? fn : fn.substring(dot + 1);

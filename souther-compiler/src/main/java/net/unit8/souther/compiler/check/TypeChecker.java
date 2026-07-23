@@ -2543,6 +2543,9 @@ public final class TypeChecker {
                                 + " but the element is " + lo.element()
                                 + " — sort its ordered field instead (e.g. map to `.value` first)");
             }
+            if (intrinsic.key().equals("string.matches")) {
+                validateRegexPattern(args.get(0));
+            }
             return result;
         }
         return switch (call.fn()) {
@@ -2550,6 +2553,13 @@ public final class TypeChecker {
                 arity(call, 1);
                 requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "argument of String.length");
                 yield Type.INT;
+            }
+            case "String.toInt" -> {
+                arity(call, 1);
+                requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "argument of String.toInt");
+                // a non-numeric string produces the NotANumber case; a primitive-headed union a core
+                // declaration cannot name, so this stays a built-in like Int.divide
+                yield Type.union(new java.util.LinkedHashSet<>(List.of("Int", "NotANumber")));
             }
             case "List.length" -> {
                 arity(call, 1);
@@ -2646,10 +2656,6 @@ public final class TypeChecker {
                 arity(call, 0);
                 yield Type.set(Type.NOTHING);   // empty set's element type fixed by context (ADR-0028)
             }
-            case "Int.add", "Int.subtract", "Int.multiply",
-                 "Decimal.add", "Decimal.subtract", "Decimal.multiply" ->
-                    numericOp(call, env, data, symbols, reqs, false);
-            case "Int.compare", "Decimal.compare" -> numericOp(call, env, data, symbols, reqs, true);
             case "Int.remainder" -> {
                 arity(call, 2);
                 requireType(args.get(0), Type.INT, env, data, symbols, reqs, "argument 1 of remainder");
@@ -3024,22 +3030,6 @@ public final class TypeChecker {
                 || (isSingleValueNewtype(rt, symbols) && !isSingleValueNewtype(lt, symbols) && isLiteralExpr(le));
     }
 
-    /** A binary numeric op over two Int or two Decimal operands (spec 18.2, 18.3). {@code compare}
-     * yields Int (-1/0/1); the arithmetic ops yield the operand type. */
-    private static Type numericOp(Ast.Call call, Map<String, Type> env, Ast.Data data,
-                                  Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs, boolean compare) {
-        arity(call, 2);
-        Type lt = typeOf(call.args().get(0), env, data, symbols, reqs);
-        if (lt != Type.INT && lt != Type.DECIMAL) {
-            throw CompileException.of(
-                    Diagnostic.of(null, "check.arith.expects").title("check.type.mismatch.title")
-                            .at(call.pos(), call.fn().length()).args(call.fn(), Type.show(lt)).build(),
-                    call.fn() + " expects Int or Decimal, got " + lt);
-        }
-        requireType(call.args().get(1), lt, env, data, symbols, reqs, "argument 2 of " + call.fn());
-        return compare ? Type.INT : lt;
-    }
-
     /**
      * Types a block argument, binding its parameters to {@code paramTypes} (spec 12.5).
      *
@@ -3325,6 +3315,29 @@ public final class TypeChecker {
                             .at(e.pos()).build(),
                     "the rounding mode of `divide` must be one of HALF_UP, HALF_EVEN, HALF_DOWN, UP,"
                             + " DOWN, CEILING, FLOOR (spec 18.3)");
+        }
+    }
+
+    /** The pattern of {@code String.matches} must be a string literal, so it is validated (and can be
+     * compiled) at compile time: a malformed regex is a compile error, not a runtime exception, and
+     * the value it constrains is proven at construction (spec §stdlib-string). */
+    private static void validateRegexPattern(Ast.Expr e) {
+        if (!(e instanceof Ast.StringLit lit)) {
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.matches.literal").title("check.type.mismatch.title")
+                            .at(e.pos()).build(),
+                    "the pattern of `String.matches` must be a string literal, so it can be validated"
+                            + " at compile time");
+        }
+        try {
+            java.util.regex.Pattern.compile(lit.value());
+        } catch (java.util.regex.PatternSyntaxException ex) {
+            // getDescription() is the one-line reason ("Unclosed character class near index 3");
+            // getMessage() would also dump the pattern and a caret, which the source region already shows.
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.matches.regex").title("check.type.mismatch.title")
+                            .at(e.pos()).args(ex.getDescription()).build(),
+                    "`String.matches` pattern is not a valid regular expression: " + ex.getDescription());
         }
     }
 
