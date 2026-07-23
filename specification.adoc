@@ -700,7 +700,7 @@ Allowed: comparison, logical operations, arithmetic, field reference, built-in f
 let 正の数 (v: Int) = v >= 0
 
 data 金額 = Int  invariant 正の数(value)
-data カゴ = { items: List<明細> } invariant List.all(items, x -> 正の数(x.数量))
+data カゴ = { items: List<明細> } invariant List.all(x -> 正の数(x.数量), items)
 ----
 
 What may be called is a `+let+`, not a behavior (<<fn>>). An invariant runs on a data's construction path, where touching the outside world is unacceptable. A behavior may touch the outside world — if no implementation is written, a Java implementation is injected — so it MUST NOT be called from an invariant. To name a business rule, use a `+let+`.
@@ -709,13 +709,13 @@ A `+let+` may be called from an invariant when it satisfies all of the following
 
 * the requirement set is empty (the corresponding behavior writes no `+requires+`; <<requires>>)
 * it constructs no data (the construction set of any helper `+let+` it calls is also empty; <<blocks>>)
-* it is not recursive
+* it is not `+partial+`
 
 The first is decided by reading the declaration. `+let 事前承認する+` does not touch the outside world directly and so is pure in the sense of <<purity>>, but `+behavior 事前承認する+` writes `+requires 現在時刻+`, so its requirement set is non-empty and it MUST NOT be called from an invariant.
 
-A helper `+let+` always satisfies the first and second. To touch the outside world it can only receive a function as an argument (<<fn-declaration>>), and an invariant has no way to pass one. The third (not recursive) can be broken only by a recursive helper (<<fn-declaration>>, ADR-0038), so an invariant calling a recursive helper is a compile error.
+A helper `+let+` always satisfies the first and second. To touch the outside world it can only receive a function as an argument (<<fn-declaration>>), and an invariant has no way to pass one. The third is about termination: an invariant is checked on every construction and must terminate. A `+partial+` helper disclaims totality and may loop, so it cannot appear in an invariant. A *total* helper is admissible even when it recurses — the compiler has proven it terminates (<<fn-declaration>>, ADR-0052). This is what lets the list quantifiers `+List.all+` / `+List.any+` / `+List.member+` and the uniqueness check `+List.distinct+` appear in an invariant: each derives from the total stdlib fold `+List.foldFrom+`, which is bounded by the finite list (ADR-0051, ADR-0052). Only a `+partial+` helper in an invariant is a compile error.
 
-Forbidden: Decoder, Encoder, data construction, recursion, non-deterministic processing. A behavior call is not forbidden separately — an invariant calls a `+let+`, not a behavior (above), and if a `+let+` goes through a behavior that touches the outside world, its requirement set is that much non-empty and is rejected by condition 1. Only pure (empty-requirement-set) computation enters an invariant.
+Forbidden: Decoder, Encoder, data construction, `+partial+` recursion, non-deterministic processing. Data construction is barred throughout the invariant expression, including inside a quantifier's closure — an invariant observes the value being built, it does not build another. A behavior call is not forbidden separately — an invariant calls a `+let+`, not a behavior (above), and if a `+let+` goes through a behavior that touches the outside world, its requirement set is that much non-empty and is rejected by condition 1. Only pure (empty-requirement-set) computation enters an invariant.
 
 [#violation-destination]
 === A violation's destination differs inside and outside the boundary
