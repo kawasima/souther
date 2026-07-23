@@ -88,6 +88,7 @@ final class Descriptors {
     static final MethodTypeDesc MTD_intExact =
             MethodTypeDesc.of(ConstantDescs.CD_long, ConstantDescs.CD_long, ConstantDescs.CD_long);
     static final ClassDesc CD_DivisionByZero = ClassDesc.of("net.unit8.souther.runtime.DivisionByZero");
+    static final ClassDesc CD_NotANumber = ClassDesc.of("net.unit8.souther.runtime.NotANumber");
     static final ClassDesc CD_Boolean = ClassDesc.of("java.lang.Boolean");
     static final ClassDesc CD_BigDecimal = ClassDesc.of("java.math.BigDecimal");
     static final ClassDesc CD_DecimalMath = ClassDesc.of("net.unit8.souther.runtime.DecimalMath");
