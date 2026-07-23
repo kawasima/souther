@@ -1830,10 +1830,12 @@ The right side admits only a function call or a function name; `+e |> 3+` is a c
 [,text]
 ----
 length  trim  lowercase  uppercase  contains  startsWith  endsWith  substring  append
-split    join  replace    words      fromInt   concat
+split    join  replace    words      fromInt   concat       matches
 ----
 
 `+append(a, b)+` joins two strings in their written order (Elm `+String.append+`); the `{plus}{plus}` operator is the common form, `+append(a, b)+` equals `+a {plus}{plus} b+` (<<stdlib-list>>).
+
+`+matches(pattern, s)+` is a whole-string regular-expression match (Java `+Pattern+` flavour, anchored: the *entire* string must match), returning a plain `+Bool+`. It is what states a format-constrained value as an invariant — `+data 郵便 = String invariant String.matches("[0-9]{3}-[0-9]{4}", value)+`. The `+pattern+` MUST be a string literal: it is compiled and validated at compile time, so a malformed regex is a compile error rather than a runtime exception, and the compiled pattern is reused rather than recompiled on each call. A pattern computed at run time is therefore not accepted (a future `+Regex+`/`+fromString+` would carry that, returning a case for an invalid pattern); the literal form is what the invariant needs. Regex living in core rather than a package is a departure from Elm (`+elm/regex+`), forced by Souther having no package layer. A pathological pattern can backtrack (a regex property shared with Elm/F#); keep invariant patterns simple.
 
 The lower row is the core of Elm's String module expressible in Souther's types (which lack `+Char+` / `+Maybe+` / `+Float+`). `+split(sep, s)+` splits by a separator into `+List<String>+`, keeping empty pieces (`+split(",", "a,,b")+` is `+["a", "", "b"]+`). `+words(s)+` splits by runs of whitespace, dropping empty pieces. `+join(sep, xs)+` joins with a separator. `+replace(target, replacement, s)+` replaces every occurrence of `+target+`. `+fromInt(n)+` makes an `+Int+` a decimal string. `+concat(xs)+` joins a `+List<String>+` with no separator (Elm `+String.concat+`, equal to `+join("", xs)+`). The primary subject string is last (<<pipe>>). Elm functions depending on `+Char+` or `+Maybe+` (such as `+String.map+` and `+toInt+`, which returns `+Maybe+`) are not ported, as there is no corresponding type.
 

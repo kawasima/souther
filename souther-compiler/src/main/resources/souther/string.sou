@@ -15,6 +15,11 @@ let uppercase (s: String) : String = intrinsic "string.uppercase"
 let contains (sub: String, s: String) : Bool = intrinsic "string.contains"
 let startsWith (prefix: String, s: String) : Bool = intrinsic "string.startsWith"
 let endsWith (suffix: String, s: String) : Bool = intrinsic "string.endsWith"
+
+// Whole-string regex match (Java Pattern flavour, anchored), for format-constrained values in an
+// invariant — `invariant String.matches("[0-9]{3}-[0-9]{4}", value)`. The pattern must be a string
+// literal, so a malformed regex is a compile error and the whole thing reads as a plain Bool.
+let matches (pattern: String, s: String) : Bool = intrinsic "string.matches"
 let substring (from: Int, to: Int, s: String) : String = intrinsic "string.substring"
 let append (a: String, b: String) : String = intrinsic "string.append"
 

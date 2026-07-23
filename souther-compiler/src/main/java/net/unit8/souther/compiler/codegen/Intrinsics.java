@@ -170,6 +170,7 @@ final class Intrinsics {
         t.put("string.join", rt(CD_Strings, "join", order(1, 0), ts -> Type.STRING));
         t.put("string.replace", rt(CD_Strings, "replace", order(2, 0, 1), ts -> Type.STRING));
         t.put("string.words", rt(CD_Strings, "words", order(0), ts -> Type.list(Type.STRING)));
+        t.put("string.matches", rt(CD_Strings, "matches", order(1, 0), ts -> Type.BOOL));
         t.put("string.fromInt", rt(CD_Strings, "fromInt", order(0), ts -> Type.STRING));
         t.put("string.concat", rt(CD_Strings, "concat", order(0), ts -> Type.STRING));
 

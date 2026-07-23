@@ -2543,6 +2543,9 @@ public final class TypeChecker {
                                 + " but the element is " + lo.element()
                                 + " — sort its ordered field instead (e.g. map to `.value` first)");
             }
+            if (intrinsic.key().equals("string.matches")) {
+                validateRegexPattern(args.get(0));
+            }
             return result;
         }
         return switch (call.fn()) {
@@ -3305,6 +3308,27 @@ public final class TypeChecker {
                             .at(e.pos()).build(),
                     "the rounding mode of `divide` must be one of HALF_UP, HALF_EVEN, HALF_DOWN, UP,"
                             + " DOWN, CEILING, FLOOR (spec 18.3)");
+        }
+    }
+
+    /** The pattern of {@code String.matches} must be a string literal, so it is validated (and can be
+     * compiled) at compile time: a malformed regex is a compile error, not a runtime exception, and
+     * the value it constrains is proven at construction (spec §stdlib-string). */
+    private static void validateRegexPattern(Ast.Expr e) {
+        if (!(e instanceof Ast.StringLit lit)) {
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.matches.literal").title("check.type.mismatch.title")
+                            .at(e.pos()).build(),
+                    "the pattern of `String.matches` must be a string literal, so it can be validated"
+                            + " at compile time");
+        }
+        try {
+            java.util.regex.Pattern.compile(lit.value());
+        } catch (java.util.regex.PatternSyntaxException ex) {
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.matches.regex").title("check.type.mismatch.title")
+                            .at(e.pos()).args(ex.getMessage()).build(),
+                    "`String.matches` pattern is not a valid regular expression: " + ex.getMessage());
         }
     }
 
