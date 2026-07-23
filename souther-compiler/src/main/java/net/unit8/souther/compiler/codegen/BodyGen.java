@@ -1048,11 +1048,11 @@ final class BodyGen {
                 // rounds by the default scale/mode. Case handling for a zero divisor is the
                 // divide/remainder functions, not the operator.
                 case ADD, SUB, MUL, DIV -> {
-                    // Closed newtype arithmetic: `+`/`-` over a newtype
-                    // opens each operand to its base, computes on the base, then re-wraps the result
-                    // into the newtype (re-checking its invariant). A non-newtype operand is left as
-                    // is (unwrapNewtypeValue is a no-op). `*`/`/` never reach here as a newtype (the
-                    // checker keeps them base-only).
+                    // Newtype arithmetic (closed `+`/`-`, or scalar `*`/`/` by a plain number) opens
+                    // each operand to its base, computes on the base, then re-wraps the result into the
+                    // newtype (re-checking its invariant). A non-newtype operand (a scalar) is left as
+                    // is — unwrapNewtypeValue is a no-op. `closedNewtypeArithResult` returns null when
+                    // neither operand is a newtype (plain base arithmetic), leaving the value unwrapped.
                     Type lraw = genExpr(bin.left());
                     Type t = unwrapNewtypeValue(lraw);
                     Type rraw = genExpr(bin.right());

@@ -297,8 +297,24 @@ final class InvariantChecker {
                     add(affine(b.left(), leaf), affine(b.right(), leaf), false);
             case Ast.Binary b when b.op() == Ast.BinOp.SUB ->
                     add(affine(b.left(), leaf), affine(b.right(), leaf), true);
+            // scalar multiply by a constant (金額 * 2) is linear; `/` and a variable product are not
+            // (a divide truncates for Int, and a variable factor is non-linear), so leave those opaque.
+            case Ast.Binary b when b.op() == Ast.BinOp.MUL ->
+                    scale(affine(b.left(), leaf), affine(b.right(), leaf));
             default -> leaf.apply(e);
         };
+    }
+
+    /** A linear form scaled by a constant, when one side is a bare constant (a scalar multiply); null
+     * when neither side is constant (a non-linear product). */
+    private static LinearForm scale(LinearForm a, LinearForm b) {
+        if (a == null || b == null) {
+            return null;
+        }
+        if (a.coefs().isEmpty()) {
+            return b.times(a.constant());
+        }
+        return b.coefs().isEmpty() ? a.times(b.constant()) : null;
     }
 
     /** The affine form of a body expression: a numeric atom, a newtype construct's wrapped value, or
@@ -375,7 +391,9 @@ final class InvariantChecker {
     private Type arithType(Ast.Binary b, Map<String, Type> types) {
         Type lt = typeExpr(b.left(), types);
         Type rt = typeExpr(b.right(), types);
-        if (b.op() == Ast.BinOp.ADD || b.op() == Ast.BinOp.SUB) {
+        // Closed `+`/`-` and scalar `*`/`/` both yield the newtype (the checker has already validated
+        // admissibility, so a newtype operand here means the result is that newtype).
+        if (isArith(b.op())) {
             Type nt = TypeChecker.closedNewtypeArithResult(lt, rt, symbols);
             if (nt != null) {
                 return nt;

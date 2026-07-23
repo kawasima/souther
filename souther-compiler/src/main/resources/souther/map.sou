@@ -49,3 +49,12 @@ let update (key: 'k, f: ('a) -> 'a, m: Map<'k, 'a>) : Map<'k, 'a> =
     match Map.get(key, m) with
         | None -> m
         | Some v -> Map.insert(key, f(v), m)
+
+// `upsert` collapses insert-if-absent / modify-if-present into one call: apply `f` to the value at
+// `key`, or insert `default` when the key is absent. Like `update` it keeps `Option` internal
+// ([#algebraic-types]) — the absent branch takes a plain value (`default`), not the `Maybe -> Maybe`
+// step Elm's `Dict.update` needs. Typical use is accumulation, e.g. counting: `upsert(k, 1, n -> n + 1, m)`.
+let upsert (key: 'k, default: 'a, f: ('a) -> 'a, m: Map<'k, 'a>) : Map<'k, 'a> =
+    match Map.get(key, m) with
+        | None -> Map.insert(key, default, m)
+        | Some v -> Map.insert(key, f(v), m)

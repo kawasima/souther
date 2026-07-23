@@ -52,6 +52,16 @@ final class NumericDomain {
         LinearForm minus(LinearForm o) {
             return plus(o.negate());
         }
+
+        /** This form scaled by a constant {@code k} (a scalar multiply). */
+        LinearForm times(BigDecimal k) {
+            if (k.signum() == 0) {
+                return constant(BigDecimal.ZERO);
+            }
+            Map<String, BigDecimal> m = new HashMap<>();
+            coefs.forEach((key, v) -> m.put(key, v.multiply(k)));
+            return new LinearForm(constant.multiply(k), m);
+        }
     }
 
     private final boolean bottom;                              // an infeasible path (guards contradict)
