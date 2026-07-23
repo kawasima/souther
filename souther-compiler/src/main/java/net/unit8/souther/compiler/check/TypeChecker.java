@@ -2557,8 +2557,8 @@ public final class TypeChecker {
             case "String.toInt" -> {
                 arity(call, 1);
                 requireType(args.get(0), Type.STRING, env, data, symbols, reqs, "argument of String.toInt");
-                // a non-numeric string produces the NotANumber case (a primitive-headed union a core
-                // declaration cannot name, so this stays a built-in — ADR-0053)
+                // a non-numeric string produces the NotANumber case; a primitive-headed union a core
+                // declaration cannot name, so this stays a built-in like Int.divide
                 yield Type.union(new java.util.LinkedHashSet<>(List.of("Int", "NotANumber")));
             }
             case "List.length" -> {

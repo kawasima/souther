@@ -66,8 +66,24 @@ class CompileStringCharsTest {
                 """;
         assertEquals(42L, runInt(src, "parse", Map.of("s", "42")));
         assertEquals(7L, runInt(src, "parse", Map.of("s", "007")));   // leading zeros kept
+        assertEquals(-5L, runInt(src, "parse", Map.of("s", "-5")));   // a leading sign parses
         assertEquals(-1L, runInt(src, "parse", Map.of("s", "12x")));  // NotANumber
         assertEquals(-1L, runInt(src, "parse", Map.of("s", "")));     // NotANumber
+        assertEquals(-1L, runInt(src, "parse", Map.of("s", " 5")));   // surrounding space: NotANumber
+        assertEquals(-1L, runInt(src, "parse", Map.of("s", "99999999999999999999")));  // > Int64: NotANumber
+    }
+
+    @Test
+    void toCodeOfTheEmptyStringIsMinusOne() throws Exception {
+        String src = """
+                module demo
+                data In = { s: String }
+                data Out = Int
+                behavior calc : (i: In) -> Out constructs Out
+                let calc (i) = Out(String.toCode(i.s))
+                """;
+        assertEquals(-1L, runInt(src, "calc", Map.of("s", "")));    // no first character
+        assertEquals(48L, runInt(src, "calc", Map.of("s", "0")));   // '0' is code point 48
     }
 
     // The Issue #52 payoff: a mod-10 check digit as a plain fold in a behavior — the invariant proves
