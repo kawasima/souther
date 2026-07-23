@@ -115,6 +115,26 @@ class CompileInvariantQuantifierTest {
     }
 
     @Test
+    void aTotalHelperReferencedAsABareValueInAnInvariantIsRejected() {
+        // Putting recursive-helper signatures in the invariant's type environment lets a call resolve,
+        // but a recursive helper is a static method, not a first-class value. Referencing one as a bare
+        // value (not in call position) is rejected, exactly as in a behavior body — it does not slip
+        // through to produce unemittable code.
+        String src = """
+                module demo
+                data 木 = { 子: Option<木> }
+                let 深さ (t: 木): Int = match t.子 with
+                    | Some c -> 深さ(c) + 1
+                    | None -> 0
+                data X = { root: 木 } invariant {
+                    let g = 深さ
+                    g(root) >= 0
+                }
+                """;
+        assertThrows(CompileException.class, () -> Compiler.compile(src));
+    }
+
+    @Test
     void aQuantifierInvariantCompilesOnTheMultiModulePath() throws Exception {
         // The multi-module path (Compiler.compileModules) must inject `List.foldFrom` for a data whose
         // invariant reaches it, the same as the single-module path does.
