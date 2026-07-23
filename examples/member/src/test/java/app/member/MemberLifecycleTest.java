@@ -2,8 +2,11 @@ package app.member;
 
 import example.member.会員;
 import example.member.会員ID;
+import example.member.会員へ通知する;
 import example.member.会員表示;
 import example.member.メールアドレス;
+import example.member.未アクティベートのため送信不可;
+import example.member.送信済み;
 
 import net.unit8.raoh.Err;
 import net.unit8.raoh.Ok;
@@ -42,15 +45,41 @@ class MemberLifecycleTest {
 
     @Test
     void 会員はMapからdecodeされネストしたinvariant違反を集積する() {
-        Map<String, Object> good = Map.of("id", "m-001", "メール", "a@example.com", "表示名", "Bob");
+        // メールは確認状態つきの直和（判別子 "type" ＋ アドレス）。
+        Map<String, Object> good = Map.of("id", "m-001",
+                "メール", Map.of("type", "未アクティベート", "アドレス", "a@example.com"),
+                "表示名", "Bob");
         assertInstanceOf(Ok.class, 会員.decoder().decode(good, Path.ROOT));
 
-        Map<String, Object> bad = Map.of("id", "", "メール", "nope", "表示名", "Bob");
+        Map<String, Object> bad = Map.of("id", "",
+                "メール", Map.of("type", "未アクティベート", "アドレス", "nope"),
+                "表示名", "Bob");
         Result<会員> err = 会員.decoder().decode(bad, Path.ROOT);
         assertInstanceOf(Err.class, err);
         if (err instanceof Err<会員> e) {
             assertTrue(e.issues().asList().size() >= 1, "id / メール の invariant 違反が集積される");
         }
+    }
+
+    @Test
+    void アクティベート済みには通知が送れ未アクティベートには送れない() {
+        // 注入 behavior 通知メールを送る をログ出力ダミーで束縛する。
+        会員へ通知する 通知 = 会員へ通知する.bind(new Loggingメール送信());
+
+        // アクティベート済みの会員 → 送信済み（ダミーがログを出す）。
+        assertInstanceOf(送信済み.class, 通知.apply(会員(true), "お知らせ"));
+        // 未アクティベートの会員 → 型どおり送信不可（アクティベート済みでないと 通知メールを送る に渡せない）。
+        assertInstanceOf(未アクティベートのため送信不可.class, 通知.apply(会員(false), "お知らせ"));
+    }
+
+    private static 会員 会員(boolean activated) {
+        Map<String, Object> raw = Map.of("id", "m-1",
+                "メール", Map.of("type", activated ? "アクティベート済み" : "未アクティベート", "アドレス", "a@example.com"),
+                "表示名", "A");
+        return switch (会員.decoder().decode(raw, Path.ROOT)) {
+            case Ok<会員> ok -> ok.value();
+            case Err<会員> e -> throw new AssertionError(e.issues().asList().toString());
+        };
     }
 
     @Test

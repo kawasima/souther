@@ -16,7 +16,6 @@
     </description>
 
     <modules>
-        <module>email</module>
         <module>contact</module>
         <module>tagging</module>
         <module>sales</module>

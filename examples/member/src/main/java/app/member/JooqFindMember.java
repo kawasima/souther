@@ -14,7 +14,7 @@ import net.unit8.raoh.Ok;
 import net.unit8.raoh.Path;
 
 import org.jooq.DSLContext;
-import org.jooq.Record3;
+import org.jooq.Record4;
 
 import java.util.Map;
 
@@ -51,10 +51,11 @@ public final class JooqFindMember extends FindMember {
         String idStr = 会員ID.encoder().encode(id);
 
         // DB 例外はここで捕まえない。プラットフォーム障害は例外のまま Souther を素通りさせる。
-        Record3<String, String, String> row = dsl
+        Record4<String, String, String, Boolean> row = dsl
                 .select(field(name("id"), String.class),
                         field(name("email"), String.class),
-                        field(name("display_name"), String.class))
+                        field(name("display_name"), String.class),
+                        field(name("activated"), Boolean.class))
                 .from(table(name("member")))
                 .where(field(name("id"), String.class).eq(idStr))
                 .fetchOne();
@@ -63,11 +64,16 @@ public final class JooqFindMember extends FindMember {
             return 会員なし();                            // 継承した protected ファクトリ
         }
 
+        // メールは確認状態つきの直和。activated 列でケース（アクティベート済み / 未アクティベート）を選ぶ。
+        // 直和の外部表現は判別子 "type" ＋ ケースのフィールド（アドレスは newtype なので裸の文字列）。
+        String タグ = Boolean.TRUE.equals(row.value4()) ? "アクティベート済み" : "未アクティベート";
+        Map<String, Object> メール = Map.of("type", タグ, "アドレス", row.value2());
+
         // DB の行を中立な Map（外部表現。spec 6）に組み立て、生成された Raoh decoder に渡す。
-        // decoder は不変条件（メールに @ を含む 等）を検査して Result<会員> を返す。
+        // decoder は不変条件（メールの書式 等）を検査して Result<会員> を返す。
         Map<String, Object> raw = Map.of(
                 "id",    row.value1(),
-                "メール", row.value2(),
+                "メール", メール,
                 "表示名", row.value3());
 
         // 会員.decoder() は Decoder<Map<String,Object>, 会員>。decode は Result<会員> を返す。
