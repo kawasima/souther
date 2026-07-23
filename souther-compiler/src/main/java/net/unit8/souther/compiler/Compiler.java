@@ -46,8 +46,14 @@ public final class Compiler {
 
     /** Compiles and returns the classes together with any warnings (spec §invariant-discharge). */
     public static Compiled compileWithWarnings(String source) {
+        return compileWithWarnings(source, "Main");
+    }
+
+    /** As {@link #compileWithWarnings(String)}, but a header-less source is named
+     * {@code defaultModuleName} (so the CLI's filename-stem naming can surface warnings too). */
+    public static Compiled compileWithWarnings(String source, String defaultModuleName) {
         List<Diagnostic> warnings = new ArrayList<>();
-        Map<String, byte[]> classes = compile(source, "Main", warnings);
+        Map<String, byte[]> classes = compile(source, defaultModuleName, warnings);
         return new Compiled(classes, warnings);
     }
 

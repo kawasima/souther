@@ -112,9 +112,15 @@ final class NumericDomain {
             Map.Entry<String, BigDecimal> e = c.entrySet().iterator().next();
             String a = e.getKey();
             BigDecimal k = e.getValue();
-            // k·a + const <= 0  =>  a <= -const/k (k>0)  or  a >= -const/k (k<0)
-            BigDecimal bound = g.constant().negate().divide(k, java.math.MathContext.DECIMAL64);
-            return k.signum() > 0 ? withHi(a, bound) : withLo(a, bound);
+            // k·a + const <= 0  =>  a <= -const/k (k>0, an upper bound)  or  a >= -const/k (k<0, a
+            // lower bound). Round an inexact quotient conservatively — toward +inf for an upper bound,
+            // toward -inf for a lower bound — so the recorded bound is never tighter than the true one.
+            // A tighter-than-true bound would make entails/refutes unsound (a false E2010).
+            boolean upper = k.signum() > 0;
+            java.math.MathContext mc = new java.math.MathContext(
+                    34, upper ? java.math.RoundingMode.CEILING : java.math.RoundingMode.FLOOR);
+            BigDecimal bound = g.constant().negate().divide(k, mc);
+            return upper ? withHi(a, bound) : withLo(a, bound);
         }
         if (c.size() == 2 && isUnitDifference(c)) {
             // {a:+1, b:-1}·+ const <= 0  =>  a - b <= -const
