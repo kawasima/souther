@@ -133,20 +133,32 @@ public final class TypeChecker {
         }
         HelperInliner inliner = HelperInliner.forModule(module);
         Map<String, Type> recursiveHelperFns = recursiveHelperSigs(inliner, symbols);
-        // An invariant runs on every construction and must terminate, so it may not call a recursive
-        // helper (spec §invariant-expressions); a non-recursive helper is already inlined into it. This
-        // runs before the data check, so the invariant's recursive call is named before it is otherwise
-        // reported as an unknown function.
+        // An invariant runs on every construction and must terminate (spec §invariant-expressions).
+        // A total recursive helper does terminate, so it is admissible — including the stdlib fold
+        // (`List.foldFrom`) that backs the list quantifiers `List.all`/`any`/`member`/`distinct`,
+        // which are inlined down to it here (`withInlinedInvariants` runs before this check). Only a
+        // `partial` helper — one that disclaims totality and may loop — is barred. A non-partial
+        // recursive helper that is in fact non-total is caught later by the totality check.
+        Set<String> partialRecursiveFns = new LinkedHashSet<>();
+        for (String name : recursiveHelperFns.keySet()) {
+            Ast.FnDef helper = inliner.helper(name);
+            if (helper != null && helper.partial()) {
+                partialRecursiveFns.add(name);
+            }
+        }
+        // The invariant checks run before the data check, so a partial call or a construction is named
+        // before it is otherwise reported as an unknown function or type-checked.
         for (Ast.Def def : module.defs()) {
             if (def instanceof Ast.Data data && data.invariant().isPresent()) {
-                rejectRecursiveHelperInInvariant(data.invariant().get(), data.name(),
-                        recursiveHelperFns.keySet());
+                Ast.Expr inv = data.invariant().get();
+                rejectPartialHelperInInvariant(inv, data.name(), partialRecursiveFns);
+                rejectConstructionInInvariant(inv, data.name());
             }
         }
         for (Ast.Def def : module.defs()) {
             collect(errors, () -> {
                 switch (def) {
-                    case Ast.Data data -> checkData(data, symbols);
+                    case Ast.Data data -> checkData(data, symbols, recursiveHelperFns);
                     case Ast.SumData sum -> checkSum(sum, symbols);
                     case Ast.UnitData _ -> { }
                 }
@@ -622,18 +634,36 @@ public final class TypeChecker {
         return sigs;
     }
 
-    /** Rejects a call to a recursive helper inside an invariant: an invariant is checked on every
-     * construction and must terminate, so it cannot call one (spec §invariant-expressions). */
-    private static void rejectRecursiveHelperInInvariant(Ast.Expr e, String data, Set<String> recursive) {
-        if (e instanceof Ast.Call call && recursive.contains(call.fn())) {
+    /** Rejects a call to a {@code partial} helper inside an invariant: an invariant is checked on every
+     * construction and must terminate, so it may not call a helper that disclaims totality (spec
+     * §invariant-expressions). A total helper — including the stdlib fold behind the list
+     * quantifiers — is admissible and not in {@code partial}. */
+    private static void rejectPartialHelperInInvariant(Ast.Expr e, String data, Set<String> partial) {
+        if (e instanceof Ast.Call call && partial.contains(call.fn())) {
             throw CompileException.of(
-                    Diagnostic.of(null, "check.invariant.recursive").title("check.invariant.title")
+                    Diagnostic.of(null, "check.invariant.partial").title("check.invariant.title")
                             .at(call.pos(), call.fn().length()).args(data, call.fn()).build(),
-                    "the invariant of `" + data + "` calls the recursive helper `" + call.fn()
-                            + "`, but an invariant is checked at construction time and must terminate"
-                            + " — a recursive helper cannot appear in an invariant");
+                    "the invariant of `" + data + "` calls the `partial` helper `" + call.fn()
+                            + "`, which may not terminate; an invariant is checked at construction time"
+                            + " and must terminate, so only a total helper may appear in it");
         }
-        forEachChild(e, c -> rejectRecursiveHelperInInvariant(c, data, recursive));
+        forEachChild(e, c -> rejectPartialHelperInInvariant(c, data, partial));
+    }
+
+    /** Rejects a data construction inside an invariant: an invariant is pure — it observes the value
+     * being built, it does not build another (spec §invariant-expressions, "Forbidden: data
+     * construction"). Walks the inlined invariant, so a construction smuggled through a quantifier's
+     * closure (e.g. {@code List.all(x -> Made { ... }.ok, xs)}) is caught too. */
+    private static void rejectConstructionInInvariant(Ast.Expr e, String data) {
+        if (e instanceof Ast.NewData nd) {
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.invariant.construct").title("check.invariant.title")
+                            .at(nd.pos(), nd.typeName().length()).args(data, nd.typeName()).build(),
+                    "the invariant of `" + data + "` constructs `" + nd.typeName()
+                            + "`, but an invariant may not construct a data — it observes the value being"
+                            + " built, it does not build another (spec §invariant-expressions)");
+        }
+        forEachChild(e, c -> rejectConstructionInInvariant(c, data));
     }
 
     /** Rejects a call to an injected behavior inside a recursive helper: it is pure (spec 13.1). */
@@ -1725,7 +1755,8 @@ public final class TypeChecker {
         return false;
     }
 
-    private static void checkData(Ast.Data data, Map<String, Ast.Def> symbols) {
+    private static void checkData(Ast.Data data, Map<String, Ast.Def> symbols,
+                                  Map<String, Type> recursiveHelperFns) {
         Map<String, Type> fields = fieldTypes(data, symbols);
 
         for (Map.Entry<String, Type> e : fields.entrySet()) {
@@ -1740,7 +1771,12 @@ public final class TypeChecker {
         }
 
         data.invariant().ifPresent(expr -> {
-            Type t = typeOf(expr, fields, data, symbols);
+            // A total recursive helper — the stdlib fold behind the list quantifiers, or a user helper
+            // proven total — is callable from an invariant, so its signature must be in scope here. A
+            // field of the same name as a helper wins: a bare name in an invariant is a field reference.
+            Map<String, Type> invEnv = new HashMap<>(recursiveHelperFns);
+            invEnv.putAll(fields);
+            Type t = typeOf(expr, invEnv, data, symbols);
             if (t != Type.BOOL) {
                 throw CompileException.of(
                         Diagnostic.of("E1101", "e1101.msg").at(expr.pos()).args(Type.show(t)).build(),
