@@ -53,4 +53,22 @@ public final class IntMath {
             throw new ConstraintViolation("Int overflow: " + a + " / " + b);
         }
     }
+
+    /** {@code Int.compare(a, b)}: -1, 0, or 1. The function form of the comparison operators. */
+    public static long compare(long a, long b) {
+        return Long.compare(a, b);
+    }
+
+    /**
+     * {@code Int.modBy(divisor, n)}: Elm-style floored modulo (spec 18.2). The result takes the sign
+     * of the divisor, unlike {@code Int.remainder}, which truncates toward zero. A zero divisor is a
+     * model bug — like the {@code /} operator it aborts with {@link ConstraintViolation} rather than
+     * returning a case, so the result is a plain {@code Int} that reads cleanly in an invariant.
+     */
+    public static long modBy(long divisor, long n) {
+        if (divisor == 0) {
+            throw new ConstraintViolation("modulo by zero: modBy 0");
+        }
+        return Math.floorMod(n, divisor);
+    }
 }

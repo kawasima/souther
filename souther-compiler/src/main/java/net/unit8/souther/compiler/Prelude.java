@@ -37,29 +37,34 @@ public final class Prelude {
     /** The bundled prelude sources, in load order. */
     private static final List<String> RESOURCES =
             List.of("/souther/bool.sou", "/souther/string.sou", "/souther/map.sou", "/souther/list.sou",
-                    "/souther/set.sou", "/souther/date.sou", "/souther/datetime.sou");
+                    "/souther/set.sou", "/souther/date.sou", "/souther/datetime.sou",
+                    "/souther/int.sou", "/souther/decimal.sou");
 
     /** Reserved module name → short qualifier (spec §stdlib). {@code souther.list} → {@code List}. */
-    private static final Map<String, String> MODULE_TO_ALIAS = Map.of(
-            "souther.list", "List",
-            "souther.string", "String",
-            "souther.map", "Map",
-            "souther.set", "Set",
-            "souther.bool", "Bool",
-            "souther.date", "Date",
-            "souther.datetime", "DateTime");
+    private static final Map<String, String> MODULE_TO_ALIAS = Map.ofEntries(
+            Map.entry("souther.list", "List"),
+            Map.entry("souther.string", "String"),
+            Map.entry("souther.map", "Map"),
+            Map.entry("souther.set", "Set"),
+            Map.entry("souther.bool", "Bool"),
+            Map.entry("souther.date", "Date"),
+            Map.entry("souther.datetime", "DateTime"),
+            Map.entry("souther.int", "Int"),
+            Map.entry("souther.decimal", "Decimal"));
 
     /** The checker built-ins, by qualified name — the primitives that have no prelude source because
-     *  they are overloaded (length/get) or need bespoke codegen (get/find/sortBy), plus arithmetic.
-     *  {@code fold} is not among them: it is an ordinary recursive helper in {@code souther.list}
-     *  ({@code foldFrom}) that takes its step as a closure. They are reached qualified like everything
-     *  else (spec §stdlib). */
+     *  they are overloaded (length/get) or need bespoke codegen (get/find/sortBy). The Int/Decimal
+     *  {@code divide}/{@code remainder} stay here too: they return a primitive-headed union
+     *  ({@code Int | DivisionByZero}) a core declaration cannot yet express, so their branch codegen
+     *  stays in the compiler. The rest of Int/Decimal (add/subtract/multiply/compare/modBy) is now
+     *  declared in {@code souther.int}/{@code souther.decimal}. {@code fold} is not among them: it is
+     *  an ordinary recursive helper in {@code souther.list} ({@code foldFrom}) that takes its step as
+     *  a closure. They are reached qualified like everything else (spec §stdlib). */
     private static final Set<String> BUILTINS = Set.of(
             "List.length", "List.get", "List.max", "List.min", "List.find", "List.sortBy",
             "String.length",
             "Map.get", "Map.empty", "Set.empty",
-            "Int.compare", "Int.remainder", "Int.divide", "Int.add", "Int.subtract", "Int.multiply",
-            "Decimal.add", "Decimal.subtract", "Decimal.multiply", "Decimal.divide", "Decimal.compare");
+            "Int.remainder", "Int.divide", "Decimal.divide");
 
     /** Every qualifier a call may carry: the four prelude modules plus the arithmetic built-in
      *  namespaces {@code Int}/{@code Decimal} (spec §stdlib). */
@@ -145,7 +150,9 @@ public final class Prelude {
                 BARE_TO_QUALIFIED.putIfAbsent(fn.name(), qualified);
             }
         }
-        // checker built-ins have no prelude source; list their bare→qualified hints explicitly.
+        // Explicit bare→qualified hints: the checker built-ins that have no prelude source, plus the
+        // dual-namespace arithmetic names whose auto-derived single hint (Int, loaded first) would hide
+        // the Decimal alternative.
         BARE_TO_QUALIFIED.put("length", "List.length` or `String.length");
         BARE_TO_QUALIFIED.put("get", "List.get` or `Map.get");
         BARE_TO_QUALIFIED.put("empty", "Map.empty` or `Set.empty");

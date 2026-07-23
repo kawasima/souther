@@ -1798,6 +1798,14 @@ let trim (s: String) : String = intrinsic "string.trim"
 
 An intrinsic MUST declare its return type (it cannot be inferred from `+intrinsic+`). A call is type-checked against the declared signature — that is, `+trim+` is "a built-in function whose signature is placed in core", and this declaration, not a hardcoded compiler table, decides its arguments and return value — and the backend emits the bytecode for `+key+`. It is neither inlined nor lowered. Only the reserved namespace may write it. A user cannot call the JVM directly and only calls blessed functions (<<asymmetric-interop>>).
 
+Every standard-library function is declared in a core module this way, whether its body is Souther (self-hosted, like `+List.map+` over `+foldFrom+`) or `+intrinsic "key"+` (a JVM kernel). The declaration is the single source of truth for the signature; a hardcoded compiler table is not the normal way to add one. Three narrow cases stay integrated in the compiler, each for a reason a core declaration cannot yet capture, and only these:
+
+* the operators (`{plus}` `+-+` `+*+` `+/+` `+==+` `+<+` `+<=+` `+>+` `+>=+`) — they are syntax, and the arithmetic ones carry the closed-newtype rules (<<newtype>>) a plain function does not;
+* the ordered-constrained generics (`+List.sort+` / `+max+` / `+min+` / `+sortBy+` and the comparison operators) — Souther has no `+comparable+` type class, so "the element is an ordered value" is checked in the compiler rather than expressed in the signature;
+* the functions returning a primitive-headed union (`+Int.divide+` / `+Int.remainder+` / `+Decimal.divide+`, returning `+Int | DivisionByZero+`) — a core return type cannot yet name a union whose first member is a primitive.
+
+Everything else — including `+Int+` / `+Decimal+` `+add+` / `+subtract+` / `+multiply+` / `+compare+` / `+modBy+` — is a core declaration (ADR-0053).
+
 [#pipe]
 === The value pipe and argument order
 
@@ -1834,7 +1842,7 @@ The lower row is the core of Elm's String module expressible in Souther's types 
 
 [,text]
 ----
-add  subtract  multiply  divide  remainder  compare
+add  subtract  multiply  divide  remainder  compare  modBy
 ----
 
 `+Int+` is signed 64-bit (<<primitives>>). If an operation exceeds that range it *aborts* — it does not wrap. Overflow is a model bug, not a business result, so like an invariant violation it throws `+ConstraintViolation+` (<<algebraic-types>>, <<violation-destination>>, <<jvm-abort>>).
@@ -1842,6 +1850,8 @@ add  subtract  multiply  divide  remainder  compare
 Division by zero returns `+Int | DivisionByZero+`. This is a possible input on the business flow (a divisor of 0), so it is returned as a case rather than aborting.
 
 The four operations may also be written with the operators `{plus}` `+-+` `+*+` `+/+` (the symbol table of <<primitives>>). `+/+` is truncating division and *aborts* on division by zero (like overflow). To receive `+Int | DivisionByZero+` as a case, use the functions `+divide+` / `+remainder+` — operator = casual and aborting, function = safe with a case.
+
+`+modBy(divisor, n)+` is the modulo counterpart of that split: it is floored modulo (the result takes the sign of the divisor, unlike the truncating `+remainder+`, so `+Int.modBy(12, -1)+` is `+11+`), and a zero divisor *aborts* like `+/+` rather than returning a case. Its result is therefore a plain `+Int+`, which reads cleanly in an invariant — `+data 箱 = Int invariant Int.modBy(12, value) == 0+`. The divisor is the first argument (subject last, the pipe convention). Use `+remainder+` when a zero divisor must be a business case instead of an abort. (Elm's `+modBy+` / `+remainderBy+`.)
 
 [#stdlib-decimal]
 === Decimal

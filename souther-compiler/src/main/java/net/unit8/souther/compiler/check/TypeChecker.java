@@ -2646,10 +2646,6 @@ public final class TypeChecker {
                 arity(call, 0);
                 yield Type.set(Type.NOTHING);   // empty set's element type fixed by context (ADR-0028)
             }
-            case "Int.add", "Int.subtract", "Int.multiply",
-                 "Decimal.add", "Decimal.subtract", "Decimal.multiply" ->
-                    numericOp(call, env, data, symbols, reqs, false);
-            case "Int.compare", "Decimal.compare" -> numericOp(call, env, data, symbols, reqs, true);
             case "Int.remainder" -> {
                 arity(call, 2);
                 requireType(args.get(0), Type.INT, env, data, symbols, reqs, "argument 1 of remainder");
@@ -3022,22 +3018,6 @@ public final class TypeChecker {
                                                Map<String, Ast.Def> symbols) {
         return (isSingleValueNewtype(lt, symbols) && !isSingleValueNewtype(rt, symbols) && isLiteralExpr(re))
                 || (isSingleValueNewtype(rt, symbols) && !isSingleValueNewtype(lt, symbols) && isLiteralExpr(le));
-    }
-
-    /** A binary numeric op over two Int or two Decimal operands (spec 18.2, 18.3). {@code compare}
-     * yields Int (-1/0/1); the arithmetic ops yield the operand type. */
-    private static Type numericOp(Ast.Call call, Map<String, Type> env, Ast.Data data,
-                                  Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs, boolean compare) {
-        arity(call, 2);
-        Type lt = typeOf(call.args().get(0), env, data, symbols, reqs);
-        if (lt != Type.INT && lt != Type.DECIMAL) {
-            throw CompileException.of(
-                    Diagnostic.of(null, "check.arith.expects").title("check.type.mismatch.title")
-                            .at(call.pos(), call.fn().length()).args(call.fn(), Type.show(lt)).build(),
-                    call.fn() + " expects Int or Decimal, got " + lt);
-        }
-        requireType(call.args().get(1), lt, env, data, symbols, reqs, "argument 2 of " + call.fn());
-        return compare ? Type.INT : lt;
     }
 
     /**
