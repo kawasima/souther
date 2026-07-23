@@ -322,10 +322,10 @@ class CompileRecursiveHelperTest {
     }
 
     @Test
-    void aRecursiveHelperCannotBeCalledFromAnInvariant() {
-        // An invariant runs on every construction and must terminate, so a recursive helper — which
-        // has no termination guarantee — cannot appear in one. The message names the invariant, not
-        // "arbitrary JVM methods".
+    void aPartialHelperCannotBeCalledFromAnInvariant() {
+        // An invariant runs on every construction and must terminate, so a `partial` helper — which
+        // disclaims termination — cannot appear in one. A total helper is admissible (see
+        // CompileInvariantQuantifierTest); only `partial` recursion is barred.
         String src = """
                 module demo
                 partial let count (n: Int): Int = if n == 0 then 0 else count(n - 1) + 1
@@ -333,7 +333,7 @@ class CompileRecursiveHelperTest {
                     invariant count(value) < 100
                 """;
         CompileException ex = assertThrows(CompileException.class, () -> Compiler.compile(src));
-        assertTrue(ex.getMessage().contains("count") && ex.getMessage().contains("invariant"),
+        assertTrue(ex.getMessage().contains("count") && ex.getMessage().contains("partial"),
                 ex.getMessage());
     }
 
