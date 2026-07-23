@@ -41,8 +41,29 @@ public final class Compiler {
         return compile(source, "Main");
     }
 
+    /** A compiled module with any non-fatal diagnostics (invariant-discharge warnings, etc.). */
+    public record Compiled(Map<String, byte[]> classes, List<Diagnostic> warnings) {}
+
+    /** Compiles and returns the classes together with any invariant-discharge warnings. */
+    public static Compiled compileWithWarnings(String source) {
+        return compileWithWarnings(source, "Main");
+    }
+
+    /** As {@link #compileWithWarnings(String)}, but a header-less source is named
+     * {@code defaultModuleName} (so the CLI's filename-stem naming can surface warnings too). */
+    public static Compiled compileWithWarnings(String source, String defaultModuleName) {
+        List<Diagnostic> warnings = new ArrayList<>();
+        Map<String, byte[]> classes = compile(source, defaultModuleName, warnings);
+        return new Compiled(classes, warnings);
+    }
+
     /** As {@link #compile(String)}, but a header-less source is named {@code defaultModuleName}. */
     public static Map<String, byte[]> compile(String source, String defaultModuleName) {
+        return compile(source, defaultModuleName, new ArrayList<>());
+    }
+
+    private static Map<String, byte[]> compile(String source, String defaultModuleName,
+                                               List<Diagnostic> warningsOut) {
         Ast.Module raw = CstFrontend.parse(source, defaultModuleName);
         if (raw.exampleFileTarget() != null) {
             throw CompileException.of(
@@ -56,7 +77,7 @@ public final class Compiler {
         module = NewtypeDesugar.rewrite(module, TypeChecker.symbols(module));
         module = Compiler.injectRecursivePrelude(module);
         Ast.Module lowered = Lower.run(module);
-        TypeChecker.checkOrThrow(module, TypeChecker.symbols(module), Map.of(), lowered);
+        warningsOut.addAll(TypeChecker.checkOrThrow(module, TypeChecker.symbols(module), Map.of(), lowered));
         Map<String, byte[]> out = Backend.generate(lowered);
         verifyConstConstructions(module, TypeChecker.symbols(module), out);
         Map<String, Ast.Def> symbols = TypeChecker.symbols(module);
@@ -153,6 +174,17 @@ public final class Compiler {
 
     /** Compiles a set of modules together, resolving explicit imports and rejecting cycles. */
     public static Map<String, byte[]> compileModules(List<String> sources) {
+        return compileModules(sources, new ArrayList<>());
+    }
+
+    /** Links a module set like {@link #compileModules(List)} and returns the classes with any
+     * invariant-discharge warnings from every module. */
+    public static Compiled compileModulesWithWarnings(List<String> sources) {
+        List<Diagnostic> warnings = new ArrayList<>();
+        return new Compiled(compileModules(sources, warnings), warnings);
+    }
+
+    private static Map<String, byte[]> compileModules(List<String> sources, List<Diagnostic> warningsOut) {
         List<Ast.Module> allParsed = new ArrayList<>();
         for (String s : sources) {
             // A module linked by imports must be named; `null` forbids omitting the header here.
@@ -207,7 +239,7 @@ public final class Compiler {
             Set<String> importedInjected = importedInjectedBehaviors(m, derived);
             m = injectRecursivePrelude(m);
             Ast.Module lowered = Lower.run(m);
-            TypeChecker.checkOrThrow(m, symbols, importedSigs, lowered);
+            warningsOut.addAll(TypeChecker.checkOrThrow(m, symbols, importedSigs, lowered));
             out.putAll(Backend.generate(lowered, symbols, importedPackages(m), importedSigs, importedInjected));
         }
         // every module's classes are now present, so CTFE and example evaluation can resolve

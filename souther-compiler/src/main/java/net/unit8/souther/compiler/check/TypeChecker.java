@@ -39,22 +39,25 @@ public final class TypeChecker {
      * point for the CLI and the annotation processor, which stop at the first error. The recovering
      * {@link #check(Ast.Module, Map, Map, Ast.Module)} collects every error for the LSP instead.
      */
-    public static void checkOrThrow(Ast.Module module, Map<String, Ast.Def> symbols,
-                                    Map<String, Sig> importedSigs, Ast.Module lowered) {
-        List<CompileException> errors = checkCollecting(module, symbols, importedSigs, lowered);
+    public static List<Diagnostic> checkOrThrow(Ast.Module module, Map<String, Ast.Def> symbols,
+                                                Map<String, Sig> importedSigs, Ast.Module lowered) {
+        List<Diagnostic> warnings = new ArrayList<>();
+        List<CompileException> errors = checkCollecting(module, symbols, importedSigs, lowered, warnings);
         if (!errors.isEmpty()) {
             throw errors.get(0);   // the original exception, so its rendered message is unchanged
         }
+        return warnings;
     }
 
     /** Every error found in {@code module}, recovering past each so the whole module is checked; the
      * originating exceptions in the order they were found (so the first is the one the old fail-fast
      * check would have thrown), deduped. */
     private static List<CompileException> checkCollecting(Ast.Module module, Map<String, Ast.Def> symbols,
-                                                          Map<String, Sig> importedSigs, Ast.Module lowered) {
+                                                          Map<String, Sig> importedSigs, Ast.Module lowered,
+                                                          List<Diagnostic> warnings) {
         List<CompileException> errors = new ArrayList<>();
         try {
-            checkRecovering(module, symbols, importedSigs, lowered, errors);
+            checkRecovering(module, symbols, importedSigs, lowered, errors, warnings);
         } catch (CompileException e) {
             // A structural / prerequisite check (a duplicate name, an `exposing` violation, a module
             // cycle) is fail-fast: it can leave later phases without the state they read, so its first
@@ -106,9 +109,11 @@ public final class TypeChecker {
     public static List<Diagnostic> check(Ast.Module module, Map<String, Ast.Def> symbols,
                              Map<String, Sig> importedSigs, Ast.Module lowered) {
         List<Diagnostic> out = new ArrayList<>();
-        for (CompileException e : checkCollecting(module, symbols, importedSigs, lowered)) {
+        List<Diagnostic> warnings = new ArrayList<>();
+        for (CompileException e : checkCollecting(module, symbols, importedSigs, lowered, warnings)) {
             out.add(e.diagnostic());
         }
+        out.addAll(warnings);
         return out;
     }
 
@@ -121,7 +126,7 @@ public final class TypeChecker {
      */
     private static void checkRecovering(Ast.Module module, Map<String, Ast.Def> symbols,
                                         Map<String, Sig> importedSigs, Ast.Module lowered,
-                                        List<CompileException> errors) {
+                                        List<CompileException> errors, List<Diagnostic> warnings) {
         Map<String, Ast.Expr> loweredBodies = new HashMap<>();
         for (Ast.FnDef fn : lowered.fns()) {
             loweredBodies.put(fn.name(), fn.body());
@@ -252,7 +257,7 @@ public final class TypeChecker {
                 Ast.FnDef fn = fns.get(spec.name());
                 if (fn != null) {
                     collect(errors, () -> checkSpecFn(spec, fn, loweredBodies.get(spec.name()), symbols,
-                            allBehaviors, reqSigs, inliner, recursiveHelperFns, recHelperConstructs));
+                            allBehaviors, reqSigs, inliner, recursiveHelperFns, recHelperConstructs, warnings));
                 }
             }
         }
@@ -752,7 +757,8 @@ public final class TypeChecker {
                                     Map<String, Ast.Def> symbols, Set<String> allBehaviors,
                                     Map<String, ReqSig> reqSigs, HelperInliner inliner,
                                     Map<String, Type> recursiveHelperFns,
-                                    Map<String, Set<String>> recHelperConstructs) {
+                                    Map<String, Set<String>> recHelperConstructs,
+                                    List<Diagnostic> warnings) {
         if (fn.declaredReturn() != null) {
             throw CompileException.of(
                     Diagnostic.of(null, "check.impl.noreturn").title("check.impl.title")
@@ -880,6 +886,16 @@ public final class TypeChecker {
                         "`behavior " + spec.name() + "` declares `requires " + req + "`, but `let "
                                 + fn.name() + "` never calls it. Remove it from the `requires` clause.");
             }
+        }
+        // Intraprocedural invariant discharge: seed from the input
+        // newtypes' invariants, refine along each `require`/`if` guard, and check every construction.
+        // A guard-discharged one is silent; an unproven one is a warning (a possible abort); one the
+        // guards prove must fail on a reachable path is an error (the path-sensitive generalization of
+        // the constant `金額(-5)` check).
+        InvariantChecker.Findings inv = InvariantChecker.analyze(body, env, symbols);
+        warnings.addAll(inv.warnings());
+        if (!inv.errors().isEmpty()) {
+            throw inv.errors().get(0);
         }
     }
 
@@ -2746,13 +2762,23 @@ public final class TypeChecker {
                 // overflow and `/` aborts on a zero divisor; Decimal `/` rounds by the default
                 // scale/mode. Case handling for a zero divisor is the `divide`/`remainder` functions.
                 Type lt = typeOf(bin.left(), env, data, symbols, reqs);
+                Type rt = typeOf(bin.right(), env, data, symbols, reqs);
+                // Closed newtype arithmetic: `+`/`-` over a single-value numeric newtype yield that
+                // newtype. The result is re-wrapped and its invariant re-checked at construction,
+                // which a behavior's guard discharges. `*`/`/` stay base-only (a product or quotient
+                // changes dimension). The operands are the same newtype, or a newtype with a bare
+                // literal of its base (as for comparison).
+                if ((bin.op() == Ast.BinOp.ADD || bin.op() == Ast.BinOp.SUB)
+                        && arithClosedNewtype(lt, rt, bin.left(), bin.right(), symbols)) {
+                    yield closedNewtypeArithResult(lt, rt, symbols);
+                }
                 if (lt != Type.INT && lt != Type.DECIMAL) {
                     throw CompileException.of(
                             Diagnostic.of(null, "check.arith.operand").title("check.type.mismatch.title")
                                     .at(bin.pos()).args(Type.show(lt)).build(),
                             "operand of arithmetic must be Int or Decimal, got " + lt);
                 }
-                requireType(bin.right(), lt, env, data, symbols, reqs, "operand of arithmetic");
+                requireType(bin.right(), rt, lt, symbols, "operand of arithmetic");   // rt reused, no re-type
                 yield lt;
             }
             case CONCAT -> {
@@ -2870,6 +2896,55 @@ public final class TypeChecker {
                                        Map<String, Ast.Def> symbols) {
         return base(lt, symbols).equals(base(rt, symbols))
                 && literalPairsNewtype(lt, rt, le, re, symbols);
+    }
+
+    /** Whether {@code +}/{@code -} may combine the operands as closed newtype arithmetic: a
+     * single-value newtype whose value is Int or Decimal, paired with the same newtype, or with a
+     * bare literal of that base. A nested newtype (value is another newtype) and {@code *}/{@code /}
+     * are excluded; {@code 金額 - 数量} (two different newtypes) is not combinable and falls through
+     * to the base-only path (an error). This is the one home of the admissibility rule; codegen and
+     * the invariant analysis run on validated code and only pick the result via
+     * {@link #closedNewtypeArithResult}. */
+    private static boolean arithClosedNewtype(Type lt, Type rt, Ast.Expr le, Ast.Expr re,
+                                              Map<String, Ast.Def> symbols) {
+        Type ln = directNumericNewtypeBase(lt, symbols);
+        Type rn = directNumericNewtypeBase(rt, symbols);
+        if (ln == null && rn == null) {
+            return false;   // no newtype operand — the plain Int/Decimal path handles it
+        }
+        if (lt.equals(rt)) {
+            return ln != null;   // same single-value newtype over a numeric base
+        }
+        if (ln != null && !isSingleValueNewtype(rt, symbols) && isLiteralExpr(re) && rt.equals(ln)) {
+            return true;        // 金額 + 100 (the literal takes 金額)
+        }
+        return rn != null && !isSingleValueNewtype(lt, symbols) && isLiteralExpr(le) && lt.equals(rn);
+    }
+
+    /** The single-value numeric newtype a closed {@code +}/{@code -} over {@code lt} and {@code rt}
+     * yields — whichever operand is such a newtype — or {@code null} if neither is. Callers that have
+     * already passed the type checker's {@link #arithClosedNewtype} gate (codegen, the invariant
+     * analysis) use this to pick the result without re-deriving the admissibility rule. */
+    public static Type closedNewtypeArithResult(Type lt, Type rt, Map<String, Ast.Def> symbols) {
+        if (directNumericNewtypeBase(lt, symbols) != null) {
+            return lt;
+        }
+        if (directNumericNewtypeBase(rt, symbols) != null) {
+            return rt;
+        }
+        return null;
+    }
+
+    /** The Int or Decimal that a single-value newtype directly wraps (one level), or {@code null}
+     * (a non-newtype, or a newtype over a non-numeric or over another newtype). */
+    static Type directNumericNewtypeBase(Type t, Map<String, Ast.Def> symbols) {
+        if (isSingleValueNewtype(t, symbols)) {
+            Type inner = fieldTypes((Ast.Data) symbols.get(((Type.Ref) t).name()), symbols).get("value");
+            if (inner == Type.INT || inner == Type.DECIMAL) {
+                return inner;
+            }
+        }
+        return null;
     }
 
     /** One side is a single-value newtype and the other is a bare literal (not itself a newtype). */
@@ -3214,7 +3289,14 @@ public final class TypeChecker {
 
     private static void requireType(Ast.Expr e, Type expected, Map<String, Type> env, Ast.Data data,
                                     Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs, String what) {
-        Type actual = typeOf(e, env, data, symbols, reqs);
+        requireType(e, typeOf(e, env, data, symbols, reqs), expected, symbols, what);
+    }
+
+    /** As {@link #requireType(Ast.Expr, Type, Map, Ast.Data, Map, Map, String)}, but with the
+     * operand's type already computed — a caller that has typed {@code e} does not re-type its
+     * subtree. */
+    private static void requireType(Ast.Expr e, Type actual, Type expected,
+                                    Map<String, Ast.Def> symbols, String what) {
         if (!assignable(actual, expected, symbols)) {   // a case widens to its sum (spec 8.3)
             throw CompileException.of(
                     Diagnostic.of(null, "check.type.mismatch.msg")

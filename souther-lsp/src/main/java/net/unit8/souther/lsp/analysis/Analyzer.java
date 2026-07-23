@@ -630,7 +630,9 @@ public final class Analyzer {
             message = message + " (expected " + d.diff().expectedType()
                     + ", but was " + d.diff().actualType() + ")";
         }
-        return new LspDiagnostic(rangeOf(lines, d), LspDiagnostic.ERROR, d.code(), message);
+        int severity = d.severity() == net.unit8.souther.compiler.diag.Severity.WARNING
+                ? LspDiagnostic.WARNING : LspDiagnostic.ERROR;
+        return new LspDiagnostic(rangeOf(lines, d), severity, d.code(), message);
     }
 
     private Range rangeOf(LineIndex lines, Diagnostic d) {
