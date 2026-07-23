@@ -27,4 +27,9 @@ public final class DecimalMath {
         }
         return a.divide(b, DIVIDE);
     }
+
+    /** {@code Decimal.compare(a, b)}: -1, 0, or 1 by numeric value, ignoring scale. */
+    public static long compare(BigDecimal a, BigDecimal b) {
+        return a.compareTo(b);
+    }
 }

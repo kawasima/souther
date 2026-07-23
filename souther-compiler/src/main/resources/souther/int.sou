@@ -1,0 +1,22 @@
+// The Int stdlib. Like every other core module its functions are declared here — the declaration,
+// not a hardcoded compiler table, carries the signature (§intrinsics). Each maps to a JVM kernel in
+// souther-runtime's IntMath: add/subtract/multiply abort on overflow, modBy aborts on a zero divisor.
+//
+// The `+ - * /` operators (and `< <= > >=`) stay compiler-integrated: they are syntax and carry the
+// closed-newtype arithmetic rules, which a plain function cannot. `divide`/`remainder` also stay
+// compiler-integrated for now — they return `Int | DivisionByZero`, a primitive-headed union a core
+// declaration cannot yet express. See the stdlib implementation-location policy.
+module souther.int
+
+let add (a: Int, b: Int) : Int = intrinsic "int.add"
+let subtract (a: Int, b: Int) : Int = intrinsic "int.subtract"
+let multiply (a: Int, b: Int) : Int = intrinsic "int.multiply"
+
+// compare returns -1, 0, or 1 (the function form of the comparison operators).
+let compare (a: Int, b: Int) : Int = intrinsic "int.compare"
+
+// modBy is Elm-style floored modulo: the divisor comes first (pipe convention, subject last), the
+// result takes the sign of the divisor, and a zero divisor *aborts* like `/` — so the result is a
+// plain Int and reads cleanly in an invariant (`invariant Int.modBy(12, value) == 0`). Use
+// `remainder` when a zero divisor must be a business case instead of an abort.
+let modBy (divisor: Int, n: Int) : Int = intrinsic "int.modBy"

@@ -222,6 +222,21 @@ final class Intrinsics {
         t.put("datetime.toDate",
                 jdk(CD_LocalDateTime, "toLocalDate", mtd(CD_LocalDate), order(0), Type.DATE));
 
+        // Int — IntMath statics. add/subtract/multiply share the overflow-aborting kernel with the
+        // `+ - *` operators; modBy aborts on a zero divisor; compare returns -1/0/1.
+        t.put("int.add", rt(CD_IntMath, "addExact", order(0, 1), ts -> Type.INT));
+        t.put("int.subtract", rt(CD_IntMath, "subtractExact", order(0, 1), ts -> Type.INT));
+        t.put("int.multiply", rt(CD_IntMath, "multiplyExact", order(0, 1), ts -> Type.INT));
+        t.put("int.compare", rt(CD_IntMath, "compare", order(0, 1), ts -> Type.INT));
+        t.put("int.modBy", rt(CD_IntMath, "modBy", order(0, 1), ts -> Type.INT));
+
+        // Decimal — add/subtract/multiply are BigDecimal instance methods (receiver is the first arg);
+        // compare is a DecimalMath static returning -1/0/1.
+        t.put("decimal.add", jdk(CD_BigDecimal, "add", MTD_bdArith, order(0, 1), Type.DECIMAL));
+        t.put("decimal.subtract", jdk(CD_BigDecimal, "subtract", MTD_bdArith, order(0, 1), Type.DECIMAL));
+        t.put("decimal.multiply", jdk(CD_BigDecimal, "multiply", MTD_bdArith, order(0, 1), Type.DECIMAL));
+        t.put("decimal.compare", rt(CD_DecimalMath, "compare", order(0, 1), ts -> Type.INT));
+
         return Map.copyOf(t);
     }
 
