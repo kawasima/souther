@@ -674,9 +674,7 @@ final class BodyGen {
                 // ConstraintViolation. orThrow returns Object, so narrow it back to the value type.
                 emitFieldValues(flds, nd.inits(), nd.spreads());
                 emitLine(nd);   // re-pin: a field init may have moved the line off the construction
-                code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(flds)));
-                code.invokestatic(CD_ConstraintViolation, "orThrow", MTD_orThrow);
-                code.checkcast(cdType);
+                finishInvariantConstruct(cdType, flds);
                 return Type.ref(nd.typeName());
             }
             code.new_(cdType);
@@ -687,26 +685,26 @@ final class BodyGen {
             return Type.ref(nd.typeName());
         }
 
-        /** The name of the single-value newtype {@code t} refers to, or {@code null}. */
-        private String newtypeNameOf(Type t) {
-            return t instanceof Type.Ref ref
-                    && symbols.get(ref.name()) instanceof Ast.Data d && d.newtype()
-                    ? d.name() : null;
+        /** Emits the checked-construction tail — {@code __construct(fields) -> Result}, {@code orThrow}
+         * (yield, or abort on invariant violation), and a narrowing cast — with the field values
+         * already on the stack. */
+        private void finishInvariantConstruct(ClassDesc cdType, Map<String, Type> flds) {
+            code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(flds)));
+            code.invokestatic(CD_ConstraintViolation, "orThrow", MTD_orThrow);
+            code.checkcast(cdType);
         }
 
         /** Wraps a base value (Int/Decimal) already on the stack into a single-value newtype, running
-         * its invariant check (spec §newtype-arithmetic) — the closed-arithmetic counterpart of
-         * {@link #newData}. An invariant-bearing newtype goes through {@code __construct}/{@code orThrow}
-         * (aborts on violation, which a behavior's guard is meant to have discharged); a plain newtype
-         * is stashed and built with {@code new}/{@code <init>}. */
+         * its invariant check — the closed-arithmetic counterpart of {@link #newData}. An
+         * invariant-bearing newtype goes through {@code __construct}/{@code orThrow} (aborts on
+         * violation, which a behavior's guard is meant to have discharged); a plain newtype is stashed
+         * and built with {@code new}/{@code <init>}. */
         private Type wrapNewtypeValue(String ntName, Type base) {
             Ast.Data owner = (Ast.Data) symbols.get(ntName);
             Map<String, Type> flds = fieldTypes(owner);
             ClassDesc cdType = cd(ntName);
             if (TypeChecker.isInvariantBearing(ntName, symbols)) {
-                code.invokestatic(cdType, "__construct", MethodTypeDesc.of(CD_Result, fieldDescs(flds)));
-                code.invokestatic(CD_ConstraintViolation, "orThrow", MTD_orThrow);
-                code.checkcast(cdType);
+                finishInvariantConstruct(cdType, flds);
             } else {
                 int s = slot(base);
                 store(code, s, base);
@@ -1050,7 +1048,7 @@ final class BodyGen {
                 // rounds by the default scale/mode. Case handling for a zero divisor is the
                 // divide/remainder functions, not the operator.
                 case ADD, SUB, MUL, DIV -> {
-                    // Closed newtype arithmetic (spec §newtype-arithmetic): `+`/`-` over a newtype
+                    // Closed newtype arithmetic: `+`/`-` over a newtype
                     // opens each operand to its base, computes on the base, then re-wraps the result
                     // into the newtype (re-checking its invariant). A non-newtype operand is left as
                     // is (unwrapNewtypeValue is a no-op). `*`/`/` never reach here as a newtype (the
@@ -1075,14 +1073,10 @@ final class BodyGen {
                         };
                         code.invokestatic(CD_IntMath, m, MTD_intExact);
                     }
-                    String nt = newtypeNameOf(lraw);
-                    if (nt == null) {
-                        nt = newtypeNameOf(rraw);
-                    }
-                    if (nt != null) {
-                        return wrapNewtypeValue(nt, t);
-                    }
-                    return t;
+                    // Closed `+`/`-`: re-wrap the base result into the operand's newtype (the checker
+                    // has already validated admissibility, so this only picks the result newtype).
+                    Type nt = TypeChecker.closedNewtypeArithResult(lraw, rraw, symbols);
+                    return nt != null ? wrapNewtypeValue(((Type.Ref) nt).name(), t) : t;
                 }
                 case CONCAT -> {
                     Type lt = genExpr(bin.left());

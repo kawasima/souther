@@ -887,7 +887,7 @@ public final class TypeChecker {
                                 + fn.name() + "` never calls it. Remove it from the `requires` clause.");
             }
         }
-        // Intraprocedural invariant discharge (spec §invariant-discharge): seed from the input
+        // Intraprocedural invariant discharge: seed from the input
         // newtypes' invariants, refine along each `require`/`if` guard, and check every construction.
         // A guard-discharged one is silent; an unproven one is a warning (a possible abort); one the
         // guards prove must fail on a reachable path is an error (the path-sensitive generalization of
@@ -2763,14 +2763,14 @@ public final class TypeChecker {
                 // scale/mode. Case handling for a zero divisor is the `divide`/`remainder` functions.
                 Type lt = typeOf(bin.left(), env, data, symbols, reqs);
                 Type rt = typeOf(bin.right(), env, data, symbols, reqs);
-                // Closed newtype arithmetic (spec §newtype-arithmetic): `+`/`-` over a single-value
-                // numeric newtype yield that newtype. The result is re-wrapped and its invariant is
-                // re-checked at construction, which a behavior's guard discharges. `*`/`/` stay
-                // base-only (a product or quotient changes dimension). The operands are the same
-                // newtype, or a newtype with a bare literal of its base (as for comparison).
+                // Closed newtype arithmetic: `+`/`-` over a single-value numeric newtype yield that
+                // newtype. The result is re-wrapped and its invariant re-checked at construction,
+                // which a behavior's guard discharges. `*`/`/` stay base-only (a product or quotient
+                // changes dimension). The operands are the same newtype, or a newtype with a bare
+                // literal of its base (as for comparison).
                 if ((bin.op() == Ast.BinOp.ADD || bin.op() == Ast.BinOp.SUB)
                         && arithClosedNewtype(lt, rt, bin.left(), bin.right(), symbols)) {
-                    yield isSingleValueNewtype(lt, symbols) ? lt : rt;
+                    yield closedNewtypeArithResult(lt, rt, symbols);
                 }
                 if (lt != Type.INT && lt != Type.DECIMAL) {
                     throw CompileException.of(
@@ -2778,7 +2778,7 @@ public final class TypeChecker {
                                     .at(bin.pos()).args(Type.show(lt)).build(),
                             "operand of arithmetic must be Int or Decimal, got " + lt);
                 }
-                requireType(bin.right(), lt, env, data, symbols, reqs, "operand of arithmetic");
+                requireType(bin.right(), rt, lt, symbols, "operand of arithmetic");   // rt reused, no re-type
                 yield lt;
             }
             case CONCAT -> {
@@ -2898,11 +2898,13 @@ public final class TypeChecker {
                 && literalPairsNewtype(lt, rt, le, re, symbols);
     }
 
-    /** Whether {@code +}/{@code -} may combine the operands as closed newtype arithmetic
-     * (spec §newtype-arithmetic): a single-value newtype whose value is Int or Decimal, paired with
-     * the same newtype, or with a bare literal of that base. A nested newtype (value is another
-     * newtype) and {@code *}/{@code /} are excluded; {@code 金額 - 数量} (two different newtypes) is
-     * not combinable and falls through to the base-only path (an error). */
+    /** Whether {@code +}/{@code -} may combine the operands as closed newtype arithmetic: a
+     * single-value newtype whose value is Int or Decimal, paired with the same newtype, or with a
+     * bare literal of that base. A nested newtype (value is another newtype) and {@code *}/{@code /}
+     * are excluded; {@code 金額 - 数量} (two different newtypes) is not combinable and falls through
+     * to the base-only path (an error). This is the one home of the admissibility rule; codegen and
+     * the invariant analysis run on validated code and only pick the result via
+     * {@link #closedNewtypeArithResult}. */
     private static boolean arithClosedNewtype(Type lt, Type rt, Ast.Expr le, Ast.Expr re,
                                               Map<String, Ast.Def> symbols) {
         Type ln = directNumericNewtypeBase(lt, symbols);
@@ -2919,9 +2921,23 @@ public final class TypeChecker {
         return rn != null && !isSingleValueNewtype(lt, symbols) && isLiteralExpr(le) && lt.equals(rn);
     }
 
+    /** The single-value numeric newtype a closed {@code +}/{@code -} over {@code lt} and {@code rt}
+     * yields — whichever operand is such a newtype — or {@code null} if neither is. Callers that have
+     * already passed the type checker's {@link #arithClosedNewtype} gate (codegen, the invariant
+     * analysis) use this to pick the result without re-deriving the admissibility rule. */
+    public static Type closedNewtypeArithResult(Type lt, Type rt, Map<String, Ast.Def> symbols) {
+        if (directNumericNewtypeBase(lt, symbols) != null) {
+            return lt;
+        }
+        if (directNumericNewtypeBase(rt, symbols) != null) {
+            return rt;
+        }
+        return null;
+    }
+
     /** The Int or Decimal that a single-value newtype directly wraps (one level), or {@code null}
      * (a non-newtype, or a newtype over a non-numeric or over another newtype). */
-    private static Type directNumericNewtypeBase(Type t, Map<String, Ast.Def> symbols) {
+    static Type directNumericNewtypeBase(Type t, Map<String, Ast.Def> symbols) {
         if (isSingleValueNewtype(t, symbols)) {
             Type inner = fieldTypes((Ast.Data) symbols.get(((Type.Ref) t).name()), symbols).get("value");
             if (inner == Type.INT || inner == Type.DECIMAL) {
@@ -3273,7 +3289,14 @@ public final class TypeChecker {
 
     private static void requireType(Ast.Expr e, Type expected, Map<String, Type> env, Ast.Data data,
                                     Map<String, Ast.Def> symbols, Map<String, ReqSig> reqs, String what) {
-        Type actual = typeOf(e, env, data, symbols, reqs);
+        requireType(e, typeOf(e, env, data, symbols, reqs), expected, symbols, what);
+    }
+
+    /** As {@link #requireType(Ast.Expr, Type, Map, Ast.Data, Map, Map, String)}, but with the
+     * operand's type already computed — a caller that has typed {@code e} does not re-type its
+     * subtree. */
+    private static void requireType(Ast.Expr e, Type actual, Type expected,
+                                    Map<String, Ast.Def> symbols, String what) {
         if (!assignable(actual, expected, symbols)) {   // a case widens to its sum (spec 8.3)
             throw CompileException.of(
                     Diagnostic.of(null, "check.type.mismatch.msg")

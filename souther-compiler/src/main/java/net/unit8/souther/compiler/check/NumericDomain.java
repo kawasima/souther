@@ -83,25 +83,17 @@ final class NumericDomain {
         if (bottom) {
             return this;
         }
-        return switch (rel) {
-            case GE -> assumeLe(f.negate());          // f >= 0  <=>  -f <= 0
-            case GT -> assumeLt(f.negate());
-            case LE -> assumeLe(f);
-            case LT -> assumeLt(f);
-            case EQ -> assumeLe(f).assumeLe(f.negate());
-        };
+        if (rel == Rel.EQ) {
+            return addLe(f, false).addLe(f.negate(), false);
+        }
+        // Reduce `f rel 0` to `g <= 0` (or `g < 0`): negate the form for >=/>, keep it for <=/<.
+        return addLe(negOf(rel) ? f.negate() : f, strictOf(rel));
     }
 
-    private NumericDomain assumeLe(LinearForm g) {
-        return addLe(g, false);
-    }
-
-    private NumericDomain assumeLt(LinearForm g) {
-        // strict < is approximated by <= (sound for discharge; loses nothing on the cases we need)
-        return addLe(g, true);
-    }
-
-    /** Assert {@code g <= 0} (or {@code g < 0} when strict), updating an interval or a difference. */
+    /** Assert {@code g <= 0} (or {@code g < 0} when strict), updating an interval or a difference. A
+     * form outside the interval/difference fragment is not representable and leaves the domain
+     * unchanged (sound). Strictness only sharpens the constant case; for an interval or difference a
+     * strict {@code < 0} is recorded as {@code <= 0} (weaker, so still sound). */
     private NumericDomain addLe(LinearForm g, boolean strict) {
         Map<String, BigDecimal> c = g.coefs();
         if (c.isEmpty()) {
@@ -122,35 +114,41 @@ final class NumericDomain {
             BigDecimal bound = g.constant().negate().divide(k, mc);
             return upper ? withHi(a, bound) : withLo(a, bound);
         }
-        if (c.size() == 2 && isUnitDifference(c)) {
-            // {a:+1, b:-1}·+ const <= 0  =>  a - b <= -const
-            String a = null;
-            String b = null;
-            for (Map.Entry<String, BigDecimal> e : c.entrySet()) {
-                if (e.getValue().signum() > 0) {
-                    a = e.getKey();
-                } else {
-                    b = e.getKey();
-                }
-            }
-            return withDiff(a, b, g.constant().negate());
+        String[] ab = unitDiffAtoms(c);
+        if (ab != null) {
+            return withDiff(ab[0], ab[1], g.constant().negate());   // a - b <= -const
         }
         return this;   // not representable — leave unchanged (sound)
     }
 
-    private static boolean isUnitDifference(Map<String, BigDecimal> c) {
-        int pos = 0;
-        int neg = 0;
-        for (BigDecimal v : c.values()) {
-            if (v.compareTo(BigDecimal.ONE) == 0) {
-                pos++;
-            } else if (v.compareTo(BigDecimal.ONE.negate()) == 0) {
-                neg++;
+    /** The two atoms of a unit difference {@code {a:+1, b:-1}} as {@code {a, b}}, or {@code null} if
+     * {@code c} is not a two-atom form with coefficients +1 and -1. */
+    private static String[] unitDiffAtoms(Map<String, BigDecimal> c) {
+        if (c.size() != 2) {
+            return null;
+        }
+        String a = null;
+        String b = null;
+        for (Map.Entry<String, BigDecimal> e : c.entrySet()) {
+            if (e.getValue().compareTo(BigDecimal.ONE) == 0) {
+                a = e.getKey();
+            } else if (e.getValue().compareTo(BigDecimal.ONE.negate()) == 0) {
+                b = e.getKey();
             } else {
-                return false;
+                return null;
             }
         }
-        return pos == 1 && neg == 1;
+        return a != null && b != null ? new String[] {a, b} : null;
+    }
+
+    /** True for {@code GT}/{@code LT} (a strict comparison). */
+    private static boolean strictOf(Rel rel) {
+        return rel == Rel.GT || rel == Rel.LT;
+    }
+
+    /** True for {@code GE}/{@code GT} — the form is negated to reduce the comparison to {@code <= 0}. */
+    private static boolean negOf(Rel rel) {
+        return rel == Rel.GE || rel == Rel.GT;
     }
 
     // --- entails / refutes ---------------------------------------------------------------------
@@ -160,28 +158,20 @@ final class NumericDomain {
         if (bottom) {
             return true;   // an infeasible path discharges anything
         }
-        return switch (rel) {
-            case GE -> proveLe(f.negate(), false);    // f >= 0  <=>  -f <= 0
-            case GT -> proveLe(f.negate(), true);
-            case LE -> proveLe(f, false);
-            case LT -> proveLe(f, true);
-            case EQ -> proveLe(f, false) && proveLe(f.negate(), false);
-        };
+        if (rel == Rel.EQ) {
+            return proveLe(f, false) && proveLe(f.negate(), false);
+        }
+        return proveLe(negOf(rel) ? f.negate() : f, strictOf(rel));
     }
 
     /** Whether the domain proves {@code ¬(f rel 0)} — the invariant is <em>definitely</em> violated
-     * on this path (a compile error, the path-sensitive generalization of the constant check). */
+     * on this path (a compile error, the path-sensitive generalization of the constant check). The
+     * negation flips both bits of the comparison: {@code ¬(f >= 0)} is {@code f < 0}, etc. */
     boolean refutes(LinearForm f, Rel rel) {
-        if (bottom) {
-            return false;   // an unreachable path violates nothing
+        if (bottom || rel == Rel.EQ) {
+            return false;   // an unreachable path violates nothing; equality is never refuted here
         }
-        return switch (rel) {
-            case GE -> proveLe(f, true);              // ¬(f >= 0)  <=>  f < 0
-            case GT -> proveLe(f, false);             // ¬(f > 0)   <=>  f <= 0
-            case LE -> proveLe(f.negate(), true);     // ¬(f <= 0)  <=>  f > 0  <=>  -f < 0
-            case LT -> proveLe(f.negate(), false);    // ¬(f < 0)   <=>  f >= 0 <=>  -f <= 0
-            case EQ -> false;                          // not needed; never refute equality here
-        };
+        return proveLe(negOf(rel) ? f : f.negate(), !strictOf(rel));
     }
 
     /** Whether {@code g <= 0} (or {@code g < 0} when strict) follows from the domain. */
@@ -193,20 +183,12 @@ final class NumericDomain {
                 return true;
             }
         }
-        if (g.coefs().size() == 2 && isUnitDifference(g.coefs())) {
-            String a = null;
-            String b = null;
-            for (Map.Entry<String, BigDecimal> e : g.coefs().entrySet()) {
-                if (e.getValue().signum() > 0) {
-                    a = e.getKey();
-                } else {
-                    b = e.getKey();
-                }
-            }
-            BigDecimal ab = closedDiff(a, b);      // proven upper bound on (a - b)
-            if (ab != null) {
-                BigDecimal bound = g.constant().negate();   // want a - b <= -const
-                int s = ab.compareTo(bound);
+        String[] ab = unitDiffAtoms(g.coefs());
+        if (ab != null) {
+            BigDecimal diffBound = closedDiff(ab[0], ab[1]);   // proven upper bound on (a - b)
+            if (diffBound != null) {
+                BigDecimal bound = g.constant().negate();      // want a - b <= -const
+                int s = diffBound.compareTo(bound);
                 if (s < 0 || (!strict && s == 0)) {
                     return true;
                 }
@@ -296,7 +278,16 @@ final class NumericDomain {
         Map<String, Map<String, BigDecimal>> nd = new HashMap<>();
         diff.forEach((k, v) -> nd.put(k, new HashMap<>(v)));
         nd.computeIfAbsent(a, k -> new HashMap<>()).merge(b, bound, NumericDomain::min);
-        return new NumericDomain(false, lo, hi, nd);
+        NumericDomain d = new NumericDomain(false, lo, hi, nd);
+        // Contradictory guards make the path infeasible: with a - b <= bound now recorded, if the
+        // difference facts also prove b - a <= back and bound + back < 0, then 0 <= bound + back < 0.
+        // Mark it bottom so entails discharges everything and refutes fires nothing — no false E2010
+        // on a dead path.
+        BigDecimal back = d.closedDiff(b, a);
+        if (back != null && bound.add(back).signum() < 0) {
+            return bottom();
+        }
+        return d;
     }
 
     private boolean feasible(String a) {

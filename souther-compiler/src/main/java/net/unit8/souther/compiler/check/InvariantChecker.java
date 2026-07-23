@@ -12,19 +12,18 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * The intraprocedural invariant-discharge check (spec §invariant-discharge). It walks a behavior's
- * body threading a {@link NumericDomain} — seeded from the input newtypes' invariants and refined
- * along each {@code require}/{@code if} guard (a {@code require} is already an {@code if} here) — and,
- * at every construction whose invariant is expressible in the domain, asks whether the guards
+ * The intraprocedural invariant-discharge check. It walks a behavior's body threading a
+ * {@link NumericDomain} — seeded from the input newtypes' invariants and refined along each
+ * {@code require}/{@code if} guard (a {@code require} is already an {@code if} here) — and, at every
+ * construction whose invariant is expressible in the domain, asks whether the guards
  * <em>discharge</em> it. A construction the domain proves must violate its invariant on a reachable
  * path is a compile error (the path-sensitive generalization of the constant check {@code 金額(-5)});
- * one it cannot prove is a warning (a possible abort — guard it, reify the relation into a type
- * invariant, or {@code unchecked} it). An invariant it cannot express is left opaque (no diagnostic;
- * the run-time check stays), so every flagged construction has a guard the domain can verify.
+ * one it cannot prove is a warning (a possible abort — guard it, or reify the relation into a type
+ * invariant). An invariant it cannot express is left opaque (no diagnostic; the run-time check stays),
+ * so every flagged construction has a guard the domain can verify.
  *
  * <p>The walk mirrors {@link TotalityChecker}: a {@code switch} over {@code Ast.Expr} threading an
  * immutable environment. It is fail-open — any internal error is swallowed so an analysis bug can
@@ -33,6 +32,22 @@ import java.util.function.Function;
 final class InvariantChecker {
 
     record Findings(List<CompileException> errors, List<Diagnostic> warnings) {}
+
+    /** A stdlib list combinator whose closure (argument {@code closureArg}) is handed each element of
+     * its list argument ({@code listArg}) as closure parameter {@code elementParam} — mirrors
+     * {@link TotalityChecker}'s table, so a construction inside a {@code List.map}/{@code fold} closure
+     * is analyzed with the element bound to the list's element type. */
+    private record Combinator(int closureArg, int elementParam, int listArg) {}
+
+    private static final Map<String, Combinator> COMBINATORS = Map.of(
+            "List.fold", new Combinator(0, 1, 2),
+            "List.foldFrom", new Combinator(0, 1, 2),
+            "List.map", new Combinator(0, 0, 1),
+            "List.filter", new Combinator(0, 0, 1),
+            "List.all", new Combinator(0, 0, 1),
+            "List.any", new Combinator(0, 0, 1),
+            "List.find", new Combinator(0, 0, 1),
+            "List.partition", new Combinator(0, 0, 1));
 
     private final Map<String, Ast.Def> symbols;
     private final List<CompileException> errors = new ArrayList<>();
@@ -74,11 +89,8 @@ final class InvariantChecker {
                 if (vt != null) {
                     t2.put(li.name(), vt);
                 }
-                NumericDomain d2 = d;
                 LinearForm vf = affineOf(li.value(), types);
-                if (isNumeric(vt) && vf != null) {
-                    d2 = d.assign(li.name(), vf);
-                }
+                NumericDomain d2 = isNumeric(vt) && vf != null ? d.assign(li.name(), vf) : d;
                 walk(li.body(), d2, t2);
             }
             case Ast.Match m -> {
@@ -91,8 +103,32 @@ final class InvariantChecker {
                     walk(c.body(), d, t2);
                 }
             }
-            case Ast.Block b -> walk(b.body(), d, types);
-            default -> forEachChild(e, child -> walk(child, d, types));
+            case Ast.Call call -> walkCall(call, d, types);
+            default -> Ast.forEachChild(e, child -> walk(child, d, types));
+        }
+    }
+
+    /** Walks a call, binding a combinator closure's element parameter to the list's element type (and
+     * seeding its invariant) so a construction inside the closure is analyzed rather than left opaque. */
+    private void walkCall(Ast.Call call, NumericDomain d, Map<String, Type> types) {
+        Combinator combo = COMBINATORS.get(call.fn());
+        for (int i = 0; i < call.args().size(); i++) {
+            Ast.Expr arg = call.args().get(i);
+            if (combo != null && i == combo.closureArg() && arg instanceof Ast.Block step
+                    && combo.elementParam() < step.params().size()
+                    && combo.listArg() < call.args().size()) {
+                Type elem = elementType(typeExpr(call.args().get(combo.listArg()), types));
+                Map<String, Type> t2 = new HashMap<>(types);
+                NumericDomain d2 = d;
+                if (elem != null) {
+                    String p = step.params().get(combo.elementParam());
+                    t2.put(p, elem);
+                    d2 = seedParam(p, elem, d);   // the element carries its type's invariant
+                }
+                walk(step.body(), d2, t2);
+            } else {
+                walk(arg, d, types);
+            }
         }
     }
 
@@ -113,9 +149,8 @@ final class InvariantChecker {
                 }
             }
             case Ast.Binary bin when isArith(bin.op()) -> {
-                Type rt = arithType(bin, types);
-                if (rt instanceof Type.Ref r && symbols.get(r.name()) instanceof Ast.Data type
-                        && type.newtype()) {
+                if (typeExpr(bin, types) instanceof Type.Ref r
+                        && symbols.get(r.name()) instanceof Ast.Data type && type.newtype()) {
                     LinearForm value = affineOf(bin, types);
                     if (value != null) {
                         check(type, name -> "value".equals(name) ? value : null, d, bin.pos());
@@ -180,31 +215,15 @@ final class InvariantChecker {
             both.addAll(r);
             return both;
         }
-        if (inv instanceof Ast.Binary b && relOf(b.op()) != null) {
-            LinearForm la = affineResolved(b.left(), resolve);
-            LinearForm ra = affineResolved(b.right(), resolve);
-            if (la == null || ra == null) {
-                return null;
+        if (inv instanceof Ast.Binary b) {
+            Rel rel = relOf(b.op());
+            if (rel != null) {
+                LinearForm la = affine(b.left(), resolveLeaf(resolve));
+                LinearForm ra = affine(b.right(), resolveLeaf(resolve));
+                return la == null || ra == null ? null : List.of(new Constraint(la.minus(ra), rel));
             }
-            return List.of(new Constraint(la.minus(ra), relOf(b.op())));
         }
         return null;
-    }
-
-    /** The affine form of an invariant sub-expression, resolving a bare name through {@code resolve}
-     * (its field/{@code value}). Literals and {@code +}/{@code -} compose; anything else is {@code null}. */
-    private LinearForm affineResolved(Ast.Expr e, Function<String, LinearForm> resolve) {
-        return switch (e) {
-            case Ast.Var v -> resolve.apply(v.name());
-            case Ast.IntLit i -> LinearForm.constant(BigDecimal.valueOf(i.value()));
-            case Ast.DecimalLit dd -> LinearForm.constant(dd.value());
-            case Ast.Neg n -> negate(affineResolved(n.operand(), resolve));
-            case Ast.Binary b when b.op() == Ast.BinOp.ADD -> add(
-                    affineResolved(b.left(), resolve), affineResolved(b.right(), resolve), false);
-            case Ast.Binary b when b.op() == Ast.BinOp.SUB -> add(
-                    affineResolved(b.left(), resolve), affineResolved(b.right(), resolve), true);
-            default -> null;
-        };
     }
 
     /** Refines {@code d} by asserting {@code cond} (or its negation). Non-comparison conditions and
@@ -213,17 +232,16 @@ final class InvariantChecker {
         if (cond instanceof Ast.Binary b && b.op() == Ast.BinOp.AND && positive) {
             return assumeCond(b.right(), assumeCond(b.left(), d, types, true), types, true);
         }
-        if (cond instanceof Ast.Binary b && relOf(b.op()) != null) {
-            LinearForm la = affineOf(b.left(), types);
-            LinearForm ra = affineOf(b.right(), types);
-            if (la == null || ra == null) {
-                return d;
+        if (cond instanceof Ast.Binary b) {
+            Rel rel = relOf(b.op());
+            if (rel != null) {
+                LinearForm la = affineOf(b.left(), types);
+                LinearForm ra = affineOf(b.right(), types);
+                Rel eff = positive ? rel : negateRel(rel);
+                if (la != null && ra != null && eff != null) {
+                    return d.assume(la.minus(ra), eff);
+                }
             }
-            Rel rel = positive ? relOf(b.op()) : negateRel(relOf(b.op()));
-            if (rel == null) {
-                return d;
-            }
-            return d.assume(la.minus(ra), rel);
         }
         return d;
     }
@@ -242,7 +260,6 @@ final class InvariantChecker {
         if (depth > 2 || !(t instanceof Type.Ref ref) || !(symbols.get(ref.name()) instanceof Ast.Data data)) {
             return d;
         }
-        List<Ast.Expr> invs = TypeChecker.effectiveInvariants(data, symbols);
         Map<String, Type> fields = TypeChecker.fieldTypes(data, symbols);
         Function<String, LinearForm> resolve = fieldName -> {
             if (data.newtype() && fieldName.equals("value")) {
@@ -251,7 +268,7 @@ final class InvariantChecker {
             return fields.containsKey(fieldName) ? LinearForm.atom(path + "." + fieldName) : null;
         };
         NumericDomain out = d;
-        for (Ast.Expr inv : invs) {
+        for (Ast.Expr inv : TypeChecker.effectiveInvariants(data, symbols)) {
             List<Constraint> cs = invConstraints(inv, resolve);
             if (cs != null) {
                 for (Constraint c : cs) {
@@ -267,26 +284,40 @@ final class InvariantChecker {
         return out;
     }
 
-    // --- affine of a body expression -----------------------------------------------------------
+    // --- affine forms --------------------------------------------------------------------------
 
-    private LinearForm affineOf(Ast.Expr e, Map<String, Type> types) {
+    /** The shared affine walk: literals and {@code +}/{@code -} compose; every other node is handed to
+     * {@code leaf} (which decides whether it is an atom, a resolved field, or opaque). */
+    private LinearForm affine(Ast.Expr e, Function<Ast.Expr, LinearForm> leaf) {
         return switch (e) {
             case Ast.IntLit i -> LinearForm.constant(BigDecimal.valueOf(i.value()));
             case Ast.DecimalLit dd -> LinearForm.constant(dd.value());
-            case Ast.Neg n -> negate(affineOf(n.operand(), types));
-            case Ast.Binary b when b.op() == Ast.BinOp.ADD -> add(
-                    affineOf(b.left(), types), affineOf(b.right(), types), false);
-            case Ast.Binary b when b.op() == Ast.BinOp.SUB -> add(
-                    affineOf(b.left(), types), affineOf(b.right(), types), true);
-            case Ast.NewData nd when nd.spreads().isEmpty() && nd.inits().size() == 1
-                    && nd.inits().get(0).name().equals("value")
-                    && isNumericNewtype(Type.ref(nd.typeName())) ->
-                    affineOf(nd.inits().get(0).value(), types);
-            default -> {
-                String atom = atomOf(e, types);
-                yield atom == null ? null : LinearForm.atom(atom);
-            }
+            case Ast.Neg n -> negate(affine(n.operand(), leaf));
+            case Ast.Binary b when b.op() == Ast.BinOp.ADD ->
+                    add(affine(b.left(), leaf), affine(b.right(), leaf), false);
+            case Ast.Binary b when b.op() == Ast.BinOp.SUB ->
+                    add(affine(b.left(), leaf), affine(b.right(), leaf), true);
+            default -> leaf.apply(e);
         };
+    }
+
+    /** The affine form of a body expression: a numeric atom, a newtype construct's wrapped value, or
+     * {@code null}. */
+    private LinearForm affineOf(Ast.Expr e, Map<String, Type> types) {
+        return affine(e, n -> {
+            if (n instanceof Ast.NewData nd && nd.spreads().isEmpty() && nd.inits().size() == 1
+                    && nd.inits().get(0).name().equals("value")
+                    && numericNewtype(Type.ref(nd.typeName()))) {
+                return affineOf(nd.inits().get(0).value(), types);
+            }
+            String atom = atomOf(n, types);
+            return atom == null ? null : LinearForm.atom(atom);
+        });
+    }
+
+    /** The leaf rule for an invariant expression: a bare name resolves to its field/{@code value}. */
+    private static Function<Ast.Expr, LinearForm> resolveLeaf(Function<String, LinearForm> resolve) {
+        return n -> n instanceof Ast.Var v ? resolve.apply(v.name()) : null;
     }
 
     private static LinearForm negate(LinearForm f) {
@@ -303,18 +334,14 @@ final class InvariantChecker {
     /** The canonical atom key of a numeric location ({@code x}, {@code p.a}, a newtype's value), or
      * {@code null} if {@code e} is not one. */
     private String atomOf(Ast.Expr e, Map<String, Type> types) {
-        Type t = typeExpr(e, types);
-        if (!isNumeric(t)) {
-            return null;
-        }
-        return pathKey(e, types);
+        return isNumeric(typeExpr(e, types)) ? pathKey(e, types) : null;
     }
 
     private String pathKey(Ast.Expr e, Map<String, Type> types) {
         return switch (e) {
             case Ast.Var v -> v.name();
             case Ast.FieldAccess fa -> {
-                if (fa.field().equals("value") && isNumericNewtype(typeExpr(fa.target(), types))) {
+                if (fa.field().equals("value") && numericNewtype(typeExpr(fa.target(), types))) {
                     yield pathKey(fa.target(), types);   // a newtype's .value is the same atom
                 }
                 String base = pathKey(fa.target(), types);
@@ -343,42 +370,33 @@ final class InvariantChecker {
         };
     }
 
-    /** The result type of an arithmetic binary: the newtype for closed {@code +}/{@code -}, else the
-     * numeric base, else {@code null}. */
+    /** The result type of an arithmetic binary: the newtype for closed {@code +}/{@code -}
+     * (via the checker's shared rule), else the numeric base, else {@code null}. */
     private Type arithType(Ast.Binary b, Map<String, Type> types) {
         Type lt = typeExpr(b.left(), types);
         Type rt = typeExpr(b.right(), types);
         if (b.op() == Ast.BinOp.ADD || b.op() == Ast.BinOp.SUB) {
-            if (isNumericNewtype(lt)) {
-                return lt;
-            }
-            if (isNumericNewtype(rt)) {
-                return rt;
+            Type nt = TypeChecker.closedNewtypeArithResult(lt, rt, symbols);
+            if (nt != null) {
+                return nt;
             }
         }
         if (lt == Type.INT || lt == Type.DECIMAL) {
             return lt;
         }
-        if (rt == Type.INT || rt == Type.DECIMAL) {
-            return rt;
-        }
-        return null;
+        return rt == Type.INT || rt == Type.DECIMAL ? rt : null;
     }
 
-    private Type newtypeValueType(Type t) {
-        if (t instanceof Type.Ref r && symbols.get(r.name()) instanceof Ast.Data d && d.newtype()) {
-            return TypeChecker.fieldTypes(d, symbols).get("value");
-        }
-        return null;
+    private static Type elementType(Type t) {
+        return t instanceof Type.ListOf list ? list.element() : null;
     }
 
-    private boolean isNumericNewtype(Type t) {
-        Type v = newtypeValueType(t);
-        return v == Type.INT || v == Type.DECIMAL;
+    private boolean numericNewtype(Type t) {
+        return TypeChecker.directNumericNewtypeBase(t, symbols) != null;
     }
 
     private boolean isNumeric(Type t) {
-        return t == Type.INT || t == Type.DECIMAL || isNumericNewtype(t);
+        return t == Type.INT || t == Type.DECIMAL || numericNewtype(t);
     }
 
     // --- helpers -------------------------------------------------------------------------------
@@ -406,41 +424,5 @@ final class InvariantChecker {
             case LT -> Rel.GE;
             case EQ -> null;
         };
-    }
-
-    /** The direct-child visitor, mirroring {@link TotalityChecker}'s. */
-    private static void forEachChild(Ast.Expr e, Consumer<Ast.Expr> f) {
-        switch (e) {
-            case Ast.NewData nd -> nd.inits().forEach(i -> f.accept(i.value()));
-            case Ast.FieldAccess fa -> f.accept(fa.target());
-            case Ast.Call call -> call.args().forEach(f);
-            case Ast.Binary bin -> {
-                f.accept(bin.left());
-                f.accept(bin.right());
-            }
-            case Ast.Neg neg -> f.accept(neg.operand());
-            case Ast.Match m -> {
-                f.accept(m.scrutinee());
-                m.cases().forEach(c -> f.accept(c.body()));
-            }
-            case Ast.If iff -> {
-                f.accept(iff.cond());
-                f.accept(iff.then());
-                f.accept(iff.els());
-            }
-            case Ast.ListLit lit -> lit.elements().forEach(f);
-            case Ast.Tuple tup -> tup.elements().forEach(f);
-            case Ast.TupleGet tg -> f.accept(tg.tuple());
-            case Ast.ListComp comp -> {
-                f.accept(comp.element());
-                comp.guards().forEach(f);
-            }
-            case Ast.LetIn li -> {
-                f.accept(li.value());
-                f.accept(li.body());
-            }
-            case Ast.Block block -> f.accept(block.body());
-            default -> { }
-        }
     }
 }

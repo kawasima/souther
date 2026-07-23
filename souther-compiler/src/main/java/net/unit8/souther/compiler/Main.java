@@ -197,9 +197,13 @@ public final class Main {
         }
         // A single header-less file is named after the file (F#/Elm; ADR-0043); a multi-file build
         // links by imports, so each must declare its own module header.
-        Map<String, byte[]> classes = texts.size() == 1
-                ? Compiler.compile(texts.get(0), Runner.moduleName(sources.get(0)))
-                : Compiler.compileModules(texts);
+        Compiler.Compiled compiled = texts.size() == 1
+                ? Compiler.compileWithWarnings(texts.get(0), Runner.moduleName(sources.get(0)))
+                : Compiler.compileModulesWithWarnings(texts);
+        for (Diagnostic w : compiled.warnings()) {
+            System.err.println("warning: " + DiagnosticRenderer.body(w, Locale.ENGLISH));
+        }
+        Map<String, byte[]> classes = compiled.classes();
         List<Path> written = new ArrayList<>();
         for (Map.Entry<String, byte[]> entry : classes.entrySet()) {
             Path file = outDir.resolve(entry.getKey().replace('.', '/') + ".class");

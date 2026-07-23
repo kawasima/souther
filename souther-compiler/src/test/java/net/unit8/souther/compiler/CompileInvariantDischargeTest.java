@@ -91,6 +91,23 @@ class CompileInvariantDischargeTest {
     }
 
     @Test
+    void aConstructionInsideAMapClosureIsAnalyzed() {
+        // the closure element x: Money carries x >= 0; `x - Money(1m)` can go negative, so it is a
+        // possible violation. Without binding the combinator's element parameter the construction
+        // would be opaque (no diagnostic) — this pins that the closure body is analyzed.
+        String m = """
+                module demo
+                data Money = Decimal
+                    invariant value >= 0m
+                data Bag = { items: List<Money> }
+                behavior shift : (b: Bag) -> List<Money> constructs Money
+                let shift (b) = List.map(x -> x - Money(1m), b.items)
+                """;
+        assertTrue(hasWarning(Compiler.compileWithWarnings(m), "E2011"),
+                "a construction inside a map closure should be analyzed");
+    }
+
+    @Test
     void aRequireGuardDischargesTheSubtraction() {
         // `require 額 <= 残高` establishes the relation on the mainline, discharging `残高 - 額`
         String m = """

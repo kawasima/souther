@@ -470,6 +470,51 @@ public interface Ast {
         };
     }
 
+    /**
+     * Applies {@code f} to each direct child expression of {@code e} (a leaf has none) — the read-only
+     * counterpart of {@link #mapChildren}. A visiting pass (a checker walk) delegates its default
+     * recursion here rather than hand-copying every node type; being exhaustive over {@code Expr}, a
+     * new node kind forces every such walk to acknowledge it.
+     */
+    static void forEachChild(Expr e, java.util.function.Consumer<Expr> f) {
+        switch (e) {
+            case IntLit x -> { }
+            case DecimalLit x -> { }
+            case StringLit x -> { }
+            case BoolLit x -> { }
+            case Var x -> { }
+            case Neg n -> f.accept(n.operand());
+            case FieldAccess fa -> f.accept(fa.target());
+            case Binary b -> {
+                f.accept(b.left());
+                f.accept(b.right());
+            }
+            case Call c -> c.args().forEach(f);
+            case If iff -> {
+                f.accept(iff.cond());
+                f.accept(iff.then());
+                f.accept(iff.els());
+            }
+            case LetIn li -> {
+                f.accept(li.value());
+                f.accept(li.body());
+            }
+            case Block bl -> f.accept(bl.body());
+            case ListLit l -> l.elements().forEach(f);
+            case ListComp comp -> {
+                f.accept(comp.element());
+                comp.guards().forEach(f);
+            }
+            case Tuple tup -> tup.elements().forEach(f);
+            case TupleGet tg -> f.accept(tg.tuple());
+            case NewData nd -> nd.inits().forEach(i -> f.accept(i.value()));
+            case Match m -> {
+                f.accept(m.scrutinee());
+                m.cases().forEach(c -> f.accept(c.body()));
+            }
+        }
+    }
+
     private static List<Expr> mapExprs(List<Expr> es, UnaryOperator<Expr> f) {
         List<Expr> out = new ArrayList<>();
         for (Expr e : es) {

@@ -44,7 +44,7 @@ public final class Compiler {
     /** A compiled module with any non-fatal diagnostics (invariant-discharge warnings, etc.). */
     public record Compiled(Map<String, byte[]> classes, List<Diagnostic> warnings) {}
 
-    /** Compiles and returns the classes together with any warnings (spec §invariant-discharge). */
+    /** Compiles and returns the classes together with any invariant-discharge warnings. */
     public static Compiled compileWithWarnings(String source) {
         return compileWithWarnings(source, "Main");
     }
@@ -174,6 +174,17 @@ public final class Compiler {
 
     /** Compiles a set of modules together, resolving explicit imports and rejecting cycles. */
     public static Map<String, byte[]> compileModules(List<String> sources) {
+        return compileModules(sources, new ArrayList<>());
+    }
+
+    /** Links a module set like {@link #compileModules(List)} and returns the classes with any
+     * invariant-discharge warnings from every module. */
+    public static Compiled compileModulesWithWarnings(List<String> sources) {
+        List<Diagnostic> warnings = new ArrayList<>();
+        return new Compiled(compileModules(sources, warnings), warnings);
+    }
+
+    private static Map<String, byte[]> compileModules(List<String> sources, List<Diagnostic> warningsOut) {
         List<Ast.Module> allParsed = new ArrayList<>();
         for (String s : sources) {
             // A module linked by imports must be named; `null` forbids omitting the header here.
@@ -228,7 +239,7 @@ public final class Compiler {
             Set<String> importedInjected = importedInjectedBehaviors(m, derived);
             m = injectRecursivePrelude(m);
             Ast.Module lowered = Lower.run(m);
-            TypeChecker.checkOrThrow(m, symbols, importedSigs, lowered);
+            warningsOut.addAll(TypeChecker.checkOrThrow(m, symbols, importedSigs, lowered));
             out.putAll(Backend.generate(lowered, symbols, importedPackages(m), importedSigs, importedInjected));
         }
         // every module's classes are now present, so CTFE and example evaluation can resolve
