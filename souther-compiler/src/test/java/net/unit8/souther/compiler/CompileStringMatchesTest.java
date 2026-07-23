@@ -45,6 +45,21 @@ class CompileStringMatchesTest {
         assertTrue(postalDecoder().decode("123-4567x", Path.ROOT) instanceof Err, "matches is anchored");
     }
 
+    // A backslash metaclass needs a doubled backslash in the string literal: Souther's string escaping
+    // drops an unknown escape's backslash (`\d` becomes `d`), so a digit class is written `\\d`. This
+    // is the same string at compile time (validation) and run time, so the two never disagree.
+    @Test
+    void backslashMetaclassPatternWorksWhenDoubled() throws Exception {
+        String src = """
+                module demo
+                data 数字列 = String invariant String.matches("\\\\d{3}-\\\\d{4}", value)
+                """;
+        ClassLoader loader = new BytesClassLoader(Compiler.compile(src), getClass().getClassLoader());
+        Decoder<Object, ?> dec = Codecs.decoder(loader, "demo.数字列");
+        assertTrue(dec.decode("123-4567", Path.ROOT) instanceof Ok, "\\d matches digits");
+        assertTrue(dec.decode("abc-defg", Path.ROOT) instanceof Err, "letters are not \\d");
+    }
+
     @Test
     void matchesInABehaviorReturnsBool() throws Exception {
         String src = """

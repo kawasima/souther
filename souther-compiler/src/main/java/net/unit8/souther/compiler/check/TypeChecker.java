@@ -3325,10 +3325,12 @@ public final class TypeChecker {
         try {
             java.util.regex.Pattern.compile(lit.value());
         } catch (java.util.regex.PatternSyntaxException ex) {
+            // getDescription() is the one-line reason ("Unclosed character class near index 3");
+            // getMessage() would also dump the pattern and a caret, which the source region already shows.
             throw CompileException.of(
                     Diagnostic.of(null, "check.matches.regex").title("check.type.mismatch.title")
-                            .at(e.pos()).args(ex.getMessage()).build(),
-                    "`String.matches` pattern is not a valid regular expression: " + ex.getMessage());
+                            .at(e.pos()).args(ex.getDescription()).build(),
+                    "`String.matches` pattern is not a valid regular expression: " + ex.getDescription());
         }
     }
 
