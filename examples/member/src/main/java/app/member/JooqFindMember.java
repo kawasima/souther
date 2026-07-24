@@ -65,9 +65,10 @@ public final class JooqFindMember extends FindMember {
         }
 
         // メールは確認状態つきの直和。activated 列でケース（アクティベート済み / 未アクティベート）を選ぶ。
-        // 直和の外部表現は判別子 "type" ＋ ケースのフィールド（アドレスは newtype なので裸の文字列）。
+        // ケースは メールアドレス を包む newtype なので、外部表現は判別子 "type" ＋ 内包値 "value"
+        // の隣接タグ（メールアドレスは String の newtype なので値は裸の文字列）。
         String タグ = Boolean.TRUE.equals(row.value4()) ? "アクティベート済み" : "未アクティベート";
-        Map<String, Object> メール = Map.of("type", タグ, "アドレス", row.value2());
+        Map<String, Object> メール = Map.of("type", タグ, "value", row.value2());
 
         // DB の行を中立な Map（外部表現。spec 6）に組み立て、生成された Raoh decoder に渡す。
         // decoder は不変条件（メールの書式 等）を検査して Result<会員> を返す。
