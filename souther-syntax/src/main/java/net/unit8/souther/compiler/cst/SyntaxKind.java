@@ -114,6 +114,7 @@ public enum SyntaxKind {
     MATCH_EXPR,
     MATCH_CASE,
     LAMBDA_EXPR,        // x -> e  and  (a, b) -> e
+    FIELD_GETTER,       // .field  = the getter (x) -> x.field
     NEW_DATA_EXPR,      // TypeName { field = e, ... }
     FIELD_INIT;
 

@@ -424,6 +424,7 @@ public final class Formatter {
             case LITERAL_EXPR -> text(firstMeaningfulToken(n).text());
             case VAR_EXPR -> text(firstIdent(n));
             case FIELD_ACCESS -> concat(expr(firstExprChild(n)), text("."), text(lastIdent(n)));
+            case FIELD_GETTER -> concat(text("."), text(lastIdent(n)));
             case CALL_EXPR -> call(n);
             case BINARY_EXPR -> binary(n);
             case UNARY_EXPR -> concat(text("-"), expr(onlyExpr(n)));
@@ -707,7 +708,7 @@ public final class Formatter {
         return switch (k) {
             case LITERAL_EXPR, VAR_EXPR, FIELD_ACCESS, CALL_EXPR, BINARY_EXPR, UNARY_EXPR, PIPE_EXPR,
                  PAREN_EXPR, TUPLE_EXPR, LIST_EXPR, LIST_COMP, IF_EXPR, MATCH_EXPR, LAMBDA_EXPR,
-                 NEW_DATA_EXPR, BLOCK_EXPR -> true;
+                 FIELD_GETTER, NEW_DATA_EXPR, BLOCK_EXPR -> true;
             default -> false;
         };
     }

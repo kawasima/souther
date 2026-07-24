@@ -527,7 +527,7 @@ public final class Analyzer {
                  DATA_DEF, NEW_DATA_EXPR -> T_TYPE;
             case BEHAVIOR_DEF, FN_DEF, STAGE, CALL_EXPR -> T_FUNCTION;
             case PARAM, FN_PARAM, LAMBDA_EXPR -> T_PARAMETER;
-            case FIELD, FIELD_INIT, FIELD_ACCESS -> T_PROPERTY;
+            case FIELD, FIELD_INIT, FIELD_ACCESS, FIELD_GETTER -> T_PROPERTY;
             case MODULE_HEADER, QUALIFIED_NAME, IMPORT_DECL -> T_NAMESPACE;
             default -> T_VARIABLE;
         };
