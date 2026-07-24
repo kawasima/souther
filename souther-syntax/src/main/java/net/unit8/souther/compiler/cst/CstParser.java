@@ -744,6 +744,15 @@ public final class CstParser {
             parenLambda();
             return;
         }
+        // a bare field getter `.field` (Elm-style) = the getter (x) -> x.field. A leading `.` is
+        // otherwise always an error, and `.5` lexes as a decimal, so `DOT IDENT` is unambiguous.
+        if (k == SyntaxKind.DOT && nth(1) == SyntaxKind.IDENT) {
+            start(SyntaxKind.FIELD_GETTER);
+            bump();   // .
+            bump();   // field
+            finish();
+            return;
+        }
         switch (k) {
             case MATCH_KW -> matchExpr();
             case IF_KW -> ifExpr();

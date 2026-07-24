@@ -78,6 +78,17 @@ class CstParserRoundTripTest {
     }
 
     @Test
+    void aBareFieldGetterRoundTrips() {
+        String src = """
+                module A
+                let f (xs) = List.map(.value, xs)
+                """;
+        CstParser.Result result = CstParser.parse(src);
+        assertEquals(src, result.root().text());
+        assertTrue(result.errors().isEmpty(), "unexpected syntax errors: " + result.errors());
+    }
+
+    @Test
     void aBrokenBufferStillRoundTripsAndDoesNotThrow() {
         String broken = "module A\ndata = = {{{ \nlet f ( = \nbehavior x";
         CstParser.Result result = CstParser.parse(broken);

@@ -31,6 +31,7 @@ public final class AstBuilder {
     private String moduleName = "";
     private int matchWholeCounter = 0;
     private int tupleCounter = 0;
+    private int getterCounter = 0;
 
     private AstBuilder(String source) {
         this.lines = new LineIndex(source);
@@ -437,6 +438,7 @@ public final class AstBuilder {
             case IF_EXPR -> ifExpr(n);
             case MATCH_EXPR -> matchExpr(n);
             case LAMBDA_EXPR -> lambda(n);
+            case FIELD_GETTER -> fieldGetter(n);
             case NEW_DATA_EXPR -> newData(n);
             case BLOCK_EXPR -> block(n);
             default -> throw error(pos(n), "parse.expr", "expected an expression");
@@ -554,6 +556,18 @@ public final class AstBuilder {
         }
         Ast.Expr body = expr(lastExprChild(n));
         return new Ast.Block(params, body, pos(n));
+    }
+
+    private Ast.Expr fieldGetter(SyntaxNode n) {
+        // `.field` desugars to the getter (x) -> x.field: an ordinary single-param block. The param
+        // is bound and read only inside this block, so it shadows any same-named outer name; the
+        // inliner alpha-renames it on inline. The `$g` prefix + counter only keep synthesized names
+        // apart from each other (the same scheme as `$m`/`$t`); `$` is a legal identifier character.
+        SyntaxToken field = lastIdentToken(n);
+        SourcePos pos = pos(n);
+        String param = "$g" + (getterCounter++);
+        Ast.Expr body = new Ast.FieldAccess(new Ast.Var(param, pos), field.text(), posOf(field));
+        return new Ast.Block(List.of(param), body, pos);
     }
 
     private Ast.Expr newData(SyntaxNode n) {
@@ -795,7 +809,7 @@ public final class AstBuilder {
         return switch (k) {
             case LITERAL_EXPR, VAR_EXPR, FIELD_ACCESS, CALL_EXPR, BINARY_EXPR, UNARY_EXPR, PIPE_EXPR,
                  PAREN_EXPR, TUPLE_EXPR, LIST_EXPR, LIST_COMP, IF_EXPR, MATCH_EXPR, LAMBDA_EXPR,
-                 NEW_DATA_EXPR, BLOCK_EXPR -> true;
+                 FIELD_GETTER, NEW_DATA_EXPR, BLOCK_EXPR -> true;
             default -> false;
         };
     }
