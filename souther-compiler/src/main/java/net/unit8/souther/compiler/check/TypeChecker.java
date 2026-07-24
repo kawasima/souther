@@ -2652,6 +2652,18 @@ public final class TypeChecker {
                 }
                 yield Type.option(lo.element());
             }
+            case "Option.map" -> {
+                arity(call, 2);   // map(f, opt): function first, option last (F#/Elm order)
+                Type t = typeOf(args.get(1), env, data, symbols, reqs);
+                if (!(t instanceof Type.OptionOf oo)) {
+                    throw expects(call.pos(), "Option.map", "kind.option", t,
+                            "Option.map expects an Option, got " + t);
+                }
+                // `f` sees the contained value; the option's element type gives its one parameter type.
+                // The result re-wraps `f`'s return, so the whole call is `Option<'b>`.
+                Type r = blockType(call.fn(), args.get(0), List.of(oo.element()), env, data, symbols, reqs);
+                yield Type.option(r);
+            }
             case "List.sortBy" -> {
                 arity(call, 2);   // sortBy(key, xs): key first, list last (F#/Elm order)
                 Type t = typeOf(args.get(1), env, data, symbols, reqs);

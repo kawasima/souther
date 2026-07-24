@@ -804,6 +804,17 @@ final class BodyGen {
                     code.invokestatic(CD_Lists, "sortBy", MethodTypeDesc.of(CD_List, CD_Fn, CD_List));
                     return Type.list(elem);
                 }
+                case "Option.map" -> {
+                    // map(f, opt): materialise f as an Fn (its one parameter is the option's element
+                    // type), then the option. `Option` is not surface-writable, so the rewrap into
+                    // Some(f v) / None happens in the runtime kernel (Option.map), not in emitted code.
+                    Type ot = TypeChecker.typeOf(call.args().get(1).toAst(), typesEnv(), data, symbols, reqSigs());
+                    Type elem = ((Type.OptionOf) ot).element();
+                    Type fnT = emitFunctionValue(call.args().get(0).toAst(), List.of(elem));  // Fn on the stack
+                    genExpr(call.args().get(1));                                              // then the Option
+                    code.invokestatic(CD_Options, "map", MethodTypeDesc.of(CD_Option, CD_Fn, CD_Option));
+                    return Type.option(((Type.FnOf) fnT).result());   // the option rewraps f's return type
+                }
                 case "Map.get" -> {
                     Type ct = genExpr(call.args().get(1));      // get(key, m): map then key (Maps.get)
                     genExpr(call.args().get(0));                // key (a reference)

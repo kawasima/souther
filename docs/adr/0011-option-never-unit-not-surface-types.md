@@ -8,7 +8,7 @@ Status: Accepted
 
 ## Decision
 
-`Never` and `Unit` are reading concepts, not writable type names. `Option<T>` cannot be written as a type either; it appears only where a `T?` field desugars and as stdlib return types (`List.get` / `Map.get`). None of the three may appear in a behavior output.
+`Never` and `Unit` are reading concepts, not writable type names. `Option<T>` cannot be written as a type either; it appears only where a `T?` field desugars, as stdlib return types (`List.get` / `Map.get` / `List.find`), and as the argument/result of the `Option` module's functions (`Option.map` / `Option.withDefault`), which consume an inferred `Option` without the caller ever naming the type or building a `Some`. None of the three may appear in a behavior output.
 
 ## Consequences
 

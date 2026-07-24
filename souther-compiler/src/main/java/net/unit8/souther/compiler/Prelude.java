@@ -38,7 +38,7 @@ public final class Prelude {
     private static final List<String> RESOURCES =
             List.of("/souther/bool.sou", "/souther/string.sou", "/souther/map.sou", "/souther/list.sou",
                     "/souther/set.sou", "/souther/date.sou", "/souther/datetime.sou",
-                    "/souther/int.sou", "/souther/decimal.sou");
+                    "/souther/int.sou", "/souther/decimal.sou", "/souther/option.sou");
 
     /** Reserved module name → short qualifier (spec §stdlib). {@code souther.list} → {@code List}. */
     private static final Map<String, String> MODULE_TO_ALIAS = Map.ofEntries(
@@ -50,7 +50,8 @@ public final class Prelude {
             Map.entry("souther.date", "Date"),
             Map.entry("souther.datetime", "DateTime"),
             Map.entry("souther.int", "Int"),
-            Map.entry("souther.decimal", "Decimal"));
+            Map.entry("souther.decimal", "Decimal"),
+            Map.entry("souther.option", "Option"));
 
     /** The checker built-ins, by qualified name — the primitives that have no prelude source because
      *  they are overloaded (length/get) or need bespoke codegen (get/find/sortBy). The Int/Decimal
@@ -64,12 +65,13 @@ public final class Prelude {
             "List.length", "List.get", "List.max", "List.min", "List.find", "List.sortBy",
             "String.length", "String.toInt",
             "Map.get", "Map.empty", "Set.empty",
+            "Option.map",
             "Int.remainder", "Int.divide", "Decimal.divide");
 
     /** Every qualifier a call may carry: the four prelude modules plus the arithmetic built-in
      *  namespaces {@code Int}/{@code Decimal} (spec §stdlib). */
     private static final Set<String> QUALIFIERS =
-            Set.of("List", "String", "Map", "Set", "Bool", "Int", "Decimal", "Date", "DateTime");
+            Set.of("List", "String", "Map", "Set", "Bool", "Int", "Decimal", "Date", "DateTime", "Option");
 
     /** A shipped primitive: its declared signature and the backend key naming its bytecode. */
     public record IntrinsicSig(String name, List<Type> params, Type result, String key) {
@@ -94,6 +96,12 @@ public final class Prelude {
      *  {@code List}/{@code String}/{@code Map}/{@code Bool}/{@code Int}/{@code Decimal} (spec §stdlib). */
     public static boolean isQualifier(String qualifier) {
         return QUALIFIERS.contains(qualifier);
+    }
+
+    /** Every standard-library qualifier ({@code List} / {@code Map} / … / {@code Option}). The
+     *  syntax highlighter derives its qualifier list from this so the two never drift apart. */
+    public static Set<String> qualifiers() {
+        return QUALIFIERS;
     }
 
     /** Names that are sugar for another standard-library call, recognised as library functions but
@@ -156,6 +164,7 @@ public final class Prelude {
         BARE_TO_QUALIFIED.put("length", "List.length` or `String.length");
         BARE_TO_QUALIFIED.put("toInt", "String.toInt");
         BARE_TO_QUALIFIED.put("get", "List.get` or `Map.get");
+        BARE_TO_QUALIFIED.put("map", "List.map`, `Map.map`, or `Option.map");
         BARE_TO_QUALIFIED.put("empty", "Map.empty` or `Set.empty");
         BARE_TO_QUALIFIED.put("fold", "List.fold");
         BARE_TO_QUALIFIED.put("max", "List.max");

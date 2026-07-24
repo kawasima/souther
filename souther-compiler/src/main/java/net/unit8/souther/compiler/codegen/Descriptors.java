@@ -109,6 +109,7 @@ final class Descriptors {
     static final ClassDesc CD_Sets = ClassDesc.of("net.unit8.souther.runtime.Sets");
     static final ClassDesc CD_Temporals = ClassDesc.of("net.unit8.souther.runtime.Temporals");
     static final ClassDesc CD_Option = ClassDesc.of("net.unit8.souther.runtime.Option");
+    static final ClassDesc CD_Options = ClassDesc.of("net.unit8.souther.runtime.Options");
     static final ClassDesc CD_OptionSome = CD_Option.nested("Some");
     static final ClassDesc CD_OptionNone = CD_Option.nested("None");
     static final ClassDesc CD_IllegalStateException = ClassDesc.of("java.lang.IllegalStateException");

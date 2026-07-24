@@ -107,11 +107,10 @@ behavior 在庫状況 : (order: PricedCart) -> 在庫スナップショット
 behavior 在庫を確保する : (order: PricedCart) -> 引当済み
     constructs 引当済み
 
-// snapshot から sku の現在庫を引く。無ければ 0（＝在庫なし扱い）。lambda は sku を捕捉する。
+// snapshot から sku の現在庫を引く。見つかった行の数量を取り、無ければ 0（＝在庫なし扱い）。
+// find の結果（Option）をパイプで map して withDefault で既定値に落とす。lambda は sku を捕捉する。
 let 現在庫 (明細: List<行在庫>, sku: Sku): Int =
-    match find(r -> r.sku == sku, 明細) with
-        | Some r -> r.数量
-        | None   -> 0
+    find(r -> r.sku == sku, 明細) |> Option.map(r -> r.数量) |> Option.withDefault(0)
 
 // 1明細が引当可能か：現在庫が注文数量以上。
 let 引当可能 (i: LineItem, 明細: List<行在庫>): Bool = 現在庫(明細, i.sku) >= i.quantity

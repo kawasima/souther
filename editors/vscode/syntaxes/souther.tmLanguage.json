@@ -64,7 +64,7 @@
     },
     "qualifiers" : {
       "name" : "support.class.souther",
-      "match" : "\\b(List|String|Map|Set|Bool|Int|Decimal|Date|DateTime)\\b(?=\\s*\\.)"
+      "match" : "\\b(Bool|Date|DateTime|Decimal|Int|List|Map|Option|Set|String)\\b(?=\\s*\\.)"
     },
     "operators" : {
       "name" : "keyword.operator.souther",
