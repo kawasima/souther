@@ -89,6 +89,52 @@ class CompileInjectedMultiArgTest {
         assertTrue(Behavior.class.isAssignableFrom(one), "a single-input injected base stays a Behavior");
     }
 
+    @Test
+    void aPipelineStageDependingOnAMultiArgInjectedLoadsAndRuns() throws Exception {
+        // a `>->` stage whose body requires a multi-arg injected dep: the pipeline stores that dep as
+        // its base class, so pushStage must read/wire it as the base class, not the unary Behavior
+        String src = """
+                module demo
+
+                data A = { x: Int }
+                data B = { y: Int }
+                data R = { z: Int }
+                data S = { w: Int }
+
+                behavior send : (a: A, b: B) -> R
+                    constructs R
+
+                behavior stage1 : (s: S) -> R
+                    constructs A, B
+                    requires send
+
+                let stage1 (s, send) = send(A { x = s.w }, B { y = s.w })
+
+                behavior stage2 : (r: R) -> R
+                    constructs R
+
+                let stage2 (r) = R { z = r.z + 1 }
+
+                behavior pipe = stage1 >-> stage2
+                """;
+        String impl = """
+                package demo;
+                public final class SendImpl extends Send {
+                    public R apply(A a, B b) { return R(a.x() + b.y()); }
+                }
+                """;
+        Map<String, byte[]> classes = new HashMap<>(Compiler.compile(src));
+        classes.put("demo.SendImpl", compileSubclass(classes, "demo.SendImpl", impl));
+        BytesClassLoader loader = new BytesClassLoader(classes, getClass().getClassLoader());
+
+        Object pipe = loader.loadClass("demo.Pipe").getMethod("bind", loader.loadClass("demo.Send"))
+                .invoke(null, loader.loadClass("demo.SendImpl").getConstructor().newInstance());
+        Object s = Codecs.decoded(loader, "demo.S", Map.of("w", 20L));
+        Object r = Codecs.apply(pipe, s);   // send(A{20}, B{20}) = 40, stage2 +1 = 41
+        Map<?, ?> out = (Map<?, ?>) Codecs.encode(loader, "demo.R", r);
+        assertEquals(41L, out.get("z"));
+    }
+
     private static final String IMPL_SRC = """
             package demo;
             public final class SendImpl extends Send {

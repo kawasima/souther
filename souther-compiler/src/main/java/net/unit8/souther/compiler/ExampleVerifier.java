@@ -328,7 +328,7 @@ public final class ExampleVerifier {
                 } else {
                     if (r.inputs().size() != paramTypes.size()) {
                         out.add(Diagnostic.of("E1908", "check.fake.missing").title("check.example.title")
-                                .at(fk.pos()).args(fk.target(), fk.target())
+                                .at(r.pos()).args(fk.target(), fk.target())
                                 .hint("check.fake.missing.hint", "a fake row has " + r.inputs().size()
                                         + " input(s) but `" + fk.target() + "` takes " + paramTypes.size())
                                 .build());

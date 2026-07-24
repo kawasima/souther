@@ -871,7 +871,7 @@ public final class Backend {
                            Map<String, List<String>> behaviorDeps) {
         if (requiredNames.contains(stage)) {
             code.aload(0);
-            code.getfield(cdP, stage, CD_Behavior);
+            code.getfield(cdP, stage, ctx.requiredFieldType(stage));
             return;
         }
         ClassDesc cdStage = cdBehaviorImpl(stage);   // instantiate the $Impl, not the interface
@@ -880,9 +880,12 @@ public final class Backend {
         List<String> deps = behaviorDeps.getOrDefault(stage, List.of());
         ClassDesc[] ctorParams = new ClassDesc[deps.size()];
         for (int i = 0; i < deps.size(); i++) {
+            // a multi-arg injected dependency is stored/wired by its base class, not the unary
+            // Behavior (issue #57) — the field descriptor and the stage $Impl ctor param must match
+            ClassDesc depType = ctx.requiredFieldType(deps.get(i));
             code.aload(0);
-            code.getfield(cdP, deps.get(i), CD_Behavior);   // reuse the pipeline's injected field
-            ctorParams[i] = CD_Behavior;
+            code.getfield(cdP, deps.get(i), depType);   // reuse the pipeline's injected field
+            ctorParams[i] = depType;
         }
         code.invokespecial(cdStage, "<init>", MethodTypeDesc.of(ConstantDescs.CD_void, ctorParams));
     }
