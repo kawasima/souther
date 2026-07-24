@@ -1683,6 +1683,15 @@ match c with
     | 会員 { id, メール }         -> ...   // { f } binds f to a same-named variable
 ----
 
+A newtype case is opened with the constructor form `+X(v)+`, the inverse of construction `+X(v)+` (<<newtype>>). `+v+` binds the wrapped value. Nesting it reaches through a newtype over a newtype in one pattern — `+| アクティベート済み(メールアドレス(s)) -> s+` binds `+s+` to the base `+String+`, so `+.value.value+` is not written; the shorter `+| アクティベート済み(a) -> ...+` binds `+a+` to the one wrapped layer (`+メールアドレス+`). Each written name MUST be the newtype opened at its layer: `+アクティベート済み(ソース(s))+` is a compile error when `+アクティベート済み+` wraps `+メールアドレス+`, not `+ソース+`. This mirrors F#'s `+let (Email s) = ...+` and Elm's `+Activated (Email s)+`. The single-layer accessor `+.value+` (<<newtype>>) stays for reading one layer inline; the pattern is for reaching through several.
+
+[,text]
+----
+match m with
+    | アクティベート済み(メールアドレス(s)) -> s   // s is the base String, two layers opened
+    | 未アクティベート(a)                 -> a.value   // a is メールアドレス, one layer opened
+----
+
 To route multiple cases to the same processing, list `+|+` within a case, `+| A | B -> ...+` (an or-pattern). It writes "these states are treated the same" for a state-machine sum in one line. The case-separator `+|+` and the or-pattern `+|+` are the same symbol, but `+->+` ends a case's pattern part, so they do not conflict.
 
 [,text]

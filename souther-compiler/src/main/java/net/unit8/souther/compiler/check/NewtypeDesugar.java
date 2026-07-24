@@ -74,7 +74,8 @@ public final class NewtypeDesugar {
             case Ast.Match mt -> {
                 List<Ast.Case> cases = new ArrayList<>();
                 for (Ast.Case c : mt.cases()) {
-                    cases.add(new Ast.Case(c.caseTypes(), c.binding(), go(c.body(), symbols), c.pos()));
+                    cases.add(new Ast.Case(c.caseTypes(), c.binding(), go(c.body(), symbols),
+                            c.unwrapAsserts(), c.pos()));
                 }
                 yield new Ast.Match(go(mt.scrutinee(), symbols), cases, mt.pos());
             }

@@ -18,7 +18,7 @@ public final class Loggingメール送信 extends 通知メールを送る {
 
     @Override
     public 送信済み apply(通知 通知) {
-        メールアドレス 宛先 = 通知.宛先().アドレス();
+        メールアドレス 宛先 = 通知.宛先().value();
         LOG.log(Level.INFO, "通知メール送信（ダミー）: 宛先={0} 件名={1}", 宛先.value(), 通知.件名());
         return 送信済み(宛先);   // 基底から継承した protected ファクトリ（constructs 送信済み）
     }

@@ -595,9 +595,34 @@ public final class AstBuilder {
             i++;                                  // |
             caseTypes.add(tokenText(es.get(i++)));
         }
-        // Option's positional binding `Some v`: a bare identifier before `{` / `as` / `->`
+        // newtype constructor destructuring `X(inner)` / nested `X(Y(s))`: the ident chain inside the
+        // parens. The last ident is the bound variable; each earlier ident names a newtype layer peeled.
+        List<String> unwrapNames = new ArrayList<>();
+        if (i < es.size() && isToken(es.get(i), SyntaxKind.LPAREN)) {
+            int depth = 0;
+            while (i < es.size()) {
+                SyntaxElement e = es.get(i);
+                if (isToken(e, SyntaxKind.LPAREN)) {
+                    depth++;
+                    i++;
+                } else if (isToken(e, SyntaxKind.RPAREN)) {
+                    depth--;
+                    i++;
+                    if (depth == 0) {
+                        break;
+                    }
+                } else if (isToken(e, SyntaxKind.IDENT)) {
+                    unwrapNames.add(tokenText(e));
+                    i++;
+                } else {
+                    break;
+                }
+            }
+        }
+        // Option's positional binding `Some v`: a bare identifier before `{` / `as` / `->`. It never
+        // follows a constructor destructure, so a trailing ident after the parens is not consumed here.
         String someBinding = null;
-        if (i < es.size() && isToken(es.get(i), SyntaxKind.IDENT)) {
+        if (unwrapNames.isEmpty() && i < es.size() && isToken(es.get(i), SyntaxKind.IDENT)) {
             someBinding = tokenText(es.get(i++));
         }
         // field destructuring `{ field [= var], ... }`
@@ -645,8 +670,23 @@ public final class AstBuilder {
                         body, casePos);
             }
             binding = whole;
+        } else if (!unwrapNames.isEmpty()) {
+            String whole = binding != null ? binding : "$m" + (matchWholeCounter++);
+            // open the case's newtype (whole.value), then peel one layer per earlier name; the last
+            // name binds the value reached — `アクティベート済み(メールアドレス(s))` binds s to whole.value.value.
+            Ast.Expr target = new Ast.FieldAccess(new Ast.Var(whole, casePos), "value", casePos);
+            for (int k = 0; k < unwrapNames.size() - 1; k++) {
+                target = new Ast.FieldAccess(target, "value", casePos);
+            }
+            body = new Ast.LetIn(unwrapNames.get(unwrapNames.size() - 1), target, body, casePos);
+            binding = whole;
         }
-        return new Ast.Case(caseTypes, binding, body, casePos);
+        // null = no constructor destructure; otherwise the inner names (before the bound variable),
+        // which the type checker prepends the case type to when verifying the opened layers.
+        List<String> unwrapAsserts = unwrapNames.isEmpty()
+                ? null
+                : new ArrayList<>(unwrapNames.subList(0, unwrapNames.size() - 1));
+        return new Ast.Case(caseTypes, binding, body, unwrapAsserts, casePos);
     }
 
     /** A brace block: its {@code let}/{@code require} statements folded into the result expression. */

@@ -45,14 +45,14 @@ class MemberLifecycleTest {
 
     @Test
     void 会員はMapからdecodeされネストしたinvariant違反を集積する() {
-        // メールは確認状態つきの直和（判別子 "type" ＋ アドレス）。
+        // メールは確認状態つきの直和。newtype ケースは判別子 "type" ＋ 内包値 "value"（隣接タグ）。
         Map<String, Object> good = Map.of("id", "m-001",
-                "メール", Map.of("type", "未アクティベート", "アドレス", "a@example.com"),
+                "メール", Map.of("type", "未アクティベート", "value", "a@example.com"),
                 "表示名", "Bob");
         assertInstanceOf(Ok.class, 会員.decoder().decode(good, Path.ROOT));
 
         Map<String, Object> bad = Map.of("id", "",
-                "メール", Map.of("type", "未アクティベート", "アドレス", "nope"),
+                "メール", Map.of("type", "未アクティベート", "value", "nope"),
                 "表示名", "Bob");
         Result<会員> err = 会員.decoder().decode(bad, Path.ROOT);
         assertInstanceOf(Err.class, err);
@@ -74,7 +74,7 @@ class MemberLifecycleTest {
 
     private static 会員 会員(boolean activated) {
         Map<String, Object> raw = Map.of("id", "m-1",
-                "メール", Map.of("type", activated ? "アクティベート済み" : "未アクティベート", "アドレス", "a@example.com"),
+                "メール", Map.of("type", activated ? "アクティベート済み" : "未アクティベート", "value", "a@example.com"),
                 "表示名", "A");
         return switch (会員.decoder().decode(raw, Path.ROOT)) {
             case Ok<会員> ok -> ok.value();
