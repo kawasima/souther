@@ -401,7 +401,19 @@ public interface Ast {
      * {@code x} binds that case's type; with several, it binds the scrutinee's sum type, since no
      * single case type fits all alternatives.
      */
-    record Case(List<String> caseTypes, String binding, Expr body, SourcePos pos) implements Ast {}
+    /**
+     * {@code unwrapAsserts} are the inner newtype names written in a constructor-destructuring
+     * pattern {@code X(Y(s))} — {@code [Y]} here (the case {@code X} is in {@code caseTypes}, the
+     * bound variable {@code s} is dropped). {@code null} when the pattern is not a constructor
+     * destructure; an empty list is the single-layer form {@code X(v)}. The {@code TypeChecker}
+     * verifies every opened layer is a newtype and that each name matches the layer it opens.
+     */
+    record Case(List<String> caseTypes, String binding, Expr body, List<String> unwrapAsserts,
+                SourcePos pos) implements Ast {
+        public Case(List<String> caseTypes, String binding, Expr body, SourcePos pos) {
+            this(caseTypes, binding, body, null, pos);
+        }
+    }
 
     /** {@code TypeName { ..src, field: expr, ... }} used as an expression (construction in a behavior). */
     record NewData(String typeName, List<FieldInit> inits, List<String> spreads, SourcePos pos)
@@ -463,7 +475,7 @@ public interface Ast {
             case Match m -> {
                 List<Case> cases = new ArrayList<>();
                 for (Case c : m.cases()) {
-                    cases.add(new Case(c.caseTypes(), c.binding(), f.apply(c.body()), c.pos()));
+                    cases.add(new Case(c.caseTypes(), c.binding(), f.apply(c.body()), c.unwrapAsserts(), c.pos()));
                 }
                 yield new Match(f.apply(m.scrutinee()), cases, m.pos());
             }

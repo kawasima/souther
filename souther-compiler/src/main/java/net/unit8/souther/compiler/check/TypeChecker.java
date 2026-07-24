@@ -2386,6 +2386,15 @@ public final class TypeChecker {
                 }
             }
             Type bindType = c.caseTypes().size() == 1 ? caseBindType(c.caseTypes().get(0)) : scrutinee;
+            if (c.unwrapAsserts() != null) {
+                if (c.caseTypes().size() != 1) {
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.match.newtype.orpattern").title("check.match.title")
+                                    .at(c.pos()).build(),
+                            "a constructor destructuring opens a single case, not an or-pattern");
+                }
+                checkUnwrapAsserts(c, symbols);
+            }
             branchType = mergeBranch(m, branchType,
                     typeOf(c.body(), bound(env, c.binding(), bindType), data, symbols, reqs), c);
         }
@@ -2458,6 +2467,45 @@ public final class TypeChecker {
             case "DateTime" -> Type.DATETIME;
             default -> Type.ref(caseName);
         };
+    }
+
+    /** A constructor-destructuring pattern {@code X(Y(s))} opens one newtype per layer: {@code X}
+     * (the matched case) then each written inner name. Every opened layer MUST be a newtype, and each
+     * inner name MUST equal the newtype the previous layer wraps, or it is a compile error (Elm/F#
+     * parity — the constructor in the pattern is type-checked, and a non-newtype cannot be opened). */
+    private static void checkUnwrapAsserts(Ast.Case c, Map<String, Ast.Def> symbols) {
+        List<String> opened = new ArrayList<>();
+        opened.add(c.caseTypes().get(0));
+        opened.addAll(c.unwrapAsserts());
+        for (int i = 0; i < opened.size(); i++) {
+            String name = opened.get(i);
+            Type inner = newtypeInner(name, symbols);
+            if (inner == null) {
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.match.newtype.notnewtype").title("check.match.title")
+                                .at(c.pos()).args(name).build(),
+                        "`" + name + "` is not a newtype, so it cannot be opened with `" + name + "(...)`");
+            }
+            if (i + 1 < opened.size()) {
+                String next = opened.get(i + 1);
+                String innerName = inner instanceof Type.Ref r ? r.name() : Type.show(inner);
+                if (!innerName.equals(next)) {
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.match.newtype.mismatch").title("check.match.title")
+                                    .at(c.pos()).args(next, innerName).build(),
+                            "`" + name + "` wraps `" + innerName + "`, not `" + next + "`");
+                }
+            }
+        }
+    }
+
+    /** The type a newtype wraps ({@code data X = Y} gives {@code Y}), or null when {@code name} is not
+     * a newtype — the implicit inner field is {@code value}. */
+    private static Type newtypeInner(String name, Map<String, Ast.Def> symbols) {
+        if (symbols.get(name) instanceof Ast.Data d && d.newtype()) {
+            return fieldTypes(d, symbols).get("value");
+        }
+        return null;
     }
 
     /** Extends {@code env} with {@code name -> type} when both are present; otherwise returns it as is. */

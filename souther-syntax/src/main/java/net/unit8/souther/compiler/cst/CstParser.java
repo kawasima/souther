@@ -875,8 +875,13 @@ public final class CstParser {
             bump();   // |
             bump();   // ident
         }
-        // Option's positional binding `Some v`
-        if (at(SyntaxKind.IDENT)) {
+        // newtype constructor destructuring `X(inner)`, nestable `X(Y(s))` — the inverse of
+        // construction `X(v)`. It opens the case's newtype value; the inner `Y(...)` opens another.
+        // A destructure and Option's positional binding `Some v` are mutually exclusive, so a stray
+        // ident after the parens is left for `expect(ARROW)` to reject rather than silently consumed.
+        if (at(SyntaxKind.LPAREN)) {
+            casePattern();
+        } else if (at(SyntaxKind.IDENT)) {
             bump();
         }
         // field destructuring `{ field [= var], ... }`
@@ -906,6 +911,17 @@ public final class CstParser {
         expect(SyntaxKind.ARROW);
         expr();
         finish();
+    }
+
+    /** {@code ( IDENT [casePattern] )} — a newtype-destructuring sub-pattern, nestable for a
+     * newtype over a newtype. Kept structural (every token bumped) so the tree stays lossless. */
+    private void casePattern() {
+        expect(SyntaxKind.LPAREN);
+        expect(SyntaxKind.IDENT);
+        if (at(SyntaxKind.LPAREN)) {
+            casePattern();
+        }
+        expect(SyntaxKind.RPAREN);
     }
 
     /** An identifier-led primary: a call, a qualified call, a construction, or a field-access chain. */

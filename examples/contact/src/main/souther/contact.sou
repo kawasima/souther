@@ -1,9 +1,17 @@
 // 直和 data(sealed) ＋ match 分岐。
 // 判別デコーダ/エンコーダは導出される（判別子フィールド "type"、タグ＝ケース名）。
+// 制約のある値は newtype にして書式を invariant で持たせる。フィールドの復号時にその invariant が
+// 検査されるので、判別デコーダ経由でも境界で弾かれる（member の メールアドレス と同じ形）。
 module example.contact
+import String ( matches )
 
-data EmailContact = { email: String }
-data PhoneContact = { phone: String }
+data メール = String
+    invariant matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+", value)
+data 電話 = String
+    invariant matches("0\\d{1,3}-\\d{1,4}-\\d{4}", value)   // 03-1234-5678 / 090-1234-5678 など
+
+data EmailContact = { email: メール }
+data PhoneContact = { phone: 電話 }
 data Contact = EmailContact | PhoneContact
 
 data Label = String
@@ -13,5 +21,5 @@ behavior 連絡先の値 : (c: Contact) -> Label constructs Label
 
 let 連絡先の値 (c) =
     match c with
-        | EmailContact { email } -> Label { value = email }
-        | PhoneContact { phone } -> Label { value = phone }
+        | EmailContact { email } -> Label { value = email.value }
+        | PhoneContact { phone } -> Label { value = phone.value }

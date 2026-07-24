@@ -14,6 +14,7 @@
 // all of these types.
 module example.ordering
 import String ( length )
+import List ( all, filter, find )
 import example.cart ( Sku, LineItem, PricedCart )
 
 data OrderId = String
@@ -76,3 +77,147 @@ example place
     | "reservation reports out of stock" :
         (PricedCart { items = [ LineItem { sku = Sku("apple"), quantity = 999, unitPrice = 150 } ], total = 149850, highValue = true })
         -> OutOfStock
+
+// === 在庫引当：DB の在庫状況を読んでから引き当てる ===
+// inventory 例（在庫のリスト集計）を吸収し、read → 集計チェック → write の形にした。在庫状況で
+// 現在庫のスナップショットを読み、注文の各明細が在庫数以下かを all で畳んで検査し、全行足りれば
+// 確保する。行ごとの在庫参照は find（sku 一致）で引く。member/account の単行チェックに対して、
+// これは「読んだ状態に対する複数行の集計チェック」を見せる。
+
+// スナップショット1行：sku とその現在庫。
+data 行在庫 =
+    { sku: Sku
+    , 数量: Int
+    }
+// 読んだ在庫スナップショット（注文に関係する sku 分）。sku は行ごとに一意：同じ sku が2行あると
+// 現在庫 の find（先頭一致）がどちらを読むかで結果が変わるため、一意性を不変条件で宣言する。sku を
+// 取り出して distinct した長さが元の行数と一致すれば重複はない（要素単体では表せない List の性質）。
+data 在庫スナップショット = { 明細: List<行在庫> }
+    invariant List.length(List.distinct(List.map(r -> r.sku, 明細))) == List.length(明細)
+
+data 引当済み = { total: Int }
+// 1行でも在庫が足りなければ引当は失敗する。
+data 在庫不足
+
+// --- 外界依存（Java 注入）---
+// 在庫状況 は読み：注文に出てくる sku の現在庫を引く。
+behavior 在庫状況 : (order: PricedCart) -> 在庫スナップショット
+    constructs 在庫スナップショット, 行在庫
+// 在庫を確保する は書き：在庫を減らし、引当済みを返す。
+behavior 在庫を確保する : (order: PricedCart) -> 引当済み
+    constructs 引当済み
+
+// snapshot から sku の現在庫を引く。無ければ 0（＝在庫なし扱い）。lambda は sku を捕捉する。
+let 現在庫 (明細: List<行在庫>, sku: Sku): Int =
+    match find(r -> r.sku == sku, 明細) with
+        | Some r -> r.数量
+        | None   -> 0
+
+// 1明細が引当可能か：現在庫が注文数量以上。
+let 引当可能 (i: LineItem, 明細: List<行在庫>): Bool = 現在庫(明細, i.sku) >= i.quantity
+
+// --- 引き当て：読む → 集計チェック → 書く ---
+// 在庫状況を読み、全明細が引当可能なら確保、1つでも足りなければ 在庫不足。all に渡す lambda は
+// ローカル snap を捕捉する。
+behavior 引き当てる : (order: PricedCart) -> 引当済み | 在庫不足
+    requires 在庫状況, 在庫を確保する
+
+let 引き当てる (order, 在庫状況, 在庫を確保する) = {
+    let snap = 在庫状況(order)
+    require all(i -> 引当可能(i, snap.明細), order.items)
+        else 在庫不足
+    在庫を確保する(order)
+}
+
+// --- fake + example：DB 無しで在庫の集計チェックを検査する ---
+fake 在庫状況
+    | (PricedCart { items = [ LineItem { sku = Sku("apple"), quantity = 2, unitPrice = 150 } ], total = 300, highValue = false })
+        -> 在庫スナップショット { 明細 = [ 行在庫 { sku = Sku("apple"), 数量 = 5 } ] }
+    | _ -> 在庫スナップショット { 明細 = [ 行在庫 { sku = Sku("apple"), 数量 = 1 } ] }
+
+fake 在庫を確保する
+    | _ -> 引当済み { total = 300 }
+
+example 引き当てる
+    | "全明細が在庫内なら確保する" :
+        (PricedCart { items = [ LineItem { sku = Sku("apple"), quantity = 2, unitPrice = 150 } ], total = 300, highValue = false })
+            -> 引当済み { total = 300 }
+    | "1明細でも在庫を超えれば在庫不足" :
+        (PricedCart { items = [ LineItem { sku = Sku("apple"), quantity = 999, unitPrice = 150 } ], total = 149850, highValue = true })
+            -> 在庫不足
+
+// === 入荷検品：バーコードの読み取り検証 ===
+// 倉庫の入荷時、商品のバーコード（JAN/EAN-13）をスキャナで読む。チェックディジットが合わなければ
+// ラベルの汚損・誤読による読み取り不良として弾き、棚入れさせない。桁数と数字は書式として invariant に、
+// チェックディジットは畳み込みなので（不変条件は再帰不可・§invariant-expressions）behavior に置く。
+data JANコード = String
+    invariant String.matches("[0-9]{13}", value)
+
+data 検品合格 = { コード: JANコード }
+data 読取不良
+
+behavior 入荷検品する : (バーコード: JANコード) -> 検品合格 | 読取不良
+    constructs 検品合格, 読取不良
+
+// EAN-13 の加重和：位置 1,3,5..（0始まりで偶数 index）は重み 1、位置 2,4,6..（奇数 index）は重み 3。
+// 有効なコードは13桁すべての加重和が 10 で割り切れる（13桁目の検査数字がそう選ばれている）。桁が数字で
+// あることは invariant が保証済みなので桁値 toCode(ch) - toCode("0") は total。index は畳み込みの
+// (index, 和) accumulator で持ち回る（distinct と同じ tuple accumulator）。
+let 桁値 (ch: String) = String.toCode(ch) - String.toCode("0")
+let 加重和 (コード: String) = {
+    let (_, 和) = List.fold((acc, ch) -> {
+        let (i, s) = acc
+        let 重み = if Int.modBy(2, i) == 0 then 1 else 3
+        (i + 1, s + 重み * 桁値(ch))
+    }, (0, 0), String.toChars(コード))
+    和
+}
+
+let 入荷検品する (バーコード) = {
+    require Int.modBy(10, 加重和(バーコード.value)) == 0 else 読取不良
+    検品合格 { コード = バーコード }
+}
+
+example 入荷検品する
+    | "正しいバーコードは検品合格" :
+        (JANコード("9784873115658")) -> 検品合格 { コード = JANコード("9784873115658") }
+    | "チェックディジットが合わなければ読取不良" :
+        (JANコード("9784873115659")) -> 読取不良
+
+// === 出荷検算：ケース単位でしか出せない ===
+// 倉庫は入数（ケースあたりの個数）単位で出荷する。要求数量が入数の倍数でなければ端数として弾き、
+// 倍数ならケース数を返す。剰余は Int.modBy、ケース数は整数除算。「入数は1以上」は invariant で持つ。
+data 入数 = Int
+    invariant value >= 1
+data 出荷可 = { ケース数: Int }
+data 端数あり = { 余り: Int }
+
+behavior 出荷を検算する : (ケース入数: 入数, 要求数量: Int) -> 出荷可 | 端数あり
+    constructs 出荷可, 端数あり
+
+let 出荷を検算する (ケース入数, 要求数量) = {
+    let 余り = Int.modBy(ケース入数.value, 要求数量)
+    require 余り == 0 else 端数あり { 余り = 余り }
+    出荷可 { ケース数 = 要求数量 / ケース入数.value }
+}
+
+example 出荷を検算する
+    | "入数の倍数は出荷可（ケース数を返す）" : (入数(12), 24) -> 出荷可 { ケース数 = 2 }
+    | "端数は弾く" : (入数(12), 25) -> 端数あり { 余り = 1 }
+
+// === 棚入れ：検品合格品を棚番地へ ===
+// 棚番地（ロケーション）は「通路-連-段」の書式（例 A-03-12）。入荷検品に合格したバーコードを
+// 指定の棚へ入庫する。書式は matches の invariant で持つので、桁欠けや誤記は境界で弾かれる。
+data ロケーション = String
+    invariant String.matches("[A-Z]-[0-9]{2}-[0-9]{2}", value)
+data 入庫記録 = { コード: JANコード, 棚: ロケーション }
+
+behavior 棚入れする : (合格: 検品合格, 棚: ロケーション) -> 入庫記録
+    constructs 入庫記録
+
+let 棚入れする (合格, 棚) = 入庫記録 { コード = 合格.コード, 棚 = 棚 }
+
+example 棚入れする
+    | "合格品を棚番地へ入庫する" :
+        (検品合格 { コード = JANコード("9784873115658") }, ロケーション("A-03-12"))
+            -> 入庫記録 { コード = JANコード("9784873115658"), 棚 = ロケーション("A-03-12") }

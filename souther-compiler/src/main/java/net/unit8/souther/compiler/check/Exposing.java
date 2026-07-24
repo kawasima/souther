@@ -120,7 +120,7 @@ public final class Exposing {
             case Ast.Match m -> {
                 List<Ast.Case> cases = new ArrayList<>();
                 for (Ast.Case cs : m.cases()) {
-                    cases.add(new Ast.Case(cs.caseTypes(), cs.binding(), rw(cs.body()), cs.pos()));
+                    cases.add(new Ast.Case(cs.caseTypes(), cs.binding(), rw(cs.body()), cs.unwrapAsserts(), cs.pos()));
                 }
                 yield new Ast.Match(rw(m.scrutinee()), cases, m.pos());
             }

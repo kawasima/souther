@@ -35,4 +35,16 @@ class ContactTest {
         Result<Contact> unknown = Contact.decoder().decode(Map.of("type", "Nope"), Path.ROOT);
         assertInstanceOf(Err.class, unknown);
     }
+
+    @Test
+    void 各ケースの書式invariantが境界で検査される() {
+        // 電話は 0始まり-区切りの書式でなければ弾かれる。
+        assertInstanceOf(Ok.class,
+                Contact.decoder().decode(Map.of("type", "PhoneContact", "phone", "090-1234-5678"), Path.ROOT));
+        assertInstanceOf(Err.class,
+                Contact.decoder().decode(Map.of("type", "PhoneContact", "phone", "1234"), Path.ROOT));
+        // メールも @ とドメインの書式が要る。
+        assertInstanceOf(Err.class,
+                Contact.decoder().decode(Map.of("type", "EmailContact", "email", "no-at-sign"), Path.ROOT));
+    }
 }
