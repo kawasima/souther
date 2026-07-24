@@ -8,6 +8,10 @@ JVM boundary that are otherwise hand-rolled at every call site:
   (`{:path :code :message}`). `construct` builds a domain value of a given class through its
   `decoder()` — the public construction path for a non-`extends` boundary, since data constructors
   are non-public. `decode!` throws instead of returning `[:err …]`.
+- **`souther.encode`** — the inverse. `encode` runs a value's generated `encoder()` and returns
+  Clojure data: a newtype becomes its bare underlying value, a record/sum a keyword-keyed map with
+  nested newtypes already unwrapped — so a boundary never chains `.value` / field accessors.
+  `unwrap` is `encode` narrowed to a newtype (the bare value), throwing on a record/sum.
 - **`souther.behavior`** — `defbehavior` is sugar over `proxy` for implementing an injected
   behavior's abstract base, mirroring the generated `apply` signature.
 - **`souther.match`** — `case-of` folds a sealed output union to a value and, at macro-expansion,

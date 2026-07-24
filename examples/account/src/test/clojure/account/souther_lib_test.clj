@@ -5,6 +5,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.stacktrace :as st]
             [souther.decode :as d]
+            [souther.encode :as e]
             [souther.match :as m]
             [souther.behavior :as b])
   (:import [example.account WithdrawRequest Withdrawn InsufficientFunds NoAccount Balance
@@ -36,6 +37,23 @@
 
 (deftest construct-throws-on-invariant-violation
   (is (thrown? clojure.lang.ExceptionInfo (d/construct Balance -1))))
+
+;; --- souther.encode ---
+
+(deftest encode-unwraps-a-newtype-to-its-bare-value
+  (is (= 700 (e/encode (d/construct Balance 700))))
+  (is (= "acc-1" (e/encode (d/construct AccountNo "acc-1")))))
+
+(deftest encode-a-record-to-a-keyword-map-with-nested-newtypes-unwrapped
+  (is (= {:account "acc-1" :newBalance 700}
+         (e/encode (d/construct Withdrawn {:account "acc-1" :newBalance 700})))))
+
+(deftest unwrap-returns-the-inside-of-a-wrapper
+  (is (= 700 (e/unwrap (d/construct Balance 700)))))
+
+(deftest unwrap-rejects-a-non-wrapper
+  (is (thrown? clojure.lang.ExceptionInfo
+               (e/unwrap (d/construct Withdrawn {:account "acc-1" :newBalance 700})))))
 
 ;; --- souther.match ---
 

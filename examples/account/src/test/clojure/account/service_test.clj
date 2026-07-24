@@ -32,9 +32,10 @@
   (json/parse-string (:body response) true))
 
 (deftest withdraw-success-writes-new-balance
-  (let [res (post-withdraw "acc-1" 300)]
-    (is (= 200 (:status res)))
-    (is (= {:account "acc-1" :balance 700} (body-json res)))))
+  (testing "the 200 body is the encoded Withdrawn value (souther.encode/encode)"
+    (let [res (post-withdraw "acc-1" 300)]
+      (is (= 200 (:status res)))
+      (is (= {:account "acc-1" :newBalance 700} (body-json res))))))
 
 (deftest withdraw-insufficient-is-409
   (let [res (post-withdraw "acc-2" 800)]

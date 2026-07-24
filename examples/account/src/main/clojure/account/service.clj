@@ -11,6 +11,7 @@
             [io.pedestal.http.route :as route]
             [next.jdbc :as jdbc]
             [souther.decode :as sd]
+            [souther.encode :refer [encode unwrap]]
             [souther.match :refer [case-of]]
             [account.db :as db]
             [account.behaviors :as b])
@@ -40,10 +41,9 @@
                     (binding [db/*conn* tx]
                       (.apply withdraw decoded)))]
           (case-of WithdrawResult out
-                   {Withdrawn (fn [w] (json-response 200 {:account (.value (.account w))
-                                                          :balance (.value (.newBalance w))}))
-                    InsufficientFunds (fn [i] (json-response 409 {:error "insufficient_funds"
-                                                                  :shortfall (.shortfall i)}))
+                   {Withdrawn (fn [w] (json-response 200 (encode w)))
+                    InsufficientFunds (fn [i] (json-response 409 (assoc (encode i)
+                                                                        :error "insufficient_funds")))
                     NoAccount (fn [_] (json-response 404 {:error "no_account"}))}))))))
 
 (defn- balance-handler [ds]
@@ -54,7 +54,7 @@
         (if (= tag :err)
           (json-response 404 {:error "no_account"})
           (case-of CurrentBalanceResult (.apply current-balance account)
-                   {Balance (fn [b] (json-response 200 {:account id :balance (.value b)}))
+                   {Balance (fn [b] (json-response 200 {:account id :balance (unwrap b)}))
                     NoAccount (fn [_] (json-response 404 {:error "no_account"}))}))))))
 
 (defn routes [ds]

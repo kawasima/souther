@@ -6,6 +6,7 @@
   (:require [next.jdbc :as jdbc]
             [next.jdbc.result-set :as rs]
             [souther.decode :refer [construct]]
+            [souther.encode :refer [unwrap]]
             [souther.behavior :refer [defbehavior]]
             [account.db :as db])
   (:import [example.account Balance NoAccount Withdrawn CurrentBalance UpdateBalance Withdraw]))
@@ -16,7 +17,7 @@
   CurrentBalance
   (apply [account]
     (let [row (jdbc/execute-one! (db/current ds)
-                                 ["select balance from account where id=?" (.value account)]
+                                 ["select balance from account where id=?" (unwrap account)]
                                  {:builder-fn rs/as-unqualified-maps})]
       (if row
         (construct Balance (:BALANCE row))
@@ -26,8 +27,8 @@
   ;; updateBalance : (account: AccountNo, newBalance: Balance) -> Withdrawn. Writes and reports it.
   UpdateBalance
   (apply [account new-balance]
-    (let [id (.value account)
-          balance (.value new-balance)]
+    (let [id (unwrap account)
+          balance (unwrap new-balance)]
       (jdbc/execute! (db/current ds) ["update account set balance=? where id=?" balance id])
       (construct Withdrawn {:account id :newBalance balance}))))
 

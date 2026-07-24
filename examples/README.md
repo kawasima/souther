@@ -206,6 +206,9 @@ type and works by reflection over whatever generated classes the caller passes i
 - `souther.decode` — `decode` runs a `decoder()` over Clojure data (keyword keys accepted) and
   returns `[:ok value]` / `[:err issues]` with issues as plain maps; `construct` builds a case value
   through its `decoder()`.
+- `souther.encode` — the inverse: `encode` runs a value's `encoder()` and returns Clojure data,
+  unwrapping newtypes (a newtype → its bare value, a record → a keyword map with nested newtypes
+  already unwrapped); `unwrap` is that narrowed to a single wrapper. No chains of `.value`.
 - `souther.behavior` — `defbehavior`, the `proxy` sugar for an injected behavior.
 - `souther.match` — `case-of`, which folds a sealed output union and checks **at macro-expansion**
   that the handlers cover exactly the union's permitted subclasses — carrying Souther's `match`
@@ -214,8 +217,8 @@ type and works by reflection over whatever generated classes the caller passes i
 | Clojure file | Role |
 | --- | --- |
 | `account/db.clj` | The H2 DataSource, schema, and seed. The dynamic var `*conn*` is the seam that binds "read → check → write" into one transaction: the boundary rebinds it to the transaction's connection, and both behaviors query through `current`, so `currentBalance`'s SELECT and `updateBalance`'s UPDATE join the same connection |
-| `account/behaviors.clj` | Implements `currentBalance` / `updateBalance` with `souther.behavior/defbehavior`, building the return values with `souther.decode/construct`. Binds with `Withdraw/bind` (spec 19.5). SQL exceptions are not caught — they are thrown (platform failures pass through) |
-| `account/service.clj` | The Pedestal boundary. The whole request is the JSON body `{"account": …, "amount": …}`, handed straight to `WithdrawRequest/decoder` via `souther.decode/decode` (the `Amount` invariant `value >= 0` is rejected here → 400, and the Raoh issues are returned in the body). Then it runs `withdraw` inside `with-transaction` and folds the output with `souther.match/case-of` (Withdrawn 200 / InsufficientFunds 409 / NoAccount 404) — miss a case and it will not compile |
+| `account/behaviors.clj` | Implements `currentBalance` / `updateBalance` with `souther.behavior/defbehavior`, building the return values with `souther.decode/construct` and reading newtype arguments with `souther.encode/unwrap` (no `.value`). Binds with `Withdraw/bind` (spec 19.5). SQL exceptions are not caught — they are thrown (platform failures pass through) |
+| `account/service.clj` | The Pedestal boundary. The whole request is the JSON body `{"account": …, "amount": …}`, handed straight to `WithdrawRequest/decoder` via `souther.decode/decode` (the `Amount` invariant `value >= 0` is rejected here → 400, and the Raoh issues are returned in the body). Then it runs `withdraw` inside `with-transaction`, folds the output with `souther.match/case-of` (miss a case and it will not compile), and `souther.encode/encode`s the result value to the JSON body — Withdrawn 200 `{account, newBalance}` / InsufficientFunds 409 / NoAccount 404 |
 | `account/server.clj` | The `-main` that creates and seeds H2 and starts Jetty |
 
 `InsufficientFunds` / `NoAccount` arrive as **returned values**, and no write happened on those
@@ -234,7 +237,7 @@ JDK compiler API (`souther.build/generate!`), with `souther-compiler` on the ali
 ```sh
 cd examples/account
 clojure -X:gen                                   # .sou → target/classes (the .sou examples are checked here too)
-clojure -X:test                                  # the souther-clj library, behavior+DB, and Pedestal boundary tests (15 of them)
+clojure -X:test                                  # the souther-clj library, behavior+DB, and Pedestal boundary tests (19 of them)
 clojure -M:run                                   # starts on localhost:8890
 ```
 
@@ -244,7 +247,7 @@ path (it is what `mvn … verify` uses for the whole reactor).
 ```sh
 curl localhost:8890/accounts/acc-1                                            # {"account":"acc-1","balance":1000}
 curl -X POST localhost:8890/withdrawals \
-     -H 'Content-Type: application/json' -d '{"account":"acc-1","amount":300}'  # {"account":"acc-1","balance":700}
+     -H 'Content-Type: application/json' -d '{"account":"acc-1","amount":300}'  # {"account":"acc-1","newBalance":700}
 curl -X POST localhost:8890/withdrawals \
      -H 'Content-Type: application/json' -d '{"account":"acc-1","amount":5000}' # 409 {"error":"insufficient_funds","shortfall":...}
 ```
