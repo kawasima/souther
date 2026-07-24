@@ -1333,7 +1333,7 @@ Which behaviors get a `+let+` and which are injected is not decided mechanically
 [#java-base-class]
 === Java base-class generation
 
-A behavior subject to injection (wrote a type, no `+let+`; <<injected-behavior>>) is generated as an *abstract base class*. It extends `+Behavior+` and, for each unit data listed in `+constructs+`, has a `+protected+` factory that constructs it.
+A behavior subject to injection (wrote a type, no `+let+`; <<injected-behavior>>) is generated as an *abstract base class*, and for each unit data listed in `+constructs+` has a `+protected+` factory that constructs it. Whether it takes one input or several is orthogonal to injection, exactly as for a `+let+`-implemented behavior (<<jvm-behavior>>): a *single* input extends the unary `+Behavior<In, Out>+` (so it still composes with `+>->+`) and inherits its `+apply+`; *two or more* inputs make it a standalone abstract class with a typed multi-argument `+apply(A, B, …)+` and no `+Behavior+` supertype (it takes one argument, so it is not a `+>->+` stage). A Java implementation overrides that typed `+apply+` directly, so several inputs are passed as arguments rather than bundled into a record. A collection parameter keeps its `+java.util.List+` / `+Map+` / `+Set+` (or the runtime `+Option+`) type with its element type, not `+Object+`.
 
 [,text]
 ----
@@ -1361,6 +1361,8 @@ This abstract base class is *always public*, regardless of whether it is in `+ex
 When a *non-unit* data is listed in `+constructs+` and that data is not exposed with `+exposing+`, it is a compile error (E1305). A factory is generated only for a unit data, and a non-exposed data has no decoder either, so a Java implementation would have no way to create that value. If exposed, it can be created via the decoder (<<jvm-codec>>). The requirement is that it be either a unit data or an exposed data.
 
 What is confined is <<invariant-on-construct>>. An invariant-bearing data is always checked whether it goes through `+__construct+` or the decoder. So even if it can be created from outside, *no unvalidated value can be created*. A unit data has nothing to validate, so nothing is lost by allowing it to be created from outside.
+
+The base is an ordinary JVM abstract class, so any JVM language implements it. Kotlin and Scala `+extends+`/`+:+` it and override `+apply+` as Java does; a collection parameter arrives as `+java.util.List+`/`+Map+`/`+Set+`, which a Kotlin or Scala collection or a Clojure persistent collection satisfies directly. Clojure extends the abstract base with `+proxy+` or `+gen-class+` (not `+reify+`, which is interface-only) and dispatches `+apply+` by arity; because the `+constructs+` factories are `+protected+`, a Clojure implementation reaches them through `+gen-class+`'s `+:exposes-methods+` (a `+proxy+` sees only public methods). The factories stay `+protected+` — that is the construction confinement, not an interop choice.
 
 [#java-impl-rules]
 === Rules for Java implementations
@@ -1622,7 +1624,7 @@ example 事前承認する
     | (事前承認待ち { ... }, 従業員ID("boss-1")) with 現在時刻 = "2026-07-20T09:00" -> 事前承認済み
 ----
 
-A *function dependency* — one whose result varies with its input — is given by a `+fake+` declaration: an input→output table matched by value equality, defaulting to a `+_+` row or, absent one, a miss error (<<e1909>>).
+A *function dependency* — one whose result varies with its input — is given by a `+fake+` declaration: an input→output table matched by value equality, defaulting to a `+_+` row or, absent one, a miss error (<<e1909>>). A multi-input injected dependency (<<java-base-class>>) is faked the same way, with the row's inputs matched as a tuple.
 
 [,text]
 ----

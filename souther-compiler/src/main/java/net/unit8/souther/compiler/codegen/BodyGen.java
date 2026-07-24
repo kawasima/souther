@@ -78,7 +78,7 @@ final class BodyGen {
         private int nextSlot;
         private Set<String> reqNames = Set.of();
         private Map<String, Type> reqSuccess = Map.of();
-        private Map<String, Type> reqParam = Map.of();
+        private Map<String, List<Type>> reqParams = Map.of();
         /** The last line already bound in this method's {@code LineNumberTable}; skips consecutive
          * same-line entries. Fresh per method, since one {@code BodyGen} emits one method's code. */
         private int lastEmittedLine = -1;
@@ -101,17 +101,17 @@ final class BodyGen {
         }
 
         /** Makes injected required behaviors callable inline from this body (spec 12.2, 13). */
-        void requireds(Set<String> names, Map<String, Type> success, Map<String, Type> param) {
+        void requireds(Set<String> names, Map<String, Type> success, Map<String, List<Type>> params) {
             this.reqNames = names;
             this.reqSuccess = success;
-            this.reqParam = param;
+            this.reqParams = params;
         }
 
         /** A {@code ReqSig} view of the injected behaviors in scope, for re-typing a closure body. */
         private Map<String, TypeChecker.ReqSig> reqSigs() {
             Map<String, TypeChecker.ReqSig> sigs = new HashMap<>();
             for (String n : reqNames) {
-                sigs.put(n, new TypeChecker.ReqSig(reqParam.get(n), reqSuccess.get(n)));
+                sigs.put(n, new TypeChecker.ReqSig(reqParams.get(n), reqSuccess.get(n)));
             }
             return sigs;
         }
@@ -180,7 +180,7 @@ final class BodyGen {
         private byte[] generateLambdaClass(ClassDesc cd, Ast.Block block, List<Type> paramTypes,
                                            Type resultType, List<String> valueNames, List<Type> valueTypes,
                                            List<String> injectedNames, Map<String, Type> reqSuccess,
-                                           Map<String, Type> reqParam) {
+                                           Map<String, List<Type>> reqParams) {
             return build(cd, cb -> {
                 cb.withFlags(ClassFile.ACC_FINAL | ClassFile.ACC_SUPER);
                 cb.withInterfaceSymbols(CD_Fn);
@@ -189,14 +189,14 @@ final class BodyGen {
                             ClassFile.ACC_PRIVATE | ClassFile.ACC_FINAL);
                 }
                 for (String inj : injectedNames) {   // named after the behavior so requiredCall reads it
-                    cb.withField(inj, CD_Behavior, ClassFile.ACC_PRIVATE | ClassFile.ACC_FINAL);
+                    cb.withField(inj, ctx.requiredFieldType(inj), ClassFile.ACC_PRIVATE | ClassFile.ACC_FINAL);
                 }
                 List<ClassDesc> ctor = new ArrayList<>();
                 for (Type t : valueTypes) {
                     ctor.add(jvmType(t));
                 }
-                for (String _ : injectedNames) {
-                    ctor.add(CD_Behavior);
+                for (String inj : injectedNames) {
+                    ctor.add(ctx.requiredFieldType(inj));
                 }
                 cb.withMethodBody("<init>", MethodTypeDesc.of(ConstantDescs.CD_void, ctor.toArray(new ClassDesc[0])),
                         ClassFile.ACC_PUBLIC, code -> {
@@ -212,7 +212,7 @@ final class BodyGen {
                     for (String inj : injectedNames) {
                         code.aload(0);
                         code.aload(slot);
-                        code.putfield(cd, inj, CD_Behavior);
+                        code.putfield(cd, inj, ctx.requiredFieldType(inj));
                         slot += 1;
                     }
                     code.return_();
@@ -223,10 +223,10 @@ final class BodyGen {
                         // the captured behaviors live in this closure's own fields; requiredCall reads
                         // `this.<name>`, so route them the same way the enclosing behavior does
                         Map<String, Type> succ = new HashMap<>();
-                        Map<String, Type> parm = new HashMap<>();
+                        Map<String, List<Type>> parm = new HashMap<>();
                         for (String inj : injectedNames) {
                             succ.put(inj, reqSuccess.get(inj));
-                            parm.put(inj, reqParam.get(inj));
+                            parm.put(inj, reqParams.get(inj));
                         }
                         g.requireds(new HashSet<>(injectedNames), succ, parm);
                     }
@@ -270,19 +270,12 @@ final class BodyGen {
             switch (e) {
                 case Core.LetIn li -> {
                     if (li.value() instanceof Core.Call call && requiredNames.contains(call.fn())) {
-                        // call an injected required behavior; its apply returns the value directly
-                        code.aload(0);
-                        code.getfield(cdB, call.fn(), CD_Behavior);
-                        if (call.args().isEmpty()) {
-                            code.aconst_null();    // `() -> R` (spec 13.1)
-                        } else {
-                            Type at = genExpr(call.args().get(0));
-                            box(code, at);
-                        }
-                        code.invokeinterface(CD_Behavior, "apply", MTD_apply);
-                        Type letType = requiredSuccess.get(call.fn());
+                        // call an injected required behavior; requiredCall handles both the unary
+                        // Behavior contract and a multi-input base (issue #57), leaving the success
+                        // value cast on the stack
+                        Type letType = requiredCall(call);
                         int vSlot = slot(letType);
-                        unbox(code, letType, vSlot);
+                        store(code, vSlot, letType);
                         bind(li.name(), vSlot, letType);
                     } else {
                         // Type inference for a closure lives in the checker (AST); Core is untyped, so
@@ -987,6 +980,21 @@ final class BodyGen {
         /** Emits an inline call to an injected required behavior, leaving its success value on
          * the stack cast to the success type (spec 12.2, 13). */
         private Type requiredCall(Core.Call call) {
+            Type success = reqSuccess.get(call.fn());
+            if (ctx.isMultiArgRequired(call.fn())) {
+                // 2+ inputs: the required behavior is its own base class, called with a typed
+                // invokevirtual apply(A,B,…); each arg is left as its declared param type (issue #57)
+                MethodTypeDesc desc = ctx.requiredApplyDesc(call.fn());
+                code.aload(0);
+                code.getfield(cdName, call.fn(), ctx.cdBehavior(call.fn()));
+                for (Core arg : call.args()) {
+                    Type at = genExpr(arg);
+                    box(code, at);   // a primitive boxes to its apply-param type; a reference already matches
+                }
+                code.invokevirtual(ctx.cdBehavior(call.fn()), "apply", desc);
+                stackCast(success);
+                return success;
+            }
             code.aload(0);
             code.getfield(cdName, call.fn(), CD_Behavior);
             if (call.args().isEmpty()) {
@@ -996,7 +1004,6 @@ final class BodyGen {
                 box(code, at);
             }
             code.invokeinterface(CD_Behavior, "apply", MTD_apply);
-            Type success = reqSuccess.get(call.fn());
             stackCast(success);
             return success;
         }
@@ -1240,7 +1247,7 @@ final class BodyGen {
             String className = pkg + ".$Fn" + ctx.nextLambdaId();
             ClassDesc cd = ClassDesc.of(className);
             ctx.addSynth(className, generateLambdaClass(cd, block, paramTypes, resultType,
-                    valueNames, valueTypes, injectedNames, reqSuccess, reqParam));
+                    valueNames, valueTypes, injectedNames, reqSuccess, reqParams));
 
             code.new_(cd);
             code.dup();
@@ -1251,8 +1258,8 @@ final class BodyGen {
             }
             for (String inj : injectedNames) {
                 code.aload(0);                              // the enclosing behavior instance
-                code.getfield(cdName, inj, CD_Behavior);    // its injected field
-                ctorDescs.add(CD_Behavior);
+                code.getfield(cdName, inj, ctx.requiredFieldType(inj));    // its injected field
+                ctorDescs.add(ctx.requiredFieldType(inj));
             }
             code.invokespecial(cd, "<init>",
                     MethodTypeDesc.of(ConstantDescs.CD_void, ctorDescs.toArray(new ClassDesc[0])));

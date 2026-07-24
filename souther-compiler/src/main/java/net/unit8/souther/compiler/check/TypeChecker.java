@@ -247,9 +247,11 @@ public final class TypeChecker {
                                     + " (spec 13.2); it cannot declare `requires` — the behavior that"
                                     + " calls or composes it does");
                 }
-                reqSigs.put(spec.name(), new ReqSig(
-                        spec.params().isEmpty() ? null : successType(spec.params().get(0).type(), symbols),
-                        successType(spec.ret(), symbols)));
+                List<Type> reqParams = new ArrayList<>();
+                for (Ast.Param p : spec.params()) {
+                    reqParams.add(successType(p.type(), symbols));
+                }
+                reqSigs.put(spec.name(), new ReqSig(reqParams, successType(spec.ret(), symbols)));
                 checkInjectionConstructs(spec, symbols, exposeAll, exposed);
             }
         }
@@ -1053,10 +1055,10 @@ public final class TypeChecker {
         }
     }
 
-    /** A required behavior's input and success types (for typing calls). */
     /** The input and success types of a required (injected) behavior, for typing an inline call to
-     * it. Public so the backend can build the same view when it re-types a closure body. */
-    public record ReqSig(Type param, Type success) {}
+     * it. An injected behavior may take several inputs, so {@code params} is a list (empty for
+     * {@code () -> R}). Public so the backend can build the same view when it re-types a closure body. */
+    public record ReqSig(List<Type> params, Type success) {}
 
     /** The distinct injection targets a fn body calls, in first-seen order. Calls may appear
      * anywhere in an expression (e.g. inline in a record literal), not only bound to a let. */
@@ -2843,12 +2845,10 @@ public final class TypeChecker {
                                     + ". Calling arbitrary JVM methods is not allowed; declare a behavior"
                                     + " without a `let` and implement it from Java.");
                 }
-                if (callee.param() == null) {
-                    arity(call, 0);            // `() -> R`, e.g. 現在時刻() (spec 13.1)
-                } else {
-                    arity(call, 1);
-                    requireType(args.get(0), callee.param(), env, data, symbols, reqs,
-                            "argument of " + call.fn());
+                arity(call, callee.params().size());
+                for (int i = 0; i < callee.params().size(); i++) {
+                    requireType(args.get(i), callee.params().get(i), env, data, symbols, reqs,
+                            "argument " + (i + 1) + " of " + call.fn());
                 }
                 yield callee.success();
             }

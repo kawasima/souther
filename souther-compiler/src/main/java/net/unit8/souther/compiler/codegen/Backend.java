@@ -193,13 +193,16 @@ public final class Backend {
         // injects and binds them (spec 14.3) — but no base is generated for them here.
         Set<String> requiredNames = new HashSet<>(importedInjected);
         Map<String, Type> requiredSuccess = new HashMap<>();
-        Map<String, Type> requiredParam = new HashMap<>();
+        Map<String, List<Type>> requiredParam = new HashMap<>();
         for (Ast.BehaviorDef bd : module.behaviors()) {
             if (bd instanceof Ast.SpecBehavior spec && !fns.containsKey(spec.name())) {
                 requiredNames.add(spec.name());
                 requiredSuccess.put(spec.name(), b.successType(spec.ret()));
-                requiredParam.put(spec.name(),
-                        spec.params().size() == 1 ? b.successType(spec.params().get(0).type()) : null);
+                List<Type> reqParams = new ArrayList<>();
+                for (Ast.Param p : spec.params()) {
+                    reqParams.add(b.successType(p.type()));
+                }
+                requiredParam.put(spec.name(), reqParams);
                 // Unit output cases get a no-arg factory (a unit has nothing to validate, so it is
                 // built directly). A field-bearing constructed type gets a typed factory, but only
                 // when the behavior declares it in `constructs` — that declaration is the authority
@@ -222,14 +225,24 @@ public final class Backend {
                         }
                     }
                 }
-                ClassDesc inputRef = spec.params().size() == 1
-                        ? b.refTypeOrNull(b.successType(spec.params().get(0).type()), spec.name())
-                        : null;
-                ClassDesc outputRef = b.refTypeOrNull(b.successType(spec.ret()), spec.name());
                 out.put(module.name() + "." + behaviorClass(spec.name()),
-                        b.generateRequiredBase(spec.name(), unitCases, dataConstructs, inputRef, outputRef));
+                        b.generateRequiredBase(spec.name(), unitCases, dataConstructs,
+                                reqParams, b.successType(spec.ret())));
             }
         }
+        // An imported injected behavior (its base lives in the declaring module, so no base is built
+        // here) is a requirement too; take its arity from the imported signature so the unary-vs-multi
+        // dispatch treats a cross-module multi-input dependency the same as a local one (issue #57).
+        for (String name : importedInjected) {
+            TypeChecker.Sig sig = importedSigs.get(name);
+            if (sig != null) {
+                requiredParam.put(name, sig.ins());
+                requiredSuccess.put(name, sig.out());
+            }
+        }
+        // The unary-vs-multi dispatch for required behaviors reads these; set once, so the base class,
+        // the $Impl field/ctor, the bind factory, and every call site agree (issue #57).
+        b.ctx.setRequiredSignatures(requiredParam, requiredSuccess);
         Map<String, TypeChecker.Sig> sigs = TypeChecker.signatures(module, b.symbols, importedSigs);
         Map<String, List<String>> behaviorDeps = requirementSets(module, requiredNames);
         Map<String, List<String>> pipeStages = TypeChecker.pipelineStages(module);
@@ -315,11 +328,13 @@ public final class Backend {
             return;
         }
         for (String req : requireds) {
-            cb.withField(req, CD_Behavior, ClassFile.ACC_FINAL);
+            // a multi-input required behavior is stored as its own base class (invokevirtual), not the
+            // unary Behavior — see CodegenContext.requiredFieldType (issue #57)
+            cb.withField(req, ctx.requiredFieldType(req), ClassFile.ACC_FINAL);
         }
         ClassDesc[] params = new ClassDesc[requireds.size()];
         for (int i = 0; i < requireds.size(); i++) {
-            params[i] = CD_Behavior;
+            params[i] = ctx.requiredFieldType(requireds.get(i));
         }
         MethodTypeDesc ctorDesc = MethodTypeDesc.of(ConstantDescs.CD_void, params);
         cb.withMethodBody("<init>", ctorDesc, ClassFile.ACC_PUBLIC, code -> {
@@ -328,7 +343,7 @@ public final class Backend {
             for (int i = 0; i < requireds.size(); i++) {
                 code.aload(0);
                 code.aload(i + 1);
-                code.putfield(cdX, requireds.get(i), CD_Behavior);
+                code.putfield(cdX, requireds.get(i), ctx.requiredFieldType(requireds.get(i)));
             }
             code.return_();
         });
@@ -356,7 +371,7 @@ public final class Backend {
         ClassDesc[] ctorParams = new ClassDesc[requireds.size()];
         for (int i = 0; i < requireds.size(); i++) {
             bindParams[i] = cdBehavior(requireds.get(i));   // the required's public interface / base
-            ctorParams[i] = CD_Behavior;
+            ctorParams[i] = ctx.requiredFieldType(requireds.get(i));
         }
         MethodTypeDesc ctorDesc = MethodTypeDesc.of(ConstantDescs.CD_void, ctorParams);
         cb.withMethodBody("bind", MethodTypeDesc.of(cdI, bindParams),
@@ -392,18 +407,22 @@ public final class Backend {
      * signature is omitted and the raw interface stands.
      */
     private byte[] generateRequiredBase(String name, List<String> unitCases, List<Ast.Data> dataConstructs,
-                                        ClassDesc inputRef, ClassDesc outputRef) {
+                                        List<Type> paramTypes, Type retType) {
         ClassDesc cdR = cdBehavior(name);
+        // Injected-vs-unary is orthogonal to composition: 0/1 input stays the unary Behavior<In,Out>
+        // (a >-> stage); 2+ inputs is a standalone abstract class with a typed apply(A,B,...), the same
+        // param-count branch a fn behavior takes in generateBehaviorInterface.
+        boolean single = paramTypes.size() <= 1;
         return build(cdR, cb -> {
             cb.withFlags(ClassFile.ACC_PUBLIC | ClassFile.ACC_ABSTRACT | ClassFile.ACC_SUPER);
-            if (inputRef != null && outputRef != null) {
-                String beh = CD_Behavior.descriptorString();
-                beh = beh.substring(0, beh.length() - 1); // drop trailing ';' to insert type args
-                String sig = CD_Object.descriptorString() + beh + "<"
-                        + inputRef.descriptorString() + outputRef.descriptorString() + ">;";
-                cb.with(SignatureAttribute.of(ClassSignature.parseFrom(sig)));
+            if (single) {
+                if (!paramTypes.isEmpty()) {
+                    withBehaviorSignature(cb, paramTypes.get(0), retType, name);
+                }
+                cb.withInterfaceSymbols(CD_Behavior);
+            } else {
+                emitAbstractApply(cb, name, paramTypes, retType);
             }
-            cb.withInterfaceSymbols(CD_Behavior);
             // protected no-arg ctor so subclasses in any package can call super()
             cb.withMethodBody("<init>", MTD_void, ClassFile.ACC_PROTECTED, code -> {
                 code.aload(0);
@@ -482,16 +501,30 @@ public final class Backend {
      * Java callers then receive the declared input and outcome types without a cast.
      */
     private void withBehaviorSignature(ClassBuilder cb, Type input, Type output, String behaviorName) {
-        ClassDesc inputRef = refTypeOrNull(input, behaviorName);
-        ClassDesc outputRef = refTypeOrNull(output, behaviorName);
-        if (inputRef == null || outputRef == null) {
+        // A collection In/Out keeps its element type (sigRefOrNull), so it no longer suppresses the
+        // whole Behavior<In,Out> signature — only a truly erased type (var/tuple/fn) does (issue #57).
+        String inSig = ctx.sigRefOrNull(input, behaviorName);
+        String outSig = ctx.sigRefOrNull(output, behaviorName);
+        if (inSig == null || outSig == null) {
             return;
         }
         String beh = CD_Behavior.descriptorString();
         beh = beh.substring(0, beh.length() - 1); // drop trailing ';' to insert type args
-        String sig = CD_Object.descriptorString() + beh + "<"
-                + inputRef.descriptorString() + outputRef.descriptorString() + ">;";
+        String sig = CD_Object.descriptorString() + beh + "<" + inSig + outSig + ">;";
         cb.with(SignatureAttribute.of(ClassSignature.parseFrom(sig)));
+    }
+
+    /** Declares the abstract, typed multi-argument {@code apply(A,B,…)} of a multi-input behavior
+     * (a fn interface or an injected base), with a generic {@code Signature} when a param/return is a
+     * collection (issue #57). */
+    private void emitAbstractApply(ClassBuilder cb, String name, List<Type> paramTypes, Type retType) {
+        String sig = ctx.applySignatureOrNull(name, paramTypes, retType);
+        cb.withMethod("apply", ctx.typedApplyDesc(name, paramTypes, retType),
+                ClassFile.ACC_PUBLIC | ClassFile.ACC_ABSTRACT, mb -> {
+                    if (sig != null) {
+                        mb.with(SignatureAttribute.of(MethodSignature.parseFrom(sig)));
+                    }
+                });
     }
 
     /**
@@ -514,23 +547,14 @@ public final class Backend {
                 withBehaviorSignature(cb, paramTypes.getFirst(), retType, name);
             } else {
                 // no Behavior supertype (it takes one argument): declare the typed apply directly
-                cb.withMethod("apply", typedApplyDesc(name, paramTypes, retType),
-                        ClassFile.ACC_PUBLIC | ClassFile.ACC_ABSTRACT, mb -> { });
+                emitAbstractApply(cb, name, paramTypes, retType);
             }
             emitBehaviorFactory(cb, cdI, cdImpl, requires);
         });
     }
 
-    /** The interface-facing apply descriptor for a multi-input behavior: each param and the return
-     * mapped to its reference type, a list/option/map degraded to {@code Object}. */
     private MethodTypeDesc typedApplyDesc(String name, List<Type> paramTypes, Type retType) {
-        ClassDesc[] p = new ClassDesc[paramTypes.size()];
-        for (int i = 0; i < p.length; i++) {
-            ClassDesc r = refTypeOrNull(paramTypes.get(i), name);
-            p[i] = r != null ? r : CD_Object;
-        }
-        ClassDesc ret = refTypeOrNull(retType, name);
-        return MethodTypeDesc.of(ret != null ? ret : CD_Object, p);
+        return ctx.typedApplyDesc(name, paramTypes, retType);
     }
 
     /** Emits the covariant bridge that satisfies a multi-input interface's typed apply by delegating
@@ -646,7 +670,7 @@ public final class Backend {
      * name the injected behaviors and are resolved as inline calls, not bound as locals.
      */
     private byte[] generateSpecFn(Ast.SpecBehavior spec, Ast.FnDef fn, Set<String> requiredNames,
-                                  Map<String, Type> requiredSuccess, Map<String, Type> requiredParam) {
+                                  Map<String, Type> requiredSuccess, Map<String, List<Type>> requiredParam) {
         ClassDesc cdB = cdBehaviorImpl(spec.name());   // the $Impl behind the public interface
         int n = spec.params().size();
         // declared requires, validated to equal what the fn calls (E1602/E1603); the same order is

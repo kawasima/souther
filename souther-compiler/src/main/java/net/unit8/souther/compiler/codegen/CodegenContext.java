@@ -6,6 +6,7 @@ import net.unit8.souther.compiler.check.TypeChecker;
 
 import java.lang.classfile.ClassFile;
 import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,6 +40,96 @@ final class CodegenContext {
      * module output once every behavior is generated. */
     private final Map<String, byte[]> synthClasses = new LinkedHashMap<>();
     private int lambdaCounter = 0;
+
+    /** Per-injected-behavior input/success types, set once the module's required behaviors are known
+     * ({@link Backend#generate}). Drives the unary-vs-multi dispatch (issue #57): a required behavior
+     * with 2+ inputs is stored by its own base class and called with {@code invokevirtual}, not the
+     * unary {@code Behavior}. Both {@link Backend} and {@link Backend.Gen}/{@code BodyGen} read this,
+     * so the field type, ctor param and call descriptor cannot drift apart. */
+    private Map<String, List<Type>> reqParams = Map.of();
+    private Map<String, Type> reqSuccess = Map.of();
+
+    void setRequiredSignatures(Map<String, List<Type>> params, Map<String, Type> success) {
+        this.reqParams = params;
+        this.reqSuccess = success;
+    }
+
+    /** A required (injected) behavior takes 2+ inputs, so it is a standalone base, not a unary
+     * {@code Behavior} (issue #57, spec §java-base-class). */
+    boolean isMultiArgRequired(String name) {
+        return reqParams.getOrDefault(name, List.of()).size() >= 2;
+    }
+
+    /** The JVM type a required behavior is stored/injected as: its own base class when multi-input,
+     * else the unary {@code Behavior} composition contract. */
+    ClassDesc requiredFieldType(String name) {
+        return isMultiArgRequired(name) ? cdBehavior(name) : CD_Behavior;
+    }
+
+    /** The typed {@code apply(A,B,…)} descriptor of a multi-input required behavior's base — the same
+     * descriptor {@link Backend#generateRequiredBase} declared, so an {@code invokevirtual} on it links. */
+    MethodTypeDesc requiredApplyDesc(String name) {
+        return typedApplyDesc(name, reqParams.get(name), reqSuccess.get(name));
+    }
+
+    /** The interface-facing apply descriptor for a multi-input behavior: each param and the return
+     * mapped to its runtime reference type. A collection keeps its {@code java.util.List/Map/Set} (or
+     * runtime {@code Option}) interface — not degraded to {@code Object} — with the element type
+     * carried by {@link #applySignatureOrNull} (issue #57). */
+    MethodTypeDesc typedApplyDesc(String name, List<Type> paramTypes, Type retType) {
+        ClassDesc[] p = new ClassDesc[paramTypes.size()];
+        for (int i = 0; i < p.length; i++) {
+            p[i] = applyParamType(paramTypes.get(i), name);
+        }
+        return MethodTypeDesc.of(applyParamType(retType, name), p);
+    }
+
+    /** The JVM reference type an {@code apply} slot takes for {@code t}: a collection keeps its raw
+     * runtime interface ({@code java.util.List/Map/Set}, runtime {@code Option}); a data/union/primitive
+     * maps to its ref; anything erased (type var, tuple, fn) falls back to {@code Object}. */
+    ClassDesc applyParamType(Type t, String name) {
+        if (t instanceof Type.ListOf || t instanceof Type.MapOf
+                || t instanceof Type.SetOf || t instanceof Type.OptionOf) {
+            return JvmTypes.jvmType(t, this);
+        }
+        ClassDesc r = refTypeOrNull(t, name);
+        return r != null ? r : CD_Object;
+    }
+
+    /** A generic {@code Signature} for a typed {@code apply}, or null when no param/return is a
+     * collection (the raw descriptor then already names every type). Mirrors the data-factory signature:
+     * a collection element is carried via {@link JvmTypes#genericSig}, everything else by its descriptor. */
+    String applySignatureOrNull(String name, List<Type> params, Type ret) {
+        boolean anyContainer = JvmTypes.genericSig(ret, this) != null;
+        for (Type p : params) {
+            anyContainer |= JvmTypes.genericSig(p, this) != null;
+        }
+        if (!anyContainer) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder("(");
+        for (Type p : params) {
+            sb.append(applySigElem(p, name));
+        }
+        return sb.append(")").append(applySigElem(ret, name)).toString();
+    }
+
+    private String applySigElem(Type t, String name) {
+        String g = JvmTypes.genericSig(t, this);
+        return g != null ? g : applyParamType(t, name).descriptorString();
+    }
+
+    /** The signature-form of a single {@code Behavior<In, Out>} type argument: a collection carries its
+     * element type; a data/primitive/union its descriptor; a truly erased type (var/tuple/fn) yields
+     * null, which suppresses the whole generic {@code Behavior} signature. */
+    String sigRefOrNull(Type t, String name) {
+        String g = JvmTypes.genericSig(t, this);
+        if (g != null) {
+            return g;
+        }
+        ClassDesc r = refTypeOrNull(t, name);
+        return r != null ? r.descriptorString() : null;
+    }
 
     CodegenContext(String pkg, Map<String, Ast.Def> symbols, Map<String, List<String>> caseToSums,
                    Map<String, String> typePackage, boolean exposeAll, Set<String> exposed,

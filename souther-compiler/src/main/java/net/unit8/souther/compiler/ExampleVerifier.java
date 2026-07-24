@@ -279,7 +279,8 @@ public final class ExampleVerifier {
         for (Ast.With w : row.withs()) {
             if (w.dep().equals(depName)) {
                 try {
-                    return constantProxy(decode(fixtureType(w.value(), outType), raw(w.value())));
+                    Object value = decode(fixtureType(w.value(), outType), raw(w.value()));
+                    return fakeInstance(dep, a -> value, out);   // constant: ignores its inputs
                 } catch (FixtureException fe) {
                     out.add(fakeMissingDiag(target, depName, row,
                             "the `with " + depName + "` value could not be built: " + fe.getMessage()));
@@ -304,21 +305,16 @@ public final class ExampleVerifier {
                 .hint("check.fake.missing.hint", detail).build();
     }
 
-    /** Precomputes a function fake's input→output table (decoded fixtures) and returns a proxy that
-     * looks an actual input up by value equality, falling back to the {@code _} default or a miss. */
+    /** Precomputes a function fake's input→output table (decoded fixtures) as a tuple-keyed lookup, and
+     * returns a fake instance ({@link #fakeInstance}) matching an actual input tuple by value equality,
+     * falling back to the {@code _} default or a miss. Works for any arity: a 0/1-input dep's tuple has
+     * 0/1 elements, a 2+-input dep's has one per parameter (issue #57). */
     private Object tableProxy(Ast.Fake fk, Ast.SpecBehavior dep, Type outType, List<Diagnostic> out) {
         List<Type> paramTypes = new ArrayList<>();
         for (Ast.Param p : dep.params()) {
             paramTypes.add(TypeChecker.successType(p.type(), symbols));
         }
-        if (paramTypes.size() > 1) {
-            out.add(Diagnostic.of("E1908", "check.fake.missing").title("check.example.title")
-                    .at(fk.pos()).args(fk.target(), fk.target())
-                    .hint("check.fake.missing.hint", "a fake for a multi-argument dependency is not supported")
-                    .build());
-            return null;
-        }
-        List<Object[]> entries = new ArrayList<>();   // {key, value}; key is null for a 0-arg dep
+        List<Object[]> entries = new ArrayList<>();   // {keyTuple, value}
         boolean[] hasDefault = {false};
         Object[] def = {null};
         try {
@@ -330,8 +326,18 @@ public final class ExampleVerifier {
                     hasDefault[0] = true;
                     def[0] = value;
                 } else {
-                    Object key = paramTypes.isEmpty() ? null
-                            : decode(paramTypes.get(0), raw(r.inputs().get(0)));
+                    if (r.inputs().size() != paramTypes.size()) {
+                        out.add(Diagnostic.of("E1908", "check.fake.missing").title("check.example.title")
+                                .at(fk.pos()).args(fk.target(), fk.target())
+                                .hint("check.fake.missing.hint", "a fake row has " + r.inputs().size()
+                                        + " input(s) but `" + fk.target() + "` takes " + paramTypes.size())
+                                .build());
+                        return null;
+                    }
+                    Object[] key = new Object[paramTypes.size()];
+                    for (int i = 0; i < paramTypes.size(); i++) {
+                        key[i] = decode(paramTypes.get(i), raw(r.inputs().get(i)));
+                    }
                     entries.add(new Object[] {key, value});
                 }
             }
@@ -343,22 +349,116 @@ public final class ExampleVerifier {
             return null;
         }
         String depName = fk.target();
-        return behaviorProxy(a -> {
-            Object input = a.length > 0 ? a[0] : null;
+        int arity = paramTypes.size();
+        java.util.function.Function<Object[], Object> body = a -> {
+            // the Behavior contract passes one Object even for a 0-arg dep (a null); normalise to arity
+            Object[] key = java.util.Arrays.copyOf(a, arity);
             for (Object[] e : entries) {
-                if (java.util.Objects.equals(e[0], input)) {
+                if (java.util.Arrays.equals((Object[]) e[0], key)) {
                     return e[1];
                 }
             }
             if (hasDefault[0]) {
                 return def[0];
             }
-            throw new FakeMissException("`" + depName + "` has no output for " + input);
-        });
+            throw new FakeMissException("`" + depName + "` has no output for " + java.util.Arrays.toString(key));
+        };
+        return fakeInstance(dep, body, out);
     }
 
-    private Object constantProxy(Object value) {
-        return behaviorProxy(a -> value);
+    /** Wraps a fake's {@code Object[] -> Object} body as the injected instance: a unary {@code Behavior}
+     * proxy for a 0/1-input dependency, or a runtime-generated subclass of the standalone base for a
+     * 2+-input one (whose typed {@code apply} the unary {@code Behavior} cannot stand in for; issue #57).
+     * Both the table and the constant {@code with} fake route through here, so neither path assumes an
+     * arity. */
+    private Object fakeInstance(Ast.SpecBehavior dep, java.util.function.Function<Object[], Object> body,
+                                List<Diagnostic> out) {
+        if (dep.params().size() >= 2) {
+            return multiArgFakeInstance(dep, body, out);
+        }
+        return behaviorProxy(body);
+    }
+
+    /** Generates (once) and instantiates a subclass of a multi-argument injected base whose typed
+     * {@code apply} packs its arguments into an {@code Object[]} and delegates to {@code body}. */
+    private Object multiArgFakeInstance(Ast.SpecBehavior dep,
+                                        java.util.function.Function<Object[], Object> body,
+                                        List<Diagnostic> out) {
+        try {
+            String baseName = module.name() + "." + behaviorClass(dep.name());
+            Class<?> base = loader.loadClass(baseName);
+            java.lang.reflect.Method apply = null;
+            for (java.lang.reflect.Method m : base.getDeclaredMethods()) {
+                if (m.getName().equals("apply") && java.lang.reflect.Modifier.isAbstract(m.getModifiers())) {
+                    apply = m;
+                }
+            }
+            if (apply == null) {
+                throw new NoSuchMethodException("abstract apply on " + baseName);
+            }
+            String fakeName = baseName + "$Fake";
+            java.lang.reflect.Method applyM = apply;
+            Class<?> fakeClass = loader.define(fakeName, () -> fakeSubclassBytes(fakeName, base, applyM));
+            return fakeClass.getConstructor(java.util.function.Function.class).newInstance(body);
+        } catch (ReflectiveOperationException e) {
+            out.add(Diagnostic.of("E1908", "check.fake.missing").title("check.example.title")
+                    .at(dep.pos()).args(dep.name(), dep.name())
+                    .hint("check.fake.missing.hint", "the multi-argument fake could not be built: " + e)
+                    .build());
+            return null;
+        }
+    }
+
+    private byte[] fakeSubclassBytes(String fakeName, Class<?> base, java.lang.reflect.Method apply) {
+        java.lang.constant.ClassDesc cdFake = java.lang.constant.ClassDesc.of(fakeName);
+        java.lang.constant.ClassDesc cdBase = java.lang.constant.ClassDesc.of(base.getName());
+        java.lang.constant.ClassDesc cdFunc =
+                java.lang.constant.ClassDesc.of("java.util.function.Function");
+        java.lang.constant.ClassDesc cdObject = java.lang.constant.ConstantDescs.CD_Object;
+        java.lang.constant.ClassDesc[] paramDescs = new java.lang.constant.ClassDesc[apply.getParameterCount()];
+        for (int i = 0; i < paramDescs.length; i++) {
+            paramDescs[i] = apply.getParameterTypes()[i].describeConstable().orElseThrow();
+        }
+        java.lang.constant.ClassDesc retDesc = apply.getReturnType().describeConstable().orElseThrow();
+        java.lang.constant.MethodTypeDesc applyDesc = java.lang.constant.MethodTypeDesc.of(retDesc, paramDescs);
+        java.lang.constant.MethodTypeDesc voidCtor =
+                java.lang.constant.MethodTypeDesc.of(java.lang.constant.ConstantDescs.CD_void);
+        java.lang.constant.MethodTypeDesc funcApply =
+                java.lang.constant.MethodTypeDesc.of(cdObject, cdObject);
+        return java.lang.classfile.ClassFile.of().build(cdFake, cb -> {
+            cb.withSuperclass(cdBase);
+            cb.withFlags(java.lang.classfile.ClassFile.ACC_PUBLIC | java.lang.classfile.ClassFile.ACC_FINAL
+                    | java.lang.classfile.ClassFile.ACC_SUPER);
+            cb.withField("body", cdFunc, java.lang.classfile.ClassFile.ACC_PRIVATE
+                    | java.lang.classfile.ClassFile.ACC_FINAL);
+            cb.withMethodBody("<init>",
+                    java.lang.constant.MethodTypeDesc.of(java.lang.constant.ConstantDescs.CD_void, cdFunc),
+                    java.lang.classfile.ClassFile.ACC_PUBLIC, code -> {
+                        code.aload(0);
+                        code.invokespecial(cdBase, "<init>", voidCtor);
+                        code.aload(0);
+                        code.aload(1);
+                        code.putfield(cdFake, "body", cdFunc);
+                        code.return_();
+                    });
+            cb.withMethodBody("apply", applyDesc, java.lang.classfile.ClassFile.ACC_PUBLIC, code -> {
+                code.aload(0);
+                code.getfield(cdFake, "body", cdFunc);
+                code.loadConstant(paramDescs.length);
+                code.anewarray(cdObject);
+                for (int i = 0; i < paramDescs.length; i++) {
+                    code.dup();
+                    code.loadConstant(i);
+                    code.aload(i + 1);   // every apply param is a reference (Int boxes to Long, etc.)
+                    code.aastore();
+                }
+                code.invokeinterface(cdFunc, "apply", funcApply);
+                if (!retDesc.equals(cdObject)) {
+                    code.checkcast(retDesc);
+                }
+                code.areturn();
+            });
+        });
     }
 
     /** A {@code Behavior} proxy whose {@code apply} runs {@code body}. Reflective so the runtime
@@ -695,10 +795,16 @@ public final class ExampleVerifier {
             if (spec.requires().isEmpty()) {
                 instance = c.getConstructor().newInstance();
             } else {
-                // the generated behavior's injecting constructor takes one Behavior per requires
+                // the injecting constructor takes one param per requires: the unary Behavior for a
+                // single-input dep (a Proxy), or the dep's own base class for a multi-input dep (a
+                // generated subclass) — issue #57. The fake's runtime type tells the two apart.
                 Class<?> behaviorIface = loader.loadClass("net.unit8.souther.runtime.Behavior");
                 Class<?>[] ctorParams = new Class<?>[fakes.length];
-                java.util.Arrays.fill(ctorParams, behaviorIface);
+                for (int i = 0; i < fakes.length; i++) {
+                    ctorParams[i] = behaviorIface.isInstance(fakes[i])
+                            ? behaviorIface
+                            : fakes[i].getClass().getSuperclass();
+                }
                 instance = c.getConstructor(ctorParams).newInstance(fakes);
             }
             Class<?>[] paramTypes = new Class<?>[args.length];
