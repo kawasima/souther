@@ -14,8 +14,13 @@ JVM boundary that are otherwise hand-rolled at every call site:
   checks that the handler map covers exactly the union's permitted subclasses. This restores at the
   Clojure boundary the totality that Souther's `match` guarantees inside generated code.
 
-The source refers to no domain type: it works entirely by reflection over the classes the caller
-passes in, so it depends only on Clojure and Raoh.
+The runtime source above refers to no domain type: it works entirely by reflection over the classes
+the caller passes in, so it depends only on Clojure and Raoh.
+
+- **`souther.build`** (build-time only) — `generate!` runs `SoutherProcessor` through the JDK
+  compiler API to turn a module's `.sou` into classes, so a project can generate from `deps.edn`
+  (`clojure -X:gen`) instead of Maven. It imports nothing beyond the JDK; the caller supplies
+  `souther-compiler` on the invoking alias's classpath, where it is discovered by ServiceLoader.
 
 ## Status
 

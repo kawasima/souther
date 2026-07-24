@@ -25,7 +25,16 @@
         org.slf4j/slf4j-nop {:mvn/version "2.0.13"}}
 
  :aliases
- {:run {:main-opts ["-m" "account.server"]}
+ {;; Generate the Souther classes without Maven: runs SoutherProcessor via the JDK compiler API.
+  ;; `clojure -X:gen` reads src/main/souther and writes target/classes. souther-compiler is only
+  ;; on this alias's classpath (discovered by ServiceLoader), never in the app runtime.
+  :gen {:extra-deps {net.unit8.souther/souther-compiler {:mvn/version "0.1.0-rc2"}}
+        :exec-fn souther.build/generate!
+        :exec-args {:source-dir "src/main/souther"
+                    :trigger-dir "src/main/java"
+                    :class-dir "target/classes"}}
+
+  :run {:main-opts ["-m" "account.server"]}
 
   :test {:extra-paths ["src/test/clojure"]
          :extra-deps {io.github.cognitect-labs/test-runner

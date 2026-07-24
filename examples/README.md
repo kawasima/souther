@@ -228,14 +228,18 @@ real DB is shown by `ordering`, so account does not repeat it.
 ### Running
 
 Generate the types first, then run Clojure (Clojure lives outside the Maven reactor, in its own
-`deps.edn`).
+`deps.edn`). Generation itself needs no Maven — the `:gen` alias runs `SoutherProcessor` through the
+JDK compiler API (`souther.build/generate!`), with `souther-compiler` on the alias classpath only:
 
 ```sh
-mvn -o -f examples/pom.xml -pl account compile   # .sou → target/classes (the .sou examples are checked at compile time too)
 cd examples/account
+clojure -X:gen                                   # .sou → target/classes (the .sou examples are checked here too)
 clojure -X:test                                  # the souther-clj library, behavior+DB, and Pedestal boundary tests (15 of them)
 clojure -M:run                                   # starts on localhost:8890
 ```
+
+`mvn -o -f examples/pom.xml -pl account compile` generates the same classes if you prefer the Maven
+path (it is what `mvn … verify` uses for the whole reactor).
 
 ```sh
 curl localhost:8890/accounts/acc-1                                            # {"account":"acc-1","balance":1000}
