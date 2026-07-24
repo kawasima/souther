@@ -1,0 +1,22 @@
+module souther.option
+
+// Consuming an `Option` (spec §algebraic-types) without leaving the value pipe. `List.get` / `Map.get`
+// and `?` fields all yield an `Option`; before this module the only way to read one was a two-arm
+// `match`, which dead-ends the pipe (spec §pipe). `withDefault` and `map` let the optional flow through
+// `|>` — `Map.get(k, m) |> Option.map(v -> v.value) |> Option.withDefault("なし")`, as Elm's
+// `Maybe.map`/`Maybe.withDefault` and F#'s `Option.map`/`Option.defaultValue` do.
+//
+// Argument order follows F#/Elm (spec §pipe): the option — the value being consumed — comes last, so
+// it threads through the pipe. `Option` stays non-surface (spec §algebraic-types): the caller never
+// names `Option<T>` nor builds a `Some`; the optional is inferred and unnamed as it flows here.
+//
+// `withDefault` only reads an option (a `match`, no construction), so it is an ordinary helper, expanded
+// inline at its call site like `Map.upsert`. `map` must build a fresh `Some (f v)`, and `Option` is not
+// surface-writable — a body cannot construct one — so `map` is a compiler built-in (like `List.get` /
+// `List.find`), not a helper here; its signature is `map(f: ('a) -> 'b, opt: Option<'a>) : Option<'b>`.
+// `andThen` is intentionally absent: its step would have to return an `Option`, which no user lambda can
+// build under the non-surface rule (spec §algebraic-types).
+let withDefault (default: 'a, opt: Option<'a>) : 'a =
+    match opt with
+        | Some v -> v
+        | None -> default

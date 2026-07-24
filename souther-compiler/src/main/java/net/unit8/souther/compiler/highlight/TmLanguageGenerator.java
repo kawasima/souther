@@ -1,5 +1,6 @@
 package net.unit8.souther.compiler.highlight;
 
+import net.unit8.souther.compiler.Prelude;
 import net.unit8.souther.compiler.cst.CstLexer;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -35,9 +36,11 @@ public final class TmLanguageGenerator {
     /** Boolean literals (scoped as language constants, not keywords). */
     private static final Set<String> BOOLEANS = Set.of("true", "false");
 
-    /** The standard-library qualifiers (mirrors {@code Prelude.QUALIFIERS}); highlighted before a dot. */
+    /** The standard-library qualifiers, taken from {@link Prelude#qualifiers()} (the single source of
+     *  truth) and sorted for a stable grammar; highlighted before a dot. Adding a module to the prelude
+     *  extends this automatically — no separate list to keep in step. */
     private static final List<String> QUALIFIERS =
-            List.of("List", "String", "Map", "Set", "Bool", "Int", "Decimal", "Date", "DateTime");
+            Prelude.qualifiers().stream().sorted().toList();
 
     /** The operators, longest first so a prefix (e.g. {@code >}) never masks a longer form ({@code >->}). */
     private static final List<String> OPERATORS =

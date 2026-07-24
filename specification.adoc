@@ -428,10 +428,11 @@ A decode-side violation does not abort; Raoh's `+Result+` failure carries it (<<
 
 ==== How Option appears
 
-`+Option<T>+` *cannot be written as a type* either. It appears only through two paths:
+`+Option<T>+` *cannot be written as a type* either. It appears only through these paths:
 
 * the desugaring of a field `+T?+` (<<optional>>)
-* the return value of a standard library function (`+List.get+` / `+Map.get+`; <<stdlib-list>>, <<stdlib-map>>)
+* the return value of a standard library function (`+List.get+` / `+Map.get+` / `+List.find+`; <<stdlib-list>>, <<stdlib-map>>)
+* the argument (and, for `+map+`, the result) of the `+Option+` module's functions (`+Option.map+` / `+Option.withDefault+`; <<stdlib-option>>), which consume an inferred `+Option+` without the caller ever naming the type or building a `+Some+`
 
 It MUST NOT be written in a behavior's output. To state "might not be found" as a business result, that is a domain sum (<<unmarked-sum>>).
 
@@ -1780,13 +1781,13 @@ An outside-world dependency is declared as a behavior with no implementation, an
 [#reserved-namespace]
 === Reserved namespace
 
-The standard library is bundled with the compiler and referenced by short qualifiers — `+List+` (list), `+Map+` (map), `+Set+` (set), `+String+` (string), `+Bool+` (boolean), `+Int+` / `+Decimal+` (numbers), `+Date+` / `+DateTime+` (temporal). Every function is called through this qualifier: `+List.map(f, xs)+`, `+String.trim(s)+`, `+List.length(xs)+`. There is no automatic import — names are not delivered implicitly. What may be written bare is operators (`+==+` `+<+` `+{plus}{plus}+`, etc.), `+if+` / `+match+`, literals, and the current module's helpers. Argument order follows the convention of <<pipe>> (primary subject last).
+The standard library is bundled with the compiler and referenced by short qualifiers — `+List+` (list), `+Map+` (map), `+Set+` (set), `+String+` (string), `+Bool+` (boolean), `+Int+` / `+Decimal+` (numbers), `+Date+` / `+DateTime+` (temporal), `+Option+` (optional). Every function is called through this qualifier: `+List.map(f, xs)+`, `+String.trim(s)+`, `+List.length(xs)+`. There is no automatic import — names are not delivered implicitly. What may be written bare is operators (`+==+` `+<+` `+{plus}{plus}+`, etc.), `+if+` / `+match+`, literals, and the current module's helpers. Argument order follows the convention of <<pipe>> (primary subject last).
 
 To call a name bare, import it explicitly: writing `+import List ( map, filter )+` lets you write `+map(f, xs)+` unqualified thereafter. As in Elm's `+import List exposing (map)+`, qualified access always works, and `+import+` is only sugar to elide the qualifier. Importing the same bare name from two modules is ambiguous, so qualify one of them (e.g. `+String.length+` and `+List.length+` used together in one module; <<imports>>).
 
 Qualifiers such as `+List+` denote a module only in expression position, distinct from the type-position `+List<T>+` (angle brackets), which does not conflict (as in Elm). `+length+` / `+get+` span `+String+` and `+List+`, and `+List+` and `+Map+`, but they become distinct names `+String.length+` / `+List.length+`, `+List.get+` / `+Map.get+`, so they are not overloads but each module's own function.
 
-The entity the short qualifier denotes is placed in the reserved namespaces `+souther.string+` / `+souther.list+` / `+souther.map+` / `+souther.set+` / `+souther.bool+` / `+souther.date+` / `+souther.datetime+`. The `+souther+` namespace is reserved, and a user module MUST NOT name itself under it — `+module souther.foo+` is a compile error. Only the reserved namespace holds core's privileges (generics, recursion, intrinsics), and this is the line preventing a user from granting them to itself (the boundedness of <<algebraic-types>>). A name that merely starts with the string `+souther+`, such as `+southernmost+`, is an ordinary user name, not under this namespace.
+The entity the short qualifier denotes is placed in the reserved namespaces `+souther.string+` / `+souther.list+` / `+souther.map+` / `+souther.set+` / `+souther.bool+` / `+souther.date+` / `+souther.datetime+` / `+souther.option+`. The `+souther+` namespace is reserved, and a user module MUST NOT name itself under it — `+module souther.foo+` is a compile error. Only the reserved namespace holds core's privileges (generics, recursion, intrinsics), and this is the line preventing a user from granting them to itself (the boundedness of <<algebraic-types>>). A name that merely starts with the string `+souther+`, such as `+southernmost+`, is an ordinary user name, not under this namespace.
 
 [#type-variables]
 ==== Type variables
@@ -1972,6 +1973,20 @@ fold  map  update  upsert                        // higher-order
 `+toList(m)+` is the entries as a `+List<(String, V)>+` — a list of key/value tuples in the map's iteration order — and `+fromList(entries)+` builds a map back (a later entry wins on a duplicate key). Iteration order is a deterministic, implementation-defined hash order (not insertion order): the same set of keys always yields the same order, so encoding is reproducible, but a program must not depend on which order that is. The tuple type in these signatures is allowed because a signature is not a codec boundary (<<tuple>>, ADR-0037).
 
 `+fold+` / `+map+` / `+update+` are the operations that take a step function. `+Map.fold(step, seed, m)+` is layered on `+List.fold+` over the entries (`+toList+`) rather than walking the map itself, and the entries combine in the map's deterministic hash order. Its step is `+(acc, key, value)+` (F#'s `+Map.fold+` folder is `+state key value+`, Elm's `+Dict.foldl+` is `+k v acc+`). `+map(f, m)+` keeps the keys and rewrites the values (`+(key, value) -> value+`, Elm's `+Dict.map+` / F#'s `+Map.map+`), growing a fresh map through `+fold+`. `+update(key, f, m)+` rewrites the value under one key with `+f+` and is a no-op when the key is absent. Its step is `+('a) -> 'a+`, not Elm's `+Maybe v -> Maybe v+`: `+Option+` is not surface-writable (ADR-0011), so a step cannot return one — insert a new key with `+insert+`, drop one with `+remove+`, and let `+update+` cover changing what is already there. `+upsert(key, default, f, m)+` collapses insert-if-absent / modify-if-present into one call: it applies `+f+` to a present key's value and inserts `+default+` for an absent one. Like `+update+` it keeps `+Option+` internal — the absent branch takes a plain value (`+default+`), not the `+Maybe -> Maybe+` step Elm's `+Dict.update+` needs (ADR-0011). Typical use is accumulation, e.g. counting `+upsert(k, 1, n -> n {plus} 1, m)+`.
+
+[#stdlib-option]
+=== Option
+
+`+List.get+` / `+Map.get+` / `+List.find+` and a `+T?+` field all yield an `+Option+` (<<algebraic-types>>). Before this module the only way to read one was a two-arm `+match+`, which ends the value pipe (<<pipe>>); these functions let the optional flow through `+|>+` instead.
+
+[,text]
+----
+map  withDefault
+----
+
+`+withDefault(default, opt)+` reads the option: the wrapped value when present, `+default+` when absent (Elm's `+Maybe.withDefault+`, F#'s `+Option.defaultValue+`). `+map(f, opt)+` transforms a present value with `+f+` and leaves an absent one absent, so its result is again an `+Option+` (Elm's `+Maybe.map+`, F#'s `+Option.map+`); `+f+` is a plain `+('a) -> 'b+` and never sees the absent case. Both take the option last (<<pipe>>), so it threads through the pipe: `+Map.get(k, m) |> Option.map(v -> v.value) |> Option.withDefault("なし")+`.
+
+`+Option+` stays non-surface (ADR-0011): the caller never writes `+Option<T>+` nor builds a `+Some+` — the optional is inferred and unnamed as it flows here, and `+map+`'s result stays inferred as it reaches `+withDefault+`. There is no `+andThen+`: its step would have to return an `+Option+`, which no user function can build under that rule (insert-if-present style folding stays with `+Map.upsert+` / `+update+`, which keep `+Option+` internal). For the same reason `+map+` cannot be self-hosted — a body cannot construct a `+Some+` — so it is a compiler built-in, while `+withDefault+`, which only reads, is an ordinary helper.
 
 [#stdlib-set]
 === Set
