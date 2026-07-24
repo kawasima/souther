@@ -2439,7 +2439,21 @@ public final class TypeChecker {
                                 .at(c.pos()).args(caseType).build(),
                         "`" + caseType + "` is not a case of Option; use Some or None");
             };
-            covered.add(caseType);
+            if (c.unwrapAsserts() != null) {
+                if (!caseType.equals("Some")) {
+                    throw CompileException.of(
+                            Diagnostic.of(null, "check.match.option.nopayload").title("check.match.title")
+                                    .at(c.pos()).args(caseType).build(),
+                            "`" + caseType + "` has no value, so it cannot be opened with `" + caseType + "(...)`");
+                }
+                checkOptionUnwrapAsserts(c, element, symbols);
+            }
+            if (!covered.add(caseType)) {
+                throw CompileException.of(
+                        Diagnostic.of(null, "check.match.overlap").title("check.match.title")
+                                .at(c.pos()).args(caseType).build(),
+                        "`" + caseType + "` is matched by more than one case");
+            }
             branchType = mergeBranch(m, branchType,
                     typeOf(c.body(), bound(env, c.binding(), bind), data, symbols, reqs), c);
         }
@@ -2477,6 +2491,29 @@ public final class TypeChecker {
         List<String> opened = new ArrayList<>();
         opened.add(c.caseTypes().get(0));
         opened.addAll(c.unwrapAsserts());
+        checkOpenedLayers(c, opened, symbols);
+    }
+
+    /** {@code Some(X(v))} opens the Option's element in the pattern. Unlike a user case, {@code Some}
+     * is not itself a newtype — codegen has already unwrapped it — so the first written layer opens the
+     * element directly and MUST name the element type; the rest is the same layer check as a user case. */
+    private static void checkOptionUnwrapAsserts(Ast.Case c, Type element, Map<String, Ast.Def> symbols) {
+        List<String> layers = c.unwrapAsserts();
+        if (layers.isEmpty()) {
+            return;   // `Some(v)` binds the whole element, opening nothing
+        }
+        String elementName = element instanceof Type.Ref r ? r.name() : Type.show(element);
+        String first = layers.get(0);
+        if (!elementName.equals(first)) {
+            throw CompileException.of(
+                    Diagnostic.of(null, "check.match.newtype.mismatch").title("check.match.title")
+                            .at(c.pos()).args(first, elementName).build(),
+                    "`Some` wraps `" + elementName + "`, not `" + first + "`");
+        }
+        checkOpenedLayers(c, layers, symbols);
+    }
+
+    private static void checkOpenedLayers(Ast.Case c, List<String> opened, Map<String, Ast.Def> symbols) {
         for (int i = 0; i < opened.size(); i++) {
             String name = opened.get(i);
             Type inner = newtypeInner(name, symbols);

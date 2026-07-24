@@ -462,7 +462,7 @@ This desugars to:
 事前承認者: Option<従業員ID>
 ----
 
-To put a value in a `+?+` field, write a `+従業員ID+` value directly and it is wrapped in `+Some+`; write `+None+` for empty. Users never write `+Some(...)+` (as in <<algebraic-types>>, this form is built-in only).
+To put a value in a `+?+` field, write a `+従業員ID+` value directly and it is wrapped in `+Some+`; write `+None+` for empty. Users never write `+Some(...)+` to construct a value (as in <<algebraic-types>>, this form is built-in only); `+Some(...)+` appears only as a destructuring pattern in `+match+` (<<match>>).
 
 [,text]
 ----
@@ -1707,14 +1707,16 @@ An or-pattern's binding differs from a single case. A single case's `+as+` binds
 
 The `+Some+` of `+Option+` (<<algebraic-types>>) extracts the wrapped value by *positional binding*. The `+v+` in `+| Some v+` is bound to the contents, not to `+Some+` (as in F#'s `+Some x+` and Elm's `+Just x+`). `+Some+` is the only built-in case with a payload, so it reaches the contents by positional binding rather than `+as+` (which binds the whole value elsewhere). `+| Some as v+` cannot be written. A `+?+` field and the return of `+List.get+` / `+Map.get+` are extracted this way.
 
+When the contents are a newtype, the constructor-destructuring form nests inside the positional binding: `+| Some(従業員ID(v)) -> v+` opens the wrapped `+従業員ID+` and binds `+v+` to its base value, so the `+.value+` on the positional binding is not written. The first written name MUST be the element type — `+Some+` wraps `+従業員ID+`, so `+Some(メールアドレス(v))+` is a compile error — and each further name opens one more layer, the same rule as `+X(Y(s))+` on a user case. This nesting is allowed only in a pattern; `+Some(...)+` is still not a construction form (<<algebraic-types>>). The short `+| Some v+` (bind the whole contents) stays.
+
 [,text]
 ----
 data 出張完了 = { 事前承認者: 従業員ID? }
 
 let 承認者の表示 (c: 出張完了) =
     match c.事前承認者 with
-        | Some 承認者 -> 承認者.value      // 承認者 is 従業員ID (the contents)
-        | None        -> "なし"
+        | Some(従業員ID(v)) -> v         // v is the base value, no .value
+        | None              -> "なし"
 ----
 
 A match on sum data MUST be exhaustive. Exhaustiveness is decided over the direct cases the sum declared. A nested sum (`+自社負担+` of `+data 費用負担区分 = 自社負担 | 先方負担+` being further `+立替 | 仮払い | 会社カード+`) does not flatten leaf cases; receive `+自社負担+` and split with a nested `+match+`. Exhaustiveness is checked independently per layer, so cases never overlap. Case→sum assignment (<<sum-data>>) folds to the leaf; match is the reverse, descending the layers.

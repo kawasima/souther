@@ -658,6 +658,12 @@ public final class AstBuilder {
             throw error(casePos, "parse.option.positional",
                     "Option's wrapped value is bound positionally: write `| Some v`, not `| Some as v`");
         }
+        // `Some(a)` opens nothing (unlike `X(a)` on a user case); the whole-element spelling is `Some v`.
+        // Only `Some(X(...))`, which opens a wrapped newtype, uses the paren form.
+        if (isSome && unwrapNames.size() == 1) {
+            throw error(casePos, "parse.option.positional",
+                    "write `| Some v` to bind the whole value; `Some(...)` opens a wrapped newtype, as in `| Some(" + unwrapNames.get(0) + "(v))`");
+        }
         // skip the arrow, then the body is the trailing expression node
         Ast.Expr body = expr(lastExprChild(n));
 
@@ -674,7 +680,11 @@ public final class AstBuilder {
             String whole = binding != null ? binding : "$m" + (matchWholeCounter++);
             // open the case's newtype (whole.value), then peel one layer per earlier name; the last
             // name binds the value reached — `アクティベート済み(メールアドレス(s))` binds s to whole.value.value.
-            Ast.Expr target = new Ast.FieldAccess(new Ast.Var(whole, casePos), "value", casePos);
+            // Option's `Some` binds the unwrapped element already (codegen strips the wrapper), so its
+            // first named layer opens that element directly — `Some(従業員ID(v))` binds v to whole.value.
+            Ast.Expr target = isSome
+                    ? new Ast.Var(whole, casePos)
+                    : new Ast.FieldAccess(new Ast.Var(whole, casePos), "value", casePos);
             for (int k = 0; k < unwrapNames.size() - 1; k++) {
                 target = new Ast.FieldAccess(target, "value", casePos);
             }
