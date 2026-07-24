@@ -2,6 +2,11 @@
 target/
 *.class
 
+# Clojure tooling
+.cpcache/
+.clj-kondo/
+.lsp/
+
 # IDE
 .idea/
 *.iml

@@ -1,73 +1,77 @@
-// 口座出金の例。DB の現在残高を読み、それを検査してから残高を書き換える「読む → 検査 → 書く」。
-// member の一意性チェックと同じ骨格だが、こちらは検査が集計不変条件（残高は 0 未満にならない）で、
-// 新残高 残高(現在 - 金額) の非負を、直前の require がコンパイル時に discharge する（12.x invariant-discharge）。
+// Account withdrawal: read the current balance from the DB, check it, then write the new balance
+// ("read -> check -> write"). Same shape as member's uniqueness check, but here the check is an
+// aggregate invariant (a balance never goes below zero), and the non-negativity of the new balance
+// Balance(current - amount) is discharged at compile time by the require just above it (12.x
+// invariant-discharge).
 module example.account
 import String ( length )
 
-data 口座番号 = String
+data AccountNo = String
     invariant length(value) > 0
 
-// 出金額は非負。
-data 金額 = Int
+// The withdrawal amount is non-negative.
+data Amount = Int
     invariant value >= 0
 
-// 残高は 0 未満にならない ── 口座の集計不変条件。残高 と 金額 は別の newtype なので、
-// 差は .value で計算して 残高(...) に再ラップする（別 newtype 同士の - は組み合わせない、6.x）。
-data 残高 = Int
+// A balance never goes below zero -- the account's aggregate invariant. Balance and Amount are
+// distinct newtypes, so the difference is taken over .value and re-wrapped with Balance(...)
+// (two different newtypes are not subtracted directly, 6.x).
+data Balance = Int
     invariant value >= 0
 
-data 出金要求 =
-    { 口座: 口座番号
-    , 金額: 金額
+data WithdrawRequest =
+    { account: AccountNo
+    , amount: Amount
     }
 
-// 出金の成否。出金済み が本線、残り2つは失敗ケース。
-data 出金済み =
-    { 口座: 口座番号
-    , 新残高: 残高
+// The outcome of a withdrawal. Withdrawn is the main line; the other two are failure cases.
+data Withdrawn =
+    { account: AccountNo
+    , newBalance: Balance
     }
-data 残高不足 = { 不足額: Int }
-data 口座なし
+data InsufficientFunds = { shortfall: Int }
+data NoAccount
 
-// --- 外界依存（Java 注入）---
-// 現在残高 は読み：口座の残高を引く。無ければ 口座なし。
-behavior 現在残高 : (口座: 口座番号) -> 残高 | 口座なし
-// 残高を更新する は書き：新残高を保存し、出金済みを返す。
-behavior 残高を更新する : (口座: 口座番号, 新残高: 残高) -> 出金済み
-    constructs 出金済み
+// --- injected outside-world behaviors (no `let`; the implementation comes from the boundary) ---
+// currentBalance is a read: it looks up the account's balance. No row means NoAccount.
+behavior currentBalance : (account: AccountNo) -> Balance | NoAccount
+// updateBalance is a write: it stores the new balance and reports the withdrawal.
+behavior updateBalance : (account: AccountNo, newBalance: Balance) -> Withdrawn
+    constructs Withdrawn
 
-// --- 出金：読む → 検査 → 書く ---
-// 現在残高を読み、口座が無ければ素通し、あれば残高を検査する。足りなければ 残高不足、
-// 足りれば 残高(現在 - 金額) を書く。この構築の value >= 0 は直前の require が保証する。
-behavior 出金する : (要求: 出金要求) -> 出金済み | 残高不足 | 口座なし
-    requires 現在残高, 残高を更新する
+// --- withdraw: read -> check -> write ---
+// Read the current balance; if there is no account, pass it through; otherwise check the balance.
+// If it is short, return InsufficientFunds; if it is enough, write Balance(current - amount). The
+// value >= 0 of that construction is guaranteed by the require just above it.
+behavior withdraw : (request: WithdrawRequest) -> Withdrawn | InsufficientFunds | NoAccount
+    requires currentBalance, updateBalance
 
-let 出金する (要求, 現在残高, 残高を更新する) =
-    match 現在残高(要求.口座) with
-        | 口座なし    -> 口座なし
-        | 残高 as 現在 -> {
-            require 現在.value >= 要求.金額.value
-                else 残高不足 { 不足額 = 要求.金額.value - 現在.value }
-            残高を更新する(要求.口座, 残高(現在.value - 要求.金額.value))
+let withdraw (request, currentBalance, updateBalance) =
+    match currentBalance(request.account) with
+        | NoAccount          -> NoAccount
+        | Balance as current -> {
+            require current.value >= request.amount.value
+                else InsufficientFunds { shortfall = request.amount.value - current.value }
+            updateBalance(request.account, Balance(current.value - request.amount.value))
           }
 
-// --- fake + example：DB 無しで残高検査の分岐を検査する ---
-fake 現在残高
-    | (口座番号("acc-1")) -> 残高(1000)
-    | (口座番号("acc-empty")) -> 口座なし
-    | _ -> 残高(0)
+// --- fake + example: check the balance branches with no DB ---
+fake currentBalance
+    | (AccountNo("acc-1")) -> Balance(1000)
+    | (AccountNo("acc-empty")) -> NoAccount
+    | _ -> Balance(0)
 
-fake 残高を更新する
-    | (口座番号("acc-1"), 残高(700)) -> 出金済み { 口座 = 口座番号("acc-1"), 新残高 = 残高(700) }
-    | _ -> 出金済み { 口座 = 口座番号("acc-1"), 新残高 = 残高(0) }
+fake updateBalance
+    | (AccountNo("acc-1"), Balance(700)) -> Withdrawn { account = AccountNo("acc-1"), newBalance = Balance(700) }
+    | _ -> Withdrawn { account = AccountNo("acc-1"), newBalance = Balance(0) }
 
-example 出金する
-    | "残高が足りれば新残高を書く" :
-        (出金要求 { 口座 = 口座番号("acc-1"), 金額 = 金額(300) })
-            -> 出金済み { 口座 = 口座番号("acc-1"), 新残高 = 残高(700) }
-    | "残高不足なら止まる" :
-        (出金要求 { 口座 = 口座番号("acc-1"), 金額 = 金額(1500) })
-            -> 残高不足 { 不足額 = 500 }
-    | "口座が無ければ口座なし" :
-        (出金要求 { 口座 = 口座番号("acc-empty"), 金額 = 金額(100) })
-            -> 口座なし
+example withdraw
+    | "writes the new balance when funds are enough" :
+        (WithdrawRequest { account = AccountNo("acc-1"), amount = Amount(300) })
+            -> Withdrawn { account = AccountNo("acc-1"), newBalance = Balance(700) }
+    | "stops when funds are short" :
+        (WithdrawRequest { account = AccountNo("acc-1"), amount = Amount(1500) })
+            -> InsufficientFunds { shortfall = 500 }
+    | "no account means NoAccount" :
+        (WithdrawRequest { account = AccountNo("acc-empty"), amount = Amount(100) })
+            -> NoAccount

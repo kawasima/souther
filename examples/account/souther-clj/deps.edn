@@ -1,0 +1,8 @@
+;; Standalone project definition for the future `souther-clj` library. The account example does not
+;; build through this file -- account's own deps.edn puts `souther-clj/src` on its classpath
+;; directly. This file is here so the directory can be lifted out into its own repository as-is:
+;; the source depends only on Clojure and Raoh (it refers to no domain type, working entirely by
+;; reflection over the Souther-generated classes the caller passes in).
+{:paths ["src"]
+ :deps {org.clojure/clojure {:mvn/version "1.12.1"}
+        net.unit8.raoh/raoh {:mvn/version "0.6.0"}}}
