@@ -54,7 +54,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>25</maven.compiler.release>
         <raoh.version>0.7.2</raoh.version>
-        <jspecify.version>1.0.0</jspecify.version>
+        <jspecify.version>1.0.1</jspecify.version>
         <!-- Where compiled classes go, named so the `m2e` profile below can send the editor's
              somewhere else. A build outside the editor uses the Maven defaults. -->
         <build.classes>${project.basedir}/target/classes</build.classes>
@@ -65,8 +65,8 @@
              into. A build that is not the hook leaves it at the root module's sources, which do
              not exist, so the goal has nothing to read. -->
         <checkstyle.staged.dir>${project.basedir}/src/main/java</checkstyle.staged.dir>
-        <checkstyle.version>10.26.1</checkstyle.version>
-        <nullaway.version>0.13.8</nullaway.version>
+        <checkstyle.version>14.0.0</checkstyle.version>
+        <nullaway.version>0.14.0</nullaway.version>
         <!-- What NullAway is asked for, written once. The gate below and the `lint` profile both
              ask, and a gate configured differently in each is a gate whose answer depends on which
              build asked. -->
@@ -91,8 +91,8 @@
              tracked to it: it moves when the interface between a build plugin and a driver moves,
              which is why it is released from souther-lang/souther-build-api and named here like any
              other outside dependency. -->
-        <souther.build.api.version>1.0.0</souther.build.api.version>
-        <junit.version>6.1.2</junit.version>
+        <souther.build.api.version>1.1.0</souther.build.api.version>
+        <junit.version>6.1.3</junit.version>
         <!-- Named rather than written where it is used: `souther init` writes a project that runs
              its tests, and what it hands that project is this number. -->
         <surefire.version>3.5.6</surefire.version>
