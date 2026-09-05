@@ -1,6 +1,5 @@
 package souther.compiler.check;
 
-import souther.compiler.values.Emptiness;
 import souther.compiler.values.Realized;
 import souther.compiler.values.UnreadReason;
 
@@ -27,7 +26,7 @@ import java.util.TreeSet;
  * inside the left of {@code A} is refined by {@code A}'s left, and the same branch inside the right
  * by {@code A}'s right. What the written branch's author can act on is the whole declaration's
  * answer: nobody can be in it only if nobody can be in it anywhere it stands. So the sides join over
- * occurrences by {@link Emptiness#joined}, which is associative, commutative and idempotent — and
+ * occurrences by {@link souther.compiler.values.Emptiness#joined}, which is associative, commutative and idempotent — and
  * so is every other component of a side ({@link Sided#alsoSeen}), so the order the copies are met
  * in, and how the conjunctions were bracketed, cannot reach the answer.
  *
@@ -59,7 +58,7 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
      * <p>{@code standing} and {@code unbuilt} carry what probing the occurrences could not build,
      * for the one case the account needs it: a branch kept without being shown live is kept with
      * the reason nobody knows, or the account would call a position open where the truth is that
-     * nothing looked. Read only where the aggregate stays {@link Emptiness#UNDECIDED}; a branch
+     * nothing looked. Read only where the aggregate stays {@link souther.compiler.values.Emptiness#UNDECIDED}; a branch
      * shown live somewhere needs no excuse, and a branch dead everywhere takes its reasons with it.
      *
      * <p><b>Two halves and not one map, because they are routed and not distributed alike.</b> What
@@ -79,7 +78,7 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
                  Set<FactSubject> unbuilt) {
 
         /** Whether anything satisfies this branch, as far as its occurrences settled it. */
-        Emptiness emptiness() {
+        souther.compiler.values.Emptiness emptiness() {
             return shown.emptiness();
         }
 
@@ -127,7 +126,7 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
          *
          * <p>Associative, commutative and idempotent in every component, which is what lets the
          * class doc promise that the order the copies are met in cannot reach the answer:
-         * {@link Emptiness#joined} is, a set union is, and the reasons are joined as a set and then
+         * {@link souther.compiler.values.Emptiness#joined} is, a set union is, and the reasons are joined as a set and then
          * said in the vocabulary's declared order — kept in the order the occurrences were met,
          * they would be said in a neighbouring clause's order.
          */
@@ -148,8 +147,8 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
             // And what showed the branch empty, where both occurrences of it are. Where they were
             // shown by different things, or refused at different positions, neither speaks for the
             // branch — which is the same rule a choice of two dead branches is under.
-            Emptiness said = emptiness().joined(other.emptiness());
-            Confinement.Admission<FactSubject> both = said == Emptiness.EMPTY
+            souther.compiler.values.Emptiness said = emptiness().joined(other.emptiness());
+            Confinement.Admission<FactSubject> both = said == souther.compiler.values.Emptiness.EMPTY
                     ? Confinement.Admission.bothShown(shown, other.shown)
                     : Confinement.Admission.left(said);
             return new Sided(both, why, java.util.Collections.unmodifiableSet(asked), gaveUp);

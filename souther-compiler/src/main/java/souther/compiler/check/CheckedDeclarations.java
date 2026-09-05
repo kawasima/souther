@@ -3,7 +3,6 @@ package souther.compiler.check;
 import souther.compiler.ast.Hir;
 import souther.compiler.core.ValueShape;
 import souther.compiler.observe.Composed;
-import souther.compiler.observe.Declarations;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 
@@ -24,7 +23,7 @@ import java.util.Map;
  * declaration this reading cannot reach at all, and one it reaches that the check settled nothing
  * about. Neither is a data with no fields.
  */
-public final class CheckedDeclarations implements Declarations {
+public final class CheckedDeclarations implements souther.compiler.observe.Declarations {
 
     /** What each declaration was checked to be, asked for by the declaration's own identity. */
     public interface Shapes {
