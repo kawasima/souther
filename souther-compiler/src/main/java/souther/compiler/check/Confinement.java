@@ -731,11 +731,16 @@ sealed interface Confinement<A> {
             //
             // Said once, and what stands here until it is said is what nothing read leaves. Saying
             // it twice is this compiler disagreeing with itself rather than anything a model says,
-            // which is why it is an assertion. With assertions off it stays conservative: the
-            // values are built again from top, so the first reading can only be forgotten, while
-            // the ranges and the carriers are met with what the second brings rather than replaced
-            // by it, and neither invents an end nobody read. The state moves only toward admitting
-            // more, which is the direction this reading is allowed to move in.
+            // which is why it is an assertion. With assertions off what is lost is knowledge and
+            // nothing kept is untrue. Only the values forget: they are built again from top, so
+            // the first reading goes. The ranges are met, the carrier table takes the later answer
+            // where both name a position, and an emptiness either of them proved stays proved —
+            // each of those keeps what a reading said rather than working something out across
+            // the two. That they may be kept together is the one thing this rests on: a reading
+            // arriving here is a true reading of one world, so what two of them say of a position
+            // they both name holds of it either way. What the state stops being is the conjunction
+            // it says it is, since the values no longer answer for the reading the rest of it
+            // still carries.
             assert !values.hasReadings()
                     : "the values of a state are read once, and these were read over " + values;
             return new Conjoined<>(
