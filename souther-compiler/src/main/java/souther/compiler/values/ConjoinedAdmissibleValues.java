@@ -289,8 +289,7 @@ public final class ConjoinedAdmissibleValues<A> {
         // One answer is being built, so one composer is spending for it. Two readings that were put
         // together by different composers are two answers, and meeting them would charge a position
         // of one against the allowance of the other. An assertion because it is a fact about how
-        // this compiler reads a declaration rather than about any model — see
-        // `Confinement.Conjoined.taking`, which holds the same kind of thing the same way.
+        // this compiler reads a declaration rather than about any model.
         assert sets == other.sets
                 : "two readings put together by different composers are two answers";
         List<AdmissibleValues<A>> both = new ArrayList<>(factors);
