@@ -730,11 +730,20 @@ sealed interface Confinement<A> {
             // reader builds out of it is more of the same answer at the same positions.
             //
             // Said once, and what stands here until it is said is what nothing read leaves. Saying
-            // it twice would keep the second reading and drop the first without a word. An
-            // assertion because a throw would be caught by the fail-open around the reading and
-            // leave it silently dropped.
-            assert !values.hasReadings()
-                    : "the values of a state are read once, and these were read over " + values;
+            // it twice is this compiler disagreeing with itself rather than anything a model says,
+            // which is why it is an assertion. With assertions off the second reading is left out
+            // and what was already read stands, so the failure cannot make an answer more precise
+            // or say anything no reading said — whatever the second reading is. Settled here, in
+            // one line, rather than out of what each part of a state does with a reading met over
+            // another: the values would forget the first, the ranges would keep both, and the
+            // carrier of a position both name would be the later of the two. None of those is the
+            // same direction, and a reason resting on all three would be as good as the next edit
+            // to any of them.
+            if (values.hasReadings()) {
+                assert false : "the values of a state are read once, and these were read over "
+                        + values;
+                return this;
+            }
             return new Conjoined<>(
                     ConjoinedAdmissibleValues.of(
                             AdmissibleValues.<A>top().meet(read.values(), sets), sets),
