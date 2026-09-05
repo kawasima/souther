@@ -338,15 +338,19 @@ public final class Apartness<A> {
      * for.
      */
     private RelationalWitness<A> takingWhatOneValueBlocksHold(Map<Sameness.Block<A>, Admits> left) {
+        // The blocks and not the entries, because taking a value away writes back into the map this
+        // is walking. Which blocks there are does not change while it runs — a reduction takes
+        // values away and never adds a block — so the list is made once.
+        List<Sameness.Block<A>> named = new ArrayList<>(left.keySet());
         boolean moved = true;
         while (moved) {
             moved = false;
-            for (Map.Entry<Sameness.Block<A>, Admits> each : left.entrySet()) {
-                Value only = each.getValue() instanceof Admits.These it ? it.only() : null;
+            for (Sameness.Block<A> block : named) {
+                Value only = left.get(block) instanceof Admits.These it ? it.only() : null;
                 if (only == null) {
                     continue;
                 }
-                for (Sameness.Block<A> next : apartFrom(each.getKey())) {
+                for (Sameness.Block<A> next : apartFrom(block)) {
                     Admits was = left.get(next);
                     Admits now = was.without(only);
                     if (now.equals(was)) {
