@@ -367,6 +367,13 @@ public final class Apartness<A> {
         // is walking. Which blocks there are does not change while it runs — a reduction takes
         // values away and never adds a block — so the list is made once.
         List<Sameness.Block<A>> named = new ArrayList<>(left.keySet());
+        // What each block's answer rests on, which begins as the block's own rules and grows by
+        // whatever forced a value out of it. Carried and not read back off the map at the end: a
+        // block holding one value there may hold it because a rule said so or because three
+        // removals left it that, and which of those it was is the difference between a lack about
+        // two blocks and a lack about four.
+        Map<Sameness.Block<A>, Set<Sameness.Block<A>>> restsOn = new LinkedHashMap<>();
+        named.forEach(block -> restsOn.put(block, new LinkedHashSet<>(Set.of(block))));
         boolean moved = true;
         while (moved) {
             moved = false;
@@ -382,10 +389,14 @@ public final class Apartness<A> {
                         continue;
                     }
                     left.put(next, now);
+                    // What took the value away is that {@code block} holds only it, which rests on
+                    // whatever left it holding only that.
+                    restsOn.get(next).addAll(restsOn.get(block));
                     moved = true;
                     if (now.isNone()) {
-                        return new RelationalWitness.NoValueLeftBetweenThem<>(next,
-                                oneValued(apartFrom(next), left));
+                        Set<Sameness.Block<A>> by = new LinkedHashSet<>(restsOn.get(next));
+                        by.remove(next);
+                        return new RelationalWitness.NoValueLeftBetweenThem<>(next, by);
                     }
                 }
             }
@@ -393,17 +404,6 @@ public final class Apartness<A> {
         return null;
     }
 
-    /** Which of {@code these} hold one value, which are the blocks that took the values away. */
-    private Set<Sameness.Block<A>> oneValued(Set<Sameness.Block<A>> these,
-                                             Map<Sameness.Block<A>, Admits> left) {
-        Set<Sameness.Block<A>> out = new LinkedHashSet<>();
-        these.forEach(block -> {
-            if (left.get(block) instanceof Admits.These it && it.only() != null) {
-                out.add(block);
-            }
-        });
-        return out;
-    }
 
     /**
      * Why a set of blocks all stated to differ has fewer values between them than there are of

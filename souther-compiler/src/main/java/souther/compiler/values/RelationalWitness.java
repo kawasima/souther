@@ -61,8 +61,22 @@ public sealed interface RelationalWitness<A> {
     /**
      * A block whose neighbours take every value it was left.
      *
+     * <p><b>Every block the argument rests on, and not the ones that took the last values.</b> A
+     * neighbour holding one value may hold it because a rule said so or because its own neighbours
+     * left it that, and the second kind is not a reason on its own — {@code q} left at one value by
+     * {@code p} takes that value from {@code r}, and {@code q} with {@code r} alone is satisfiable.
+     * Named as the neighbours in hand, this would say a lack is about two blocks where nothing is
+     * refused until three of them are read, which is a sentence sending an author to a pair whose
+     * own rules are fine.
+     *
+     * <p>Which is also what makes two of these comparable. {@link Refusal#shownByBoth} keeps a
+     * collective lack where two readings show the same one, and that is only sound where the
+     * witness is the whole argument — two lacks reached through different blocks are two lacks, and
+     * they say so by naming them.
+     *
      * @param block the block left nothing
-     * @param by the blocks holding one value each, whose values are the ones taken
+     * @param by every other block the argument rests on, which is what forced the values out of it
+     *           and what forced those in turn
      */
     record NoValueLeftBetweenThem<A>(Sameness.Block<A> block,
                                      Set<Sameness.Block<A>> by) implements RelationalWitness<A> {

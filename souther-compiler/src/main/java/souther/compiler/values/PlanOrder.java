@@ -182,6 +182,7 @@ final class PlanOrder {
      */
     private static void written(Apartness<?> apart, StringBuilder out) {
         out.append(apart.edges().size()).append(';');
+        tellApart(apart.blocks());
         apart.edges().stream().map(String::valueOf).sorted()
                 .forEach(each -> out.append(each).append(';'));
     }
@@ -212,10 +213,7 @@ final class PlanOrder {
      */
     static void written(java.util.Map<?, ValueSet> at, StringBuilder out) {
         out.append(at.size()).append(';');
-        java.util.List<String> named = at.keySet().stream().map(String::valueOf).toList();
-        assert java.util.Set.copyOf(named).size() == at.size()
-                : "two positions of one reading are written alike, so an order over readings is not"
-                        + " one: " + named;
+        tellApart(at.keySet());
         at.entrySet().stream()
                 .map(each -> {
                     StringBuilder one = new StringBuilder(String.valueOf(each.getKey()));
@@ -225,6 +223,21 @@ final class PlanOrder {
                 })
                 .sorted()
                 .forEach(each -> out.append(each).append(';'));
+    }
+
+    /**
+     * That what a reading is filed under tells its subjects apart, wherever they are written out.
+     *
+     * <p>Here rather than at the map above, which is one of the places a reading's subjects are
+     * written and not the only one: a relation names blocks no side of the product holds, so a
+     * reading whose subjects collide there would be written out past the one check that exists to
+     * catch it. The rule is about writing subjects down, so it is asked wherever that happens.
+     */
+    private static void tellApart(java.util.Collection<?> these) {
+        java.util.List<String> named = these.stream().map(String::valueOf).toList();
+        assert java.util.Set.copyOf(named).size() == java.util.Set.copyOf(these).size()
+                : "two subjects of one reading are written alike, so an order over readings is not"
+                        + " one: " + named;
     }
 
     static void write(ValueSet set, StringBuilder out) {

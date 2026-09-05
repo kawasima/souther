@@ -8,6 +8,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -161,7 +162,37 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
             throw new AssertionError("refused by taking values away, and said so: " + why);
         }
         assertEquals(R, left.block());
-        assertEquals(Set.of(Q), left.by(), "the neighbour whose one value took the last of them");
+        // And the argument is every block it rests on. {@code q} took the last value from {@code r}
+        // and holds one value only because {@code p} does — so {@code q} with {@code r} alone is
+        // satisfiable, and a witness naming those two would say a lack is at a pair whose own rules
+        // are fine with what they leave it.
+        assertEquals(Set.of(P, Q), left.by(),
+                "every block the argument rests on, and not the one that took the last value");
+        assertEquals(Set.of(P, Q, R), left.blocks());
+    }
+
+    /**
+     * And a lack reached through other blocks is another lack, whatever it ends at.
+     *
+     * <p>Two chains ending at the same block, taking the same values away, resting on different
+     * rules: one runs through {@code q} and the other through {@code s}. Named by where they end,
+     * the two would be one lack — and a choice between readings holding them would keep it and say
+     * that those blocks together admit nothing, which neither of them showed of them.
+     */
+    @Test
+    void andALackReachedThroughOtherBlocksIsAnotherLack() {
+        RelationalWitness<String> one = refusedBy(
+                Apartness.of("p", "q").and(Apartness.of("q", "r")).reduce(holding(java.util.Map.of(
+                        P, Set.of(A), Q, Set.of(A, B), R, Set.of(B)))));
+        RelationalWitness<String> other = refusedBy(
+                Apartness.of("p", "s").and(Apartness.of("s", "r")).reduce(holding(java.util.Map.of(
+                        P, Set.of(A), Sameness.Block.of("s"), Set.of(A, B), R, Set.of(B)))));
+
+        assertNotEquals(one, other, "two arguments over different blocks are two arguments");
+        assertInstanceOf(Refusal.Nowhere.class,
+                Refusal.shownByBoth(new Refusal.OfThemTogether<>(one),
+                        new Refusal.OfThemTogether<>(other)),
+                "so a choice between readings holding them keeps neither");
     }
 
     /**
@@ -217,6 +248,31 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         Apartness<String> chain = Apartness.of("p", "q").and(Apartness.of("q", "r"));
         assertEquals(List.of(Set.of(P, Q), Set.of(Q, R)), chain.everyPairwiseApartSet(64),
                 "and a chain is two of them, neither of which the other holds");
+    }
+
+    /**
+     * And seven blocks all stated to differ over two values are refused, like three of them.
+     *
+     * <p>Beside the cycle below, and the two together are what part the incompleteness this reading
+     * means from one it would have by accident. Seven blocks all apart is the same argument three
+     * of them are refused by and nothing harder; a reading that reached it by walking every part of
+     * the set, or the set once per order its blocks come in, would run out of what it allows itself
+     * to look at and say nothing — and the shape it went quiet on would be the easy one.
+     */
+    @Test
+    void andSevenBlocksAllStatedToDifferOverTwoValuesAreRefusedLikeThree() {
+        Apartness<String> all = Apartness.nothing();
+        List<String> named = List.of("a", "b", "c", "d", "e", "f", "g");
+        for (int one = 0; one < named.size(); one++) {
+            for (int other = one + 1; other < named.size(); other++) {
+                all = all.and(Apartness.of(named.get(one), named.get(other)));
+            }
+        }
+
+        assertEquals(1, all.everyPairwiseApartSet(64).size(),
+                "one set, and not every part of it nor every order its blocks come in");
+        assertInstanceOf(RelationalWitness.TooFewValuesBetweenThem.class,
+                refusedBy(all.reduce(holding(java.util.Map.of()))));
     }
 
     /**
