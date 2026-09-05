@@ -379,15 +379,7 @@ sealed interface Confinement<A> {
             }
             within = within.meet(sits.apply(position));
         }
-        if (carrier != null) {
-            return carrier.valuesShared(set, within, atMost);
-        }
-        // A position on no order has no range for its values to be met with, so a set naming them
-        // is the whole of what it holds. Every other shape is one only an order can say the values
-        // of — what a written set leaves out is every value there is, and how many that is is the
-        // carrier's answer.
-        return set instanceof ValueSet.Finite it && it.values().size() <= atMost
-                ? new Admits.These(it.values()) : new Admits.NotKnown();
+        return Carrier.leftAt(carrier, set, within, atMost);
     }
 
     /** The two questions one walk over the alternatives is asked: what each block leaves, and what
@@ -536,15 +528,11 @@ sealed interface Confinement<A> {
         @Override
         public Admission<A> admission(PositionEnvelope.Restrictions<A> outside) {
             return shown != null ? shown : Confinement.admission(ordered, carriers, outside,
-                    // A description is not a set, so what a denial between two blocks comes to is
-                    // not something this side can work out — and a relation carried by an
-                    // alternative is a relation nothing here has read. Said as undecided rather
-                    // than as something standing, which is what every question this side puts off
-                    // is said as.
-                    (asked, _) -> values.anyAlternativeAdmits(asked)
-                            .met(values.anyDenialRead() ? Emptiness.UNDECIDED : Emptiness.NONEMPTY),
-                    (asked, _) -> new Refusal.AtEachOf<>(
-                            values.refusedInEveryAlternativeAt(asked)),
+                    // The relation is not asked on this side: what a denial comes to is settled
+                    // against the values its blocks are left, and those are descriptions here. The
+                    // walk says so of each alternative that carries one.
+                    (asked, _) -> values.anyAlternativeAdmits(asked),
+                    (asked, _) -> Refusal.atEachOf(values.refusedInEveryAlternativeAt(asked)),
                     values.emptiedBlocks());
         }
 

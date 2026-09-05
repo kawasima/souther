@@ -217,6 +217,12 @@ public final class Apartness<A> {
      * relates all three and states nothing of {@code p} and {@code r}, so two values are enough;
      * read as one set of three, it would be refused over a carrier of two and no rule says so.
      *
+     * <p><b>Only the ones nothing can be added to.</b> A set of blocks all stated to differ is
+     * refused by there being fewer values between them than there are blocks, and a set inside one
+     * of these is refused only where this one is: a value apiece for the larger set is a value
+     * apiece for every part of it. So the parts are covered by the whole and emitting them as well
+     * is the same question asked again — once per subset, which is as many as there are subsets.
+     *
      * <p>Bounded by {@code most}, and by refusing rather than by answering with less: how many of
      * these there are is not something the rules bound, and a reading that stopped partway would
      * decide a declaration by how far it happened to get. A relation too large to walk is one this
@@ -232,39 +238,58 @@ public final class Apartness<A> {
             apart.computeIfAbsent(edge.other(), _ -> new LinkedHashSet<>()).add(edge.one());
         }
         List<Set<Sameness.Block<A>>> found = new ArrayList<>();
-        List<Sameness.Block<A>> named = new ArrayList<>(apart.keySet());
-        for (Sameness.Block<A> block : named) {
-            grow(new LinkedHashSet<>(Set.of(block)), apart.get(block), apart, found, most);
-            if (found.size() > most) {
-                return List.of();
-            }
+        grow(new LinkedHashSet<>(), new LinkedHashSet<>(apart.keySet()), new LinkedHashSet<>(),
+                apart, found, most);
+        if (found.size() > most) {
+            return List.of();
         }
         found.sort(Comparator.comparingInt((Set<Sameness.Block<A>> each) -> each.size()).reversed());
         return found;
     }
 
-    /** Every set {@code sofar} grows into by taking blocks every one of its members is apart
-     *  from. */
+    /**
+     * Every set {@code sofar} grows into that nothing can be added to, each reached once.
+     *
+     * <p>{@code may} is what can still be added and {@code taken} is what was tried and set aside.
+     * A set is one nothing can be added to where both are empty; where {@code taken} holds
+     * something, every set this branch could reach was reached already through that block, and
+     * walking on would find the same sets by another road. Without it a set of {@code k} blocks is
+     * found once for every order its blocks can be taken in, and each of those is the same question
+     * asked again.
+     *
+     * @param sofar the blocks taken so far, all stated to differ from each other
+     * @param may the blocks every one of those is stated to differ from
+     * @param taken those of them already set aside, which some earlier branch has covered
+     */
     private void grow(Set<Sameness.Block<A>> sofar, Set<Sameness.Block<A>> may,
+                      Set<Sameness.Block<A>> taken,
                       Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart,
                       List<Set<Sameness.Block<A>>> found, int most) {
         if (found.size() > most) {
             return;
         }
-        if (sofar.size() > 1) {
-            found.add(Collections.unmodifiableSet(new LinkedHashSet<>(sofar)));
-        }
-        for (Sameness.Block<A> next : may) {
-            Set<Sameness.Block<A>> grown = new LinkedHashSet<>(sofar);
-            if (!grown.add(next)) {
-                continue;
+        if (may.isEmpty()) {
+            if (taken.isEmpty() && sofar.size() > 1) {
+                found.add(Collections.unmodifiableSet(new LinkedHashSet<>(sofar)));
             }
-            Set<Sameness.Block<A>> still = new LinkedHashSet<>(may);
-            still.retainAll(apart.getOrDefault(next, Set.of()));
-            grow(grown, still, apart, found, most);
+            return;
+        }
+        Set<Sameness.Block<A>> left = new LinkedHashSet<>(may);
+        Set<Sameness.Block<A>> aside = new LinkedHashSet<>(taken);
+        for (Sameness.Block<A> next : may) {
+            Set<Sameness.Block<A>> apartFromNext = apart.getOrDefault(next, Set.of());
+            Set<Sameness.Block<A>> grown = new LinkedHashSet<>(sofar);
+            grown.add(next);
+            Set<Sameness.Block<A>> still = new LinkedHashSet<>(left);
+            still.retainAll(apartFromNext);
+            Set<Sameness.Block<A>> covered = new LinkedHashSet<>(aside);
+            covered.retainAll(apartFromNext);
+            grow(grown, still, covered, apart, found, most);
             if (found.size() > most) {
                 return;
             }
+            left.remove(next);
+            aside.add(next);
         }
     }
 

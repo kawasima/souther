@@ -242,20 +242,4 @@ class AnEqualityBetweenTwoPositionsIsHeldByTheValuesTest {
         assertEquals("`p`, `q`", named(source));
     }
 
-    /**
-     * A denial between two positions is not this and is held elsewhere.
-     *
-     * <p>An equality says the two are one side of the product; a denial takes the diagonal out of
-     * one, which makes no side. So it is held beside the product rather than as what the product is
-     * over, and what it comes to is
-     * {@code ADenialBetweenTwoPositionsIsHeldBesideTheProductTest}'s. What is pinned here is that
-     * the two are not one rule read two ways: this equality holds where that denial does not.
-     */
-    @Test
-    void aDenialBetweenTwoPositionsIsNotThisRuleTurnedRound() {
-        admits(STAGE + """
-                data Pair = { p: Stage, r: Stage }
-                    invariant ok = p /= r && p == Ready && r == Done
-                """);
-    }
 }

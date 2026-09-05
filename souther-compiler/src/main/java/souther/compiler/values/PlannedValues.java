@@ -160,6 +160,14 @@ public sealed interface PlannedValues<A> {
                                 break;
                             }
                         }
+                        // And what its denials come to, which on this side of {@link #resolve} is
+                        // nothing: they are settled against the values each block is left, and
+                        // those are descriptions here. Said of the alternative that holds them and
+                        // not of the reading, which is the grain the question is asked at — an
+                        // alternative beside one carrying a denial stands on its own rules.
+                        if (stands != Emptiness.EMPTY && !box.apart().isEmpty()) {
+                            stands = Emptiness.UNDECIDED;
+                        }
                         any = any.joined(stands);
                         if (any == Emptiness.NONEMPTY) {
                             yield any;
@@ -315,20 +323,6 @@ public sealed interface PlannedValues<A> {
             }
         }
         return everywhere == null ? Set.of() : Collections.unmodifiableSet(everywhere);
-    }
-
-    /**
-     * Whether some alternative states two of its blocks to hold different values.
-     *
-     * <p>Asked and not answered. What a denial comes to is settled against the values its blocks
-     * are left, and on this side of {@link #resolve} those are descriptions — so a reading holding
-     * one has a rule nothing here has read, and a caller told nothing about it would take the
-     * answer about the sides for the answer about the alternative.
-     */
-    default boolean anyDenialRead() {
-        return this instanceof Settled<A> it
-                && it.held() instanceof PlannedHeld.Alternatives<A> boxes
-                && boxes.boxes().stream().anyMatch(box -> !box.apart().isEmpty());
     }
 
     /** What every alternative holds as one value. */

@@ -37,6 +37,18 @@ public sealed interface Admits {
     /** More values than the caller said it would count, which is as many as it needs. */
     record MoreThanCounted() implements Admits {}
 
+    /**
+     * These values, or that there are more of them than {@code atMost}.
+     *
+     * <p>The one place the bound is applied. Whoever works out which values a block is left counts
+     * them as it goes and has to decide where to stop, and that decision written at each of those
+     * places is the same rule spelled three ways — one stopping at the bound, one past it, one
+     * calling the answer unknown. What "more than were counted" means belongs to this word.
+     */
+    static Admits of(Set<Value> values, int atMost) {
+        return values.size() > atMost ? new MoreThanCounted() : new These(values);
+    }
+
     /** Not something the reading that was asked can write down. */
     record NotKnown() implements Admits {}
 

@@ -876,6 +876,25 @@ public sealed interface Carrier {
         };
     }
 
+    /**
+     * The same, of a block whose positions may be on no order at all.
+     *
+     * <p>Here rather than at the caller, because a block on no order is a case of the question and
+     * not a case of who is asking. Such a block has no range for its values to be met with, so a
+     * set naming them is the whole of what it holds; every other shape is one only an order can say
+     * the values of, since what a written set leaves out is every value there is. Answered where a
+     * caller happens to notice the absence, that caller would be deciding what a value and an order
+     * come to, which is what this type is for — and the second answer would count differently from
+     * this one the first time either changed.
+     */
+    static Admits leftAt(Carrier carrier, ValueSet set, OrderedInterval range, int atMost) {
+        if (carrier != null) {
+            return carrier.valuesShared(set, range, atMost);
+        }
+        return set instanceof ValueSet.Finite it ? Admits.of(it.values(), atMost)
+                : new Admits.NotKnown();
+    }
+
     /** Which of {@code values} lie inside {@code range}, unknown where one of them is not a value
      *  this order places at all. */
     private Admits named(java.util.Set<Value> values, OrderedInterval range, int atMost) {
@@ -886,13 +905,10 @@ public sealed interface Carrier {
                 return new Admits.NotKnown();
             }
             if (range.admits(at)) {
-                if (out.size() == atMost) {
-                    return new Admits.MoreThanCounted();
-                }
                 out.add(each);
             }
         }
-        return new Admits.These(out);
+        return Admits.of(out, atMost);
     }
 
     /** Which values {@code range} holds that {@code excluded} does not name, where they are few
@@ -916,11 +932,11 @@ public sealed interface Carrier {
             if (value == null) {
                 return new Admits.NotKnown();
             }
-            if (!away.contains(value) && out.add(value) && out.size() > atMost) {
-                return new Admits.MoreThanCounted();
+            if (!away.contains(value)) {
+                out.add(value);
             }
         }
-        return new Admits.These(out);
+        return Admits.of(out, atMost);
     }
 
     /**

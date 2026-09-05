@@ -25,12 +25,28 @@ public sealed interface Refusal<A> {
     /** Nowhere in particular, which is where a lack no block is answerable for is. */
     record Nowhere<A>() implements Refusal<A> {}
 
-    /** Each of these blocks is left nothing. */
+    /**
+     * Each of these blocks is left nothing.
+     *
+     * <p>Never none of them: a lack at no block is a lack nowhere, which is the case beside this
+     * one. Refused here rather than read as {@link Nowhere} by whoever holds one, so that "no block
+     * is why" has one spelling — held as two, a reader has to ask both, and the one that forgets
+     * reports a lack at nowhere in particular as a lack somewhere.
+     */
     record AtEachOf<A>(Set<Sameness.Block<A>> blocks) implements Refusal<A> {
 
         public AtEachOf {
             blocks = Collections.unmodifiableSet(new LinkedHashSet<>(blocks));
+            if (blocks.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "a lack at no block is a lack nowhere, which is Nowhere");
+            }
         }
+    }
+
+    /** A lack at each of {@code blocks}, which is nowhere where they are none. */
+    static <A> Refusal<A> atEachOf(Set<Sameness.Block<A>> blocks) {
+        return blocks.isEmpty() ? new Nowhere<>() : new AtEachOf<>(blocks);
     }
 
     /**
@@ -53,7 +69,7 @@ public sealed interface Refusal<A> {
 
     /** Whether nothing here names a place. */
     default boolean isNowhere() {
-        return this instanceof Nowhere || blocks().isEmpty();
+        return this instanceof Nowhere;
     }
 
     /** The same lack about the blocks {@code naming} calls these. */
@@ -84,7 +100,7 @@ public sealed interface Refusal<A> {
         if (one instanceof AtEachOf<A> mine && other instanceof AtEachOf<A> theirs) {
             Set<Sameness.Block<A>> both = new LinkedHashSet<>(mine.blocks());
             both.retainAll(theirs.blocks());
-            return new AtEachOf<>(both);
+            return atEachOf(both);
         }
         return one.equals(other) ? one : new Nowhere<>();
     }

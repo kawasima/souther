@@ -2,6 +2,7 @@ package souther.compiler.values;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -152,6 +153,27 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
     private static RelationalWitness<String> refusedBy(Apartness.Reduction<String> said) {
         assertInstanceOf(Apartness.Reduction.Nothing.class, said);
         return ((Apartness.Reduction.Nothing<String>) said).why();
+    }
+
+    /**
+     * The sets a count is taken of are the ones nothing can be added to, each of them once.
+     *
+     * <p>A set inside one of these is refused only where the whole is, so emitting the parts as
+     * well is the same question asked once per subset — and a set reached by taking its blocks in
+     * another order is that same set again. Both show up as a count taken more often than there are
+     * answers, which is what the bound on how many sets this will look at then runs into.
+     */
+    @Test
+    void theSetsCountedAreTheOnesNothingCanBeAddedTo() {
+        Apartness<String> triangle = Apartness.of("p", "q")
+                .and(Apartness.of("q", "r")).and(Apartness.of("r", "p"));
+
+        assertEquals(List.of(Set.of(P, Q, R)), triangle.everyPairwiseApartSet(64),
+                "one set, and not every part of it nor every order its blocks come in");
+
+        Apartness<String> chain = Apartness.of("p", "q").and(Apartness.of("q", "r"));
+        assertEquals(List.of(Set.of(P, Q), Set.of(Q, R)), chain.everyPairwiseApartSet(64),
+                "and a chain is two of them, neither of which the other holds");
     }
 
     /**
