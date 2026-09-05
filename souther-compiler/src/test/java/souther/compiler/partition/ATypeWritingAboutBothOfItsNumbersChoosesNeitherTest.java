@@ -80,6 +80,10 @@ class ATypeWritingAboutBothOfItsNumbersChoosesNeitherTest {
     void andNeitherOfThemDividesThePosition() {
         assertEquals(List.of(), axesOf(BOTH, "onCode"),
                 "neither number is an axis of this position");
+        // And at a position of that type held inside a record, where what the names it wears leave
+        // its numbers is the only place its own ends come from.
+        assertEquals(List.of(), axesOf(BOTH, "onHolder"),
+                "nor where the same type stands in a record");
     }
 
     /**
