@@ -8,6 +8,7 @@ import souther.compiler.numeric.Rel;
 import souther.compiler.values.AdmissibleValues;
 import souther.compiler.values.ConjoinedAdmissibleValues;
 import souther.compiler.values.Refusal;
+import souther.compiler.values.RelationalWitness;
 
 import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
@@ -287,7 +288,13 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
             case ORDER -> new Emptiness.EmptyOrderedInterval();
             case SET_AND_RANGE -> new Emptiness.NoAllowedValueInRange();
             case POSITIONS_HELD_AS_ONE -> new Emptiness.NoCommonValueForEqualPositions();
-            case POSITIONS_HELD_APART -> new Emptiness.NoDistinctValuesForPositionsHeldApart();
+            // Which of the arguments a relation refuses by is the witness's to say, and the two are
+            // two sentences: one is about how many values there are and the other about nothing of
+            // the kind.
+            case POSITIONS_HELD_APART -> shown.site() instanceof Refusal.OfThemTogether<A> it
+                    && it.why() instanceof RelationalWitness.ABlockApartFromItself
+                    ? new Emptiness.PositionsHeldAsOneAreHeldApart()
+                    : new Emptiness.NoDistinctValuesForPositionsHeldApart();
             case NOTHING_SHOWN, VALUES, RULES_TOGETHER -> null;
         } : new Emptiness.NoAllowedValueWithinRequiredBounds();
         if (said == null) {

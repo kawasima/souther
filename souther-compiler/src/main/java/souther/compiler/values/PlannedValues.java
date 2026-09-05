@@ -160,13 +160,17 @@ public sealed interface PlannedValues<A> {
                                 break;
                             }
                         }
-                        // And what its denials come to, which on this side of {@link #resolve} is
-                        // nothing: they are settled against the values each block is left, and
-                        // those are descriptions here. Said of the alternative that holds them and
-                        // not of the reading, which is the grain the question is asked at — an
-                        // alternative beside one carrying a denial stands on its own rules.
+                        // And what its denials come to. A block stated to differ from itself is
+                        // settled by reading the rule and needs no values, so it is settled here;
+                        // everything else a denial says is settled against the values its blocks
+                        // are left, and those are descriptions on this side of {@link #resolve}.
+                        //
+                        // Said of the alternative that holds them and not of the reading, which is
+                        // the grain the question is asked at — an alternative beside one carrying a
+                        // denial stands on its own rules.
                         if (stands != Emptiness.EMPTY && !box.apart().isEmpty()) {
-                            stands = Emptiness.UNDECIDED;
+                            stands = box.apart().holdsABlockApartFromItself()
+                                    ? Emptiness.EMPTY : Emptiness.UNDECIDED;
                         }
                         any = any.joined(stands);
                         if (any == Emptiness.NONEMPTY) {
@@ -188,33 +192,56 @@ public sealed interface PlannedValues<A> {
      * whose description this could not ask about is not one of them — it was not refused, it was not
      * asked.
      */
-    default Set<Sameness.Block<A>> refusedInEveryAlternativeAt(AskedOfEachBlock<A> asked) {
+    default Refusal<A> refusedInEveryAlternativeAt(AskedOfEachBlock<A> asked) {
         if (!(this instanceof Settled<A> it
                 && it.held() instanceof PlannedHeld.Alternatives<A> boxes)) {
-            return Set.of();
+            return new Refusal.Nowhere<>();
         }
-        Set<Sameness.Block<A>> everywhere = null;
+        Refusal<A> everywhere = null;
         for (PlannedHeld.Alternative<A> box : boxes.boxes()) {
-            Set<Sameness.Block<A>> here = new LinkedHashSet<>();
-            // The block and not its positions — see {@link AdmissibleValues}.
-            box.at().forEach((block, plan) -> {
-                if (askedOf(block, plan, asked) == Emptiness.EMPTY) {
-                    here.add(block);
-                }
-            });
-            if (here.isEmpty()) {
-                return Set.of();
+            Refusal<A> here = refusalIn(box, asked);
+            if (here.isNowhere()) {
+                return new Refusal.Nowhere<>();
             }
-            if (everywhere == null) {
-                everywhere = here;
-            } else {
-                everywhere.retainAll(here);
-                if (everywhere.isEmpty()) {
-                    return Set.of();
-                }
+            everywhere = everywhere == null ? here : Refusal.shownByBoth(everywhere, here);
+            if (everywhere.isNowhere()) {
+                return new Refusal.Nowhere<>();
             }
         }
-        return everywhere == null ? Set.of() : Collections.unmodifiableSet(everywhere);
+        return everywhere == null ? new Refusal.Nowhere<>() : everywhere;
+    }
+
+    /**
+     * Where one alternative was refused, out of the descriptions alone.
+     *
+     * <p>The blocks first and the relation after, as
+     * {@link AdmissibleValues#refusedInEveryAlternativeAt} does. What this side can say of a
+     * relation is what needs no values: a block stated to differ from itself is refused by reading
+     * the rule, and everything else a denial says waits for the sets.
+     *
+     * <p>Said here and not left to the reading below it. What an alternative was refused by is only
+     * knowable while it is being refused, so an answer that dropped the alternative and worked out
+     * afterwards why the reading holds nothing would find the general form.
+     */
+    private static <A> Refusal<A> refusalIn(PlannedHeld.Alternative<A> box,
+                                            AskedOfEachBlock<A> asked) {
+        Set<Sameness.Block<A>> here = new LinkedHashSet<>();
+        // The block and not its positions — see {@link AdmissibleValues}.
+        box.at().forEach((block, plan) -> {
+            if (askedOf(block, plan, asked) == Emptiness.EMPTY) {
+                here.add(block);
+            }
+        });
+        if (!here.isEmpty()) {
+            return new Refusal.AtEachOf<>(here);
+        }
+        for (Apartness.Edge<A> edge : box.apart().edges()) {
+            if (edge.isOfOneBlock()) {
+                return new Refusal.OfThemTogether<>(
+                        new RelationalWitness.ABlockApartFromItself<>(edge.one()));
+            }
+        }
+        return new Refusal.Nowhere<>();
     }
 
     /** What one block's description comes to under the question, waiting where a machine would
@@ -443,15 +470,7 @@ public sealed interface PlannedValues<A> {
         Set<PlannedHeld.Alternative<A>> live = new LinkedHashSet<>();
         for (PlannedHeld.Alternative<A> one : alternatives(here)) {
             for (PlannedHeld.Alternative<A> two : alternatives(there)) {
-                // A conjunction whose denials put a block apart from itself is one nothing
-                // satisfies, and it is dropped where every other alternative nothing stands in is.
-                // Which is as much as this side of {@link #resolve} can say: whether the sets a
-                // description comes to leave anything is the question that is put off, and whether
-                // a value differs from itself is not.
-                PlannedHeld.Alternative<A> both = one.meet(two);
-                if (!both.standsForNothing()) {
-                    live.add(both);
-                }
+                live.add(one.meet(two));
             }
         }
         return live.isEmpty() ? new PlannedHeld.Nothing<>()

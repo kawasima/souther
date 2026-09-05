@@ -129,6 +129,17 @@ public sealed interface DataMessage extends Message {
     record NoValuesTheseCanAllDifferIn(String data, String at) implements DataMessage, Reported {}
 
     /**
+     * Positions the rules hold as one value are also stated to differ.
+     *
+     * <p>Beside {@link NoValuesTheseCanAllDifferIn} and not it. That one says there are too few
+     * values for these to differ, which sends an author to look for more; here there is no number
+     * of values that would do, because one value is not two whatever it is.
+     */
+    @Code(DiagnosticCode.E1013)
+    record TheseAreHeldAsOneValueAndStatedToDiffer(String data, String at)
+            implements DataMessage, Reported {}
+
+    /**
      * The values positions held as one value are allowed and the range they share have none in
      * common.
      *

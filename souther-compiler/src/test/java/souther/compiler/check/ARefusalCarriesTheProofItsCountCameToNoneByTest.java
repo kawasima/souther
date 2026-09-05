@@ -88,6 +88,7 @@ class ARefusalCarriesTheProofItsCountCameToNoneByTest {
             case Emptiness.NoCommonValueForEqualPositions _ -> "no value they can all hold";
             case Emptiness.NoDistinctValuesForPositionsHeldApart _ ->
                     "no values they can all differ in";
+            case Emptiness.PositionsHeldAsOneAreHeldApart _ -> "one value stated to differ";
             case Emptiness.SetRequiresTooManyDistinctValues it -> "a set over at most " + it.available();
             case Emptiness.NoAllowedCollectionSize _ -> "no size";
         };

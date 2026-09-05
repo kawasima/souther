@@ -151,6 +151,17 @@ public sealed interface Emptiness {
     record NoDistinctValuesForPositionsHeldApart() implements Emptiness {}
 
     /**
+     * Positions the rules hold as one value are also stated to differ.
+     *
+     * <p>Refused by reading the two rules and against no value: whatever those positions may hold,
+     * one value is not two. Beside {@link NoDistinctValuesForPositionsHeldApart} rather than said
+     * as it, because that one is about how many values there are and this one is about nothing of
+     * the kind — an author told there were too few would go looking for more, and there is no
+     * number of them that would do.
+     */
+    record PositionsHeldAsOneAreHeldApart() implements Emptiness {}
+
+    /**
      * A set is asked to hold more values that differ than there are of what it holds.
      *
      * <p>One number and not two. What was compared is whether the rules admit any size this small,
@@ -355,7 +366,8 @@ public sealed interface Emptiness {
             case ConflictingRules _, EmptyOrderedInterval _, NoAllowedValueInRange _,
                  NoAllowedValueWithinRequiredBounds _,
                  NoCommonValueForEqualPositions _,
-                 NoDistinctValuesForPositionsHeldApart _ -> Nearness.DIRECT;
+                 NoDistinctValuesForPositionsHeldApart _,
+                 PositionsHeldAsOneAreHeldApart _ -> Nearness.DIRECT;
             case EmptyNumericInterval _, SetRequiresTooManyDistinctValues _,
                  NoAllowedCollectionSize _ -> Nearness.STRUCTURAL;
             case TheNameHasNone _, NoBaseInComponent _ -> Nearness.PROPAGATED;

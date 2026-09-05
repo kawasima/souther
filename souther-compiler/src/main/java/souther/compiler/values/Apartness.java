@@ -583,14 +583,6 @@ public final class Apartness<A> {
      */
     public record Edge<A>(Sameness.Block<A> one, Sameness.Block<A> other) {
 
-        public Edge {
-            if (String.valueOf(one).compareTo(String.valueOf(other)) > 0) {
-                Sameness.Block<A> swapped = one;
-                one = other;
-                other = swapped;
-            }
-        }
-
         /** Whether both ends are one block, which is a value stated to differ from itself. */
         public boolean isOfOneBlock() {
             return one.equals(other);
@@ -601,9 +593,35 @@ public final class Apartness<A> {
             return new Edge<>(one.renamed(naming), other.renamed(naming));
         }
 
+        /**
+         * The same pair whichever end was written first.
+         *
+         * <p>Said here and not by putting the ends in an order when one is made. An order over the
+         * blocks would have to come from something, and what there is to order them by is how they
+         * are spelled — so two blocks that render alike would be one end, and this rule would be
+         * about a rendering rather than about the blocks. What makes the pair unordered is that it
+         * is a pair, which is what this says.
+         */
+        @Override
+        public boolean equals(Object said) {
+            return said instanceof Edge<?> it
+                    && ((one.equals(it.one) && other.equals(it.other))
+                            || (one.equals(it.other) && other.equals(it.one)));
+        }
+
+        @Override
+        public int hashCode() {
+            return one.hashCode() + other.hashCode();
+        }
+
+        /** The two ends, written in one order whichever way round they were stated. Which end is
+         *  written first is a fact about the reading and not about the rule, so it is settled here
+         *  and nowhere the rule is compared. */
         @Override
         public String toString() {
-            return one + " /= " + other;
+            String mine = String.valueOf(one);
+            String theirs = String.valueOf(other);
+            return mine.compareTo(theirs) <= 0 ? mine + " /= " + theirs : theirs + " /= " + mine;
         }
     }
 }

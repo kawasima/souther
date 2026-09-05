@@ -197,12 +197,13 @@ class ADenialBetweenTwoPositionsIsHeldBesideTheProductTest {
      * Positions the rules hold as one value and state to differ.
      *
      * <p>A conjunction puts the two blocks together, and the denial between them becomes a value
-     * stated to differ from itself. Read against what the blocks hold, there is nothing to read:
-     * the rule refuses whatever they were left.
+     * stated to differ from itself. Refused against no value at all — one value is not two,
+     * whatever those positions may hold — which is why it is said as its own sentence and not as
+     * there being too few values for them to differ. There is no number of values that would do.
      */
     @Test
     void twoPositionsHeldAsOneAndApartAreRefusedWhateverTheyHold() {
-        assertEquals(List.of("ItsRulesCannotAllHold"), saidOf(STAGE + """
+        assertEquals(List.of("TheseAreHeldAsOneValueAndStatedToDiffer"), saidOf(STAGE + """
                 data Pair = { p: Stage, r: Stage }
                     invariant no = p == r && p /= r
                 """), "no value of this can be written");

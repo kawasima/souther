@@ -106,12 +106,6 @@ sealed interface PlannedHeld<A> {
                     apart.and(other.apart).filedIn(heldAsOne));
         }
 
-        /** Whether the rules of this alternative state that a value differs from itself, which
-         *  nothing satisfies. */
-        boolean standsForNothing() {
-            return apart.holdsABlockApartFromItself();
-        }
-
         @Override
         public String toString() {
             return apart.isEmpty() ? product.toString() : product + " with " + apart;

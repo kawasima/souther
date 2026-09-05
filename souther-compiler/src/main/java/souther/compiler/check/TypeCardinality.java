@@ -322,6 +322,7 @@ public final class TypeCardinality {
                  Emptiness.NoAllowedValueWithinRequiredBounds _,
                  Emptiness.NoCommonValueForEqualPositions _,
                  Emptiness.NoDistinctValuesForPositionsHeldApart _,
+                 Emptiness.PositionsHeldAsOneAreHeldApart _,
                  Emptiness.SetRequiresTooManyDistinctValues _,
                  Emptiness.NoAllowedCollectionSize _ -> true;
             case Emptiness.TheNameHasNone it ->

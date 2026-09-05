@@ -547,7 +547,8 @@ public final class DataChecker {
                      Emptiness.TheNameHasNone _, Emptiness.NoBaseInComponent _,
                      Emptiness.AtAField _, Emptiness.AtEqualPositions _,
                      Emptiness.AtPositionsHeldApart _,
-                     Emptiness.NoDistinctValuesForPositionsHeldApart _ ->
+                     Emptiness.NoDistinctValuesForPositionsHeldApart _,
+                     Emptiness.PositionsHeldAsOneAreHeldApart _ ->
                         at.say(new DataMessage.ItsRulesCannotAllHold(data));
             };
             // The places together, the same way, and a sentence of its own: these positions are
@@ -557,6 +558,12 @@ public final class DataChecker {
             case Emptiness.AtPositionsHeldApart it -> switch (it.under()) {
                 case Emptiness.NoDistinctValuesForPositionsHeldApart _ ->
                         at.say(new DataMessage.NoValuesTheseCanAllDifferIn(
+                                data, written(it.where())));
+                // And the two rules where what refuses is reading them: one value is not two,
+                // whatever those positions may hold. An author told there were too few values
+                // would go looking for more, and there is no number of them that would do.
+                case Emptiness.PositionsHeldAsOneAreHeldApart _ ->
+                        at.say(new DataMessage.TheseAreHeldAsOneValueAndStatedToDiffer(
                                 data, written(it.where())));
                 // Every other proof, named rather than gathered under a default, for the reason
                 // the arm above gives. None of them reaches here today: this place is written
@@ -582,7 +589,8 @@ public final class DataChecker {
             // block to name, what is carried is the general form instead. Being exhaustive over the
             // proofs is what makes the next one a build that stops here.
             case Emptiness.NoCommonValueForEqualPositions _,
-                 Emptiness.NoDistinctValuesForPositionsHeldApart _ ->
+                 Emptiness.NoDistinctValuesForPositionsHeldApart _,
+                 Emptiness.PositionsHeldAsOneAreHeldApart _ ->
                     at.say(new DataMessage.ItsRulesCannotAllHold(data));
             case Emptiness.ConflictingRules _, Emptiness.EmptyNumericInterval _ ->
                     at.say(new DataMessage.ItsRulesCannotAllHold(data));

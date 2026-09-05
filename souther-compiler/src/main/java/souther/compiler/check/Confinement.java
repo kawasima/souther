@@ -370,16 +370,8 @@ sealed interface Confinement<A> {
     /** Which values {@code block} is left, where {@code sits} puts its positions. */
     private static <A> Admits admits(Map<A, Carrier> carriers, Function<A, OrderedInterval> sits,
                                      Sameness.Block<A> block, ValueSet set, int atMost) {
-        Carrier carrier = null;
-        OrderedInterval within = OrderedInterval.OPEN;
-        for (A position : block.members()) {
-            Carrier here = carriers.get(position);
-            if (here != null) {
-                carrier = here;
-            }
-            within = within.meet(sits.apply(position));
-        }
-        return Carrier.leftAt(carrier, set, within, atMost);
+        Placed placed = placedAt(carriers, sits, block);
+        return Carrier.leftAt(placed.carrier(), set, placed.within(), atMost);
     }
 
     /** The two questions one walk over the alternatives is asked: what each block leaves, and what
@@ -422,21 +414,34 @@ sealed interface Confinement<A> {
     private static <A> Emptiness answered(Map<A, Carrier> carriers,
                                           Function<A, OrderedInterval> sits, Meter meter,
                                           Sameness.Block<A> block, ValueSet set) {
-        // What the block is ordered on, and where it stops. Positions an alternative holds as
-        // one value have one value between them, so the range that value is in is every one of
-        // their ranges at once — asked of one member, {@code p == r && p < d1 && r > d2} would
-        // be answered against half of what the rules say and the pair would come back holding
-        // something.
+        Placed placed = placedAt(carriers, sits, block);
+        return placed.carrier() == null ? Emptiness.NONEMPTY
+                : placed.carrier().meets(set, placed.within(), meter);
+    }
+
+    /**
+     * What a block is ordered on and where its positions leave it.
+     *
+     * <p>Worked out once, because two questions are asked of a block against it — whether it admits
+     * anything, and what a denial between it and another comes to — and both need the same two
+     * facts. Written at each of them, the assertion below is on one and the other answers a block
+     * this compiler is wrong about without saying so.
+     *
+     * <p>The range is every one of the positions' at once. Positions an alternative holds as one
+     * value have one value between them, so asking one member would answer {@code p == r && p < d1
+     * && r > d2} against half of what the rules say and the pair would come back holding something.
+     */
+    private static <A> Placed placedAt(Map<A, Carrier> carriers, Function<A, OrderedInterval> sits,
+                                       Sameness.Block<A> block) {
         Carrier carrier = null;
         OrderedInterval within = OrderedInterval.OPEN;
         for (A position : block.members()) {
             Carrier here = carriers.get(position);
-            // One carrier, and an assertion because it is about this compiler rather than
-            // about any model: a rule holding two positions as one value is one an equality
-            // between them typed, and an equality types only where the two are of one type. A
-            // block whose members disagreed would be answered by whichever of them the
-            // members happen to be read in the order of, which is a fact about how they are
-            // spelled.
+            // One carrier, and an assertion because it is about this compiler rather than about any
+            // model: a rule holding two positions as one value is one an equality between them
+            // typed, and an equality types only where the two are of one type. A block whose
+            // members disagreed would be answered by whichever of them the members happen to be
+            // read in the order of, which is a fact about how they are spelled.
             assert carrier == null || here == null || carrier.equals(here)
                     : "positions held as one value are ordered on " + carrier + " and " + here;
             if (here != null) {
@@ -444,8 +449,12 @@ sealed interface Confinement<A> {
             }
             within = within.meet(sits.apply(position));
         }
-        return carrier == null ? Emptiness.NONEMPTY : carrier.meets(set, within, meter);
+        return new Placed(carrier, within);
     }
+
+    /** A block's order and the range its positions leave it, the order being null where nothing
+     *  orders it. */
+    record Placed(Carrier carrier, OrderedInterval within) {}
 
     /** Whether anything outside these readings places a position of {@code block}. */
     private static <A> boolean places(Sameness.Block<A> block,
@@ -532,7 +541,7 @@ sealed interface Confinement<A> {
                     // against the values its blocks are left, and those are descriptions here. The
                     // walk says so of each alternative that carries one.
                     (asked, _) -> values.anyAlternativeAdmits(asked),
-                    (asked, _) -> Refusal.atEachOf(values.refusedInEveryAlternativeAt(asked)),
+                    (asked, _) -> values.refusedInEveryAlternativeAt(asked),
                     values.emptiedBlocks());
         }
 

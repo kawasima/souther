@@ -37,9 +37,24 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         return (block, _) -> new Admits.These(these.getOrDefault(block, Set.of(A, B)));
     }
 
-    /** A pair is unordered, so a rule written either way round is one rule. */
+    /**
+     * A pair is unordered, so a rule written either way round is one rule.
+     *
+     * <p>By being a pair and not by putting its ends in an order. An order over the blocks would
+     * have to come from how they are spelled, and then two blocks that render alike would be one
+     * end — so what is asserted is the equality itself, which is what the reading below it is
+     * filed and deduplicated by.
+     */
     @Test
     void aPairIsUnorderedAndIsOneRuleWrittenEitherWayRound() {
+        Apartness.Edge<String> one = new Apartness.Edge<>(P, R);
+        Apartness.Edge<String> back = new Apartness.Edge<>(R, P);
+
+        assertEquals(one, back);
+        assertEquals(one.hashCode(), back.hashCode(), "and equal pairs hash alike");
+        assertEquals(String.valueOf(one), String.valueOf(back),
+                "and are written out the same way, whichever end was stated first");
+
         assertEquals(Apartness.of("p", "r"), Apartness.of("r", "p"));
         assertEquals(1, Apartness.of("p", "r").and(Apartness.of("r", "p")).edges().size(),
                 "one rule stated twice is stated once");
@@ -147,6 +162,34 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         }
         assertEquals(R, left.block());
         assertEquals(Set.of(Q), left.by(), "the neighbour whose one value took the last of them");
+    }
+
+    /**
+     * A conjunction that makes a denial into a value stated to differ from itself keeps the
+     * alternative, and the relation is what refuses it.
+     *
+     * <p>Dropped where the sides are put together, the rules that emptied it would be gone with it
+     * — and a reader asking why the declaration holds nothing would be told the general answer,
+     * which is that the values admit nothing. What an alternative was refused by is only knowable
+     * while it is being refused, so the argument is made where the argument is read.
+     */
+    @Test
+    void aConjunctionThatEmptiesAnAlternativeByItsRelationSaysSo() {
+        Allowance<String> sets = AsACompilationAllows.forAdmittedValues();
+        AdmissibleValues<String> both = AdmissibleValues.<String>holdingAsOne("p", "r")
+                .meet(AdmissibleValues.heldApart("p", "r"), sets);
+
+        // Nothing is asked of what the block holds: a value stated to differ from itself is refused
+        // by reading the rule, which is why this is settled before any value is.
+        Refusal<String> why = both.refusedInEveryAlternativeAt(
+                (_, _) -> Emptiness.NONEMPTY,
+                (apart, _) -> apart.reduce((_, _) -> new Admits.NotKnown()));
+
+        if (!(why instanceof Refusal.OfThemTogether<String> together)) {
+            throw new AssertionError("refused by what its blocks are held as: " + why);
+        }
+        assertInstanceOf(RelationalWitness.ABlockApartFromItself.class, together.why());
+        assertEquals(Set.of(Sameness.of("p", "r").blockOf("p")), together.blocks());
     }
 
     /** What a reduction that refused was refused by. */

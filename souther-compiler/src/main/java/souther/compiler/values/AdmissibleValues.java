@@ -196,7 +196,13 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
         }
 
         /**
-         * The alternatives the rules leave, none of which admits nothing.
+         * The alternatives the rules leave, no side of which admits nothing.
+         *
+         * <p>No side, and not none of which admits nothing. An alternative whose denials state a
+         * value to differ from itself admits nothing and is one of these all the same: what says so
+         * is the relation it carries, and it is read where a relation is read. Dropped where the
+         * sides are put together, the rules that emptied it would be gone and a reader asking why
+         * would be told the general answer.
          *
          * <p>A set and not a sequence: what is held is their union, so the same alternative written
          * twice is one alternative and the order two of them were met in is not part of the answer.
@@ -573,11 +579,18 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
          *  stands in it. */
         record Met<A>(Map<Sameness.Block<A>, ValueSet> at, Apartness<A> apart) {
 
-            /** Whether nothing stands in it, which is a side left no value or a block stated to
-             *  differ from itself. */
+            /**
+             * Whether a side of it is left no value, which is what makes it no alternative.
+             *
+             * <p>A side and not the relation. A conjunction that puts two blocks together makes a
+             * denial between them a value stated to differ from itself, and nothing satisfies that
+             * — but it is a fact the relation states rather than a product with an empty side, and
+             * what states it is still there to be read. Dropped here, the alternative would go and
+             * the rules that emptied it would go with it, and a reader asking why would be told
+             * that the values admit nothing.
+             */
             boolean standsForNothing() {
-                return at.values().stream().anyMatch(ValueSet::isEmpty)
-                        || apart.holdsABlockApartFromItself();
+                return at.values().stream().anyMatch(ValueSet::isEmpty);
             }
 
             /** The alternative it is, which a caller asks for only where something stands in it. */
