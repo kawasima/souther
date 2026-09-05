@@ -24,11 +24,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * one a reading could take either way: the reaching was made, and what went unread is a clause.
  * Read as the second, an author is sent after a container that is not the matter.
  *
- * <p>The second is what the model is. A rule written under a container, a case or an optional is
- * read where it governs, one position down; what is left that can go unread at a position this
- * reading arrived at is a clause the front end could not type, and a model carrying one is refused.
- * So the word is about a model nobody can compile, which is a fact about what it means rather than
- * about this fixture.
+ * <p>The second is what this model is. It reaches the word through a clause the front end could not
+ * type, and the same model is one this compiler refuses — two facts about one witness, kept
+ * together so that neither is read without the other.
+ *
+ * <p><b>And no further than this witness.</b> Nothing here says every route to the word wants a
+ * refused model: a declaration that resolves while nothing expands the clauses of its module
+ * reaches it too ({@code AnExpansionThatDidNotHappenIsARuleNotReachedTest}), so what the word means
+ * is not read off what this fixture is. Written as a property of the word, the sentence would be
+ * one this cannot fail on — another route arriving tomorrow leaves this witness refused and this
+ * test green.
  */
 class AClauseNothingCouldTypeLeavesAPositionShortOfItsRulesTest {
 
@@ -73,18 +78,19 @@ class AClauseNothingCouldTypeLeavesAPositionShortOfItsRulesTest {
         assertFalse(json.contains("\"unsupported_traversal\""), json);
     }
     /**
-     * And the model that carries the word is one this compiler refuses.
+     * And the witness above is a model this compiler refuses.
      *
-     * <p>Said out loud, because it is what the word means now and not an accident of the fixture.
-     * A rule written under a container, a case or an optional is read where it governs, one position
-     * down (#1072). What is left that can go unread at a position this reading arrived at is a
-     * clause the front end could not type, and a model carrying one is refused.
+     * <p>Said out loud, and about this model. What it reaches the word through is a clause the
+     * front end could not type, and a model carrying one is refused — so the pair of facts is what
+     * the fixture is, and a reader taking the word from it is reading a model nobody can compile.
      *
-     * <p>A tripwire and not a preference. The day a clause can go unread in a model that compiles,
-     * this fails and whoever made it so is the one who should decide what the word means then.
+     * <p>A tripwire for the fixture and not a property of the word. The day this model compiles,
+     * what it is a witness of has changed and the entry above is about something else; the day
+     * some other model reaches the word without a diagnostic, nothing here notices and nothing
+     * here claimed to.
      */
     @Test
-    void theModelThatCarriesThatWordIsOneThisCompilerRefuses() {
+    void thisWitnessIsOneTheCompilerRefuses() {
         Compilation compilation = Compilation.ofSource(RULES_NEVER_ARRIVED_AT, "Main");
         compilation.answerEverything();
         assertFalse(compilation.diagnostics().values().stream()

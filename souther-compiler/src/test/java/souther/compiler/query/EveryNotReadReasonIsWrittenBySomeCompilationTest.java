@@ -24,8 +24,8 @@ import java.util.TreeMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Every reason a document's {@code notRead} may name is one a compilation of this compiler writes
- * there.
+ * Every reason this compiler may write in a document's {@code notRead} is one a compilation of it
+ * writes there.
  *
  * <p>A published word is a promise to a reader that there is a state of the model this compiler
  * answers with it. Nothing else here holds that promise: the writer and the schema are held to each
