@@ -150,6 +150,10 @@ final class PlanOrder {
      *
      * <p>A set of boxes and not a sequence: the alternatives are a union, so each is written out and
      * the writings are sorted. What each box holds is written by position, for the same reason.
+     *
+     * <p>Both halves of an alternative, because both are what it says. Two alternatives whose sides
+     * agree and whose denials do not are two alternatives, and written by their sides alone they
+     * would come out alike — which puts the readings back in the order they happened to arrive in.
      */
     static void written(AdmissibleValues.Held<?> held, StringBuilder out) {
         switch (held) {
@@ -160,12 +164,26 @@ final class PlanOrder {
                         .map(box -> {
                             StringBuilder one = new StringBuilder();
                             written(box.at(), one);
+                            written(box.apart(), one);
                             return one.toString();
                         })
                         .sorted()
                         .forEach(each -> out.append(each).append(';'));
             }
         }
+    }
+
+    /**
+     * Which blocks an alternative states to differ, written out in one order whatever order they
+     * were stated in.
+     *
+     * <p>Sorted, for the reason the alternatives are: a relation is a set of pairs, so the same
+     * rules written two ways are one relation and have to come out as one writing.
+     */
+    private static void written(Apartness<?> apart, StringBuilder out) {
+        out.append(apart.edges().size()).append(';');
+        apart.edges().stream().map(String::valueOf).sorted()
+                .forEach(each -> out.append(each).append(';'));
     }
 
     private static long states(java.util.Collection<ValueSet> sets) {

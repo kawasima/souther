@@ -102,7 +102,8 @@ class EveryPartOfAReadingIsAValueTest {
         }
         if (type == AdmissibleValues.Held.class) {
             return new Sample(AdmissibleValues.Held.Alternatives.of(
-                    new AdmissibleValues.Box<String>(Map.of())), List.of());
+                    AdmissibleValues.Alternative.of(
+                            new AdmissibleValues.Box<String>(Map.of()))), List.of());
         }
         // A position, which this reading is generic over. What one is is the caller's; that two of
         // them are not the same one is all this needs.
@@ -217,12 +218,12 @@ class EveryPartOfAReadingIsAValueTest {
         assertEquals(Set.of(Sameness.Block.of("a")), box.at().keySet(),
                 "what was said is what was said then");
 
-        Set<AdmissibleValues.Box<String>> boxes = new LinkedHashSet<>();
-        boxes.add(box);
+        Set<AdmissibleValues.Alternative<String>> boxes = new LinkedHashSet<>();
+        boxes.add(AdmissibleValues.Alternative.of(box));
         AdmissibleValues.Held.Alternatives<String> held =
                 AdmissibleValues.Held.Alternatives.of(boxes, AsACompilationAllows.forAdmittedValues()).held();
 
-        boxes.add(AdmissibleValues.Box.at(Map.of("b", ValueSet.ANY)));
+        boxes.add(AdmissibleValues.Alternative.at(Map.of("b", ValueSet.ANY)));
         assertEquals(1, held.boxes().size(), "the alternatives are the ones it was made of");
     }
 

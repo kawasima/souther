@@ -38,8 +38,8 @@ class WhatAPositionHoldsAcrossAlternativesDoesNotFollowHowTheyWereFilledTest {
     }
 
     /** One alternative, holding {@code set} at the one position there is. */
-    private static AdmissibleValues.Box<String> box(ValueSet set) {
-        return AdmissibleValues.Box.at(Map.of("here", set));
+    private static AdmissibleValues.Alternative<String> box(ValueSet set) {
+        return AdmissibleValues.Alternative.at(Map.of("here", set));
     }
 
     /**
@@ -49,7 +49,7 @@ class WhatAPositionHoldsAcrossAlternativesDoesNotFollowHowTheyWereFilledTest {
      * small one first is a join with a written value, and one that meets the two large ones first is
      * a machine of their sum.
      */
-    private static List<AdmissibleValues.Box<String>> three() {
+    private static List<AdmissibleValues.Alternative<String>> three() {
         return List.of(box(matching("x|a{300}")), box(matching("x|b{300}")),
                 box(ValueSet.just(Value.text("x"))));
     }
@@ -62,8 +62,8 @@ class WhatAPositionHoldsAcrossAlternativesDoesNotFollowHowTheyWereFilledTest {
         int spent = -1;
         for (List<Integer> order : List.of(List.of(0, 1, 2), List.of(0, 2, 1), List.of(1, 0, 2),
                 List.of(1, 2, 0), List.of(2, 0, 1), List.of(2, 1, 0))) {
-            List<AdmissibleValues.Box<String>> boxes = three();
-            Set<AdmissibleValues.Box<String>> filled = new LinkedHashSet<>();
+            List<AdmissibleValues.Alternative<String>> boxes = three();
+            Set<AdmissibleValues.Alternative<String>> filled = new LinkedHashSet<>();
             order.forEach(each -> filled.add(boxes.get(each)));
 
             Allowance<String> by = AsACompilationAllows.forAdmittedValues();
