@@ -1329,6 +1329,20 @@ public final class InputDomain {
         // The type's own ends are accounted for and not gathered: what they come to is what the
         // reading of the names this position wears leaves, below.
         fateOf(measured, ownRules.placed(), path, type, source, found);
+        // And the ends a conjunct that placed none moved, which the reading of the clauses as they
+        // are written cannot see: no comparison places them, and where they are is in what the
+        // other rules leave.
+        //
+        // Every list of ends this position's bounds are built from, and each through the one
+        // classification. What the value's own clauses state is the same rules read a second way
+        // where this position is the value they are written on, so a finding about one of them is
+        // one fact whichever list it was met in, and the gathering folds it. Left out because the
+        // rules were named from the other list, the ends went on being taken in — the answer was
+        // said and not acted on, which is the shape this change is about.
+        List<FieldDomains.Placed> atTheValue =
+                fateOf(measured, placed.statedAtTheValue(), path, type, source, found);
+        List<FieldDomains.Placed> moved =
+                fateOf(measured, placed.movedAtTheValue(), path, type, source, found);
         List<FieldDomains.Placed> adopted =
                 fateOf(measured, stated, path, type, source, found);
         // The number this position is measured at, as the readers below spell it. Undetermined, it
@@ -1346,10 +1360,6 @@ public final class InputDomain {
                     "this reading decided " + path + " is measured by " + taken
                             + ", which is not what its type is measured by: " + Type.show(type));
         }
-        // And the ends a conjunct that placed none moved, which the reading of the clauses as they
-        // are written cannot see: no comparison places them, and where they are is in what the
-        // other rules leave.
-        List<FieldDomains.Placed> moved = placed.movedAtTheValue();
         // Four sources and not two: what the type's own comparisons wrote, what its conjuncts state
         // that no comparison says — a rule about the strings at a position leaves them running
         // between two places and orders nothing — what a conjunct of them moved, and what the value
@@ -1359,7 +1369,7 @@ public final class InputDomain {
                 : DeclaredBounds.and(
                         DeclaredBounds.and(
                                 DeclaredBounds.and(ofTheType(measured, kind, on, view, source),
-                                        DeclaredBounds.placed(placed.statedAtTheValue(), kind, on)),
+                                        DeclaredBounds.placed(atTheValue, kind, on)),
                                 DeclaredBounds.placed(moved, kind, on)),
                         DeclaredBounds.placed(adopted, kind, on));
         // A value whose rules contradict has no positions to cover: every edge of every field of it

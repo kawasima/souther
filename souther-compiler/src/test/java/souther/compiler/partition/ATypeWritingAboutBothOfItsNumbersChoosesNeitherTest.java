@@ -78,10 +78,8 @@ class ATypeWritingAboutBothOfItsNumbersChoosesNeitherTest {
      */
     @Test
     void andNeitherOfThemDividesThePosition() {
-        String report = report(BOTH);
-
-        assertFalse(report.contains("String.length(v) ="),
-                "nothing chose the length, so no class is written on it:\n" + report);
+        assertEquals(List.of(), axesOf(BOTH, "onCode"),
+                "neither number is an axis of this position");
     }
 
     /**
@@ -143,6 +141,17 @@ class ATypeWritingAboutBothOfItsNumbersChoosesNeitherTest {
                 "the length rule is named as one nothing could choose between");
         assertFalse(report(source).contains("String.length(v) = 2"),
                 "and no line is drawn at the length");
+    }
+
+    /** The numbers {@code behavior} divides some position along, as a document names them. */
+    private static List<String> axesOf(String source, String behavior) {
+        Compilation compilation = Compilation.ofSource(source, "Main");
+        compilation.measure(Adequacy.Asked.fullReport());
+        compilation.answerEverything();
+        return AdequacyReport.of(compilation).modules().get(0).behaviors().stream()
+                .filter(each -> each.name().equals(behavior))
+                .flatMap(each -> each.partition().axes().stream())
+                .map(each -> each.name()).toList();
     }
 
     private static String report(String source) {
