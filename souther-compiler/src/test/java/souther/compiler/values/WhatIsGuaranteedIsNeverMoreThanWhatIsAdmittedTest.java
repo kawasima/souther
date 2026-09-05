@@ -83,6 +83,11 @@ class WhatIsGuaranteedIsNeverMoreThanWhatIsAdmittedTest {
                         says(VALUE, A).meet(says(OTHER, A), SETS)
                                 .join(says(VALUE, B).meet(says(OTHER, B), SETS), SETS)
                                 .meet(says(VALUE, A), SETS)),
+                made("heldApart", AdmissibleValues.heldApart(VALUE, OTHER)),
+                made("meet with heldApart",
+                        says(VALUE, A).meet(AdmissibleValues.heldApart(VALUE, OTHER), SETS)),
+                made("join with heldApart",
+                        says(VALUE, A).join(AdmissibleValues.heldApart(VALUE, OTHER), SETS)),
                 made("join nested under a join",
                         says(VALUE, A).join(says(VALUE, B)
                                 .join(unreadable(Set.of(VALUE)), SETS).alsoOpenedAt(Set.of(VALUE)),
@@ -105,6 +110,36 @@ class WhatIsGuaranteedIsNeverMoreThanWhatIsAdmittedTest {
             assertEquals(ValueSet.NONE, state.guaranteedAt(atom),
                     () -> "at " + atom + " of a reading that admits nothing");
         }
+    }
+
+    /**
+     * A position held apart from another is guaranteed nothing, and one beside it keeps what it had.
+     *
+     * <p>A guarantee is a lower approximation: these values stand there whatever else is read. No
+     * value can be shown to stand at one of two positions held apart without an assignment for the
+     * other — over a carrier of one value a denial admits nothing at all — so the honest guarantee
+     * at both of them is none. What the rules leave them is still every value, which is the upper
+     * approximation and a different question.
+     *
+     * <p>Said where the rule is read rather than wherever a denial is met with something. Meeting a
+     * guarantee with nothing leaves nothing, so every conjunction the rule reaches has it without a
+     * second rule saying so — and a choice beside it keeps what its other branch guarantees, which
+     * is right, because a value satisfying that branch is under no denial.
+     */
+    @Test
+    void aPositionHeldApartFromAnotherIsGuaranteedNothing() {
+        AdmissibleValues<String> apart = AdmissibleValues.heldApart(VALUE, OTHER);
+
+        assertEquals(ValueSet.NONE, apart.guaranteedAt(VALUE));
+        assertEquals(ValueSet.NONE, apart.guaranteedAt(OTHER));
+        assertEquals(ValueSet.ANY, apart.at(VALUE), "and the rules leave it every value");
+
+        assertEquals(ValueSet.NONE,
+                says(VALUE, A).meet(apart, SETS).guaranteedAt(VALUE),
+                "a conjunction the rule reaches guarantees nothing there");
+        assertEquals(ValueSet.just(A),
+                says(VALUE, A).join(apart, SETS).guaranteedAt(VALUE),
+                "and a branch beside it keeps what it guarantees on its own");
     }
 
     static Stream<Arguments> admittingNothing() {

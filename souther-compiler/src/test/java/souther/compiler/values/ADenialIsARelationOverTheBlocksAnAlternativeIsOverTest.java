@@ -154,6 +154,30 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         return ((Apartness.Reduction.Nothing<String>) said).why();
     }
 
+    /**
+     * A cycle of five over two values is refused by no pair and by no set of blocks all stated to
+     * differ, and this says nothing about it.
+     *
+     * <p>Nothing satisfies it — a cycle of odd length needs three values — and no argument this
+     * reduction has reaches it: no block is left one value, so nothing is taken away; and every set
+     * of blocks all stated to differ here is a pair, which two values are enough for. Deciding it
+     * is colouring a graph, which is a different question from the one this answers.
+     *
+     * <p>Written down as the boundary and not as a gap to be closed here. What this holds is the
+     * whole relation, so a reduction that can colour is one added beside these rather than a
+     * rewrite of what they leave — and a reading that answered {@link Apartness.Reduction.Standing}
+     * would be claiming an assignment it has not got.
+     */
+    @Test
+    void aCycleOfFiveOverTwoValuesIsPastWhatThisReductionShows() {
+        Apartness<String> cycle = Apartness.of("a", "b")
+                .and(Apartness.of("b", "c")).and(Apartness.of("c", "d"))
+                .and(Apartness.of("d", "e")).and(Apartness.of("e", "a"));
+
+        assertInstanceOf(Apartness.Reduction.NotKnown.class, cycle.reduce(holding(
+                java.util.Map.of())), "nothing satisfies it, and no argument here reaches it");
+    }
+
     /** A block this cannot say the values of is one the relation says nothing about. */
     @Test
     void aBlockWhoseValuesAreNotKnownIsOneTheRelationSaysNothingAbout() {

@@ -451,6 +451,31 @@ class WhatAPositionMayHoldIsHandedOverWithHowMuchOfItWasReadTest {
     }
 
     /**
+     * And a denial between two positions is not one of them either, because it is read.
+     *
+     * <p>The reason above is about a rule this reading recognised and could not turn into a set of
+     * one position's values. A denial is one it takes in — as a relation beside the product rather
+     * than as a set — so nothing about it went unread, and a position it names is one this reading
+     * speaks for. Left standing, the accounting would say the model draws a distinction this could
+     * not follow, and an author would be sent to a rule that was read in full.
+     *
+     * <p>What the positions hold is still every value. A denial narrows neither of them on its own,
+     * which is what parts being read from being narrowed.
+     */
+    @Test
+    void andADenialBetweenTwoPositionsIsReadRatherThanStoodOn() {
+        FieldDomains read = of("""
+                module demo
+
+                data Pair = { left: String, right: String }
+                    invariant differ = left /= right
+                """, "Pair");
+
+        wholly(ValueSet.ANY, read, "left");
+        wholly(ValueSet.ANY, read, "right");
+    }
+
+    /**
      * A position compared with itself is related to nothing, and is not said to be.
      *
      * <p>Two operands and one position. The reading recognises the comparison and finds a position
