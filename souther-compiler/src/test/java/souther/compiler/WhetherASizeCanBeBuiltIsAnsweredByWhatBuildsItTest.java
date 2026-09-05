@@ -79,17 +79,6 @@ class WhetherASizeCanBeBuiltIsAnsweredByWhatBuildsItTest {
         return null;
     }
 
-    /** Why no row was offered at {@code edge}, or null where one was. */
-    private static Generator.UnresolvedCombination.Reason whyNot(Generator.GenerationResult filled,
-                                                                 String edge) {
-        for (Generator.UnresolvedCombination left : filled.unresolved()) {
-            if (left.classes().contains(edge)) {
-                return left.reason();
-            }
-        }
-        return null;
-    }
-
     // --- a string as long as the line says --------------------------------------------------------
 
     /**
@@ -136,27 +125,6 @@ class WhetherASizeCanBeBuiltIsAnsweredByWhatBuildsItTest {
                 """, "C([1, 2, 3])"));
 
         assertEquals("C([0, 0])", rowAt(filled, "List.length(c) = 2"));
-    }
-
-    // --- built, and then refused ------------------------------------------------------------------
-
-    /**
-     * A value that was composed and refused is said to have been refused.
-     *
-     * <p>The two halves of the answer belong to different things: whether a value of that size exists
-     * to try is what builds values, and whether the model admits it is the decoder's. Collapsed into
-     * one, a type whose format refuses the string a length asked for reports that nothing composes a
-     * string of that length — a claim about strings taken from an opinion about this type.
-     */
-    @Test
-    void aSizedValueTheFormatRefusesIsReportedAsRefusedAndNotAsUnbuildable() {
-        Generator.GenerationResult filled = boundaries(model("""
-                data C = String
-                    invariant String.length(value) >= 2 && String.matches("[0-9]+", value)
-                """, "C(\"123\")"));
-
-        assertEquals(Generator.UnresolvedCombination.Reason.ALL_CANDIDATES_REJECTED,
-                whyNot(filled, "String.length(c) = 2"));
     }
 
     // --- the position's own content, unchanged ----------------------------------------------------

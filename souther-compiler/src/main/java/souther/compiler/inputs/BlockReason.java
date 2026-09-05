@@ -742,6 +742,27 @@ public sealed interface BlockReason {
     record ComparisonOverARun() implements ReadToEndWithoutLine {}
 
     /**
+     * The rule states where one of the position's numbers stops, and the position is measured at
+     * another of them.
+     *
+     * <p>Read to the end, and nothing about it is undecided: which number it is about is what the
+     * rule says, and the end it places is placed. What it is not is a line on this position's axis
+     * — a position has one, a {@code String} has two numbers to have chosen it from, and a cap on
+     * the length of one measured on its own order stops values without ordering them.
+     *
+     * <p><b>Its own word beside {@link CompetingCoordinates}, which is the other thing two
+     * coordinates can come to.</b> There nothing chose, and every rule about either number is one
+     * an author would have to rewrite; here the choice was made, the rules at the chosen number
+     * draw their lines, and this one is beside the axis rather than in the way of it. Said as the
+     * other, an author would go looking for the second clause that was competing with this one.
+     *
+     * <p>And not silence, which is what it was. A rule an author wrote that reaches a position and
+     * leaves no line there is a rule they can see no effect of, and a position with one of them
+     * came back looking like a position it had never been written about.
+     */
+    record RuleAboutAnotherCoordinate() implements ReadToEndWithoutLine {}
+
+    /**
      * The rule holds this position to the values it admits, and places no end on them.
      *
      * <p>What a reader is owed, and it is a fact they act on: the value written here has to be one

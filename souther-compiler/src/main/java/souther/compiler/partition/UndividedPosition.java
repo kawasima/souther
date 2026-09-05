@@ -198,6 +198,16 @@ public record UndividedPosition(TermPath at, Why why) {
          */
         COMPETING_COORDINATES,
         /**
+         * The rule is about one of the position's numbers, and the position is measured at another.
+         *
+         * <p>Not {@link #COMPETING_COORDINATES}, which is where no number could be chosen. Here one
+         * was, the rules about it draw their lines, and this rule states where a different number
+         * of the same place stops — so what a reader acts on is that its end holds the values here
+         * without dividing them, and told the other word they would go looking for a clause that is
+         * competing with this one.
+         */
+        RULE_ABOUT_ANOTHER_COORDINATE,
+        /**
          * The line reaches positions under the cases each side of it, and which of them go together
          * is not worked out.
          *

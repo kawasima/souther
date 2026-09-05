@@ -1687,6 +1687,9 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case COMPETING_COORDINATES ->
                     "a rule beside it is about the position's other coordinate, so neither can be"
                             + " chosen";
+            case RULE_ABOUT_ANOTHER_COORDINATE ->
+                    "it says where another of this position's numbers stops, and the position is"
+                            + " measured at the one its own rules are about";
             case UNSUPPORTED_PARTITION_SHAPE ->
                     "it relates two positions rather than dividing one";
             case RULE_ABOUT_A_RUN ->

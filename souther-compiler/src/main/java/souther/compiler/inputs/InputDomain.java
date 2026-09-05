@@ -5,7 +5,8 @@ import souther.compiler.check.NumberAt;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.Carrier;
 import souther.compiler.check.DeclaredBounds;
-import souther.compiler.check.DeclaredSubjects;
+import souther.compiler.check.DeclaredCoordinates;
+import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleKey;
 import souther.compiler.check.FieldDomains;
 import souther.compiler.check.NarrowedBounds;
@@ -27,7 +28,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * What can arrive at each position of one behavior's input, read once.
@@ -1283,15 +1283,6 @@ public final class InputDomain {
         return false;
     }
 
-    /** The position's own value, as the reading of one coordinate names it. */
-    private static final NumberAt.OfWhatNumber ITS_OWN_VALUE =
-            new NumberAt.OfWhatNumber.OfItsOwnValue();
-
-    /** The number {@code operation} answers of what stands at a position. */
-    private static NumberAt.OfWhatNumber answeredBy(ValueName operation) {
-        return new NumberAt.OfWhatNumber.OfWhatAnOperationAnswers(operation);
-    }
-
     /**
      * The reading of one position.
      *
@@ -1312,37 +1303,44 @@ public final class InputDomain {
         // and a constant places an end wherever it is written, so where the rule was written is not
         // what decides whether there is a line here (ADR-0090).
         List<FieldDomains.Placed> stated = placed.placedAt(path);
-        // What the rules are about, and only then what the type could carry. A position has one
-        // axis, and a `String` is the one type that can be measured two ways — its own order, and
-        // the length of it — so which of them the model wrote about is what decides. Read off the
-        // carrier first, every rule anybody ever wrote about the length of a string would have
-        // become a rule about the string.
-        DeclaredBounds.Bounds ofType = taken == null ? null
-                : DeclaredBounds.of(view, source, Carrier.WHOLE, taken);
-        DeclaredBounds.Bounds valueOfType = carried == null ? null
-                : DeclaredBounds.of(view, source, carried, null);
-        // Rules about both coordinates and nothing here to choose between. Said before they are
-        // dropped and from the list that still holds them, because this is the one place that knows
-        // which rules they were — recovered afterwards from a position with no axis, the finding
-        // could name the position and nothing else, which is what it is for.
-        // Which of the position's numbers its own rules are written about, whatever each of them
-        // came to. What a rule is about and where it leaves the values are two questions, and only
-        // the first decides this.
+        // The position's own rules, read once and asked two things. Which numbers they are written
+        // about is what chooses the coordinate — a rule that placed no end is as much a part of
+        // that as one that ordered the values — and which of them placed an end where is what says
+        // afterwards what became of each. Two readings of the same clauses would be free to part,
+        // and what they would part about is whether a rule that chose the coordinate is a rule
+        // anything happened to.
         //
         // Asked of the reading that turned the clauses into constraints, which is the one place the
         // canonical quantity of each of them was worked out. A second reader recognising the number
         // off the spelling of a side answers nothing for `String.length(value) * 2 >= 4`, whose
         // sides are neither a name nor a measure of one.
-        Set<NumberAt.OfWhatNumber> written = DeclaredSubjects.of(type, source, policy);
+        DeclaredCoordinates.Reading ownRules = DeclaredCoordinates.of(type, source, policy);
         RulesWithNoLine.Gathered found = new RulesWithNoLine.Gathered();
-        if (undecidable(written, stated, taken, carried)) {
-            competingCoordinates(stated, path, type, source, found);
-            stated = List.of();
-        }
-        boolean bySize = measuredHere(written, stated, taken);
-        NumericTerm.FromOnePosition term = bySize
-                ? NumericTerm.TakenOf.of(taken, path, type, source.symbols())
-                : new NumericTerm.ValueOf(path);
+        // Which of the position's numbers it is measured at, decided here and nowhere else, and
+        // decided once. Every reader below reads this answer rather than working the question out
+        // again from what it happens to hold.
+        MeasuredCoordinate measured =
+                MeasuredCoordinate.of(ownRules.writtenAbout(), stated, taken, carried);
+        // And what became of every end placed here, against that one answer. Said from the lists
+        // that still hold the rules, because this is the one place that knows which rules they
+        // were — recovered afterwards from a position with no axis, a finding could name the
+        // position and nothing else.
+        //
+        // The type's own ends are accounted for and not gathered: what they come to is what the
+        // reading of the names this position wears leaves, below.
+        fateOf(measured, ownRules.placed(), path, type, source, found);
+        List<FieldDomains.Placed> adopted =
+                fateOf(measured, stated, path, type, source, found);
+        // The number this position is measured at, as the readers below spell it. Undetermined, it
+        // is measured at what stands here: the rules that would have said otherwise are the ones
+        // nothing could choose between, and they are named above rather than followed.
+        NumberAt.OfWhatNumber kind = measuredAt(measured);
+        Carrier on = carrierOn(kind, carried);
+        NumericTerm.FromOnePosition term = switch (kind) {
+            case NumberAt.OfWhatNumber.OfItsOwnValue _ -> new NumericTerm.ValueOf(path);
+            case NumberAt.OfWhatNumber.OfWhatAnOperationAnswers _ ->
+                    NumericTerm.TakenOf.of(taken, path, type, source.symbols());
+        };
         if (term == null) {
             throw new IllegalStateException(
                     "this reading decided " + path + " is measured by " + taken
@@ -1357,15 +1355,13 @@ public final class InputDomain {
         // between two places and orders nothing — what a conjunct of them moved, and what the value
         // this position sits in placed. Each is ends of one coordinate and they are intersected,
         // every rule that put an end where it is kept.
-        NumberAt.OfWhatNumber kind = bySize ? answeredBy(taken) : ITS_OWN_VALUE;
-        Carrier on = bySize ? Carrier.WHOLE : carried;
-        DeclaredBounds.Bounds own = !bySize && carried == null ? null
+        DeclaredBounds.Bounds own = on == null ? null
                 : DeclaredBounds.and(
                         DeclaredBounds.and(
-                                DeclaredBounds.and(bySize ? ofType : valueOfType,
+                                DeclaredBounds.and(ofTheType(measured, kind, on, view, source),
                                         DeclaredBounds.placed(placed.statedAtTheValue(), kind, on)),
                                 DeclaredBounds.placed(moved, kind, on)),
-                        DeclaredBounds.placed(stated, kind, on));
+                        DeclaredBounds.placed(adopted, kind, on));
         // A value whose rules contradict has no positions to cover: every edge of every field of it
         // is a row nobody can write, which is not the same answer as a field nothing bounds.
         boolean nothingExists = placed.bounds().infeasible();
@@ -1408,7 +1404,7 @@ public final class InputDomain {
                 // Where the position actually stops, which the ends as written do not say: a clause
                 // placing one at 0 beside a clause that takes the 0 away leaves a position whose
                 // first value is 1, and a line drawn at the 0 is drawn at no value of it.
-                placed.leftAt(path, bySize ? answeredBy(taken) : ITS_OWN_VALUE), nothingExists,
+                placed.leftAt(path, kind), nothingExists,
                 placed.projection(path), declared, reading,
                 ObligationDomain.of(reading, declared), admitted,
                 withoutALine,
@@ -1475,61 +1471,102 @@ public final class InputDomain {
     }
 
     /**
-     * Whether this position's one coordinate is the count taken of it rather than its value.
+     * The number the readers below spell this position by, whatever the decision came to.
      *
-     * <p><b>From what the type's rules are written about, and not from which of them placed an
-     * end.</b> Whether a clause came to an end is a fact about the clauses beside it and about this
-     * compiler's arithmetic; which number a position is is neither. Read off the ends, a type whose
-     * one rule is {@code String.length(value) /= 0} was measured on the string's own order — the
-     * length was no number of the model at all, and nothing about where a length stops could come
-     * into it.
-     *
-     * <p>The position's own type answers first and its answer stands. A rule reaching the position
-     * from the value it sits in states an end on a coordinate; it does not say which coordinate the
-     * position is measured at, and letting it say so takes an axis away — {@code data Name = String
-     * invariant value >= "m"} held in a record that bounds the length of it would stop being
-     * measured on its own order, and the line at `m` would go without anything saying it had.
-     *
-     * <p>Where the type chose nothing, one of these rules may — and only one, which is what
-     * {@link #undecidable} has already refused.
+     * <p>Undetermined, that is what stands at the position: no rule chose it, and the ones that
+     * would have chosen otherwise are named as rules nothing could choose between rather than
+     * followed. What is left is the position as one nothing divides, which is the coarser of the
+     * two things that could be said and the one that claims nothing.
      */
-    private static boolean measuredHere(Set<NumberAt.OfWhatNumber> written,
-                                        List<FieldDomains.Placed> stated, ValueName.Stdlib taken) {
-        if (taken != null && written.contains(answeredBy(taken))) {
-            return true;
-        }
-        if (written.contains(ITS_OWN_VALUE)) {
-            return false;
-        }
-        return taken != null && stated(DeclaredBounds.placed(stated, answeredBy(taken), Carrier.WHOLE));
+    private static NumberAt.OfWhatNumber measuredAt(MeasuredCoordinate measured) {
+        return switch (measured) {
+            case MeasuredCoordinate.At it -> it.coordinate();
+            case MeasuredCoordinate.Undetermined _ -> MeasuredCoordinate.ITS_OWN_VALUE;
+        };
     }
 
     /**
-     * One finding per rule dropped because the position's two coordinates are both spoken for.
+     * What the ends on that number are read on.
      *
-     * <p>Per rule and not per position. Both of them were read, both place an end, and neither can
-     * be the one the position is measured at — so each is a rule an author would have to rewrite,
-     * and telling them the position was short of something leaves them to work out which two of
-     * their clauses are in the way. A rule placing two ends is one rule and one finding, which is
-     * what the key settles.
+     * <p>A count is a whole number whatever it counts, so nothing about the type decides how its
+     * sizes are spaced; what stands at the position is read on whatever its own values are compared
+     * on, which is nothing where nothing here compares them.
      */
-    private static void competingCoordinates(List<FieldDomains.Placed> stated,
-                                             TermPath path, Type type,
-                                             RuleReadingSource source,
-                                             RulesWithNoLine.Gathered out) {
-        for (FieldDomains.Placed each : stated) {
-            out.boundaryUndetermined(each.from(),
-                    souther.compiler.check.RuleCitation.named(each.from()),
-                    // Each rule at the coordinate that rule is about, which is what makes the two
-                    // two. What is undecided is which of them the position is measured at, and that
-                    // is a fact about the position rather than about either rule — this reading has
-                    // chosen no term for the position, and each rule chose one for itself.
-                    filedAt(path, each.at(), type, source),
-                    // And what that leaves undecided is the end each of them places. Which values
-                    // may stand there is what the rules say and nothing about the choice of number
-                    // touches it.
-                    new BlockReason.CompetingCoordinates());
+    private static Carrier carrierOn(NumberAt.OfWhatNumber kind, Carrier carried) {
+        return switch (kind) {
+            case NumberAt.OfWhatNumber.OfItsOwnValue _ -> carried;
+            case NumberAt.OfWhatNumber.OfWhatAnOperationAnswers _ -> Carrier.WHOLE;
+        };
+    }
+
+    /**
+     * What the names this position wears leave the number it is measured at, or nothing where that
+     * number is not settled.
+     *
+     * <p>Withheld and not merely unused. Both of the position's numbers are bounded by its own
+     * rules there, and taking either would be this reading following the rule it has just said
+     * nothing chooses between — a line the author can read beside one they cannot see.
+     */
+    private static DeclaredBounds.Bounds ofTheType(MeasuredCoordinate measured,
+                                                   NumberAt.OfWhatNumber kind, Carrier on,
+                                                   TypeView view, RuleReadingSource source) {
+        if (!(measured instanceof MeasuredCoordinate.At)) {
+            return null;
         }
+        return switch (kind) {
+            case NumberAt.OfWhatNumber.OfItsOwnValue _ -> DeclaredBounds.of(view, source, on, null);
+            case NumberAt.OfWhatNumber.OfWhatAnOperationAnswers it ->
+                    DeclaredBounds.of(view, source, on, it.operation());
+        };
+    }
+
+    /**
+     * What became of each end placed here, and the ones the answer takes in.
+     *
+     * <p><b>One classification for every rule that placed an end at this position, wherever it was
+     * written.</b> Which value a rule came from decides which of them may choose the coordinate and
+     * decides nothing after that: a rule about a number this position is not measured at is the
+     * same news to its author whether their record or their newtype is where they wrote it. Kept
+     * apart, this was two mechanisms answering one question, and a rule met by the one that had not
+     * been taught to say anything went out in silence.
+     *
+     * <p>Per rule and not per position. Telling an author the position was short of something
+     * leaves them to work out which of their clauses is in the way. A rule placing two ends is one
+     * rule and one finding, which is what the key settles.
+     */
+    private static List<FieldDomains.Placed> fateOf(MeasuredCoordinate measured,
+                                                    List<FieldDomains.Placed> ends,
+                                                    TermPath path, Type type,
+                                                    RuleReadingSource source,
+                                                    RulesWithNoLine.Gathered out) {
+        List<FieldDomains.Placed> adopted = new ArrayList<>();
+        for (FieldDomains.Placed each : ends) {
+            // Each rule at the coordinate that rule is about, which is what makes two of them two.
+            // What the position is measured at is a fact about the position rather than about any
+            // one rule — each rule chose a number for itself, and this reading answers for the
+            // position.
+            FilingCoordinate at = filedAt(path, each.at(), type, source);
+            RuleCitation cited = RuleCitation.named(each.from());
+            switch (measured) {
+                // Nothing chose, so what each of these leaves undecided is the end it places.
+                // Which values may stand there is what the rules say, and nothing about the choice
+                // of number touches it.
+                case MeasuredCoordinate.Undetermined _ -> out.boundaryUndetermined(each.from(),
+                        cited, at, new BlockReason.CompetingCoordinates());
+                case MeasuredCoordinate.At it -> {
+                    if (it.coordinate().equals(each.at().of())) {
+                        adopted.add(each);
+                    } else {
+                        // Read to the end, at a number this position is not measured at. Nothing is
+                        // undecided about it and no question stands: the rule says where a number
+                        // of this place stops, and the position is divided along another.
+                        out.add(each.from(), cited, at,
+                                new BlockReason.RuleAboutAnotherCoordinate());
+                    }
+                }
+            }
+        }
+        return adopted;
     }
 
     /**
@@ -1663,33 +1700,6 @@ public final class InputDomain {
     }
 
     /**
-     * Whether the rules reaching this position say where both of its coordinates stop, with its own
-     * type having said nothing about either.
-     *
-     * <p>A position has one coordinate and this is the one case with no answer. Which of a
-     * {@code String}'s two a rule is about is settled by which one the model wrote about, and here
-     * the model wrote about both from outside. Choosing either would put a line the author can read
-     * beside one they cannot see, so the position is left as one nothing divides and both rules go
-     * unread — the coarser of the two things that could be said, and the one that claims nothing.
-     *
-     * <p>"Said nothing about either" is the type's rules being written about neither number, which
-     * is not the same as their having placed no end on either. A type whose own rule names one of
-     * its numbers has chosen, whatever a range could be made of that rule.
-     */
-    private static boolean undecidable(Set<NumberAt.OfWhatNumber> written,
-                                       List<FieldDomains.Placed> stated, ValueName.Stdlib taken,
-                                       Carrier carried) {
-        return written.isEmpty()
-                && taken != null && carried != null
-                && stated(DeclaredBounds.placed(stated, answeredBy(taken), Carrier.WHOLE))
-                && stated(DeclaredBounds.placed(stated, ITS_OWN_VALUE, carried));
-    }
-
-    private static boolean stated(DeclaredBounds.Bounds bounds) {
-        return bounds != null && !bounds.isEmpty();
-    }
-
-    /**
      * The rules saying where this position's values stop that nothing turned into an end.
      *
      * <p>The invariant's half of what a {@code guard}'s comparison is asked. Both draw lines
@@ -1719,7 +1729,7 @@ public final class InputDomain {
             // for the position to stand in for: a clause was read far enough to be about one number
             // or the other, and it is only the line that nothing came of.
             out.add(each.from(),
-                    souther.compiler.check.RuleCitation.named(each.from()),
+                    RuleCitation.named(each.from()),
                     filedAt(path, each.at(), type, source),
                     each.why());
         }

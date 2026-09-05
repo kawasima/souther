@@ -2,8 +2,6 @@ package souther.compiler.check;
 
 import souther.compiler.types.Type;
 
-import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
@@ -32,19 +30,18 @@ import java.util.Set;
  * <p>A set and not a choice. Two numbers of one value can both be written about, which is a model
  * with nothing here to pick between — said as a set, the reader that has to choose is the one that
  * knows what it does where there is no choice to make.
+ *
+ * <p>This question alone, for a caller that has only this to ask. The reading it comes off answers
+ * more than this ({@link DeclaredCoordinates}), and a caller wanting both takes the reading rather
+ * than this and a second one beside it: what the two would part about is whether a rule that chose
+ * a coordinate is a rule anything happened to.
  */
 public final class DeclaredSubjects {
 
     /** The numbers the rules on {@code type} and on the types it wraps are written about. */
     public static Set<NumberAt.OfWhatNumber> of(Type type, RuleReadingSource source,
                                                 ReadingPolicy policy) {
-        Set<NumberAt.OfWhatNumber> out = new LinkedHashSet<>();
-        for (NumberAt<RuleKey> each : Rules.of(type, source, policy).bounds().writtenAbout()) {
-            if (each.position().isTheValueItself()) {
-                out.add(each.of());
-            }
-        }
-        return Collections.unmodifiableSet(out);
+        return DeclaredCoordinates.of(type, source, policy).writtenAbout();
     }
 
     private DeclaredSubjects() {}
