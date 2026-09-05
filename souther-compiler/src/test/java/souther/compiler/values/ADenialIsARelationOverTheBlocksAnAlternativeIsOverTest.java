@@ -128,14 +128,14 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
     }
 
     /**
-     * A block whose neighbours hold one value each loses those values, to a fixpoint.
+     * A block whose neighbours hold one value each loses those values, along the whole chain.
      *
      * <p>{@code p} at {@code A} takes {@code A} from {@code q}, which leaves {@code q} at {@code B}
-     * — and that takes {@code B} from {@code r}, which is left nothing. Run once, the second step
-     * would not happen and the rules would be admitted.
+     * — and that takes {@code B} from {@code r}, which is left nothing. Two steps and not one, so a
+     * reading that took only what the blocks held when it started would admit this.
      */
     @Test
-    void takingWhatOneValuedBlocksHoldRunsToAFixpoint() {
+    void takingWhatOneValuedBlocksHoldFollowsTheWholeChain() {
         Apartness<String> chain = Apartness.of("p", "q").and(Apartness.of("q", "r"));
 
         RelationalWitness<String> why = refusedBy(chain.reduce(holding(java.util.Map.of(

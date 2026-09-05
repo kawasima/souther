@@ -324,10 +324,18 @@ public final class Apartness<A> {
      * Every block's values less the ones its one-valued neighbours take, to a fixpoint, and why
      * where that leaves one of them nothing.
      *
-     * <p>To a fixpoint because taking values away makes more one-valued blocks: a block left two
-     * values one of which a neighbour holds is left one, and what it then holds is taken from its
-     * own neighbours. Run once, where the answer lay two steps in would turn on the order the rules
-     * were written.
+     * <p>Until nothing moves, because taking values away makes more one-valued blocks: a block left
+     * two values one of which a neighbour holds is left one, and what it then holds is taken from
+     * its own neighbours.
+     *
+     * <p><b>No model here needs the second round.</b> A sweep takes the blocks in the order the
+     * denials were stated and writes what it finds as it goes, so a chain running that way is
+     * followed to its end within one sweep — and a refusal by taking values away is a chain from a
+     * block left one value, which is the only shape this argument refuses. What a second round can
+     * still do is tighten a set the count below then reads. It is here for that and because a
+     * single sweep would make the answer turn on the order the denials happen to be stated in;
+     * measured, removing it leaves the whole suite green, so nothing yet holds it to what it is
+     * for.
      */
     private RelationalWitness<A> takingWhatOneValueBlocksHold(Map<Sameness.Block<A>, Admits> left) {
         boolean moved = true;
