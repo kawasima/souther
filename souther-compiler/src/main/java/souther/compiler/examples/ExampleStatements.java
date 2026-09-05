@@ -574,7 +574,7 @@ public final class ExampleStatements {
             // it and a row are about one call only where the dependency takes none — every other
             // input reaching it is what the parent behavior computed, which no recorded row states.
             Sig sig = sigs.get(each);
-            boolean comparable = module.fakes().answering().containsKey(each)
+            boolean comparable = module.fakes().unique().containsKey(each)
                     || (sig != null && sig.inputTypes().isEmpty());
             if (comparable && !recordedFor(each, module, declaring).isEmpty()) {
                 both.add(each);
@@ -631,7 +631,7 @@ public final class ExampleStatements {
         // has no table standing in for it, so there is nothing there to be held against a recorded
         // row: the two statements this compares are a stand-in and a row, and what those blocks
         // left is not a stand-in.
-        module.fakes().answering().forEach((_, table) ->
+        module.fakes().unique().forEach((_, table) ->
                 againstFake(table, recorded, found, timedOut));
         for (int i = 0; i < module.examples().size(); i++) {
             againstWiths(module.examples().get(i).read(), recorded, found);

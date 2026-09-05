@@ -371,7 +371,7 @@ public final class Prepared {
          *
          * <p>Both forms, because both are stand-ins (spec §example-fakes) and a reader asking what
          * this module states about a behavior wants either. Told apart from
-         * {@link FakeTables#answering}, which asks which *block* stands in for a dependency: a
+         * {@link FakeTables#unique}, which asks which *block* a dependency has: a
          * {@code with} writes no table, so a reader taking that answer for this one passes over
          * every behavior a row supplies without one — which is how a {@code with} for a dependency
          * another module declares came to be compared against nothing.
@@ -387,7 +387,7 @@ public final class Prepared {
          * files reach would go unread — which is the reading this answer exists to complete.
          */
         public Set<ValueName.Behavior> standsInFor() {
-            Set<ValueName.Behavior> named = new LinkedHashSet<>(module.fakes().answering().keySet());
+            Set<ValueName.Behavior> named = new LinkedHashSet<>(module.fakes().unique().keySet());
             for (Example block : module.examples()) {
                 for (Hir.ExampleRow row : block.read().rows()) {
                     for (Hir.With supplied : row.withs()) {

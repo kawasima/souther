@@ -279,8 +279,9 @@ public final class ExampleVerifier {
      * stands in for it (E1933) and there is nothing here to enumerate. Running the entries of one
      * would report disagreements about values no fake would ever answer with — the mistake ADR-0093
      * was written to avoid, one level up from the row it was written about. Which block stands in is
-     * {@link souther.compiler.check.FakeTables#answering}'s to say, and is the same answer the
-     * reading that produces E1919 is over.
+     * {@link souther.compiler.check.FakeTables#unique}'s to say, and is the same answer the reading
+     * that produces E1919 is over. Whether that block can be stood in with is decided below, by
+     * building it.
      *
      * <p>A {@code with dep = value} is not here at all. It states no input — what reaches the
      * dependency is whatever the parent behavior computes — and is a fixture bound to the run of one
@@ -295,7 +296,7 @@ public final class ExampleVerifier {
         // and the entries a caller would enumerate here are entries of a table nothing stands in
         // with.
         souther.compiler.check.FakeTables.Occurrence.Resolved answering =
-                module.fakes().answering().get(module.targeted(behavior));
+                module.fakes().unique().get(module.targeted(behavior));
         if (answering == null) {
             return List.of();
         }

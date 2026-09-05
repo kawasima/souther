@@ -22,11 +22,17 @@ import java.util.function.UnaryOperator;
  * the three counts are told apart rather than folded into whether a lookup found something.
  *
  * <p>The three are different facts and a reader acts differently on each. Nothing written is a
- * dependency with no stand-in, which is what a row needs one for. One block written is a table to
- * dispatch with and to hold against the rows recorded for the behavior. More than one is a
- * refusal — the blocks are written and are read as tables in their own right, and none of them
- * stands in for anything. A lookup answering only "found" and "not found" gives a reader the first
- * and third under one answer, and the reader then has to decide which it was.
+ * dependency with no stand-in, which is what a row needs one for. One block written is the one
+ * block eligible to stand in for the behavior, and the only one there is to build and to hold
+ * against the rows recorded for it. More than one is a refusal — the blocks are written and are
+ * read as tables in their own right, and none of them stands in for anything. A lookup answering
+ * only "found" and "not found" gives a reader the first and third under one answer, and the reader
+ * then has to decide which it was.
+ *
+ * <p>How many, and no further. Whether the one block a behavior has does stand in for it is decided
+ * by building its table and holding its rows to what the dependency declares, which is a reading of
+ * values and not a count over text. What is here is what may be built; what came of building it is
+ * that reading's answer.
  *
  * <p>Made in one place because the association is resolution's answer and the count is over the
  * whole module. A consumer holding {@link Hir.Fake}s and reading {@code standsInFor} off them would
@@ -73,7 +79,7 @@ public final class FakeTables {
         /** None does, so nothing here stands in for it. */
         record Missing() implements Declaration {}
 
-        /** One does, and it is the table that answers for the behavior. */
+        /** One does, so that block is the one that may go on to stand in for the behavior. */
         record One(Occurrence.Resolved table) implements Declaration {}
 
         /**
@@ -169,9 +175,16 @@ public final class FakeTables {
         return List.copyOf(found);
     }
 
-    /** Each behavior one block names, under that block, in the order the blocks were read: the
-     *  blocks that stand in for something. */
-    public SequencedMap<ValueName.Behavior, Occurrence.Resolved> answering() {
+    /**
+     * Each behavior exactly one block names, under that block, in the order the blocks were read.
+     *
+     * <p>How many blocks name it, and no more. Whether that block goes on to stand in for the
+     * behavior is not settled here and cannot be: it is settled by building the table and holding
+     * its rows to what the dependency declares, which is a reading of values that runs the module's
+     * own code. Named for what a caller may do with this — the blocks that answer — it would tell
+     * the reader after next that everything here can be dispatched through.
+     */
+    public SequencedMap<ValueName.Behavior, Occurrence.Resolved> unique() {
         SequencedMap<ValueName.Behavior, Occurrence.Resolved> only = new LinkedHashMap<>();
         declared.forEach((behavior, declaration) -> {
             if (declaration instanceof Declaration.One(Occurrence.Resolved table)) {
