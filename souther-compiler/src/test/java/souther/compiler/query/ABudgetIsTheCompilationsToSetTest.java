@@ -130,11 +130,16 @@ class ABudgetIsTheCompilationsToSetTest {
      * And the document a measure held to a small budget comes out in is shaped the way the schema
      * says.
      *
-     * <p>Two words this compiler publishes are written only here: the classes of a position that
-     * were not composed, and what the composing was short of. A model reaching either under the
-     * standard budget is larger than anything in this repository, so nothing else produces them —
-     * and a shape nothing produces is one the writer and the schema agree about without either
-     * having been asked.
+     * <p>The word for what a behavior's distinctions cost is one no model reaches on its own: every
+     * default is set with room over anything in this repository, so the way to the state is to say
+     * what the measure may spend, and saying that is this package's to do.
+     *
+     * <p>What is asked of the document here is its shape, which is the walk's question and not the
+     * word's. Whether every reason this compiler may write in that field is one some compilation
+     * writes is asked of the whole of them in one place
+     * ({@link EveryNotReadReasonIsWrittenBySomeCompilationTest}), and that table says down an
+     * allowance for this word as this does — so the two are told apart by what they ask rather than
+     * by what their models are allowed.
      *
      * <p>The walk is the one that reads every document this compiler writes
      * ({@link DocumentShape}); what is added here is a document it cannot make, because saying what
