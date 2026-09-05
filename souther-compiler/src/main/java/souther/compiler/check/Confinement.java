@@ -731,18 +731,19 @@ sealed interface Confinement<A> {
             //
             // Said once, and what stands here until it is said is what nothing read leaves. Saying
             // it twice is this compiler disagreeing with itself rather than anything a model says,
-            // which is why it is an assertion. With assertions off what is lost is knowledge and
-            // nothing kept is untrue. Only the values forget: they are built again from top, so
-            // the first reading goes. The ranges are met, the carrier table takes the later answer
-            // where both name a position, and an emptiness either of them proved stays proved —
-            // each of those keeps what a reading said rather than working something out across
-            // the two. That they may be kept together is the one thing this rests on: a reading
-            // arriving here is a true reading of one world, so what two of them say of a position
-            // they both name holds of it either way. What the state stops being is the conjunction
-            // it says it is, since the values no longer answer for the reading the rest of it
-            // still carries.
-            assert !values.hasReadings()
-                    : "the values of a state are read once, and these were read over " + values;
+            // which is why it is an assertion. With assertions off the second reading is left out
+            // and what was already read stands, so the failure cannot make an answer more precise
+            // or say anything no reading said — whatever the second reading is. Settled here, in
+            // one line, rather than out of what each part of a state does with a reading met over
+            // another: the values would forget the first, the ranges would keep both, and the
+            // carrier of a position both name would be the later of the two. None of those is the
+            // same direction, and a reason resting on all three would be as good as the next edit
+            // to any of them.
+            if (values.hasReadings()) {
+                assert false : "the values of a state are read once, and these were read over "
+                        + values;
+                return this;
+            }
             return new Conjoined<>(
                     ConjoinedAdmissibleValues.of(
                             AdmissibleValues.<A>top().meet(read.values(), sets), sets),
