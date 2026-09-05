@@ -76,7 +76,7 @@ public final class EnsuresThresholds {
      *                is a sentence about the model, and the model says otherwise in its own
      *                declaration
      */
-    public record Clauses(List<PartitionEvidence> evidence,
+    public record Clauses(List<RuleEvidence> evidence,
                           List<LineDrawn> between, RulesWithNoLine noLine) {
 
         public static final Clauses NONE =
@@ -90,12 +90,12 @@ public final class EnsuresThresholds {
         /** The lines, read off what the walk said. Not a list of their own, for the reason
          *  {@link GuardThresholds.Guards#thresholds} is not one. */
         public List<Threshold> thresholds() {
-            return PartitionEvidence.linesIn(evidence);
+            return RuleEvidence.linesIn(evidence);
         }
 
         /** The values singled out, likewise. */
         public List<GuardThresholds.Guards.Singled> singled() {
-            return PartitionEvidence.pointsIn(evidence);
+            return RuleEvidence.pointsIn(evidence);
         }
     }
 
@@ -173,7 +173,7 @@ public final class EnsuresThresholds {
 
     /** What the walk has found so far, and the behavior a line between two positions is named
      *  after. Together because they are filled together and are one answer. */
-    private record Drawn(String behavior, List<PartitionEvidence> evidence,
+    private record Drawn(String behavior, List<RuleEvidence> evidence,
                          List<LineDrawn> between,
                          RulesWithNoLine.Gathered noLine) {}
 
@@ -244,13 +244,13 @@ public final class EnsuresThresholds {
                     // falls and not the value beside it.
                     case ComparisonClaim.Singled _ -> {
                         if (at.value() != null) {
-                            out.evidence().add(new PartitionEvidence.Singles(
+                            out.evidence().add(new RuleEvidence.Singles(
                                     new GuardThresholds.Guards.Singled(
                                             at.position(), at.value(), origin)));
                         }
                     }
                     case ComparisonClaim.Cut order ->
-                            out.evidence().add(new PartitionEvidence.Divides(
+                            out.evidence().add(new RuleEvidence.Divides(
                                     new Threshold(at.position(), at.cutting().seam(),
                                             order.valueBelongs(), origin)));
                 }

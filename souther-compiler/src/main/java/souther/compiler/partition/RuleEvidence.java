@@ -30,14 +30,14 @@ import souther.compiler.inputs.NumericTerm;
  * filed at each of those positions, and what the partition is owed is each of them. The identity of
  * a filed one is {@link #id}, which is that expansion's answer and not this reading's.
  */
-public sealed interface PartitionEvidence {
+public sealed interface RuleEvidence {
 
     /** The position this is about, which one position answers: evidence divides a position, and
      *  something no single place answers divides none. */
     NumericTerm.FromOnePosition at();
 
     /** The rule that said it, and which reading of it this is. */
-    PartitionEvidenceOrigin by();
+    RuleEvidenceOrigin by();
 
     /**
      * What tells one filed piece of evidence from another, once it has been filed.
@@ -52,7 +52,7 @@ public sealed interface PartitionEvidence {
     }
 
     /** Where a run of the position's values ends and the next begins. */
-    record Divides(Threshold line) implements PartitionEvidence {
+    record Divides(Threshold line) implements RuleEvidence {
 
         @Override
         public NumericTerm.FromOnePosition at() {
@@ -72,7 +72,7 @@ public sealed interface PartitionEvidence {
      * distinguishes is the value from every other value, and reading it as a place to cut would put
      * a distinction between the two sides into a partition the model never drew.
      */
-    record Singles(GuardThresholds.Guards.Singled point) implements PartitionEvidence {
+    record Singles(GuardThresholds.Guards.Singled point) implements RuleEvidence {
 
         @Override
         public NumericTerm.FromOnePosition at() {
@@ -93,7 +93,7 @@ public sealed interface PartitionEvidence {
      * of anything. Read as a line it would be a cut at a value the model never named, and read as a
      * single value it would be one value standing for a set.
      */
-    record BySet(SetStatement states) implements PartitionEvidence {
+    record BySet(SetStatement states) implements RuleEvidence {
 
         @Override
         public NumericTerm.FromOnePosition at() {
@@ -108,7 +108,7 @@ public sealed interface PartitionEvidence {
 
     /** What one filed piece of evidence is called: the rule that said it and the position it was
      *  filed at. Not a count of how many times anything reached it. */
-    record FiledEvidenceId(PartitionEvidenceOrigin by, NumericTerm.FromOnePosition at) {}
+    record FiledEvidenceId(RuleEvidenceOrigin by, NumericTerm.FromOnePosition at) {}
 
     /**
      * The lines among {@code evidence}, for a reader that wants only those.
@@ -116,20 +116,20 @@ public sealed interface PartitionEvidence {
      * <p>Here and not at each holder of a list. Four of them wanted the same two projections and
      * each wrote its own, which is four places to answer the day a third variant is written.
      */
-    static java.util.List<Threshold> linesIn(java.util.List<PartitionEvidence> evidence) {
+    static java.util.List<Threshold> linesIn(java.util.List<RuleEvidence> evidence) {
         return evidence.stream().filter(Divides.class::isInstance)
                 .map(each -> ((Divides) each).line()).toList();
     }
 
     /** The values singled out among {@code evidence}, likewise. */
     static java.util.List<GuardThresholds.Guards.Singled> pointsIn(
-            java.util.List<PartitionEvidence> evidence) {
+            java.util.List<RuleEvidence> evidence) {
         return evidence.stream().filter(Singles.class::isInstance)
                 .map(each -> ((Singles) each).point()).toList();
     }
 
     /** What the rules state as sets among {@code evidence}, likewise. */
-    static java.util.List<SetStatement> statementsIn(java.util.List<PartitionEvidence> evidence) {
+    static java.util.List<SetStatement> statementsIn(java.util.List<RuleEvidence> evidence) {
         return evidence.stream().filter(BySet.class::isInstance)
                 .map(each -> ((BySet) each).states()).toList();
     }

@@ -88,7 +88,7 @@ public final class BehaviorSetStatements {
      *                position is one of these: it is about that value, and a denominator held open
      *                by it would be held open by a rule that never reached the position
      */
-    public record Read(List<PartitionEvidence> statements, List<ClassingBlocker> blocked,
+    public record Read(List<RuleEvidence> statements, List<ClassingBlocker> blocked,
                        List<RuleWithoutALine> saying) {
 
         public Read {
@@ -178,7 +178,7 @@ public final class BehaviorSetStatements {
         Map<NumericTerm.FromOnePosition, Realizations> answers = new LinkedHashMap<>();
         byTerm.forEach((term, plans) ->
                 answers.put(term, allowance.realizeAll(purseOf(term), plans)));
-        List<PartitionEvidence> statements = new ArrayList<>();
+        List<RuleEvidence> statements = new ArrayList<>();
         for (Asked each : asked) {
             state(each, answers.get(each.term()), statements, blocked);
         }
@@ -272,13 +272,13 @@ public final class BehaviorSetStatements {
      * is a question about the position's values and is asked where they are known.
      */
     private static void state(Asked each, Realizations answer,
-                              List<PartitionEvidence> statements, List<ClassingBlocker> blocked) {
+                              List<RuleEvidence> statements, List<ClassingBlocker> blocked) {
         if (!(answer instanceof Realizations.Exact built)) {
             blocked.add(new ClassingBlocker(each.term(), each.by(),
                     new BlockReason.BehaviorDistinctionsTooCostly()));
             return;
         }
-        statements.add(new PartitionEvidence.BySet(new SetStatement(each.term(),
+        statements.add(new RuleEvidence.BySet(new SetStatement(each.term(),
                 built.of(each.whenTrue()), built.of(each.whenFalse()), each.states(), each.by())));
     }
 }

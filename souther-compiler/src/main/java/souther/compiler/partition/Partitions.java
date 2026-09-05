@@ -516,13 +516,13 @@ public final class Partitions {
      * are in the order an author wrote them.
      */
     private static List<NumericTerm.FromOnePosition> numbersMeasuring(
-            PositionMeasurements at, List<PartitionEvidence> evidence,
+            PositionMeasurements at, List<RuleEvidence> evidence,
             List<ClassingBlocker> blocked, EvidenceAccount account) {
         TermPath path = at.position().path();
-        List<PartitionEvidence> here = evidence.stream()
+        List<RuleEvidence> here = evidence.stream()
                 .filter(each -> each.at().position().equals(path)).toList();
         List<NumericTerm.FromOnePosition> numbers = new ArrayList<>();
-        for (PartitionEvidence each : here) {
+        for (RuleEvidence each : here) {
             if (!numbers.contains(each.at())) {
                 numbers.add(each.at());
             }
@@ -558,7 +558,7 @@ public final class Partitions {
      * route through this would be a second answer to what a rule about a number comes to.
      */
     private static BodyCutInspection measureAt(List<Axis> out, PositionMeasurements at, Axis axis,
-                                  NumericTerm.FromOnePosition term, List<PartitionEvidence> evidence,
+                                  NumericTerm.FromOnePosition term, List<RuleEvidence> evidence,
                                   List<ClassingBlocker> blocked,
                                   Quantities reading, RuleReadingSource ruleSource,
                                   ReadingPolicy policy,
@@ -571,10 +571,10 @@ public final class Partitions {
         // evidence said to be measured here and the measure it was measured at are one name.
         AxisId id = AxisId.of(behavior, term);
         Type type = at.position().type();
-        List<PartitionEvidence> mine = evidence.stream()
+        List<RuleEvidence> mine = evidence.stream()
                 .filter(each -> each.at().equals(term)).toList();
-        List<Threshold> here = PartitionEvidence.linesIn(mine);
-        List<GuardThresholds.Guards.Singled> points = PartitionEvidence.pointsIn(mine);
+        List<Threshold> here = RuleEvidence.linesIn(mine);
+        List<GuardThresholds.Guards.Singled> points = RuleEvidence.pointsIn(mine);
         // What this term's values can be, which is the type's bound already narrowed by whatever
         // the record it sits in says about it. Reading the type again here would put a threshold
         // back inside a range the record has no values in.
@@ -606,7 +606,7 @@ public final class Partitions {
                 // axis they are on; a line and a value singled out are measured by the walk below,
                 // which is where what they leave is worked out.
                 case DIVIDED -> {
-                    if (each.what() instanceof PartitionEvidence.BySet) {
+                    if (each.what() instanceof RuleEvidence.BySet) {
                         account.measured(each.what(), id);
                     }
                 }
@@ -631,13 +631,13 @@ public final class Partitions {
         // The answer's own population, and not what is left after taking the rest away. Subtracted
         // here, the same question is answered twice — and the day the two subtract differently the
         // classes are composed out of one list and recorded as composed out of another.
-        List<PartitionEvidence> dividing = answered.dividing();
+        List<RuleEvidence> dividing = answered.dividing();
         // And what the walk below still reads, which is not the same list. Only the classes turn on
         // whether they composed: where they did not, the lines a rule drew are still lines and the
         // places it parts the position are still places, so the walk runs over everything that
         // reached here but the rules proved to tell nothing apart — those state nothing, and a line
         // read off one would be a line the model does not draw.
-        List<PartitionEvidence> taken = answered.forEach().stream()
+        List<RuleEvidence> taken = answered.forEach().stream()
                 .filter(each -> each.outcome() == Classing.Outcome.LEFT_TO_THE_WALK
                         || each.outcome() == Classing.Outcome.DIVIDED)
                 .map(Classing.Disposed::what).toList();
@@ -669,7 +669,7 @@ public final class Partitions {
         // what a reader is told is assembled once, after every position has been measured, so a
         // finding kept here would be one nobody reads.
         if (made.why() != null && blocked.isEmpty()) {
-            PartitionEvidence.statementsIn(answered.notComposed())
+            RuleEvidence.statementsIn(answered.notComposed())
                     .forEach(each -> found.add(RuleWithoutALine.of(each.origin().rule(),
                             each.origin().cited(),
                             new FilingCoordinate.AtPosition(term.position()), made.why())));
@@ -682,7 +682,7 @@ public final class Partitions {
             // Nothing orders this position, so its classes are the values singled out and
             // everything else. Ranges here would ask the rows for a distinction between the two
             // sides of a value the behavior treats alike.
-            taken.stream().filter(each -> !(each instanceof PartitionEvidence.BySet))
+            taken.stream().filter(each -> !(each instanceof RuleEvidence.BySet))
                     .forEach(each -> account.measured(each, id));
             return made(out, at, behavior, term,
                     made.classesFor(axis, () -> singledClasses(points, term, type, reading,
@@ -703,11 +703,11 @@ public final class Partitions {
         // which is the thing being fixed here happening again one field over. The end the
         // position stops short of is outside it as much as anything past it is.
         List<Threshold> reachable = new ArrayList<>();
-        for (PartitionEvidence each : taken) {
-            if (each instanceof PartitionEvidence.BySet) {
+        for (RuleEvidence each : taken) {
+            if (each instanceof RuleEvidence.BySet) {
                 continue;   // already answered for above, as a class the vocabularies will not hold
             }
-            if (!(each instanceof PartitionEvidence.Divides(Threshold line))) {
+            if (!(each instanceof RuleEvidence.Divides(Threshold line))) {
                 // A value singled out beside an ordering. The model has drawn the further
                 // distinction itself, so the value is one more line among the ranges and it is
                 // merged with them below.
@@ -772,7 +772,7 @@ public final class Partitions {
     private static BodyCutInspection made(List<Axis> out, PositionMeasurements at, String behavior,
                                           NumericTerm.FromOnePosition term,
                                           List<PartitionClass> classes,
-                                          List<PartitionEvidenceOrigin> divides, List<Cut> cuts,
+                                          List<RuleEvidenceOrigin> divides, List<Cut> cuts,
                                           List<Parting> parted, NarrowedBounds narrowed,
                                           BodyCutInspection drew, RulesWithNoLine rules) {
         if (classes.isEmpty() && cuts.isEmpty() && parted.isEmpty()) {
@@ -819,7 +819,7 @@ public final class Partitions {
      *                  a place on the order and a set class has no answer to where it lies
      * @param why       what stopped the classes, or null where nothing did
      */
-    private record Composition(List<PartitionClass> classes, List<PartitionEvidenceOrigin> divides,
+    private record Composition(List<PartitionClass> classes, List<RuleEvidenceOrigin> divides,
                                boolean keepsCuts, BlockReason.RuleWithoutLineReason why) {
 
         /** The order is the vocabulary, so the run of classes the caller works out is the answer. */
@@ -852,8 +852,8 @@ public final class Partitions {
     }
 
     /** Which rules the classes were composed out of, which is every distinction that went in. */
-    private static List<PartitionEvidenceOrigin> composedFrom(List<PartitionEvidence> mine) {
-        return mine.stream().map(PartitionEvidence::by).toList();
+    private static List<RuleEvidenceOrigin> composedFrom(List<RuleEvidence> mine) {
+        return mine.stream().map(RuleEvidence::by).toList();
     }
 
     /** The lines already cut on the number, of which there are none where nothing measured it. */
@@ -969,9 +969,9 @@ public final class Partitions {
                                        List<LineDrawn> between,
                                        ReachingCuts reaching,
                                        Allowance<NumericTerm.FromOnePosition> allowance) {
-        List<PartitionEvidence> evidence = new ArrayList<>();
-        thresholds.forEach(each -> evidence.add(new PartitionEvidence.Divides(each)));
-        singled.forEach(each -> evidence.add(new PartitionEvidence.Singles(each)));
+        List<RuleEvidence> evidence = new ArrayList<>();
+        thresholds.forEach(each -> evidence.add(new RuleEvidence.Divides(each)));
+        singled.forEach(each -> evidence.add(new RuleEvidence.Singles(each)));
         // Nothing here tells a set of the position's values from the rest, so nothing composes one
         // and the allowance for composing them is never asked for a machine. It is still handed in
         // rather than made: an allowance is what a compilation's grant becomes, and one made here
@@ -992,7 +992,7 @@ public final class Partitions {
      */
     public static Partitioning withEvidence(Partitioning base,
                                             Quantities reading,
-                                            List<PartitionEvidence> evidence,
+                                            List<RuleEvidence> evidence,
                                             List<ClassingBlocker> blocked,
                                             Allowance<NumericTerm.FromOnePosition> allowance,
                                             RuleReadingSource ruleSource, ReadingPolicy policy,

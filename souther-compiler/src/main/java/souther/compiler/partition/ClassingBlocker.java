@@ -13,7 +13,7 @@ import souther.compiler.inputs.RuleWithoutALine;
  * a partition the model does not draw — and the ones that did not come out have to be present where
  * that decision is made, or the decision is made over the successes.
  *
- * <p><b>Not a piece of evidence</b> ({@link PartitionEvidence}). That is what a rule of the model
+ * <p><b>Not a piece of evidence</b> ({@link RuleEvidence}). That is what a rule of the model
  * was read to say about how a position's values are divided, and this rule was not read to say
  * anything: what it carries is that this compiler did not get there. Put among the evidence, an
  * account would owe a measure for it and a reader would be told the model divides a position in a
