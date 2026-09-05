@@ -16,6 +16,7 @@ import souther.compiler.check.DeclaredNames;
 import souther.compiler.check.ModuleUniverse;
 import souther.compiler.check.Scoping;
 import souther.compiler.check.Registry;
+import souther.compiler.check.Requirements;
 import souther.compiler.check.Resolve;
 import souther.compiler.check.SyntaxSymbols;
 import souther.compiler.diag.CompileException;
@@ -1130,15 +1131,32 @@ public final class Names {
             List<Report> reports = new ArrayList<>();
             for (souther.compiler.check.FakeTables.Declaration.Conflict conflict
                     : declared.value().conflicts()) {
+                // The behavior, as this module writes it, and one spelling for every block of the
+                // conflict. Each block's own target says how that block was typed, and two blocks
+                // reaching one behavior may be typed differently — so a report naming what stands
+                // beside the fact would say two names for one refusal, and tell each author to
+                // merge blocks under a spelling only theirs is written in.
+                String named = Requirements.writtenIn(module, conflict.behavior());
                 for (souther.compiler.check.FakeTables.Occurrence.Resolved block
                         : conflict.tables()) {
                     Hir.Fake wrote = block.read();
                     if (!wrote.pos().isIn(id)) {
                         continue;   // written in another file, and reported by that file's own key
                     }
-                    String named = ExampleStatements.wrote(wrote);
-                    reports.add(Report.of(Diagnostic.at(ExampleStatements.marked(wrote))
-                            .say(new ExampleMessage.MoreThanOneFakeStandsInForOneBehavior(named))
+                    Diagnostic.Builder said =
+                            Diagnostic.at(ExampleStatements.marked(wrote))
+                                    .say(new ExampleMessage
+                                            .MoreThanOneFakeStandsInForOneBehavior(named));
+                    // Where the others are, so the blocks read as one refusal rather than as one
+                    // report each. None of them is marked as the one to keep.
+                    for (souther.compiler.check.FakeTables.Occurrence.Resolved other
+                            : conflict.tables()) {
+                        if (other != block) {
+                            said.secondary(ExampleStatements.marked(other.read()),
+                                    new ExampleMessage.AnotherFakeStandsInForItHere(named));
+                        }
+                    }
+                    reports.add(Report.of(said
                             .hint(new ExampleMessage.WriteTheRowsAsOneFake(named))
                             .build()));
                 }

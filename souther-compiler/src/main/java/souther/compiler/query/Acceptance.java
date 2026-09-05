@@ -105,9 +105,11 @@ public final class Acceptance {
                 for (Report failure : Report.errorsIn(db.ask(new Front.RowNames(id)).reports())) {
                     refused.add(new Located(failure.diagnostic(), ReportContext.inFile(id)));
                 }
-                // And what the module declares a stand-in for, before what a stand-in states: a
-                // behavior more than one block names has none, so every later report about one of
-                // them would be about a table standing in for nothing.
+                // And how many blocks the module writes for one behavior, before what a stand-in
+                // does while a row runs: a behavior more than one names has none, so a report about
+                // dispatching through one, or about holding one against a recorded row, would be
+                // about a table standing in for nothing. What such a block states inside itself is
+                // said all the same.
                 for (Report failure
                         : Report.errorsIn(db.ask(new Names.StandInBlocks(id)).reports())) {
                     refused.add(new Located(failure.diagnostic(), ReportContext.inFile(id)));

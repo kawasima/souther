@@ -141,9 +141,12 @@ public final class ExampleStatements {
      * that it answers nothing ({@link #cannotAnswer}). The {@code _} row is not here either: it
      * states no input, so there is no relation to hold its answer to.
      *
-     * <p>{@code fk} is a table that answers for something — every caller reaches it through the one
-     * place that says which those are ({@code Prepared.ForExamples.tablesThatAnswer}) — so the behavior
-     * it stands in for is there to be asked about.
+     * <p>{@code table} is a block whose target reached a behavior, which is what every caller holds
+     * ({@link souther.compiler.check.FakeTables#naming}), so the declaration its rows are held to is
+     * there to be asked about. Whether that block is also the one standing in for the behavior is
+     * not asked: a row of a block is held to what the dependency declares because it was written,
+     * and a block that stands in for nothing because another names the same behavior states what it
+     * states.
      */
     static List<Diagnostic> notKept(EnsuresChecks ensures,
                                     souther.compiler.check.FakeTables.Occurrence.Resolved table,
@@ -320,13 +323,15 @@ public final class ExampleStatements {
      * run, and the error at the fake is what the compile fails on — which also ends the same table
      * being reported once per row that reaches it.
      *
-     * <p>The tables that answer, which is what the other two readers build: the first one written for
-     * a dependency. A second written for the same name stands in for nothing and is read by nobody,
-     * so building it here would hold a table to something no reader of it would ever ask.
+     * <p>Every block whose target reached a behavior, whether or not it is the one standing in for
+     * it: a block that stands in for nothing because another names the same behavior still states
+     * what its rows state, and an author who merges the blocks would otherwise be shown a fault only
+     * then. A block whose target reached no behavior is not built — there is no signature to build
+     * it against, and what is wrong with it is said where the name is read.
      *
-     * <p>{@code module} holds every fake, since which one answers for a dependency is a fact about
-     * the module and not about one of its files, and {@code sourceId} is the file this run reports
-     * on. Which of them a fake is written in is what its own place says, so the two are never out of
+     * <p>{@code module} holds every fake, since what a module declares a stand-in for is a fact
+     * about the module and not about one of its files, and {@code sourceId} is the file this run
+     * reports on. Which of them a fake is written in is what its own place says, so the two are never out of
      * step.
      */
     public static List<Diagnostic> fakeTables(souther.compiler.check.Prepared.ForExamples module, Symbols symbols,

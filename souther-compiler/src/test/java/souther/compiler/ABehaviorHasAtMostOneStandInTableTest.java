@@ -2,6 +2,8 @@ package souther.compiler;
 
 import souther.compiler.diag.Diagnostic;
 import souther.compiler.diag.Located;
+import souther.compiler.diag.msg.ExampleMessage;
+import souther.compiler.diag.msg.Message;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.observe.Applied;
 import souther.compiler.observe.Disposition;
@@ -11,15 +13,21 @@ import souther.compiler.observe.Stage;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Output;
+import souther.compiler.query.InputCaseEvidence;
 import souther.compiler.source.SourceId;
+import souther.compiler.types.TypeSymbol;
 
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -195,6 +203,28 @@ class ABehaviorHasAtMostOneStandInTableTest {
         assertEquals(List.of(), codesOf(diagnosticsOf(twoDependencies)));
     }
 
+    /** A module faking one borrowed behavior twice, once bare and once through its module. */
+    private static final String TWO_SPELLINGS = """
+            module example.approvals
+
+            import example.people ( EmployeeId, findManager )
+
+            data Decision = { approver: EmployeeId }
+
+            behavior decideApprover : (applicant: EmployeeId) -> Decision
+                depends on findManager
+                constructs Decision
+
+            let decideApprover (applicant, findManager) =
+                Decision { approver = findManager(applicant) }
+
+            fake findManager
+              | (EmployeeId("e-1")) -> EmployeeId("boss-1")
+
+            fake example.people.findManager
+              | (EmployeeId("e-2")) -> EmployeeId("boss-2")
+            """;
+
     /**
      * The behavior each block names is what resolution answered, and not how the target reads.
      *
@@ -205,27 +235,36 @@ class ABehaviorHasAtMostOneStandInTableTest {
      */
     @Test
     void twoSpellingsOfOneBehaviorAreOneBehavior() {
-        assertEquals(List.of("E1933", "E1933"), codesOf(diagnosticsOf(List.of(DECLARES, """
-                module example.approvals
-
-                import example.people ( EmployeeId, findManager )
-
-                data Decision = { approver: EmployeeId }
-
-                behavior decideApprover : (applicant: EmployeeId) -> Decision
-                    depends on findManager
-                    constructs Decision
-
-                let decideApprover (applicant, findManager) =
-                    Decision { approver = findManager(applicant) }
-
-                fake findManager
-                  | (EmployeeId("e-1")) -> EmployeeId("boss-1")
-
-                fake example.people.findManager
-                  | (EmployeeId("e-2")) -> EmployeeId("boss-2")
-                """))),
+        assertEquals(List.of("E1933", "E1933"),
+                codesOf(diagnosticsOf(List.of(DECLARES, TWO_SPELLINGS))),
                 "the bare name and the qualified one reach one declaration");
+    }
+
+    /**
+     * And each report names the behavior, not the spelling its own block was written under.
+     *
+     * <p>What makes two blocks one refusal is the behavior they reach, and it is the one thing a
+     * reader has to be given: reports naming two spellings read as two unrelated problems, and a
+     * hint telling an author to merge the blocks written under theirs names a spelling only one
+     * block uses. Each also points at the others, so what is said is one thing said in two places.
+     */
+    @Test
+    void bothReportsNameTheBehaviorAndPointAtEachOther() {
+        List<Diagnostic> said = diagnosticsOf(List.of(DECLARES, TWO_SPELLINGS)).stream()
+                .filter(each -> "E1933".equals(each.code())).toList();
+        assertEquals(2, said.size(), "two blocks, two reports");
+
+        Set<Message> subjects = new LinkedHashSet<>();
+        for (Diagnostic each : said) {
+            subjects.add(each.said());
+            assertEquals(1, each.secondary().size(),
+                    "each report points at the other block: " + each.said());
+        }
+        assertEquals(Set.of(new ExampleMessage.MoreThanOneFakeStandsInForOneBehavior(
+                        "example.people.findManager")),
+                subjects,
+                "one behavior, so one sentence naming it as this module writes it, however either"
+                        + " block spelt its own target");
     }
 
     /** And one block in each of two modules is one block each: the count is a module's own. */
@@ -293,6 +332,30 @@ class ABehaviorHasAtMostOneStandInTableTest {
     }
 
     /**
+     * Two attached files are two blocks as much as a module's source and one of them are.
+     *
+     * <p>The module's own source writes neither. A rule that had grown to expect one side of the
+     * count to be the module's own would read this as one block each and say nothing, and the files
+     * an author split their rows across are exactly where that would happen.
+     */
+    @Test
+    void twoAttachedFilesAreTwoBlocks() {
+        List<String> across = List.of(BASE, """
+                examples for example.approvals
+
+                fake findManager
+                  | (EmployeeId("e-1")) -> EmployeeId("boss-1")
+                """, """
+                examples for example.approvals
+
+                fake findManager
+                  | (EmployeeId("e-2")) -> EmployeeId("boss-2")
+                """);
+        assertEquals(List.of(new SourceId("1"), new SourceId("2")), filesSaying(across, "E1933"),
+                "neither block is written in the module's own source, and both are the module's");
+    }
+
+    /**
      * And which file was handed to the compile first decides nothing.
      *
      * <p>The two sources swapped: the same two blocks are reported, in the file each is written in.
@@ -347,6 +410,84 @@ class ABehaviorHasAtMostOneStandInTableTest {
             assertInstanceOf(Applied.Nothing.class, row.run().applied(),
                     "nothing applied the behavior, which is why no answer of its own is reported");
         }
+    }
+
+    /**
+     * A model whose target takes a sum, so that a measure of what the rows cover has cases to count.
+     */
+    private static final String OVER_A_SUM = """
+            module example.approvals
+
+            import String ( length )
+
+            data EmployeeId = String
+                invariant length(value) > 0
+
+            data Active = { id: EmployeeId }
+            data Suspended = { id: EmployeeId }
+            data Status = Active | Suspended
+
+            data Decision = { approver: EmployeeId }
+
+            behavior findManager : (id: EmployeeId) -> EmployeeId
+
+            behavior decideApprover : (applicant: Status) -> Decision
+                depends on findManager
+                constructs Decision
+
+            let decideApprover (applicant, findManager) = match applicant with
+                | Active as a    -> Decision { approver = findManager(a.id) }
+                | Suspended as s -> Decision { approver = findManager(s.id) }
+
+            example decideApprover
+              | "one" : (Active { id = EmployeeId("e-1") })
+                    -> Decision { approver = EmployeeId("boss-1") }
+            """;
+
+    /**
+     * And the measure counts such a row as written and not as run.
+     *
+     * <p>Read from what a report of this model holds rather than from the row's own state. The two
+     * agree today because the measure reads the stage the row stopped at, and a reading that later
+     * took a row this far for evidence of what the behavior was applied to would be counting a run
+     * that never happened — which the row's state alone would not say.
+     */
+    @Test
+    void theMeasureCountsSuchARowAsWrittenAndNotAsRun() {
+        Compilation compilation = compiled(List.of(OVER_A_SUM + IN_TWO_BLOCKS));
+        Map<String, Adequacy.SignatureEvidence> witnesses = compilation.db()
+                .ask(new Adequacy.Witnesses(compilation.modules().get(0))).value();
+        assertNotNull(witnesses, "the module was measured, or this says nothing");
+        InputCaseEvidence.Cases seen = witnesses.get("decideApprover").inputs().made()
+                .orElseThrow().get(0).cases().made().orElseThrow();
+
+        assertEquals(List.of("Active"), names(seen.specified()),
+                "the row wrote the case it is about, and its fixtures were read");
+        assertEquals(List.of(), names(seen.executed()),
+                "nothing applied the behavior, so no case here was one a run reached");
+        assertEquals(List.of(), names(seen.verified()));
+    }
+
+    /** And the same model with the blocks written as one runs the row, so the two above are read of
+     *  a measure that does say something when there is something to say. */
+    @Test
+    void andTheSameModelWithOneBlockReachesTheRun() {
+        Compilation compilation = compiled(List.of(OVER_A_SUM + """
+
+                fake findManager
+                  | (EmployeeId("e-1")) -> EmployeeId("boss-1")
+                """));
+        Map<String, Adequacy.SignatureEvidence> witnesses = compilation.db()
+                .ask(new Adequacy.Witnesses(compilation.modules().get(0))).value();
+        InputCaseEvidence.Cases seen = witnesses.get("decideApprover").inputs().made()
+                .orElseThrow().get(0).cases().made().orElseThrow();
+
+        assertEquals(List.of("Active"), names(seen.executed()),
+                "one block stands in, so the row runs and the case it wrote is one a run reached");
+    }
+
+    private static List<String> names(Set<TypeSymbol> cases) {
+        return cases.stream().map(TypeSymbol::name).sorted().toList();
     }
 
     // --- what it is not ------------------------------------------------------------------------

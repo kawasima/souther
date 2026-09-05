@@ -50,9 +50,10 @@ public final class FakeTables {
      * one.
      *
      * <p>Two arms rather than a behavior that may be absent. A block whose target denoted no
-     * behavior is refused where the name is read, and it is still a block: its rows are written and
-     * what is wrong inside it is wrong. What it cannot take part in is a count of the blocks
-     * naming one behavior, there being no behavior it names.
+     * behavior is refused where the name is read, and it is still a block: its rows stand where they
+     * are written, and a reader over what a module has written in it reaches them. What it cannot
+     * take part in is a count of the blocks naming one behavior, there being no behavior it names —
+     * nor a reading of what its rows state, there being no declaration to state anything against.
      */
     public sealed interface Occurrence {
 

@@ -266,19 +266,21 @@ public final class ExampleVerifier {
     }
 
     /**
-     * The explicit entries of the first table faking {@code behavior}, read as values.
+     * The explicit entries of the block standing in for {@code behavior}, read as values, where one
+     * block does.
      *
      * <p>Three kinds of written thing are not entries, each for a reason ADR-0093 already gives, and
      * two of them are settled before this looks. The {@code _} row states no input and is the table's
      * fallback rather than one of its explicit rows. An explicit row shadowed by an earlier one
-     * stating the same arguments is never what dispatch picks, and #716 made the compiler refuse it
-     * (E1926), so what {@code Standins.explicit} holds is rows the fake can answer with.
+     * stating the same arguments is never what dispatch picks, and the compiler refuses it (E1926),
+     * so what {@code Standins.explicit} holds is rows the fake can answer with.
      *
-     * <p>The third is a whole table: a second {@code fake} written for a target that already has one
-     * never stands in for anything, and nothing refuses it. Running its entries would report
-     * disagreements about values the fake would never answer with — the mistake ADR-0093 was written
-     * to avoid, one level up from the row it was written about. So the first table for a target is
-     * the one read, which is the same rule the reading that produces E1919 keeps.
+     * <p>The third is a whole table: where more than one block names the behavior, none of them
+     * stands in for it (E1933) and there is nothing here to enumerate. Running the entries of one
+     * would report disagreements about values no fake would ever answer with — the mistake ADR-0093
+     * was written to avoid, one level up from the row it was written about. Which block stands in is
+     * {@link souther.compiler.check.FakeTables#answering}'s to say, and is the same answer the
+     * reading that produces E1919 is over.
      *
      * <p>A {@code with dep = value} is not here at all. It states no input — what reaches the
      * dependency is whatever the parent behavior computes — and is a fixture bound to the run of one

@@ -110,6 +110,9 @@ public sealed interface ExampleMessage extends Message {
     /** What to write instead. */
     record WriteTheRowsAsOneFake(String behavior) implements ExampleMessage, Supporting {}
 
+    /** Where another of the blocks standing in for it is written. */
+    record AnotherFakeStandsInForItHere(String behavior) implements ExampleMessage, Supporting {}
+
     /** A dependency has no fake. */
     @Code(DiagnosticCode.E1908)
     record ADependencyHasNoFake(String behavior, String dependency) implements ExampleMessage, Reported {}
