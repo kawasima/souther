@@ -118,6 +118,31 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
                 "a name p declares nothing by is a name nothing here is about");
     }
 
+    /**
+     * The package an import comes from is the type's owner, and not the package it is written in.
+     *
+     * <p>A nested type is imported through whatever holds it, so an import from the file's own
+     * package can still take the name: {@code import p.Outer.A} inside {@code p} leaves the bare
+     * {@code A} meaning the nested one while {@code p} declares its own. What changes nothing is an
+     * import of the very type the package declares — the name already meant that.
+     */
+    @Test
+    void anImportFromTheOwnPackageTakesTheNameWhereItNamesSomethingElse() {
+        Map<String, String> declared = Map.of("p/A.java", "package p; class A {}",
+                "p/Outer.java", "package p; class Outer { static class A {} }");
+
+        Map<String, String> throughAnOwner = new LinkedHashMap<>(declared);
+        throughAnOwner.put("p/C.java", "package p; import p.Outer.A; class C { A a; }");
+        assertEquals(List.of("p/C.java rebinds `A`, which p declares, to p.Outer.A"),
+                rebindings(parsedFrom(throughAnOwner)),
+                "the owner is another type, so the name is taken");
+
+        Map<String, String> theSameType = new LinkedHashMap<>(declared);
+        theSameType.put("p/C.java", "package p; import p.A; class C { A a; }");
+        assertEquals(List.of(), rebindings(parsedFrom(theSameType)),
+                "the import names what the package declares, and the name already meant it");
+    }
+
     /** One compilation unit, as much of it as this question is about. */
     private record Unit(String where, String pkg, Set<String> declares, List<String> imports) {}
 
