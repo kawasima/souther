@@ -165,18 +165,23 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
          * alternatives cannot answer it, because a conjunction drops the pairs nothing stands in
          * and what a dropped pair was going to say about a position leaves with it.
          *
-         * @param emptied the blocks of more than one position that were left no value, where that
-         *                is what emptied the reading. Carried and not worked out again: an
-         *                alternative is dropped where a side of it admits nothing, and the side is
-         *                gone with it — asked afterwards, the answer would be that the values admit
-         *                nothing, which is true and is the general form of what was shown.
+         * @param shown where the reading was refused, where anything answerable for it is.
+         *              Carried and not worked out again: an alternative is dropped where nothing
+         *              stands in it, and what refused it is gone with it — asked afterwards, the
+         *              answer would be that the values admit nothing, which is true and is the
+         *              general form of what was shown.
          *
-         *                <p>Only blocks of several positions. A lone position left no value is
-         *                what {@link AdmissibleValues#perPosition} already answers, and a second
-         *                account of it here would be the same fact in two spellings. What is new is
-         *                a lack no position has on its own: the rules hold these positions as one
-         *                value and leave that value nothing, while each of them on its own is left
-         *                something
+         *              <p>A lack at blocks is only ever at blocks of several positions. A lone
+         *              position left no value is what {@link AdmissibleValues#perPosition} already
+         *              answers, and a second account of it here would be the same fact in two
+         *              spellings. What is new is a lack no position has on its own: the rules hold
+         *              these positions as one value and leave that value nothing, while each of
+         *              them on its own is left something.
+         *
+         *              <p>A lack about blocks together carries no such rule, and names blocks of
+         *              one position wherever the rules relate two positions nothing else holds as
+         *              one. It is not a lack at either of them — each is left values of its own —
+         *              so nothing here is a second account of what a position's own rules say
          */
         record Nothing<A>(Refusal<A> shown) implements Held<A> {
 
