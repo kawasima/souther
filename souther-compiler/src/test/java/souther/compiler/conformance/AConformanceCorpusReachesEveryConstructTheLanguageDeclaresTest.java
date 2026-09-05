@@ -238,7 +238,7 @@ class AConformanceCorpusReachesEveryConstructTheLanguageDeclaresTest {
             // closed by one of these or by nothing: `with` supplies a dependency taking no input,
             // and what this is about takes one.
             Set<ValueName.Behavior> standsInFor =
-                    prepared.forExamples().tablesThatAnswer().keySet();
+                    prepared.forExamples().fakes().answering().keySet();
             requirements.forEach((behavior, required) -> {
                 for (BehaviorRequirement each : required) {
                     if (each.dependency().module().equals(module.name())) {

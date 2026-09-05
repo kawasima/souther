@@ -6,11 +6,9 @@ import souther.compiler.ast.Hir;
 import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.SequencedMap;
 import java.util.Set;
 
 /**
@@ -288,47 +286,6 @@ public final class Prepared {
     }
 
     /**
-     * One fake table of this module, with every name in it that denotes another module's definition
-     * written qualified — the same claim {@link Example} carries, about what stands in for an
-     * injected behavior while a row runs.
-     */
-    public static final class FakeTable {
-
-        private final FakeTables.Occurrence.Resolved declared;
-
-        private FakeTable(FakeTables.Occurrence.Resolved declared) {
-            this.declared = declared;
-        }
-
-        /**
-         * The injected behavior this table stands in for.
-         *
-         * <p>The behavior and not the spelling, and the one the classification answered rather than
-         * one read off the block here: a table is written where the rows are and the behavior may
-         * be declared in another module, so which one it stands in for was settled where the names
-         * were read and is carried from there.
-         */
-        public ValueName.Behavior standsInFor() {
-            return declared.behavior();
-        }
-
-        /** The table, for a reader that holds this state. */
-        public Hir.Fake read() {
-            return declared.read();
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            return o instanceof FakeTable other && declared.equals(other.declared);
-        }
-
-        @Override
-        public int hashCode() {
-            return declared.hashCode();
-        }
-    }
-
-    /**
      * The module projected for an example run: the example blocks it reads, and the artifact their
      * rows are evaluated in.
      *
@@ -409,67 +366,12 @@ public final class Prepared {
         }
 
         /**
-         * How many blocks of this module name {@code dependency}, which is what says whether
-         * anything stands in for it (spec §example-fakes).
-         *
-         * <p>Three answers and not two. Nothing written is a dependency a row cannot be run
-         * against; one block written is the table that answers for it; more than one is a refusal,
-         * and none of those blocks establishes what stands in for the behavior. A reader given
-         * "found" or "not found" would have the first and the last under one answer and would have
-         * to work out which it was — which is what a diagnostic saying a stand-in is missing where
-         * two are written comes of.
-         */
-        public FakeTables.Declaration declaredFor(ValueName.Behavior dependency) {
-            return module.fakes().declaredFor(dependency);
-        }
-
-        /** Every dependency one block here stands in for, each under that block, in the order the
-         *  blocks are written. */
-        public SequencedMap<ValueName.Behavior, FakeTable> tablesThatAnswer() {
-            LinkedHashMap<ValueName.Behavior, FakeTable> answering = new LinkedHashMap<>();
-            module.fakes().unique().forEach((behavior, table) ->
-                    answering.put(behavior, new FakeTable(table)));
-            return answering;
-        }
-
-        /** Every block this module writes, in the order they were read, whether or not its target
-         *  reached a behavior. */
-        public List<FakeTables.Occurrence> written() {
-            return module.fakes().written();
-        }
-
-        /**
-         * Every block whose target reached a behavior, in the order they were read.
-         *
-         * <p>What is built and held to what it states, whether or not it is the block that answers
-         * for its behavior: a table is built because it is written (spec §example-fakes), and a
-         * block that stands in for nothing because another names the same behavior is still a block
-         * whose own rows say something. A block whose target reached nothing is not here — there is
-         * no signature to build it against, and what is wrong with it is said where the name is
-         * read.
-         */
-        public List<FakeTable> tablesWritten() {
-            List<FakeTable> tables = new ArrayList<>();
-            for (FakeTables.Occurrence occurrence : module.fakes().written()) {
-                if (occurrence instanceof FakeTables.Occurrence.Resolved resolved) {
-                    tables.add(new FakeTable(resolved));
-                }
-            }
-            return List.copyOf(tables);
-        }
-
-        /** The behaviors more than one block here names, none of which stands in for anything. */
-        public List<FakeTables.Declaration.Conflict> conflicts() {
-            return module.fakes().conflicts();
-        }
-
-        /**
          * Every behavior this module writes a stand-in for: the target of a {@code fake} and the
          * dependency a {@code with} on a row supplies.
          *
          * <p>Both forms, because both are stand-ins (spec §example-fakes) and a reader asking what
          * this module states about a behavior wants either. Told apart from
-         * {@link #tablesThatAnswer}, which asks which *table* answers for a dependency: a
+         * {@link FakeTables#answering}, which asks which *block* stands in for a dependency: a
          * {@code with} writes no table, so a reader taking that answer for this one passes over
          * every behavior a row supplies without one — which is how a {@code with} for a dependency
          * another module declares came to be compared against nothing.
@@ -485,7 +387,7 @@ public final class Prepared {
          * files reach would go unread — which is the reading this answer exists to complete.
          */
         public Set<ValueName.Behavior> standsInFor() {
-            Set<ValueName.Behavior> named = new LinkedHashSet<>(tablesThatAnswer().keySet());
+            Set<ValueName.Behavior> named = new LinkedHashSet<>(module.fakes().answering().keySet());
             for (Example block : module.examples()) {
                 for (Hir.ExampleRow row : block.read().rows()) {
                     for (Hir.With supplied : row.withs()) {

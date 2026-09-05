@@ -160,7 +160,7 @@ public final class CheckSurface implements Assembly {
         // What each row operand computes, emitted beside the module's own so a row runs its operand
         // in the program the behavior it is about is applied in. Which method is whose is kept with
         // the assembly: it is decided here and read wherever a row is run, never counted out again.
-        RowFixtures.Emitted rows = RowFixtures.emitted(written.module(), fakes, scope, signatures);
+        RowFixtures.Emitted rows = RowFixtures.emitted(written, scope, signatures);
         return rows.defs().isEmpty() ? written
                 : new CheckSurface(settling, declarations, fns, desugaredFrom, examples, fakes,
                         List.copyOf(rows.defs().values()), rows.methods());

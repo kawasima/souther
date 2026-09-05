@@ -4,8 +4,10 @@ import souther.compiler.ast.Hir;
 import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.SequencedMap;
 import java.util.function.UnaryOperator;
 
@@ -147,8 +149,28 @@ public final class FakeTables {
         return found == null ? new Declaration.Missing() : found;
     }
 
-    /** Each behavior one block names, under that block, in the order the blocks were read. */
-    public SequencedMap<ValueName.Behavior, Occurrence.Resolved> unique() {
+    /**
+     * Every block whose target reached a behavior, in the order they were read.
+     *
+     * <p>What is built and held to what it states, whether or not it is the block that stands in
+     * for its behavior: a table is built because it is written, and a block standing in for nothing
+     * because another names the same behavior is still a block whose own rows say something. A
+     * block whose target reached nothing is not here — there is no signature to build it against,
+     * and what is wrong with it is said where the name is read.
+     */
+    public List<Occurrence.Resolved> naming() {
+        List<Occurrence.Resolved> found = new ArrayList<>();
+        for (Occurrence each : written) {
+            if (each instanceof Occurrence.Resolved resolved) {
+                found.add(resolved);
+            }
+        }
+        return List.copyOf(found);
+    }
+
+    /** Each behavior one block names, under that block, in the order the blocks were read: the
+     *  blocks that stand in for something. */
+    public SequencedMap<ValueName.Behavior, Occurrence.Resolved> answering() {
         SequencedMap<ValueName.Behavior, Occurrence.Resolved> only = new LinkedHashMap<>();
         declared.forEach((behavior, declaration) -> {
             if (declaration instanceof Declaration.One(Occurrence.Resolved table)) {
@@ -188,7 +210,9 @@ public final class FakeTables {
 
     private FakeTables rewritten(UnaryOperator<Hir.Fake> rewrite) {
         List<Occurrence> mapped = new ArrayList<>();
-        SequencedMap<Hir.Fake, Hir.Fake> by = new LinkedHashMap<>();
+        // By identity: what is being paired is each block with what the rewrite made of it, and two
+        // blocks that read alike are two blocks.
+        Map<Hir.Fake, Hir.Fake> by = new IdentityHashMap<>();
         for (Occurrence each : written) {
             Hir.Fake now = rewrite.apply(each.read());
             by.put(each.read(), now);

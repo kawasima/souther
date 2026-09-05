@@ -36,7 +36,7 @@ public final class ExampleProvisioning {
         record OnTheRow(Hir.With written) implements Standin {}
 
         /** A table beside the rows answers it. */
-        record InTheModule(Prepared.FakeTable table) implements Standin {}
+        record InTheModule(FakeTables.Occurrence.Resolved table) implements Standin {}
 
         /** Nothing answers it, and a row whose target requires it cannot be run. */
         record Nothing() implements Standin {}
@@ -65,10 +65,10 @@ public final class ExampleProvisioning {
                 return new Standin.OnTheRow(written);
             }
         }
-        return switch (module.declaredFor(dependency)) {
+        return switch (module.fakes().declaredFor(dependency)) {
             case FakeTables.Declaration.Missing _ -> new Standin.Nothing();
             case FakeTables.Declaration.One(FakeTables.Occurrence.Resolved table) ->
-                    new Standin.InTheModule(module.tablesThatAnswer().get(table.behavior()));
+                    new Standin.InTheModule(table);
             case FakeTables.Declaration.Conflict blocks -> new Standin.MoreThanOneBlock(blocks);
         };
     }

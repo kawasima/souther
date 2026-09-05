@@ -146,7 +146,7 @@ public final class ExampleStatements {
      * it stands in for is there to be asked about.
      */
     static List<Diagnostic> notKept(EnsuresChecks ensures,
-                                    souther.compiler.check.Prepared.FakeTable table,
+                                    souther.compiler.check.FakeTables.Occurrence.Resolved table,
                                     BuiltTable built) {
         Hir.Fake fk = table.read();
         List<Diagnostic> said = new ArrayList<>();
@@ -154,7 +154,7 @@ public final class ExampleStatements {
             // The behavior the table stands in for, which is what declares the clause its rows are
             // held to. Taken from the classification: a dependency another module declares states
             // its own, and minting a name in this module would hold the row to nothing.
-            String why = ensures.notHeld(table.standsInFor(),
+            String why = ensures.notHeld(table.behavior(),
                     standin.arguments(), standin.answer().value());
             if (why != null) {
                 said.add(Diagnostic.at(standin.row().pos())
@@ -244,7 +244,7 @@ public final class ExampleStatements {
                                          Deadline deadline, EvaluationPolicy policy,
                                          Map<ValueName.Behavior, Contract> contracts,
                                          Map<String, Declaring> declaring) {
-        if (module.examples().isEmpty() && module.written().isEmpty()) {
+        if (module.examples().isEmpty() && module.fakes().written().isEmpty()) {
             return Readings.NONE;
         }
         // Which behaviors have both a stand-in and rows of their own, read off the text. Two written
@@ -288,15 +288,15 @@ public final class ExampleStatements {
      * refusal about the module rather than a reason to stop reading what those blocks say. A block
      * whose target reached no behavior has no signature to be built against and is not here.
      */
-    public static List<souther.compiler.check.Prepared.FakeTable> tablesBuiltIn(
+    public static List<souther.compiler.check.FakeTables.Occurrence.Resolved> tablesBuiltIn(
             souther.compiler.check.Prepared.ForExamples module, Map<ValueName.Behavior, Sig> sigs,
             SourceId sourceId) {
-        List<souther.compiler.check.Prepared.FakeTable> building = new ArrayList<>();
-        for (souther.compiler.check.Prepared.FakeTable table : module.tablesWritten()) {
+        List<souther.compiler.check.FakeTables.Occurrence.Resolved> building = new ArrayList<>();
+        for (souther.compiler.check.FakeTables.Occurrence.Resolved table : module.fakes().naming()) {
             if (!table.read().pos().isIn(sourceId)) {
                 continue;   // written in another source, and built by that source's own reading
             }
-            if (sigs.get(table.standsInFor()) == null) {
+            if (sigs.get(table.behavior()) == null) {
                 continue;   // nothing here can say what it answers, so there is no table to build
             }
             building.add(table);
@@ -337,7 +337,7 @@ public final class ExampleStatements {
                                               SourceId sourceId,
                                               Deadline deadline, EvaluationPolicy policy,
                                               Map<ValueName.Behavior, Contract> contracts) {
-        List<souther.compiler.check.Prepared.FakeTable> building =
+        List<souther.compiler.check.FakeTables.Occurrence.Resolved> building =
                 tablesBuiltIn(module, sigs, sourceId);
         if (building.isEmpty()) {
             return List.of();
@@ -348,9 +348,9 @@ public final class ExampleStatements {
                 new MemoryClassLoader(classes, parent), values, deadline, policy, contracts,
                 Map.of());
         List<Diagnostic> said = new ArrayList<>();
-        for (souther.compiler.check.Prepared.FakeTable table : building) {
+        for (souther.compiler.check.FakeTables.Occurrence.Resolved table : building) {
             Hir.Fake fk = table.read();
-            Sig sig = sigs.get(table.standsInFor());
+            Sig sig = sigs.get(table.behavior());
             // Within a budget of its own, for the reason a row and a reading each have one: a row of
             // the table applies helpers, and a `partial` one may not stop.
             Read<List<Diagnostic>> read = v.within(reader -> {
@@ -569,7 +569,7 @@ public final class ExampleStatements {
             // it and a row are about one call only where the dependency takes none — every other
             // input reaching it is what the parent behavior computed, which no recorded row states.
             Sig sig = sigs.get(each);
-            boolean comparable = module.tablesThatAnswer().containsKey(each)
+            boolean comparable = module.fakes().answering().containsKey(each)
                     || (sig != null && sig.inputTypes().isEmpty());
             if (comparable && !recordedFor(each, module, declaring).isEmpty()) {
                 both.add(each);
@@ -626,7 +626,7 @@ public final class ExampleStatements {
         // has no table standing in for it, so there is nothing there to be held against a recorded
         // row: the two statements this compares are a stand-in and a row, and what those blocks
         // left is not a stand-in.
-        module.tablesThatAnswer().forEach((_, table) ->
+        module.fakes().answering().forEach((_, table) ->
                 againstFake(table, recorded, found, timedOut));
         for (int i = 0; i < module.examples().size(); i++) {
             againstWiths(module.examples().get(i).read(), recorded, found);
@@ -681,12 +681,12 @@ public final class ExampleStatements {
     }
 
     /** One fake against the rows recorded for the behavior it stands in for. */
-    private void againstFake(souther.compiler.check.Prepared.FakeTable standingIn,
+    private void againstFake(souther.compiler.check.FakeTables.Occurrence.Resolved standingIn,
                              Map<ValueName.Behavior, List<RecordedRow>> recorded,
                              List<Disagreement> found, List<UnreadFake> timedOut) {
         Hir.Fake fk = standingIn.read();
-        List<RecordedRow> rows = recorded.get(standingIn.standsInFor());
-        Sig sig = sigs.get(standingIn.standsInFor());
+        List<RecordedRow> rows = recorded.get(standingIn.behavior());
+        Sig sig = sigs.get(standingIn.behavior());
         if (rows == null || sig == null) {
             return;
         }

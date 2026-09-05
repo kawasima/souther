@@ -292,8 +292,8 @@ public final class ExampleVerifier {
         // The block that answers, where one does. A behavior more than one block names has none,
         // and the entries a caller would enumerate here are entries of a table nothing stands in
         // with.
-        souther.compiler.check.Prepared.FakeTable answering =
-                module.tablesThatAnswer().get(module.targeted(behavior));
+        souther.compiler.check.FakeTables.Occurrence.Resolved answering =
+                module.fakes().answering().get(module.targeted(behavior));
         if (answering == null) {
             return List.of();
         }
@@ -2114,7 +2114,7 @@ public final class ExampleVerifier {
      * dep's has one per parameter (issue #57). What the row states of the table is read off the same
      * build, so the two say what one table was written to answer. */
     private StoodInFor tableStandin(FixtureReader fixtures,
-                                    souther.compiler.check.Prepared.FakeTable standingIn,
+                                    souther.compiler.check.FakeTables.Occurrence.Resolved standingIn,
                                     ValueName.Behavior dependency, Sig depSig) {
         Hir.Fake fk = standingIn.read();
         // The dependency's own signature, which admitted what its boundary carries. Rebuilding the
