@@ -32,8 +32,15 @@ import souther.compiler.inputs.NumericTerm;
  */
 public sealed interface RuleEvidence {
 
-    /** The position this is about, which one position answers: evidence divides a position, and
-     *  something no single place answers divides none. */
+    /**
+     * The position whose values the rule says something about.
+     *
+     * <p>One position and not several, because that is what a statement of this kind has a subject
+     * at: what the rule states is true of the values standing at one place, and a rule relating two
+     * places states nothing about either one's values on its own. Whether the position holds values
+     * on both sides of what is said — whether it is divided by it — is a fact about those values and
+     * is settled where they are known ({@link Classing}).
+     */
     NumericTerm.FromOnePosition at();
 
     /** The rule that said it, and which reading of it this is. */

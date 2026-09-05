@@ -129,17 +129,17 @@ public final class LinesWhereTheyFall {
     /**
      * The same piece of evidence, measured at {@code at}.
      *
-     * <p>Evidence divides a position, so the number it moved to answers one. What a name is filed
-     * at is a field of a value and a term is taken at it the way it was taken where it was written,
-     * so a move that left the number answered by no single place would be this compiler
-     * contradicting the reading that produced the evidence.
+     * <p>What a rule states is about one position's values, so the number it moved to answers one.
+     * What a name is filed at is a field of a value and a term is taken at it the way it was taken
+     * where it was written, so a move that left the number answered by no single place would be
+     * this compiler contradicting the reading that produced the evidence.
      */
     private static RuleEvidence measuredAt(RuleEvidence evidence, NumericTerm at) {
         NumericTerm.FromOnePosition here = at.atOnePosition();
         if (here == null) {
             throw new IllegalStateException(
-                    "`" + evidence.at() + "` divides a position and was filed at `" + at
-                            + "`, which no single position answers");
+                    "`" + evidence.at() + "` is what a rule states about one position and was filed"
+                            + " at `" + at + "`, which no single position answers");
         }
         return switch (evidence) {
             case RuleEvidence.Divides(Threshold line) ->
