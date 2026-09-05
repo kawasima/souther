@@ -22,11 +22,10 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Every word a document writes for a rule it did not read is one a compilation of this compiler
- * puts there.
+ * Every reason a document's {@code notRead} may name is one a compilation of this compiler writes
+ * there.
  *
  * <p>A published word is a promise to a reader that there is a state of the model this compiler
  * answers with it. Nothing else here holds that promise: the writer and the schema are held to each
@@ -39,34 +38,73 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * vocabulary and the writer is what this says, and those are the two edges a word travels that
  * nothing else was reading.
  *
- * <p><b>Total over the vocabulary, by the machine and not by a list beside it.</b> A word added to
- * {@link UndividedPosition.Reason} arrives here as a word with no model, which is the question
- * being asked of whoever added it. There is no arm for a word nobody can reach: a reason nothing
- * produces is one to take out of the vocabulary or to give a way in, and an entry saying so would
- * make this test agree that a promise need not be kept.
+ * <p><b>Total over what this compiler can write, by the machine and not by a list beside it.</b> A
+ * word added to {@link UndividedPosition.Reason} arrives here as a word with no model, which is the
+ * question being asked of whoever added it. There is no arm for a word nobody can reach: a reason
+ * nothing produces is one to take out of the vocabulary or to give a way in, and an entry saying so
+ * would make this test agree that a promise need not be kept.
+ *
+ * <p><b>Which is narrower than what the schema admits, by one word.</b> The field's vocabulary out
+ * there also holds the walk stopping after a count of steps, which nothing writes any more and
+ * which no reason of this compiler projects to — a word documents of this version carry because
+ * they were written before it stopped being written, kept and accounted for where the two surfaces
+ * are held to their own producers
+ * ({@code WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest}). Enumerated here as well, it
+ * would arrive as a word owed a model no compilation can make — and the arm that would let it pass
+ * is the one this has none of.
+ *
+ * <p><b>Named for the field and not for what the field is called.</b> {@code notRead} is the
+ * document's word and it is wider than the word: a rule read from end to end that draws no line is
+ * written there too, and nothing in this compiler calls such a rule one it could not read
+ * ({@link PartitionEvidence.NotRead}). So what these models are held to reach is the field, and a
+ * name saying "unread" would fold a distinction the reasons themselves are split by — a reading
+ * that stopped and a rule read to the end are separate capabilities of {@link BlockReason}, and
+ * having been one is what that split was made after.
  *
  * <p><b>A model here need not compile without a diagnostic.</b> What is claimed is that a
  * compilation writes the word, and this compiler writes an adequacy document about a model it has
- * something to say against — a declaration nothing can construct and a module whose own values are
- * not well founded are both models about which the reading falls short, and the words for falling
- * short are what they are here to reach.
+ * something to say against — a declaration nothing can construct and a clause the front end could
+ * not type are both such models, and the words for them are among what these are here to reach.
+ *
+ * <p>A word arriving in the vocabulary leaves the schema's version where it was, and the schema
+ * says why in its own words: a word added to an enumerated field is one no earlier document
+ * carried, so a document written before it existed is still a document of this version. So what an
+ * arrival owes is a model here, and not a version.
  */
-class EveryWordForAnUnreadRuleIsOneSomeCompilationWritesTest {
+class EveryNotReadReasonIsWrittenBySomeCompilationTest {
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
     /**
      * A model, and what a compilation of it may spend.
      *
-     * @param source       the module handed over
-     * @param distinctions what a measure may spend working out what a behavior's rules tell apart,
-     *                     or null for what a compilation allows
-     * @param reading      what a reading may build with, or null for the same
+     * @param source    the module handed over
+     * @param allowance what it is read under, which is one thing and not a pair of settings a
+     *                  caller might leave both of
      */
-    private record Witness(String source, PatternPlan.Budget distinctions, ReadingPolicy reading) {}
+    private record Witness(String source, Allowance allowance) {}
+
+    /**
+     * What a compilation of a model here is allowed.
+     *
+     * <p>One of three and not two nullable settings beside each other. Two settings admit a fourth
+     * state nothing here means — a model read under both at once — and a reader of the record would
+     * have to find the three factories to learn that it never happens.
+     */
+    private sealed interface Allowance {
+
+        /** What a compilation says, which is what all but two of these are read under. */
+        record AsACompilationDoes() implements Allowance {}
+
+        /** What a measure may spend working out what a behavior's rules tell apart. */
+        record ToMeasureWith(PatternPlan.Budget distinctions) implements Allowance {}
+
+        /** What a reading of the declarations may build with. */
+        record ToReadWith(ReadingPolicy reading) implements Allowance {}
+    }
 
     private static Witness of(String source) {
-        return new Witness(source, null, null);
+        return new Witness(source, new Allowance.AsACompilationDoes());
     }
 
     /**
@@ -77,14 +115,18 @@ class EveryWordForAnUnreadRuleIsOneSomeCompilationWritesTest {
      * so a model built to exhaust one would be built against the figure rather than against what
      * the word says — and what a compilation may spend is the compilation's to say, which is what
      * these two ask of it.
+     *
+     * <p>That the allowance is what reaches them is not left to this sentence:
+     * {@link #neitherCostlyWordIsWrittenAtWhatACompilationAllows} reads the same models under what
+     * a compilation says and holds them to writing neither word.
      */
     private static Witness spending(String source, PatternPlan.Budget distinctions) {
-        return new Witness(source, distinctions, null);
+        return new Witness(source, new Allowance.ToMeasureWith(distinctions));
     }
 
     /** The same, where what is said down is what a reading of the declarations may build with. */
     private static Witness readingWith(String source, ReadingPolicy reading) {
-        return new Witness(source, null, reading);
+        return new Witness(source, new Allowance.ToReadWith(reading));
     }
 
     /** Room to answer what a position admits, and none to hand each of its rules on as the set it
@@ -95,10 +137,17 @@ class EveryWordForAnUnreadRuleIsOneSomeCompilationWritesTest {
             AsACompilationAllows.admittedValues(),
             new PatternPlan.Budget(1, 1));
 
-    /** Deeper than the pattern reader goes, which is what the word is about. */
-    private static String nested(int depth) {
-        return "(".repeat(depth) + "a" + ")".repeat(depth);
-    }
+    /**
+     * Written more deeply than the pattern reader descends, spelled as the reading's own test
+     * spells it ({@code APatternIsReadAsWhatItAcceptsTest}).
+     *
+     * <p>How deep the reader goes is that reader's and is not written here. What is written is a
+     * depth well past it, so that raising the reader's own figure by anything anybody would raise
+     * it by leaves this still deeper — and a run that did pass it fails here saying the word was
+     * not written, which is the reading to have.
+     */
+    private static final String DEEPER_THAN_THE_READING_GOES =
+            "(?:".repeat(500) + "a" + ")".repeat(500);
 
     /** The answers, and the units a behavior over them is written to return. */
     private static final String ANSWER = """
@@ -166,7 +215,7 @@ class EveryWordForAnUnreadRuleIsOneSomeCompilationWritesTest {
                 %s
                 behavior f : (code: String) -> Answer
                 let f (code) = if String.matches("%s", code) then Yes else No
-                """.formatted(ANSWER, nested(220))));
+                """.formatted(ANSWER, DEEPER_THAN_THE_READING_GOES)));
         // Values no line can be drawn on: two booleans are equal or they are not, and neither is
         // above the other.
         out.put(UndividedPosition.Reason.UNSUPPORTED_DOMAIN, of("""
@@ -359,42 +408,47 @@ class EveryWordForAnUnreadRuleIsOneSomeCompilationWritesTest {
     }
 
     /**
-     * And the models between them reach every word, which is the same claim read the other way.
+     * And the two words an allowance reaches are two an allowance is what reaches.
      *
-     * <p>Here because the two are not one. A model may write its own word and another's, and what a
-     * reader of the vocabulary wants to know is that no word of it is one nothing writes — so the
-     * union is asked of the whole table rather than inferred from the entries passing one at a
-     * time.
+     * <p>The other half of {@link #spending}, and the half a sentence cannot hold. Those two models
+     * are here because the state is out of reach of what a compilation says, and read under what a
+     * compilation says they must write neither word — otherwise the allowance is not what put the
+     * word there, the table's account of why they are different from the rest is wrong, and the
+     * word would go on being reported as one only a said-down run reaches.
+     *
+     * <p>Which models these are is read off the table rather than named again. Named, a witness
+     * moved onto an allowance would be one this stopped checking with nothing said.
      */
     @Test
-    void betweenThemTheModelsWriteEveryWord() {
-        Set<String> written = new LinkedHashSet<>();
-        witnesses().values().forEach(each -> written.addAll(wordsWritten(each)));
-        Set<String> published = new LinkedHashSet<>();
-        EnumSet.allOf(UndividedPosition.Reason.class)
-                .forEach(each -> published.add(AdequacyReport.word(each)));
-        assertTrue(written.containsAll(published),
-                () -> "no document these models make writes: " + minus(published, written));
+    void neitherCostlyWordIsWrittenAtWhatACompilationAllows() {
+        Map<String, Set<String>> reached = new TreeMap<>();
+        witnesses().forEach((reason, witness) -> {
+            if (witness.allowance() instanceof Allowance.AsACompilationDoes) {
+                return;
+            }
+            Set<String> written = wordsWritten(of(witness.source()));
+            if (written.contains(AdequacyReport.word(reason))) {
+                reached.put(AdequacyReport.word(reason), written);
+            }
+        });
+        assertEquals(Map.of(), reached,
+                "a word said to need an allowance said down, beside what its model wrote without"
+                        + " one");
     }
 
-    private static Set<String> minus(Set<String> these, Set<String> those) {
-        Set<String> out = new LinkedHashSet<>(these);
-        out.removeAll(those);
-        return out;
-    }
-
-    /** The words a document of this model writes for the rules it did not read. */
+    /** The reasons a document of this model names in {@code notRead}. */
     private static Set<String> wordsWritten(Witness witness) {
         Compilation compilation = Compilation.ofSource(witness.source(), "Main");
-        if (witness.distinctions() != null) {
-            compilation = compilation.withAdequacyPolicy(new AdequacyPolicy(
-                    new AdequacyPolicy.OfTheMeasures(Budgets.measures().pairSpace(),
-                            witness.distinctions()),
-                    Budgets.generation()));
-        }
-        if (witness.reading() != null) {
-            compilation = compilation.withReadingPolicy(witness.reading());
-        }
+        compilation = switch (witness.allowance()) {
+            case Allowance.AsACompilationDoes _ -> compilation;
+            case Allowance.ToMeasureWith(PatternPlan.Budget distinctions) ->
+                    compilation.withAdequacyPolicy(new AdequacyPolicy(
+                            new AdequacyPolicy.OfTheMeasures(Budgets.measures().pairSpace(),
+                                    distinctions),
+                            Budgets.generation()));
+            case Allowance.ToReadWith(ReadingPolicy reading) ->
+                    compilation.withReadingPolicy(reading);
+        };
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         Set<String> out = new LinkedHashSet<>();

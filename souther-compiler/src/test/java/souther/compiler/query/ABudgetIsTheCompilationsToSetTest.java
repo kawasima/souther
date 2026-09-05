@@ -130,12 +130,16 @@ class ABudgetIsTheCompilationsToSetTest {
      * And the document a measure held to a small budget comes out in is shaped the way the schema
      * says.
      *
-     * <p>The word for what a behavior's distinctions cost is one no model reaches on its own. Every
+     * <p>The word for what a behavior's distinctions cost is one no model reaches on its own: every
      * default is set with room over anything in this repository, so the way to the state is to say
-     * what the measure may spend — which is why the shape of the document carrying it is asked
-     * here, where that can be said, rather than beside the models for the words a compilation
-     * reaches at the standard budget
-     * ({@link EveryWordForAnUnreadRuleIsOneSomeCompilationWritesTest}).
+     * what the measure may spend, and saying that is this package's to do.
+     *
+     * <p>What is asked of the document here is its shape, which is the walk's question and not the
+     * word's. Whether every reason the field may name is one some compilation writes is asked of
+     * the whole vocabulary in one place
+     * ({@link EveryNotReadReasonIsWrittenBySomeCompilationTest}), and that table says down an
+     * allowance for this word as this does — so the two are told apart by what they ask rather than
+     * by what their models are allowed.
      *
      * <p>The walk is the one that reads every document this compiler writes
      * ({@link DocumentShape}); what is added here is a document it cannot make, because saying what

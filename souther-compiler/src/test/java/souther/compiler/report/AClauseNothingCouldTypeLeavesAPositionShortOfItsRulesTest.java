@@ -11,48 +11,32 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The two words this branch added to the published vocabulary, in a document.
+ * Which word a position whose rules were never arrived at gets, and what such a model is.
  *
- * <p>The schema says which words a {@code notDerivable} reason may be, and a test next door holds
- * that list against the enum it spells. Neither of them says a word is ever written: a vocabulary
- * and a document are different things, and a word promised by one and emitted by neither is what
- * that test was written after.
+ * <p>Two questions about one model, and neither is whether the vocabulary's words reach a document
+ * at all. That is asked of every word of it in one place
+ * ({@link souther.compiler.query.EveryNotReadReasonIsWrittenBySomeCompilationTest}), which is
+ * where a word added arrives as a question — so what a model writes is settled there, and what is
+ * left here is what that answer does not say.
  *
- * <p>So these are the two models the words are for, taken to the document a build reads. A
- * declaration reachable from itself is a type this could not work out; a clause nothing could type
- * is a position whose rules the reading never arrived at. A report is written about each of them
- * whatever else this compiler says against the model, which is why it is asked about them at all —
- * and the tripwire below says out loud that the second is a model this compiler refuses.
+ * <p>The first is which of two words. A position the walk reached and whose rules it did not is not
+ * a position holding values inside something the walk does not reach into, and the model below is
+ * one a reading could take either way: the reaching was made, and what went unread is a clause.
+ * Read as the second, an author is sent after a container that is not the matter.
  *
- * <p>The whole of that vocabulary is held to the same claim in one place
- * ({@link souther.compiler.query.EveryWordForAnUnreadRuleIsOneSomeCompilationWritesTest}), which is
- * where a word added arrives as a question. These two stay because the tripwire is about the models
- * rather than about the words.
- *
- * <p>The version is unchanged by their arrival, and the schema says why in its own words: a word
- * added to an enumerated field is one no earlier document carried, so a document written before it
- * existed is still a document of this version.
+ * <p>The second is what the model is. A rule written under a container, a case or an optional is
+ * read where it governs, one position down; what is left that can go unread at a position this
+ * reading arrived at is a clause the front end could not type, and a model carrying one is refused.
+ * So the word is about a model nobody can compile, which is a fact about what it means rather than
+ * about this fixture.
  */
-class AWordTheSchemaAdmitsIsOneADocumentCarriesTest {
+class AClauseNothingCouldTypeLeavesAPositionShortOfItsRulesTest {
 
     private static String reportOf(String model) {
         Compilation compilation = Compilation.ofSource(model, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         return AdequacyReport.of(compilation).json(SourceNameResolver.identity());
-    }
-
-    @Test
-    void aTypeThisCouldNotWorkOutIsWrittenAsThatWord() {
-        String json = reportOf("""
-                module demo
-                data Ok
-                data Cyclic = Cyclic
-                behavior run : (x: Cyclic) -> Ok
-                let run (x) = Ok
-                """);
-
-        assertTrue(json.contains("\"type_unresolved\""), json);
     }
 
     /**
