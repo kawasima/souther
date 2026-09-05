@@ -178,20 +178,20 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
          *                value and leave that value nothing, while each of them on its own is left
          *                something
          */
-        record Nothing<A>(Set<Sameness.Block<A>> emptied) implements Held<A> {
+        record Nothing<A>(Refusal<A> shown) implements Held<A> {
 
             public Nothing {
-                emptied = Collections.unmodifiableSet(new LinkedHashSet<>(emptied));
-                if (emptied.stream().anyMatch(Sameness.Block::isOne)) {
+                if (shown instanceof Refusal.AtEachOf<A> it
+                        && it.blocks().stream().anyMatch(Sameness.Block::isOne)) {
                     throw new IllegalArgumentException(
                             "a lone position left no value is what the positions' own rules say,"
                                     + " and is not a lack the block is answerable for");
                 }
             }
 
-            /** Nothing satisfies the rules, and no block of several positions is why. */
+            /** Nothing satisfies the rules, and nothing here says where. */
             public Nothing() {
-                this(Set.of());
+                this(new Refusal.Nowhere<>());
             }
         }
 
@@ -580,22 +580,36 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
         record Met<A>(Map<Sameness.Block<A>, ValueSet> at, Apartness<A> apart) {
 
             /**
-             * Whether a side of it is left no value, which is what makes it no alternative.
+             * The alternative this is, or where nothing stands in it.
              *
-             * <p>A side and not the relation. A conjunction that puts two blocks together makes a
-             * denial between them a value stated to differ from itself, and nothing satisfies that
-             * — but it is a fact the relation states rather than a product with an empty side, and
-             * what states it is still there to be read. Dropped here, the alternative would go and
-             * the rules that emptied it would go with it, and a reader asking why would be told
-             * that the values admit nothing.
+             * <p>Two ways for a conjunction of two alternatives to stand for nothing, and both of
+             * them are answered here. A side may be left no value, which is a product with an empty
+             * side and no alternative at all; and the denials may state a value to differ from
+             * itself, which nothing satisfies whatever the sides hold.
+             *
+             * <p><b>Answered here and not by keeping it and reading it later.</b> An alternative
+             * standing for nothing is not a member of a union — a choice between it and something
+             * else is that something else — so keeping it would make the union hold what its
+             * alternatives do not, and a reading of it say that it admits what none of them does.
+             * What is carried out instead is why, since that is knowable only here.
              */
-            boolean standsForNothing() {
-                return at.values().stream().anyMatch(ValueSet::isEmpty);
-            }
-
-            /** The alternative it is, which a caller asks for only where something stands in it. */
-            Alternative<A> alternative() {
-                return new Alternative<>(new Box<>(at), apart);
+            Held<A> stands() {
+                Set<Sameness.Block<A>> emptied = new LinkedHashSet<>();
+                at.forEach((block, set) -> {
+                    if (!block.isOne() && set.isEmpty()) {
+                        emptied.add(block);
+                    }
+                });
+                if (at.values().stream().anyMatch(ValueSet::isEmpty)) {
+                    return new Held.Nothing<>(Refusal.atEachOf(emptied));
+                }
+                for (Apartness.Edge<A> edge : apart.edges()) {
+                    if (edge.isOfOneBlock()) {
+                        return new Held.Nothing<>(new Refusal.OfThemTogether<>(
+                                new RelationalWitness.ABlockApartFromItself<>(edge.one())));
+                    }
+                }
+                return Held.Alternatives.of(new Alternative<>(new Box<>(at), apart));
             }
         }
 
@@ -1065,15 +1079,15 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
     }
 
     /**
-     * The blocks of more than one position the rules left no value, where that is what emptied
-     * this reading.
+     * Where this reading was refused, where it holds nothing.
      *
-     * <p>Empty where the reading holds something, and empty where what emptied it is a position's
-     * own rules rather than what several of them share. Read here rather than worked out from what
-     * survived: nothing survived.
+     * <p>Nowhere in particular where the reading holds something, and nowhere where what emptied it
+     * is a position's own rules rather than something several of them are answerable for. Read here
+     * rather than worked out from what survived: nothing survived, and what refused an alternative
+     * is knowable only while it is being refused.
      */
-    public Set<Sameness.Block<A>> emptiedBlocks() {
-        return held instanceof Held.Nothing<A> it ? it.emptied() : Set.of();
+    public Refusal<A> refusedBy() {
+        return held instanceof Held.Nothing<A> it ? it.shown() : new Refusal.Nowhere<>();
     }
 
     /**
@@ -1248,7 +1262,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      */
     public <B> AdmissibleValues<B> renamed(java.util.function.Function<A, B> naming) {
         Held<B> renamedHeld = switch (held) {
-            case Held.Nothing<A> it -> new Held.Nothing<B>(renamedNames(it.emptied(), naming));
+            case Held.Nothing<A> it -> new Held.Nothing<B>(it.shown().renamed(naming));
             case Held.Alternatives<A> alternatives -> alternatives.renamed(naming);
         };
         return new AdmissibleValues<>(renamedHeld, renamedKeys(perPosition, naming),
@@ -1414,24 +1428,24 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
             // Emptied by whatever emptied the side that was empty. A conjunction with a side
             // nothing satisfies is empty for that side's reason, and working it out again from
             // what is left would find nothing left to work it out from.
-            Set<Sameness.Block<A>> emptied = new LinkedHashSet<>(emptiedBlocks());
-            emptied.addAll(other.emptiedBlocks());
-            return new Held.Nothing<>(emptied);
+            return new Held.Nothing<>(Refusal.eitherShown(refusedBy(), other.refusedBy()));
         }
         Set<Alternative<A>> live = new LinkedHashSet<>();
-        Set<Sameness.Block<A>> emptied = null;
+        // What every dropped pair was refused by, and not what any of them was. A pair may be
+        // dropped for a reason of its own, so what the conjunction holds nothing by is what all of
+        // them agree on — the rule a choice between two dead branches is put together by.
+        Refusal<A> dropped = null;
         for (Alternative<A> here : alternatives()) {
             for (Alternative<A> there : other.alternatives()) {
-                Alternative.Met<A> both = here.narrowedWith(there, sets, gaveUp);
-                if (!both.standsForNothing()) {
-                    live.add(both.alternative());
-                    continue;
+                switch (here.narrowedWith(there, sets, gaveUp).stands()) {
+                    case Held.Alternatives<A> it -> live.addAll(it.boxes());
+                    case Held.Nothing<A> it -> dropped = dropped == null ? it.shown()
+                            : Refusal.shownByBoth(dropped, it.shown());
                 }
-                emptied = alsoEmptied(emptied, both.at());
             }
         }
         if (live.isEmpty()) {
-            return new Held.Nothing<>(emptied == null ? Set.of() : emptied);
+            return new Held.Nothing<>(dropped == null ? new Refusal.Nowhere<>() : dropped);
         }
         Held.Alternatives.Made<A> made = Held.Alternatives.of(live, sets);
         gaveUp.addAll(made.gaveUp());
@@ -1523,9 +1537,9 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
             // Emptied by what emptied both. A block one branch was left nothing at is one the
             // other may stand at, so what the choice is left nothing at is what neither of them
             // has a value for — the same rule the rest of a dead choice is put together by.
-            Set<Sameness.Block<A>> emptied = new LinkedHashSet<>(emptiedBlocks());
-            emptied.retainAll(other.emptiedBlocks());
-            return new AdmissibleValues<>(new Held.Nothing<>(emptied), emptyInBoth(other),
+            return new AdmissibleValues<>(
+                    new Held.Nothing<>(Refusal.shownByBoth(refusedBy(), other.refusedBy())),
+                    emptyInBoth(other),
                     standing.and(other.standing),
                     Map.of(), ValueSet.NONE, true,
                     eachApart(both(tangled, other.tangled)),
@@ -1662,31 +1676,6 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
         return made.held();
     }
 
-    /**
-     * The blocks of several positions one dropped alternative was left no value at, kept beside
-     * what every other dropped alternative was.
-     *
-     * <p>What every one of them was left nothing at, and not what any of them was. An alternative
-     * may be dropped for a reason of its own, so a block named by one of them is not why the
-     * reading holds nothing — the same rule a choice between two dead branches is put together by.
-     *
-     * @param so what the alternatives before this one were left nothing at, or null where this is
-     *           the first of them
-     */
-    static <A> Set<Sameness.Block<A>> alsoEmptied(Set<Sameness.Block<A>> so,
-                                                  Map<Sameness.Block<A>, ValueSet> dropped) {
-        Set<Sameness.Block<A>> here = new LinkedHashSet<>();
-        dropped.forEach((block, set) -> {
-            if (!block.isOne() && set.isEmpty()) {
-                here.add(block);
-            }
-        });
-        if (so == null) {
-            return here;
-        }
-        so.retainAll(here);
-        return so;
-    }
 
     /** The alternatives this holds, which a reading that admits nothing has none of. */
     private Set<Alternative<A>> alternatives() {

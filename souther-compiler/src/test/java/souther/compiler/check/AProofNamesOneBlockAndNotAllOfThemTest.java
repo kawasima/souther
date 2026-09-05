@@ -89,7 +89,7 @@ class AProofNamesOneBlockAndNotAllOfThemTest {
         Allowance<FactSubject> sets = AsACompilationAllows.forAdmittedValues();
         AdmissibleValues<FactSubject> both =
                 emptiedAt(R, S, sets).meet(emptiedAt(P, Q, sets), sets);
-        assertEquals(2, both.emptiedBlocks().size(), "or this measures one block twice");
+        assertEquals(2, both.refusedBy().blocks().size(), "or this measures one block twice");
 
         ConstraintState<FactSubject> state = ConstraintState.<FactSubject>top()
                 .takingRead(Confinement.Worked.of(both, OrderedIntervals.top(), Map.of()), sets);
@@ -118,7 +118,7 @@ class AProofNamesOneBlockAndNotAllOfThemTest {
             AdmissibleValues<FactSubject> other = emptiedAt(P, Q, sets);
             AdmissibleValues<FactSubject> both = reversed
                     ? other.meet(one, sets) : one.meet(other, sets);
-            assertEquals(2, both.emptiedBlocks().size(), "or the two witnesses are not both here");
+            assertEquals(2, both.refusedBy().blocks().size(), "or the two witnesses are not both here");
 
             ConstraintState<FactSubject> state = ConstraintState.<FactSubject>top()
                     .takingRead(Confinement.Worked.of(both, OrderedIntervals.top(), Map.of()),

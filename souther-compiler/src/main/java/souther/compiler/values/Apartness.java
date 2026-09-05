@@ -34,12 +34,18 @@ import java.util.function.Function;
 public final class Apartness<A> {
 
     /**
-     * How many sets of blocks all stated to differ this will look at before it stops.
+     * How many sets of blocks this will look at before it stops.
      *
-     * <p>A stated limit and not a figure anything derives. How many such sets a relation has is not
-     * bounded by how many rules were written, and a reduction that walked all of them would make
-     * what a declaration costs turn on a shape nothing else here charges for. Reaching it is this
-     * saying nothing, which is what it says of every relation it has no argument for.
+     * <p>Looked at and not found. How many sets a relation has does not say how much work finding
+     * them is: a relation whose blocks are all stated to differ has one such set and as many ways
+     * of reaching it as anyone likes, so a bound on the answers is no bound on the walk. What is
+     * counted is every set the walk stands on, whether or not it turns out to be one nothing can be
+     * added to.
+     *
+     * <p>A stated limit and not a figure anything derives. How much work a relation is worth is not
+     * bounded by how many rules were written, and a reduction that walked all of it would make what
+     * a declaration costs turn on a shape nothing else here charges for. Reaching it is this saying
+     * nothing, which is what it says of every relation it has no argument for.
      */
     private static final int SETS_LOOKED_AT = 4096;
 
@@ -237,14 +243,53 @@ public final class Apartness<A> {
             apart.computeIfAbsent(edge.one(), _ -> new LinkedHashSet<>()).add(edge.other());
             apart.computeIfAbsent(edge.other(), _ -> new LinkedHashSet<>()).add(edge.one());
         }
-        List<Set<Sameness.Block<A>>> found = new ArrayList<>();
+        Walk<A> walk = new Walk<>(most);
         grow(new LinkedHashSet<>(), new LinkedHashSet<>(apart.keySet()), new LinkedHashSet<>(),
-                apart, found, most);
-        if (found.size() > most) {
+                apart, walk);
+        if (walk.spent()) {
             return List.of();
         }
-        found.sort(Comparator.comparingInt((Set<Sameness.Block<A>> each) -> each.size()).reversed());
-        return found;
+        walk.found().sort(
+                Comparator.comparingInt((Set<Sameness.Block<A>> each) -> each.size()).reversed());
+        return walk.found();
+    }
+
+    /**
+     * What a walk over the sets has found and what it has spent finding it.
+     *
+     * <p>Both, because the second is what the bound is on. How many sets there are does not say how
+     * much work finding them is — a relation whose blocks are all stated to differ has one set and
+     * a search that looks at every way to reach it — so a bound on the answers is no bound at all,
+     * and the walk that ran into it would be the walk nobody was counting.
+     */
+    private static final class Walk<A> {
+
+        private final List<Set<Sameness.Block<A>>> found = new ArrayList<>();
+        private final int most;
+        private int steps;
+
+        private Walk(int most) {
+            this.most = most;
+        }
+
+        List<Set<Sameness.Block<A>>> found() {
+            return found;
+        }
+
+        /** Whether this has looked at as much as it is allowed to. */
+        boolean spent() {
+            return steps > most || found.size() > most;
+        }
+
+        /** One more set looked at, whether or not it turned out to be one nothing can be added
+         *  to. */
+        void looked() {
+            steps++;
+        }
+
+        void add(Set<Sameness.Block<A>> these) {
+            found.add(Collections.unmodifiableSet(new LinkedHashSet<>(these)));
+        }
     }
 
     /**
@@ -263,20 +308,31 @@ public final class Apartness<A> {
      */
     private void grow(Set<Sameness.Block<A>> sofar, Set<Sameness.Block<A>> may,
                       Set<Sameness.Block<A>> taken,
-                      Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart,
-                      List<Set<Sameness.Block<A>>> found, int most) {
-        if (found.size() > most) {
+                      Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart, Walk<A> walk) {
+        walk.looked();
+        if (walk.spent()) {
             return;
         }
         if (may.isEmpty()) {
             if (taken.isEmpty() && sofar.size() > 1) {
-                found.add(Collections.unmodifiableSet(new LinkedHashSet<>(sofar)));
+                walk.add(sofar);
             }
             return;
         }
+        // The blocks one of them is not stated to differ from, and no others. Every set nothing can
+        // be added to holds that one or something it does not differ from, so the rest are reached
+        // through those — and a relation whose blocks are all stated to differ has one such set and
+        // one way in, where taking each of them in turn is a way in for every block there is.
+        Set<Sameness.Block<A>> around = apart.getOrDefault(pivot(may, taken, apart), Set.of());
+        List<Sameness.Block<A>> ways = new ArrayList<>();
+        may.forEach(each -> {
+            if (!around.contains(each)) {
+                ways.add(each);
+            }
+        });
         Set<Sameness.Block<A>> left = new LinkedHashSet<>(may);
         Set<Sameness.Block<A>> aside = new LinkedHashSet<>(taken);
-        for (Sameness.Block<A> next : may) {
+        for (Sameness.Block<A> next : ways) {
             Set<Sameness.Block<A>> apartFromNext = apart.getOrDefault(next, Set.of());
             Set<Sameness.Block<A>> grown = new LinkedHashSet<>(sofar);
             grown.add(next);
@@ -284,13 +340,37 @@ public final class Apartness<A> {
             still.retainAll(apartFromNext);
             Set<Sameness.Block<A>> covered = new LinkedHashSet<>(aside);
             covered.retainAll(apartFromNext);
-            grow(grown, still, covered, apart, found, most);
-            if (found.size() > most) {
+            grow(grown, still, covered, apart, walk);
+            if (walk.spent()) {
                 return;
             }
             left.remove(next);
             aside.add(next);
         }
+    }
+
+    /** Whichever of the blocks still in play is stated to differ from most of what may be added,
+     *  which is what leaves the fewest ways in. */
+    private Sameness.Block<A> pivot(Set<Sameness.Block<A>> may, Set<Sameness.Block<A>> taken,
+                                    Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart) {
+        Sameness.Block<A> best = null;
+        int most = -1;
+        for (Set<Sameness.Block<A>> these : List.of(may, taken)) {
+            for (Sameness.Block<A> each : these) {
+                Set<Sameness.Block<A>> around = apart.getOrDefault(each, Set.of());
+                int reach = 0;
+                for (Sameness.Block<A> one : may) {
+                    if (around.contains(one)) {
+                        reach++;
+                    }
+                }
+                if (reach > most) {
+                    most = reach;
+                    best = each;
+                }
+            }
+        }
+        return best;
     }
 
     /**
@@ -473,43 +553,28 @@ public final class Apartness<A> {
     }
 
     /**
-     * Whether every block can be given a value no block it is stated to differ from takes.
+     * Whether every block can be given a value no block it is stated to differ from takes, shown by
+     * an argument that does not depend on which block is taken first.
      *
-     * <p>Taken in the order the blocks were named, which is enough to show an assignment and not
-     * enough to show there is none: a run that fails here is one this says nothing about. A block
-     * holding more values than the whole relation has blocks is given one of them without naming
-     * it — its neighbours take fewer values than it holds, so one is free.
+     * <p><b>And by no other.</b> An assignment found by taking the blocks in some order is an
+     * assignment, but which orders find one is not a fact about the relation: two writings of one
+     * rule are one relation, and a reading that stood on the order they were stated in would answer
+     * a model one way written this way round and another written the other. So what is claimed here
+     * is the one thing every order shows.
+     *
+     * <p>What that leaves is a relation whose blocks each hold more values than the relation has
+     * blocks. Anything else is {@link Reduction.NotKnown}, which is what this says of every relation
+     * it has no argument for — a satisfiable one included.
      */
     private boolean assignable(Map<Sameness.Block<A>, Admits> left, int atMost) {
-        if (atMost < left.size()) {
-            return false;
-        }
-        Map<Sameness.Block<A>, Object> given = new LinkedHashMap<>();
-        for (Map.Entry<Sameness.Block<A>, Admits> each : left.entrySet()) {
-            Set<Object> away = new LinkedHashSet<>();
-            apartFrom(each.getKey()).forEach(next -> {
-                Object held = given.get(next);
-                if (held != null) {
-                    away.add(held);
-                }
-            });
-            switch (each.getValue()) {
-                case Admits.These it -> {
-                    Value free = it.values().stream().filter(one -> !away.contains(one))
-                            .findFirst().orElse(null);
-                    if (free == null) {
-                        return false;
-                    }
-                    given.put(each.getKey(), free);
-                }
-                // More values than there are blocks, so more than its neighbours can have taken.
-                case Admits.MoreThanCounted _ -> given.put(each.getKey(), new Object());
-                case Admits.NotKnown _ -> {
-                    return false;
-                }
-            }
-        }
-        return true;
+        // Every block holding more values than there are blocks, so each of them can be given one
+        // no other took whatever order they are taken in. Which is the whole of what is claimed
+        // here: taking them in an order and giving each the first value its neighbours have not
+        // taken finds an assignment for some relations and not for others, and which it is turns on
+        // the order the denials were stated in — so a relation would stand written one way and be
+        // undecided written the other, and the two are one relation.
+        return atMost >= left.size()
+                && left.values().stream().allMatch(each -> each instanceof Admits.MoreThanCounted);
     }
 
     /**

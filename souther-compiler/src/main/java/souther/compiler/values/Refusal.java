@@ -86,7 +86,34 @@ public sealed interface Refusal<A> {
     }
 
     /**
-     * Where two readings both left nothing were both refused.
+     * Where a conjunction with a side that holds nothing was refused.
+     *
+     * <p>A different question from {@link #shownByBoth}, and the answer is different. There, two
+     * readings of one set of rules both hold nothing and what can be said is what they agree on;
+     * here, a conjunction is refused because a side of it is, and where both sides are, both
+     * reasons are true of it. So two lacks at blocks are a lack at all of them.
+     *
+     * <p>A lack about blocks together is not put together with anything, and two of them that are
+     * not one lack leave nothing. Both are true of the conjunction, and naming one of them would be
+     * naming whichever side the caller wrote first — which is a fact about the writing.
+     */
+    static <A> Refusal<A> eitherShown(Refusal<A> one, Refusal<A> other) {
+        if (one.isNowhere()) {
+            return other;
+        }
+        if (other.isNowhere()) {
+            return one;
+        }
+        if (one instanceof AtEachOf<A> mine && other instanceof AtEachOf<A> theirs) {
+            Set<Sameness.Block<A>> both = new LinkedHashSet<>(mine.blocks());
+            both.addAll(theirs.blocks());
+            return new AtEachOf<>(both);
+        }
+        return one.equals(other) ? one : new Nowhere<>();
+    }
+
+    /**
+     * Where two readings that both left nothing were both refused.
      *
      * <p>The blocks each was refused at, kept where both were refused there. A block one of them
      * stands at is not one the pair has nothing at, so what can be said is what they agree on —

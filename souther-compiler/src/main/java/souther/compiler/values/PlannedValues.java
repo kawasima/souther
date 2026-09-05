@@ -327,12 +327,12 @@ public sealed interface PlannedValues<A> {
      * <p>Every alternative and not one of them, the same way a dead choice is put together: a
      * block one alternative is left nothing at is one another may stand at.
      */
-    default Set<Sameness.Block<A>> emptiedBlocks() {
+    default Refusal<A> refusedBy() {
         if (!(this instanceof Settled<A> it
                 && it.held() instanceof PlannedHeld.Alternatives<A> boxes)) {
-            return Set.of();
+            return new Refusal.Nowhere<>();
         }
-        Set<Sameness.Block<A>> everywhere = null;
+        Refusal<A> everywhere = null;
         for (PlannedHeld.Alternative<A> box : boxes.boxes()) {
             Set<Sameness.Block<A>> here = new LinkedHashSet<>();
             box.at().forEach((block, plan) -> {
@@ -340,16 +340,13 @@ public sealed interface PlannedValues<A> {
                     here.add(block);
                 }
             });
-            if (everywhere == null) {
-                everywhere = here;
-            } else {
-                everywhere.retainAll(here);
-            }
-            if (everywhere.isEmpty()) {
-                return Set.of();
+            Refusal<A> said = Refusal.atEachOf(here);
+            everywhere = everywhere == null ? said : Refusal.shownByBoth(everywhere, said);
+            if (everywhere.isNowhere()) {
+                return new Refusal.Nowhere<>();
             }
         }
-        return everywhere == null ? Set.of() : Collections.unmodifiableSet(everywhere);
+        return everywhere == null ? new Refusal.Nowhere<>() : everywhere;
     }
 
     /** What every alternative holds as one value. */
@@ -817,22 +814,26 @@ public sealed interface PlannedValues<A> {
                                                              Allowance<A> by, Unbuilt<A> gaveUp) {
         Set<AdmissibleValues.Alternative<A>> live = new LinkedHashSet<>();
         Set<PlannedHeld.Alternative<A>> standing = new LinkedHashSet<>();
-        Set<Sameness.Block<A>> emptied = null;
+        Refusal<A> dropped = null;
         for (PlannedHeld.Alternative<A> box : boxes.boxes()) {
-            Map<Sameness.Block<A>, ValueSet> at = builtIn(box, by, gaveUp);
-            if (at.values().stream().noneMatch(ValueSet::isEmpty)) {
-                // The relation crosses unchanged. What a denial says is about the blocks and not
-                // about what they were described as holding, so building the descriptions is not
-                // where it could be lost or gained.
-                live.add(new AdmissibleValues.Alternative<>(
-                        new AdmissibleValues.Box<>(at), box.apart()));
-                standing.add(box);
-                continue;
+            // The relation crosses unchanged. What a denial says is about the blocks and not about
+            // what they were described as holding, so building the descriptions is not where it
+            // could be lost or gained — and whether anything stands in the alternative is asked the
+            // one way it is asked wherever two of them are put together.
+            AdmissibleValues.Held<A> said = new AdmissibleValues.Alternative.Met<>(
+                    builtIn(box, by, gaveUp), box.apart()).stands();
+            switch (said) {
+                case AdmissibleValues.Held.Alternatives<A> it -> {
+                    live.addAll(it.boxes());
+                    standing.add(box);
+                }
+                case AdmissibleValues.Held.Nothing<A> it -> dropped = dropped == null ? it.shown()
+                        : Refusal.shownByBoth(dropped, it.shown());
             }
-            emptied = AdmissibleValues.alsoEmptied(emptied, at);
         }
         if (live.isEmpty()) {
-            return new AdmissibleValues.Held.Nothing<>(emptied == null ? Set.of() : emptied);
+            return new AdmissibleValues.Held.Nothing<>(
+                    dropped == null ? new Refusal.Nowhere<>() : dropped);
         }
         // What each block the alternatives agree on holds across the ones that stand, described
         // first and built once. Read off the sets instead, a join of two languages would be a

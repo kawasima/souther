@@ -270,12 +270,20 @@ public final class ConjoinedAdmissibleValues<A> {
         return names == null ? Sameness.Block.of(subject) : names.blockOf(subject);
     }
 
-    /** The blocks of several positions the rules left no value, over every reading held here —
-     *  see {@link AdmissibleValues#emptiedBlocks}. */
-    public Set<Sameness.Block<A>> emptiedBlocks() {
-        Set<Sameness.Block<A>> out = new LinkedHashSet<>();
-        factors.forEach(each -> out.addAll(each.emptiedBlocks()));
-        return Collections.unmodifiableSet(out);
+    /**
+     * Where a factor was refused, over every reading held here — see
+     * {@link AdmissibleValues#refusedBy}.
+     *
+     * <p>Every factor refused is refused of the conjunction, so what is put together is what each
+     * of them was refused by ({@link Refusal#eitherShown}) and not what they agree on. The factors
+     * name disjoint vocabularies, so two lacks at blocks are a lack at all of them.
+     */
+    public Refusal<A> refusedBy() {
+        Refusal<A> out = null;
+        for (AdmissibleValues<A> each : factors) {
+            out = out == null ? each.refusedBy() : Refusal.eitherShown(out, each.refusedBy());
+        }
+        return out == null ? new Refusal.Nowhere<>() : out;
     }
 
     /** Every subject any factor names. */

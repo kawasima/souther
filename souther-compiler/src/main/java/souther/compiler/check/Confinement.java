@@ -247,7 +247,7 @@ sealed interface Confinement<A> {
                                       PositionEnvelope.Restrictions<A> outside,
                                       Admitting<A> admitting,
                                       Refusing<A> refused,
-                                      Set<Sameness.Block<A>> heldAsOneAndEmptied) {
+                                      Refusal<A> alreadyShown) {
         // The ends holding a position nothing, which is that reading's own answer whatever else
         // places the position: a reading left with no range at all names none, and where it names
         // one, that is where the lack is.
@@ -339,14 +339,15 @@ sealed interface Confinement<A> {
         // it, since a proof that consults no range is one no placing of a position took part in.
         if (admitting.of((_, _) -> Emptiness.NONEMPTY,
                 relating(carriers, _ -> OrderedInterval.OPEN)) == Emptiness.EMPTY) {
-            // With the places where what the values were left nothing at is a value several
-            // positions share. Each of them holds something on its own, so the general answer —
-            // that the values admit nothing — is true and says less than what was shown.
-            return heldAsOneAndEmptied.isEmpty()
-                    ? new Admission<>(Emptiness.EMPTY, EmptyBy.VALUES, new Refusal.Nowhere<>(),
-                            Shown.BY_THE_READINGS)
-                    : Admission.eachOf(Emptiness.EMPTY, EmptyBy.POSITIONS_HELD_AS_ONE,
-                            heldAsOneAndEmptied, Shown.BY_THE_READINGS);
+            // With where the reading was refused, where that is nearer than the general answer.
+            // Each of those places holds something on its own, so "the values admit nothing" is
+            // true of the declaration and says less than what was shown — and which of the two
+            // nearer sentences it is is the refusal's to say and not a second reading of it.
+            return new Admission<>(Emptiness.EMPTY, switch (alreadyShown) {
+                case Refusal.Nowhere<A> _ -> EmptyBy.VALUES;
+                case Refusal.AtEachOf<A> _ -> EmptyBy.POSITIONS_HELD_AS_ONE;
+                case Refusal.OfThemTogether<A> _ -> EmptyBy.POSITIONS_HELD_APART;
+            }, alreadyShown, Shown.BY_THE_READINGS);
         }
         return new Admission<>(Emptiness.EMPTY, EmptyBy.SET_AND_RANGE, where, how);
     }
@@ -542,7 +543,7 @@ sealed interface Confinement<A> {
                     // walk says so of each alternative that carries one.
                     (asked, _) -> values.anyAlternativeAdmits(asked),
                     (asked, _) -> values.refusedInEveryAlternativeAt(asked),
-                    values.emptiedBlocks());
+                    values.refusedBy());
         }
 
         /**
@@ -693,7 +694,7 @@ sealed interface Confinement<A> {
             Admission<A> said = Confinement.admission(ordered, carriers, outside,
                     made.values()::anyAlternativeAdmits,
                     made.values()::refusedInEveryAlternativeAt,
-                    made.values().emptiedBlocks());
+                    made.values().refusedBy());
             // A position nobody could build is one what stands there is wider than the rules, so a
             // pair the ranges did not refuse may still hold nothing. Settled empty is settled all
             // the same: a narrower reading refuses no less.
@@ -758,7 +759,7 @@ sealed interface Confinement<A> {
         public Admission<A> admission(PositionEnvelope.Restrictions<A> outside) {
             return shown != null ? shown : Confinement.admission(ordered, carriers, outside,
                     values::anyAlternativeAdmits, values::refusedInEveryAlternativeAt,
-                    values.emptiedBlocks());
+                    values.refusedBy());
         }
 
         /** The positions the order leaves no value at. */

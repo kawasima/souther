@@ -140,8 +140,33 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         assertEquals(Set.of(P, Q, R), few.blocks());
         assertEquals(Set.of(A, B), few.available());
 
-        assertInstanceOf(Apartness.Reduction.Standing.class,
+        // And the chain is not refused. Whether it is said to stand is a different question: a
+        // value apiece exists for it and no argument here shows one, which is what
+        // {@link Apartness.Reduction.NotKnown} says.
+        assertInstanceOf(Apartness.Reduction.NotKnown.class,
                 chain.reduce(holding(java.util.Map.of())));
+    }
+
+    /**
+     * An assignment is claimed only where every order of the blocks shows one.
+     *
+     * <p>The same relation over the same values, stated two ways round. Both leave every block more
+     * values than the relation has blocks, so each of them can be given one no other took whatever
+     * order they are taken in — and a reading that took the blocks in the order the denials were
+     * stated in would answer one of these and not the other, which is a fact about the writing.
+     */
+    @Test
+    void whetherAnAssignmentIsClaimedDoesNotTurnOnHowTheDenialsWereStated() {
+        Apartness<String> one = Apartness.of("p", "q")
+                .and(Apartness.of("p", "r")).and(Apartness.of("q", "r"));
+        Apartness<String> back = Apartness.of("q", "r")
+                .and(Apartness.of("p", "r")).and(Apartness.of("p", "q"));
+
+        assertEquals(one, back, "one relation, written two ways");
+        assertInstanceOf(Apartness.Reduction.Standing.class,
+                one.reduce((_, _) -> new Admits.MoreThanCounted()));
+        assertInstanceOf(Apartness.Reduction.Standing.class,
+                back.reduce((_, _) -> new Admits.MoreThanCounted()));
     }
 
     /**
@@ -196,31 +221,50 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
     }
 
     /**
-     * A conjunction that makes a denial into a value stated to differ from itself keeps the
-     * alternative, and the relation is what refuses it.
+     * A conjunction that makes a denial into a value stated to differ from itself holds nothing,
+     * and says what by.
      *
-     * <p>Dropped where the sides are put together, the rules that emptied it would be gone with it
-     * — and a reader asking why the declaration holds nothing would be told the general answer,
-     * which is that the values admit nothing. What an alternative was refused by is only knowable
-     * while it is being refused, so the argument is made where the argument is read.
+     * <p>Nothing stands in such an alternative, so it is no member of a union — a choice between it
+     * and something else is that something else. Kept as one so that its argument could be read
+     * later, the union would hold what its alternatives do not and a reading of it would say the
+     * declaration admits what none of them does.
+     *
+     * <p>So the argument leaves with it. What refused an alternative is knowable only while it is
+     * being refused, and it is carried out rather than worked out again from what is left.
      */
     @Test
-    void aConjunctionThatEmptiesAnAlternativeByItsRelationSaysSo() {
+    void aConjunctionEmptiedByItsRelationHoldsNothingAndSaysWhat() {
         Allowance<String> sets = AsACompilationAllows.forAdmittedValues();
         AdmissibleValues<String> both = AdmissibleValues.<String>holdingAsOne("p", "r")
                 .meet(AdmissibleValues.heldApart("p", "r"), sets);
 
-        // Nothing is asked of what the block holds: a value stated to differ from itself is refused
-        // by reading the rule, which is why this is settled before any value is.
-        Refusal<String> why = both.refusedInEveryAlternativeAt(
-                (_, _) -> Emptiness.NONEMPTY,
-                (apart, _) -> apart.reduce((_, _) -> new Admits.NotKnown()));
+        assertTrue(both.isBottom(), "no value of these rules can be written");
 
-        if (!(why instanceof Refusal.OfThemTogether<String> together)) {
-            throw new AssertionError("refused by what its blocks are held as: " + why);
+        if (!(both.refusedBy() instanceof Refusal.OfThemTogether<String> together)) {
+            throw new AssertionError("refused by what its blocks are held as: " + both.refusedBy());
         }
         assertInstanceOf(RelationalWitness.ABlockApartFromItself.class, together.why());
         assertEquals(Set.of(Sameness.of("p", "r").blockOf("p")), together.blocks());
+    }
+
+    /**
+     * And a choice between it and an alternative somebody can take is that alternative.
+     *
+     * <p>A union with an empty member is the union of the rest, so what the choice leaves at
+     * {@code p} is what the branch anybody can take leaves it. Kept as a member, the dead branch
+     * says nothing about {@code p} — nothing narrowed it there — and the choice would come back
+     * admitting every value.
+     */
+    @Test
+    void andAChoiceBetweenItAndSomethingStandingIsThatSomething() {
+        Allowance<String> sets = AsACompilationAllows.forAdmittedValues();
+        AdmissibleValues<String> dead = AdmissibleValues.<String>holdingAsOne("p", "r")
+                .meet(AdmissibleValues.heldApart("p", "r"), sets);
+
+        assertEquals(ValueSet.just(A),
+                dead.joinApart(AdmissibleValues.at("p", ValueSet.just(A)), sets).at("p"));
+        assertEquals(ValueSet.just(A),
+                AdmissibleValues.at("p", ValueSet.just(A)).joinApart(dead, sets).at("p"));
     }
 
     /** What a reduction that refused was refused by. */
