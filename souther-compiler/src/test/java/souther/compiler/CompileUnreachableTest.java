@@ -100,16 +100,17 @@ class CompileUnreachableTest {
         // The position holds an Int, which is a long on the JVM, so the abort has to leave the stack
         // in the shape the arm beside it leaves: a verified method, not one the verifier rejects.
         //
-        // Matched on a field of a pair whose rule relates its two fields. The premise is one nothing
-        // here settles (spec §unreachable-is-for-what-the-model-rules-out), which is what leaves a
-        // `B` both writable at the boundary and able to reach the abort.
+        // Matched on a field of a pair one of whose rules is stated as an alternative to a rule
+        // nothing here reads. The premise is one nothing here settles (spec
+        // §unreachable-is-for-what-the-model-rules-out), which is what leaves a `B` both writable
+        // at the boundary and able to reach the abort.
         String module = """
                 module demo
 
                 data A
                 data B
                 data AB = A | B
-                data Pair = { l: AB, r: AB } invariant l /= r
+                data Pair = { l: AB, s: String } invariant either = UNREAD_S || l == A
                 data Out = Int
 
                 behavior run : (v: Pair) -> Out constructs Out
@@ -119,15 +120,15 @@ class CompileUnreachableTest {
                         | A -> 1
                         | B -> unreachable "a B never reaches this rule"
                 )
-                """;
+                """.replace("UNREAD_S", ARuleNoReadingTakesIn.about("s"));
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(module), getClass().getClassLoader());
         Object impl = Emitted.behavior(loader, "demo", "run").getConstructor().newInstance();
 
         assertEquals(1L, Codecs.encode(loader, "demo.Out", Codecs.apply(impl,
-                Codecs.decoded(loader, "demo.Pair", java.util.Map.of("l", "A", "r", "B")))));
+                Codecs.decoded(loader, "demo.Pair", java.util.Map.of("l", "A", "s", "x")))));
         UnreachableReached aborted = assertThrows(UnreachableReached.class,
                 () -> Codecs.apply(impl, Codecs.decoded(loader, "demo.Pair",
-                        java.util.Map.of("l", "B", "r", "A"))));
+                        java.util.Map.of("l", "B", "s", "x"))));
         assertTrue(aborted.getMessage().contains("a B never reaches this rule"), aborted.getMessage());
     }
 
@@ -206,14 +207,15 @@ class CompileUnreachableTest {
     @Test
     void anUnreachableBoundByALetAborts() throws Throwable {
         // Nothing states a type here, so the binding takes the one thing `unreachable` has: no value.
-        // The premise is one nothing settles, as above, which is what keeps the `B` writable.
+        // The premise is one nothing settles, as above — an alternative to a rule nothing here
+        // reads — which is what keeps the `B` writable.
         String module = """
                 module demo
 
                 data A
                 data B
                 data AB = A | B
-                data Pair = { l: AB, r: AB } invariant l /= r
+                data Pair = { l: AB, s: String } invariant either = UNREAD_S || l == A
                 data Out = Int
 
                 behavior run : (v: Pair) -> Out constructs Out
@@ -224,15 +226,15 @@ class CompileUnreachableTest {
                         | B -> unreachable "a B never reaches this rule"
                     Out(n)
                 }
-                """;
+                """.replace("UNREAD_S", ARuleNoReadingTakesIn.about("s"));
         BytesClassLoader loader = new BytesClassLoader(Compiler.compile(module), getClass().getClassLoader());
         Object impl = Emitted.behavior(loader, "demo", "run").getConstructor().newInstance();
 
         assertEquals(1L, Codecs.encode(loader, "demo.Out", Codecs.apply(impl,
-                Codecs.decoded(loader, "demo.Pair", java.util.Map.of("l", "A", "r", "B")))));
+                Codecs.decoded(loader, "demo.Pair", java.util.Map.of("l", "A", "s", "x")))));
         assertThrows(UnreachableReached.class,
                 () -> Codecs.apply(impl, Codecs.decoded(loader, "demo.Pair",
-                        java.util.Map.of("l", "B", "r", "A"))));
+                        java.util.Map.of("l", "B", "s", "x"))));
     }
 
     @Test

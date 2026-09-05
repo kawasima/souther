@@ -55,7 +55,8 @@ class ReadingsConjoinedAreNotMultipliedTest {
 
         assertEquals(twoAlternatives("a", "b").at("a"), both.at("a"));
         assertEquals(twoAlternatives("c", "d").at("d"), both.at("d"));
-        assertEquals(Emptiness.NONEMPTY, both.anyAlternativeAdmits((_, _) -> Emptiness.NONEMPTY));
+        assertEquals(Emptiness.NONEMPTY, both.anyAlternativeAdmits((_, _) -> Emptiness.NONEMPTY,
+                (_, _) -> new Apartness.Reduction.Standing<>()));
     }
 
     /**
@@ -94,7 +95,8 @@ class ReadingsConjoinedAreNotMultipliedTest {
                                 AdmissibleValues.at("c", just("x"))
                                         .meet(AdmissibleValues.at("c", just("y")), SETS), SETS));
 
-        assertEquals(Emptiness.EMPTY, both.anyAlternativeAdmits((_, _) -> Emptiness.NONEMPTY));
+        assertEquals(Emptiness.EMPTY, both.anyAlternativeAdmits((_, _) -> Emptiness.NONEMPTY,
+                (_, _) -> new Apartness.Reduction.Standing<>()));
     }
 
     /**

@@ -248,31 +248,36 @@ final class AdmissibleReading {
             read = sided(b.right(), b.left(), states, at);
         }
         if (read == null) {
-            read = holdingAsOne(b, states, at);
+            read = relating(b, states, at);
         }
         return read != null ? read : unreadable(b, at);
     }
 
     /**
-     * The two positions a comparison holds as one value, or null where it holds none.
+     * What a comparison between two positions states about the pair, or null where it is not one.
      *
-     * <p>Only where the comparison states that they are equal. Which that is has been settled
-     * already — {@code states} is what the comparison claims once the denials it stands under have
-     * been counted — so {@code p /= r} and {@code !(p == r)} arrive here alike and are not this: a
-     * denial removes the diagonal from a product rather than making one side of it, which is not
-     * something this reading can hold.
+     * <p>Two rules and one reading of them. An equality says the two are one side of the product;
+     * a denial says no one value stands at both, which makes no side and is held beside the product
+     * ({@code Apartness}). Which of the two it is has been settled already — {@code states} is what
+     * the comparison claims once the denials it stands under have been counted — so {@code p /= r}
+     * and {@code !(p == r)} arrive here alike and are read as the same rule.
      *
-     * <p>And only between two positions. A position compared with itself says nothing, and a
-     * comparison naming one position and something this could not read is not a rule about a pair.
+     * <p>Read here and not given up on. Left as a rule that reached no reading, what the rules
+     * stated about {@code p} and what they stated about {@code r} stayed two facts about two
+     * places, and a declaration whose positions cannot differ was admitted.
+     *
+     * <p>Only between two positions. A comparison of a position with itself is a rule about one
+     * position and is left where every rule this does not read is left, and a comparison naming one
+     * position and something this could not read is not a rule about a pair either.
      */
-    private PlannedValues<FactSubject> holdingAsOne(Core.Binary b, boolean states, Denotations at) {
-        if (!states) {
-            return null;
-        }
+    private PlannedValues<FactSubject> relating(Core.Binary b, boolean states, Denotations at) {
         FactSubject here = positionIn(b.left(), at);
         FactSubject there = positionIn(b.right(), at);
-        return here == null || there == null || here.equals(there)
-                ? null : PlannedValues.holdingAsOne(here, there);
+        if (here == null || there == null || here.equals(there)) {
+            return null;
+        }
+        return states ? PlannedValues.holdingAsOne(here, there)
+                : PlannedValues.heldApart(here, there);
     }
 
     /**

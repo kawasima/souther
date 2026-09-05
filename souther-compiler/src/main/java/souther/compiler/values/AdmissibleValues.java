@@ -402,7 +402,8 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
             return Sameness.of(at.keySet());
         }
 
-        ValueSet get(Sameness.Block<A> block) {
+        /** What this says stands at {@code block}, which is every value where it says nothing. */
+        public ValueSet get(Sameness.Block<A> block) {
             return at.getOrDefault(block, ValueSet.ANY);
         }
 
@@ -895,6 +896,34 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
     }
 
     /**
+     * Two positions said to hold different values, which is what a denial between them states.
+     *
+     * <p>Narrowing neither, the way an equality narrows neither: what a denial says is that no one
+     * value stands at both, which is a relation between two sides of the product rather than a
+     * statement about either. So it is held beside the product ({@link Apartness}) and what it
+     * comes to is worked out where the values each side is left are in hand.
+     *
+     * <p><b>And guaranteeing nothing at either of them.</b> What is guaranteed is a lower bound —
+     * these values are admitted whatever else is read — and no value can be shown admitted at one
+     * of two positions held apart without an assignment for the other. Over a carrier of one value
+     * a denial admits nothing at all, so a guarantee of every value would be false of a model
+     * somebody can write. Said here rather than wherever a denial is met with something, because
+     * meeting a guarantee with nothing leaves nothing: every conjunction this rule reaches has it
+     * without a second rule saying so, and a choice beside it keeps what its other branch
+     * guarantees, which is right — a value satisfying that branch is under no denial.
+     */
+    public static <A> AdmissibleValues<A> heldApart(A here, A there) {
+        Sameness.Block<A> one = Sameness.Block.of(here);
+        Sameness.Block<A> other = Sameness.Block.of(there);
+        Map<Sameness.Block<A>, ValueSet> promised = new LinkedHashMap<>();
+        promised.put(one, ValueSet.NONE);
+        promised.put(other, ValueSet.NONE);
+        return new AdmissibleValues<>(
+                one(new Alternative<>(new Box<>(Map.of()), Apartness.of(here, there))),
+                Map.of(), Standing.nothing(), promised, ValueSet.ANY, true, Set.of(), Set.of());
+    }
+
+    /**
      * A rule this could not read, which says nothing about any position and spoils the ones it
      * names.
      *
@@ -1058,7 +1087,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      * reading is settled empty only where every alternative is, since one nobody worked out may yet
      * hold something.
      */
-    public Emptiness anyAlternativeAdmits(AskedOfEachBlock<A> asked) {
+    public Emptiness anyAlternativeAdmits(AskedOfEachBlock<A> asked, AskedOfARelation<A> relating) {
         if (held instanceof Held.Alternatives<A> it) {
             Emptiness any = Emptiness.EMPTY;
             for (Alternative<A> box : it.boxes()) {
@@ -1068,6 +1097,12 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
                     if (stands == Emptiness.EMPTY) {
                         break;
                     }
+                }
+                // And what its denials come to, asked after the blocks and not before. An
+                // alternative already refused at a block is one no relation has to be read for,
+                // and reading it first would spend on every alternative what one question settled.
+                if (stands != Emptiness.EMPTY) {
+                    stands = stands.met(relating.of(box.apart(), box.product()).emptiness());
                 }
                 any = any.joined(stands);
                 if (any == Emptiness.NONEMPTY) {
@@ -1096,34 +1131,49 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      * What it cannot do is disagree with that answer about anything a reader acts on: what comes
      * back is somewhere to name, and none of them is the general form.
      */
-    public Set<Sameness.Block<A>> refusedInEveryAlternativeAt(AskedOfEachBlock<A> asked) {
+    public Refusal<A> refusedInEveryAlternativeAt(AskedOfEachBlock<A> asked,
+                                                  AskedOfARelation<A> relating) {
         if (!(held instanceof Held.Alternatives<A> it)) {
-            return Set.of();
+            return new Refusal.Nowhere<>();
         }
-        Set<Sameness.Block<A>> everywhere = null;
+        Refusal<A> everywhere = null;
         for (Alternative<A> box : it.boxes()) {
-            Set<Sameness.Block<A>> here = new LinkedHashSet<>();
-            // The block and not its positions. What was refused is the one value those positions
-            // share, and each of them may be left something on its own — taken apart here, the
-            // proof would say a lack is at a place whose own rules are fine with it.
-            box.at().forEach((block, set) -> {
-                if (asked.of(block, set) == Emptiness.EMPTY) {
-                    here.add(block);
-                }
-            });
-            if (here.isEmpty()) {
-                return Set.of();
+            Refusal<A> here = refusalIn(box, asked, relating);
+            if (here.isNowhere()) {
+                return new Refusal.Nowhere<>();
             }
-            if (everywhere == null) {
-                everywhere = here;
-            } else {
-                everywhere.retainAll(here);
-                if (everywhere.isEmpty()) {
-                    return Set.of();
-                }
+            everywhere = everywhere == null ? here : Refusal.shownByBoth(everywhere, here);
+            if (everywhere.isNowhere()) {
+                return new Refusal.Nowhere<>();
             }
         }
-        return everywhere == null ? Set.of() : Collections.unmodifiableSet(everywhere);
+        return everywhere == null ? new Refusal.Nowhere<>() : everywhere;
+    }
+
+    /**
+     * Where one alternative was refused, which is at its blocks or about several of them together.
+     *
+     * <p>The blocks first, because a lack at a block is the nearer answer: it names a place whose
+     * own rules leave it nothing, where a lack about several of them names no such place. An
+     * alternative refused both ways is refused at the blocks, and the relation is what is left to
+     * say where no block has nothing on its own.
+     */
+    private Refusal<A> refusalIn(Alternative<A> box, AskedOfEachBlock<A> asked,
+                                 AskedOfARelation<A> relating) {
+        Set<Sameness.Block<A>> here = new LinkedHashSet<>();
+        // The block and not its positions. What was refused is the one value those positions
+        // share, and each of them may be left something on its own — taken apart here, the
+        // proof would say a lack is at a place whose own rules are fine with it.
+        box.at().forEach((block, set) -> {
+            if (asked.of(block, set) == Emptiness.EMPTY) {
+                here.add(block);
+            }
+        });
+        if (!here.isEmpty()) {
+            return new Refusal.AtEachOf<>(here);
+        }
+        return relating.of(box.apart(), box.product()) instanceof Apartness.Reduction.Nothing<A> it
+                ? new Refusal.OfThemTogether<>(it.why()) : new Refusal.Nowhere<>();
     }
 
     /**

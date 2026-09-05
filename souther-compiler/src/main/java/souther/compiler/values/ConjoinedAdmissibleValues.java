@@ -179,10 +179,10 @@ public final class ConjoinedAdmissibleValues<A> {
      * <p>Nothing read is every value at every position, which stands whatever is asked — the
      * question is one about which values a rule leaves, and no rule left any.
      */
-    public Emptiness anyAlternativeAdmits(AskedOfEachBlock<A> asked) {
+    public Emptiness anyAlternativeAdmits(AskedOfEachBlock<A> asked, AskedOfARelation<A> relating) {
         Emptiness stands = Emptiness.NONEMPTY;
         for (AdmissibleValues<A> each : factors) {
-            stands = stands.met(each.anyAlternativeAdmits(asked));
+            stands = stands.met(each.anyAlternativeAdmits(asked, relating));
             if (stands == Emptiness.EMPTY) {
                 return stands;
             }
@@ -198,10 +198,27 @@ public final class ConjoinedAdmissibleValues<A> {
      * that position is — and a position every alternative of its own factor is refused at is one
      * every alternative of the conjunction is refused at.
      */
-    public Set<Sameness.Block<A>> refusedInEveryAlternativeAt(AskedOfEachBlock<A> asked) {
-        Set<Sameness.Block<A>> out = new LinkedHashSet<>();
-        factors.forEach(each -> out.addAll(each.refusedInEveryAlternativeAt(asked)));
-        return Collections.unmodifiableSet(out);
+    public Refusal<A> refusedInEveryAlternativeAt(AskedOfEachBlock<A> asked,
+                                                  AskedOfARelation<A> relating) {
+        Set<Sameness.Block<A>> blocks = new LinkedHashSet<>();
+        Refusal<A> together = null;
+        for (AdmissibleValues<A> each : factors) {
+            switch (each.refusedInEveryAlternativeAt(asked, relating)) {
+                case Refusal.AtEachOf<A> it -> blocks.addAll(it.blocks());
+                // The first of them, which is the first in the order the readings arrived and so
+                // the order the rules were written. Every factor refused is refused of the
+                // conjunction, so each of these is true of it and naming one is naming one of
+                // several true things; put together, two lacks about two sets of blocks would say
+                // that no assignment to all of them stands, which neither factor showed.
+                case Refusal.OfThemTogether<A> it -> together =
+                        together == null ? it : together;
+                case Refusal.Nowhere<A> _ -> { }
+            }
+        }
+        if (!blocks.isEmpty()) {
+            return new Refusal.AtEachOf<>(blocks);
+        }
+        return together == null ? new Refusal.Nowhere<>() : together;
     }
 
     /**

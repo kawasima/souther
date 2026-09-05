@@ -70,9 +70,9 @@ class ACaseTheModelRulesOutIsNotOwedARowTest {
     /**
      * A claim nothing settles.
      *
-     * <p>{@code f /= g} refuses pairs and no value of {@code f} on its own, and it is a rule this
-     * compiler does not take into what a position may hold — so nothing here says whether an
-     * {@code Off} arrives, and the case keeps what it was owed.
+     * <p>The rule about {@code f} is stated as an alternative to one this compiler does not take
+     * into what a position may hold, so {@code f} is left open by a branch that never named it —
+     * nothing here says whether an {@code Off} arrives, and the case keeps what it was owed.
      */
     private static final String UNPROVEN = """
             module example.probe
@@ -81,7 +81,7 @@ class ACaseTheModelRulesOutIsNotOwedARowTest {
             data Off
             data Pending
             data Flag = On | Off | Pending
-            data T = { f: Flag, g: Flag } invariant f /= g
+            data T = { f: Flag, g: String } invariant either = UNREAD_G || f == On
             data Answer = Int
 
             behavior pick : (t: T) -> Answer
@@ -93,8 +93,8 @@ class ACaseTheModelRulesOutIsNotOwedARowTest {
                 | Off     -> unreachable "the probe never passes Off"
 
             example pick
-                | "on" : (T { f = On, g = Off }) -> Answer(1)
-            """;
+                | "on" : (T { f = On, g = "x" }) -> Answer(1)
+            """.replace("UNREAD_G", ARuleNoReadingTakesIn.about("g"));
 
     private static Compilation measured(String source) {
         Compilation compilation = Compilation.ofSource(source, "Main");
@@ -974,7 +974,7 @@ class ACaseTheModelRulesOutIsNotOwedARowTest {
     void theArmUnderTheForkIsStillNotAnArm() {
         CompileException refused = org.junit.jupiter.api.Assertions.assertThrows(
                 CompileException.class, () -> Compiler.compile(UNPROVEN + """
-                            | "off" : (T { f = Off, g = On }) -> Answer(0)
+                            | "off" : (T { f = Off, g = "x" }) -> Answer(0)
                         """));
 
         assertEquals("E1911", refused.diagnostics().get(0).code(), refused.getMessage());

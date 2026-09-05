@@ -95,6 +95,20 @@ public sealed interface PlannedValues<A> {
     }
 
     /**
+     * Two positions said to hold different values — see {@link AdmissibleValues#heldApart}.
+     */
+    static <A> PlannedValues<A> heldApart(A here, A there) {
+        Map<Sameness.Block<A>, AdmittedPlan> promised = new LinkedHashMap<>();
+        promised.put(Sameness.Block.of(here), AdmittedPlan.NONE);
+        promised.put(Sameness.Block.of(there), AdmittedPlan.NONE);
+        return new Settled<>(
+                PlannedHeld.one(new PlannedHeld.Alternative<>(
+                        new PlannedHeld.Box<>(Map.of()), Apartness.of(here, there))),
+                Map.of(), Standing.nothing(), promised, AdmittedPlan.ANY, true,
+                Set.of(), Set.of());
+    }
+
+    /**
      * A rule this could not read, which says nothing about any position and spoils the ones it
      * names — see {@link AdmissibleValues#unreadable}.
      */
@@ -301,6 +315,20 @@ public sealed interface PlannedValues<A> {
             }
         }
         return everywhere == null ? Set.of() : Collections.unmodifiableSet(everywhere);
+    }
+
+    /**
+     * Whether some alternative states two of its blocks to hold different values.
+     *
+     * <p>Asked and not answered. What a denial comes to is settled against the values its blocks
+     * are left, and on this side of {@link #resolve} those are descriptions — so a reading holding
+     * one has a rule nothing here has read, and a caller told nothing about it would take the
+     * answer about the sides for the answer about the alternative.
+     */
+    default boolean anyDenialRead() {
+        return this instanceof Settled<A> it
+                && it.held() instanceof PlannedHeld.Alternatives<A> boxes
+                && boxes.boxes().stream().anyMatch(box -> !box.apart().isEmpty());
     }
 
     /** What every alternative holds as one value. */

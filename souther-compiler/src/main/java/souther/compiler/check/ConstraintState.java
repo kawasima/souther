@@ -7,6 +7,7 @@ import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.Rel;
 import souther.compiler.values.AdmissibleValues;
 import souther.compiler.values.ConjoinedAdmissibleValues;
+import souther.compiler.values.Refusal;
 
 import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
@@ -286,10 +287,20 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
             case ORDER -> new Emptiness.EmptyOrderedInterval();
             case SET_AND_RANGE -> new Emptiness.NoAllowedValueInRange();
             case POSITIONS_HELD_AS_ONE -> new Emptiness.NoCommonValueForEqualPositions();
+            case POSITIONS_HELD_APART -> new Emptiness.NoDistinctValuesForPositionsHeldApart();
             case NOTHING_SHOWN, VALUES, RULES_TOGETHER -> null;
         } : new Emptiness.NoAllowedValueWithinRequiredBounds();
         if (said == null) {
             return Optional.ofNullable(why);
+        }
+        // Positions stated to differ, which is a lack about all of them at once and at none of
+        // them. Said as its own place rather than through the one below: that one names the block
+        // whose positions are one value, and these positions are not one value — read through it,
+        // a proof would say the rules hold them as one, which is what they state they are not.
+        if (shown.site() instanceof Refusal.OfThemTogether<A> it) {
+            List<Emptiness.AtAField.Where> apart = declaredIn(it.why().blocks(), positions);
+            return Optional.of(apart.size() < 2 ? Emptiness.preferred(why, said)
+                    : Emptiness.preferred(why, new Emptiness.AtPositionsHeldApart(apart, said)));
         }
         // One block of the proof is named, and it is named as what it is: a place where it is one
         // position, and the positions together where it is several.
@@ -354,6 +365,38 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
         List<Emptiness.AtAField.Where> out = new ArrayList<>();
         positions.forEach((position, place) -> {
             if (named.holds(position)) {
+                out.add(place);
+            }
+        });
+        return out;
+    }
+
+    /**
+     * Where the value declares the positions of every one of {@code blocks}, in that order.
+     *
+     * <p>All of them and not one, which is what parts this from {@link #nearestBlock}. A lack about
+     * blocks together is one lack about all of them, so every place it names is part of the
+     * sentence; there is no choosing between them, and dropping one would say the rules refuse
+     * fewer positions than they do.
+     *
+     * <p>Empty where the value declares none of one of those positions, which is a lack about
+     * subjects it does not name. What can be said then is what the general proof says.
+     */
+    private static <A> List<Emptiness.AtAField.Where> declaredIn(
+            Set<souther.compiler.values.Sameness.Block<A>> blocks,
+            SequencedMap<A, Emptiness.AtAField.Where> positions) {
+        Set<A> named = new java.util.LinkedHashSet<>();
+        for (souther.compiler.values.Sameness.Block<A> block : blocks) {
+            for (A member : block.members()) {
+                if (!positions.containsKey(member)) {
+                    return List.of();
+                }
+                named.add(member);
+            }
+        }
+        List<Emptiness.AtAField.Where> out = new ArrayList<>();
+        positions.forEach((position, place) -> {
+            if (named.contains(position)) {
                 out.add(place);
             }
         });

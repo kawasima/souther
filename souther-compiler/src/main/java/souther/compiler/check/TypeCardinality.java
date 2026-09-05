@@ -321,6 +321,7 @@ public final class TypeCardinality {
                  Emptiness.EmptyOrderedInterval _, Emptiness.NoAllowedValueInRange _,
                  Emptiness.NoAllowedValueWithinRequiredBounds _,
                  Emptiness.NoCommonValueForEqualPositions _,
+                 Emptiness.NoDistinctValuesForPositionsHeldApart _,
                  Emptiness.SetRequiresTooManyDistinctValues _,
                  Emptiness.NoAllowedCollectionSize _ -> true;
             case Emptiness.TheNameHasNone it ->
@@ -332,6 +333,7 @@ public final class TypeCardinality {
             case Emptiness.NoBaseInComponent _ -> false;
             case Emptiness.AtAField it -> restsOn(it.under(), within, shown);
             case Emptiness.AtEqualPositions it -> restsOn(it.under(), within, shown);
+            case Emptiness.AtPositionsHeldApart it -> restsOn(it.under(), within, shown);
             case Emptiness.NonEmptyCollectionWithNoElement it ->
                     restsOn(it.element(), within, shown);
             case Emptiness.AcrossEveryCase it ->
