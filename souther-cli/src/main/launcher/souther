@@ -14,20 +14,21 @@
 # from, and what is distributed here is a single file copied onto a path. So the launcher makes one
 # where the JDK running it can use it, under a name that is this version's alone.
 #
-# Only a run that loads the compiler may write the archive. An archive holds the classes the run
-# that wrote it loaded, and nothing later extends it to hold more, so one written by `souther doc`
-# would stand and serve every later compile with the few classes that command touched. Every
-# command reads one, and a command not listed here reads without ever writing, which is what an
-# unlisted new command should do.
+# Only a line that is expected to reach the compiler may write the archive. An archive holds the
+# classes the run that wrote it loaded, and nothing later extends it to hold more, so one written by
+# `souther doc` would stand and serve every later compile with the few classes that command
+# touched. Every command reads one, and a command not listed here reads without ever writing, which
+# is what an unlisted new command should do.
 #
-# What can be asked here is the command line, and a command line says what was asked for, not what
-# the run reached. A command that compiles reaches the compiler when it is asked to do its work,
-# and does not when it is asked what it takes: usage is answered from the command line and returns.
-# So an invocation asking for usage writes nothing, wherever the word for it stands. The line
-# cannot be read further than that without a second reading of it here, and the two would drift; a
-# malformed line that is refused before the compiler is reached writes a thin archive, and the
-# archive is what the next run reads. Between the two mistakes, the one that costs a compile the
-# reuse is worse than the one that costs it the writing, so what is unclear here does not write.
+# Expected, because what can be asked here is the command line, and a line says what was asked for,
+# not what the run reached. A command that compiles reaches the compiler when it is asked to do its
+# work, and does not when it is asked what it takes: usage is answered from the line and returns.
+# So a line asking for usage is left out, wherever the word for it stands and whatever it stands
+# for there. Nothing further is read: the line is read once already, by the command line itself,
+# and a second reading here would drift from it — so a malformed line, refused before the compiler
+# is reached, still writes its thin archive. Between the two mistakes, one costs the run that makes
+# it the writing and the other costs every run after it the reuse, and it is the second that is
+# worse, so what cannot be told apart here is left out.
 #
 # Writing is fatal to the run that writes it — a JVM told to write an archive where it cannot ends
 # in an initialization error, after the work it was asked for is done — so writing is offered only
