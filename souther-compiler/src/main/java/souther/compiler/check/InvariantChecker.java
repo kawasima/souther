@@ -572,8 +572,12 @@ public final class InvariantChecker {
          * <p>Asked here rather than compared where it matters, because what a reader wants to know
          * is whether the reading it is about to ask for is the declaration's own — and a reader
          * that wrote the comparison out would be deciding what that means again wherever it wrote
-         * it. {@link #stoppingAt} is what keeps the answer true of a reach built from an empty set,
-         * which is a reading that stops at nobody however it was asked for.
+         * it.
+         *
+         * <p>It answers by being that reach and not by reading itself, so what keeps it true is
+         * that every way of asking for one answers with {@link #EVERYTHING} where what it was given
+         * leaves nothing out. {@link #withoutClausesOf} is the one that cannot: what it is given is
+         * a test, and whether a test ever matches is not a question about the test.
          */
         boolean everything() {
             return this == EVERYTHING;
@@ -593,7 +597,8 @@ public final class InvariantChecker {
          * the clause away answers for all of them at once.
          */
         static Reach withoutParts(java.util.Set<PartId> parts) {
-            return new Reach(RulesLeftOut.NONE, PartsLeftOut.without(parts), _ -> false);
+            return parts.isEmpty() ? EVERYTHING
+                    : new Reach(RulesLeftOut.NONE, PartsLeftOut.without(parts), _ -> false);
         }
 
         /**

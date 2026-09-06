@@ -1,7 +1,6 @@
 package souther.compiler.query;
 
 import souther.compiler.check.DeclarationReadings;
-import souther.compiler.check.ExpandedClauseLookup;
 import souther.compiler.check.LentReadings;
 import souther.compiler.source.SourceId;
 import souther.compiler.types.TypeKey;
@@ -142,7 +141,7 @@ public final class Db {
      * <p>One per store, made when it is first asked for, because sharing among readers is the whole
      * of what it does and two of them would share nothing.
      */
-    DeclarationReadings readings() {
+    public DeclarationReadings readings() {
         if (readings == null) {
             readings = new LentReadings(this::machinesOf, this::revision);
         }
@@ -151,23 +150,6 @@ public final class Db {
 
     private DeclarationReadings readings;
 
-    /**
-     * Where a reading of any module's rules gets a declaration's expanded clauses, for this store.
-     *
-     * <p>One per store rather than one per reader, and that is what makes two readers' sources the
-     * same source. What a reading comes to depends on where its clauses are read from — a reader
-     * may hand over one that answers for fewer of them — so a reading is lent to another reader
-     * only where the two read from the same place, and a lookup made afresh per caller would be a
-     * different place every time.
-     */
-    ExpandedClauseLookup expandedClauses() {
-        if (expandedClauses == null) {
-            expandedClauses = named -> ask(new Shapes.ClausesExpandedFor(named)).value();
-        }
-        return expandedClauses;
-    }
-
-    private ExpandedClauseLookup expandedClauses;
 
     /** What this store answers about {@code declaration}'s string machines, for a reading to
      *  borrow — nothing, where it has no answer for the declaration at all. */

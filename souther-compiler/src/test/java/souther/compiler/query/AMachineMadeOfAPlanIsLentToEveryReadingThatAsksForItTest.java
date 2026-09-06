@@ -138,7 +138,7 @@ class AMachineMadeOfAPlanIsLentToEveryReadingThatAsksForItTest {
         // And the claim: the same reading handed the store's answer comes to the language, which
         // it can only have borrowed.
         ValueSet borrowed = FieldDomains.of(TypeSymbols.declared(CODE), source, BUILDING_NOTHING,
-                Machines.of(db)).admits(RuleKey.THE_VALUE).approximation();
+                db.readings()).admits(RuleKey.THE_VALUE).approximation();
         assertTrue(borrowed instanceof ValueSet.Matching,
                 () -> "handed the declaration's answer, the reading comes to the language it"
                         + " could not have built: " + borrowed);

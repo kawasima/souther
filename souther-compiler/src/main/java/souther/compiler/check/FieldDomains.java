@@ -292,17 +292,6 @@ public final class FieldDomains {
     }
 
     /**
-     * How many readings of a declaration have been made, for a test holding this to when it reads.
-     *
-     * <p>What the reader that makes them counts, which is {@link InvariantChecker}: a reading
-     * borrowed rather than made is a reading nobody made, and a count kept here would say
-     * otherwise from the moment one could be borrowed.
-     */
-    public static long readingsMade() {
-        return InvariantChecker.readingsMade();
-    }
-
-    /**
      * What the record declared as {@code named} leaves its fields able to hold.
      *
      * <p>The declaration is read here rather than handed in. What is written about a record's

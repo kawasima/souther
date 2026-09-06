@@ -339,14 +339,14 @@ class WhatIsFixedIsAskedTogetherHoweverItArrivedTest {
     void settlingAPositionDoesNotReadTheDeclarationsAgain() {
         Read read = read(SOURCE, "take");
         Quantities asked = read.inputs().quantities(read.rules());
-        long before = souther.compiler.check.FieldDomains.readingsMade();
+        long before = souther.compiler.check.InvariantChecker.readingsMade();
 
         Quantities twice = asked.given(X, count(1)).given(Y, count(1));
         twice.runsBetween(sum());
         twice.runsBetween(Y);
         twice.emptiness();
 
-        assertEquals(before, souther.compiler.check.FieldDomains.readingsMade());
+        assertEquals(before, souther.compiler.check.InvariantChecker.readingsMade());
     }
 
     /**

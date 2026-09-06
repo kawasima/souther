@@ -126,7 +126,7 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
     @Test
     void asecondAskerIsLentTheFirstsReading() {
         Compilation compilation = compiled();
-        DeclarationReadings readings = souther.compiler.query.Machines.of(compilation.db());
+        DeclarationReadings readings = compilation.db().readings();
         RuleReadingSource source = RuleReadings.of(compilation, "demo");
         ReadingPolicy policy = AS_THE_COMPILE_READS;
         TypeSymbol.AtModule code = TypeSymbols.declared(new TypeKey("demo", "Code"));
@@ -144,7 +144,7 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
     @Test
     void anotherPolicyIsAnotherReading() {
         Compilation compilation = compiled();
-        DeclarationReadings readings = souther.compiler.query.Machines.of(compilation.db());
+        DeclarationReadings readings = compilation.db().readings();
         RuleReadingSource source = RuleReadings.of(compilation, "demo");
         TypeSymbol.AtModule code = TypeSymbols.declared(new TypeKey("demo", "Code"));
 

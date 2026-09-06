@@ -3,7 +3,6 @@ package souther.compiler.query;
 import souther.compiler.check.FieldDomains;
 import souther.compiler.check.ReadingPolicy;
 import souther.compiler.check.RuleReadingSource;
-import souther.compiler.check.DeclarationReadings;
 import souther.compiler.values.StringMachineAnswers;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbols;
@@ -18,7 +17,7 @@ import souther.compiler.values.StringFacts;
  * What those readings build is the same machines, because a machine is a fact about a plan, a set
  * or a pair of a language and a stretch, and about nothing else. So the declaration's own reading
  * is made once here, what it built is kept as the declaration's answer, and every other reading
- * borrows from it through the capability {@link #of} hands out.
+ * borrows from it through the capability the store hands out ({@code Db.readings}).
  *
  * <p>Under the declaration and not under the plan. Keyed by what it is a fact about, a machine
  * would be an answer of no module, which a store keeps for as long as it lives: every pattern an
@@ -39,11 +38,6 @@ import souther.compiler.values.StringFacts;
 public final class Machines {
 
     private Machines() {}
-
-    /** Where a reading gets the answers about a declaration's string machines, asking this store. */
-    public static DeclarationReadings of(Db db) {
-        return db.readings();
-    }
 
     /** The machines {@code named}'s rules come to, as its own reading builds them. */
     public record OfDeclaration(TypeKey named) implements Key<StringFacts> {
