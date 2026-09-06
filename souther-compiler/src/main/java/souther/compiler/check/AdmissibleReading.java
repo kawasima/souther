@@ -125,7 +125,7 @@ final class AdmissibleReading {
      * <p>And a position of two values is read as itself. Naming one is stating it, which is the
      * one value it then holds, and the polarity above says which — the reading of the clause has
      * already turned {@code p == false} and {@code p /= true} into this leaf denied
-     * ({@link Conditions#restated}), so nothing here asks how the author spelled it.
+     * ({@link ClauseExpr}), so nothing here asks how the author spelled it.
      */
     PlannedValues<FactSubject> leaf(Core e, boolean positive, Denotations at) {
         if (e instanceof Core.Binary b

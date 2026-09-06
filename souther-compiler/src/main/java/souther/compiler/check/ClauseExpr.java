@@ -2,6 +2,7 @@ package souther.compiler.check;
 
 import souther.compiler.core.Core;
 import souther.compiler.semantics.ConditionJoin;
+import souther.compiler.types.BinOp;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -62,15 +63,47 @@ sealed interface ClauseExpr {
      */
     boolean positive();
 
+    /**
+     * The subtree of the tree this shape was written as, which is the outermost of what it is
+     * spelled as.
+     *
+     * <p>What an author wrote at this position, denials included. A reading that names a part it
+     * declined to descend into names it by this: {@link Leaf#of} and {@link Joined#of} have the
+     * denials taken off, which is what a reading of the part wants and not what a report about
+     * where it was written does.
+     */
+    default Core written() {
+        return spelled().get(0);
+    }
+
+    /**
+     * What a reading is handed: a part of no connective, or a connective it takes whole.
+     *
+     * <p>A binding standing in the clause is not one of these. Where the environment changes is the
+     * fold's to find and {@link ClauseScope}'s to answer, so a reading is never handed one as a
+     * part — which is a fact about the types here and not a rule anybody has to keep.
+     *
+     * <p>What is inside a part is another matter. A binding nested there is still part of that
+     * leaf, and each question the part language asks about its own inside crosses it by asking the
+     * environment (ADR-0106) — which is the one answer again and not a second account of it.
+     */
+    sealed interface Part extends ClauseExpr permits Leaf, Joined {
+
+        /** The part itself, with the denials above it taken off, which is the innermost of what it
+         *  is spelled as. */
+        Core of();
+    }
+
     /** One part of no connective, stated where {@code positive} and denied where it is not. */
-    record Leaf(List<Core> spelled, boolean positive) implements ClauseExpr {
+    record Leaf(List<Core> spelled, boolean positive) implements Part {
 
         public Leaf {
             spelled = named(spelled);
         }
 
         /** The part itself, which is the innermost of what it is spelled as. */
-        Core of() {
+        @Override
+        public Core of() {
             return spelled.get(spelled.size() - 1);
         }
     }
@@ -85,7 +118,7 @@ sealed interface ClauseExpr {
      *            {@code BOTH} beside {@code positive} being false is a choice and not a conjunction
      */
     record Joined(List<Core> spelled, boolean positive, ConditionJoin how, ClauseExpr left,
-                  ClauseExpr right) implements ClauseExpr {
+                  ClauseExpr right) implements Part {
 
         public Joined {
             spelled = named(spelled);
@@ -99,8 +132,24 @@ sealed interface ClauseExpr {
          * happens to begin at. A denial carried down leaves the operator the author typed here and
          * the {@code not} above it, and the operator is the innermost of the two.
          */
-        Core of() {
+        @Override
+        public Core of() {
             return spelled.get(spelled.size() - 1);
+        }
+
+        /**
+         * The two subtrees this composes, as the author wrote them.
+         *
+         * <p>For a reading that takes the connective whole and still has something to say about
+         * what stands under it — that the author named these two values, say. Read back off the
+         * operator instead, such a reading would be recovering a structure it has already been
+         * given, which is the shape being worked out twice.
+         *
+         * <p>Two halves and no further. What is under each of them is that half's own shape, and
+         * this hands over the halves rather than the leaves below them.
+         */
+        List<Core> writtenHalves() {
+            return List.of(left.written(), right.written());
         }
     }
 
@@ -149,9 +198,9 @@ sealed interface ClauseExpr {
         if (clause instanceof Core.LetIn let) {
             return new Scoped(spelled, positive, let, of(let.body(), positive, List.of()));
         }
-        Conditions.Restated under = Conditions.restated(clause);
-        if (under != null) {
-            return of(under.condition(), under.denied() != positive, spelled);
+        ClauseExpr restated = restating(clause, positive, spelled);
+        if (restated != null) {
+            return restated;
         }
         if (clause instanceof Core.Binary bin) {
             // Stated, a conjunction gives both sides; denied, it gives the choice between their
@@ -165,5 +214,67 @@ sealed interface ClauseExpr {
             }
         }
         return new Leaf(spelled, positive);
+    }
+
+    /**
+     * The shape of what {@code clause} is written in terms of, or null where it is written in terms
+     * of nothing.
+     *
+     * <p>A restatement moves the polarity and nothing else, so what comes back is the shape of what
+     * is written under it, spelled as both nodes. Held here because it is the same question the
+     * connectives are — which part of the tree this clause is, and how it stands — and answering it
+     * anywhere else is a second reading of the shape. Private, so that there is nowhere else for
+     * one to be.
+     *
+     * <p>Read in the analysis representation and in no other. {@code Bool.not} is an ordinary
+     * helper, which that representation keeps as a call; the settled representation an imported
+     * clause is read in has expanded it into a body, and a rule about the operation has nothing to
+     * be about there. Reading the expansion too would be this deciding what a clause means from the
+     * shape a lowering happened to leave, for one helper out of every one the settling expands —
+     * the fragment an imported clause falls outside of is the whole of them (spec
+     * §invariant-discharge-representation).
+     *
+     * <p>So: the call, the {@code if} an author wrote themselves, and a comparison against a
+     * written {@code true} or {@code false} — {@code p == false} and {@code p /= true} deny what
+     * {@code p} states, and the other two state it.
+     *
+     * <p>The equivalence class and not the spellings. What a reading is given is a part and a
+     * polarity, so {@code not (p == false)} and {@code p} arrive as the same pair — and a reader
+     * that learned one spelling at a time would answer for the ones somebody had got to.
+     */
+    private static ClauseExpr restating(Core clause, boolean positive, List<Core> spelled) {
+        if (clause instanceof Core.PreservedCall call && call.operation().equals(DischargeRules.NOT)
+                && call.args().size() == 1) {
+            return of(call.args().get(0), !positive, spelled);
+        }
+        if (clause instanceof Core.If iff
+                && iff.then() instanceof Core.Bool t && !t.value()
+                && iff.els() instanceof Core.Bool f && f.value()) {
+            return of(iff.cond(), !positive, spelled);
+        }
+        return againstATruthValue(clause, positive, spelled);
+    }
+
+    /**
+     * The same of a comparison one side of which is a written {@code true} or {@code false}.
+     *
+     * <p>Whether it denies is whether the two disagree: an equality against {@code true} and a
+     * disequality against {@code false} state what the other side states, and the other pair deny
+     * it. Read off the operator and the literal rather than written out as four cases, so a fifth
+     * way to write the same thing arrives here as one of the two answers and not as a case nobody
+     * added.
+     */
+    private static ClauseExpr againstATruthValue(Core clause, boolean positive,
+                                                 List<Core> spelled) {
+        if (!(clause instanceof Core.Binary bin)
+                || (bin.op() != BinOp.EQ && bin.op() != BinOp.NE)) {
+            return null;
+        }
+        boolean holds = bin.op() == BinOp.EQ;
+        if (bin.right() instanceof Core.Bool truth) {
+            return of(bin.left(), (truth.value() != holds) != positive, spelled);
+        }
+        return bin.left() instanceof Core.Bool truth
+                ? of(bin.right(), (truth.value() != holds) != positive, spelled) : null;
     }
 }

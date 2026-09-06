@@ -77,7 +77,7 @@ final class ExpansionCost implements ClauseReading<Long, Void> {
      * parts come out costing nothing and be admitted under any budget.
      */
     @Override
-    public Long whole(Core e, boolean positive, Void at) {
+    public Long whole(ClauseExpr.Part part, Void at) {
         return 1L;
     }
 

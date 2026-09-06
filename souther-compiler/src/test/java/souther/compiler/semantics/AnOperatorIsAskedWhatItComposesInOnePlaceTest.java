@@ -56,9 +56,6 @@ class AnOperatorIsAskedWhatItComposesInOnePlaceTest {
                     "the same for a clause, with the denial the tree is read under applied as the"
                             + " shape is made"),
 
-            new Licence("souther.compiler.check.Predicates.assumeCond", 1,
-                    "the same, for what a condition taken in makes known"),
-
             new Licence("souther.compiler.check.ClauseHelpers.shaped", 1,
                     "the shape an author wrote a clause in, which is walking into what composes"
                             + " both halves. The one place an authored part is recognised: which"

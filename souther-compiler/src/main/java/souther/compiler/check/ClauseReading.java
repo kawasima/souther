@@ -41,13 +41,19 @@ import souther.compiler.core.Core;
 interface ClauseReading<S, E> {
 
     /**
-     * What one part of the clause says, stated where {@code positive} and denied where it is not,
-     * read at the environment {@code at} it stands in.
+     * What one part of the clause says, read at the environment {@code at} it stands in.
      *
-     * <p>A part of no connective, or a connective this reading takes whole — the two are one case.
-     * What is inside a part is the part language's to ask, and a binding standing there is crossed
-     * by each question it asks about its own inside (ADR-0106); a connective taken whole is a part
-     * on exactly those terms.
+     * <p>A part of no connective, or a connective this reading takes whole — the two are one case,
+     * and {@link ClauseExpr.Part} is that case. What is inside a part is the part language's to
+     * ask, and a binding standing there is crossed by each question it asks about its own inside
+     * (ADR-0106); a connective taken whole is a part on exactly those terms.
+     *
+     * <p>Handed the shape and not the node. What the part is ({@link ClauseExpr.Part#of}), how it
+     * stands ({@link ClauseExpr#positive}), what the author wrote it as ({@link ClauseExpr#written})
+     * and, for a connective taken whole, which two halves it composes
+     * ({@link ClauseExpr.Joined#writtenHalves}) are all answers the shape already holds. A reading
+     * given the node alone works whichever of them it needs out of the tree again, which is the
+     * shape being read twice.
      *
      * <p>Reached with the denials already counted, so a reading of a comparison is a reading of the
      * comparison it states rather than of the one that was written. And reached with the bindings
@@ -55,7 +61,7 @@ interface ClauseReading<S, E> {
      * reading that answered from the environment the whole clause began in would be reading one
      * value's rule at another value's names.
      */
-    S whole(Core e, boolean positive, E at);
+    S whole(ClauseExpr.Part part, E at);
 
     /**
      * How far this reading goes into {@code join}, and what holding both of its parts comes to.
@@ -110,12 +116,12 @@ interface ClauseReading<S, E> {
     private S over(ClauseExpr shape, E at, ClauseScope<E> scope,
                    java.util.function.BiConsumer<Core, S> per) {
         S out = switch (shape) {
-            case ClauseExpr.Leaf it -> whole(it.of(), it.positive(), at);
+            case ClauseExpr.Leaf it -> whole(it, at);
             // How far this reading goes is its own answer, and taking the connective whole is
             // reading the node an author wrote it at as a part. A reading told to descend and
             // unable to compose what it found had nowhere to say so.
             case ClauseExpr.Joined it -> switch (at(it)) {
-                case Descent.Whole<S> _ -> whole(it.of(), it.positive(), at);
+                case Descent.Whole<S> _ -> whole(it, at);
                 case Descent.Into<S> into -> into.compose().apply(
                         over(it.left(), at, scope, per), over(it.right(), at, scope, per));
             };

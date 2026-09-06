@@ -160,10 +160,12 @@ final class Conditions {
          * so nothing above this had a shape to recognise differently for it.
          */
         @Override
-        public List<NumericConstraint> whole(Core e, boolean positive, Denotations at) {
+        public List<NumericConstraint> whole(ClauseExpr.Part part, Denotations at) {
+            boolean positive = part.positive();
             List<NumericConstraint> out = new ArrayList<>();
             for (StatedComparison stated
-                    : comparisonsStatedBy(terms, asSizeComparison(e), at).inReadingOrder()) {
+                    : comparisonsStatedBy(terms, asSizeComparison(part.of()), at)
+                            .inReadingOrder()) {
                 LinearForm<FactSubject> left = terms.affineOf(stated.left(), at);
                 LinearForm<FactSubject> right = terms.affineOf(stated.right(), at);
                 if (left != null && right != null) {
@@ -422,74 +424,6 @@ final class Conditions {
         public Polar denied(Polar statement) {
             return new Polar(statement.expr(), !statement.positive());
         }
-    }
-
-    /**
-     * One condition written in terms of another, and whether it states it or denies it.
-     *
-     * <p>What every walk over a clause carries is a pair — the part being read and whether the
-     * denials above it came out even — and this is the step that pair is moved by. Written as
-     * "what a negation is applied to", the step could only ever flip, so the ways of stating a
-     * condition without flipping were not steps at all and a walk stopped at them.
-     *
-     * @param condition what is written under, which the walk goes on with
-     * @param denied    whether holding this one is denying that one
-     */
-    record Restated(Core condition, boolean denied) {}
-
-    /**
-     * What {@code e} is written in terms of, or {@code null} where it is written in terms of
-     * nothing.
-     *
-     * <p>Read in the analysis representation and in no other. {@code Bool.not} is an ordinary
-     * helper, which that representation keeps as a call; the settled representation an imported
-     * clause is read in has expanded it into a body, and a rule about the operation has nothing to
-     * be about there. Reading the expansion too would be this deciding what a clause means from the
-     * shape a lowering happened to leave, for one helper out of every one the settling expands —
-     * the fragment an imported clause falls outside of is the whole of them (spec
-     * §invariant-discharge-representation).
-     *
-     * <p>So: the call, the {@code if} an author wrote themselves, and a comparison against a
-     * written {@code true} or {@code false} — {@code p == false} and {@code p /= true} deny what
-     * {@code p} states, and the other two state it.
-     *
-     * <p>The equivalence class and not the spellings. What a reader below is given is an atom and a
-     * polarity, so {@code not (p == false)} and {@code p} arrive as the same pair — and a reader
-     * that learned one spelling at a time would answer for the ones somebody had got to.
-     */
-    static Restated restated(Core e) {
-        if (e instanceof Core.PreservedCall call && call.operation().equals(DischargeRules.NOT)
-                && call.args().size() == 1) {
-            return new Restated(call.args().get(0), true);
-        }
-        if (e instanceof Core.If iff
-                && iff.then() instanceof Core.Bool t && !t.value()
-                && iff.els() instanceof Core.Bool f && f.value()) {
-            return new Restated(iff.cond(), true);
-        }
-        return againstATruthValue(e);
-    }
-
-    /**
-     * The same of a comparison one side of which is a written {@code true} or {@code false}.
-     *
-     * <p>Whether it denies is whether the two disagree: an equality against {@code true} and a
-     * disequality against {@code false} state what the other side states, and the other pair deny
-     * it. Read off the operator and the literal rather than written out as four cases, so a fifth
-     * way to write the same thing arrives here as one of the two answers and not as a case nobody
-     * added.
-     */
-    private static Restated againstATruthValue(Core e) {
-        if (!(e instanceof Core.Binary bin)
-                || (bin.op() != BinOp.EQ && bin.op() != BinOp.NE)) {
-            return null;
-        }
-        boolean holds = bin.op() == BinOp.EQ;
-        if (bin.right() instanceof Core.Bool truth) {
-            return new Restated(bin.left(), truth.value() != holds);
-        }
-        return bin.left() instanceof Core.Bool truth
-                ? new Restated(bin.right(), truth.value() != holds) : null;
     }
 
 }
