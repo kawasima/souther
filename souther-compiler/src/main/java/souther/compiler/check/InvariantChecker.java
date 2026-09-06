@@ -1,6 +1,7 @@
 package souther.compiler.check;
 
 import souther.compiler.values.AdmissibleValues;
+import souther.compiler.values.StringFacts;
 import souther.compiler.values.StringMachineAnswers;
 import souther.compiler.values.Allowance;
 import souther.compiler.values.ConjoinedAdmissibleValues;
@@ -468,6 +469,10 @@ public final class InvariantChecker {
      *                 is handed every value with nothing saying why
      * @param notSeparated the names whose values this reading cannot show are the whole of what the
      *                 rules leave
+     * @param stringMachines what this reading answered its string questions from and what it made
+     *                 answering them. Carried by the reading because the reading is what came to
+     *                 them: asked of the lender afterwards, what comes back is what was there to
+     *                 borrow before this reading built anything
      */
     record Seeded(ConstraintState<FactSubject> constraints, Map<RuleKey, FactSubject> atoms,
                   Map<RuleKey, FactSubject> keys,
@@ -478,7 +483,8 @@ public final class InvariantChecker {
                   Map<FactSubject, souther.compiler.numeric.Granularity> spacing,
                   Map<RuleKey, ValueSet> admitted,
                   Map<RuleKey, List<UnreadReason>> unreadAt,
-                  Set<RuleKey> notSeparated) {
+                  Set<RuleKey> notSeparated,
+                  StringFacts stringMachines) {
 
         /** The atom each count is recorded against, for a reader that wants the subject and not
          *  which operation it is a count of. Projected rather than kept beside {@link #held()}: two
@@ -1072,7 +1078,8 @@ public final class InvariantChecker {
         }
         return new Seeded(constraints, atoms, keys, held, reading, took, read,
                 notGathered, unreadOfEveryValue, Set.copyOf(handedOn),
-                readBy, Map.copyOf(spacing), admitted, unreadAt, notSeparated);
+                readBy, Map.copyOf(spacing), admitted, unreadAt, notSeparated,
+                c.answers.facts());
     }
 
     /**

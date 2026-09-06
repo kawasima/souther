@@ -4,13 +4,16 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.numeric.EndSide;
 import souther.compiler.query.Compilation;
+import souther.compiler.query.Machines;
 import souther.compiler.query.ReadAs;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.TypeSymbols;
+import souther.compiler.values.StringFacts;
 import souther.compiler.values.StringMachineAnswers;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -81,6 +84,43 @@ class ACounterfactualBorrowsTheMachinesTheReadingMadeTest {
                 "the floor under `hi` is held by whoever the counterfactual says, so one was taken");
         assertEquals(before, StringMachineAnswers.machinesMade(),
                 "and it answered its string questions out of the machines the reading holds");
+    }
+
+    /**
+     * The same, where what there was to borrow was only part of it.
+     *
+     * <p>What a counterfactual is handed is what the reading it comes from came to, which is what
+     * it borrowed and what it built on top. Handed instead what the lender answers afterwards, a
+     * counterfactual gets what there was to borrow before the reading built anything — and builds
+     * everything the reading built, one step away from where it was building it before.
+     *
+     * <p>The lender here answers with the plans and none of the extents, so the reading borrows
+     * some of its machines and makes the rest.
+     */
+    @Test
+    void whatTheReadingBuiltOnTopIsHandedOnToo() {
+        Compilation compilation = Compilation.ofSource(SOURCE, "Main");
+        compilation.answerEverything();
+        TypeKey held = new TypeKey("demo", "Held");
+        StringFacts whole = compilation.db().ask(new Machines.OfDeclaration(held)).value();
+        assertFalse(whole.extents().isEmpty(),
+                "the declaration's machines include extents, so leaving them out leaves work to do");
+        StringFacts part = new StringFacts(whole.realized(), Map.of(), Map.of());
+
+        long beforeReading = StringMachineAnswers.machinesMade();
+        FieldDomains reading = FieldDomains.of(TypeSymbols.declared(held),
+                RuleReadings.of(compilation, compilation.modules().get(0)),
+                ReadAs.THE_COMPILATION_DOES,
+                _ -> StringMachineAnswers.borrowing(part));
+        assertTrue(StringMachineAnswers.machinesMade() > beforeReading,
+                "the reading builds what the lender had nothing to say about");
+
+        long before = StringMachineAnswers.machinesMade();
+        assertFalse(AReadingOfAPosition.holding(reading.at(RuleKey.of("hi")), EndSide.LOWER)
+                        .isEmpty(),
+                "the floor under `hi` is attributed, so a counterfactual was taken");
+        assertEquals(before, StringMachineAnswers.machinesMade(),
+                "and it is handed what the reading borrowed and what the reading made");
     }
 
     /**

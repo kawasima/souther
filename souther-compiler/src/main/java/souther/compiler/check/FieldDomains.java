@@ -390,10 +390,6 @@ public final class FieldDomains {
         // answers were being given away by treating it as a value with nothing to say.
         InvariantChecker.Seeded seeded =
                 InvariantChecker.seedFields(named, source, policy, settled, reach, machines);
-        // What the reading answered its string questions from, kept as the value it is so that a
-        // counterfactual of this reading is handed it. Taken after the reading, so that what one
-        // recording its own machines came to is here as well as what it borrowed.
-        StringFacts stringMachines = machines.of(named.key()).facts();
         Map<RuleKey, NumericDomain.Bounds> out = new LinkedHashMap<>();
         seeded.atoms().forEach((field, atom) -> {
             // The value itself is at no name of its own, and its range is the one thing not worth
@@ -448,7 +444,7 @@ public final class FieldDomains {
                 seeded.notGathered(), seeded.handedOn(), placeOf,
                 seeded.constraints(), named, data, source, policy, settled,
                 seeded.unreadOfEveryValue(), seeded.atoms(), seeded.held(),
-                seeded.readBy(), seeded.spacing(), stringMachines);
+                seeded.readBy(), seeded.spacing(), seeded.stringMachines());
     }
 
     /**

@@ -1,6 +1,7 @@
 package souther.compiler.check;
 
 import souther.compiler.types.TypeKey;
+import souther.compiler.values.StringFacts;
 import souther.compiler.values.StringMachineAnswers;
 
 import java.util.function.Supplier;
@@ -109,6 +110,13 @@ public interface DeclarationReadings {
         };
     }
 
-    /** Nothing made anywhere, for a reading with no store to ask. */
-    DeclarationReadings NONE = _ -> StringMachineAnswers.NONE;
+    /**
+     * Nothing to borrow, for a reading with no store to ask.
+     *
+     * <p>A reading's own answers all the same, and a fresh one at each asking: a reading that
+     * borrows nothing still comes to the machines it built, and what it came to is what its own
+     * counterfactual is handed. Handing out one shared object would make every such reading write
+     * into the same maps.
+     */
+    DeclarationReadings NONE = _ -> StringMachineAnswers.borrowing(StringFacts.NONE);
 }
