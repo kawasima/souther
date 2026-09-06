@@ -200,11 +200,11 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
      */
     private static boolean calls(MethodModel method, String owner, String member) {
         return method.code().map(code -> code.elementStream().anyMatch(element ->
-                element instanceof InvokeInstruction called
+                (element instanceof InvokeInstruction called
                         && owner.equals(called.owner().name().stringValue())
-                        && member.equals(called.name().stringValue())
-                || element instanceof InvokeDynamicInstruction dynamic
-                        && handedOver(dynamic, owner, member))).orElse(false);
+                        && member.equals(called.name().stringValue()))
+                || (element instanceof InvokeDynamicInstruction dynamic
+                        && handedOver(dynamic, owner, member)))).orElse(false);
     }
 
     /** Whether the bootstrap of {@code dynamic} hands over {@code member} on {@code owner}. */
