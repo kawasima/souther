@@ -11,7 +11,7 @@ import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BinOp;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
-import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.Type;
 
 import java.util.Map;
@@ -74,7 +74,7 @@ class AnElementIsAnsweredByItsContainerAndNotByWhatItHoldsTest {
     @Test
     void arithmeticOverAPositionStandsAtNone() {
         Core sum = new Core.Binary(BinOp.ADD, parameter(), new Core.Int(1, Type.INT, POS),
-                SourceConstructOrigin.unwritten(), Type.INT, POS);
+                ConstructOccurrence.unwritten(), Type.INT, POS);
 
         assertEquals(new PathResolution.NotAPosition(), readingOf(sum));
     }

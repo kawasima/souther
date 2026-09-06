@@ -19,13 +19,14 @@ public record CheckContext(Symbols symbols, Hir.Data data, Map<ValueName.Behavio
                            Map<ValueName.Behavior, ReqSig> callees, boolean makingAnOptional,
                            Preserved preserved,
                            Map<souther.compiler.types.BindingId, ValueName.Behavior> dependencies,
-                           java.util.List<souther.compiler.types.BindingOwner> within) {
+                           java.util.List<souther.compiler.types.BindingOwner> within,
+                           souther.compiler.types.ExpansionLineage lineage) {
 
     public CheckContext(Symbols symbols, Hir.Data data, Map<ValueName.Behavior, ReqSig> reqs,
                         Map<ValueName.Behavior, ReqSig> callees, boolean makingAnOptional,
                         Preserved preserved) {
         this(symbols, data, reqs, callees, makingAnOptional, preserved, Map.of(),
-                java.util.List.of());
+                java.util.List.of(), souther.compiler.types.ExpansionLineage.ORIGINAL);
     }
 
     public CheckContext(Symbols symbols, Hir.Data data, Map<ValueName.Behavior, ReqSig> reqs,
@@ -33,7 +34,7 @@ public record CheckContext(Symbols symbols, Hir.Data data, Map<ValueName.Behavio
                         Preserved preserved,
                         Map<souther.compiler.types.BindingId, ValueName.Behavior> dependencies) {
         this(symbols, data, reqs, callees, makingAnOptional, preserved, dependencies,
-                java.util.List.of());
+                java.util.List.of(), souther.compiler.types.ExpansionLineage.ORIGINAL);
     }
 
     /**
@@ -45,11 +46,30 @@ public record CheckContext(Symbols symbols, Hir.Data data, Map<ValueName.Behavio
      * read, a fork deciding by something with no name in it — a rule that reduced to a constant —
      * is a fork nothing can say the copy of.
      */
-    public CheckContext inside(souther.compiler.types.BindingOwner expansion) {
+    public CheckContext inside(souther.compiler.types.BindingOwner expansion,
+                               souther.compiler.types.ValueName expanded,
+                               souther.compiler.types.ExpansionSite at) {
         java.util.List<souther.compiler.types.BindingOwner> deeper = new java.util.ArrayList<>();
         deeper.add(expansion);
         deeper.addAll(within);
-        return same().within(java.util.List.copyOf(deeper));
+        // Both said again, and neither read off the other. What a binding belongs to is the inlining
+        // pass's answer, which is what the rules a call supplied are filed under; what a construct is
+        // a copy of is the calls the source wrote. A bridge between them would put one reader's
+        // counting inside the other's identity, and the counting is the thing a construct's name has
+        // to be free of.
+        return same().within(java.util.List.copyOf(deeper), lineage.copiedInto(expanded, at));
+    }
+
+    /**
+     * Which construct of the model {@code origin} is, here.
+     *
+     * <p>The two halves put together where both are in hand: the construct is the node's, and the
+     * copy is the walk's. Asked of the context rather than built at each node, so a node built
+     * without one cannot come out saying it stands in the body as written while it stands in a copy.
+     */
+    public souther.compiler.types.ConstructOccurrence occurrenceOf(
+            souther.compiler.types.SourceConstructOrigin origin) {
+        return new souther.compiler.types.ConstructOccurrence(origin, lineage);
     }
 
     /**
@@ -62,7 +82,7 @@ public record CheckContext(Symbols symbols, Hir.Data data, Map<ValueName.Behavio
      */
     private Same same() {
         return new Same(symbols, data, reqs, callees, makingAnOptional, preserved, dependencies,
-                within);
+                within, lineage);
     }
 
     /** One context being written out of another. */
@@ -70,44 +90,48 @@ public record CheckContext(Symbols symbols, Hir.Data data, Map<ValueName.Behavio
                         Map<ValueName.Behavior, ReqSig> callees, boolean makingAnOptional,
                         Preserved preserved,
                         Map<souther.compiler.types.BindingId, ValueName.Behavior> dependencies,
-                        java.util.List<souther.compiler.types.BindingOwner> within) {
+                        java.util.List<souther.compiler.types.BindingOwner> within,
+                        souther.compiler.types.ExpansionLineage lineage) {
 
         CheckContext data(Hir.Data other) {
-            return built(other, reqs, callees, makingAnOptional, preserved, dependencies, within);
+            return built(other, reqs, callees, makingAnOptional, preserved, dependencies, within, lineage);
         }
 
         CheckContext reqs(Map<ValueName.Behavior, ReqSig> required) {
-            return built(data, required, callees, makingAnOptional, preserved, dependencies, within);
+            return built(data, required, callees, makingAnOptional, preserved, dependencies, within, lineage);
         }
 
         CheckContext callees(Map<ValueName.Behavior, ReqSig> callable) {
-            return built(data, reqs, callable, makingAnOptional, preserved, dependencies, within);
+            return built(data, reqs, callable, makingAnOptional, preserved, dependencies, within, lineage);
         }
 
         CheckContext makingAnOptional(boolean making) {
-            return built(data, reqs, callees, making, preserved, dependencies, within);
+            return built(data, reqs, callees, making, preserved, dependencies, within, lineage);
         }
 
         CheckContext preserved(Preserved kept) {
-            return built(data, reqs, callees, makingAnOptional, kept, dependencies, within);
+            return built(data, reqs, callees, makingAnOptional, kept, dependencies, within, lineage);
         }
 
         CheckContext dependencies(
                 Map<souther.compiler.types.BindingId, ValueName.Behavior> bound) {
-            return built(data, reqs, callees, makingAnOptional, preserved, bound, within);
+            return built(data, reqs, callees, makingAnOptional, preserved, bound, within, lineage);
         }
 
-        CheckContext within(java.util.List<souther.compiler.types.BindingOwner> expansion) {
-            return built(data, reqs, callees, makingAnOptional, preserved, dependencies, expansion);
+        CheckContext within(java.util.List<souther.compiler.types.BindingOwner> expansion,
+                            souther.compiler.types.ExpansionLineage copy) {
+            return built(data, reqs, callees, makingAnOptional, preserved, dependencies, expansion,
+                    copy);
         }
 
         private CheckContext built(Hir.Data data, Map<ValueName.Behavior, ReqSig> reqs,
                                    Map<ValueName.Behavior, ReqSig> callees,
                                    boolean makingAnOptional, Preserved preserved,
                                    Map<souther.compiler.types.BindingId, ValueName.Behavior> deps,
-                                   java.util.List<souther.compiler.types.BindingOwner> within) {
+                                   java.util.List<souther.compiler.types.BindingOwner> within,
+                                   souther.compiler.types.ExpansionLineage lineage) {
             return new CheckContext(symbols, data, reqs, callees, makingAnOptional, preserved, deps,
-                    within);
+                    within, lineage);
         }
     }
 

@@ -42,6 +42,21 @@ public record ConstructOccurrence(SourceConstructOrigin origin, ExpansionLineage
         return new ConstructOccurrence(origin, ExpansionLineage.ORIGINAL);
     }
 
+    /**
+     * A construct no source wrote, which is one nothing is owed for.
+     *
+     * <p>In no copy, because there is nothing it is a copy of: what a pass composes it composes
+     * where it stands. Put under the copy it happens to have been composed inside, it would answer
+     * that a construct exists there per call of the body — which is true of what the source wrote
+     * and says nothing about this.
+     */
+    public static ConstructOccurrence unwritten() {
+        return UNWRITTEN;
+    }
+
+    private static final ConstructOccurrence UNWRITTEN =
+            new ConstructOccurrence(SourceConstructOrigin.unwritten(), ExpansionLineage.ORIGINAL);
+
     /** Whether the source wrote this at all, which is what its origin says. */
     public boolean isWritten() {
         return origin.isWritten();

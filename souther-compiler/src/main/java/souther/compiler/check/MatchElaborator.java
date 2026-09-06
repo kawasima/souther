@@ -175,7 +175,7 @@ public final class MatchElaborator {
         if (branchType == null) {
             throw CompileException.of(Diagnostic.at(m.pos(), 5).say(new MatchMessage.ThisMatchHasNoCases()).build());
         }
-        return new Core.Match(scrutineeCore, arms, m.origin(), branchType, m.pos(),
+        return new Core.Match(scrutineeCore, arms, ctx.occurrenceOf(m.origin()), branchType, m.pos(),
                 ctx.within());
     }
 
@@ -225,7 +225,7 @@ public final class MatchElaborator {
         if (!missing.isEmpty()) {
             throw nonExhaustive(m.pos(), "Option", missing);
         }
-        return new Core.Match(scrutineeCore, arms, m.origin(), branchType, m.pos(),
+        return new Core.Match(scrutineeCore, arms, ctx.occurrenceOf(m.origin()), branchType, m.pos(),
                 ctx.within());
     }
 

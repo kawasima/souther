@@ -7,6 +7,7 @@ import souther.compiler.types.WrittenOwner;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 import souther.compiler.types.SourceConstruct;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.SourceConstructOrigin;
 
 import java.util.List;
@@ -296,7 +297,8 @@ class AnOutcomeIsNamedByWhatWasWrittenTest {
         Core answer = new Core.Int(1, souther.compiler.types.Type.INT, at);
         Core fork = new Core.If(new Core.Bool(true, souther.compiler.types.Type.BOOL, at),
                 answer, new Core.Int(2, souther.compiler.types.Type.INT, at),
-                SourceConstructOrigin.unwritten(), souther.compiler.types.Type.INT, at, java.util.List.of());
+                ConstructOccurrence.unwritten(), souther.compiler.types.Type.INT, at,
+                java.util.List.of());
 
         IllegalStateException refused = assertThrows(IllegalStateException.class,
                 () -> CoverageSites.of(

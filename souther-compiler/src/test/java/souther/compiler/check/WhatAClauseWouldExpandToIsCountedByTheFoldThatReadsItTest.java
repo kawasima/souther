@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
-import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.Type;
 
 import java.util.List;
@@ -39,19 +39,19 @@ class WhatAClauseWouldExpandToIsCountedByTheFoldThatReadsItTest {
     }
 
     private static Core and(Core left, Core right) {
-        return new Core.Binary(BinOp.AND, left, right, SourceConstructOrigin.unwritten(), Type.BOOL,
+        return new Core.Binary(BinOp.AND, left, right, ConstructOccurrence.unwritten(), Type.BOOL,
                 POS);
     }
 
     private static Core or(Core left, Core right) {
-        return new Core.Binary(BinOp.OR, left, right, SourceConstructOrigin.unwritten(), Type.BOOL,
+        return new Core.Binary(BinOp.OR, left, right, ConstructOccurrence.unwritten(), Type.BOOL,
                 POS);
     }
 
     /** As the analysis representation spells one, which is what {@link Predicates} reads. */
     private static Core not(Core e) {
         return new Core.If(e, new Core.Bool(false, Type.BOOL, POS),
-                new Core.Bool(true, Type.BOOL, POS), SourceConstructOrigin.unwritten(), Type.BOOL, POS, java.util.List.of());
+                new Core.Bool(true, Type.BOOL, POS), ConstructOccurrence.unwritten(), Type.BOOL, POS, java.util.List.of());
     }
 
     private static long cost(Core e) {

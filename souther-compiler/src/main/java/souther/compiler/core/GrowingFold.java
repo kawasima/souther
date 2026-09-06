@@ -470,7 +470,7 @@ public final class GrowingFold {
                 Core then = answers(iff.then(), acc, found, growth);
                 Core els = then == null ? null : answers(iff.els(), acc, found, growth);
                 yield els == null ? null
-                        : new Core.If(iff.cond(), then, els, iff.origin(), iff.type(), iff.pos(),
+                        : new Core.If(iff.cond(), then, els, iff.occurrence(), iff.type(), iff.pos(),
                                 iff.expansion());
             }
             case Core.LetIn li -> {
@@ -516,7 +516,7 @@ public final class GrowingFold {
             }
             cases.add(c.answering(body));
         }
-        return new Core.Match(m.scrutinee(), cases, m.origin(), m.type(), m.pos(), m.expansion());
+        return new Core.Match(m.scrutinee(), cases, m.occurrence(), m.type(), m.pos(), m.expansion());
     }
 
     /**

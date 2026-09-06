@@ -9,6 +9,7 @@ import souther.compiler.types.BinOp;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.SourceConstruct;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.Type;
 
@@ -45,7 +46,7 @@ class APlaceSeveralWaysLeadToIsStillOnePlaceTest {
     private static Core sharedFork() {
         Core fork = new Core.If(new Core.Bool(true, Type.BOOL, AT),
                 new Core.Int(1, Type.INT, AT), new Core.Int(2, Type.INT, AT),
-                FORK, Type.INT, AT, List.of());
+                ConstructOccurrence.asWritten(FORK), Type.INT, AT, List.of());
         return new Core.Binary(BinOp.ADD, fork, fork, null, Type.INT, AT);
     }
 

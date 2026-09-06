@@ -3,7 +3,7 @@ package souther.compiler.check;
 import souther.compiler.DefaultStdlib;
 import souther.compiler.types.BinOp;
 import org.junit.jupiter.api.Test;
-import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.ConstructOccurrence;
 
 import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
@@ -53,14 +53,15 @@ class ATermThatReadsAnotherHoldsItsNameAndNotItsShapeTest {
         List<Term> along = new java.util.ArrayList<>();
         Denotations at = Denotations.none();
         Core value = new Core.Binary(BinOp.ADD, new Core.Int(1, Type.INT, NOWHERE),
-                new Core.Int(1, Type.INT, NOWHERE), SourceConstructOrigin.unwritten(), Type.INT, NOWHERE);
+                new Core.Int(1, Type.INT, NOWHERE), ConstructOccurrence.unwritten(), Type.INT,
+                NOWHERE);
         Term term = terms.bodyKey(value, at);
         along.add(term);
         for (int i = 0; i < links; i++) {
             BindingId id = new BindingId(OWNER, i);
             at = at.binding(id, value, FactSubject.of(term), null, term, null);
             Core read = new Core.Read("v" + i, id, Type.INT, NOWHERE);
-            value = new Core.Binary(BinOp.ADD, read, read, SourceConstructOrigin.unwritten(),
+            value = new Core.Binary(BinOp.ADD, read, read, ConstructOccurrence.unwritten(),
                     Type.INT, NOWHERE);
             term = terms.bodyKey(value, at);
             along.add(term);

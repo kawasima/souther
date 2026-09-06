@@ -12,7 +12,7 @@ import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.BinOp;
 import souther.compiler.types.ReferenceDerivationCause;
 import souther.compiler.types.ReferenceOrigin;
-import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.Type;
 
 import java.util.ArrayList;
@@ -369,7 +369,7 @@ final class Conditions {
                             ReferenceDerivationCause.SizeMeaningOfReference::new),
                     application, Type.INT, call.pos());
             return new Core.Binary(BinOp.EQ, size, new Core.Int(0, Type.INT, call.pos()),
-                    SourceConstructOrigin.unwritten(), Type.BOOL, call.pos());
+                    ConstructOccurrence.unwritten(), Type.BOOL, call.pos());
         }
         return e;
     }
@@ -428,7 +428,7 @@ final class Conditions {
          *  unwritten, so no coverage site is named by it, the type a comparison answers, and a
          *  position taken from a side because the constructor takes one. */
         private static Core.Binary canonical(BinOp op, Core left, Core right) {
-            return new Core.Binary(op, left, right, SourceConstructOrigin.unwritten(), Type.BOOL,
+            return new Core.Binary(op, left, right, ConstructOccurrence.unwritten(), Type.BOOL,
                     left.pos());
         }
 
