@@ -72,9 +72,10 @@ class ADeadChoiceLeavesNoLanguageAnsweringForABranchThatStandsTest {
      */
     private Set<String> whatIsLeftEmptyAfterMeeting(OrderedInterval left, OrderedInterval right,
                                                     OrderedInterval afterwards) {
-        Confinement.Planned<String> dead = refusedByItsValues(left).bothDead(
-                refusedByItsValues(right),
-                Confinement.Admission.left(souther.compiler.values.Emptiness.EMPTY));
+        Confinement.Planned<String> one = refusedByItsValues(left);
+        Confinement.Planned<String> other = refusedByItsValues(right);
+        Confinement.Planned<String> dead = one.bothDead(other,
+                Confinement.Admission.bothShown(one.admission(), other.admission()));
         Confinement.Planned<String> met = dead.meet(new Confinement.Planned<>(
                 PlannedValues.top(), OrderedIntervals.at(POSITION, afterwards), Map.of()));
         return met.resolve(SETS).holdingNothing();

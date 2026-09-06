@@ -143,8 +143,22 @@ sealed interface Confinement<A> {
             return new Admission<>(emptiness, by, new Refusal.AtEachOf<>(blocks), how);
         }
 
-        /** Something may satisfy the pair, so nothing emptied it. */
+        /**
+         * Something may satisfy the pair, so nothing emptied it.
+         *
+         * <p>Which is why the settled answer that nothing is admitted is refused rather than left
+         * to whoever calls this. The three words beside the verdict say a lack was shown by
+         * nothing, at no position, out of the readings; with that verdict they are a proof no walk
+         * could have reached, and a choice realised from it answers for a branch nothing was shown
+         * about. What a pair shown empty is shown by is what showed the readings it was composed of
+         * — {@link #bothShown} for two of them, and the walk itself where one reading is the whole
+         * of it.
+         */
         static <A> Admission<A> left(souther.compiler.values.Emptiness emptiness) {
+            if (emptiness == souther.compiler.values.Emptiness.EMPTY) {
+                throw new IllegalArgumentException(
+                        "a pair nothing emptied is not a pair shown to admit nothing");
+            }
             return new Admission<>(emptiness, EmptyBy.NOTHING_SHOWN, new Refusal.Nowhere<>(),
                     Shown.BY_THE_READINGS);
         }
