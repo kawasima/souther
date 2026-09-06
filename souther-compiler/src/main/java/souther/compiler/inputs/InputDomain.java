@@ -1373,7 +1373,8 @@ public final class InputDomain {
         // What the position's own distinctions are crossed with is what stands there, which is the
         // number those distinctions divide. A count taken of the position runs on another order,
         // and a case crossed with a range of it would be kept or refused by where a length falls.
-        ReadingResult reading = crossed(declared, view, boundsOn(bounds, new NumericTerm.ValueOf(path)),
+        ReadingResult reading = crossed(declared, view,
+                whatIsLeft(bounds, new NumericTerm.ValueOf(path)),
                 admitted, source, noLine, nothingExists, type);
         return new ReadPosition(path, view, bounds, nothingExists,
                 placed.projection(path), declared, reading,
@@ -1466,8 +1467,8 @@ public final class InputDomain {
 
     /** What the rules leave one of a position's numbers, or null where the position has no such
      *  number. */
-    private static NumericDomain.Bounds boundsOn(List<PositionBounds> bounds,
-                                                 NumericTerm.FromOnePosition term) {
+    private static NumericDomain.Bounds whatIsLeft(List<PositionBounds> bounds,
+                                                   NumericTerm.FromOnePosition term) {
         for (PositionBounds each : bounds) {
             if (each.term().equals(term)) {
                 return each.admissible();

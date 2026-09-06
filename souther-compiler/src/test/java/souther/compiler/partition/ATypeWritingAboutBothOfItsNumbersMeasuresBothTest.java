@@ -4,13 +4,16 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
+import souther.compiler.query.BorderAssessment;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.PartitionEvidence;
 import souther.compiler.report.AdequacyReport;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -73,7 +76,7 @@ class ATypeWritingAboutBothOfItsNumbersMeasuresBothTest {
      */
     @Test
     void eachNumberKeepsTheLineItsRuleDraws() {
-        assertEquals(List.of("String.length(v) = 3", "v = m"), linesIn(BOTH, "onCode"),
+        assertEquals(List.of("String.length(v) = 3", "v = m"), linesIn(BOTH, "owned", "onCode"),
                 "the length stops at three and the order at m");
     }
 
@@ -87,8 +90,10 @@ class ATypeWritingAboutBothOfItsNumbersMeasuresBothTest {
      */
     @Test
     void aRuleFromOutsideReachesTheNumberItIsAbout() {
+        assertEquals(List.of("String.length(v.c) = 5", "v.c = m"), linesIn(BOTH, "owned", "onHolder"),
+                "the record's end meets the type's on the length, and the order keeps its own");
         assertEquals(List.of(), namedIn(BOTH, "onHolder"),
-                "the record's clause is read, and so are the type's two");
+                "and none of the three clauses is reported as one nothing could read");
     }
 
     /**
@@ -119,8 +124,12 @@ class ATypeWritingAboutBothOfItsNumbersMeasuresBothTest {
     /** An end nothing compared is an end on the number it was placed on, like any other. */
     @Test
     void anEndNothingComparedReachesItsOwnNumber() {
+        assertEquals(List.of("String.length(v.c) = 1", "v.c = n"),
+                linesIn(ONE_OF_THEM_PLACES_NO_END, "noend", "onHolder"),
+                "the disequality took the nought away, so the length starts at one and is measured"
+                        + " there beside the order the two clauses about it stop at");
         assertEquals(List.of(), notReadIn(ONE_OF_THEM_PLACES_NO_END, "onHolder"),
-                "every end at the position is on one of its numbers, and each is measured there");
+                "and no end at the position is left without a number to be on");
     }
 
     /**
@@ -178,13 +187,16 @@ class ATypeWritingAboutBothOfItsNumbersMeasuresBothTest {
     }
 
     /** Every line {@code behavior} draws, by the label a report shows it under, in order. */
-    private static List<String> linesIn(String source, String behavior) {
+    private static List<String> linesIn(String source, String module, String behavior) {
         Compilation compilation = Compilation.ofSource(source, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
-        return Adequacy.readingsOf(compilation.db(), "owned")
-                .getOrDefault(behavior, List.of()).stream()
-                .map(souther.compiler.query.BorderAssessment::label).sorted().toList();
+        Map<String, List<BorderAssessment>> read =
+                Adequacy.readingsOf(compilation.db(), module);
+        assertNotNull(read, () -> module + " is a module of the source under test");
+        List<BorderAssessment> lines = read.get(behavior);
+        assertNotNull(lines, () -> behavior + " draws lines in " + module + ": " + read.keySet());
+        return lines.stream().map(BorderAssessment::label).sorted().toList();
     }
 
     private static String report(String source) {

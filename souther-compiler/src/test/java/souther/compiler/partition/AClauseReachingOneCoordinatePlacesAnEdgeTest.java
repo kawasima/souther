@@ -463,14 +463,26 @@ class AClauseReachingOneCoordinatePlacesAnEdgeTest {
      */
     @Test
     void aRuleAboutTheLengthDrawsItsLineBesideTheOneAboutTheOrder() {
+        assertEquals(List.of("String.length(v.name) = 3", "v.name = m"),
+                linesUnder(TWO_WAYS, "onPerson"),
+                "the record's clause stops the length and the name's own stops the order");
         assertEquals(List.of(), notReadIn(TWO_WAYS, "onPerson"),
-                "each clause is about a number of the position, and each draws its own line");
+                "and neither clause is reported as one nothing could read");
     }
 
     /** And where a record bounds both numbers of a bare string, both are measured too. */
     @Test
     void rulesAboutBothNumbersAreBothRead() {
+        assertEquals(List.of("String.length(v.s) = 3", "v.s = m"), linesUnder(TWO_WAYS, "onR"),
+                "both clauses are the record's own, and each is on the number it is about");
         assertEquals(List.of(), notReadIn(TWO_WAYS, "onR"));
+    }
+
+    /** The lines {@code behavior} draws, by the label a report shows each under. */
+    private static List<String> linesUnder(String source, String behavior) {
+        return linesOf(source, "twoways").keySet().stream()
+                .filter(each -> each.startsWith(behavior + "/"))
+                .map(each -> each.substring(behavior.length() + 1)).sorted().toList();
     }
 
     /**
