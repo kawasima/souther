@@ -100,6 +100,55 @@ class ATypeWritingAboutBothOfItsNumbersChoosesNeitherTest {
     }
 
     /**
+     * A type writing about both, where only one of the two placed an end.
+     *
+     * <p>`Code` is written about its own order and about its length, and the length rule places no
+     * end — a disequality states where nothing stops. So what reaches the position from `Holder`
+     * is an end on one coordinate and one only, which is the case that tells the two standings
+     * apart: read in the other order, a rule of the record would settle a question `Code`'s own
+     * clauses left open, and the model `Code` describes would depend on which records hold one.
+     */
+    private static final String ONE_OF_THEM_PLACES_NO_END = """
+            module noend
+
+            data Code = String
+                invariant value >= "m"
+                invariant String.length(value) /= 0
+
+            data Holder = { c: Code } invariant c.value >= "n"
+
+            data Ok = { size: Int }
+
+            behavior onHolder : (v: Holder) -> Ok
+                constructs Ok
+            let onHolder (v) = Ok { size = String.length(v.c) }
+
+            example onHolder | (Holder { c = Code("zzz") }) -> Ok { size = 3 }
+            """;
+
+    /**
+     * The standing below answers once, and the question stays open all the same.
+     *
+     * <p>What chooses is what the rules are written about, and `Code` wrote about both of its
+     * numbers. What reaches the position places an end on one of them, so a reading that let the
+     * rules beside a type settle what the type left open would have an answer here — and it would
+     * be `Code` measured on its own order because a record said so.
+     *
+     * <p><b>And the length rule is named at the length.</b> It draws no comparison and it accounts
+     * for one: a disequality takes a value away from the end of the range, which is an end nothing
+     * placed and something moved. So it is an end at this position like the others, and what
+     * became of it is owed to its author for the same reason theirs is.
+     */
+    @Test
+    void aRuleBesideATypeSettlesNothingTheTypeLeftOpen() {
+        assertEquals(List.of("v.c: COMPETING_COORDINATES",
+                        "String.length(v.c): COMPETING_COORDINATES",
+                        "v.c: COMPETING_COORDINATES"),
+                notReadIn(ONE_OF_THEM_PLACES_NO_END, "onHolder"),
+                "every end at the position is named, and none of them was chosen between");
+    }
+
+    /**
      * A format beside a length is one of these, and the shape an author is most likely to write.
      *
      * <p>A rule about the strings a position holds is a rule about the position's own value: which
