@@ -868,14 +868,6 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
                 Map.of(), ValueSet.ANY, true, Set.of(), Set.of());
     }
 
-    /** The same blocks as the positions they are made of, which is the coordinate a reading with
-     *  no alternatives left answers in. */
-    private static <A> Set<Sameness.Block<A>> eachApart(Set<Sameness.Block<A>> these) {
-        Set<Sameness.Block<A>> out = new LinkedHashSet<>();
-        these.forEach(block -> block.members().forEach(each -> out.add(Sameness.Block.of(each))));
-        return out;
-    }
-
     /**
      * The same blocks, said in {@code into}'s coordinates.
      *
