@@ -95,8 +95,14 @@ public sealed interface BindingOwner {
      * pass expands is what the policy it runs under decides — the tree a backend emits has the
      * language's own operations expanded into what they do, and the tree an analysis reads has them
      * standing — so a counter over the expansions of one body runs differently in the two, and a
-     * module helper expanded in both would own different bindings in each. What is here comes from
-     * the source instead ({@link ExpansionSite}), which is settled before either tree exists.
+     * module helper expanded in both would own different bindings in each. What is here is what the
+     * application says about itself instead, which is settled where that application is written and
+     * so before either tree exists.
+     *
+     * <p>And only an application that can be told from every other of its kind
+     * ({@link ApplicationOrigin.Identified}). An expansion is a thing bindings belong to, so two of
+     * them must be two — an application carrying no more than why it is here would put the bindings
+     * of two expansions under one owner, and nothing afterwards would say so.
      *
      * <p>{@code expanded} beside the site, because a call site may come to apply something else: the
      * same characters calling another helper are the same reference and another expansion, and what
@@ -106,7 +112,7 @@ public sealed interface BindingOwner {
      * that is itself expanded twice is one site and two expansions, and the two are inside different
      * owners.
      */
-    record Expansion(BindingOwner within, ValueName expanded, ExpansionSite at)
+    record Expansion(BindingOwner within, ValueName expanded, ApplicationOrigin.Identified at)
             implements BindingOwner {
 
         public Expansion {

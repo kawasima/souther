@@ -26,13 +26,29 @@ package souther.compiler.types;
 public sealed interface ApplicationOrigin {
 
     /**
+     * An application that can be told from every other of its kind.
+     *
+     * <p>Not a list of the applications something expands. It is the ones that already carry enough
+     * to be told apart — the construct an author wrote, the name a block was expanded from, a
+     * construct and the count of what was derived from it — so a reader that has to number one
+     * application among others may hold this and nothing more.
+     *
+     * <p>What is outside it is {@link ComposedFixture}, which says why it is here and no more. A
+     * reader wanting to tell two of those apart is a reader asking a question nothing asks yet, and
+     * the way it gets asked is that this type will not hold one: the answer is designed then rather
+     * than invented now, and until then no two of them can quietly become one.
+     */
+    sealed interface Identified extends ApplicationOrigin permits Written, Eta, Derived {
+    }
+
+    /**
      * An application the author wrote.
      *
      * <p>The construct, which every application takes when it is read
      * ({@link SourceConstructOrigin}) and carries through every copy of it. A helper holding a call,
      * expanded at two of its own call sites, has that one call at both.
      */
-    record Written(SourceConstructOrigin application) implements ApplicationOrigin {
+    record Written(SourceConstructOrigin application) implements Identified {
 
         public Written {
             if (application == null || !application.isWritten()) {
@@ -49,7 +65,7 @@ public sealed interface ApplicationOrigin {
      * a body holds where a function value goes. So it is named by what made it necessary
      * ({@link EtaOrigin}) rather than by the application, there being none to name.
      */
-    record Eta(EtaOrigin cause) implements ApplicationOrigin {
+    record Eta(EtaOrigin cause) implements Identified {
 
         public Eta {
             if (cause == null) {
@@ -67,7 +83,7 @@ public sealed interface ApplicationOrigin {
      * cause, and the producer's own count over what it derived from that cause, because one construct
      * may make a pass write more than one thing.
      */
-    record Derived(ApplicationDerivationCause cause, int ordinal) implements ApplicationOrigin {
+    record Derived(ApplicationDerivationCause cause, int ordinal) implements Identified {
 
         public Derived {
             if (cause == null) {

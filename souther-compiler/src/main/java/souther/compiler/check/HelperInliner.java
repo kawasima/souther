@@ -11,7 +11,6 @@ import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.EtaOrigin;
-import souther.compiler.types.ExpansionSite;
 import souther.compiler.types.Type;
 import souther.compiler.types.ReachName;
 import souther.compiler.types.ValueName;
@@ -709,11 +708,14 @@ public final class HelperInliner {
         // The library name this reaches for is the pass's; the application is the author's, and so
         // is what they applied there — a report about this call quotes the sugar they wrote and not
         // the operation it stands for, which is private to the library and takes another argument.
+        //
+        // The reference is the one the sugar was written as. There is one to take: a rewrite is
+        // found only for a call whose callee is answered ({@link #rewriteTaken}), which is a name.
+        Hir.Var.Denoting sugar = call.answered();
         return call.replacedBy(
                 Hir.Var.respelled(rewrite.target().qualified(),
-                        new ReachName.OfLibrary(rewrite.target()),
-                        call.function() instanceof Hir.Var named ? named.origin() : null,
-                        call.function().pos(), call.function().region()),
+                        new ReachName.OfLibrary(rewrite.target()), sugar.origin(),
+                        sugar.pos(), sugar.region()),
                 args);
     }
 
@@ -1376,7 +1378,14 @@ public final class HelperInliner {
                 asked.add(reaches);
             }
         }
-        if (helper == null || standing) {
+        // What this expands writes bindings, and an expansion is what they belong to — so two
+        // expansions have to be two, and an application is one this expands only if it says which
+        // one it is ({@link ApplicationOrigin.Identified}). A value composed for a fixture says why
+        // it is there and no more, which is enough for what a fixture is shown for and not enough
+        // to own bindings. Settled here, where what is expanded is decided, rather than asked again
+        // further in where the only answer left would be to stop the run.
+        if (helper == null || standing
+                || !(call.application() instanceof ApplicationOrigin.Identified at)) {
             // builtin, injected behavior, a function-typed parameter, or a recursive helper —
             // a recursive helper is lowered to a method, so its call stays a Call (spec §fn-declaration);
             // only its args inline.
@@ -1398,7 +1407,7 @@ public final class HelperInliner {
         // One minter, so no two of them are the same binding, and a reader can ask of any of
         // them which call it came from.
         BindingOwner mine =
-                new BindingOwner.Expansion(writing.enclosing(), callee.denotes(), siteOf(call));
+                new BindingOwner.Expansion(writing.enclosing(), callee.denotes(), at);
         Hir.Binders ours = new Hir.Binders(mine);
         // What the callee's signature leaves open, this call decides. Its variables are
         // instantiated once, here, over the whole signature at once — so a variable it wrote
@@ -1666,53 +1675,6 @@ public final class HelperInliner {
     }
 
     /**
-     * Which application {@code call} is, as what its bindings belong to is named by.
-     *
-     * <p>Two answers, because an application here is one of two things. The source wrote one, and it
-     * carries which one it is. Or this pass wrote it, expanding a name used as a value into the
-     * block that applies it — and then it is named by the reference that made it necessary, which
-     * was there before the block was.
-     *
-     * <p><b>Exhaustive, and a shape it does not answer for stops the run.</b> Every application this
-     * expands is one of the two; a third would be an application some pass composed and handed here
-     * without saying what caused it, which is an expansion nothing could tell from its neighbour.
-     * Answered with a count of what came before it instead, the answer would be a fact about the
-     * walk — and the walk differs between the tree a backend emits and the tree an analysis reads.
-     */
-    private static ExpansionSite siteOf(Hir.Apply call) {
-        ExpansionSite site = expandableSite(call.application());
-        if (site == null) {
-            throw new IllegalStateException(
-                    "a value composed for a fixture was expanded as a body: " + call);
-        }
-        return site;
-    }
-
-    /**
-     * Which expansion this application is, or null where it is not one anything expands.
-     *
-     * <p>Read off what the application says about itself and never off its shape. An application no
-     * source wrote looks the same whether a name was expanded into it, a library operation was
-     * reached for, or a value was composed for a fixture — so a reader taking the shape gets the
-     * common case right and answers the rest with what the common case says. What each of them is,
-     * is settled where it is written ({@link ApplicationOrigin}).
-     *
-     * <p>Two questions and not one. Every application says why it is here; only one that is expanded
-     * has to say which expansion it is. A value composed for a fixture is not a body this walks, so
-     * it is asked the first question and not the second — and it is null here rather than carrying
-     * an identity nothing wants, which would mean deciding what such values are numbered within.
-     */
-    private static ExpansionSite expandableSite(ApplicationOrigin application) {
-        return switch (application) {
-            case ApplicationOrigin.Written written ->
-                    new ExpansionSite.Written(written.application());
-            case ApplicationOrigin.Eta eta -> new ExpansionSite.Eta(eta.cause());
-            case ApplicationOrigin.Derived derived ->
-                    new ExpansionSite.Derived(derived.cause(), derived.ordinal());
-            case ApplicationOrigin.ComposedFixture _ -> null;
-        };
-    }
-
     /**
      * What made the block a name used as a value stands for necessary.
      *

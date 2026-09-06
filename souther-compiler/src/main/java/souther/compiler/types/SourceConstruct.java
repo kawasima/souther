@@ -82,6 +82,13 @@ public enum SourceConstruct {
      * and each of them is a reference derived from this construct. Without an identity here they
      * would have only the place to be told apart by, and one helper expanded at two calls puts two
      * of them at one place.
+     *
+     * <p>Numbered among its owner's constructs like any other, which moves the numbers the ones
+     * after it get. That is what the numbering is: {@link SourceConstructOrigin} says an ordinal is
+     * the builder's own count over one owner, taken in an order that is already not the order the
+     * constructs are written, and that matching one compilation's against another's is a different
+     * question. A count of its own would be the thing that broke — two constructs of one owner
+     * would then share an ordinal, which is what tells them apart.
      */
     COLLECTION_LITERAL,
 

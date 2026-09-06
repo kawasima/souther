@@ -86,14 +86,16 @@ public sealed interface Core {
         // The application and not the name inside it. What a temporal's construction names is a
         // namespace rather than a declaration, and a namespace is not a thing to be a reference of,
         // so there is no second occurrence here to keep.
+        //
+        // Null where the term has had its places taken out ({@link #withoutItsPlace}), as every
+        // other origin in that walk is. What it holds is a module and a count of the constructs
+        // before it, so it moves whenever anything above the declaration is edited — and what that
+        // walk makes is a value two readings of one term compare equal, which an unrelated edit
+        // must not reach. Kept here, a temporal would be the one node that broke it.
 
         public Temporal {
             if (kind == null || !kind.temporal()) {
                 throw new IllegalArgumentException("`" + kind + "` is no temporal");
-            }
-            if (application == null) {
-                throw new IllegalArgumentException(
-                        "a temporal was written as some construction: " + kind + " " + text);
             }
             if (text == null) {
                 throw new IllegalArgumentException("a written temporal is written out");
@@ -901,7 +903,7 @@ public sealed interface Core {
             case Decimal x -> new Decimal(x.value(), x.type(), null);
             case Str x -> new Str(x.value(), x.type(), null);
             case Bool x -> new Bool(x.value(), x.type(), null);
-            case Temporal x -> new Temporal(x.kind(), x.text(), x.application(), null);
+            case Temporal x -> new Temporal(x.kind(), x.text(), null, null);
             case Read x -> readWithoutItsPlace(x);
             case UnitValue x -> new UnitValue(x.data(), x.type(), null);
             case OptionNone x -> new OptionNone(x.type(), null);
