@@ -140,6 +140,32 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
                 "and the declaration was not read for the second of them");
     }
 
+    /**
+     * The reading the store's answer for a declaration was made by is the one the next reader is
+     * given, though that reader asks the compilation where to read for itself.
+     *
+     * <p>This is where the sharing has to happen and the one place a test can see it happen. Every
+     * question that reads a declaration asks the compilation for a source of its own, and what
+     * comes back is a fresh pair over the same scope and the same clauses — so a reader that told
+     * two sources apart by comparing the pairs would find every reader reading alone, while a
+     * compile still came out right and every count still fell.
+     */
+    @Test
+    void theReadingTheAnswerWasMadeByIsTheOneTheNextReaderIsGiven() {
+        Compilation compilation = compiled();
+        DeclarationReadings readings = compilation.db().readings();
+        TypeSymbol.AtModule code = TypeSymbols.declared(new TypeKey("demo", "Code"));
+
+        readings.of(code.key());
+        long afterTheAnswer = InvariantChecker.readingsMade();
+
+        RuleReadingSource asked = RuleReadings.of(compilation, "demo");
+        InvariantChecker.seedFields(code, asked, AS_THE_COMPILE_READS, readings);
+
+        assertEquals(afterTheAnswer, InvariantChecker.readingsMade(),
+                "the reader that asked for the answer is handed the reading it was made by");
+    }
+
     /** A second policy is a second reading, not the same one under other terms. */
     @Test
     void anotherPolicyIsAnotherReading() {

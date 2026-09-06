@@ -27,9 +27,9 @@ import java.util.function.LongSupplier;
  */
 public final class LentReadings implements DeclarationReadings {
 
-    /** A declaration, where its clauses are read from, and what the reading may spend: everything
-     *  that decides what the reading comes to. */
-    private record OfDeclarationUnder(TypeKey declaration, RuleReadingSource source,
+    /** A declaration, which source its clauses are read from, and what the reading may spend:
+     *  everything that decides what the reading comes to. */
+    private record OfDeclarationUnder(TypeKey declaration, RuleReadingSource.Origin source,
                                       ReadingPolicy policy) {}
 
     private final DeclarationReadings machines;
@@ -57,13 +57,13 @@ public final class LentReadings implements DeclarationReadings {
     @Override
     public InvariantChecker.Seeded seeded(TypeKey declaration, RuleReadingSource source,
                                           ReadingPolicy policy) {
-        return current().get(new OfDeclarationUnder(declaration, source, policy));
+        return current().get(new OfDeclarationUnder(declaration, source.origin(), policy));
     }
 
     @Override
     public void made(TypeKey declaration, RuleReadingSource source, ReadingPolicy policy,
                      InvariantChecker.Seeded seeded) {
-        current().put(new OfDeclarationUnder(declaration, source, policy), seeded);
+        current().put(new OfDeclarationUnder(declaration, source.origin(), policy), seeded);
     }
 
     /**
