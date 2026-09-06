@@ -34,11 +34,11 @@ class HowAlternativesRelateTwoPositionsIsPartOfWhatAReadingCostsTest {
                 .compile(PatternPlan.Budget.OF_ADMITTED_VALUES.meter()));
     }
 
-    /** One alternative: {@code left} holds one language and {@code right} holds the other. */
-    private static AdmissibleValues<String> pair(ValueSet left, ValueSet right,
-                                                 Allowance<String> by) {
-        return AdmissibleValues.at("left", left)
-                .meet(AdmissibleValues.at("right", right), by);
+    /** One alternative: {@code left} holds one language and {@code right} holds the other, while
+     *  it is still a description. */
+    private static PlannedValues<String> pair(ValueSet left, ValueSet right) {
+        return PlannedValues.at("left", AdmittedPlan.of(left))
+                .meet(PlannedValues.at("right", AdmittedPlan.of(right)));
     }
 
     /** Two alternatives held apart, which is a reading whose positions are related by its boxes. */
@@ -47,10 +47,11 @@ class HowAlternativesRelateTwoPositionsIsPartOfWhatAReadingCostsTest {
         ValueSet b = matching("x|b{300}");
         ValueSet c = matching("x|c{300}");
         ValueSet d = matching("x|d{300}");
-        return crossed
+        return (crossed
                 // Every alternative here was read whole, so the choice left nothing open.
-                ? pair(a, d, by).joinApart(pair(c, b, by), by)
-                : pair(a, b, by).joinApart(pair(c, d, by), by);
+                ? pair(a, d).joinLiveApart(pair(c, b))
+                : pair(a, b).joinLiveApart(pair(c, d)))
+                .resolve(by).values();
     }
 
     /** The same positions, the same sets, and the pairs the other way round. */

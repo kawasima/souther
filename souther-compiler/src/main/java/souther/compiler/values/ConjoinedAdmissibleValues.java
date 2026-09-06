@@ -55,9 +55,10 @@ import java.util.function.Function;
  * none. Held here, the purse would be the one thing about a conjunction that is not a fact about the
  * readings in it, and a binary operation between two of them would have two to choose from.
  *
- * <p>No join. A choice between alternatives happens while one declaration is read, which is below
- * this and inside {@link AdmissibleValues}. A disjunction of two factored conjunctions would have to
- * expand them to be said at all, and nothing asks for one.
+ * <p>No join. A choice between alternatives is taken while one declaration is read and while its
+ * values are still descriptions, which is below this and before {@link AdmissibleValues} exists at
+ * all. A disjunction of two factored conjunctions would have to expand them to be said, and nothing
+ * asks for one.
  */
 public final class ConjoinedAdmissibleValues<A> {
 

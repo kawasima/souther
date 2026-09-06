@@ -51,11 +51,19 @@ class WhichPositionIsLeftNothingDoesNotFollowTheBracketsTest {
         return at(A, a).meet(at(B, b), sets);
     }
 
+    /** The same pair while it is still a description, which is where a choice between two of them
+     *  is taken. */
+    private static PlannedValues<String> planned(Value a, Value b) {
+        return PlannedValues.at(A, AdmittedPlan.of(ValueSet.just(a)))
+                .meet(PlannedValues.at(B, AdmittedPlan.of(ValueSet.just(b))));
+    }
+
     /** The three above, in the orders a conjunction of them can be written in. */
     private List<AdmissibleValues<String>> everyOrder() {
         AdmissibleValues<String> x = pair(ZERO, ZERO);
         AdmissibleValues<String> y = at(A, ZERO);
-        AdmissibleValues<String> z = pair(ONE, ZERO).joinApart(pair(ZERO, ONE), sets);
+        AdmissibleValues<String> z = planned(ONE, ZERO).joinLiveApart(planned(ZERO, ONE))
+                .resolve(sets).values();
         List<AdmissibleValues<String>> out = new ArrayList<>();
         out.add(x.meet(y, sets).meet(z, sets));
         out.add(x.meet(z, sets).meet(y, sets));

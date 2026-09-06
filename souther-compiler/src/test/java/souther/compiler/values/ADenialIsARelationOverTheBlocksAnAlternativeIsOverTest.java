@@ -127,24 +127,23 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
      * equality read beside the choice can be refused against, so a declaration nothing satisfies
      * comes back admitted.
      *
-     * <p>Asked of the reading whose values are still descriptions as well as of the one whose
-     * values are sets. Both merge, both have to carry it, and which of the two a compilation takes
-     * is settled by how large the choice is rather than by anything a model says.
+     * <p>Merging is one of the two ways a choice is held, and which of them a compilation takes is
+     * settled by how large the choice is rather than by anything a model says. Held apart the
+     * alternatives keep their own denials and there is nothing to carry, so this is asked of the
+     * merged one.
      */
     @Test
     void aChoiceMergedIntoOneProductKeepsWhatEveryAlternativeStates() {
         Allowance<String> sets = AsACompilationAllows.forAdmittedValues();
 
-        AdmissibleValues<String> merged = AdmissibleValues.<String>heldApart("p", "r")
-                .join(AdmissibleValues.heldApart("p", "r"), sets);
-        assertTrue(merged.meet(AdmissibleValues.holdingAsOne("p", "r"), sets).isBottom(),
-                "the choice states it, so an equality read beside it refuses");
-
         PlannedValues<String> planned = PlannedValues.<String>heldApart("p", "r")
                 .joinLive(PlannedValues.heldApart("p", "r"));
         assertTrue(planned.meet(PlannedValues.holdingAsOne("p", "r"))
                         .anyAlternativeAdmits((_, _) -> Emptiness.NONEMPTY) == Emptiness.EMPTY,
-                "and the same of a reading whose values are still descriptions");
+                "the choice states it, so an equality read beside it refuses");
+        assertTrue(planned.resolve(sets).values()
+                        .meet(AdmissibleValues.holdingAsOne("p", "r"), sets).isBottom(),
+                "and it is still stated once the values are worked out");
     }
 
     /** And a denial only one alternative states is not the choice's. */
@@ -279,26 +278,6 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         }
         assertInstanceOf(RelationalWitness.ABlockApartFromItself.class, together.why());
         assertEquals(Set.of(Sameness.of("p", "r").blockOf("p")), together.blocks());
-    }
-
-    /**
-     * And a choice between it and an alternative somebody can take is that alternative.
-     *
-     * <p>A union with an empty member is the union of the rest, so what the choice leaves at
-     * {@code p} is what the branch anybody can take leaves it. Kept as a member, the dead branch
-     * says nothing about {@code p} — nothing narrowed it there — and the choice would come back
-     * admitting every value.
-     */
-    @Test
-    void andAChoiceBetweenItAndSomethingStandingIsThatSomething() {
-        Allowance<String> sets = AsACompilationAllows.forAdmittedValues();
-        AdmissibleValues<String> dead = AdmissibleValues.<String>holdingAsOne("p", "r")
-                .meet(AdmissibleValues.heldApart("p", "r"), sets);
-
-        assertEquals(ValueSet.just(A),
-                dead.joinApart(AdmissibleValues.at("p", ValueSet.just(A)), sets).at("p"));
-        assertEquals(ValueSet.just(A),
-                AdmissibleValues.at("p", ValueSet.just(A)).joinApart(dead, sets).at("p"));
     }
 
     /** What a reduction that refused was refused by. */
