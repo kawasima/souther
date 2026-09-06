@@ -854,7 +854,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
 
     /** Nothing read and nothing missed, which is what a reading starts from. */
     public static <A> AdmissibleValues<A> top() {
-        return new AdmissibleValues<>(one(Box.at(Map.of())), Map.of(), Standing.nothing(),
+        return new AdmissibleValues<>(one(Alternative.at(Map.of())), Map.of(), Standing.nothing(),
                 Map.of(), ValueSet.ANY, true, Set.of(), Set.of());
     }
 
@@ -901,7 +901,8 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
     /** One position said to admit {@code set}, and nothing missed. */
     public static <A> AdmissibleValues<A> at(A atom, ValueSet set) {
         Map<A, ValueSet> said = Map.of(atom, set);
-        return new AdmissibleValues<>(set.isEmpty() ? new Held.Nothing<>() : one(Box.at(said)),
+        return new AdmissibleValues<>(
+                set.isEmpty() ? new Held.Nothing<>() : one(Alternative.at(said)),
                 said, Standing.nothing(), Map.of(Sameness.Block.of(atom), set),
                 ValueSet.ANY, true, Set.of(), Set.of());
     }
@@ -922,7 +923,8 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
         // one: it shapes the relation without touching what any position admits. Left out, a
         // choice between two equalities would be a union of two relations that no product holds
         // and would say it lost nothing, since what it reads to decide that is this key set.
-        return new AdmissibleValues<>(one(new Box<>(Map.of(block, ValueSet.ANY))), Map.of(),
+        return new AdmissibleValues<>(
+                one(Alternative.of(new Box<>(Map.of(block, ValueSet.ANY)))), Map.of(),
                 Standing.nothing(), Map.of(block, ValueSet.ANY), ValueSet.ANY, true,
                 Set.of(), Set.of());
     }
@@ -971,7 +973,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
         // Nothing is guaranteed anywhere, and at the positions it does not name as much as at the
         // ones it does: what a rule this has no word for admits is not known, so a choice offering
         // it as an alternative is offering nothing that can be counted on.
-        return new AdmissibleValues<>(one(Box.at(Map.of())), Map.of(),
+        return new AdmissibleValues<>(one(Alternative.at(Map.of())), Map.of(),
                 Standing.of(named, why), Map.of(),
                 ValueSet.NONE, true, Set.of(), Set.of());
     }
@@ -1658,12 +1660,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      * positions were one value says as much of each of them where they are two.
      */
     private Apartness<A> apartInEveryAlternative(Sameness<A> finer) {
-        Apartness<A> out = null;
-        for (Alternative<A> box : alternatives()) {
-            out = out == null ? box.apart().readAt(finer)
-                    : out.commonWith(box.apart(), finer);
-        }
-        return out == null ? Apartness.nothing() : out;
+        return Apartness.commonTo(alternatives().stream().map(Alternative::apart).toList(), finer);
     }
 
     /**
@@ -1716,11 +1713,6 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
         return Held.Alternatives.of(box);
     }
 
-    /** One alternative that states no denial, which is what every reading of a single rule holds
-     *  but the one that read a denial. */
-    private static <A> Held<A> one(Box<A> box) {
-        return one(Alternative.of(box));
-    }
 
     /** Either side holding at each position, which is what both spoke about: a position one of
      *  them says nothing about is one a value satisfying that side may hold anything at. */

@@ -67,7 +67,7 @@ public sealed interface PlannedValues<A> {
 
     /** Nothing read and nothing missed, which is what a reading starts from. */
     static <A> PlannedValues<A> top() {
-        return new Settled<>(PlannedHeld.one(PlannedHeld.Box.at(Map.of())), Map.of(),
+        return new Settled<>(PlannedHeld.one(PlannedHeld.Alternative.at(Map.of())), Map.of(),
                 Standing.nothing(), Map.of(), AdmittedPlan.ANY, true, Set.of(), Set.of());
     }
 
@@ -76,7 +76,7 @@ public sealed interface PlannedValues<A> {
         Map<A, AdmittedPlan> said = Map.of(atom, plan);
         return new Settled<>(
                 plan instanceof AdmittedPlan.Nothing ? new PlannedHeld.Nothing<>()
-                        : PlannedHeld.one(PlannedHeld.Box.at(said)),
+                        : PlannedHeld.one(PlannedHeld.Alternative.at(said)),
                 said, Standing.nothing(), Map.of(Sameness.Block.of(atom), plan),
                 AdmittedPlan.ANY, true, Set.of(), Set.of());
     }
@@ -89,7 +89,8 @@ public sealed interface PlannedValues<A> {
         // Promised at the block, though it narrows nothing there — see
         // {@link AdmissibleValues#holdingAsOne}.
         return new Settled<>(
-                PlannedHeld.one(new PlannedHeld.Box<>(Map.of(block, AdmittedPlan.ANY))),
+                PlannedHeld.one(PlannedHeld.Alternative.of(
+                        new PlannedHeld.Box<>(Map.of(block, AdmittedPlan.ANY)))),
                 Map.of(), Standing.nothing(), Map.of(block, AdmittedPlan.ANY),
                 AdmittedPlan.ANY, true, Set.of(), Set.of());
     }
@@ -113,7 +114,7 @@ public sealed interface PlannedValues<A> {
      * names — see {@link AdmissibleValues#unreadable}.
      */
     static <A> PlannedValues<A> unreadable(Set<A> named, UnreadReason why) {
-        return new Settled<>(PlannedHeld.one(PlannedHeld.Box.at(Map.of())), Map.of(),
+        return new Settled<>(PlannedHeld.one(PlannedHeld.Alternative.at(Map.of())), Map.of(),
                 Standing.of(named, why), Map.of(), AdmittedPlan.NONE, true, Set.of(),
                 Set.of());
     }
@@ -631,7 +632,20 @@ public sealed interface PlannedValues<A> {
             }
             out.put(block, AdmittedPlan.joining(List.of(across(here, member), theirs)));
         }
-        return PlannedHeld.one(new PlannedHeld.Box<>(out));
+        // And what every alternative of both states to differ, which the choice states as well.
+        // Merging a union into the smallest product containing it widens what the blocks hold; it
+        // does not licence forgetting a rule both branches wrote, and a denial dropped here is one
+        // no equality read beside the choice can be refused against.
+        return PlannedHeld.one(new PlannedHeld.Alternative<>(new PlannedHeld.Box<>(out),
+                Apartness.commonTo(List.of(apartInEveryAlternative(here, heldAsOne),
+                        apartInEveryAlternative(there, heldAsOne)), heldAsOne)));
+    }
+
+    /** What every alternative of one reading states to differ, said at {@code finer} — see
+     *  {@link Apartness#commonTo}. */
+    private static <A> Apartness<A> apartInEveryAlternative(Settled<A> of, Sameness<A> finer) {
+        return Apartness.commonTo(
+                alternatives(of).stream().map(PlannedHeld.Alternative::apart).toList(), finer);
     }
 
     /** Either side holding at each position, which is what both spoke about. */

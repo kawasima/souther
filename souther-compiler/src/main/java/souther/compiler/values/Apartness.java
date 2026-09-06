@@ -1,6 +1,7 @@
 package souther.compiler.values;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -174,6 +175,29 @@ public final class Apartness<A> {
      */
     public Apartness<A> readAt(Sameness<A> finer) {
         return isEmpty() ? this : new Apartness<>(pulledBackTo(finer));
+    }
+
+    /**
+     * What every one of these relations states, at the blocks {@code finer} holds.
+     *
+     * <p>What a choice between several alternatives states, read once. A denial one of them states
+     * is not the choice's, so what survives is what they all state — and it survives at the blocks
+     * the choice answers in, which are the finer ones the alternatives agree on.
+     *
+     * <p>Here rather than at each reader. A reading whose values are still descriptions and one
+     * whose values are sets both merge their alternatives into one product, and both have to carry
+     * this across it; written at each, the one that is added later carries nothing and the choice
+     * quietly forgets a rule both branches state.
+     *
+     * <p>Nothing where there are none of them. A reading holding no alternative states no denial,
+     * which is what a reading holding nothing does.
+     */
+    public static <A> Apartness<A> commonTo(Collection<Apartness<A>> these, Sameness<A> finer) {
+        Apartness<A> out = null;
+        for (Apartness<A> each : these) {
+            out = out == null ? each.readAt(finer) : out.commonWith(each, finer);
+        }
+        return out == null ? nothing() : out;
     }
 
     /** Every pair this states, said of the finer blocks each of its ends is made of. */

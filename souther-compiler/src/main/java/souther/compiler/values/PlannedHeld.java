@@ -201,8 +201,4 @@ sealed interface PlannedHeld<A> {
         return new Alternatives<>(Set.of(box));
     }
 
-    /** One alternative that states no denial. */
-    static <A> PlannedHeld<A> one(Box<A> box) {
-        return one(Alternative.of(box));
-    }
 }

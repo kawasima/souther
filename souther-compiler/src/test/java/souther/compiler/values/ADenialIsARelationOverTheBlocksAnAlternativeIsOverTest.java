@@ -112,6 +112,34 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         assertEquals(Set.of(P, Q), both.apartFrom(R));
     }
 
+    /**
+     * A choice merged into one product keeps what every alternative states.
+     *
+     * <p>Merging a union into the smallest product containing it widens what the blocks hold. It
+     * does not licence forgetting a rule both branches wrote — and a denial dropped there is one no
+     * equality read beside the choice can be refused against, so a declaration nothing satisfies
+     * comes back admitted.
+     *
+     * <p>Asked of the reading whose values are still descriptions as well as of the one whose
+     * values are sets. Both merge, both have to carry it, and which of the two a compilation takes
+     * is settled by how large the choice is rather than by anything a model says.
+     */
+    @Test
+    void aChoiceMergedIntoOneProductKeepsWhatEveryAlternativeStates() {
+        Allowance<String> sets = AsACompilationAllows.forAdmittedValues();
+
+        AdmissibleValues<String> merged = AdmissibleValues.<String>heldApart("p", "r")
+                .join(AdmissibleValues.heldApart("p", "r"), sets);
+        assertTrue(merged.meet(AdmissibleValues.holdingAsOne("p", "r"), sets).isBottom(),
+                "the choice states it, so an equality read beside it refuses");
+
+        PlannedValues<String> planned = PlannedValues.<String>heldApart("p", "r")
+                .join(PlannedValues.heldApart("p", "r"));
+        assertTrue(planned.meet(PlannedValues.holdingAsOne("p", "r"))
+                        .anyAlternativeAdmits((_, _) -> Emptiness.NONEMPTY) == Emptiness.EMPTY,
+                "and the same of a reading whose values are still descriptions");
+    }
+
     /** And a denial only one alternative states is not the choice's. */
     @Test
     void andADenialOnlyOneAlternativeStatesIsNotTheChoices() {
