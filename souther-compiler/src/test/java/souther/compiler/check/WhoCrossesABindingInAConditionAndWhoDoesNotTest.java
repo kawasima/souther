@@ -128,21 +128,24 @@ class WhoCrossesABindingInAConditionAndWhoDoesNotTest {
     }
 
     /**
-     * What crosses it is the shape, and what a reader of one part is handed is what is under it.
+     * What stops such a reader is the node and not the environment it would read one in.
      *
-     * <p>The body states the rule where the environment has been entered, and the binding handed to
-     * the part language states nothing even there — it is the walk to the part that crosses one,
-     * and the reader of a part is never given a binding to make sense of (ADR-0106).
+     * <p>Handed what is under the binding, the reader of comparisons states the rule; handed the
+     * binding itself in that same environment, it states nothing. So an entered environment is not
+     * what it is missing — the binding is a form its own walk has no word for, and a reading that
+     * goes over the clause's shape crosses it without ever being handed one (ADR-0106).
      */
     @Test
-    void whatIsUnderTheBindingStatesTheRuleAndThePartLanguageIsNeverGivenOne() {
+    void whatStopsAReaderOfComparisonsIsTheNodeAndNotTheEnvironment() {
         Terms terms = terms();
         Core.LetIn named = named();
         Denotations inside = terms.inside(named, rootAt());
 
-        assertEquals(List.of(1, 1), List.of(
-                        stated(terms, named.body(), inside).size(),
-                        stated(terms, named, inside).size()),
+        assertEquals(List.of(1, 0), List.of(
+                        Conditions.comparisonsStatedBy(terms, named.body(), inside)
+                                .inReadingOrder().size(),
+                        Conditions.comparisonsStatedBy(terms, named, inside)
+                                .inReadingOrder().size()),
                 "what is under the binding, and the binding handed whole to the same reader");
     }
 

@@ -472,11 +472,6 @@ sealed interface StatedByClauses {
             return terms::inside;
         }
 
-        /** What a clause this reading has no word for leaves, which is everything it had. */
-        StatedByClauses nothingSaid() {
-            return top(ordered.carriers());
-        }
-
         /** Either reading holding, as each language says it and the whole is held. */
         private Confinement.Planned<FactSubject> either(Confinement.Planned<FactSubject> one,
                                                        Confinement.Planned<FactSubject> other) {
@@ -550,6 +545,17 @@ sealed interface StatedByClauses {
          * a choice would be a conjunct of each of its alternatives, and each question the choice
          * asks of an alternative — whether anything read it, what it left open — would be answered
          * from a clause written outside the brackets.
+         *
+         * <p><b>And a choice's id is minted here</b>, where the two alternatives are what stands
+         * between the brackets, at the {@code ||} an author wrote them with.
+         *
+         * <p>Given no identity, an alternative nothing could read would have nowhere to stand and
+         * an author would be sent to a branch that was read; given no place, nothing downstream
+         * could put it in the order it was written in.
+         *
+         * <p>Which of the branches anybody can be in is not decided here. It is a question about
+         * the values, settled where the values are worked out ({@link #together},
+         * {@link #settling}), and what comes back to this tree is the fate.
          */
         @Override
         public Descent<StatedByClauses> at(ClauseExpr.Joined join) {
