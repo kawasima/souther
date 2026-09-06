@@ -9,7 +9,10 @@ import java.io.UncheckedIOException;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.constantpool.FieldRefEntry;
+import java.lang.classfile.constantpool.LoadableConstantEntry;
+import java.lang.classfile.constantpool.MethodHandleEntry;
 import java.lang.classfile.constantpool.PoolEntry;
+import java.lang.classfile.instruction.InvokeDynamicInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -77,9 +80,9 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
      * writers of one document are two vocabularies for a consumer to learn.
      */
     private static final List<String> WRITING_IT_INTO_THE_DOCUMENT = List.of(
-            "souther/compiler/report/AdequacyReport#findings(ArrayNode, List, DocumentSources)",
+            "souther/compiler/report/AdequacyReport#findings(DocumentArray, List, DocumentSources)",
             "souther/compiler/report/AdequacyReport"
-                    + "#obligations(ArrayNode, List, Map, DocumentSources)",
+                    + "#obligations(DocumentArray, List, Map, DocumentSources)",
             "souther/compiler/report/AdequacyReport#partition lambda taking (DocumentArray,"
                     + " DocumentSources, PartitionEvidence$NotRead)",
             "souther/compiler/report/AdequacyReport#partition(ObjectNode, PartitionEvidence,"
@@ -186,12 +189,36 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
         return compiled + taking;
     }
 
-    /** Whether {@code method}'s own code names {@code member} on {@code owner}. */
+    /**
+     * Whether {@code method}'s own code names {@code member} on {@code owner}.
+     *
+     * <p>Called, or handed to something that will call it. A method reference compiles to an
+     * {@code invokedynamic} whose bootstrap carries the target as a method handle, and nothing in
+     * the method's instructions names the target at all — so a walk over calls alone answers no for
+     * {@code RuleHandleProse::said}, which renders a handle as surely as calling it. The claim to
+     * read both is what makes this a walk over compiled classes rather than over the source.
+     */
     private static boolean calls(MethodModel method, String owner, String member) {
         return method.code().map(code -> code.elementStream().anyMatch(element ->
                 element instanceof InvokeInstruction called
                         && owner.equals(called.owner().name().stringValue())
-                        && member.equals(called.name().stringValue()))).orElse(false);
+                        && member.equals(called.name().stringValue())
+                || element instanceof InvokeDynamicInstruction dynamic
+                        && handedOver(dynamic, owner, member))).orElse(false);
+    }
+
+    /** Whether the bootstrap of {@code dynamic} hands over {@code member} on {@code owner}. */
+    private static boolean handedOver(InvokeDynamicInstruction dynamic, String owner,
+                                      String member) {
+        for (LoadableConstantEntry argument
+                : dynamic.invokedynamic().bootstrap().arguments()) {
+            if (argument instanceof MethodHandleEntry handle
+                    && owner.equals(handle.reference().owner().name().stringValue())
+                    && member.equals(handle.reference().name().stringValue())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

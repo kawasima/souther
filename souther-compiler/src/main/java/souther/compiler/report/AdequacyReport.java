@@ -77,6 +77,7 @@ import souther.compiler.publish.PublishedIncompleteness;
 import souther.compiler.publish.PublishedOpening;
 import souther.compiler.publish.DocumentArray;
 import souther.compiler.publish.DocumentItem;
+import souther.compiler.publish.DocumentPart;
 import souther.compiler.publish.PublishedRuleHandle;
 import souther.compiler.publish.PublishedSentence;
 import souther.compiler.publish.RuleHandleProse;
@@ -3100,8 +3101,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // inside one. Every measure here is a reader of them, and a position no axis came back for
         // still has whatever was written about it.
         if (!partition.unanswered().isEmpty()) {
-            DocumentArray standing = new DocumentArray(out.putArray("unanswered"),
-                    "/$defs/partition/properties/unanswered");
+            DocumentArray standing = DocumentPart.UNANSWERED.putArray(out);
             for (PartitionEvidence.Unanswered each : partition.unanswered()) {
                 DocumentItem said = standing.addObject();
                 ObjectNode one = said.node();
@@ -3158,8 +3158,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 c.put("why", word(said.why()));
             }
         }
-        DocumentArray boundaries = new DocumentArray(out.putArray("boundaries"),
-                "/$defs/partition/properties/boundaries");
+        DocumentArray boundaries = DocumentPart.BOUNDARIES.putArray(out);
         for (BorderAssessment boundary : lines.made().orElseGet(List::of)) {
             DocumentItem drawn = boundaries.addObject();
             ObjectNode b = drawn.node();
@@ -3236,7 +3235,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // two entries there and one here. A consumer joining a finding to what it is about joins
         // here, on the point, where on the line and the rule; and every reading is published, so
         // nothing a text report left out for room is missing from the document.
-        obligations(out.putArray("obligations"), account, null, sources);
+        obligations(DocumentPart.OBLIGATIONS.putArray(out), account, null, sources);
         ObjectNode pairs = out.putObject("pairs");
         // The size of the space is the model's and is written whether or not anybody counted. The
         // counts are the measurement's and are written only where one was made; `truncated` is gone
@@ -3252,8 +3251,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // to a reader that checks whether the field is there, and this document's shape is what the
         // schema is written against.
         ArrayNode undivided = out.putArray("notDerivable");
-        DocumentArray unread = new DocumentArray(out.putArray("notRead"),
-                "/$defs/partition/properties/notRead");
+        DocumentArray unread = DocumentPart.NOT_READ.putArray(out);
         // Only the positions the model divides no way. The list is what a consumer reads for that
         // claim, and the other two answers are about a reading that stopped and about a rule this
         // measure has no line for — neither of which is the model saying nothing.
@@ -3455,7 +3453,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * line or a class, that coordinate is not where the reader would go.
      */
     private void findings(ObjectNode behavior, BehaviorReport of, DocumentSources sources) {
-        findings(behavior.putArray("findings"), of.findings(), sources);
+        findings(DocumentPart.FINDINGS.putArray(behavior), of.findings(), sources);
     }
 
     /**
@@ -3470,12 +3468,9 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      *             that has such words. Null for a body's own lines, which have none: a reading
      *             names the position it met the line at and no reading can stand for the rest
      */
-    private void obligations(ArrayNode written, List<BorderObligationPointAssessment> account,
+    private void obligations(DocumentArray out, List<BorderObligationPointAssessment> account,
                              Map<BorderObligationPoint, String> axes,
                              DocumentSources sources) {
-        // The definition being filled in and not the field it is reached through. Two sections write
-        // this shape, and what a row of it must look like is written where the definition is.
-        DocumentArray out = new DocumentArray(written, "/$defs/obligations");
         for (BorderObligationPointAssessment point : account) {
             DocumentItem owed = out.addObject();
             ObjectNode o = owed.node();
@@ -3557,12 +3552,12 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             ArrayNode declared = one.putArray("owners");
             owners.forEach(each -> typeId(declared.addObject(), each));
             one.put("name", entry.named(owners));
-            obligations(one.putArray("obligations"),
+            obligations(DocumentPart.OBLIGATIONS.putArray(one),
                     entry.owed.stream().map(Adequacy.DeclaredDebt::debt).toList(),
                     entry.owed.stream().collect(Collectors.toMap(
                             each -> each.debt().point(), Adequacy.DeclaredDebt::axis, (a, _) -> a)),
                     sources);
-            findings(one.putArray("findings"), entry.found, sources);
+            findings(DocumentPart.FINDINGS.putArray(one), entry.found, sources);
         });
     }
 
@@ -3595,9 +3590,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * Written twice, a consumer joining on the fields would find them agreeing until one of the two
      * was edited.
      */
-    private void findings(ArrayNode into, List<Adequacy.Finding> written, DocumentSources sources) {
-        // The definition, for the reason `obligations` gives: two sections write this shape.
-        DocumentArray out = new DocumentArray(into, "/$defs/findings");
+    private void findings(DocumentArray out, List<Adequacy.Finding> written,
+                          DocumentSources sources) {
         for (Adequacy.Finding finding : written) {
             DocumentItem found = out.addObject();
             ObjectNode f = found.node();

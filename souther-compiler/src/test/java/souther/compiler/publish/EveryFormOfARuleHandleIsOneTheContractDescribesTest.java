@@ -272,6 +272,87 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
     }
 
     /**
+     * Every part a handle is written into is a part the schema declares under that name.
+     *
+     * <p>What ties a name to a place. The two are one value so that no writer can put an array under
+     * one name and claim the place of another — but a value is still a claim until something reads
+     * it, and what reads it is the schema: the place has to be an array of objects, and the name has
+     * to be the name of a property that leads there. Left unread, a part could name a field the
+     * contract has never heard of and every check between the writer and the surface would still
+     * agree with every other.
+     *
+     * <p>Reached from the property, because that is the direction a document is written in. A part
+     * two sections publish is reached from each of them and is one definition, so what is asked is
+     * that every property leading to it is called what this part is called, and that there is one.
+     */
+    @Test
+    void everyPartAHandleIsWrittenIntoIsOneTheSchemaDeclaresUnderThatName() {
+        for (DocumentPart part : DocumentPart.values()) {
+            JsonNode declared = at(schema(), part.schemaPath());
+            assertEquals("array", declared.get("type").asString(),
+                    () -> "the schema declares a repeated part at " + part.schemaPath());
+            assertNotNull(declared.get("items"),
+                    () -> "and says what a row of it looks like: " + part.schemaPath());
+
+            assertEquals(Set.of(part.key()), namesLeadingTo(part.schemaPath()),
+                    () -> "and every property that leads there is what this part is called: "
+                            + part);
+        }
+    }
+
+    /**
+     * The names of the properties that lead to {@code path}, whether by sitting there or by
+     * referring to it.
+     *
+     * <p>Both, because a definition is reached through {@code $ref} and a part written in place is
+     * not, and a document writer cannot tell which of the two it is filling in.
+     */
+    private static Set<String> namesLeadingTo(String path) {
+        Set<String> found = new LinkedHashSet<>();
+        leadingTo(schema(), "", "#" + path, path, found);
+        return found;
+    }
+
+    private static void leadingTo(JsonNode at, String here, String reference, String path,
+                                  Set<String> found) {
+        if (at.isObject()) {
+            at.propertyNames().forEach(key -> {
+                String below = here + "/" + key;
+                JsonNode under = at.get(key);
+                if (here.endsWith("/properties")
+                        && (below.equals(path) || refersTo(under, reference))) {
+                    found.add(key);
+                }
+                leadingTo(under, below, reference, path, found);
+            });
+        } else if (at.isArray()) {
+            for (int i = 0; i < at.size(); i++) {
+                leadingTo(at.get(i), here + "/" + i, reference, path, found);
+            }
+        }
+    }
+
+    /** Whether {@code said} is that reference, or a composition one branch of which is. */
+    private static boolean refersTo(JsonNode said, String reference) {
+        if (!said.isObject()) {
+            return false;
+        }
+        if (said.has("$ref") && reference.equals(said.get("$ref").asString())) {
+            return true;
+        }
+        JsonNode all = said.get("allOf");
+        if (all == null) {
+            return false;
+        }
+        for (JsonNode each : all) {
+            if (refersTo(each, reference)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * A field is written into the object the schema declares it on, and refused anywhere else.
      *
      * <p>What a field is includes where it lives, and that was the half nothing compared: the
@@ -286,7 +367,7 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
         PublishedSentence sentence = PublishedSentence.AroundAHandle.alone(handle);
         for (RuleHandleSurface each : RuleHandleSurface.values()) {
             DocumentItem elsewhere =
-                    new DocumentItem(JSON.createObjectNode(), "/$defs/somewhereElse/items");
+                    DocumentItem.at(JSON.createObjectNode(), "/$defs/somewhereElse/items");
 
             assertThrows(IllegalStateException.class,
                     () -> {
@@ -313,7 +394,7 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
      */
     private static DocumentItem whereItBelongs(RuleHandleSurface surface) {
         String path = surface.schemaPath();
-        return new DocumentItem(JSON.createObjectNode(),
+        return DocumentItem.at(JSON.createObjectNode(),
                 path.substring(0, path.length() - "/properties/".length() - surface.key().length()));
     }
 
