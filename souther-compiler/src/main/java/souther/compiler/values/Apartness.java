@@ -85,6 +85,17 @@ public final class Apartness<A> {
      * of many blocks each holding a handful of values is a large search and one of two blocks
      * holding many values is not, and how many blocks there are tells the two apart the wrong way
      * round.
+     *
+     * <p>What it comes to. The search stands on at most about twice this many assignments, each
+     * checked against the blocks given a value before it, which holds one relation to a fraction of
+     * a second whatever shape it is. Measured on the shapes that are actually hard — a relation
+     * with no three blocks all stated to differ that three values are still not enough for — it is
+     * a few milliseconds, so what this figure is doing is bounding the case nobody has built rather
+     * than the ones there are.
+     *
+     * <p>Read the other way it is what a declaration may ask for: ten positions over a sum of four
+     * cases, or twenty over two. A position count and a carrier past that is a relation this says
+     * nothing about.
      */
     private static final long MOST_ASSIGNMENTS = 1L << 20;
 

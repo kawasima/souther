@@ -33,6 +33,7 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
 
     private static final Value A = Value.text("A");
     private static final Value B = Value.text("B");
+    private static final Value C = Value.text("C");
 
     /** What a block admits, for a reduction that has to be asked. */
     private static Apartness.WhatABlockAdmits<String> holding(
@@ -406,6 +407,35 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         return named;
     }
 
+    /**
+     * A relation over eleven blocks whose largest set of blocks all stated to differ is a pair, and
+     * which three values do not satisfy.
+     *
+     * <p>Built beside a ring of five: a shadow of each of its blocks, stated to differ from that
+     * block's neighbours rather than from the block itself, and one block above stated to differ
+     * from every shadow. A shadow and its own block are not stated to differ, so no set of three
+     * grows, and the value the block above takes is one no shadow may hold — which leaves the ring
+     * two values, and a ring of five needs three.
+     */
+    private static Apartness<String> noThreeApartAndNotThreeColourable() {
+        List<String> ring = everyOneOf(5);
+        Apartness<String> all = cycleOf(ring);
+        for (int each = 0; each < ring.size(); each++) {
+            String shadow = "s" + ring.get(each);
+            all = all.and(Apartness.of(shadow, ring.get((each + 1) % ring.size())))
+                    .and(Apartness.of(shadow, ring.get((each + ring.size() - 1) % ring.size())))
+                    .and(Apartness.of("above", shadow));
+        }
+        return all;
+    }
+
+    private static Set<Value> four() {
+        Set<Value> these = new LinkedHashSet<>(Set.of(A, B));
+        these.add(C);
+        these.add(Value.text("D"));
+        return these;
+    }
+
     /** Each of {@code named} stated to differ from the next, and the last from the first. */
     private static Apartness<String> cycleOf(List<String> named) {
         Apartness<String> all = Apartness.nothing();
@@ -456,6 +486,40 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
                 "nothing satisfies it, and what shows that is running out of assignments");
         assertInstanceOf(Apartness.Reduction.Standing.class, even.reduce(holding(
                 java.util.Map.of())), "and two values are enough for this one, and it is said to");
+    }
+
+    /**
+     * And a relation no two of whose blocks make a set of three is still not satisfied by three
+     * values.
+     *
+     * <p>A ring of five is refused over two values, and a reading could reach that by counting how
+     * many blocks a ring has rather than by looking for an assignment. This one cannot be reached
+     * that way. No three of its blocks are all stated to differ, so every set the counting argument
+     * is asked of is a pair and three values are more than enough for a pair; and three values are
+     * still not enough for the whole of it.
+     *
+     * <p>Which is what parts the argument that was added from a rule about rings. Written as one,
+     * this relation would be admitted and no value of it exists.
+     *
+     * <p>Four values do satisfy it, and this does not say so: eleven blocks over four values is
+     * more assignments than are looked through. The smallest relation of this shape is this one, so
+     * that is not a size the bound could be raised past — it is where a reading that decides by
+     * looking stops.
+     */
+    @Test
+    void andBlocksNoThreeOfWhichAreAllApartAreStillNotSatisfiedByThreeValues() {
+        Apartness<String> made = noThreeApartAndNotThreeColourable();
+        Set<Value> three = new LinkedHashSet<>(Set.of(A, B));
+        three.add(C);
+
+        assertEquals(2, made.everyPairwiseApartSet().getFirst().size(),
+                "the largest set of blocks all stated to differ is a pair");
+        assertInstanceOf(RelationalWitness.NoAssignmentTellsThemApart.class,
+                refusedBy(made.reduce((_, _) -> new Admits.These(three))),
+                "and three values are not enough for it");
+        assertInstanceOf(Apartness.Reduction.NotKnown.class,
+                made.reduce((_, _) -> new Admits.These(four())),
+                "and what four values leave is past what is looked through");
     }
 
     /**
