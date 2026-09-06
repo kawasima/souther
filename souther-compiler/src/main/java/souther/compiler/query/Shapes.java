@@ -402,15 +402,18 @@ public final class Shapes {
                     db.ask(new DesugaredFns(name));
             Answer<Map<souther.compiler.types.ValueName.Behavior, souther.compiler.check.Sig>>
                     signatures = db.ask(new Bodies.Reachable(name));
+            Answer<souther.compiler.check.FakeTables> declared =
+                    db.ask(new Names.FakeTables(name));
             if (!settling.present() || !normalized.present() || !resolved.present()
-                    || !scope.present() || !fns.present()) {
+                    || !scope.present() || !fns.present() || !declared.present()) {
                 return Answer.absent();
             }
             try {
                 souther.compiler.check.CheckSurface assembled =
                         souther.compiler.check.CheckSurface.assemble(
                                 settling.value(), normalized.value(), fns.value(), scope.value(),
-                                signatures.present() ? signatures.value() : Map.of());
+                                signatures.present() ? signatures.value() : Map.of(),
+                                declared.value());
                 // A definition that did not desugar is missing from what was handed in, and a
                 // surface without it would be this module read as one that does not write it.
                 return assembled == null ? Answer.absent() : Answer.of(assembled);

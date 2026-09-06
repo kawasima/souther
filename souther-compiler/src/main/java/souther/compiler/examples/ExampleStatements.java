@@ -141,17 +141,23 @@ public final class ExampleStatements {
      * that it answers nothing ({@link #cannotAnswer}). The {@code _} row is not here either: it
      * states no input, so there is no relation to hold its answer to.
      *
-     * <p>{@code fk} is a table that answers for something — every caller reaches it through the one
-     * place that says which those are ({@code Prepared.ForExamples.tablesThatAnswer}) — so the behavior
-     * it stands in for is there to be asked about.
+     * <p>{@code table} is a block whose target reached a behavior, which is what every caller holds
+     * ({@link souther.compiler.check.FakeTables#naming}), so the declaration its rows are held to is
+     * there to be asked about. Whether that block is also the one standing in for the behavior is
+     * not asked: a row of a block is held to what the dependency declares because it was written,
+     * and a block that stands in for nothing because another names the same behavior states what it
+     * states.
      */
-    static List<Diagnostic> notKept(EnsuresChecks ensures, Hir.Fake fk, BuiltTable built) {
+    static List<Diagnostic> notKept(EnsuresChecks ensures,
+                                    souther.compiler.check.FakeTables.Occurrence.Resolved table,
+                                    BuiltTable built) {
+        Hir.Fake fk = table.read();
         List<Diagnostic> said = new ArrayList<>();
         for (Standin standin : built.standins().explicit()) {
             // The behavior the table stands in for, which is what declares the clause its rows are
-            // held to. Read off the resolved target: a dependency another module declares states
+            // held to. Taken from the classification: a dependency another module declares states
             // its own, and minting a name in this module would hold the row to nothing.
-            String why = ensures.notHeld(fk.standsInFor(),
+            String why = ensures.notHeld(table.behavior(),
                     standin.arguments(), standin.answer().value());
             if (why != null) {
                 said.add(Diagnostic.at(standin.row().pos())
@@ -165,7 +171,7 @@ public final class ExampleStatements {
     }
 
     /** What the author wrote for a fake's target, for a message that quotes the source. */
-    static String wrote(Hir.Fake table) {
+    public static String wrote(Hir.Fake table) {
         return table.target().written().quoted();
     }
 
@@ -182,7 +188,7 @@ public final class ExampleStatements {
      * — a qualifier and its dots are part of what the marker covers, and an author may write spaces
      * or a comment between them.
      */
-    static Region marked(Hir.Fake fk) {
+    public static Region marked(Hir.Fake fk) {
         return fk.target().written().region();
     }
 
@@ -241,7 +247,7 @@ public final class ExampleStatements {
                                          Deadline deadline, EvaluationPolicy policy,
                                          Map<ValueName.Behavior, Contract> contracts,
                                          Map<String, Declaring> declaring) {
-        if (module.examples().isEmpty() && module.fakes().isEmpty()) {
+        if (module.examples().isEmpty() && module.fakes().written().isEmpty()) {
             return Readings.NONE;
         }
         // Which behaviors have both a stand-in and rows of their own, read off the text. Two written
@@ -277,28 +283,27 @@ public final class ExampleStatements {
      *
      * <p>Its own answer because two things ask it. Building them asks it to know what to walk, and
      * whatever runs the building asks it to know whether there is anything to run — and a caller
-     * that worked the second one out for itself would be deciding again which tables answer. Which
-     * they are is not obvious: a module's fakes are read in one order and the first table for a
-     * dependency is the one that answers, so whether this source builds anything depends on what
-     * the sources before it wrote.
+     * that worked the second one out for itself would be walking the blocks again.
      *
-     * <p>Of the module and then of the source, in that order, for the same reason: the answering
-     * table is picked across the whole module, and only then is it asked which file it is written
-     * in.
+     * <p>Every block written here, and not only the ones that answer for a behavior. A table is
+     * built because it is written (spec §example-fakes): what is wrong inside a block is wrong
+     * whether or not anything stands in with it, and a behavior more than one block names is a
+     * refusal about the module rather than a reason to stop reading what those blocks say. A block
+     * whose target reached no behavior has no signature to be built against and is not here.
      */
-    public static List<souther.compiler.check.Prepared.FakeTable> tablesBuiltIn(
+    public static List<souther.compiler.check.FakeTables.Occurrence.Resolved> tablesBuiltIn(
             souther.compiler.check.Prepared.ForExamples module, Map<ValueName.Behavior, Sig> sigs,
             SourceId sourceId) {
-        List<souther.compiler.check.Prepared.FakeTable> building = new ArrayList<>();
-        module.tablesThatAnswer().forEach((dependency, table) -> {
+        List<souther.compiler.check.FakeTables.Occurrence.Resolved> building = new ArrayList<>();
+        for (souther.compiler.check.FakeTables.Occurrence.Resolved table : module.fakes().naming()) {
             if (!table.read().pos().isIn(sourceId)) {
-                return;   // written in another source, and built by that source's own reading
+                continue;   // written in another source, and built by that source's own reading
             }
-            if (sigs.get(dependency) == null) {
-                return;   // nothing here can say what it answers, so there is no table to build
+            if (sigs.get(table.behavior()) == null) {
+                continue;   // nothing here can say what it answers, so there is no table to build
             }
             building.add(table);
-        });
+        }
         return building;
     }
 
@@ -318,13 +323,15 @@ public final class ExampleStatements {
      * run, and the error at the fake is what the compile fails on — which also ends the same table
      * being reported once per row that reaches it.
      *
-     * <p>The tables that answer, which is what the other two readers build: the first one written for
-     * a dependency. A second written for the same name stands in for nothing and is read by nobody,
-     * so building it here would hold a table to something no reader of it would ever ask.
+     * <p>Every block whose target reached a behavior, whether or not it is the one standing in for
+     * it: a block that stands in for nothing because another names the same behavior still states
+     * what its rows state, and an author who merges the blocks would otherwise be shown a fault only
+     * then. A block whose target reached no behavior is not built — there is no signature to build
+     * it against, and what is wrong with it is said where the name is read.
      *
-     * <p>{@code module} holds every fake, since which one answers for a dependency is a fact about
-     * the module and not about one of its files, and {@code sourceId} is the file this run reports
-     * on. Which of them a fake is written in is what its own place says, so the two are never out of
+     * <p>{@code module} holds every fake, since what a module declares a stand-in for is a fact
+     * about the module and not about one of its files, and {@code sourceId} is the file this run
+     * reports on. Which of them a fake is written in is what its own place says, so the two are never out of
      * step.
      */
     public static List<Diagnostic> fakeTables(souther.compiler.check.Prepared.ForExamples module, Symbols symbols,
@@ -335,7 +342,7 @@ public final class ExampleStatements {
                                               SourceId sourceId,
                                               Deadline deadline, EvaluationPolicy policy,
                                               Map<ValueName.Behavior, Contract> contracts) {
-        List<souther.compiler.check.Prepared.FakeTable> building =
+        List<souther.compiler.check.FakeTables.Occurrence.Resolved> building =
                 tablesBuiltIn(module, sigs, sourceId);
         if (building.isEmpty()) {
             return List.of();
@@ -346,12 +353,11 @@ public final class ExampleStatements {
                 new MemoryClassLoader(classes, parent), values, deadline, policy, contracts,
                 Map.of());
         List<Diagnostic> said = new ArrayList<>();
-        for (souther.compiler.check.Prepared.FakeTable table : building) {
+        for (souther.compiler.check.FakeTables.Occurrence.Resolved table : building) {
             Hir.Fake fk = table.read();
-            Sig sig = sigs.get(fk.standsInFor());
+            Sig sig = sigs.get(table.behavior());
             // Within a budget of its own, for the reason a row and a reading each have one: a row of
-            // the table applies helpers, and a `partial` one may not stop. Nothing before this change
-            // built the table of a fake nothing reads, so this is the first thing that would run it.
+            // the table applies helpers, and a `partial` one may not stop.
             Read<List<Diagnostic>> read = v.within(reader -> {
                 List<Diagnostic> wrong = new ArrayList<>();
                 BuiltTable built = standins(reader, fk, sig.ins(), sig.out(), wrong);
@@ -359,7 +365,7 @@ public final class ExampleStatements {
                     for (Shadowed dead : built.shadowed()) {
                         wrong.add(cannotAnswer(fk, dead));
                     }
-                    wrong.addAll(notKept(v.ensures, fk, built));
+                    wrong.addAll(notKept(v.ensures, table, built));
                 }
                 return wrong;
             }, new Deadline.Work.Table(wrote(fk), fk.pos()));
@@ -568,7 +574,7 @@ public final class ExampleStatements {
             // it and a row are about one call only where the dependency takes none — every other
             // input reaching it is what the parent behavior computed, which no recorded row states.
             Sig sig = sigs.get(each);
-            boolean comparable = module.tablesThatAnswer().containsKey(each)
+            boolean comparable = module.fakes().unique().containsKey(each)
                     || (sig != null && sig.inputTypes().isEmpty());
             if (comparable && !recordedFor(each, module, declaring).isEmpty()) {
                 both.add(each);
@@ -621,12 +627,12 @@ public final class ExampleStatements {
         }
         List<Disagreement> found = new ArrayList<>();
         List<UnreadFake> timedOut = new ArrayList<>();
-        // The first table for a dependency is the one that answers, as it is for the row that runs
-        // against it; a second
-        // one written for the same name never stands in for anything, so it states nothing to
-        // disagree with. What that second table is, is its own question.
-        module.tablesThatAnswer().forEach((dependency, table) ->
-                againstFake(table.read(), recorded, found, timedOut));
+        // The blocks that answer, which is one block per behavior. A behavior more than one names
+        // has no table standing in for it, so there is nothing there to be held against a recorded
+        // row: the two statements this compares are a stand-in and a row, and what those blocks
+        // left is not a stand-in.
+        module.fakes().unique().forEach((_, table) ->
+                againstFake(table, recorded, found, timedOut));
         for (int i = 0; i < module.examples().size(); i++) {
             againstWiths(module.examples().get(i).read(), recorded, found);
         }
@@ -680,10 +686,12 @@ public final class ExampleStatements {
     }
 
     /** One fake against the rows recorded for the behavior it stands in for. */
-    private void againstFake(Hir.Fake fk, Map<ValueName.Behavior, List<RecordedRow>> recorded,
+    private void againstFake(souther.compiler.check.FakeTables.Occurrence.Resolved standingIn,
+                             Map<ValueName.Behavior, List<RecordedRow>> recorded,
                              List<Disagreement> found, List<UnreadFake> timedOut) {
-        List<RecordedRow> rows = recorded.get(fk.standsInFor());
-        Sig sig = sigs.get(fk.standsInFor());
+        Hir.Fake fk = standingIn.read();
+        List<RecordedRow> rows = recorded.get(standingIn.behavior());
+        Sig sig = sigs.get(standingIn.behavior());
         if (rows == null || sig == null) {
             return;
         }
@@ -693,7 +701,8 @@ public final class ExampleStatements {
         Read<BuiltTable> read = within(
                 reader -> {
                     BuiltTable made = standins(reader, fk, sig.ins(), sig.out(), new ArrayList<>());
-                    return made == null || !notKept(ensures, fk, made).isEmpty() ? null : made;
+                    return made == null || !notKept(ensures, standingIn, made).isEmpty()
+                            ? null : made;
                 },
                 new Deadline.Work.Table(wrote(fk), fk.pos()));
         // A switch, so that a fourth reason for a reading to end has to decide what a fake does about

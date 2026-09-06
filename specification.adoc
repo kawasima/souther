@@ -3250,7 +3250,13 @@ fake catalog.currentPrice
 
 Writing one does not put a fake into the other module: nothing is added to what that module declares or emits, and no other module sees this table. What the name settles is which behavior is stood in for, so a module declaring a behavior of the same spelling as an imported one has two, and a stand-in written here answers the one it names. A row of the table is held to what the *declaring* module states about that behavior (<<e1929>>), by the check that module emitted.
 
-A `+fake+` table is built because it is written. Each table that answers for a dependency — the first one written for it (<<example-pending>>) — is built once, where it is written, whether or not any row reads it: a module may write a table nothing depends on and no row records an answer for, and what is wrong with such a table is wrong wherever it is read from. A table with a row that will not build is an error at the fake (<<e1908>>), said once however many rows would have read it; a table that does not finish being built is a warning there (<<e1921>>). A row that would have stood in with a table that will not build does not run, and says nothing of its own about the table.
+[[a-behavior-has-at-most-one-stand-in-table]]A behavior MUST be named by at most one `+fake+` block, over the module's own source and every `+examples for+` file attached to it (<<example-placement>>). Two targets name one behavior when resolution denotes one, however either is written. Every block naming a behavior another names is reported, each in the file it is written in (<<e1933>>); which of them is the one to write differently is not decided here, as it is not for two rows carrying one name (<<a-row-name-is-unique-within-its-behavior>>).
+
+The rows of a block are one table and are read in the order they are written, and a module's source and the files attached to it have no order between them. So two blocks are not rows of one table, where two `+example+` blocks are rows of one behavior: what an `+example+` writes is a set of statements, and what a `+fake+` writes is what the dependency answers, decided row by row.
+
+Where more than one block names a behavior, none of them establishes what stands in for it. An example row that would require that stand-in does not run the behavior and states nothing about an answer from it, in the same way as a row whose stand-in table could not be built.
+
+A `+fake+` table is built because it is written. Each block whose target names a behavior is built once, where it is written, whether or not any row reads it and whether or not it is the block that stands in for that behavior — a block naming nothing has no declaration to be built against, and is refused where its name is read (<<e1932>>): a module may write a table nothing depends on and no row records an answer for, and what is wrong with such a table is wrong wherever it is read from. A table with a row that will not build is an error at the fake (<<e1908>>), said once however many rows would have read it; a table that does not finish being built is a warning there (<<e1921>>). A row that would have stood in with a table that will not build does not run, and says nothing of its own about the table.
 
 A composition's dependencies are its stages' (<<composition-with-requirements>>), so a row exampling one supplies a fake for each of those. That holds whichever path the row takes: an input that departs the main line at the first stage never reaches the second, and the second stage's dependency is faked all the same. What a row has to supply is a property of the composition, not of the input this row happens to use. One dependency two stages share is one fake — the composition holds one of it (<<composition-with-requirements>>) — and the diagnostic names the stage that wants it (<<e1908>>).
 
@@ -3287,7 +3293,7 @@ A `+fake+` is not what a pending row wants. A fake stands in for a dependency wh
 
 They are read against each other all the same. Where a stand-in and a recorded row answer one input differently, that is <<e1919>>.
 
-Each side is read the way it is read where it is used. What a fake answers for an input is what the fake itself would answer — the first row stating that input, and otherwise the `+_+` row (<<example-fakes>>) — so a table's default is what a recorded row is held against wherever no explicit row states its input; a table with a row that will not build answers nothing at all, being one no fake can stand in with; and a second table written for one dependency states nothing, since the first is the one that answers. A recorded row is read as the evaluator reads it: its arity, its inputs built against their parameter types, and its expectation held against the output's cases (<<e1904>>) and then built. A row that fails any of those states nothing here, because it states nothing there.
+Each side is read the way it is read where it is used. What a fake answers for an input is what the fake itself would answer — the first row stating that input, and otherwise the `+_+` row (<<example-fakes>>) — so a table's default is what a recorded row is held against wherever no explicit row states its input; and a table with a row that will not build answers nothing at all, being one no fake can stand in with. A recorded row is read as the evaluator reads it: its arity, its inputs built against their parameter types, and its expectation held against the output's cases (<<e1904>>) and then built. A row that fails any of those states nothing here, because it states nothing there.
 
 A stand-in and an assertion are not the same kind of thing. A recorded row may name a case and say nothing under it (<<example-expected>>); a `+fake+` row and a `+with+` may not, because what they install is a value, and a case with fields is not one. So a `+with lookup = Missing+` where `+Missing+` has fields stands in for nothing (<<e1908>>) and there is nothing for a row to disagree with.
 
@@ -6425,7 +6431,7 @@ Emitted at a row of a `+fake+` table that the table's dispatch can never return,
 
 An error, and not a measurement: which row answers is decided by the table's own rule rather than by anything a run finds out, so a row that cannot answer is refused the way an arm no `+match+` can reach is (<<e1204>>) rather than reported as something a build may carry.
 
-A `+_+` row and an explicit row do not shadow each other, whichever order they are written in: an explicit row answers where it is asked for what it states, and the `+_+` row answers everywhere else. A second table written for one dependency is not this either — the first one written is what answers, and what the second states is said where that is decided (<<example-pending>>).
+A `+_+` row and an explicit row do not shadow each other, whichever order they are written in: an explicit row answers where it is asked for what it states, and the `+_+` row answers everywhere else. A second block written for one behavior is not this either: what the dispatch of one table can answer with is one question, and how many blocks name a behavior is another, said where those blocks are (<<e1933>>).
 
 [#e1927]
 === What answers a behavior is not of the model being evaluated
@@ -6521,6 +6527,21 @@ Emitted where a `+fake+` or a `+with+` names something no behavior in scope answ
 Told apart from <<e1908>> by which side is missing. There a row wants a dependency and nothing supplies it; here something was supplied and it names nothing to supply. The fix differs, so the two do not share a code.
 
 What the named behavior is implemented by is not asked. A stand-in is a statement about what that behavior answers, and a table written for one that has a body states what it states (<<example-pending>>).
+
+[#e1933]
+=== More than one stand-in table for one behavior
+
+[,text]
+----
+More than one `fake` block stands in for `findManager`, so none of them does.
+Hint: write the rows of every `fake findManager` block as one block
+----
+
+Emitted at every `+fake+` block naming a behavior another block of the module also names (<<example-fakes>>), each in the file its block is written in. Two targets name one behavior when resolution denotes one, however either is written.
+
+None of them is preferred. The rows of a block are matched in the order they are written, and the blocks themselves are written across a module's own source and the files attached to it, which have no order between them — so there is no table two blocks make and no reading under which one of them is the one that answers. Which of them is the one to write differently is not the language's to answer, as it is not for two rows carrying one name (<<e1925>>).
+
+Told apart from <<e1908>>, where a dependency has no stand-in at all. A row requiring a behavior reported here is not told one is missing, nor that a table has no output for its input (<<e1909>>): it is told neither, because what is wrong is what the module wrote rather than anything the row states.
 
 [#e2001]
 === A helper does not carry the termination guarantee it claims

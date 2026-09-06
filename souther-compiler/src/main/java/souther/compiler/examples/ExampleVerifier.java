@@ -266,19 +266,22 @@ public final class ExampleVerifier {
     }
 
     /**
-     * The explicit entries of the first table faking {@code behavior}, read as values.
+     * The explicit entries of the block standing in for {@code behavior}, read as values, where one
+     * block does.
      *
      * <p>Three kinds of written thing are not entries, each for a reason ADR-0093 already gives, and
      * two of them are settled before this looks. The {@code _} row states no input and is the table's
      * fallback rather than one of its explicit rows. An explicit row shadowed by an earlier one
-     * stating the same arguments is never what dispatch picks, and #716 made the compiler refuse it
-     * (E1926), so what {@code Standins.explicit} holds is rows the fake can answer with.
+     * stating the same arguments is never what dispatch picks, and the compiler refuses it (E1926),
+     * so what {@code Standins.explicit} holds is rows the fake can answer with.
      *
-     * <p>The third is a whole table: a second {@code fake} written for a target that already has one
-     * never stands in for anything, and nothing refuses it. Running its entries would report
-     * disagreements about values the fake would never answer with — the mistake ADR-0093 was written
-     * to avoid, one level up from the row it was written about. So the first table for a target is
-     * the one read, which is the same rule the reading that produces E1919 keeps.
+     * <p>The third is a whole table: where more than one block names the behavior, none of them
+     * stands in for it (E1933) and there is nothing here to enumerate. Running the entries of one
+     * would report disagreements about values no fake would ever answer with — the mistake ADR-0093
+     * was written to avoid, one level up from the row it was written about. Which block stands in is
+     * {@link souther.compiler.check.FakeTables#unique}'s to say, and is the same answer the reading
+     * that produces E1919 is over. Whether that block can be stood in with is decided below, by
+     * building it.
      *
      * <p>A {@code with dep = value} is not here at all. It states no input — what reaches the
      * dependency is whatever the parent behavior computes — and is a fixture bound to the run of one
@@ -289,8 +292,11 @@ public final class ExampleVerifier {
         if (sig == null) {
             return List.of();
         }
-        souther.compiler.check.Prepared.FakeTable answering =
-                module.standingInFor(module.targeted(behavior));
+        // The block that answers, where one does. A behavior more than one block names has none,
+        // and the entries a caller would enumerate here are entries of a table nothing stands in
+        // with.
+        souther.compiler.check.FakeTables.Occurrence.Resolved answering =
+                module.fakes().unique().get(module.targeted(behavior));
         if (answering == null) {
             return List.of();
         }
@@ -2036,13 +2042,20 @@ public final class ExampleVerifier {
                 }
             }
             case ExampleProvisioning.Standin.InTheModule inTheModule ->
-                    tableStandin(fixtures, inTheModule.table().read(), dependency, depSig);
+                    tableStandin(fixtures, inTheModule.table(), dependency, depSig);
             case ExampleProvisioning.Standin.Nothing _ -> {
                 String spelt = spelling(dependency);
                 yield notRead(dependency, row.pos(), fakeMissingDiag(target, req, row,
                         "add `with " + spelt + " = ...` on the row, or a `fake " + spelt
                                 + "` table"));
             }
+            // Saying nothing, as a row reaching a table that would not build says nothing: what is
+            // wrong is wrong about what the module wrote and is said where the blocks are. A row
+            // told a stand-in is missing here would be pointed at a requirement it wrote two
+            // answers to, and one told a table has no output for its input would be pointed at a
+            // row of a table that stands in for nothing.
+            case ExampleProvisioning.Standin.MoreThanOneBlock _ ->
+                    notRead(dependency, row.pos());
         };
     }
 
@@ -2103,8 +2116,10 @@ public final class ExampleVerifier {
      * default or a miss. Works for any arity: a 0/1-input dep's tuple has 0/1 elements, a 2+-input
      * dep's has one per parameter (issue #57). What the row states of the table is read off the same
      * build, so the two say what one table was written to answer. */
-    private StoodInFor tableStandin(FixtureReader fixtures, Hir.Fake fk,
+    private StoodInFor tableStandin(FixtureReader fixtures,
+                                    souther.compiler.check.FakeTables.Occurrence.Resolved standingIn,
                                     ValueName.Behavior dependency, Sig depSig) {
+        Hir.Fake fk = standingIn.read();
         // The dependency's own signature, which admitted what its boundary carries. Rebuilding the
         // types from what it declared would put them through that walk a second time, and a
         // stand-in stands where the behavior does.
@@ -2118,7 +2133,7 @@ public final class ExampleVerifier {
         if (built == null) {
             return notRead(dependency, fk.pos());
         }
-        if (!ExampleStatements.notKept(ensures, fk, built).isEmpty()) {
+        if (!ExampleStatements.notKept(ensures, standingIn, built).isEmpty()) {
             // A table stating what the dependency declares cannot happen is not one to stand in
             // with, as a table that will not build is not. The row stops without a fake and says
             // nothing of its own: what is wrong is wrong about the table, and is said once where the

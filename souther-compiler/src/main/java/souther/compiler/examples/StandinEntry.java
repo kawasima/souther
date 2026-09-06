@@ -63,8 +63,8 @@ public final class StandinEntry {
      *
      * <p>A place and not the table. What a caller has a question about is which table an entry came
      * from and where to look, and a compile-stage representation handed out for that would be an
-     * entrance into the pipeline this face exists to stand in front of — {@code Prepared.FakeTable}
-     * reaches {@link Hir} from a reader that has no business there.
+     * entrance into the pipeline this face exists to stand in front of — a classified block reaches
+     * {@link Hir} from a reader that has no business there.
      */
     public SourcePos table() {
         return table;

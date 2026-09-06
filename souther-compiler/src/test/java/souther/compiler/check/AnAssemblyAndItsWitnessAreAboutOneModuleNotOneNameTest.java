@@ -99,7 +99,7 @@ class AnAssemblyAndItsWitnessAreAboutOneModuleNotOneNameTest {
         }
         CheckSurface read = CheckSurface.assemble(settling, elsewhere, itsOwn,
                 Scopes.derived(Compilation.ofSource(WITH_A_CONSTRUCTION, "Main").db(), "m").value(),
-                Map.of());
+                Map.of(), FakeTables.classify(settling.module()));
         assertNotNull(read, "the assembly is made, so the refusal below is about the pairing");
 
         assertThrows(IllegalArgumentException.class, () -> Prepared.prepare(declarations, read),
@@ -138,7 +138,7 @@ class AnAssemblyAndItsWitnessAreAboutOneModuleNotOneNameTest {
                 () -> CheckSurface.assemble(settling, normalized, underTheWrongName,
                         Scopes.derived(Compilation.ofSource(TWO_DEFINITIONS, "Main").db(), "m")
                                 .value(),
-                        Map.of()),
+                        Map.of(), FakeTables.classify(settling.module())),
                 "an answer for one definition stood in for another, and the name they were looked"
                         + " up by is the same shape");
         assertTrue(refused.getMessage().contains("first"), refused.getMessage());
@@ -177,7 +177,7 @@ class AnAssemblyAndItsWitnessAreAboutOneModuleNotOneNameTest {
 
         CheckSurface assembled = CheckSurface.assemble(settling, normalized, read,
                 Scopes.derived(Compilation.ofSource(TWO_DEFINITIONS, "Main").db(), "m").value(),
-                Map.of());
+                Map.of(), FakeTables.classify(settling.module()));
         assertNotNull(assembled, "the assembly is made, so the refusal below is about the pairing");
         assertNotEquals(declarations.fns(), assembled.desugaredFrom(),
                 "the two readings are two sets of definitions, or this says nothing");

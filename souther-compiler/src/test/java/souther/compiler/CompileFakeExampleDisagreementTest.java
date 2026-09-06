@@ -181,10 +181,17 @@ class CompileFakeExampleDisagreementTest {
                 """));
     }
 
+    /**
+     * Two blocks naming one behavior are compared with nothing.
+     *
+     * <p>What this comparison holds against a recorded row is a stand-in, and a behavior more than
+     * one block names has none (E1933). Neither of them is a second statement about the input the
+     * row states, and reporting one as disagreeing with the row would name a table that stands in
+     * for nothing as one of the two the model is to be held to.
+     */
     @Test
-    void aSecondTableForOneDependencyStandsInForNothing() {
-        // The first table is the one that answers, so the second states nothing to disagree with.
-        List<Located> found = disagreements(BASE + """
+    void twoTablesForOneBehaviorAreHeldAgainstNoRow() {
+        List<String> codes = allCodesOf(BASE + """
 
                 example findMember
                     | "m-1 is a member" : (MemberId("m-1")) -> Found { id = MemberId("m-1") }
@@ -196,7 +203,7 @@ class CompileFakeExampleDisagreementTest {
                     | (MemberId("m-1")) -> Missing { why = "no such member" }
                 """);
 
-        assertEquals(0, found.size(), found.toString());
+        assertEquals(List.of("E1933", "E1933"), codes, codes.toString());
     }
 
     /**

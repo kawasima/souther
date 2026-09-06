@@ -12,6 +12,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -99,13 +100,15 @@ class WhatWentUnbuiltIsAskedOfTheTablesAndNotOfTheMachineTest {
     }
 
     /**
-     * And a file whose only fake is a second one for the same dependency is answered for too.
+     * And a file writing a second block for one behavior builds that block like any other.
      *
-     * <p>It wrote a fake, so a rule that asked whether the file wrote one would call its tables
-     * unbuilt — and the file is not the one that builds it either way.
+     * <p>A table is built because it is written. How many blocks name one behavior is a question
+     * about the module and not a reason to leave one of them unbuilt, so this file is not one with
+     * nothing of its own — which is what the case above turns on. What it wrote is what it builds,
+     * and here that is a module the JVM will not hold.
      */
     @Test
-    void aSourceWhoseOnlyFakeAnswersNothingIsAnsweredForToo() {
+    void aSourceWritingASecondBlockForOneBehaviorBuildsItAllTheSame() {
         Db db = Compilation.ofSources(
                 List.of(tooWideForTheJvm(A_FAKE), A_SECOND_FAKE_FOR_THE_SAME_DEPENDENCY),
                 ModulePath.EMPTY).db();
@@ -113,8 +116,8 @@ class WhatWentUnbuiltIsAskedOfTheTablesAndNotOfTheMachineTest {
         Answer<Output.Examples.Of> answered = db.ask(
                 new Output.Examples("example.wide", ATTACHED, ArmObservation.RECORD));
 
-        assertNotNull(answered.value(),
-                "the module answers for that dependency, so this file builds no table of its own");
+        assertNull(answered.value(),
+                "it wrote a table, so it is a file whose tables this module could not build");
     }
 
     /** And the module really is one that checks and emits nothing, so the two above are read of the

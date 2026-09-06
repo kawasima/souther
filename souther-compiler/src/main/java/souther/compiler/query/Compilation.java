@@ -322,6 +322,7 @@ public final class Compilation {
             db.ask(new Output.ConstConstructions(module));
             for (SourceId id : exampleSourcesOf(module)) {
                 db.ask(new Front.RowNames(id));
+                db.ask(new Names.StandInBlocks(id));
                 db.ask(Output.Examples.asked(db, module, id));
             }
             db.ask(new Output.SaidDisagreements(module));
