@@ -1154,10 +1154,13 @@ public final class InvariantChecker {
      *
      * @param at       where the coordinate sits, read from the value these are of, and which of the
      *                 numbers there this end is on — a count taken of the position, or its value
-     * @param from     the rule that placed it, which is what names the line. The clause and not
-     *                 the declaration it is on: two clauses of one declaration placing an end at
-     *                 one value are two rules a row could be owed to, and held as declarations
-     *                 they came back as one
+     * @param part     which part of which rule placed it, which is what names the line. The clause
+     *                 and not the declaration it is on: two clauses of one declaration placing an
+     *                 end at one value are two rules a row could be owed to, and held as
+     *                 declarations they came back as one. And the part and not the clause: one part
+     *                 states as many rules as its author wrote into it, and each of them places its
+     *                 own end
+     * @param read     the part itself, as the reading of the clause left it
      */
     record Direct(NumberAt<RuleKey> at, PartId part, InvariantBound bound, Core read) {
 

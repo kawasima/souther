@@ -10,7 +10,7 @@ import java.util.List;
  * How an author wrote a clause as several rules, kept as the shape they wrote rather than as a list.
  *
  * <p>Which parts a clause has, and where each of them stands in it, is settled once — where the
- * clause is split ({@link ClauseHelpers#conjunctsOf}) — and this is that answer. What it is for is
+ * clause is split ({@link ClauseHelpers}) — and this is that answer. What it is for is
  * the one thing a list cannot do: find, in a tree the clause was read into, the very subtree each
  * part became.
  *

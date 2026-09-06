@@ -461,9 +461,9 @@ public final class FieldDomains {
      * @param at    which number at which name the end is on. The number and not a name beside a
      *              flag: one name carries more than one, and which of them an end is on is what
      *              the operation beside the name says
-     * @param from  the rule that placed the end, which is what names the line. An invariant's,
-     *              and said so: these are the ends the clauses of a declaration place, and no
-     *              other kind of rule reaches this reading
+     * @param part  which part of which rule placed the end, which is what names the line. A part
+     *              of a declaration's clause: these are the ends the clauses of a declaration
+     *              place, and no other kind of rule reaches this reading
      * @param lower whether this bounds the coordinate below; otherwise above
      */
     public record Placed(NumberAt<RuleKey> at, PartId part, boolean lower, Endpoint end) {

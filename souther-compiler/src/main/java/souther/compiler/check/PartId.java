@@ -11,7 +11,7 @@ package souther.compiler.check;
  * there are.
  *
  * <p>So the number is not counted here or anywhere a reader stands. It is assigned where a clause is
- * split into the parts its author wrote ({@link ClauseHelpers#conjunctsOf}) and carried from there,
+ * split into the parts its author wrote ({@link ClauseHelpers}) and carried from there,
  * and {@link ClauseHelpers.AuthoredPart#idFor} is the one place this is made. The representation is
  * public because a report and a reading of inputs both hold one; making one is not.
  *

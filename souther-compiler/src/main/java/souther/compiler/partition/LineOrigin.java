@@ -50,7 +50,7 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      * value are two rules, and a cut keeps every rule that drew it; named by the declaration and the
      * word, they are one.
      *
-     * @param conjunct        which conjunct of the clause drew this end. What tells one line of a
+     * @param part            which part of which clause drew this end. What tells one line of a
      *                        clause from another where the clause drew several: {@code
      *                        String.length(name) >= 1 && String.length(code) >= 1} is one clause and
      *                        two lines at one value, and a row at either says nothing about the
