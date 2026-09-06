@@ -3,7 +3,7 @@ package souther.compiler.check;
 import souther.compiler.core.Core;
 
 /**
- * A clause tree read into one state, the connectives being the same whatever the leaves are read as.
+ * A clause tree read into one state, the connectives being the same whatever the parts are read as.
  *
  * <p>What a clause is written out of — a conjunction, a choice, a denial — is the clause's own shape
  * and not a fact about the language it is read in. Written once per language, that shape is the same
@@ -18,20 +18,25 @@ import souther.compiler.core.Core;
  * having found nothing wrong with the branch the other one refused.
  *
  * <p><b>What a clause states is answered upward and what its names mean is handed downward.</b> A
- * reading composes its leaves into one answer, and that answer is a function of the leaves; the
- * environment a leaf is read in is a function of the bindings above it, which is the other
+ * reading composes its parts into one answer, and that answer is a function of the parts; the
+ * environment a part is read in is a function of the bindings above it, which is the other
  * direction. Carried only upward, there was nowhere for a binding to be, so a clause under one was
  * a shape every reading had no word for — and since almost every binding this check meets is one a
  * helper's expansion made, a rule stated through a helper was read less than the same rule written
  * out.
  *
- * <p>So {@code E} is handed down and {@code S} comes back up, and a leaf is read at the environment
+ * <p>So {@code E} is handed down and {@code S} comes back up, and a part is read at the environment
  * it stands in. What a binding does to that environment is not asked of a reading: the fold finds
  * the boundary and {@link ClauseScope} answers it, which is what keeps a binder's meaning the
  * environment's (ADR-0106) rather than something each of three readings works out again.
  *
+ * <p><b>A part is not the same thing for every reading.</b> Where a reading stops is its own answer
+ * ({@link Descent}), so the node an author wrote a connective at is a part to a reading that takes
+ * it whole and is none to a reading that descends. What every reading shares is the shape below it,
+ * not the depth it reads to.
+ *
  * @param <S> what a reading of a clause comes to
- * @param <E> what the reading carries into a binding — what its leaves are read at
+ * @param <E> what the reading carries into a binding — what its parts are read at
  */
 interface ClauseReading<S, E> {
 
@@ -67,10 +72,10 @@ interface ClauseReading<S, E> {
      * What {@code e} leaves, stated where {@code positive} and denied where it is not, read from
      * {@code at} with {@code scope} answering for the bindings inside it.
      *
-     * <p>A denial is carried to the leaves rather than applied to what a branch came to. What a
+     * <p>A denial is carried down to the parts rather than applied to what a branch came to. What a
      * state says is a fact per position, and the denial of that is not one — the values a
      * conjunction rules out are a choice between the positions it named, which no map of positions
-     * holds. Carried down, every denial meets a leaf, where it is one.
+     * holds. Carried down, every denial meets a part, where it is one.
      */
     default S read(Core e, boolean positive, E at, ClauseScope<E> scope) {
         return read(e, positive, at, scope, null);
