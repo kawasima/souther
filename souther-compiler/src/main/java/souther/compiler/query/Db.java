@@ -97,6 +97,12 @@ import java.util.Set;
  * one report that reads every name in sight depends on every name in sight. That is issue #835,
  * and {@code IncrementalCompilationTest} holds both halves.
  *
+ * <p>Not everything a store holds is an answer. What runs its programs is one such thing, and so is
+ * what a reading of a declaration borrows from ({@link #readings()}): the reading of a declaration
+ * that one question made is handed to the next question that would have made it, for as long as the
+ * revision it was made under is the current one. Neither is compared and neither decides what is
+ * recomputed — that is settled by the memos, before either is asked anything.
+ *
  * <p>One store is one workspace over time, not one compile. It is not thread-safe and does not need
  * to be: the work inside a compile is a graph walk, not a set of independent jobs.
  */
