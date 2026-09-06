@@ -8,6 +8,7 @@ import souther.compiler.numeric.Rel;
 import souther.compiler.values.AdmissibleValues;
 import souther.compiler.values.Allowance;
 import souther.compiler.values.ConjoinedAdmissibleValues;
+import souther.compiler.values.StringMachineAnswers;
 import souther.compiler.values.Refusal;
 import souther.compiler.values.RelationalWitness;
 
@@ -110,7 +111,13 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
      * first domain added without touching the second would put them out of agreement.
      */
     public boolean isBottom() {
-        return shownByAnother() || admitted().holdsNothing();
+        return isBottom(StringMachineAnswers.NONE);
+    }
+
+    /** The same, borrowing what {@code machines} has already made where the pair's answer needs
+     *  a machine. */
+    public boolean isBottom(StringMachineAnswers machines) {
+        return shownByAnother() || admitted(machines).holdsNothing();
     }
 
     /**
@@ -137,16 +144,16 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
      * <p>So the envelope here is never {@link PositionEnvelope.NothingIsLeft}: the one component
      * that says so is the numbers, and their own answer was asked above.
      */
-    private Confinement.Admission<A> admitted() {
+    private Confinement.Admission<A> admitted(StringMachineAnswers machines) {
         if (shownByAnother()) {
-            return confinement.admission();
+            return confinement.admission(machines);
         }
         return switch (positionEnvelope()) {
             // Nowhere for any position to be is a component of this state holding nothing, which is
             // that component's answer and is read where it is asked. What the pair leaves is what
             // the pair leaves, and this says nothing to it.
-            case PositionEnvelope.NothingIsLeft<A> _ -> confinement.admission();
-            case PositionEnvelope.Restrictions<A> it -> confinement.admission(it);
+            case PositionEnvelope.NothingIsLeft<A> _ -> confinement.admission(machines);
+            case PositionEnvelope.Restrictions<A> it -> confinement.admission(it, machines);
         };
     }
 
@@ -263,7 +270,14 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
      *                  read first, and moving a clause would move the refusal
      */
     public Optional<Emptiness> holdsNothing(SequencedMap<A, Emptiness.AtAField.Where> positions) {
-        Confinement.Admission<A> shown = admitted();
+        return holdsNothing(positions, StringMachineAnswers.NONE);
+    }
+
+    /** The same, borrowing what {@code machines} has already made where the pair's answer needs
+     *  a machine. */
+    public Optional<Emptiness> holdsNothing(SequencedMap<A, Emptiness.AtAField.Where> positions,
+                                            StringMachineAnswers machines) {
+        Confinement.Admission<A> shown = admitted(machines);
         Emptiness why = shownByAnother() || shown.holdsNothing()
                 ? new Emptiness.ConflictingRules() : null;
         // A position whose ends cross, which is nearer than the general form: it says not only that
@@ -547,7 +561,15 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
      * unread rather than about how the alternatives are held.
      */
     ConstraintState<A> takingRead(Confinement.Worked<A> read, Allowance<A> sets) {
-        return new ConstraintState<>(numbers, facts, confinement.taking(read, sets), shown);
+        return takingRead(read, sets, StringMachineAnswers.NONE);
+    }
+
+    /** The same, borrowing what {@code machines} has already made where taking the reading in
+     *  asks what either side was shown empty by. */
+    ConstraintState<A> takingRead(Confinement.Worked<A> read, Allowance<A> sets,
+                                  StringMachineAnswers machines) {
+        return new ConstraintState<>(numbers, facts, confinement.taking(read, sets, machines),
+                shown);
     }
 
     /**

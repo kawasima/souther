@@ -9,6 +9,7 @@ import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.Rel;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.values.AdmissibleSet;
+import souther.compiler.values.StringMachineAnswers;
 import souther.compiler.values.UnreadReason;
 import souther.compiler.values.ValueSet;
 
@@ -250,6 +251,11 @@ public final class FieldDomains {
         return constraints.isBottom();
     }
 
+    /** The same, borrowing what {@code machines} has already made where deciding takes one. */
+    public boolean infeasible(StringMachineAnswers machines) {
+        return constraints.isBottom(machines);
+    }
+
     /**
      * Why the rules leave no value, or empty where they may leave one.
      *
@@ -262,6 +268,11 @@ public final class FieldDomains {
      */
     public Optional<Emptiness> holdsNothing() {
         return constraints.holdsNothing(spelled(namedBy));
+    }
+
+    /** The same, borrowing what {@code machines} has already made where deciding takes one. */
+    public Optional<Emptiness> holdsNothing(StringMachineAnswers machines) {
+        return constraints.holdsNothing(spelled(namedBy), machines);
     }
 
     /**
@@ -308,6 +319,13 @@ public final class FieldDomains {
         return of(named, source, policy, Map.of());
     }
 
+    /** The same, asking {@code machines} for what somebody has already made of the declaration's
+     *  string rules before building any of it. */
+    public static FieldDomains of(TypeSymbol.AtModule named, RuleReadingSource source,
+                                  ReadingPolicy policy, StringMachineLookup machines) {
+        return of(named, source, policy, Map.of(), machines);
+    }
+
 
     /**
      * The same, with some fields already settled at a value.
@@ -319,13 +337,20 @@ public final class FieldDomains {
      */
     public static FieldDomains of(TypeSymbol.AtModule named, RuleReadingSource source,
                                   ReadingPolicy policy, Map<RuleKey, Count> settled) {
+        return of(named, source, policy, settled, StringMachineLookup.NONE);
+    }
+
+    /** The same, asking {@code machines} first. */
+    public static FieldDomains of(TypeSymbol.AtModule named, RuleReadingSource source,
+                                  ReadingPolicy policy, Map<RuleKey, Count> settled,
+                                  StringMachineLookup machines) {
         // A name declaring no record leaves nothing about fields it has not got, which is what
         // nothing written comes to here. The same answer the other readers of a declaration give
         // when handed such a name, because it is the same fact about the name rather than three
         // opinions about the caller.
         return source.symbols().declaredNode(named.key()) instanceof Hir.Data data
                 ? of(named, data, source, policy, atValues(settled),
-                        InvariantChecker.Reach.EVERYTHING)
+                        InvariantChecker.Reach.EVERYTHING, machines)
                 : NONE;
     }
 
@@ -348,22 +373,23 @@ public final class FieldDomains {
      */
     static FieldDomains granting(TypeSymbol.AtModule named, Hir.Data data, RuleReadingSource source,
                                  ReadingPolicy policy,
-                                 java.util.function.Predicate<TypeSymbol> granted) {
+                                 java.util.function.Predicate<TypeSymbol> granted,
+                                 StringMachineLookup machines) {
         return of(named, data, source, policy, Map.of(),
-                InvariantChecker.Reach.stoppingAt(granted));
+                InvariantChecker.Reach.stoppingAt(granted), machines);
     }
 
     /** The same, reading only as far as {@code reach} says — see {@link #narrowedBy}. */
     private static FieldDomains of(TypeSymbol.AtModule named, Hir.Data data, RuleReadingSource source,
                                    ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled,
-                                   InvariantChecker.Reach reach) {
+                                   InvariantChecker.Reach reach, StringMachineLookup machines) {
         // A newtype is read the same way, and only its bounds are not worth handing back: its value
         // is the value it is, so there are no siblings to relate. Everything else is the same
         // question — its own rules can hold a hole no range keeps, and they can contradict, and both
         // answers were being given away by treating it as a value with nothing to say.
         READINGS.incrementAndGet();
         InvariantChecker.Seeded seeded =
-                InvariantChecker.seedFields(named, source, policy, settled, reach);
+                InvariantChecker.seedFields(named, source, policy, settled, reach, machines);
         Map<RuleKey, NumericDomain.Bounds> out = new LinkedHashMap<>();
         seeded.atoms().forEach((field, atom) -> {
             // The value itself is at no name of its own, and its range is the one thing not worth
@@ -678,7 +704,7 @@ public final class FieldDomains {
     /** This value read again without the clauses of the declarations {@code skip} names. */
     private FieldDomains without(java.util.function.Predicate<TypeSymbol> skip) {
         return of(named, data, source, policy, settled,
-                InvariantChecker.Reach.withoutClausesOf(skip));
+                InvariantChecker.Reach.withoutClausesOf(skip), StringMachineLookup.NONE);
     }
 
     /**
@@ -1352,7 +1378,8 @@ public final class FieldDomains {
         return of(named, data, source, policy, settled,
                 InvariantChecker.Reach.withoutParts(removed.stream()
                         .map(each -> new PartsLeftOut.AuthoredPart(each.from(), each.part()))
-                        .collect(java.util.stream.Collectors.toSet())));
+                        .collect(java.util.stream.Collectors.toSet())),
+                StringMachineLookup.NONE);
     }
 
     /**

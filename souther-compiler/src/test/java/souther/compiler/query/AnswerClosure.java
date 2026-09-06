@@ -429,6 +429,7 @@ final class AnswerClosure {
     /** What a container the JDK declares was written to hold. */
     private static final TypePath.Step HELD = new TypePath.Step.Argument("held");
     private static final TypePath.Step MAP_VALUE = new TypePath.Step.Argument("value");
+    private static final TypePath.Step MAP_KEY = new TypePath.Step.Argument("key");
 
     /** One arm of a sum, which a walk of types takes all of. */
     private static TypePath.Step arm(String named) {
@@ -615,6 +616,24 @@ final class AnswerClosure {
                 then(then(A_SUBJECT, A_MEASUREMENT), HELD,
                         part("souther.compiler.partition.Axis", "classes"), HELD,
                         part("souther.compiler.partition.PartitionClass", "denotes")));
+        // The machines a declaration's rules come to, filed under what each is a fact about: the
+        // plan it realized, both where the plan is a set written out and where the set is what it
+        // came to; the set whose extent was taken; and the language met with a stretch.
+        String facts = "souther.compiler.values.StringFacts";
+        theMachineUnderALanguage(out, Q + "Machines$OfDeclaration",
+                part(facts, "realized"), MAP_KEY,
+                arm("souther.compiler.values.AdmittedPlan$Of"),
+                part("souther.compiler.values.AdmittedPlan$Of", "set"));
+        theMachineUnderALanguage(out, Q + "Machines$OfDeclaration",
+                part(facts, "realized"), MAP_VALUE);
+        theMachineUnderALanguage(out, Q + "Machines$OfDeclaration",
+                part(facts, "extents"), MAP_KEY);
+        out.add(new KnownDeclared(declared(Q + "Machines$OfDeclaration",
+                "souther.compiler.regex.Automaton",
+                part(facts, "inside"), MAP_KEY,
+                part(facts + "$Stretch", "language"),
+                part("souther.compiler.regex.Language", "machine")),
+                A_MACHINE_UNDER_A_LANGUAGE, Traversal.Why.SAYS_NOTHING_OF_ITSELF));
         // And the same machine reached through what the class means rather than through what it
         // writes out. A class whose meaning is a set of values holds one, so the strings are on the
         // meaning as well as on the denotation — two routes to one machine and not a second one,

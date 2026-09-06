@@ -6,6 +6,7 @@ import souther.compiler.types.Type;
 import souther.compiler.values.AdmissibleValues;
 import souther.compiler.values.AdmittedPlan;
 import souther.compiler.values.Allowance;
+import souther.compiler.values.StringMachineAnswers;
 import souther.compiler.values.PlannedValues;
 import souther.compiler.values.Realizations;
 import souther.compiler.values.Realized;
@@ -432,9 +433,10 @@ sealed interface StatedByClauses {
      *  Built per clause, this walk paid for a pair of readers at every clause of every value. */
     static Reading readingOf(Terms terms, Map<FactSubject, Type> byName,
                              Symbols symbols, Alternatives alternatives,
-                             Allowance<FactSubject> allowed) {
+                             Allowance<FactSubject> allowed, StringMachineAnswers machines) {
         return new Reading(AdmissibleReading.of(terms, byName, symbols, allowed),
-                OrderedReading.of(terms, byName, symbols), terms, byName, alternatives);
+                OrderedReading.of(terms, byName, symbols), terms, byName, alternatives,
+                machines);
     }
 
 
@@ -460,7 +462,8 @@ sealed interface StatedByClauses {
      * ({@link ConstraintState#positionEnvelope} is asked where the readings have finished.)
      */
     record Reading(AdmissibleReading values, OrderedReading ordered, Terms terms,
-                   Map<FactSubject, Type> byName, Alternatives alternatives)
+                   Map<FactSubject, Type> byName, Alternatives alternatives,
+                   StringMachineAnswers machines)
             implements ClauseReading<StatedByClauses, Denotations> {
 
         /** What a binding under a clause is entered as, for a fold over this reading. The one
@@ -647,8 +650,9 @@ sealed interface StatedByClauses {
             StatedTogether other = together(choice.right(), decided);
             if (one instanceof StatedTogether.Said here
                     && other instanceof StatedTogether.Said there) {
-                Confinement.Admission<FactSubject> mine = here.confinement().admission();
-                Confinement.Admission<FactSubject> theirs = there.confinement().admission();
+                Confinement.Admission<FactSubject> mine = here.confinement().admission(machines);
+                Confinement.Admission<FactSubject> theirs =
+                        there.confinement().admission(machines);
                 souther.compiler.values.Emptiness a = mine.emptiness();
                 souther.compiler.values.Emptiness b = theirs.emptiness();
                 // A branch the descriptions already show empty is decided here whichever way the
@@ -796,7 +800,7 @@ sealed interface StatedByClauses {
          */
         private Settlement.Sided probed(StatedTogether.Said read,
                                         Allowance<FactSubject> by) {
-            Confinement.Admission<FactSubject> said = read.confinement().admission();
+            Confinement.Admission<FactSubject> said = read.confinement().admission(machines);
             if (said.emptiness() != souther.compiler.values.Emptiness.UNDECIDED) {
                 return Settlement.Sided.settledAs(said);
             }
@@ -804,7 +808,7 @@ sealed interface StatedByClauses {
             // positions stop — the same question, and a different answer for having been asked of
             // what a pattern comes to.
             Confinement.Worked<FactSubject> worked = read.confinement().resolve(by);
-            Confinement.Admission<FactSubject> admitted = worked.admission();
+            Confinement.Admission<FactSubject> admitted = worked.admission(machines);
             if (admitted.emptiness() != souther.compiler.values.Emptiness.UNDECIDED) {
                 return Settlement.Sided.settledAs(admitted);
             }
