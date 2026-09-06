@@ -3,6 +3,8 @@ package souther.compiler.check;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Compilation;
 import souther.compiler.types.TypeKey;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.util.Set;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.TypeSymbols;
@@ -13,7 +15,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -166,6 +167,36 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
                 "the reader that asked for the answer is handed the reading it was made by");
     }
 
+    /**
+     * What says a source is the compilation's own cannot be said anywhere else.
+     *
+     * <p>A reading is lent to a reader whose source has the same origin, so an origin saying the
+     * source is the one a compilation reads a module's rules under is what admits a reader to
+     * another reader's work. Written where anybody could write it, a reader that assembled a scope
+     * of its own could say so of it and be lent a reading of rules it was not reading — and nothing
+     * about the compile would look wrong.
+     *
+     * <p>So it is not a name anybody can write. What is held here is that: the one thing that can
+     * say it is what lends the readings, and the saying is not on offer outside the package that
+     * reads rules.
+     */
+    @Test
+    void onlyWhatLendsTheReadingsCanSayASourceIsTheCompilationsOwn() {
+        Class<?> theCompilationsOwn = new AModulesRules("demo").getClass();
+
+        assertFalse(Modifier.isPublic(theCompilationsOwn.getModifiers()),
+                "what says a source is the compilation's own is written outside this package");
+        for (Constructor<?> made : theCompilationsOwn.getDeclaredConstructors()) {
+            assertFalse(Modifier.isPublic(made.getModifiers()),
+                    "and is made outside it: " + made);
+        }
+        assertEquals(List.of(), java.util.Arrays.stream(RuleReadingSource.Origin.class
+                        .getPermittedSubclasses())
+                .filter(each -> Modifier.isPublic(each.getModifiers()))
+                .map(Class::getSimpleName).toList(),
+                "an origin a reader could write is an origin a reader could claim");
+    }
+
     /** A second policy is a second reading, not the same one under other terms. */
     @Test
     void anotherPolicyIsAnotherReading() {
@@ -237,15 +268,18 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
         RuleReadingSource source = RuleReadings.of(compilation, "demo");
         TypeSymbol.AtModule code = TypeSymbols.declared(new TypeKey("demo", "Code"));
         long[] world = { 7 };
-        LentReadings lender = new LentReadings(DeclarationReadings.NONE, () -> world[0]);
+        LentReadings lender = new LentReadings(DeclarationReadings.NONE, () -> world[0],
+                StoreWork.UNWATCHED);
 
         InvariantChecker.Seeded read =
                 InvariantChecker.seedFields(code, source, AS_THE_COMPILE_READS, lender);
-        assertSame(read, lender.seeded(code.key(), source, AS_THE_COMPILE_READS),
+        assertSame(read, InvariantChecker.seedFields(code, source, AS_THE_COMPILE_READS, lender),
                 "what was read of this world is lent while it is this world");
 
         world[0]++;
-        assertNull(lender.seeded(code.key(), source, AS_THE_COMPILE_READS),
+        long beforeTheNext = InvariantChecker.readingsMade();
+        InvariantChecker.seedFields(code, source, AS_THE_COMPILE_READS, lender);
+        assertEquals(beforeTheNext + 1, InvariantChecker.readingsMade(),
                 "and is not lent into the next, which it is not a reading of");
     }
 }

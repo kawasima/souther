@@ -42,53 +42,24 @@ public record RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants
         }
     }
 
-    /**
-     * A source made for one reading, which nobody else can name.
-     *
-     * <p>The answer where nothing else is said, and the safe one: a reading made from it is a
-     * reading nothing shares, so a reader that wraps a lookup to watch what it is asked — or builds
-     * a scope of its own — gets what it built and no one else's.
-     */
+    /** A source made for a reading of its own, which nobody else can name. */
     public RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants) {
-        this(symbols, invariants, Origin.ofOneReading());
+        this(symbols, invariants, AReadingOfItsOwn.next());
     }
 
     /**
-     * Which source a reading was made from, as a value.
+     * Which source a reading was made from.
      *
      * <p>Two readings are of one source when their sources have one origin. That is what a lender of
      * readings asks, and it is asked of this rather than of the pair above for the reason the pair
      * cannot answer it.
+     *
+     * <p>What it may say is written where a source is made and nowhere else. A source built by
+     * whoever is reading is one of its own, which nothing shares; the one a compilation reads a
+     * module's rules under is stamped by what lends the readings ({@link
+     * DeclarationReadings#theCompilationsOwn}), which is the only thing that can say so. Left as a
+     * name anybody could write, a reader assembling a scope of its own could have said its source
+     * was the compilation's, and been lent a reading of rules it was not reading.
      */
-    public sealed interface Origin {
-
-        /**
-         * The reading of {@code module}'s rules that a compilation holds: the one every reader that
-         * asks the compilation where to read is given, however many of them ask and however many
-         * pairs are built to hand it over.
-         *
-         * <p>Written by whoever answers for a compilation and by nobody else. Written elsewhere, it
-         * would say of a scope somebody assembled that it is the one the compilation reads under,
-         * and a reading made from it would be lent to readers of the compilation's own.
-         */
-        record OfAModulesRules(String module) implements Origin {
-
-            public OfAModulesRules {
-                if (module == null) {
-                    throw new IllegalArgumentException("a module's rules are read under its name");
-                }
-            }
-        }
-
-        /** A source somebody made for a reading of their own. Two of these are never one. */
-        record OfOneReading(long ordinal) implements Origin {}
-
-        /** One nobody else can name. */
-        static Origin ofOneReading() {
-            return new OfOneReading(READINGS.incrementAndGet());
-        }
-
-        java.util.concurrent.atomic.AtomicLong READINGS =
-                new java.util.concurrent.atomic.AtomicLong();
-    }
+    public sealed interface Origin permits AModulesRules, AReadingOfItsOwn {}
 }

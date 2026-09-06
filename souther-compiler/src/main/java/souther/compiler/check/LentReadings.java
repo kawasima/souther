@@ -32,9 +32,13 @@ public final class LentReadings implements DeclarationReadings {
     private record OfDeclarationUnder(TypeKey declaration, RuleReadingSource.Origin source,
                                       ReadingPolicy policy) {}
 
+    /** A reading, and what the store was asked to make it. */
+    private record Shared(InvariantChecker.Seeded seeded, StoreWork.Reads reads) {}
+
     private final DeclarationReadings machines;
     private final LongSupplier revision;
-    private final Map<OfDeclarationUnder, InvariantChecker.Seeded> lent = new HashMap<>();
+    private final StoreWork work;
+    private final Map<OfDeclarationUnder, Shared> lent = new HashMap<>();
 
     /** The revision the readings in hand were made under. */
     private long lentAt;
@@ -43,10 +47,17 @@ public final class LentReadings implements DeclarationReadings {
      * Lends the readings made against {@code machines}, for as long as {@code revision} says the
      * world they were read from is the current one.
      */
-    public LentReadings(DeclarationReadings machines, LongSupplier revision) {
+    public LentReadings(DeclarationReadings machines, LongSupplier revision, StoreWork work) {
         this.machines = machines;
         this.revision = revision;
+        this.work = work;
         this.lentAt = revision.getAsLong();
+    }
+
+    @Override
+    public RuleReadingSource theCompilationsOwn(String module, Symbols symbols,
+                                                ExpandedClauseLookup clauses) {
+        return new RuleReadingSource(symbols, clauses, new AModulesRules(module));
     }
 
     @Override
@@ -55,15 +66,27 @@ public final class LentReadings implements DeclarationReadings {
     }
 
     @Override
-    public InvariantChecker.Seeded seeded(TypeKey declaration, RuleReadingSource source,
-                                          ReadingPolicy policy) {
-        return current().get(new OfDeclarationUnder(declaration, source.origin(), policy));
+    public InvariantChecker.Seeded reading(TypeKey declaration, RuleReadingSource source,
+                                           ReadingPolicy policy,
+                                           java.util.function.Supplier<InvariantChecker.Seeded> read) {
+        Shared held = current().get(new OfDeclarationUnder(declaration, source.origin(), policy));
+        if (held == null) {
+            return readingForAnAnswer(declaration, source, policy, read);
+        }
+        // What the making read is what whoever is being answered out of it read: they are getting
+        // the reading rather than doing it, and an edit to what it was made from has to reach them.
+        held.reads().here();
+        return held.seeded();
     }
 
     @Override
-    public void made(TypeKey declaration, RuleReadingSource source, ReadingPolicy policy,
-                     InvariantChecker.Seeded seeded) {
-        current().put(new OfDeclarationUnder(declaration, source.origin(), policy), seeded);
+    public InvariantChecker.Seeded readingForAnAnswer(TypeKey declaration, RuleReadingSource source,
+                                                      ReadingPolicy policy,
+                                                      java.util.function.Supplier<InvariantChecker.Seeded> read) {
+        StoreWork.Made<InvariantChecker.Seeded> made = work.watching(read);
+        current().put(new OfDeclarationUnder(declaration, source.origin(), policy),
+                new Shared(made.value(), made.reads()));
+        return made.value();
     }
 
     /**
@@ -74,7 +97,7 @@ public final class LentReadings implements DeclarationReadings {
      * that may have; asking here is what keeps everything else from having to know that anything is
      * lent at all.
      */
-    private Map<OfDeclarationUnder, InvariantChecker.Seeded> current() {
+    private Map<OfDeclarationUnder, Shared> current() {
         long now = revision.getAsLong();
         if (now != lentAt) {
             lent.clear();

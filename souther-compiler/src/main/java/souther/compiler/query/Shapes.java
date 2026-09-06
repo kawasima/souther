@@ -582,8 +582,8 @@ public final class Shapes {
     public static Answer<RuleReadingSource> ruleReading(Db db, String name) {
         Answer<ResolvedSymbols> scope = Names.resolvedSymbols(db, name);
         return scope.present()
-                ? Answer.of(new RuleReadingSource(scope.value(), expandedClauses(db),
-                        new RuleReadingSource.Origin.OfAModulesRules(name)))
+                ? Answer.of(db.readings().theCompilationsOwn(name, scope.value(),
+                        expandedClauses(db)))
                 : Answer.absent();
     }
 

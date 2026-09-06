@@ -106,7 +106,7 @@ import java.util.Set;
  * <p>One store is one workspace over time, not one compile. It is not thread-safe and does not need
  * to be: the work inside a compile is a graph walk, not a set of independent jobs.
  */
-public final class Db {
+public final class Db implements souther.compiler.check.StoreWork {
 
     /**
      * What is known about one key.
@@ -149,7 +149,7 @@ public final class Db {
      */
     public DeclarationReadings readings() {
         if (readings == null) {
-            readings = new LentReadings(this::machinesOf, this::revision);
+            readings = new LentReadings(this::machinesOf, this::revision, this);
         }
         return readings;
     }
@@ -465,6 +465,30 @@ public final class Db {
                 case Primary.InAnUnnamedText _, Primary.Unavailable _, Primary.Nowhere _ -> sourceId;
             };
         }
+    }
+
+    /**
+     * Does work whose result another question may be handed, and answers with what this store was
+     * asked while it was done.
+     *
+     * <p>The reads are recorded for the question being answered, as they would be had it done the
+     * work itself — it did, this once — and they are handed back so that the next question to be
+     * given the result can be recorded as having read them too. Without that, work shared between
+     * two questions would leave the second kept over an edit to what doing it read.
+     */
+    @Override
+    public <T> souther.compiler.check.StoreWork.Made<T> watching(
+            java.util.function.Supplier<T> work) {
+        frames.push(new LinkedHashSet<>());
+        Set<Key<?>> read;
+        T made;
+        try {
+            made = work.get();
+        } finally {
+            read = Set.copyOf(frames.pop());
+        }
+        read.forEach(this::recordRead);
+        return new souther.compiler.check.StoreWork.Made<>(made, () -> read.forEach(this::recordRead));
     }
 
     private void recordRead(Key<?> key) {
