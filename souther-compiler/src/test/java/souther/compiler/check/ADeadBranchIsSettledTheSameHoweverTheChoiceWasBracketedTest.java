@@ -104,15 +104,22 @@ class ADeadBranchIsSettledTheSameHoweverTheChoiceWasBracketedTest {
         }
     }
 
-    /** A branch somebody can be in, and one nobody can. */
+    /**
+     * A branch somebody can be in, and one nobody can.
+     *
+     * <p>Dead two ways, because a branch is dead by whatever showed it so: two rules about one
+     * position leaving it no value, and an equality met with a denial of the same pair, which
+     * leaves every position a value and no assignment standing.
+     */
     private Map<String, Branch> branches() {
         Map<String, Branch> out = new LinkedHashMap<>();
         out.put("x == A", new Branch(reading(says(X, A), 1, 2), false));
         out.put("y == B", new Branch(reading(says(Y, B), 3, 4), false));
         out.put("x == A && x == B", new Branch(
                 reading(says(X, A).meet(says(X, B)).leavingNothing(), 100, 200), true));
-        out.put("y == A && y == B", new Branch(
-                reading(says(Y, A).meet(says(Y, B)).leavingNothing(), 300, 400), true));
+        out.put("x == y && x /= y", new Branch(
+                reading(PlannedValues.<String>holdingAsOne(X, Y)
+                        .meet(PlannedValues.heldApart(X, Y)).leavingNothing(), 300, 400), true));
         return out;
     }
 

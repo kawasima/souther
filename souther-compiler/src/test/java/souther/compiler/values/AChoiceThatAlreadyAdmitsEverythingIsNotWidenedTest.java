@@ -34,19 +34,25 @@ class AChoiceThatAlreadyAdmitsEverythingIsNotWidenedTest {
      *  built and no allowance is spent. */
     private final Allowance<String> sets = AsACompilationAllows.forAdmittedValues();
 
-    /** {@code value == 5}. */
-    private static AdmissibleValues<String> is5() {
-        return AdmissibleValues.at(VALUE, ValueSet.just(FIVE));
+    /** {@code value == 5}, while it is still a description — which is where a choice is taken. */
+    private static PlannedValues<String> is5() {
+        return PlannedValues.at(VALUE, AdmittedPlan.of(ValueSet.just(FIVE)));
     }
 
     /** {@code value /= 5}. */
-    private static AdmissibleValues<String> not5() {
-        return AdmissibleValues.at(VALUE, ValueSet.allBut(FIVE));
+    private static PlannedValues<String> not5() {
+        return PlannedValues.at(VALUE, AdmittedPlan.of(ValueSet.allBut(FIVE)));
     }
 
     /** A rule about the position that this reading has no word for. */
-    private static AdmissibleValues<String> unread() {
-        return AdmissibleValues.unreadable(Set.of(VALUE), UnreadReason.FORM_NOT_READ);
+    private static PlannedValues<String> unread() {
+        return PlannedValues.unreadable(Set.of(VALUE), UnreadReason.FORM_NOT_READ);
+    }
+
+    /** A description worked out and told what its unread alternatives left open, which is what a
+     *  reader is handed. Said once, where the whole of what the clauses came to is in hand. */
+    private AdmissibleValues<String> opened(PlannedValues<String> planned, Set<String> these) {
+        return planned.resolve(sets).values().alsoOpenedAt(these);
     }
 
     /** What a choice beside {@link #unread()} left open, which is what the alternative beside it
@@ -58,7 +64,7 @@ class AChoiceThatAlreadyAdmitsEverythingIsNotWidenedTest {
     @Test
     void twoAlternativesCoveringThePositionLeaveNothingForAnUnreadOneToWiden() {
         AdmissibleValues<String> either =
-                is5().join(not5(), sets).join(unread(), sets).alsoOpenedAt(OPENED_AT_VALUE);
+                opened(is5().joinLive(not5()).joinLive(unread()), OPENED_AT_VALUE);
 
         assertEquals(ValueSet.ANY, either.at(VALUE));
         assertTrue(either.speaksFor(VALUE),
@@ -69,8 +75,7 @@ class AChoiceThatAlreadyAdmitsEverythingIsNotWidenedTest {
     @Test
     void theSameHoweverTheAlternativesAreBracketed() {
         AdmissibleValues<String> either =
-                is5().join(not5().join(unread(), sets).alsoOpenedAt(OPENED_AT_VALUE), sets)
-                        .alsoOpenedAt(OPENED_AT_VALUE);
+                opened(is5().joinLive(not5().joinLive(unread())), OPENED_AT_VALUE);
 
         assertEquals(ValueSet.ANY, either.at(VALUE));
         assertTrue(either.speaksFor(VALUE),
@@ -88,8 +93,8 @@ class AChoiceThatAlreadyAdmitsEverythingIsNotWidenedTest {
      */
     @Test
     void aConjunctionKeepsItsOwnAccountOfWhatWentUnread() {
-        AdmissibleValues<String> both = is5().meet(
-                AdmissibleValues.unreadable(Set.of(), UnreadReason.FORM_NOT_READ), sets);
+        AdmissibleValues<String> both = opened(is5().meet(
+                PlannedValues.unreadable(Set.of(), UnreadReason.FORM_NOT_READ)), Set.of());
 
         assertEquals(ValueSet.NONE, both.guaranteedAt(VALUE),
                 "an unread conjunct may exclude anything, so nothing is guaranteed under it");
@@ -110,11 +115,12 @@ class AChoiceThatAlreadyAdmitsEverythingIsNotWidenedTest {
      */
     @Test
     void anAlternativeThatMayAdmitNothingSettlesNothing() {
-        AdmissibleValues<String> either = is5()
-                .meet(AdmissibleValues.unreadable(Set.of(), UnreadReason.FORM_NOT_READ), sets)
+        AdmissibleValues<String> either = opened(is5()
+                .meet(PlannedValues.unreadable(Set.of(), UnreadReason.FORM_NOT_READ))
                 // The alternative beside the unread one holds a clause nothing read as well, so it
                 // promised nothing for the other to take back and the choice opened nowhere.
-                .join(AdmissibleValues.unreadable(Set.of(OTHER), UnreadReason.FORM_NOT_READ), sets);
+                .joinLive(PlannedValues.unreadable(Set.of(OTHER), UnreadReason.FORM_NOT_READ)),
+                Set.of());
 
         assertEquals(List.of(UnreadReason.FORM_NOT_READ), either.whyUnread(OTHER),
                 "the alternative beside the unread one may admit nothing, so it vouches for nothing");
@@ -131,16 +137,17 @@ class AChoiceThatAlreadyAdmitsEverythingIsNotWidenedTest {
      */
     @Test
     void aPositionTheChoiceHasSettledStaysSettledUnderAFurtherAlternative() {
-        AdmissibleValues<String> covered =
-                is5().join(not5(), sets).join(unread(), sets).alsoOpenedAt(OPENED_AT_VALUE);
-        AdmissibleValues<String> beside = AdmissibleValues.at(OTHER, ValueSet.just(Value.text("A")));
+        PlannedValues<String> covered = is5().joinLive(not5()).joinLive(unread());
+        PlannedValues<String> beside =
+                PlannedValues.at(OTHER, AdmittedPlan.of(ValueSet.just(Value.text("A"))));
+        Set<String> openedAtBoth = Set.of(VALUE, OTHER);
 
-        assertFalse(covered.standing().isEmpty(),
+        assertFalse(opened(covered, OPENED_AT_VALUE).standing().isEmpty(),
                 "a rule of it did go unread, and that is not taken back");
-        assertTrue(covered.join(beside, sets).alsoOpenedAt(Set.of(OTHER)).speaksFor(VALUE));
-        assertTrue(beside.join(covered, sets).alsoOpenedAt(Set.of(OTHER)).speaksFor(VALUE),
+        assertTrue(opened(covered.joinLive(beside), openedAtBoth).speaksFor(VALUE));
+        assertTrue(opened(beside.joinLive(covered), openedAtBoth).speaksFor(VALUE),
                 "and either way round");
-        assertTrue(covered.join(beside, sets).alsoOpenedAt(Set.of(OTHER)).speaksFor(OTHER),
+        assertTrue(opened(covered.joinLive(beside), openedAtBoth).speaksFor(OTHER),
                 "and the position the further alternative names is covered by the settled one");
     }
 
@@ -148,8 +155,7 @@ class AChoiceThatAlreadyAdmitsEverythingIsNotWidenedTest {
      *  the choice is still short of. */
     @Test
     void anAlternativeNothingCouldReadCoversNothing() {
-        AdmissibleValues<String> either =
-                is5().join(unread(), sets).alsoOpenedAt(OPENED_AT_VALUE);
+        AdmissibleValues<String> either = opened(is5().joinLive(unread()), OPENED_AT_VALUE);
 
         assertEquals(ValueSet.ANY, either.at(VALUE));
         assertEquals(List.of(UnreadReason.FORM_NOT_READ), either.whyUnread(VALUE),
