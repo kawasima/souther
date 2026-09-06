@@ -90,67 +90,79 @@ final class Predicates {
         return assume(assumed(stated, at, false), k, Known.Held.ON_THE_PATH).and(nested);
     }
 
-    /** What {@code e}, asserted with polarity {@code positive}, says of every element of a container.
-     * Mirrors {@link #obligations}: a connective that composes both halves under the polarity in
-     * force states each of them under it, and a negation turns the polarity over. Only a stated
-     * quantifier is recorded — denying one says some element fails the predicate, and which one is
-     * not something this check can name. */
+    /** What {@code raw}, asserted with polarity {@code positive}, says of every element of a
+     * container, added to {@code out}. Read over the clause's shape as {@link #obligations} is, so
+     * the two agree about which parts a clause has by having been given the same answer. */
     void quantifiedBy(Core raw, Denotations at, boolean positive, List<Quantified> out) {
-        quantifiedBy(raw, at, positive, out, PartsToRead.ALL);
+        out.addAll(new Quantifiers(this).read(raw, positive, at, terms::inside));
     }
 
     /**
-     * The same, reading only the parts {@code parts} asks for.
+     * The quantifiers a clause states, read over the shape it was written in.
      *
-     * <p>The same selection the obligations of a clause are read under, because they are read out
-     * of one clause. A conjunct left out of the one and left in the other is a clause taken half
-     * away, and what would come back is a guarantee assembled from two clauses — the whole one and
-     * the one the caller asked about.
+     * <p>Over the shape ({@link ClauseExpr}), so a clause under a binding is read where its names
+     * mean something and a helper's expansion states what the same rule written out states. Read
+     * as a tree of its own, a quantifier an author stated through a helper was owed by the reading
+     * of what the clause owes and unknown to this one, which is a guarantee assembled from a clause
+     * read to two depths.
      */
-    void quantifiedBy(Core raw, Denotations at, boolean positive, List<Quantified> out,
-                      PartsToRead parts) {
-        if (!parts.includes(raw)) {
-            return;
+    private record Quantifiers(Predicates of)
+            implements ClauseReading<List<Quantified>, Denotations> {
+
+        /**
+         * A conjunction states what both of its conjuncts state, and a choice is read whole.
+         *
+         * <p>Only a stated quantifier is recorded, and what a choice states is neither of its
+         * sides — one of them holds and this cannot say which — so the whole of it is read as a
+         * part, where nothing names a quantifier.
+         */
+        @Override
+        public Descent<List<Quantified>> at(ClauseExpr.Joined join) {
+            return switch (join.how()) {
+                case BOTH -> new Descent.Into<>(Quantifiers::together);
+                case EITHER -> new Descent.Whole<>();
+            };
         }
-        Core e = Conditions.asSizeComparison(raw);
-        // A clause under a binding states what the clause states, read where its names mean
-        // something — the same rule the obligations of this clause are read under, and applied here
-        // because the two are read out of one clause. Stopping here alone, a quantifier an author
-        // stated through a helper was owed by the one reading and unknown to the other, which is a
-        // guarantee assembled from a clause read to two depths.
-        if (e instanceof Core.LetIn li) {
-            quantifiedBy(li.body(), terms.inside(li, at), positive, out, parts);
-            return;
+
+        @Override
+        public List<Quantified> whole(Core e, boolean positive, Denotations at) {
+            return of.quantifierStatedBy(Conditions.asSizeComparison(e), positive, at);
         }
-        if (e instanceof Core.Binary b
-                && ConditionJoin.of(b.op()).map(join -> join.under(positive)).orElse(null)
-                        == ConditionJoin.BOTH) {
-            quantifiedBy(b.left(), at, positive, out, parts);
-            quantifiedBy(b.right(), at, positive, out, parts);
-            return;
+
+        private static List<Quantified> together(List<Quantified> left, List<Quantified> right) {
+            if (left.isEmpty() || right.isEmpty()) {
+                return left.isEmpty() ? right : left;
+            }
+            List<Quantified> both = new ArrayList<>(left);
+            both.addAll(right);
+            return both;
         }
-        Conditions.Restated under = Conditions.restated(e);
-        if (under != null) {
-            quantifiedBy(under.condition(), at, under.denied() != positive, out, parts);
-            return;
-        }
+    }
+
+    /**
+     * The quantifier {@code e} is, where it is one, stated over the element it quantifies.
+     *
+     * <p>Denying one says some element fails the predicate, and which one is not something this
+     * check can name, so a denied quantifier states nothing here.
+     */
+    private List<Quantified> quantifierStatedBy(Core e, boolean positive, Denotations at) {
         if (!positive || !(e instanceof Core.PreservedCall call)
                 || !DischargeRules.isQuantifier(call.operation())) {
-            return;
+            return List.of();
         }
         Handed over = Combinators.handedTo(call, at);
         Carrying carried = DischargeRules.carried(call);
         if (over == null || carried == null || over.step().params().size() != 1) {
-            return;
+            return List.of();
         }
         // The container is the carrying rule's, which is the one argument this predicate is about.
         // What the operation hands its closure answers the same question about the same argument, and
         // is asked here only for the closure.
         FactSubject container = terms.subjectOf(carried.container(), at);
         if (container == null) {
-            return;
+            return List.of();
         }
-        out.add(new Quantified(container, carried.through(), over.step()));
+        return List.of(new Quantified(container, carried.through(), over.step()));
     }
 
     /**
@@ -571,8 +583,7 @@ final class Predicates {
      * happened to be holding decide what a declaration says. The parameter is gone rather than
      * ignored: what is not there cannot come to be read. */
     Owed assumed(Core inv, Denotations at, boolean decidesFalse) {
-        return obligations(inv, at, Set.of(), true, decidesFalse, Discharge.AN_ASSUMPTION, null,
-                PartsToRead.ALL);
+        return obligations(inv, at, Set.of(), true, decidesFalse, Discharge.AN_ASSUMPTION, null);
     }
 
     /**
@@ -584,56 +595,12 @@ final class Predicates {
      * changes one of them.
      */
     Owed assumed(Core inv, Denotations at, boolean decidesFalse, PerPart per) {
-        return assumed(inv, at, decidesFalse, per, PartsToRead.ALL);
-    }
-
-    /**
-     * The same, reading only the parts {@code parts} asks for.
-     *
-     * <p>What a clause comes to with one of its conjuncts left out, which is what a reader asking
-     * what that conjunct was holding compares against. Left out here rather than by handing over a
-     * clause with the conjunct cut out of it: which nodes of an expression are its conjuncts is this
-     * reader's answer, and a caller rebuilding the clause without one would be deciding it a second
-     * time.
-     */
-    Owed assumed(Core inv, Denotations at, boolean decidesFalse, PerPart per, PartsToRead parts) {
-        return obligations(inv, at, Set.of(), true, decidesFalse, Discharge.AN_ASSUMPTION, per,
-                parts);
+        return obligations(inv, at, Set.of(), true, decidesFalse, Discharge.AN_ASSUMPTION, per);
     }
 
     /** Told what one part of a clause owed, keyed by the part it was read from. */
     interface PerPart {
         void read(Core part, Owed owed);
-    }
-
-    /**
-     * Which parts of a clause this reading takes in.
-     *
-     * <p>A conjunction is read a conjunct at a time here, and this is where a caller says which of
-     * those conjuncts it asked for. Nothing about why: a reading that leaves a part out to find what
-     * that part was holding, and one that leaves it out for any other reason, are one reading here.
-     * What the answer is for belongs to whoever asked, and a reader of predicates that knew would be
-     * deciding a caller's business in the middle of a semantic walk.
-     *
-     * <p>Asked of the node the clause was written as, which is the identity a part already has
-     * ({@link PerPart}). As a value and not by reference: a counterfactual reading types the
-     * declaration's clauses again, so the nodes it walks are not the nodes the first reading
-     * handed out, and a part named by reference would match nothing at all. What keeps two
-     * conjuncts written alike apart is where they are written, which every node carries.
-     */
-    @FunctionalInterface
-    interface PartsToRead {
-
-        /** Every part the clause has. */
-        PartsToRead ALL = _ -> true;
-
-        /** Whether this reading takes {@code part} in. */
-        boolean includes(Core part);
-
-        /** Every part but {@code excluded}, which is what a counterfactual reading asks for. */
-        static PartsToRead without(java.util.Set<Core> excluded) {
-            return part -> !excluded.contains(part);
-        }
     }
 
     /**
@@ -703,7 +670,7 @@ final class Predicates {
         // What each handed-over value is, worked out once and where the site stands. Read again
         // further down, a value under a binding would be asked about at names the site never had.
         return obligations(inv, at, handedOver(unnamed, at), true, decidesFalse,
-                Discharge.spending(k), null, PartsToRead.ALL);
+                Discharge.spending(k), null);
     }
 
     /**
@@ -715,67 +682,55 @@ final class Predicates {
      */
     private Owed obligations(Core rawInv, Denotations at, Set<FactSubject> unnamed,
                              boolean positive, boolean decidesFalse, Discharge discharge,
-                             PerPart per, PartsToRead parts) {
-        // A clause of one conjunct is that conjunct, so a caller leaving it out leaves out the
-        // whole of what the clause states. The halves of a conjunction are answered where they are
-        // split, which is the one place that knows a clause has halves.
-        if (!parts.includes(rawInv)) {
-            return Owed.unread();
-        }
-        Owed out = read(Conditions.asSizeComparison(rawInv), at, unnamed, positive, decidesFalse,
-                discharge, per, parts);
-        if (per != null) {
-            // Keyed by the part as it was handed in, which is the node a reader of this walk holds.
-            // What it was rewritten to on the way is this reading's business.
-            per.read(rawInv, out);
-        }
-        return out;
+                             PerPart per) {
+        return new Owing(this, unnamed, decidesFalse, discharge)
+                .read(rawInv, positive, at, terms::inside,
+                        per == null ? null : (part, owed) -> per.read(part, owed));
     }
 
-    /** What {@code inv} owes, read as it stands. Its parts are read through {@link #obligations},
-     * which is where each of them is taken as the comparison it states. */
-    private Owed read(Core inv, Denotations at, Set<FactSubject> unnamed,
-                      boolean positive, boolean decidesFalse, Discharge discharge,
-                      PerPart per, PartsToRead parts) {
-        // A clause under a binding states what the clause states, read where its names mean
-        // something. Almost every binding here is one a helper's expansion made, so a rule stated
-        // through a helper is one of these — and read as it stands it is a shape stating no
-        // comparison, which is why a construction the guards refute was only ever refuted where the
-        // author had written the rule out. What the binder means is not worked out here: it is the
-        // environment's answer, and this asks for it (ADR-0106).
-        if (inv instanceof Core.LetIn li) {
-            return obligations(li.body(), terms.inside(li, at), unnamed, positive, decidesFalse,
-                    discharge, per, parts);
+    /**
+     * What a clause owes, read over the shape it was written in.
+     *
+     * <p>Over the shape ({@link ClauseExpr}), so that what a connective composes is recognised in
+     * one place and this reading agrees with every other by having been given the answer. A binding
+     * is where the environment changes, which is why a rule stated through a helper owes what the
+     * same rule written out owes — read as a shape with no word for it, such a rule owed nothing
+     * and a construction the guards refute went unreported.
+     *
+     * <p>What it carries beside the clause is what a caller settled before the reading began: the
+     * values the site hands over that no clause may be read against, whether a clause folding false
+     * decides the construction, and which relations this reading may take in. None of them turns on
+     * where in the clause the reading stands.
+     */
+    private record Owing(Predicates of, Set<FactSubject> unnamed, boolean decidesFalse,
+                         Discharge discharge) implements ClauseReading<Owed, Denotations> {
+
+        /**
+         * A conjunction owes what both of its conjuncts owe, and a choice is read whole.
+         *
+         * <p>Each half of a conjunction on its own: an invariant is a set of things that hold, and
+         * one the check cannot read leaves its own run-time check standing without costing the
+         * others theirs. A choice states neither of its parts — one of them holds and this cannot
+         * say which — so what is handed to the reader of comparisons is the whole of it.
+         */
+        @Override
+        public Descent<Owed> at(ClauseExpr.Joined join) {
+            return switch (join.how()) {
+                case BOTH -> new Descent.Into<>(Owed::and);
+                case EITHER -> new Descent.Whole<>();
+            };
         }
-        if (inv instanceof Core.Binary b
-                && ConditionJoin.of(b.op()).map(join -> join.under(positive)).orElse(null)
-                        == ConditionJoin.BOTH) {
-            // Each half on its own: an invariant is a set of things that hold, and one the check
-            // cannot read leaves its own run-time check standing without costing the others theirs.
-            // That it stands is carried rather than dropped — the other half being discharged is
-            // not the invariant proven.
-            //
-            // A half a caller did not ask for is the other half alone, which is what a clause
-            // without one of its conjuncts states. Not an empty answer composed with the other:
-            // what a conjunction comes to is its conjuncts together, and there is nothing here for
-            // a conjunct nobody read to contribute.
-            if (!parts.includes(b.left())) {
-                return obligations(b.right(), at, unnamed, positive, decidesFalse, discharge, per,
-                        parts);
-            }
-            if (!parts.includes(b.right())) {
-                return obligations(b.left(), at, unnamed, positive, decidesFalse, discharge, per,
-                        parts);
-            }
-            return obligations(b.left(), at, unnamed, positive, decidesFalse, discharge, per, parts)
-                    .and(obligations(b.right(), at, unnamed, positive, decidesFalse, discharge,
-                            per, parts));
+
+        @Override
+        public Owed whole(Core e, boolean positive, Denotations at) {
+            return of.owing(Conditions.asSizeComparison(e), at, unnamed, positive, decidesFalse,
+                    discharge);
         }
-        Conditions.Restated under = Conditions.restated(inv);
-        if (under != null) {
-            return obligations(under.condition(), at, unnamed, under.denied() != positive,
-                    decidesFalse, discharge, per, parts);
-        }
+    }
+
+    /** What one part of a clause owes, read as the comparison it states. */
+    private Owed owing(Core inv, Denotations at, Set<FactSubject> unnamed,
+                       boolean positive, boolean decidesFalse, Discharge discharge) {
         ComparisonReadings readings = Conditions.comparisonsStatedBy(terms, inv, at);
         if (readings.inReadingOrder().isEmpty()) {
             return owedBy(inv, at, unnamed, positive, decidesFalse);

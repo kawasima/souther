@@ -56,15 +56,8 @@ class AnOperatorIsAskedWhatItComposesInOnePlaceTest {
                     "the same for a clause, with the denial the tree is read under applied as the"
                             + " shape is made"),
 
-            new Licence("souther.compiler.check.Conditions.stating", 1,
-                    "what a condition states on its own, walked into where the composition under"
-                            + " the polarity in force gives both halves"),
             new Licence("souther.compiler.check.Predicates.assumeCond", 1,
                     "the same, for what a condition taken in makes known"),
-            new Licence("souther.compiler.check.Predicates.quantifiedBy", 1,
-                    "the same, for what a rule says of every element of a container"),
-            new Licence("souther.compiler.check.Predicates.read", 1,
-                    "the same, for the clauses a rule owes"),
 
             new Licence("souther.compiler.check.ClauseHelpers.shaped", 1,
                     "the shape an author wrote a clause in, which is walking into what composes"

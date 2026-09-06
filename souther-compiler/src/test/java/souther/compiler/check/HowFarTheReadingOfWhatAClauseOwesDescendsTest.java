@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -31,6 +30,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * ({@code PerPart}), rather than on what any of them came to. What a conjunct owes is the reader of
  * comparisons' answer and is held elsewhere; how far the walk went is this reading's own, and it is
  * the thing that moves when a clause's shape is recognised somewhere else.
+ *
+ * <p>What it is told is keyed by the node, and the order below is the order the shape is walked in:
+ * what a part came to before what the connective composing it came to, and a node a restatement was
+ * written as before the node under it. A caller reads what it was told by the node it holds, so the
+ * order is not what any of them takes from it.
  */
 class HowFarTheReadingOfWhatAClauseOwesDescendsTest {
 
@@ -76,13 +80,8 @@ class HowFarTheReadingOfWhatAClauseOwesDescendsTest {
 
     /** The parts the reading says it read, in the order it read them. */
     private static List<Core> read(Core clause) {
-        return read(clause, Predicates.PartsToRead.ALL);
-    }
-
-    private static List<Core> read(Core clause, Predicates.PartsToRead asked) {
         List<Core> parts = new ArrayList<>();
-        new Predicates(terms()).assumed(clause, rootAt(), false, (part, _) -> parts.add(part),
-                asked);
+        new Predicates(terms()).assumed(clause, rootAt(), false, (part, _) -> parts.add(part));
         return parts;
     }
 
@@ -101,8 +100,8 @@ class HowFarTheReadingOfWhatAClauseOwesDescendsTest {
         Core.Binary either = joined(BinOp.OR, atLeastOne(), atMostNine());
         Core.Binary neither = denied(either);
 
-        assertEquals(List.of(atLeastOne(), atMostNine(), either, neither), read(neither),
-                "each part denied, the choice they were written as, and the denial of it");
+        assertEquals(List.of(atLeastOne(), atMostNine(), neither, either), read(neither),
+                "each part denied, and the two nodes the choice and its denial were written as");
     }
 
     /**
@@ -127,25 +126,29 @@ class HowFarTheReadingOfWhatAClauseOwesDescendsTest {
         Core.Binary both = joined(BinOp.AND, atLeastOne(), atMostNine());
         Core.Binary neither = denied(both);
 
-        assertEquals(List.of(both, neither), read(neither),
-                "the conjunction as the choice its denial makes of it, and the denial");
+        assertEquals(List.of(neither, both), read(neither),
+                "the two nodes the conjunction and its denial were written as, and neither half");
     }
 
     /**
-     * A conjunct a caller did not ask for is the other conjunct alone.
+     * What a conjunction owes is what its conjuncts owe together.
      *
-     * <p>Not an empty answer composed with the other: what a conjunction comes to is its conjuncts
-     * together, and there is nothing for a conjunct nobody read to contribute.
+     * <p>Which is why a caller wanting a clause without one of its parts leaves the part out of
+     * the list rather than telling this reading to step over a node: the two come to the same
+     * thing, and the list is where which parts a clause has was settled.
      */
     @Test
-    void aConjunctLeftOutIsTheConjunctBesideItAlone() {
-        Core.Binary both = joined(BinOp.AND, atLeastOne(), atMostNine());
+    void whatAConjunctionOwesIsWhatItsConjunctsOweTogether() {
+        Predicates predicates = new Predicates(terms());
+        Predicates.Owed together = predicates.assumed(
+                joined(BinOp.AND, atLeastOne(), atMostNine()), rootAt(), false);
+        Predicates.Owed apart = predicates.assumed(atLeastOne(), rootAt(), false)
+                .and(predicates.assumed(atMostNine(), rootAt(), false));
 
-        assertEquals(List.of(atMostNine(), both),
-                read(both, Predicates.PartsToRead.without(Set.of(atLeastOne()))),
-                "the conjunct that was asked for, and the clause it is a conjunct of");
-        assertEquals(List.of(), read(both, Predicates.PartsToRead.without(Set.of(both))),
-                "and a clause of one conjunct left out is the whole of what the clause states");
+        assertEquals(together.parts(), apart.parts(),
+                "read as one clause and read a conjunct at a time");
+        assertEquals(together.folded(), apart.folded(),
+                "and the same of what it came to on its own");
     }
 
     /**

@@ -28,11 +28,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * Which readers of a condition cross a binding, which stop at one, and what makes up for it.
  *
  * <p>A rule an author names is expanded where it stands, so a condition written as a call is a
- * binding holding the argument with the rule written against it. Handed such a node, the readers
- * below stop: they recognise a restatement and a connective and then ask for the comparison, and a
- * binding is none of the three. What is under it is the rule, and each of them states it once the
- * environment has been entered — so what stops is the walk to the comparison and not the language
- * that reads one.
+ * binding holding the argument with the rule written against it. What decides whether such a node
+ * is read is the walk to the comparison and never the language that reads one: what is under the
+ * binding is the rule, and each of the readers below states it once the environment has been
+ * entered.
+ *
+ * <p>So the reading that says what a condition states crosses it — it is read over the clause's
+ * shape, which is where a binding is a place the environment changes rather than a form nobody has
+ * a word for. The readers that walk to a comparison for themselves stop: they recognise a
+ * restatement and a connective and then ask for the comparison, and a binding is none of the three.
  *
  * <p>They are not handed one on the way to a construction. The walk that threads knowledge enters a
  * binding standing inside a value and goes on over the rebuilt tree ({@link InvariantChecker}), so
@@ -84,10 +88,10 @@ class WhoCrossesABindingInAConditionAndWhoDoesNotTest {
 
     /** What a condition states on its own: the rule written out, and nothing where it was named. */
     @Test
-    void theReadingOfWhatAConditionStatesStopsAtABinding() {
+    void theReadingOfWhatAConditionStatesCrossesABinding() {
         Terms terms = terms();
 
-        assertEquals(List.of(1, 0), List.of(
+        assertEquals(List.of(1, 1), List.of(
                         stated(terms, rule(subject()), rootAt()).size(),
                         stated(terms, named(), rootAt()).size()),
                 "how many relations each spelling states");
@@ -124,20 +128,24 @@ class WhoCrossesABindingInAConditionAndWhoDoesNotTest {
     }
 
     /**
-     * What stops is the walk to the comparison and not the language that reads one.
+     * What stops such a reader is the node and not the environment it would read one in.
      *
-     * <p>The body states the rule where the environment has been entered, and the binding itself
-     * states nothing even there: an entered environment is not what such a reader is missing.
+     * <p>Handed what is under the binding, the reader of comparisons states the rule; handed the
+     * binding itself in that same environment, it states nothing. So an entered environment is not
+     * what it is missing — the binding is a form its own walk has no word for, and a reading that
+     * goes over the clause's shape crosses it without ever being handed one (ADR-0106).
      */
     @Test
-    void whatIsUnderTheBindingStatesTheRuleAndTheBindingItselfStatesNothing() {
+    void whatStopsAReaderOfComparisonsIsTheNodeAndNotTheEnvironment() {
         Terms terms = terms();
         Core.LetIn named = named();
         Denotations inside = terms.inside(named, rootAt());
 
         assertEquals(List.of(1, 0), List.of(
-                        stated(terms, named.body(), inside).size(),
-                        stated(terms, named, inside).size()),
+                        Conditions.comparisonsStatedBy(terms, named.body(), inside)
+                                .inReadingOrder().size(),
+                        Conditions.comparisonsStatedBy(terms, named, inside)
+                                .inReadingOrder().size()),
                 "what is under the binding, and the binding handed whole to the same reader");
     }
 

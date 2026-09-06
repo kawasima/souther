@@ -3,7 +3,7 @@ package souther.compiler.check;
 import souther.compiler.core.Core;
 
 /**
- * A clause tree read into one state, the connectives being the same whatever the leaves are read as.
+ * A clause tree read into one state, the connectives being the same whatever the parts are read as.
  *
  * <p>What a clause is written out of — a conjunction, a choice, a denial — is the clause's own shape
  * and not a fact about the language it is read in. Written once per language, that shape is the same
@@ -18,29 +18,36 @@ import souther.compiler.core.Core;
  * having found nothing wrong with the branch the other one refused.
  *
  * <p><b>What a clause states is answered upward and what its names mean is handed downward.</b> A
- * reading composes its leaves into one answer, and that answer is a function of the leaves; the
- * environment a leaf is read in is a function of the bindings above it, which is the other
+ * reading composes its parts into one answer, and that answer is a function of the parts; the
+ * environment a part is read in is a function of the bindings above it, which is the other
  * direction. Carried only upward, there was nowhere for a binding to be, so a clause under one was
  * a shape every reading had no word for — and since almost every binding this check meets is one a
  * helper's expansion made, a rule stated through a helper was read less than the same rule written
  * out.
  *
- * <p>So {@code E} is handed down and {@code S} comes back up, and a leaf is read at the environment
+ * <p>So {@code E} is handed down and {@code S} comes back up, and a part is read at the environment
  * it stands in. What a binding does to that environment is not asked of a reading: the fold finds
  * the boundary and {@link ClauseScope} answers it, which is what keeps a binder's meaning the
  * environment's (ADR-0106) rather than something each of three readings works out again.
  *
+ * <p><b>A part is not the same thing for every reading.</b> Where a reading stops is its own answer
+ * ({@link Descent}), so the node an author wrote a connective at is a part to a reading that takes
+ * it whole and is none to a reading that descends. What every reading shares is the shape below it,
+ * not the depth it reads to.
+ *
  * @param <S> what a reading of a clause comes to
- * @param <E> what the reading carries into a binding — what its leaves are read at
+ * @param <E> what the reading carries into a binding — what its parts are read at
  */
 interface ClauseReading<S, E> {
 
-    /** What a clause this reading has no word for leaves, which is everything it had. */
-    S nothingSaid();
-
     /**
-     * What one clause of no connective says, stated where {@code positive} and denied where it is
-     * not, read at the environment {@code at} it stands in.
+     * What one part of the clause says, stated where {@code positive} and denied where it is not,
+     * read at the environment {@code at} it stands in.
+     *
+     * <p>A part of no connective, or a connective this reading takes whole — the two are one case.
+     * What is inside a part is the part language's to ask, and a binding standing there is crossed
+     * by each question it asks about its own inside (ADR-0106); a connective taken whole is a part
+     * on exactly those terms.
      *
      * <p>Reached with the denials already counted, so a reading of a comparison is a reading of the
      * comparison it states rather than of the one that was written. And reached with the bindings
@@ -48,30 +55,27 @@ interface ClauseReading<S, E> {
      * reading that answered from the environment the whole clause began in would be reading one
      * value's rule at another value's names.
      */
-    S leaf(Core e, boolean positive, E at);
-
-    /** Both readings holding at once. */
-    S both(S one, S other);
+    S whole(Core e, boolean positive, E at);
 
     /**
-     * Either reading holding, at the connective an author wrote it with.
+     * How far this reading goes into {@code join}, and what holding both of its parts comes to.
      *
-     * <p>The node is here because a reading with something to say about the choice has nowhere else
-     * to learn where it stands. What the fold hands up is two readings and a flag; which choice they
-     * are the two branches of is known at this call and at no call after it, so a reading that wants
-     * it and is not given it here works it out from something else — and the something else is
+     * <p>Asked of the shape and not of the operator, so what a connective composes is settled in
+     * one place. The whole shape is handed over because a reading with something to say about the
+     * choice has nowhere else to learn where it stands: which choice two readings are the branches
+     * of is known here and at no call after it, so a reading not given it works it out from
      * whichever place a walk happened to reach, which is a fact about the walk.
      */
-    S either(Core writtenAt, S one, S other);
+    Descent<S> at(ClauseExpr.Joined join);
 
     /**
      * What {@code e} leaves, stated where {@code positive} and denied where it is not, read from
      * {@code at} with {@code scope} answering for the bindings inside it.
      *
-     * <p>A denial is carried to the leaves rather than applied to what a branch came to. What a
+     * <p>A denial is carried down to the parts rather than applied to what a branch came to. What a
      * state says is a fact per position, and the denial of that is not one — the values a
      * conjunction rules out are a choice between the positions it named, which no map of positions
-     * holds. Carried down, every denial meets a leaf, where it is one.
+     * holds. Carried down, every denial meets a part, where it is one.
      */
     default S read(Core e, boolean positive, E at, ClauseScope<E> scope) {
         return read(e, positive, at, scope, null);
@@ -87,11 +91,12 @@ interface ClauseReading<S, E> {
      */
     default S read(Core e, boolean positive, E at, ClauseScope<E> scope,
                    java.util.function.BiConsumer<Core, S> per) {
-        S out = from(e, over(ClauseExpr.of(e, positive), at, scope, per));
-        if (per != null) {
-            per.accept(e, out);
-        }
-        return out;
+        // The clause is named once more here, on the outside of everything its shape was written
+        // as, which is where a caller holding the clause and nothing under it looks. What it came
+        // to is not told to {@code per} a second time: the walk below has already said it of the
+        // very same node, and a reader counting what it was told would count the whole clause
+        // twice and every part of it once.
+        return from(e, over(ClauseExpr.of(e, positive), at, scope, per));
     }
 
     /**
@@ -105,11 +110,14 @@ interface ClauseReading<S, E> {
     private S over(ClauseExpr shape, E at, ClauseScope<E> scope,
                    java.util.function.BiConsumer<Core, S> per) {
         S out = switch (shape) {
-            case ClauseExpr.Leaf it -> leaf(it.of(), it.positive(), at);
-            case ClauseExpr.Joined it -> switch (it.how()) {
-                case BOTH -> both(over(it.left(), at, scope, per), over(it.right(), at, scope, per));
-                case EITHER -> either(it.of(), over(it.left(), at, scope, per),
-                        over(it.right(), at, scope, per));
+            case ClauseExpr.Leaf it -> whole(it.of(), it.positive(), at);
+            // How far this reading goes is its own answer, and taking the connective whole is
+            // reading the node an author wrote it at as a part. A reading told to descend and
+            // unable to compose what it found had nowhere to say so.
+            case ClauseExpr.Joined it -> switch (at(it)) {
+                case Descent.Whole<S> _ -> whole(it.of(), it.positive(), at);
+                case Descent.Into<S> into -> into.compose().apply(
+                        over(it.left(), at, scope, per), over(it.right(), at, scope, per));
             };
             // The one place the environment changes, and it changes for what is under the binding
             // alone. What the binding means is not worked out here and not by the reading either.
