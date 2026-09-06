@@ -6,6 +6,7 @@ import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
 import souther.compiler.inputs.InputReads;
 import souther.compiler.semantics.ConditionJoin;
+import souther.compiler.types.ApplicationOrigin;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -124,7 +125,11 @@ final class ClauseStatements {
             return comparison == null ? new Statement.NotRead(e, reads)
                     : new Statement.Compares(e, reads, comparison);
         }
-        if (e instanceof Core.PreservedCall call && call.origin().isWritten()) {
+        // A rule is read off a call the author wrote. What a pass composed — the size a comparison
+        // means, a call written back out of a checked value — states nothing an author owes rows
+        // for, so what is asked is which of those this is rather than whether a construct came back.
+        if (e instanceof Core.PreservedCall call
+                && call.application() instanceof ApplicationOrigin.Written) {
             StringPredicates.Stated states = StringPredicates.statedBy(call, symbols,
                     at -> reads.writtenStringOf(at, symbols));
             if (states != null) {

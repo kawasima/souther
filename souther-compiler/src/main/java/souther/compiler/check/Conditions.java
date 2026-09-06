@@ -7,7 +7,11 @@ import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.Rel;
 import souther.compiler.semantics.ConstantArguments;
 import souther.compiler.semantics.ResultRange;
+import souther.compiler.types.ApplicationDerivationCause;
+import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.BinOp;
+import souther.compiler.types.ReferenceDerivationCause;
+import souther.compiler.types.ReferenceOrigin;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.Type;
 
@@ -350,9 +354,20 @@ final class Conditions {
                         instanceof BoundOperationFact.MeansTheSameAsASizeOfNought means) {
             // No source wrote this call. It is the size the written one means, composed so that the
             // rule can be read as the comparison it states — and giving it the written call's own
-            // construct would put two applications under one identity.
+            // identity would put two applications under one. So it is a name and an application of
+            // this pass's, each derived from the one the comparison it is read off reached.
+            // What the comparison means is the same whether or not the term still carries where it
+            // came from. A term with its places taken out is one a caller reads its assumptions
+            // from — `Bodies.Stated` answers with one — so declining to read it here would take a
+            // meaning away from the reader for the sake of an identity it never asked for. A
+            // normalized term is read as a normalized one: the size is a call of this pass's either
+            // way, and it says as much about where it came from as the term it was read off does.
+            ApplicationOrigin application = ApplicationOrigin.composedOutOf(call.application(), 0,
+                    ApplicationDerivationCause.SizeMeaningOfApplication::new);
             Core size = new Core.PreservedCall(means.size(), call.args(),
-                    SourceConstructOrigin.unwritten(), Type.INT, call.pos());
+                    ReferenceOrigin.composedOutOf(call.reference(), 0,
+                            ReferenceDerivationCause.SizeMeaningOfReference::new),
+                    application, Type.INT, call.pos());
             return new Core.Binary(BinOp.EQ, size, new Core.Int(0, Type.INT, call.pos()),
                     SourceConstructOrigin.unwritten(), Type.BOOL, call.pos());
         }

@@ -264,8 +264,12 @@ public final class CallElaborator {
         // reaching for a declaration this already has in hand.
         // Which application of which source this is, taken from the node the source was read into.
         // Worked out here instead, it would be a second answer to a question the frontend settled.
-        return new Core.PreservedCall(kept.declaring(), ca.cores(), call.construct(),
-                TypeOps.substitute(kept.result(), bind), call.pos());
+        // Both answers carried and neither decided here. Which occurrence of the operation's name
+        // this applies is the callee's, and why the application is here is the application's — and
+        // a call kept for a reader to quote is not always one an author wrote, a library operation
+        // used as a value being expanded into a block whose application is kept the same way.
+        return new Core.PreservedCall(kept.declaring(), ca.cores(), call.answered().origin(),
+                call.application(), TypeOps.substitute(kept.result(), bind), call.pos());
     }
 
     /**
@@ -840,7 +844,11 @@ public final class CallElaborator {
                             .at(call.appliedAt()).say(new TypeMessage.ATemporalTakesAWrittenString(call.written())).build());
         }
         parseTemporal(kind, call.written(), lit.value(), lit.reportedAt());
-        return new Core.Temporal(kind, lit.value(), call.pos());
+        // The construction this was written as, carried across the fold. A temporal reaches Core as
+        // the value it denotes, and the application it was spelled with is folded away — not which
+        // one it was, which a reader writing the construction back out needs and the place cannot
+        // answer for.
+        return new Core.Temporal(kind, lit.value(), call.application(), call.pos());
     }
 
     /** Parses a written temporal, reporting a malformed one against {@code at} — the text the

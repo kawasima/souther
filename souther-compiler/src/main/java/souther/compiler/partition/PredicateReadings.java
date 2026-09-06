@@ -12,7 +12,9 @@ import souther.compiler.diag.Citation;
 import souther.compiler.inputs.InputReading;
 import souther.compiler.inputs.InputReads;
 
+import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.BindingId;
+import souther.compiler.types.SourceConstructOrigin;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -133,8 +135,13 @@ record PredicateReadings(List<Reading> predicates) {
                         // The statements this reader owns, and nothing said about the rest. What a
                         // statement of another kind came to is answered by the reader that owns it,
                         // once.
-                        if (each instanceof ClauseStatements.Statement.TellsStringsApart it) {
-                            read(it.stated(), behavior, it.states(), it.reads(), predicates);
+                        // The call is one the author wrote, which is what `ClauseStatements` reads
+                        // these off; the construct is taken here rather than worked out inside.
+                        if (each instanceof ClauseStatements.Statement.TellsStringsApart it
+                                && it.stated().application()
+                                        instanceof ApplicationOrigin.Written wrote) {
+                            read(it.stated(), wrote.application(), behavior, it.states(), it.reads(),
+                                    predicates);
                         }
                     }
                 }
@@ -157,14 +164,17 @@ record PredicateReadings(List<Reading> predicates) {
      */
     private static void found(Core e, String behavior, InputReading read, InputReads reads,
                               List<Reading> out) {
-        if (!(e instanceof Core.PreservedCall call) || !call.origin().isWritten()) {
+        // A rule is read off a call the author wrote; what a pass composed states nothing an author
+        // owes rows for.
+        if (!(e instanceof Core.PreservedCall call)
+                || !(call.application() instanceof ApplicationOrigin.Written written)) {
             return;
         }
         Symbols symbols = read.symbols();
         StringPredicates.Stated stated =
                 StringPredicates.statedBy(call, symbols, at -> reads.writtenStringOf(at, symbols));
         if (stated != null) {
-            read(call, behavior, stated, reads, out);
+            read(call, written.application(), behavior, stated, reads, out);
         }
     }
 
@@ -176,11 +186,11 @@ record PredicateReadings(List<Reading> predicates) {
      * reading of the rule. Read again on the way in, the reading and what it is a reading of would
      * be free to disagree about what the author wrote.
      */
-    private static void read(Core.PreservedCall call, String behavior,
+    private static void read(Core.PreservedCall call, SourceConstructOrigin written, String behavior,
                              StringPredicates.Stated states, InputReads reads, List<Reading> out) {
         out.add(new Reading(
                 new PredicateOrigin(new PredicateOccurrence(out.size()),
-                        new RuleRef.Predicate(behavior, call.origin()),
+                        new RuleRef.Predicate(behavior, written),
                         Citation.of(call.pos())),
                 states, reads));
     }

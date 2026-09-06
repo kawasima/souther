@@ -1033,7 +1033,13 @@ public final class Generator {
         // The values a row can be written against, resolved once for the behavior. Read per class,
         // this was the same walk through the decoders for every class owed, for an answer that is a
         // fact about the module rather than about the class asking.
-        List<ResolvedOrigin> origins = resolve(axes, baselines, check);
+        // The references this run composes, numbered by the run that composes them. A name a row
+        // writes for a value the module states reaches a declaration and is some reference of it,
+        // and no source wrote that one: the occurrence begins here, so this is what says which it
+        // is. One minter for the run, so that two of them are two.
+        FixtureReferences references = new FixtureReferences();
+
+        List<ResolvedOrigin> origins = resolve(axes, baselines, check, references);
 
         // The rows this run composes, each numbered where it is composed. The number is an
         // identity and nothing reads it as a place: what says two obligations were answered by one
@@ -1071,7 +1077,7 @@ public final class Generator {
                 }
                 break;
             }
-            ClassAttempt attempt = rowFor(axes, at[0], at[1], origins, check);
+            ClassAttempt attempt = rowFor(axes, at[0], at[1], origins, check, references);
             attempts.add(attempt);
             switch (attempt) {
                 case ClassAttempt.Built made -> {
@@ -1133,7 +1139,7 @@ public final class Generator {
                 }
                 if (place.tried == null) {
                     place.tried = witnessFor(axes, place.at, check, trial, ran,
-                            List.of(probe), origins);
+                            List.of(probe), origins, references);
                 }
                 // Each of the three, one at a time, so that a fourth added later has to be decided
                 // about here rather than fall in with whichever of these a cast happened to take.
@@ -1543,7 +1549,8 @@ public final class Generator {
      * ({@link Purpose.ForAClass}).
      */
     private static ClassAttempt rowFor(MeasuredInput.MeasuredAxes axes, int at, int cls,
-                                       List<ResolvedOrigin> origins, CandidateCheck check) {
+                                       List<ResolvedOrigin> origins, CandidateCheck check,
+                                       FixtureReferences references) {
         Axis axis = axes.get(at);
         String classId = axis.classes().get(cls).id();
         String label = label(axis, cls);
@@ -1556,13 +1563,13 @@ public final class Generator {
         // row of every behavior taking it — a change somewhere else in the file, answering a
         // question nobody asked it. What order they are walked in is {@link #nearestFirst}'s to
         // say; how many of them may be built is this class's own budget.
-        Building building = new Building(axes, at, classId, label, check, MOST_REPAIRS);
+        Building building = new Building(axes, at, classId, label, check, MOST_REPAIRS, references);
         Traversal stated = nearestFirst(axes.axes(), reading, origins, (_, _) -> true, building);
         if (stated == Traversal.SATISFIED) {
             return new ClassAttempt.Built(axis.id(), classId, building.found);
         }
         // The composition, whatever the stated values spent, and with a budget of its own.
-        Building composing = new Building(axes, at, classId, label, check, MOST_REPAIRS);
+        Building composing = new Building(axes, at, classId, label, check, MOST_REPAIRS, references);
         Traversal composed = composing(axes.axes(), reading, origins, (_, _) -> true, composing);
         if (composed == Traversal.SATISFIED) {
             return new ClassAttempt.Built(axis.id(), classId, composing.found);
@@ -1636,21 +1643,25 @@ public final class Generator {
         /** The row, once one lands in the class. */
         private GeneratedRow found;
 
+        /** The run's minter for the references what this composes will hold. */
+        private final FixtureReferences references;
+
         private Building(MeasuredInput.MeasuredAxes axes, int at, String classId, String label,
-                         CandidateCheck check, int most) {
+                         CandidateCheck check, int most, FixtureReferences references) {
             this.axes = axes;
             this.at = at;
             this.classId = classId;
             this.label = label;
             this.check = check;
             this.most = most;
+            this.references = references;
         }
 
         @Override
         public Taken take(Candidate candidate) {
             Map<String, FixtureTemplate> given = candidate.from().composes() ? Map.of()
                     : against(axes, candidate.delta(), candidate.where(),
-                            candidate.from().baseline());
+                            candidate.from().baseline(), references);
             if (!candidate.from().composes() && given.isEmpty()) {
                 return Taken.AND_MORE;   // nothing here can be written against the model's value
             }
@@ -1986,7 +1997,7 @@ public final class Generator {
      * looked at would be measured from a guess, and the composition is the origin this run has.
      */
     private static int[] stands(MeasuredInput.MeasuredAxes axes, Baseline baseline,
-                                CandidateCheck check) {
+                                CandidateCheck check, FixtureReferences references) {
         MeasuredInput subject = axes.subject();
         List<souther.compiler.observe.ObservedValue> observed = new ArrayList<>();
         for (String parameter : subject.parameters()) {
@@ -1998,7 +2009,7 @@ public final class Generator {
                 continue;
             }
             if (!(check.build(observed.size(),
-                    FixtureTemplate.named(named.module(), named.name()))
+                    FixtureTemplate.named(named.module(), named.name(), references.next()))
                             instanceof CandidateCheck.Built.Value(var value))) {
                 return null;
             }
@@ -2038,10 +2049,11 @@ public final class Generator {
      * it away.
      */
     private static List<ResolvedOrigin> resolve(MeasuredInput.MeasuredAxes axes,
-                                                List<Baseline> baselines, CandidateCheck check) {
+                                                List<Baseline> baselines, CandidateCheck check,
+                                                FixtureReferences references) {
         List<ResolvedOrigin> out = new ArrayList<>();
         for (Baseline baseline : baselines) {
-            int[] stands = stands(axes, baseline, check);
+            int[] stands = stands(axes, baseline, check, references);
             if (stands != null) {
                 out.add(new ResolvedOrigin(baseline, stands, out.size()));
             }
@@ -2147,7 +2159,8 @@ public final class Generator {
      */
     private static Map<String, FixtureTemplate> against(MeasuredInput.MeasuredAxes axes,
                                                         Delta delta, int[] where,
-                                                        Baseline baseline) {
+                                                        Baseline baseline,
+                                                        FixtureReferences references) {
         MeasuredInput subject = axes.subject();
         Map<String, FixtureTemplate> out = new LinkedHashMap<>();
         for (int p = 0; p < subject.parameters().size() && p < subject.types().size(); p++) {
@@ -2156,7 +2169,8 @@ public final class Generator {
             if (at == null) {
                 continue;
             }
-            FixtureTemplate named = FixtureTemplate.named(at.module(), at.name());
+            FixtureTemplate named = FixtureTemplate.named(at.module(), at.name(),
+                    references.next());
             List<Integer> moved = delta.under(axes.axes(), parameter);
             FixtureTemplate written = moved.isEmpty() ? named
                     : withFieldsMoved(subject, p, axes.axes(), moved, where, named);
@@ -3170,9 +3184,9 @@ public final class Generator {
     private static Witness witnessFor(MeasuredInput.MeasuredAxes axes,
                                       CellSelection selection, CandidateCheck check, Trial trial,
                                       Map<List<String>, Watched> applied, List<ArmProbe> takes,
-                                      List<ResolvedOrigin> origins) {
+                                      List<ResolvedOrigin> origins, FixtureReferences references) {
         Reading reading =
-                new Reading(axes, selection, check, trial, applied, takes, origins);
+                new Reading(axes, selection, check, trial, applied, takes, origins, references);
         Traversal walked = selection.interpretations(reading);
         return walked == Traversal.SATISFIED ? reading.found : reading.nothing(walked);
     }
@@ -3232,7 +3246,8 @@ public final class Generator {
 
         private Reading(MeasuredInput.MeasuredAxes axes, CellSelection selection,
                         CandidateCheck check, Trial trial, Map<List<String>, Watched> applied,
-                        List<ArmProbe> takes, List<ResolvedOrigin> origins) {
+                        List<ArmProbe> takes, List<ResolvedOrigin> origins,
+                        FixtureReferences references) {
             this.axes = axes;
             this.selection = selection;
             this.check = check;
@@ -3240,7 +3255,11 @@ public final class Generator {
             this.applied = applied;
             this.takes = takes;
             this.origins = origins;
+            this.references = references;
         }
+
+        /** The run's minter for the references what this composes will hold. */
+        private final FixtureReferences references;
 
         @Override
         public Taken take(Interpretation reading) {
@@ -3348,7 +3367,7 @@ public final class Generator {
             public Taken take(Candidate candidate) {
                 Map<String, FixtureTemplate> given = candidate.from().composes() ? Map.of()
                         : against(axes, candidate.delta(), candidate.where(),
-                                candidate.from().baseline());
+                                candidate.from().baseline(), references);
                 if (!candidate.from().composes() && given.isEmpty()) {
                     // nothing here can be written against the model's value
                     return Taken.AND_MORE;

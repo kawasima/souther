@@ -3,8 +3,13 @@ package souther.compiler.check;
 import souther.compiler.DefaultStdlib;
 import souther.compiler.ast.Hir;
 import souther.compiler.diag.SourcePos;
+import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.ReachName;
+import souther.compiler.types.SourceConstruct;
+import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.SourceReferenceOrigin;
 import souther.compiler.types.ValueName;
+import souther.compiler.types.WrittenOwner;
 
 import org.junit.jupiter.api.Test;
 
@@ -31,6 +36,9 @@ class ConstEvalMatchBudgetTest {
         // and nothing else.
         return ConstEval.against(Symbols.none(DefaultStdlib.get())).eval(Hir.Apply.synthetic("String.matches",
                 new ReachName.OfLibrary(matches),
+                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0),
+                new ApplicationOrigin.Written(SourceConstructOrigin.written(
+                        new WrittenOwner.Body("m", "b"), 0, SourceConstruct.CALL)),
                 List.of(new Hir.StringLit(pattern, POS, null), new Hir.StringLit(subject, POS, null)),
                 POS, null));
     }

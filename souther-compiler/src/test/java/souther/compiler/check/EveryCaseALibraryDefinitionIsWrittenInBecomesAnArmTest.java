@@ -7,9 +7,10 @@ import souther.compiler.semantics.ArgumentsStand;
 import souther.compiler.semantics.DefinitionCase;
 import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
+import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
-import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.FixtureReferenceOrigin;
 import souther.compiler.types.Type;
 import souther.compiler.types.ValueName;
 
@@ -115,7 +116,7 @@ class EveryCaseALibraryDefinitionIsWrittenInBecomesAnArmTest {
         }
         return new Core.PreservedCall(
                 KeptCalls.declared((ValueName.Stdlib.Operation) operation), args,
-                SourceConstructOrigin.unwritten(),
+                new FixtureReferenceOrigin(0), new ApplicationOrigin.ComposedFixture(),
                 entry.signature().result(), POS);
     }
 }

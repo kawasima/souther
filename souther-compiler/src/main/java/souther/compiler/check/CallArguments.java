@@ -37,7 +37,10 @@ public final class CallArguments {
                                                 Core.PreservedCall call, Core value) {
         List<Core> args = new ArrayList<>(call.args());
         args.set(positionOf(argument, call), value);
-        return new Core.PreservedCall(call.declared(), args, call.origin(), call.type(), call.pos());
+        // The same call with one argument read another way: what it applies and why it is here have
+        // not moved, so both are carried rather than made again.
+        return new Core.PreservedCall(call.declared(), args, call.reference(), call.application(),
+                call.type(), call.pos());
     }
 
     /**
