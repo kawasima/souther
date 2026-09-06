@@ -158,7 +158,12 @@ public final class TextExtents {
                     held.high().inclusive() ? at.justAbove().at() : at.at(), meter);
             inside = below == null ? null : inside.and(below, meter);
         }
-        if (inside != null && held.low() != null) {
+        // A low end at the string of nothing, included, is below every string, so what lies
+        // above it is the language as it stands; the machines that would say so are the empty
+        // language, its complement and a meet with everything, and none of them is built.
+        boolean lowestOfAll = held.low() != null && held.low().inclusive()
+                && ((Text) held.low().at()).at().isEmpty();
+        if (inside != null && held.low() != null && !lowestOfAll) {
             Text at = (Text) held.low().at();
             Language under = Language.before(
                     held.low().inclusive() ? at.at() : at.justAbove().at(), meter);

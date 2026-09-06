@@ -73,7 +73,7 @@ public final class TypeCardinality {
         declared.forEach((name, def) -> edges.put(name, read(def, symbols, declared.keySet())));
         // Fixed before the rising starts. What makes it stop is that there are finitely many answers
         // to rise through, and a count discovered part way would give it somewhere new to go.
-        CardinalityCuts cuts = CardinalityCuts.keeping(asked(declared, source, policy));
+        CardinalityCuts cuts = CardinalityCuts.keeping(asked(declared, source, policy, machines));
         List<List<TypeSymbol>> components = TypeComponents.of(edges);
         return new Cardinalities(
                 Map.copyOf(pass(components, declared, edges, cuts, source, policy, Set.of(),
@@ -430,7 +430,7 @@ public final class TypeCardinality {
      * answers still tell apart everything the questions found.
      */
     private static Set<Long> asked(Map<TypeSymbol, Hir.Def> declared, RuleReadingSource source,
-                                   ReadingPolicy policy) {
+                                   ReadingPolicy policy, StringMachineLookup machines) {
         Symbols symbols = source.symbols();
         Set<Long> counts = new HashSet<>();
         declared.forEach((name, def) -> {
@@ -439,7 +439,7 @@ public final class TypeCardinality {
             if (!(def instanceof Hir.Data data) || !(name instanceof TypeSymbol.AtModule at)) {
                 return;
             }
-            OccurrenceCounts held = OccurrenceCounts.of(at, source, policy);
+            OccurrenceCounts held = OccurrenceCounts.of(at, source, policy, _ -> false, machines);
             for (RuleKey path : data.newtype() ? Set.of(RuleKey.THE_VALUE)
                     : TypeOps.fieldTypes(data, symbols).keySet().stream()
                             .map(RuleKey::of).collect(java.util.stream.Collectors.toSet())) {

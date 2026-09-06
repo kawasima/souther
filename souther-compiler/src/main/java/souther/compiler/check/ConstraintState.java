@@ -274,7 +274,14 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
      *                  read first, and moving a clause would move the refusal
      */
     public Optional<Emptiness> holdsNothing(SequencedMap<A, Emptiness.AtAField.Where> positions) {
-        Confinement.Admission<A> shown = admitted();
+        return holdsNothing(positions, StringMachineAnswers.NONE);
+    }
+
+    /** The same, borrowing what {@code machines} has already made where the pair's answer needs
+     *  a machine. */
+    public Optional<Emptiness> holdsNothing(SequencedMap<A, Emptiness.AtAField.Where> positions,
+                                            StringMachineAnswers machines) {
+        Confinement.Admission<A> shown = admitted(machines);
         Emptiness why = shownByAnother() || shown.holdsNothing()
                 ? new Emptiness.ConflictingRules() : null;
         // A position whose ends cross, which is nearer than the general form: it says not only that
@@ -558,7 +565,15 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
      * unread rather than about how the alternatives are held.
      */
     ConstraintState<A> takingRead(Confinement.Worked<A> read, Allowance<A> sets) {
-        return new ConstraintState<>(numbers, facts, confinement.taking(read, sets), shown);
+        return takingRead(read, sets, StringMachineAnswers.NONE);
+    }
+
+    /** The same, borrowing what {@code machines} has already made where taking the reading in
+     *  asks what either side was shown empty by. */
+    ConstraintState<A> takingRead(Confinement.Worked<A> read, Allowance<A> sets,
+                                  StringMachineAnswers machines) {
+        return new ConstraintState<>(numbers, facts, confinement.taking(read, sets, machines),
+                shown);
     }
 
     /**

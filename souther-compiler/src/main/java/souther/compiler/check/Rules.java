@@ -182,6 +182,12 @@ public sealed interface Rules {
 
     /** The same, for a value whose type may name no declaration at all. */
     static Rules of(Type type, RuleReadingSource source, ReadingPolicy policy) {
-        return of(type instanceof Type.Ref ref ? ref.name() : null, source, policy);
+        return of(type, source, policy, StringMachineLookup.NONE);
+    }
+
+    /** The same, asking {@code machines} first. */
+    static Rules of(Type type, RuleReadingSource source, ReadingPolicy policy,
+                    StringMachineLookup machines) {
+        return of(type instanceof Type.Ref ref ? ref.name() : null, source, policy, machines);
     }
 }

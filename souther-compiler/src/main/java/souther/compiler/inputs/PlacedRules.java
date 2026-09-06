@@ -115,9 +115,11 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
                 ? machines.of(at.key()) : StringMachineAnswers.NONE;
     }
 
-    /** The same for the declaration a position of {@code type} is read as. */
-    StringMachineAnswers answersAt(Type type, Symbols symbols) {
-        return answersFor(readAs(type, symbols), machines);
+    /** The answers about the string machines of the value these rules are read of — the ones a
+     *  question put to {@link #bounds()} is answered from, since that is the declaration whose
+     *  reading made them. */
+    StringMachineAnswers answers() {
+        return answersFor(value, machines);
     }
 
     /**

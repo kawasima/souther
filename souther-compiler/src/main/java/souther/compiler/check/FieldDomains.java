@@ -270,6 +270,11 @@ public final class FieldDomains {
         return constraints.holdsNothing(spelled(namedBy));
     }
 
+    /** The same, borrowing what {@code machines} has already made where deciding takes one. */
+    public Optional<Emptiness> holdsNothing(StringMachineAnswers machines) {
+        return constraints.holdsNothing(spelled(namedBy), machines);
+    }
+
     /**
      * Where each subject sits, as a proof of emptiness says it.
      *

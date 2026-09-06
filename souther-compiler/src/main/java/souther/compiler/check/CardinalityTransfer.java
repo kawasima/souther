@@ -139,7 +139,7 @@ final class CardinalityTransfer {
         // about a value the declaration as a whole refuses, and nearer than anything they could say.
         Optional<Emptiness> contradiction =
                 FieldDomains.granting(named, data, source, policy, granted, machines)
-                        .holdsNothing();
+                        .holdsNothing(machines.of(named.key()));
         if (contradiction.isPresent()) {
             return Cardinality.none(contradiction.get());
         }

@@ -819,7 +819,7 @@ public final class InvariantChecker {
         // One reader for this value's positions, used over however many clauses reach it, and
         // the one that decides the choices in what they came to.
         StatedByClauses.Reading reader = StatedByClauses
-                .readingOf(c.terms, positions, symbols, alternatives, allowed);
+                .readingOf(c.terms, positions, symbols, alternatives, allowed, c.answers);
         // What each clause said and what each part of it said, kept as they were read and
         // asked afterwards. Which branch of a choice anybody can take turns on clauses not yet
         // read and on machines nobody has made at this point, and every one of these questions
@@ -887,7 +887,7 @@ public final class InvariantChecker {
         Reading reading = c.directsIn(written, at, atoms, keys, held, typeAt, took,
                 new PartsRead(readBy, adoptedBy, narrowedBy), reach.withoutParts());
         ConstraintState<FactSubject> constraints = k.constraints()
-                .takingRead(answered.whole().confinement(), allowed);
+                .takingRead(answered.whole().confinement(), allowed, c.answers);
         // How each atom's values are spaced, kept so that settling one afterwards states the
         // equality the same way this does. A count is a whole number of things whatever the
         // things are spaced by; a position's own value is spaced by its type.

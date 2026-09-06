@@ -830,6 +830,12 @@ sealed interface Confinement<A> {
          * conjunction with one of those promises nothing anywhere.
          */
         Conjoined<A> taking(Worked<A> read, Allowance<A> sets) {
+            return taking(read, sets, StringMachineAnswers.NONE);
+        }
+
+        /** The same, borrowing what {@code machines} has already made where what either side
+         *  was shown empty by takes a machine. */
+        Conjoined<A> taking(Worked<A> read, Allowance<A> sets, StringMachineAnswers machines) {
             // The allowance the reading was worked out under, and not a fresh one: what a later
             // reader builds out of it is more of the same answer at the same positions.
             //
@@ -856,7 +862,7 @@ sealed interface Confinement<A> {
                     // and travels with them. Left behind, a declaration refused because two of its
                     // branches share no value between their sets and their ranges would be reported
                     // as one whose values admit nothing, which is what dropping the branches left.
-                    eitherShown(admission(), read.admission()));
+                    eitherShown(admission(machines), read.admission(machines)));
         }
 
         @Override

@@ -220,7 +220,10 @@ class NoPublicWayToTurnASpellingIntoATypeIdentityTest {
                         // The address a declaration world has just been asked about and answered for.
                         "Registry.java: address",
                         "Declarations.java: address",
-                        "Stdlib.java: address"),
+                        "Stdlib.java: address",
+                        // The declaration a store question is keyed by, which the reading that asked
+                        // it had already resolved: the question reads that declaration and no other.
+                        "Machines.java: named"),
                 handed,
                 "an identity is exchanged for a declaration, or for an address one was found at");
     }

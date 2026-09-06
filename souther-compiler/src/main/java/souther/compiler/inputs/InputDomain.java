@@ -1338,7 +1338,8 @@ public final class InputDomain {
         // canonical quantity of each of them was worked out. A second reader recognising the number
         // off the spelling of a side answers nothing for `String.length(value) * 2 >= 4`, whose
         // sides are neither a name nor a measure of one.
-        DeclaredCoordinates.Reading ownRules = DeclaredCoordinates.of(type, source, policy);
+        DeclaredCoordinates.Reading ownRules =
+                DeclaredCoordinates.of(type, source, policy, placed.machines());
         RulesWithNoLine.Gathered found = new RulesWithNoLine.Gathered();
         // Which of the position's numbers it is measured at, decided here and nowhere else, and
         // decided once. Every reader below reads this answer rather than working the question out
@@ -1394,7 +1395,7 @@ public final class InputDomain {
                         DeclaredBounds.placed(adopted, kind, on));
         // A value whose rules contradict has no positions to cover: every edge of every field of it
         // is a row nobody can write, which is not the same answer as a field nothing bounds.
-        boolean nothingExists = placed.bounds().infeasible(placed.answersAt(type, source.symbols()));
+        boolean nothingExists = placed.bounds().infeasible(placed.answers());
         // Which values the position may hold, and how much of what its rules say was read. The same
         // reading the numbers come from and a separate question of it: a rule can name the values a
         // position holds without stating where they stop, and one that states where they stop
