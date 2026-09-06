@@ -472,8 +472,8 @@ sealed interface StatedByClauses {
             return terms::inside;
         }
 
-        @Override
-        public StatedByClauses nothingSaid() {
+        /** What a clause this reading has no word for leaves, which is everything it had. */
+        StatedByClauses nothingSaid() {
             return top(ordered.carriers());
         }
 
@@ -493,7 +493,7 @@ sealed interface StatedByClauses {
          * than one.
          */
         @Override
-        public StatedByClauses leaf(Core e, boolean positive, Denotations at) {
+        public StatedByClauses whole(Core e, boolean positive, Denotations at) {
             PlannedValues<FactSubject> said = values.leaf(e, positive, at);
             OrderedIntervals<FactSubject> range = ordered.leaf(e, positive, at);
             Set<FactSubject> mentions = mentioned(e, at);
@@ -552,7 +552,18 @@ sealed interface StatedByClauses {
          * from a clause written outside the brackets.
          */
         @Override
-        public StatedByClauses both(StatedByClauses one, StatedByClauses other) {
+        public Descent<StatedByClauses> at(ClauseExpr.Joined join) {
+            // Both connectives are read to the end, because this state composes either of them: a
+            // choice between two readings of the whole value is a reading of the whole value, and
+            // an alternative that cannot be taken is dropped by asking everything known about it.
+            return switch (join.how()) {
+                case BOTH -> new Descent.Into<>(Both::new);
+                case EITHER -> new Descent.Into<>(
+                        (one, other) -> new Either(new ChoiceId(), join.of(), one, other));
+            };
+        }
+
+        private StatedByClauses both(StatedByClauses one, StatedByClauses other) {
             return new Both(one, other);
         }
 
@@ -568,23 +579,6 @@ sealed interface StatedByClauses {
         @Override
         public StatedByClauses from(Core e, StatedByClauses out) {
             return new CameFrom(e, out);
-        }
-
-        /**
-         * Either alternative holding, at the {@code ||} an author wrote it with.
-         *
-         * <p>The id is minted here, where the two alternatives are what stands between the
-         * brackets. Given no identity, an alternative nothing could read would have nowhere to
-         * stand and an author would be sent to a branch that was read; given no place, nothing
-         * downstream could put it in the order it was written in.
-         *
-         * <p>Which of the branches anybody can be in is not decided here. It is a question about
-         * the values, settled where the values are worked out ({@link #together},
-         * {@link #settling}), and what comes back to this tree is the fate.
-         */
-        @Override
-        public StatedByClauses either(Core writtenAt, StatedByClauses one, StatedByClauses other) {
-            return new Either(new ChoiceId(), writtenAt, one, other);
         }
 
         /**

@@ -35,12 +35,14 @@ import souther.compiler.core.Core;
  */
 interface ClauseReading<S, E> {
 
-    /** What a clause this reading has no word for leaves, which is everything it had. */
-    S nothingSaid();
-
     /**
-     * What one clause of no connective says, stated where {@code positive} and denied where it is
-     * not, read at the environment {@code at} it stands in.
+     * What one part of the clause says, stated where {@code positive} and denied where it is not,
+     * read at the environment {@code at} it stands in.
+     *
+     * <p>A part of no connective, or a connective this reading takes whole — the two are one case.
+     * What is inside a part is the part language's to ask, and a binding standing there is crossed
+     * by each question it asks about its own inside (ADR-0106); a connective taken whole is a part
+     * on exactly those terms.
      *
      * <p>Reached with the denials already counted, so a reading of a comparison is a reading of the
      * comparison it states rather than of the one that was written. And reached with the bindings
@@ -48,21 +50,18 @@ interface ClauseReading<S, E> {
      * reading that answered from the environment the whole clause began in would be reading one
      * value's rule at another value's names.
      */
-    S leaf(Core e, boolean positive, E at);
-
-    /** Both readings holding at once. */
-    S both(S one, S other);
+    S whole(Core e, boolean positive, E at);
 
     /**
-     * Either reading holding, at the connective an author wrote it with.
+     * How far this reading goes into {@code join}, and what holding both of its parts comes to.
      *
-     * <p>The node is here because a reading with something to say about the choice has nowhere else
-     * to learn where it stands. What the fold hands up is two readings and a flag; which choice they
-     * are the two branches of is known at this call and at no call after it, so a reading that wants
-     * it and is not given it here works it out from something else — and the something else is
+     * <p>Asked of the shape and not of the operator, so what a connective composes is settled in
+     * one place. The whole shape is handed over because a reading with something to say about the
+     * choice has nowhere else to learn where it stands: which choice two readings are the branches
+     * of is known here and at no call after it, so a reading not given it works it out from
      * whichever place a walk happened to reach, which is a fact about the walk.
      */
-    S either(Core writtenAt, S one, S other);
+    Descent<S> at(ClauseExpr.Joined join);
 
     /**
      * What {@code e} leaves, stated where {@code positive} and denied where it is not, read from
@@ -105,11 +104,14 @@ interface ClauseReading<S, E> {
     private S over(ClauseExpr shape, E at, ClauseScope<E> scope,
                    java.util.function.BiConsumer<Core, S> per) {
         S out = switch (shape) {
-            case ClauseExpr.Leaf it -> leaf(it.of(), it.positive(), at);
-            case ClauseExpr.Joined it -> switch (it.how()) {
-                case BOTH -> both(over(it.left(), at, scope, per), over(it.right(), at, scope, per));
-                case EITHER -> either(it.of(), over(it.left(), at, scope, per),
-                        over(it.right(), at, scope, per));
+            case ClauseExpr.Leaf it -> whole(it.of(), it.positive(), at);
+            // How far this reading goes is its own answer, and taking the connective whole is
+            // reading the node an author wrote it at as a part. A reading told to descend and
+            // unable to compose what it found had nowhere to say so.
+            case ClauseExpr.Joined it -> switch (at(it)) {
+                case Descent.Whole<S> _ -> whole(it.of(), it.positive(), at);
+                case Descent.Into<S> into -> into.compose().apply(
+                        over(it.left(), at, scope, per), over(it.right(), at, scope, per));
             };
             // The one place the environment changes, and it changes for what is under the binding
             // alone. What the binding means is not worked out here and not by the reading either.

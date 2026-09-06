@@ -51,24 +51,15 @@ class AClauseUnderABindingIsReadInsideItTest {
         private final List<AtALeaf> leaves = new ArrayList<>();
 
         @Override
-        public List<AtALeaf> nothingSaid() {
-            return List.of();
-        }
-
-        @Override
-        public List<AtALeaf> leaf(Core e, boolean positive, String at) {
+        public List<AtALeaf> whole(Core e, boolean positive, String at) {
             leaves.add(new AtALeaf(e, positive, at));
             return List.of(leaves.get(leaves.size() - 1));
         }
 
+        /** Both connectives are walked into, since what is being recorded is what reached a part. */
         @Override
-        public List<AtALeaf> both(List<AtALeaf> one, List<AtALeaf> other) {
-            return joined(one, other);
-        }
-
-        @Override
-        public List<AtALeaf> either(Core writtenAt, List<AtALeaf> one, List<AtALeaf> other) {
-            return joined(one, other);
+        public Descent<List<AtALeaf>> at(ClauseExpr.Joined join) {
+            return new Descent.Into<>(Recording::joined);
         }
 
         private static List<AtALeaf> joined(List<AtALeaf> one, List<AtALeaf> other) {

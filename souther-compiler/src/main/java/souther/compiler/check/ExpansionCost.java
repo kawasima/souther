@@ -65,30 +65,36 @@ final class ExpansionCost implements ClauseReading<Long, Void> {
     }
 
     /** Nothing read is one alternative — the empty product — and is the identity of the fold. */
-    @Override
-    public Long nothingSaid() {
+    private long nothingSaid() {
         return 1L;
     }
 
     /**
      * One, whatever a reading later makes of it.
      *
-     * <p>A leaf a reading has no word for is one alternative and not none: what it leaves is
+     * <p>A part a reading has no word for is one alternative and not none: what it leaves is
      * everything, which is a box like any other. Counting it as none would let a clause of unread
-     * leaves come out costing nothing and be admitted under any budget.
+     * parts come out costing nothing and be admitted under any budget.
      */
     @Override
-    public Long leaf(Core e, boolean positive, Void at) {
+    public Long whole(Core e, boolean positive, Void at) {
         return 1L;
     }
 
+    /**
+     * Both connectives are counted to the end, because what is being counted is what the shape
+     * composes: a conjunction multiplies the alternatives of its halves and a choice adds them.
+     */
     @Override
-    public Long both(Long one, Long other) {
-        return Math.min(ceiling, one * other);
+    public Descent<Long> at(ClauseExpr.Joined join) {
+        return switch (join.how()) {
+            case BOTH -> new Descent.Into<>(this::both);
+            case EITHER -> new Descent.Into<>(
+                    (one, other) -> Math.min(ceiling, one + other));
+        };
     }
 
-    @Override
-    public Long either(Core writtenAt, Long one, Long other) {
-        return Math.min(ceiling, one + other);
+    private Long both(Long one, Long other) {
+        return Math.min(ceiling, one * other);
     }
 }
