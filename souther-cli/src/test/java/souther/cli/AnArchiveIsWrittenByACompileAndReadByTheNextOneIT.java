@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -23,8 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * loads the compiler out of it.
  *
  * <p>Which run writes it matters because an archive holds what the run that wrote it loaded, and
- * is rewritten only when it cannot be read. One written by a command that never reaches the
- * compiler would stand, and every compile after it would load its classes itself.
+ * nothing later extends it to hold more. One written by a command that never reaches the compiler
+ * would stand, and every compile after it would load its classes itself.
  */
 class AnArchiveIsWrittenByACompileAndReadByTheNextOneIT {
 
@@ -43,18 +42,21 @@ class AnArchiveIsWrittenByACompileAndReadByTheNextOneIT {
         Path cache = work.resolve("cache");
         Path source = aSource(work);
 
-        assertEquals(0, run(cache, Map.of(), "doc", "cli/commands"));
+        run(cache, Map.of(), "doc", "cli/commands");
         assertTrue(archivesUnder(cache).isEmpty(),
                 "`doc` loads nothing a compile would reuse, so it writes no archive");
 
-        assertEquals(0, run(cache, Map.of(), "compile", "-d", work.resolve("out").toString(),
-                source.toString()));
-        assertEquals(1, archivesUnder(cache).size(),
-                "a compile writes one, named for this version: " + archivesUnder(cache));
+        run(cache, Map.of(), "compile", "-d", work.resolve("out").toString(), source.toString());
+        // The name, and not only that there is one: a version reaches the script by being filtered
+        // into it, and a filtering that stopped happening would leave every version one archive to
+        // fight over while every run here still passed.
+        assertEquals(List.of(System.getProperty("souther.version") + ".jsa"),
+                archivesUnder(cache).stream().map(p -> p.getFileName().toString()).toList(),
+                "a compile writes one, and it is this version's");
 
         Path loaded = work.resolve("class-load.log");
-        assertEquals(0, run(cache, Map.of("JAVA_TOOL_OPTIONS", "-Xlog:class+load=info:file=" + loaded),
-                "compile", "-d", work.resolve("out").toString(), source.toString()));
+        run(cache, Map.of("JAVA_TOOL_OPTIONS", "-Xlog:class+load=info:file=" + loaded),
+                "compile", "-d", work.resolve("out").toString(), source.toString());
         assertTrue(Files.readAllLines(loaded).stream()
                         .anyMatch(l -> l.contains("souther.compiler.") && l.contains("shared objects file")),
                 "and the compile after it takes the compiler's classes out of the archive");
@@ -74,8 +76,11 @@ class AnArchiveIsWrittenByACompileAndReadByTheNextOneIT {
         return source;
     }
 
-    /** The binary, run with {@code cache} as the cache directory the launcher is told to use. */
-    private static int run(Path cache, Map<String, String> environment, String... args)
+    /**
+     * The binary, run with {@code cache} as the cache directory the launcher is told to use, held
+     * to answering the command it was given.
+     */
+    private static void run(Path cache, Map<String, String> environment, String... args)
             throws Exception {
         ProcessBuilder builder = new ProcessBuilder(
                 Stream.concat(Stream.of(binary.toString()), Stream.of(args)).toList());
@@ -84,9 +89,8 @@ class AnArchiveIsWrittenByACompileAndReadByTheNextOneIT {
         builder.redirectErrorStream(true);
         Process process = builder.start();
         String said = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        int status = process.waitFor();
-        assertFalse(said.contains("Error occurred during initialization of VM"), said);
-        return status;
+        assertEquals(0, process.waitFor(),
+                "`souther " + String.join(" ", args) + "` answered instead: " + said);
     }
 
     private static List<Path> archivesUnder(Path cache) throws IOException {

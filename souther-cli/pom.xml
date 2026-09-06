@@ -94,6 +94,7 @@
                     <systemPropertyVariables>
                         <souther.jar>${project.build.directory}/souther.jar</souther.jar>
                         <souther.binary>${project.build.directory}/souther</souther.binary>
+                        <souther.version>${project.version}</souther.version>
                     </systemPropertyVariables>
                 </configuration>
                 <executions>
