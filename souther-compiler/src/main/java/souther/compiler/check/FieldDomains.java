@@ -15,6 +15,7 @@ import souther.compiler.values.ValueSet;
 
 import souther.compiler.numeric.Count;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import souther.compiler.types.ValueName;
@@ -179,6 +180,28 @@ public final class FieldDomains {
     /** How each atom's values are spaced, so that settling one afterwards states the same equality
      *  the reading would have stated for it. */
     private final Map<FactSubject, souther.compiler.numeric.Granularity> spacing;
+    /**
+     * The counterfactual readings this one has been asked for, kept under what was left out of each.
+     *
+     * <p>What a reading with rules taken away comes to is decided by which rules those are and by
+     * nothing else — not by the name the question was asked at, and not by which side of a
+     * coordinate is being attributed. So the readings are kept under what was left out, and the
+     * questions that ask for the same one get the one that was made: both ends of a coordinate ask
+     * the same set, a declaration that reaches several names asks it again at each of them, and the
+     * questions {@link EndNarrowing} puts ask for the reading without every candidate and the one
+     * without a single candidate, which where there is one candidate are the same reading.
+     *
+     * <p>Beside the state rather than part of it. These are the reading this already is, read out
+     * for what one rule did, so nothing here answers anything the rules of this value do not
+     * already say.
+     *
+     * <p>Kept under the lock of the reading they are of, because a reading is worked out on a
+     * thread of its own where one is given a deadline and the two ends of a coordinate are asked
+     * for separately.
+     */
+    private final Map<Set<TypeSymbol.AtModule>, FieldDomains> readWithoutTheClausesOf =
+            new HashMap<>();
+    private final Map<Set<PartId>, FieldDomains> readWithoutTheParts = new HashMap<>();
 
     private FieldDomains(Map<RuleKey, NumericDomain.Bounds> byName,
                          Map<RuleKey, NumericDomain.Bounds> heldByName,
@@ -674,14 +697,21 @@ public final class FieldDomains {
      * standing one up is a second place for that comparison to be written a different way round.
      */
     private Endpoint endWithout(Set<TypeSymbol.AtModule> removed, RuleKey path, boolean lower) {
-        NumericDomain.Bounds bounds = without(removed::contains).byName.get(path);
+        NumericDomain.Bounds bounds = without(removed).byName.get(path);
         return bounds == null ? null : lower ? bounds.min() : bounds.max();
     }
 
-    /** This value read again without the clauses of the declarations {@code skip} names. */
-    private FieldDomains without(java.util.function.Predicate<TypeSymbol> skip) {
-        return of(named, data, source, policy, settled,
-                InvariantChecker.Reach.withoutClausesOf(skip), DeclarationReadings.NONE);
+    /**
+     * This value read again without the clauses of the declarations {@code removed} names.
+     *
+     * <p>Asked for by the set left out, which is what the reading is of: the same set asked for
+     * twice is one reading, made when the first question reaches it.
+     */
+    private synchronized FieldDomains without(Set<TypeSymbol.AtModule> removed) {
+        return readWithoutTheClausesOf.computeIfAbsent(Set.copyOf(removed),
+                skip -> of(named, data, source, policy, settled,
+                        InvariantChecker.Reach.withoutClausesOf(skip::contains),
+                        DeclarationReadings.NONE));
     }
 
     /**
@@ -1217,7 +1247,7 @@ public final class FieldDomains {
     /** Where the coordinate stops on one side with these conjuncts taken away. */
     private Endpoint sideWithout(Set<AboutOneCoordinate> removed, NumberAt<RuleKey> at,
                                  boolean lower) {
-        NumericDomain.Bounds without = without(removed).leftAt(at.position(), at.of());
+        NumericDomain.Bounds without = withoutConjuncts(removed).leftAt(at.position(), at.of());
         return without == null ? null : lower ? without.min() : without.max();
     }
 
@@ -1350,13 +1380,19 @@ public final class FieldDomains {
                 .toList();
     }
 
-    /** This value read again without some conjuncts of its rules. */
-    private FieldDomains without(Set<AboutOneCoordinate> removed) {
-        return of(named, data, source, policy, settled,
-                InvariantChecker.Reach.withoutParts(removed.stream()
+    /**
+     * This value read again without some conjuncts of its rules.
+     *
+     * <p>Asked for by the conjuncts left out, which is what the reading is of: two sets of
+     * candidates naming the same conjuncts are one reading, and so are the same conjuncts asked for
+     * at both ends of a coordinate.
+     */
+    private synchronized FieldDomains withoutConjuncts(Set<AboutOneCoordinate> removed) {
+        return readWithoutTheParts.computeIfAbsent(removed.stream()
                         .map(AboutOneCoordinate::part)
-                        .collect(java.util.stream.Collectors.toSet())),
-                DeclarationReadings.NONE);
+                        .collect(java.util.stream.Collectors.toUnmodifiableSet()),
+                parts -> of(named, data, source, policy, settled,
+                        InvariantChecker.Reach.withoutParts(parts), DeclarationReadings.NONE));
     }
 
     /**
