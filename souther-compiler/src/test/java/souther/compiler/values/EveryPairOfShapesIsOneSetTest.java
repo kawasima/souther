@@ -83,9 +83,10 @@ class EveryPairOfShapesIsOneSetTest {
         return made.set();
     }
 
-    /** And what either holds, on the same terms. */
+    /** And what either holds, on the same terms — said as one plan over the alternatives, which is
+     *  how a block holds what its alternatives leave it. */
     private ValueSet joined(ValueSet one, ValueSet two) {
-        Allowance.Composed made = sets.join(POSITION, one, two);
+        Allowance.Composed made = sets.joining(POSITION, List.of(one, two));
         assertFalse(made.gaveUp(), () -> one + " join " + two + " is within what one answer holds");
         return made.set();
     }
