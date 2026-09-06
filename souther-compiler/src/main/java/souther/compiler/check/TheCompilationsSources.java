@@ -1,5 +1,6 @@
 package souther.compiler.check;
 
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 /**
@@ -27,8 +28,14 @@ import java.util.function.Function;
  */
 public final class TheCompilationsSources {
 
+    private static final AtomicLong MINTS = new AtomicLong();
+
     private final Function<String, Symbols> scopeOf;
     private final ExpandedClauseLookup clauses;
+
+    /** Which mint this is, told to nobody: what it stamps says this and what another stamps says
+     *  another, which is the whole of how a source of one is told from a source of the other. */
+    private final long mint = MINTS.incrementAndGet();
 
     /**
      * Makes the sources of a compilation whose modules resolve under {@code scopeOf} and whose
@@ -52,6 +59,6 @@ public final class TheCompilationsSources {
     public RuleReadingSource of(String module) {
         Symbols scope = scopeOf.apply(module);
         return scope == null ? null
-                : new RuleReadingSource(scope, clauses, new AModulesRules(this, module));
+                : new RuleReadingSource(scope, clauses, new AModulesRules(mint, module));
     }
 }

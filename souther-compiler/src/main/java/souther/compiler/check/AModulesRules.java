@@ -14,14 +14,18 @@ package souther.compiler.check;
  * reader cannot write one, and a reader that builds sources of its own gets what its own sources
  * mint, which nobody else's readers share.
  *
- * @param sources what minted this, which is what makes it that compilation's and no other's
+ * <p>Which mint it was, said as a number rather than as the mint. A source is carried in what some
+ * questions answer with, so what it holds is compared when their answers are, and a mint is not a
+ * value — an answer holding one would be an answer that never equals the answer it replaces. The
+ * number is one the mint gave itself and told nobody, which is as much as being the mint says here.
+ *
+ * @param sources the mint that made this, which is what makes it that compilation's and no other's
  * @param module the module whose rules a source carrying this reads
  */
-record AModulesRules(TheCompilationsSources sources, String module)
-        implements RuleReadingSource.Origin {
+record AModulesRules(long sources, String module) implements RuleReadingSource.Origin {
 
     AModulesRules {
-        if (sources == null || module == null) {
+        if (module == null) {
             throw new IllegalArgumentException(
                     "a module's rules are read under its name, and under whoever answers for them");
         }
