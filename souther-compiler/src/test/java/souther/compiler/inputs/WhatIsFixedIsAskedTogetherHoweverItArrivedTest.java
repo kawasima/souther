@@ -3,6 +3,7 @@ package souther.compiler.inputs;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.ast.Hir;
+import souther.compiler.check.InvariantChecker;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.Emptiness;
@@ -339,14 +340,14 @@ class WhatIsFixedIsAskedTogetherHoweverItArrivedTest {
     void settlingAPositionDoesNotReadTheDeclarationsAgain() {
         Read read = read(SOURCE, "take");
         Quantities asked = read.inputs().quantities(read.rules());
-        long before = souther.compiler.check.FieldDomains.readingsMade();
+        long before = InvariantChecker.readingsMade();
 
         Quantities twice = asked.given(X, count(1)).given(Y, count(1));
         twice.runsBetween(sum());
         twice.runsBetween(Y);
         twice.emptiness();
 
-        assertEquals(before, souther.compiler.check.FieldDomains.readingsMade());
+        assertEquals(before, InvariantChecker.readingsMade());
     }
 
     /**

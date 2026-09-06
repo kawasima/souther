@@ -3,7 +3,7 @@ package souther.compiler.inputs;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.NumberAt;
 import souther.compiler.check.RuleReadingSource;
-import souther.compiler.check.StringMachineLookup;
+import souther.compiler.check.DeclarationReadings;
 import souther.compiler.check.Carrier;
 import souther.compiler.check.DeclaredBounds;
 import souther.compiler.check.DeclaredCoordinates;
@@ -252,7 +252,7 @@ public final class InputDomain {
      */
     public static InputDomain of(List<Parameter> parameters, RuleReadingSource source,
                                  ReadingPolicy policy, InputDemand demand) {
-        return of(parameters, source, policy, demand, StringMachineLookup.NONE);
+        return of(parameters, source, policy, demand, DeclarationReadings.NONE);
     }
 
     /**
@@ -264,7 +264,7 @@ public final class InputDomain {
      */
     public static InputDomain of(List<Parameter> parameters, RuleReadingSource source,
                                  ReadingPolicy policy, InputDemand demand,
-                                 StringMachineLookup machines) {
+                                 DeclarationReadings machines) {
         List<Position> found = new ArrayList<>();
         List<RuleRoot> roots = new ArrayList<>();
         Map<BindingId, String> read = new LinkedHashMap<>();
@@ -357,13 +357,13 @@ public final class InputDomain {
     /** The same, closed over the finite paths this behavior's measurement names as well. */
     public static InputDomain of(Hir.SpecBehavior behavior, Hir.FnDef fn, Sig sig,
                                  RuleReadingSource source, ReadingPolicy policy, InputDemand demand) {
-        return of(behavior, fn, sig, source, policy, demand, StringMachineLookup.NONE);
+        return of(behavior, fn, sig, source, policy, demand, DeclarationReadings.NONE);
     }
 
     /** The same, asking {@code machines} first. */
     public static InputDomain of(Hir.SpecBehavior behavior, Hir.FnDef fn, Sig sig,
                                  RuleReadingSource source, ReadingPolicy policy, InputDemand demand,
-                                 StringMachineLookup machines) {
+                                 DeclarationReadings machines) {
         List<Parameter> parameters = new ArrayList<>();
         for (int i = 0; i < sig.inputTypes().size() && i < behavior.params().size(); i++) {
             BindingId binding = fn != null && i < fn.params().size()
@@ -1223,7 +1223,7 @@ public final class InputDomain {
                                          NameReach.Observed observed,
                                          PlacedRules.Reaching crossing, RootOpening opening,
                                          Gathered account, Reach reach,
-                                         StringMachineLookup machines) {
+                                         DeclarationReadings machines) {
         roots.add(new RuleRoot(opened, type, opening));
         // Said where a reading is actually opened, so that a case recorded as opened is one there
         // is somewhere to ask about. Said where the branch was chosen instead, a descent that turns
@@ -1261,7 +1261,7 @@ public final class InputDomain {
                                    java.util.Set<Type> visited, RuleHandoffs handoffs,
                                    NameReach.Observed observed, PlacedRules.Reaching crossing,
                                    RootOpening opening,
-                                   Gathered account, Reach reach, StringMachineLookup machines) {
+                                   Gathered account, Reach reach, DeclarationReadings machines) {
         // <b>A descent that costs no level stops only where it returns to a value it has already
         // been at without a step into one.</b> That is the whole of the rule, and what it is keyed
         // on is the value reached and never the narrowing taken: a narrowing is an edge and the

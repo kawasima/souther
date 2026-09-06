@@ -545,7 +545,7 @@ public final class Shapes {
             try {
                 souther.compiler.check.TypeCardinality.Cardinalities counted =
                         souther.compiler.check.TypeCardinality.solve(
-                                declarations, reading.value(), policy.value(), Machines.of(db));
+                                declarations, reading.value(), policy.value(), db.readings());
                 // Not counted where a rule the count read could not be read at all. What makes a
                 // type have no value is what its rules leave, so a count short of one of them may
                 // have missed the rule that empties a type — and would report it as inhabited.
@@ -582,7 +582,7 @@ public final class Shapes {
     public static Answer<RuleReadingSource> ruleReading(Db db, String name) {
         Answer<ResolvedSymbols> scope = Names.resolvedSymbols(db, name);
         return scope.present()
-                ? Answer.of(new RuleReadingSource(scope.value(), expandedClauses(db)))
+                ? Answer.of(db.ruleReadingFor(name))
                 : Answer.absent();
     }
 

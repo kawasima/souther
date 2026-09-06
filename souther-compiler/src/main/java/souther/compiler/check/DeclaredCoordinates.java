@@ -28,14 +28,14 @@ public final class DeclaredCoordinates {
      */
     public static List<FieldDomains.Placed> placedOnItsOwnValue(
             Type type, RuleReadingSource source, ReadingPolicy policy) {
-        return placedOnItsOwnValue(type, source, policy, StringMachineLookup.NONE);
+        return placedOnItsOwnValue(type, source, policy, DeclarationReadings.NONE);
     }
 
     /** The same, asking {@code machines} for what somebody has already made of the declaration's
      *  string rules before building any of it. */
     public static List<FieldDomains.Placed> placedOnItsOwnValue(
             Type type, RuleReadingSource source, ReadingPolicy policy,
-            StringMachineLookup machines) {
+            DeclarationReadings machines) {
         return Rules.of(type, source, policy, machines).bounds().placedAt(RuleKey.THE_VALUE);
     }
 
