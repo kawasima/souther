@@ -7,6 +7,7 @@ import souther.compiler.partition.BoundaryTarget;
 import souther.compiler.partition.DomainPoint;
 import souther.compiler.partition.LineOrigin;
 import souther.compiler.partition.PointRole;
+import souther.compiler.publish.RuleHandleSurface;
 import souther.compiler.source.SourceId;
 
 import java.util.Map;
@@ -122,9 +123,11 @@ public record BorderAssessment(Border border, Map<DomainPoint, ItemAssessment> i
         return border.cut().shape();
     }
 
-    /** The rule that drew the line, as a report about {@code sectionSource} writes it. */
-    public String describe(SourceNameResolver names, SourceId sectionSource) {
-        return border.describe(names, sectionSource);
+    /** The rule that drew the line, as the surface {@code surface} names writes it in a report about
+     *  {@code sectionSource}. */
+    public String describe(RuleHandleSurface surface, SourceNameResolver names,
+                           SourceId sectionSource) {
+        return border.describe(surface, names, sectionSource);
     }
 
     /**

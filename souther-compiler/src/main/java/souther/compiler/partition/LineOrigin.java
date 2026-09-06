@@ -7,6 +7,8 @@ import souther.compiler.check.RuleRef;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.numeric.Endpoint;
+import souther.compiler.publish.PublishedRuleHandle;
+import souther.compiler.publish.RuleHandleSurface;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.List;
@@ -409,17 +411,16 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      * <p>A type and an invariant have names, and a name is the same wherever it is read, so they take
      * no resolver and are given one only because this is one question.
      */
-    default String describe(SourceNameResolver names, SourceId sectionSource) {
+    default String describe(RuleHandleSurface surface, SourceNameResolver names,
+                            SourceId sectionSource) {
+        // The handle of the rule this line came from, said the one way handles are said. A rule and
+        // a line it drew are found the same way, and two spellings of one handle read as two.
+        String handle = surface.render(PublishedRuleHandle.of(cited()), names, sectionSource);
         return switch (this) {
-            case InvariantOrigin i -> i.rule().citedName();
-            case EnsuresOrigin e -> e.rule().citedName();
-            // The same word and the same join a question about this rule is written with. A rule
-            // and a line it drew are found the same way, and two spellings of one place read as two
-            // places.
-            case ComparisonOrigin g -> g.read().written().said(names, sectionSource);
-            // The declarations that took the end in, said the way the line itself says them.
-            case NarrowedOrigin n ->
-                    n.authoredLine().said(n.bound().describe(names, sectionSource));
+            case InvariantOrigin _, EnsuresOrigin _, ComparisonOrigin _ -> handle;
+            // The declarations that took the end in, said the way the line itself says them. The
+            // handle underneath is the bound's, which is what this origin cites.
+            case NarrowedOrigin n -> n.authoredLine().said(handle);
         };
     }
 

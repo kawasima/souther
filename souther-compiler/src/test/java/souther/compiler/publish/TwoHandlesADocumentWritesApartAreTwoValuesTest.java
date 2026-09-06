@@ -2,6 +2,7 @@ package souther.compiler.publish;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.check.BehaviorContract;
 import souther.compiler.check.Clause;
 import souther.compiler.check.ClauseName;
 import souther.compiler.check.RuleCitation;
@@ -19,6 +20,7 @@ import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbols;
+import souther.compiler.types.ValueName;
 import souther.compiler.types.WrittenOwner;
 
 import java.util.ArrayList;
@@ -142,9 +144,22 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
         RuleRef.Named alsoNamed = new RuleRef.Invariant(new Clause.Ref(
                 new Clause.Id(TypeSymbols.declared(new TypeKey("m", "Amount")), 1),
                 Optional.of(new ClauseName("floor"))));
+        // A clause the author named nothing, which a reader counts to, and the two sentences an
+        // `ensures` has: the words the author gave the clause, and a clause over every answer that
+        // the behavior's name is the whole of.
+        RuleRef.Named counted = new RuleRef.Invariant(new Clause.Ref(
+                new Clause.Id(TypeSymbols.declared(new TypeKey("m", "Amount")), 2),
+                Optional.empty()));
+        RuleRef.Named clauseOfAnEnsures = new RuleRef.Ensures(
+                new BehaviorContract.RuleId(new ValueName.Behavior("m", "b"), 0, 0, null), "c");
+        RuleRef.Named everyAnswer = new RuleRef.Ensures(
+                new BehaviorContract.RuleId(new ValueName.Behavior("m", "b"), 0, 0, null), "");
         List<RuleCitation> out = new ArrayList<>(List.of(
                 new RuleCitation.Named(named),
                 new RuleCitation.Named(alsoNamed),
+                new RuleCitation.Named(counted),
+                new RuleCitation.Named(clauseOfAnEnsures),
+                new RuleCitation.Named(everyAnswer),
                 new RuleCitation.WrittenAt(COMPARISON, AT),
                 new RuleCitation.WrittenAt(PREDICATE, AT),
                 new RuleCitation.WrittenAt(COMPARISON,
@@ -198,20 +213,20 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
                 new PublishedRuleHandle.Place.Unplaced(1, 1);
         PublishedRuleHandle.Place there =
                 new PublishedRuleHandle.Place.Unplaced(2, 1);
-        PublishedRuleHandle.Reached said =
-                new PublishedRuleHandle.Reached("comparison", here, "Int.clamp");
+        PublishedRuleHandle.Reached said = new PublishedRuleHandle.Reached(
+                PublishedRuleKind.COMPARISON, here, "Int.clamp");
 
-        assertNotEquals(0, Integer.signum(said.compareTo(
-                        new PublishedRuleHandle.Reached("predicate", here, "Int.clamp"))),
+        assertNotEquals(0, Integer.signum(said.compareTo(new PublishedRuleHandle.Reached(
+                        PublishedRuleKind.PREDICATE, here, "Int.clamp"))),
                 "what the rule is");
-        assertNotEquals(0, Integer.signum(said.compareTo(
-                        new PublishedRuleHandle.Reached("comparison", there, "Int.clamp"))),
+        assertNotEquals(0, Integer.signum(said.compareTo(new PublishedRuleHandle.Reached(
+                        PublishedRuleKind.COMPARISON, there, "Int.clamp"))),
                 "where the code is");
-        assertNotEquals(0, Integer.signum(said.compareTo(
-                        new PublishedRuleHandle.Reached("comparison", here, "Int.abs"))),
+        assertNotEquals(0, Integer.signum(said.compareTo(new PublishedRuleHandle.Reached(
+                        PublishedRuleKind.COMPARISON, here, "Int.abs"))),
                 "and what reaches it");
-        assertEquals(0, said.compareTo(
-                        new PublishedRuleHandle.Reached("comparison", here, "Int.clamp")),
+        assertEquals(0, said.compareTo(new PublishedRuleHandle.Reached(
+                        PublishedRuleKind.COMPARISON, here, "Int.clamp")),
                 "and two alike in every part are one value");
     }
 
@@ -232,7 +247,7 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
 
         String of(PublishedRuleHandle.Reached said) {
             return switch (this) {
-                case WHAT_THE_RULE_IS -> said.kind();
+                case WHAT_THE_RULE_IS -> said.kind().word();
                 case WHERE_THE_CODE_IS -> said.at().toString();
                 case WHAT_REACHES_IT -> said.reachedBy();
             };
@@ -307,7 +322,8 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
     }
 
     private static String said(RuleCitation cited) {
-        return cited.said(SourceNameResolver.identity(), null);
+        return RuleHandleSurface.PROSE.render(
+                PublishedRuleHandle.of(cited), SourceNameResolver.identity(), null);
     }
 
     /**
@@ -329,10 +345,14 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
                 "a population a document writes one sentence for says nothing about telling two"
                         + " apart");
         assertEquals(
-                Set.of(PublishedRuleHandle.Named.class, PublishedRuleHandle.Written.class,
+                Set.of(PublishedRuleHandle.NamedInvariant.class,
+                        PublishedRuleHandle.NumberedInvariant.class,
+                        PublishedRuleHandle.NamedEnsures.class,
+                        PublishedRuleHandle.WholeEnsures.class,
+                        PublishedRuleHandle.Written.class,
                         PublishedRuleHandle.Reached.class),
                 Set.of(PublishedRuleHandle.class.getPermittedSubclasses()),
-                "the three kinds of sentence this type has");
+                "the kinds of sentence this type has");
         for (Class<?> each : PublishedRuleHandle.class.getPermittedSubclasses()) {
             assertTrue(handles.stream().anyMatch(each::isInstance),
                     () -> "and each of them is in what the property above is asked over: " + each);

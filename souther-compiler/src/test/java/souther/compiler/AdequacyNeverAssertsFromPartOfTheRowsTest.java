@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.observe.MeasurementStatus;
+import souther.compiler.publish.RuleHandleSurface;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.ArmObligation;
 import souther.compiler.query.Compilation;
@@ -223,7 +224,8 @@ class AdequacyNeverAssertsFromPartOfTheRowsTest {
                             .made().orElseGet(List::of)) {
                 if (point.item().coverage().settled() && !point.owed().hasRowWitness()) {
                     wrong.add("boundary "
-                            + point.said(souther.compiler.source.SourceId::value, null));
+                            + point.said(RuleHandleSurface.PROSE,
+                                    souther.compiler.source.SourceId::value, null));
                 }
             }
             if (partition.pairs().counted() instanceof Measurement.Complete<?>
