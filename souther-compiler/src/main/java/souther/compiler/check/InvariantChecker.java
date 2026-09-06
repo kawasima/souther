@@ -2,6 +2,7 @@ package souther.compiler.check;
 
 import souther.compiler.semantics.ConditionJoin;
 import souther.compiler.values.AdmissibleValues;
+import souther.compiler.values.Allowance;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.Combinators.Handed;
 import souther.compiler.check.PathEngine.Entered;
@@ -448,8 +449,16 @@ public final class InvariantChecker {
      * @param handedOn the positions this reading ended at with a declaration still to be read under
      *                 them, which is an obligation on whoever walks the positions rather than
      *                 anything wrong here — see {@link Gathering#handedOn}
+     * @param allowed what this reading spent to say what it says, and what a reader finishing it
+     *                spends. Here because this is one answer part-built and not a value that
+     *                answers: a name of the declaration is filed under more than one subject, and
+     *                what it admits is the sets of those met — which is a set of this answer, built
+     *                after the walk that started it has returned. Given a purse of its own, the
+     *                same position would be allowed its machine twice
      */
-    record Seeded(ConstraintState<FactSubject> constraints, Map<RuleKey, FactSubject> atoms,
+    record Seeded(ConstraintState<FactSubject> constraints,
+                  Allowance<FactSubject> allowed,
+                  Map<RuleKey, FactSubject> atoms,
                   Map<RuleKey, FactSubject> keys,
                   Map<RuleKey, FieldDomains.Counted> held, Reading reading, ReadingEvidence took,
                   boolean everyClauseRead, Map<RuleKey, Set<RulesMissed>> notGathered,
@@ -480,18 +489,6 @@ public final class InvariantChecker {
             // iterates in an order salted once per JVM run, and what is read off these is a list of
             // causes a report prints.
             readBy = Collections.unmodifiableMap(new LinkedHashMap<>(readBy));
-        }
-
-        /** What a walk that fell over comes to: no position named, no rule read, and saying so of
-         *  every position, since nothing here knows which of them the rules were about. */
-        static Seeded nothingRead() {
-            return new Seeded(ConstraintState.<FactSubject>top(), Map.of(), Map.of(), Map.of(),
-                    new Reading(List.of(), List.of(), List.of(), List.of(), List.of(), Map.of(),
-                            Map.of(), Map.of(), Map.of()),
-                    new ReadingEvidence(),
-                    false, Map.of(RuleKey.THE_VALUE,
-                            Set.of(new RulesMissed.ReadingFellOver())),
-                    Set.of(RuleKey.THE_VALUE), Set.of(), Map.of(), Map.of());
         }
 
         /** The numbers alone, for the readers that are about intervals. Whether a value exists is
@@ -760,7 +757,7 @@ public final class InvariantChecker {
         // another pay into the same machine. Made per position inside — a complicated rule at
         // one position may not spend what a plain one at another was going to need, or which of
         // the two went unanswered would turn on the order they were written in.
-        souther.compiler.values.Allowance<FactSubject> allowed =
+        Allowance<FactSubject> allowed =
                 policy.allowanceForAdmittedValues();
         Map<RuleRef, Map<Core, ReadByClauses.OfAPart>> adoptedBy = new LinkedHashMap<>();
         Map<RuleRef, ReadByClauses.OfARule> narrowedBy = new LinkedHashMap<>();
@@ -874,7 +871,7 @@ public final class InvariantChecker {
             }
             constraints = ConstraintState.settling(constraints, atom, each.getValue(), spaced);
         }
-        return new Seeded(constraints, atoms, keys, held, reading, took, read,
+        return new Seeded(constraints, allowed, atoms, keys, held, reading, took, read,
                 notGathered, unreadOfEveryValue, Set.copyOf(handedOn),
                 readBy, Map.copyOf(spacing));
     }
@@ -1043,7 +1040,7 @@ public final class InvariantChecker {
      * to a factor, and which factors there are is settled by the rules rather than before them, so
      * a list of the expected ones would leave out the one an equality made.
      */
-    private static int spentBy(souther.compiler.values.Allowance<FactSubject> allowed) {
+    private static int spentBy(Allowance<FactSubject> allowed) {
         return allowed.spentSoFar();
     }
 

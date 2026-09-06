@@ -411,12 +411,12 @@ public final class FieldDomains {
             // is not made truer by a note about how the values were held.
             boolean separated = true;
             for (FactSubject name : named(seeded, field)) {
-                // Put together by what put the reading together, since that is the answer being
-                // built: the two subjects are two ways one name's rules were filed, and what they
-                // leave between them is the machine that name pays for. Where it could not be
+                // Charged to what the reading was read under, since this is the same answer still
+                // being built: the two subjects are two ways one name's rules were filed, and what
+                // they leave between them is the machine that name pays for. Where it could not be
                 // built, the set widens and says so in the same breath — which is the list below.
                 souther.compiler.values.Allowance.Composed made =
-                        values.sets().meet(values.blockOf(name), here, values.at(name));
+                        seeded.allowed().meet(values.blockOf(name), here, values.at(name));
                 here = made.set();
                 if (made.gaveUp()) {
                     why.add(UnreadReason.EXACT_VALUES_TOO_COSTLY);

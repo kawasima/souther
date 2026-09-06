@@ -681,9 +681,15 @@ sealed interface Confinement<A> {
             return values.at(position);
         }
 
-        /** Both conjunctions holding at once, in both languages. */
-        Conjoined<A> meet(Conjoined<A> other) {
-            return new Conjoined<>(values.meet(other.values), ordered.meet(other.ordered),
+        /**
+         * Both conjunctions holding at once, in both languages.
+         *
+         * <p>{@code sets} is the answer this is being met into, which is the caller's. What the two
+         * readings come to where their vocabularies meet is a set neither of them holds, and it is
+         * built here.
+         */
+        Conjoined<A> meet(Conjoined<A> other, Allowance<A> sets) {
+            return new Conjoined<>(values.meet(other.values, sets), ordered.meet(other.ordered),
                     Confinement.both(carriers, other.carriers),
                     eitherShown(admission(), other.admission()));
         }
@@ -699,11 +705,6 @@ sealed interface Confinement<A> {
             Admission<B> said = shown == null ? null
                     : new Admission<>(shown.emptiness(), shown.by(), at, shown.how());
             return new Conjoined<>(values.renamed(naming), ordered.renamed(naming), out, said);
-        }
-
-        /** The same, with these values in place of what nothing read leaves. */
-        Conjoined<A> withValues(ConjoinedAdmissibleValues<A> read) {
-            return new Conjoined<>(read, ordered, carriers, shown);
         }
 
         /** The same, with {@code bounded} taken as holding of the positions it bounds, on the
@@ -746,7 +747,7 @@ sealed interface Confinement<A> {
             }
             return new Conjoined<>(
                     ConjoinedAdmissibleValues.of(
-                            AdmissibleValues.<A>top().meet(read.values(), sets), sets),
+                            AdmissibleValues.<A>top().meet(read.values(), sets)),
                     ordered.meet(read.ordered), Confinement.both(carriers, read.carriers()),
                     // What the reading was already shown empty by, which is a fact about the rules
                     // and travels with them. Left behind, a declaration refused because two of its

@@ -365,10 +365,11 @@ final class ReadQuantities implements Quantities {
         // What the values of this space cost to work out. One for the space and not one per
         // parameter: what each parameter was read under is the allowance of its own declaration,
         // and the set a position finally admits here is met out of all of them — so this is the
-        // answer being built and this is where building it is charged.
+        // answer being built and this is where building it is charged. Handed to each meet, since
+        // that is where a set neither reading holds comes to be.
         souther.compiler.values.Allowance<InputAtom> sets = policy.allowanceForAdmittedValues();
         for (FieldDomains.Carried<InputAtom> each : conditioned(under).values()) {
-            made = made.meet(each.constraints().under(sets));
+            made = made.meet(each.constraints(), sets);
         }
         // And what the context itself says about the values, which is as much a part of what the
         // question is asked against as any clause. A row this question is about is one the

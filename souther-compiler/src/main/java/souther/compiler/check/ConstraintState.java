@@ -6,6 +6,7 @@ import souther.compiler.numeric.OrderedIntervals;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.Rel;
 import souther.compiler.values.AdmissibleValues;
+import souther.compiler.values.Allowance;
 import souther.compiler.values.ConjoinedAdmissibleValues;
 
 import java.lang.reflect.RecordComponent;
@@ -425,10 +426,17 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
      * <p>Both sides have to be said in one vocabulary already. Two readings of two values name their
      * positions the way each value declares them, and met without being renamed first they would
      * hold each other's rules — which is {@link #renamed} and not this.
+     *
+     * @param sets what the answer being built out of these two may spend on the sets it comes to.
+     *             The caller's, because that answer is the caller's: each of these was read under
+     *             the allowance of its own declaration and is bounded by it, and what they come to
+     *             where their vocabularies meet is a third set neither of them paid for. Taken from
+     *             one of the two instead, which of them paid would follow which side {@code .meet}
+     *             was written on, and with it how exactly the composition came out
      */
-    public ConstraintState<A> meet(ConstraintState<A> other) {
+    public ConstraintState<A> meet(ConstraintState<A> other, Allowance<A> sets) {
         return new ConstraintState<>(numbers.meet(other.numbers), facts.meet(other.facts),
-                confinement.meet(other.confinement), shown || other.shown);
+                confinement.meet(other.confinement, sets), shown || other.shown);
     }
 
     /**
@@ -488,22 +496,8 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
      * conjunctions firing on a side that read nothing, and lifting it is about which rules went
      * unread rather than about how the alternatives are held.
      */
-    ConstraintState<A> takingRead(Confinement.Worked<A> read,
-                                  souther.compiler.values.Allowance<A> sets) {
+    ConstraintState<A> takingRead(Confinement.Worked<A> read, Allowance<A> sets) {
         return new ConstraintState<>(numbers, facts, confinement.taking(read, sets), shown);
-    }
-
-    /**
-     * The same state, its values spending what {@code sets} allows.
-     *
-     * <p>For a caller building one answer out of several. Two states read from two declarations
-     * were each put together under their own allowance, and what they come to met is a third
-     * admitted set that neither of them paid for — so the caller that is building it says where
-     * that is charged, and the states are taken under it before they are met.
-     */
-    public ConstraintState<A> under(souther.compiler.values.Allowance<A> sets) {
-        return new ConstraintState<>(numbers, facts,
-                confinement.withValues(confinement.values().under(sets)), shown);
     }
 
     /**
