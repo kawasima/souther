@@ -1,9 +1,12 @@
 package souther.compiler.check;
 
+import souther.compiler.values.AdmittedPlan;
+import souther.compiler.values.PlannedValues;
 import souther.compiler.values.Realized;
 import souther.compiler.values.UnreadReason;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,13 +45,110 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
         return confinement.made();
     }
 
-    /** Both branches of one written choice, each aggregated over its occurrences. */
-    record OfAChoice(Sided left, Sided right) {
+    /**
+     * Both branches of one written choice, each aggregated over its occurrences, and what the
+     * width of the choice depends on.
+     *
+     * <p>Made together and never apart. A fate says whether anybody can be in a branch; the
+     * dependency says which positions would be narrower without one. A reader deciding what an
+     * alternative nothing could read left open needs both about the same two branches, and made in
+     * two places they would be two answers to one question.
+     */
+    record OfAChoice(Sided left, Sided right, WidthDependency width) {
 
         /** This choice with one more occurrence of it taken in, side by side. */
         OfAChoice alsoSeen(OfAChoice occurrence) {
             return new OfAChoice(left.alsoSeen(occurrence.left()),
-                    right.alsoSeen(occurrence.right()));
+                    right.alsoSeen(occurrence.right()), width.alsoSeen(occurrence.width()));
+        }
+    }
+
+    /**
+     * Which positions a choice is as wide as it is because of one of its alternatives.
+     *
+     * <p>A relation between two branches and not an attribute of one, which is why it is here
+     * rather than in {@link Sided}: {@code onLeft} is read off what the <em>right</em> branch
+     * leaves, and the other way round.
+     *
+     * <p>A position is on a branch where the choice without that branch is not what the choice
+     * with it is. Since a choice admits whatever either of its branches admits, the one is
+     * contained in the other, and being different is being narrower — so this is asked as an
+     * equality of what the two descriptions were normalised to and needs no set arithmetic of its
+     * own. Descriptions that state one thing two ways come out different and the position is kept:
+     * what this is read for is whether a branch that may turn out to hold nothing is why an answer
+     * is as wide as it is, and keeping a position no branch was really answerable for costs a
+     * reading that could have spoken for it, while dropping one hands out an answer as exact when
+     * it is not.
+     *
+     * <p><b>An occurrence at a time, and a union over them.</b> The same written choice stands
+     * wherever a conjunction beside it was distributed in, and a branch dropped is dropped at every
+     * one of them — so a position any occurrence's width depends on is one the whole answer's does.
+     * Union is associative, commutative and idempotent, which is what lets the order the copies are
+     * met in stay out of the answer. An occurrence one branch of which admits nothing is not a
+     * choice there at all and contributes neither side.
+     *
+     * @param onLeft  the positions the choice would leave narrower without its left alternative
+     * @param onRight the same for the right
+     */
+    record WidthDependency(Set<FactSubject> onLeft, Set<FactSubject> onRight) {
+
+        WidthDependency {
+            onLeft = Set.copyOf(onLeft);
+            onRight = Set.copyOf(onRight);
+        }
+
+        /** A choice whose width no alternative of it is answerable for. */
+        static WidthDependency none() {
+            return new WidthDependency(Set.of(), Set.of());
+        }
+
+        /**
+         * What one occurrence of a choice between these two branches is as wide as it is because
+         * of, read off the descriptions and building nothing.
+         *
+         * <p>Over the positions either of them narrowed, since a position neither did is one both
+         * of them leave at every value and so is the choice, with or without either.
+         *
+         * <p><b>Nothing where either branch admits nothing here.</b> There is no choice at such an
+         * occurrence — what it leaves is the branch beside the dead one — so neither alternative is
+         * why it is as wide as it is. Another occurrence of the same written choice may still be
+         * one both branches stand at, and what that one's width rests on is joined in beside this
+         * ({@link #alsoSeen}): a branch is dead for the author only where nobody can be in it
+         * anywhere, and that is not this occurrence's to say.
+         */
+        static WidthDependency of(souther.compiler.values.Emptiness here,
+                                  PlannedValues<FactSubject> one,
+                                  souther.compiler.values.Emptiness there,
+                                  PlannedValues<FactSubject> other) {
+            if (here == souther.compiler.values.Emptiness.EMPTY
+                    || there == souther.compiler.values.Emptiness.EMPTY) {
+                return none();
+            }
+            Set<FactSubject> onLeft = new LinkedHashSet<>();
+            Set<FactSubject> onRight = new LinkedHashSet<>();
+            Set<FactSubject> narrowed = new LinkedHashSet<>(one.adoptedAt());
+            narrowed.addAll(other.adoptedAt());
+            for (FactSubject position : narrowed) {
+                AdmittedPlan left = one.at(position);
+                AdmittedPlan right = other.at(position);
+                AdmittedPlan joined = AdmittedPlan.joining(List.of(left, right));
+                if (!right.equals(joined)) {
+                    onLeft.add(position);
+                }
+                if (!left.equals(joined)) {
+                    onRight.add(position);
+                }
+            }
+            return new WidthDependency(onLeft, onRight);
+        }
+
+        /** The width of one more occurrence of the same choice, taken in beside this. */
+        WidthDependency alsoSeen(WidthDependency occurrence) {
+            Set<FactSubject> left = new LinkedHashSet<>(onLeft);
+            left.addAll(occurrence.onLeft());
+            Set<FactSubject> right = new LinkedHashSet<>(onRight);
+            right.addAll(occurrence.onRight());
+            return new WidthDependency(left, right);
         }
     }
 

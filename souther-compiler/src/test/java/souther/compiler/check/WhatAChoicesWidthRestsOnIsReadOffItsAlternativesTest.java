@@ -1,0 +1,192 @@
+package souther.compiler.check;
+
+import org.junit.jupiter.api.Test;
+
+import souther.compiler.values.AdmittedPlan;
+import souther.compiler.values.PlannedValues;
+import souther.compiler.values.UnreadReason;
+import souther.compiler.values.Value;
+import souther.compiler.values.ValueSet;
+
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+/**
+ * Which of a choice's alternatives its width rests on is read off what they leave.
+ *
+ * <p>A choice admits whatever either of its alternatives admits, so what it leaves without one of
+ * them is contained in what it leaves with both: differing there is being narrower, and a position
+ * the two of them leave alike is one neither alternative is answerable for the width of. That is
+ * the whole rule, and it is the same rule whether one alternative was read whole, both were, or
+ * neither — which is what lets the account ask a single question of it.
+ *
+ * <p>Asked of the descriptions and answered by their normal forms. Nothing is built to answer it,
+ * so a choice costs no more for being asked; two descriptions of one set that were written
+ * differently come out apart, and the position is kept as one the width may rest on.
+ */
+class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
+
+    private static final Term.Interner NAMES = new Term.Interner();
+    private static final FactSubject VALUE = FactSubject.of(NAMES.written("value"));
+    private static final FactSubject OTHER = FactSubject.of(NAMES.written("other"));
+    private static final Value A = Value.text("A");
+    private static final Value B = Value.text("B");
+
+    /** {@code value == A}. */
+    private static PlannedValues<FactSubject> isA() {
+        return PlannedValues.at(VALUE, AdmittedPlan.of(ValueSet.just(A)));
+    }
+
+    /** {@code value /= A}. */
+    private static PlannedValues<FactSubject> notA() {
+        return PlannedValues.at(VALUE, AdmittedPlan.of(ValueSet.allBut(A)));
+    }
+
+    /** A rule this reading has no word for, naming the positions it is about. */
+    private static PlannedValues<FactSubject> unread(Set<FactSubject> named) {
+        return PlannedValues.unreadable(named, UnreadReason.FORM_NOT_READ);
+    }
+
+    /** What a choice between two branches somebody can be in is as wide as it is because of. */
+    private static Settlement.WidthDependency between(PlannedValues<FactSubject> one,
+                                                      PlannedValues<FactSubject> other) {
+        return Settlement.WidthDependency.of(souther.compiler.values.Emptiness.UNDECIDED, one,
+                souther.compiler.values.Emptiness.UNDECIDED, other);
+    }
+
+    /**
+     * An alternative saying nothing about a position the other narrowed is why the choice says
+     * nothing there.
+     *
+     * <p>{@code value == A || f(other)}: the choice admits every value at {@code value} and would
+     * admit one without the right alternative, so the width there is the right's.
+     */
+    @Test
+    void anAlternativeThatSaysNothingIsWhyTheChoiceSaysNothing() {
+        Settlement.WidthDependency width = between(isA(), unread(Set.of(OTHER)));
+
+        assertEquals(Set.of(), width.onLeft(),
+                "without the left the choice still admits every value at value");
+        assertEquals(Set.of(VALUE), width.onRight(),
+                "without the right it admits one");
+    }
+
+    /**
+     * Two alternatives narrowing a position the same way leave the choice's width resting on
+     * neither.
+     *
+     * <p>{@code (value == A && f(other)) || (value == A && f(other))} holds {@code value} exactly
+     * where {@code value == A} does, with or without either branch. Read off what each branch took
+     * in rather than what it leaves, both would come out answerable for it.
+     */
+    @Test
+    void twoAlternativesNarrowingAPositionAlikeLeaveTheWidthOnNeither() {
+        Settlement.WidthDependency width = between(isA().meet(unread(Set.of(OTHER))),
+                isA().meet(unread(Set.of(OTHER))));
+
+        assertEquals(Settlement.WidthDependency.none(), width,
+                "either branch dropped leaves the other saying the same thing at every position");
+    }
+
+    /** And the same where only one of them holds a clause nothing read. */
+    @Test
+    void andTheSameWhereOnlyOneOfThemHoldsAClauseNothingRead() {
+        assertEquals(Settlement.WidthDependency.none(),
+                between(isA().meet(unread(Set.of(OTHER))), isA()),
+                "the redundant branch is not why the choice admits what it admits");
+    }
+
+    /**
+     * Alternatives that cover a position between them leave the width on neither.
+     *
+     * <p>{@code value == A || value /= A} admits every value at {@code value}, and so does either
+     * of them beside a third that says nothing — which is why a further unread alternative cannot
+     * be why the choice is that wide.
+     */
+    @Test
+    void alternativesCoveringAPositionBetweenThemLeaveTheWidthOnNeither() {
+        Settlement.WidthDependency width =
+                between(isA().joinLive(notA()), unread(Set.of(OTHER)));
+
+        assertEquals(Settlement.WidthDependency.none(), width,
+                "the covered position is every value without either alternative");
+    }
+
+    /**
+     * Alternatives narrowing one position to sets neither contains leave the width on both.
+     *
+     * <p>Neither {@code value == A} nor {@code value == B} is what the choice between them leaves,
+     * so dropping either narrows it and each is answerable for the width.
+     */
+    @Test
+    void alternativesNeitherOfWhichCoversTheOtherLeaveTheWidthOnBoth() {
+        Settlement.WidthDependency width = between(isA(),
+                PlannedValues.at(VALUE, AdmittedPlan.of(ValueSet.just(B))));
+
+        assertEquals(Set.of(VALUE), width.onLeft());
+        assertEquals(Set.of(VALUE), width.onRight());
+    }
+
+    /**
+     * A position neither alternative is about is on neither, whatever they do to the one they are
+     * about.
+     *
+     * <p>It holds every value with or without either of them, so no alternative is why the choice
+     * says nothing there. Asked over the positions either branch narrowed, it is never asked at
+     * all.
+     */
+    @Test
+    void aPositionNeitherAlternativeIsAboutIsOnNeither() {
+        Settlement.WidthDependency width = between(isA(), notA());
+
+        assertEquals(Set.of(VALUE), width.onLeft(), "the position they are about is on both");
+        assertEquals(Set.of(VALUE), width.onRight());
+    }
+
+    /**
+     * An occurrence one branch of which admits nothing leaves the width resting on neither, and the
+     * next occurrence of the same written choice still says what it says.
+     *
+     * <p>Distribution puts the same written choice wherever a conjunction beside it stands, and a
+     * branch impossible under one neighbour can be the branch somebody is in under another. What
+     * this occurrence leaves is the branch beside the dead one, so nothing here rests on an
+     * alternative — and read as an answer about the written choice, it would take back what the
+     * occurrence beside it found.
+     */
+    @Test
+    void anOccurrenceOneBranchOfWhichAdmitsNothingRestsOnNeitherAndDoesNotSpeakForTheRest() {
+        Settlement.WidthDependency dead = Settlement.WidthDependency.of(
+                souther.compiler.values.Emptiness.EMPTY, isA(),
+                souther.compiler.values.Emptiness.UNDECIDED, unread(Set.of(OTHER)));
+        Settlement.WidthDependency live = between(isA(), unread(Set.of(OTHER)));
+
+        assertEquals(Settlement.WidthDependency.none(), dead,
+                "the choice is the branch beside the dead one, and no alternative widened it");
+        assertEquals(live, dead.alsoSeen(live),
+                "and what the occurrence beside it found is what the written choice is left with");
+    }
+
+    /**
+     * One more occurrence of the same written choice adds what its width rests on and nothing else.
+     *
+     * <p>The same choice stands wherever a conjunction beside it was distributed in, and a branch
+     * dropped is dropped at every one of them — so the sides are joined by union, which cannot
+     * depend on the order the copies were met or on a copy being met twice.
+     */
+    @Test
+    void whatTheOccurrencesLeaveIsJoinedWithoutRegardToOrderOrRepetition() {
+        Settlement.WidthDependency here =
+                new Settlement.WidthDependency(Set.of(VALUE), Set.of());
+        Settlement.WidthDependency there =
+                new Settlement.WidthDependency(Set.of(), Set.of(OTHER));
+
+        assertEquals(here.alsoSeen(there), there.alsoSeen(here),
+                "the order the copies were met in is not in the answer");
+        assertEquals(here.alsoSeen(there), here.alsoSeen(there).alsoSeen(here),
+                "and neither is a copy met twice");
+        assertEquals(new Settlement.WidthDependency(Set.of(VALUE), Set.of(OTHER)),
+                here.alsoSeen(there),
+                "a position any occurrence's width rests on is one the whole answer's does");
+    }
+}
