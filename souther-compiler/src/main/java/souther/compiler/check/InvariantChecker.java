@@ -2,6 +2,7 @@ package souther.compiler.check;
 
 import souther.compiler.semantics.ConditionJoin;
 import souther.compiler.values.AdmissibleValues;
+import souther.compiler.values.StringMachines;
 import souther.compiler.values.Allowance;
 import souther.compiler.values.ConjoinedAdmissibleValues;
 import souther.compiler.values.UnreadReason;
@@ -26,7 +27,6 @@ import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.ValueName;
 import souther.compiler.values.TextExtent;
-import souther.compiler.values.TextExtents;
 import souther.compiler.values.ValueSet;
 
 import java.math.BigDecimal;
@@ -220,7 +220,7 @@ public final class InvariantChecker {
      * That is a rule this check did not reach and is recorded as one; it is never read as a
      * declaration with no rules, which is the same empty list and the opposite fact.
      */
-    public record Source(Hir.Expr body, ExpandedClauseLookup invariants,
+    public record Source(Hir.Expr body, ExpandedClauseLookup invariants, StringMachines machines,
                          Map<ValueName.Behavior, StatedContract> contracts) {
 
         public Source {
@@ -255,31 +255,29 @@ public final class InvariantChecker {
     /** Whether an evaluation can answer, which is what decides that a continuation is reached. */
     private final PathCompletion completion;
     /**
-     * Where the strings each set holds stop, worked out once per set.
+     * Where a machine already made is lent from, and where the strings a set holds stop.
      *
      * <p>A declaration is read again for every conjunct whose contribution to an end has to be
      * worked out by asking what the rules leave without it, and each of those readings meets the
-     * same sets. Where a set stops does not turn on which reading is asking.
-     *
-     * <p>What is kept is a reading of an answer and not the answer itself. A set is what a position
-     * admits and was built where positions are answered for; this is what walking it comes to, which
-     * is this report's own question and is paid for out of this report's own allowance.
+     * same sets. Where a set stops does not turn on which reading is asking, so it is not this
+     * reading's to keep: it is asked of the one place every reading asks, and answered once there.
      */
-    private final Map<ValueSet, TextExtent> extents = new LinkedHashMap<>();
+    private final StringMachines machines;
     private final List<CompileException> errors = new ArrayList<>();
     private final List<Diagnostic> warnings = new ArrayList<>();
 
     private InvariantChecker(Symbols symbols,
-                             ExpandedClauseLookup dischargeInvariants,
+                             ExpandedClauseLookup dischargeInvariants, StringMachines machines,
                              ReadingPolicy policy) {
-        this(symbols, dischargeInvariants, Map.of(), policy);
+        this(symbols, dischargeInvariants, machines, Map.of(), policy);
     }
 
     private InvariantChecker(Symbols symbols,
-                             ExpandedClauseLookup dischargeInvariants,
+                             ExpandedClauseLookup dischargeInvariants, StringMachines machines,
                              Map<ValueName.Behavior, StatedContract> contracts,
                              ReadingPolicy policy) {
-        this.engine = new PathEngine(symbols, dischargeInvariants, contracts, policy);
+        this.machines = machines;
+        this.engine = new PathEngine(symbols, dischargeInvariants, machines, contracts, policy);
         // Named here because this check reads them directly and often. They are the engine's, not a
         // second copy: one engine builds them once and everything below sees those.
         this.symbols = engine.symbols();
@@ -298,8 +296,8 @@ public final class InvariantChecker {
     public static ClauseDischarge capabilityOf(ClausesForDischarge.ClauseReading clause,
                                                TypeSymbol.AtModule named,
                                                RuleReadingSource source, ReadingPolicy policy) {
-        InvariantChecker c =
-                new InvariantChecker(source.symbols(), source.invariants(), policy);
+        InvariantChecker c = new InvariantChecker(source.symbols(), source.invariants(),
+                source.machines(), policy);
         // Read over the declaration's own fields, each standing for itself: a construction hands one
         // value per field, so a clause naming a field names something wherever it is built. These
         // stand for a value rather than holding one, so they are entered as locations and nothing is
@@ -347,7 +345,8 @@ public final class InvariantChecker {
     static ClauseDischarge capabilityOf(StatedContract.Conjunct conjunct,
                                         Denotations locations, RuleReadingSource source,
                                         ReadingPolicy policy, String describing) {
-        return new InvariantChecker(source.symbols(), source.invariants(), policy)
+        return new InvariantChecker(source.symbols(), source.invariants(), source.machines(),
+                policy)
                 .capabilityOf(conjunct.stated(), conjunct.at(), locations, describing);
     }
 
@@ -621,7 +620,8 @@ public final class InvariantChecker {
                              ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled,
                              Reach reach) {
         Symbols symbols = source.symbols();
-        InvariantChecker c = new InvariantChecker(symbols, source.invariants(), policy);
+        InvariantChecker c =
+                new InvariantChecker(symbols, source.invariants(), source.machines(), policy);
         // A newtype's value is the same location as the newtype, so it is at no name of its own and
         // its fields are the first step there is. Read from the world rather than off a node handed
         // in, and turned into a name here, where the names a rule may write are decided.
@@ -790,7 +790,7 @@ public final class InvariantChecker {
         // one position may not spend what a plain one at another was going to need, or which of
         // the two went unanswered would turn on the order they were written in.
         Allowance<FactSubject> allowed =
-                policy.allowanceForAdmittedValues();
+                policy.allowanceForAdmittedValues(c.machines.lending());
         Map<RuleRef, Map<Core, ReadByClauses.OfAPart>> adoptedBy = new LinkedHashMap<>();
         Map<RuleRef, ReadByClauses.OfARule> narrowedBy = new LinkedHashMap<>();
         // One reader for this value's positions, used over however many clauses reach it, and
@@ -2342,7 +2342,7 @@ public final class InvariantChecker {
     }
 
     /**
-     * Where the strings {@code set} holds stop, worked out once for the set.
+     * Where the strings {@code set} holds stop, answered once for the set wherever it is asked.
      *
      * <p>The same set comes back as often as the declaration is read, and it comes back again for
      * every conjunct whose contribution to an end is worked out by asking what the rules leave
@@ -2350,13 +2350,13 @@ public final class InvariantChecker {
      * answered once — the allowance each answer is made under is the same, which is what makes the
      * second asking the same question rather than a cheaper one.
      *
-     * <p>Kept under the set and not under a plan for one. Two rules whose strings came out the same
+     * <p>Filed under the set and not under a plan for one. Two rules whose strings came out the same
      * are one question here, and a plan is what would be built rather than what was — filed under
      * one, a hit would have to stand for two plans meaning the same thing, and this reading's
      * answer would depend on something no reader can see.
      */
     private TextExtent extentOf(ValueSet set) {
-        return extents.computeIfAbsent(set, TextExtents::of);
+        return machines.extentOf(set);
     }
 
     /**
@@ -2724,10 +2724,11 @@ public final class InvariantChecker {
      * analysis representation could not be built or typed for, and is not analyzed at all, which is
      * the {@code ABANDONED} this answers with.
      */
-    static Findings analyze(Core body, ExpandedClauseLookup invariants,
+    static Findings analyze(Core body, ExpandedClauseLookup invariants, StringMachines machines,
                             Map<ValueName.Behavior, StatedContract> contracts,
                             Scope params, Symbols symbols, ReadingPolicy policy) {
-        InvariantChecker c = new InvariantChecker(symbols, invariants, contracts, policy);
+        InvariantChecker c =
+                new InvariantChecker(symbols, invariants, machines, contracts, policy);
         if (body == null) {
             return new Findings(c.errors, c.warnings, Status.ABANDONED);
         }

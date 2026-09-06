@@ -5,6 +5,7 @@ import souther.compiler.core.Core;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
+import souther.compiler.values.StringMachines;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,6 +33,7 @@ final class Clauses {
 
     private final Symbols symbols;
     private final ExpandedClauseLookup expandedClauses;
+    private final StringMachines machines;
     private final Map<TypeSymbol.AtModule, Map<String, Type>> fields = new HashMap<>();
     private final Map<TypeSymbol.AtModule, Map<String, BindingId>> bindings =
             new HashMap<>();
@@ -50,17 +52,25 @@ final class Clauses {
      *        that was: a type this module declares and one it imports are read alike, because what
      *        a clause is read as is what its own module expanded (spec
      *        §invariant-discharge-representation).
+     * @param machines where a machine already made of a plan is lent from, handed on to every
+     *        reading of a declaration made through here.
      */
     Clauses(Symbols symbols,
-            ExpandedClauseLookup expandedClauses) {
+            ExpandedClauseLookup expandedClauses, StringMachines machines) {
         this.symbols = symbols;
         this.expandedClauses = expandedClauses;
+        this.machines = machines;
     }
 
     /** The representation this reads a declaration's clauses in, for a reader that has to hand it
      *  on rather than ask for one of its own. */
     ExpandedClauseLookup expandedClauses() {
         return expandedClauses;
+    }
+
+    /** Where a machine already made is lent from, for the same reader. */
+    StringMachines machines() {
+        return machines;
     }
 
     /** Every rule that applies to {@code named}, in the expanded representation, with whether every

@@ -455,7 +455,7 @@ public final class SpecChecker {
         InvariantChecker.Findings inv = discharge == null
                 ? InvariantChecker.Findings.notRun()
                 : InvariantChecker.analyze(dischargeBody, discharge.invariants(),
-                        discharge.contracts(), env, symbols, policy);
+                        discharge.machines(), discharge.contracts(), env, symbols, policy);
         warnings.addAll(inv.warnings());
         if (!inv.errors().isEmpty()) {
             throw inv.errors().get(0);

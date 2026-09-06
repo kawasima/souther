@@ -15,6 +15,7 @@ import souther.compiler.types.TypeSymbols;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.diag.Diagnostic;
+import souther.compiler.values.StringMachines;
 
 import org.junit.jupiter.api.Test;
 
@@ -230,16 +231,16 @@ class WhatFallsOpenIsWhatSomebodyNamedALimitTest {
         Scope params = heldTo(new Type.Ref(TypeSymbols.declared(new TypeKey("demo", "制限木"))));
 
         assertEquals(InvariantChecker.Status.COMPLETE,
-                InvariantChecker.analyze(body, lookupOf(c), Map.of(), params, symbolsOf(c), POLICY)
-                        .status(),
+                InvariantChecker.analyze(body, lookupOf(c), StringMachines.NONE, Map.of(), params,
+                        symbolsOf(c), POLICY).status(),
                 "the control: read through a lookup that answers, this analysis runs to the end");
 
         ExpandedClauseLookup broken = _ -> {
             throw new IllegalStateException("this compiler could not read its own answer");
         };
         IllegalStateException why = assertThrows(IllegalStateException.class,
-                () -> InvariantChecker.analyze(body, broken, Map.of(), params, symbolsOf(c),
-                        POLICY),
+                () -> InvariantChecker.analyze(body, broken, StringMachines.NONE, Map.of(), params,
+                        symbolsOf(c), POLICY),
                 "the analysis has no rule that makes this the program's problem");
 
         assertEquals("this compiler could not read its own answer", why.getMessage(),

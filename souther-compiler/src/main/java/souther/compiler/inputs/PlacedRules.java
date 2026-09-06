@@ -95,7 +95,7 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
         // Made per call instead, every ask would get its own allowance and the whole of what a
         // reading costs would be bounded by nothing.
         return new PlacedRules(root, read, Rules.of(read, source, policy), alsoReaching,
-                policy.allowanceForAdmittedValues());
+                policy.allowanceForAdmittedValues(source.machines().lending()));
     }
 
     /**

@@ -79,10 +79,33 @@ public final class Allowance<A> {
 
     /** A fresh allowance for every position of one answer. */
     public static <A> Allowance<A> of(PatternPlan.Budget budget) {
-        if (budget == null) {
-            throw new IllegalArgumentException("an allowance allows something");
+        return of(budget, Known.nothing());
+    }
+
+    /**
+     * The same, borrowing what {@code lent} has already made of a plan.
+     *
+     * <p>As {@link #besides}, with the lender named rather than being another allowance: what it
+     * hands over was made somewhere else under somebody else's allowance, is read wherever a plan
+     * of it comes up here, and costs this one nothing.
+     */
+    public static <A> Allowance<A> of(PatternPlan.Budget budget, Known<A> lent) {
+        if (budget == null || lent == null) {
+            throw new IllegalArgumentException("an allowance allows something, and names what it"
+                    + " may borrow");
         }
-        return new Allowance<>(budget, Known.nothing());
+        return new Allowance<>(budget, lent);
+    }
+
+    /**
+     * What {@code plan} admits, worked out on its own under this allowance.
+     *
+     * <p>For an answer about the plan and not about any position: what is built is charged to the
+     * part of this allowance that belongs to no block ({@link #elsewhere}), and what a part of the
+     * plan comes to is borrowed where somebody has made it already.
+     */
+    public Realization realized(AdmittedPlan plan) {
+        return elsewhere().of(plan);
     }
 
     /**

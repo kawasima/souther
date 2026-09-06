@@ -8,6 +8,7 @@ import souther.compiler.types.BindingId;
 import souther.compiler.types.CaseSelector;
 import souther.compiler.types.ResolvedCase;
 import souther.compiler.types.Type;
+import souther.compiler.values.StringMachines;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.ValueName;
 
@@ -71,13 +72,16 @@ final class PathEngine {
     private final Map<ValueName.Behavior, StatedContract> contracts;
 
     PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants,
-               ReadingPolicy policy) {
-        this(symbols, dischargeInvariants, Map.of(), Terms.Of.THE_DISCHARGE_TREE, policy);
+               StringMachines machines, ReadingPolicy policy) {
+        this(symbols, dischargeInvariants, machines, Map.of(), Terms.Of.THE_DISCHARGE_TREE,
+                policy);
     }
 
     PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants,
-               Map<ValueName.Behavior, StatedContract> contracts, ReadingPolicy policy) {
-        this(symbols, dischargeInvariants, contracts, Terms.Of.THE_DISCHARGE_TREE, policy);
+               StringMachines machines, Map<ValueName.Behavior, StatedContract> contracts,
+               ReadingPolicy policy) {
+        this(symbols, dischargeInvariants, machines, contracts, Terms.Of.THE_DISCHARGE_TREE,
+                policy);
     }
 
     /**
@@ -89,15 +93,15 @@ final class PathEngine {
      * representation under the name of a gap.
      */
     PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants,
-               Terms.Of reading, ReadingPolicy policy) {
-        this(symbols, dischargeInvariants, Map.of(), reading, policy);
+               StringMachines machines, Terms.Of reading, ReadingPolicy policy) {
+        this(symbols, dischargeInvariants, machines, Map.of(), reading, policy);
     }
 
     PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants,
-               Map<ValueName.Behavior, StatedContract> contracts, Terms.Of reading,
-               ReadingPolicy policy) {
+               StringMachines machines, Map<ValueName.Behavior, StatedContract> contracts,
+               Terms.Of reading, ReadingPolicy policy) {
         this.symbols = symbols;
-        this.clauses = new Clauses(symbols, dischargeInvariants);
+        this.clauses = new Clauses(symbols, dischargeInvariants, machines);
         this.terms = new Terms(symbols, reading, policy, clauses);
         this.predicates = terms.predicates();
         this.guarantees = terms.guarantees();

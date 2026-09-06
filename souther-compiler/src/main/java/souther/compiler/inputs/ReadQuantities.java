@@ -367,7 +367,8 @@ final class ReadQuantities implements Quantities {
         // and the set a position finally admits here is met out of all of them — so this is the
         // answer being built and this is where building it is charged. Handed to each meet, since
         // that is where a set neither reading holds comes to be.
-        souther.compiler.values.Allowance<InputAtom> sets = policy.allowanceForAdmittedValues();
+        souther.compiler.values.Allowance<InputAtom> sets =
+                policy.allowanceForAdmittedValues(ruleSource.machines().lending());
         for (FieldDomains.Carried<InputAtom> each : conditioned(under).values()) {
             made = made.meet(each.constraints(), sets);
         }

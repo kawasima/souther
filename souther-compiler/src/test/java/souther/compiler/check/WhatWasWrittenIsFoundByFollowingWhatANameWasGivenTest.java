@@ -13,6 +13,7 @@ import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.TypeSymbols;
 import souther.compiler.types.ValueName;
+import souther.compiler.values.StringMachines;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -47,7 +48,7 @@ class WhatWasWrittenIsFoundByFollowingWhatANameWasGivenTest {
     private final Hir.Binders binders = new Hir.Binders(OWNER);
     private final PathEngine engine =
             new PathEngine(Symbols.none(DefaultStdlib.get()),
-                    RuleReadings.noClauseFiled(),
+                    RuleReadings.noClauseFiled(), StringMachines.NONE,
                     Terms.Of.THE_DISCHARGE_TREE,
                     souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
 
