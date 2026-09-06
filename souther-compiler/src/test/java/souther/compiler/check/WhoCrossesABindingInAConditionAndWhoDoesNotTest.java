@@ -200,6 +200,36 @@ class WhoCrossesABindingInAConditionAndWhoDoesNotTest {
                 "the rule written out, and the same rule named");
     }
 
+    /**
+     * And a value named from a conditional, which is the other reader of what choosing an arm
+     * settles: the arms of a recipe ({@link Derivation.Chosen}) rather than a branch of the walk.
+     *
+     * <p>The third reader of the same answer takes its arms from how a call's arguments stand
+     * ({@link Choice.Decides.ByArgumentRelations}), where there is no condition node to hold a
+     * binding — held as what a library definition's cases become in
+     * {@link EveryCaseALibraryDefinitionIsWrittenInBecomesAnArmTest}.
+     */
+    @Test
+    void aValueNamedFromAConditionalIsBoundedTheSameWayEitherSpelling() {
+        assertEquals(List.of(List.of(), List.of()), List.of(
+                        reported(YEN + """
+                                behavior f : (n: Int) -> Yen constructs Yen
+                                let f (n) = {
+                                    let v = if n >= 0 then n else 0
+                                    Yen(v)
+                                }
+                                """),
+                        reported(YEN + """
+                                let nonNeg (n: Int) = n >= 0
+                                behavior f : (n: Int) -> Yen constructs Yen
+                                let f (n) = {
+                                    let v = if nonNeg(n) then n else 0
+                                    Yen(v)
+                                }
+                                """)),
+                "the rule written out, and the same rule named, in a value the body names");
+    }
+
     /** And what answers for the arm is the rule about the value the arm is, which is what says the
      *  condition was read rather than the construction let through. */
     @Test
