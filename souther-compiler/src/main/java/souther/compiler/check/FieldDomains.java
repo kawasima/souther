@@ -9,6 +9,7 @@ import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.Rel;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.values.AdmissibleSet;
+import souther.compiler.values.StringFacts;
 import souther.compiler.values.StringMachineAnswers;
 import souther.compiler.values.UnreadReason;
 import souther.compiler.values.ValueSet;
@@ -73,7 +74,7 @@ public final class FieldDomains {
                     NOTHING_NAMED,
                     ConstraintState.<FactSubject>top(), null, null, null, null, Map.of(),
                     Set.of(RuleKey.THE_VALUE),
-                    Map.of(), Map.of(), Map.of(), Map.of());
+                    Map.of(), Map.of(), Map.of(), Map.of(), StringFacts.NONE);
 
     private final Map<RuleKey, NumericDomain.Bounds> byName;
     /** The ends the record's own clauses place, which is a different question from the range they
@@ -171,6 +172,21 @@ public final class FieldDomains {
      *  the reading would have stated for it. */
     private final Map<FactSubject, souther.compiler.numeric.Granularity> spacing;
     /**
+     * The string machines this reading answered from and made.
+     *
+     * <p>A value, and the one a store keeps under the declaration. What it holds is a fact about a
+     * plan, a set or a language beside a stretch, and which reading built it does not enter into
+     * what it says — so a counterfactual of this reading is handed it rather than building the same
+     * machines again ({@link #counterfactual}). Leaving rules out changes which plans a reading
+     * meets, not what any one of them admits.
+     *
+     * <p>The facts and not the lender they came from. A lender asks a store, and this is reachable
+     * from an answer: what a {@link NarrowedBounds} defers its names to is a reading of this, so a
+     * store's capability kept here would be kept in an answer.
+     */
+    private final StringFacts stringMachines;
+
+    /**
      * The counterfactual readings this one has been asked for, kept under what each leaves out
      * ({@link #counterfactual}).
      *
@@ -200,7 +216,9 @@ public final class FieldDomains {
                          Set<RuleKey> unreadOfEveryValue,
                          Map<RuleKey, FactSubject> atomAt, Map<RuleKey, Counted> countAt,
                          Map<RuleRef.Invariant, Map<Core, InvariantChecker.PartRead>> readBy,
-                         Map<FactSubject, souther.compiler.numeric.Granularity> spacing) {
+                         Map<FactSubject, souther.compiler.numeric.Granularity> spacing,
+                         StringFacts stringMachines) {
+        this.stringMachines = stringMachines;
         this.byName = byName;
         this.heldByName = heldByName;
         this.admittedByName = admittedByName;
@@ -426,7 +444,7 @@ public final class FieldDomains {
                 seeded.notGathered(), seeded.handedOn(), placeOf,
                 seeded.constraints(), named, data, source, policy, settled,
                 seeded.unreadOfEveryValue(), seeded.atoms(), seeded.held(),
-                seeded.readBy(), seeded.spacing());
+                seeded.readBy(), seeded.spacing(), seeded.stringMachines());
     }
 
     /**
@@ -728,7 +746,8 @@ public final class FieldDomains {
      * it.
      *
      * <p>The one place a counterfactual of this reading is stood up, so that what one is — the
-     * declaration, its source, what it may spend, and what it leaves out — is settled once. The
+     * declaration, its source, what it may spend, what it leaves out, and what it is handed rather
+     * than builds ({@link #borrowingMachines}) — is settled once. The
      * questions that leave the same rules out get the reading that was made: both ends of a
      * coordinate leave the same rules out, a declaration reaching several of a record's names
      * leaves them out again at each of them, and the questions {@link EndNarrowing} puts ask for
@@ -737,8 +756,26 @@ public final class FieldDomains {
      */
     private FieldDomains counterfactual(LeftOut omitted) {
         return counterfactuals.computeIfAbsent(omitted,
-                left -> of(named, data, source, policy, settled, left.reach(),
-                        DeclarationReadings.NONE));
+                left -> of(named, data, source, policy, settled, left.reach(), borrowingMachines()));
+    }
+
+    /**
+     * What a counterfactual of this reading borrows: this declaration's machines as this reading
+     * came to them, and nothing else.
+     *
+     * <p>This declaration's, because they are what is here. Another declaration's are a store's
+     * answer about it, and asking for one takes a store, which a reading standing inside a
+     * comparison has no way to reach — so a reading of one of those borrows nothing and keeps what
+     * it builds, which is what {@link StringMachineAnswers#unborrowed()} is.
+     *
+     * <p>Nothing of the reading itself is lent. What a counterfactual is depends on what it leaves
+     * out, so no counterfactual is the declaration's canonical reading and none is kept as one —
+     * which is what {@link InvariantChecker#seedFields} settles by looking at the reach it was
+     * handed.
+     */
+    private DeclarationReadings borrowingMachines() {
+        return declaration -> declaration.equals(named.key())
+                ? StringMachineAnswers.borrowing(stringMachines) : StringMachineAnswers.unborrowed();
     }
 
     /**
