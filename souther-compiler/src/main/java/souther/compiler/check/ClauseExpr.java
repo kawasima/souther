@@ -79,10 +79,13 @@ sealed interface ClauseExpr {
     /**
      * What a reading is handed: a part of no connective, or a connective it takes whole.
      *
-     * <p>A binding is not one of these. Where the environment changes is the fold's to find and
-     * {@link ClauseScope}'s to answer, so a reading is never handed one — which is a fact about the
-     * types here and not a rule anybody has to keep. A second account of what a binder means cannot
-     * be written, because there is nowhere for it to be written.
+     * <p>A binding standing in the clause is not one of these. Where the environment changes is the
+     * fold's to find and {@link ClauseScope}'s to answer, so a reading is never handed one as a
+     * part — which is a fact about the types here and not a rule anybody has to keep.
+     *
+     * <p>What is inside a part is another matter. A binding nested there is still part of that
+     * leaf, and each question the part language asks about its own inside crosses it by asking the
+     * environment (ADR-0106) — which is the one answer again and not a second account of it.
      */
     sealed interface Part extends ClauseExpr permits Leaf, Joined {
 

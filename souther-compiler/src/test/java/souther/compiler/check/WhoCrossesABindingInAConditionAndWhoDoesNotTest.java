@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -86,7 +87,7 @@ class WhoCrossesABindingInAConditionAndWhoDoesNotTest {
     }
 
     /** `let $n = n in <written against $n>`, which is what naming a rule expands to. */
-    private static Core.LetIn naming(java.util.function.Function<Core, Core> body) {
+    private static Core.LetIn naming(Function<Core, Core> body) {
         BindingId bound = new BindingId(OWNER, 1);
         Core written = body.apply(new Core.Read("$n", bound, Type.INT, POS));
         return new Core.LetIn(new Core.Binder("$n", bound), subject(), written, written.type(),

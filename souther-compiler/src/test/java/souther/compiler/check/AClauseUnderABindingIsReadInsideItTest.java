@@ -12,8 +12,10 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -123,13 +125,21 @@ class AClauseUnderABindingIsReadInsideItTest {
      * and the parts are the leaf and the connective it takes whole; a binding is a shape of its own
      * and goes to {@link ClauseScope}. So a second account of what a binder means is not something
      * anybody has to be stopped from writing — it does not compile.
+     *
+     * <p>As a set, because that is what a sealed type's members are: {@code
+     * getPermittedSubclasses} answers in no order it specifies, so reading its array as a sequence
+     * takes an order from something that has none.
+     *
+     * <p>And as two answers, because they fail for different reasons: one says the parts are still
+     * these two, the other that a binding is still not one of them.
      */
     @Test
     void aBindingIsNotAPartAReadingCanBeHanded() {
-        assertEquals(List.of(List.of(ClauseExpr.Leaf.class, ClauseExpr.Joined.class), false),
-                List.of(List.of(ClauseExpr.Part.class.getPermittedSubclasses()),
-                        ClauseExpr.Part.class.isAssignableFrom(ClauseExpr.Scoped.class)),
-                "what a reading may be handed, and whether a binding is among it");
+        assertEquals(Set.of(ClauseExpr.Leaf.class, ClauseExpr.Joined.class),
+                Set.of(ClauseExpr.Part.class.getPermittedSubclasses()),
+                "what a reading may be handed");
+        assertFalse(ClauseExpr.Part.class.isAssignableFrom(ClauseExpr.Scoped.class),
+                "a binding is not something a reading can be handed as a part");
     }
 
     @Test

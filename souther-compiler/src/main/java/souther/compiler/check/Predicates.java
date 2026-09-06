@@ -1021,15 +1021,16 @@ final class Predicates {
     private Assumed taking(ClauseExpr.Part part, Known k, Denotations at) {
         boolean positive = part.positive();
         Core cond = Conditions.asSizeComparison(part.of());
+        // A connective taken whole states no comparison — that is what taking it whole means — so
+        // it is not asked for one. What it names is the two halves the shape composed, and without
+        // saying they were named a value one of them computes is one nothing has ever spoken of.
+        if (part instanceof ClauseExpr.Joined join) {
+            return taking(cond, join.writtenHalves(), k, at, positive);
+        }
         List<StatedComparison> readings =
                 Conditions.comparisonsStatedBy(terms, cond, at).inReadingOrder();
         if (readings.isEmpty()) {
-            // What a choice names is its two halves, taken from the shape that composed them: this
-            // reading states neither of them, and without saying they were named a value one of
-            // them computes is one nothing has ever spoken of.
-            return taking(cond,
-                    part instanceof ClauseExpr.Joined join ? join.writtenHalves() : List.of(),
-                    k, at, positive);
+            return taking(cond, List.of(), k, at, positive);
         }
         Assumed so = new Assumed(k, false, false);
         for (StatedComparison stated : readings) {
