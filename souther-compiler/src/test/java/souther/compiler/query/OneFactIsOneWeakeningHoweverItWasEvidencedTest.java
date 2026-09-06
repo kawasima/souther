@@ -87,34 +87,30 @@ class OneFactIsOneWeakeningHoweverItWasEvidencedTest {
 
     @Test
     void aRuleCitedTwoWaysIsOneFact() {
-        WeakeningSet named = ruleWithoutALine(new RuleCitation.Named("n"));
-        WeakeningSet placed = ruleWithoutALine(
-                new RuleCitation.WrittenAt(Citation.of(new SourcePos(3, 3))));
+        WeakeningSet here = ruleWithoutALine(reachedAt(9));
+        WeakeningSet fromACall = ruleWithoutALine(reachedAt(3));
 
-        assertEquals(1, named.union(placed).causes().size(),
+        assertEquals(1, here.union(fromACall).causes().size(),
                 "a rule and the handle for it are two questions, and the union folds on the rule");
-        assertEquals(named.union(placed), placed.union(named),
+        assertEquals(here.union(fromACall), fromACall.union(here),
                 "which reader cited it first is no part of what the union comes to");
-        assertEquals(Set.of(new RuleCitation.Named("n"),
-                        new RuleCitation.WrittenAt(Citation.of(new SourcePos(3, 3)))),
-                questionIn(named.union(placed)).question().cited(),
+        assertEquals(Set.of(reachedAt(9), reachedAt(3)),
+                questionIn(here.union(fromACall)).question().cited(),
                 "and the one rule keeps every handle a reader was offered");
     }
 
     @Test
     void aQuestionCitedTwoWaysIsOneFact() {
-        WeakeningSet named = standingQuestion(new RuleCitation.Named("n"),
+        WeakeningSet here = standingQuestion(reachedAt(9),
                 new BlockReason.UnreadComparisonForm());
-        WeakeningSet placed = standingQuestion(
-                new RuleCitation.WrittenAt(Citation.of(new SourcePos(3, 3))),
+        WeakeningSet fromACall = standingQuestion(reachedAt(3),
                 new BlockReason.UnreadComparisonForm());
 
-        assertEquals(1, named.union(placed).causes().size(),
+        assertEquals(1, here.union(fromACall).causes().size(),
                 "which rule it is and what it asks are what tell one standing question from"
                         + " another");
-        assertEquals(Set.of(new RuleCitation.Named("n"),
-                        new RuleCitation.WrittenAt(Citation.of(new SourcePos(3, 3)))),
-                questionIn(named.union(placed)).question().cited(),
+        assertEquals(Set.of(reachedAt(9), reachedAt(3)),
+                questionIn(here.union(fromACall)).question().cited(),
                 "and the one question keeps every handle a reader was offered");
     }
 
@@ -131,15 +127,15 @@ class OneFactIsOneWeakeningHoweverItWasEvidencedTest {
     void aQuestionCitedTwoWaysKeepsTheAuthorsOneAccountOfWhatStoppedIt() {
         BlockReason.RuleReadingStopped form = new BlockReason.UnreadComparisonForm();
         BlockReason.AnswerRealizationStopped answer = new BlockReason.ExactValuesTooCostly();
-        RuleCitation named = new RuleCitation.Named("n");
-        RuleCitation placed = new RuleCitation.WrittenAt(Citation.of(new SourcePos(3, 3)));
-        WeakeningSet met = standingQuestion(named, form, answer);
-        WeakeningSet metElsewhere = standingQuestion(placed, form, answer);
+        RuleCitation here = reachedAt(9);
+        RuleCitation fromACall = reachedAt(3);
+        WeakeningSet met = standingQuestion(here, form, answer);
+        WeakeningSet metElsewhere = standingQuestion(fromACall, form, answer);
 
         assertEquals(1, met.union(metElsewhere).causes().size(),
                 "which rule it is and what it asks are what tell one standing question from"
                         + " another");
-        assertEquals(Set.of(named, placed),
+        assertEquals(Set.of(here, fromACall),
                 questionIn(met.union(metElsewhere)).question().cited(),
                 "and both handles came with it");
         assertEquals(new WhatAQuestionStandsOn(RuleReasons.one(form), Optional.of(answer)),
@@ -164,9 +160,9 @@ class OneFactIsOneWeakeningHoweverItWasEvidencedTest {
     void twoAccountsOfOneQuestionCannotDisagreeOnTheAuthorsOrder() {
         BlockReason.RuleReadingStopped form = new BlockReason.UnreadComparisonForm();
         BlockReason.RuleReadingStopped domain = new BlockReason.UnreadComparisonDomain();
-        WeakeningSet met = standingQuestion(new RuleCitation.Named("n"), form, domain);
+        WeakeningSet met = standingQuestion(reachedAt(9), form, domain);
         WeakeningSet theOtherWayRound =
-                standingQuestion(new RuleCitation.Named("m"), domain, form);
+                standingQuestion(reachedAt(12), domain, form);
 
         assertThrows(TwoAccountsOfOneQuestion.class, () -> met.union(theOtherWayRound),
                 "two readings of one question that disagree about what the author wrote are not"
@@ -215,7 +211,7 @@ class OneFactIsOneWeakeningHoweverItWasEvidencedTest {
 
     private static WeakeningSet ruleWithoutALine(RuleCitation cited) {
         return of(new Weakening.ModelReadingIncomplete(ClosureGap.QuestionUnanswered.of(
-                StandingQuestion.NothingClassifiesIt.of(comparison(), cited,
+                StandingQuestion.NothingClassifiesIt.of(cited,
                         new FilingCoordinate.AtPosition(TermPath.of("x")),
                         new BlockReason.UnreadComparisonForm()))));
     }
@@ -228,7 +224,7 @@ class OneFactIsOneWeakeningHoweverItWasEvidencedTest {
                     new SourcePos(1, i + 1, new SourceId("one")), stopped[i]));
         }
         return of(new Weakening.ModelReadingIncomplete(ClosureGap.QuestionUnanswered.of(
-                StandingQuestion.Exact.of(comparison(), cited,
+                StandingQuestion.Exact.of(cited,
                         new InputQuestion.AboutAPosition(TermPath.of("x")),
                         new WhatAQuestionStandsOn(RuleReasons.from(written), Optional.empty())))));
     }
@@ -238,15 +234,25 @@ class OneFactIsOneWeakeningHoweverItWasEvidencedTest {
                                                  BlockReason.RuleReadingStopped stopped,
                                                  BlockReason.AnswerRealizationStopped answer) {
         return of(new Weakening.ModelReadingIncomplete(ClosureGap.QuestionUnanswered.of(
-                StandingQuestion.Exact.of(comparison(), cited,
+                StandingQuestion.Exact.of(cited,
                         new InputQuestion.AboutAPosition(TermPath.of("x")),
                         new WhatAQuestionStandsOn(RuleReasons.one(stopped),
                                 Optional.of(answer))))));
     }
 
-    private static RuleRef comparison() {
+    private static RuleRef.Comparison comparison() {
         return new RuleRef.Comparison("b", new SourceConstructOrigin(
                 new WrittenOwner.Body("m", "b"), 1, 1, SourceConstruct.IF));
+    }
+
+    /**
+     * One handle for that rule, reached at {@code line}.
+     *
+     * <p>Two handles of one rule are two places. Which of the two ways a rule is found is the
+     * rule's own answer, so a comparison is reached where it was read and never by a name.
+     */
+    private static RuleCitation reachedAt(int line) {
+        return new RuleCitation.WrittenAt(comparison(),Citation.of(new SourcePos(line, 1)));
     }
 
     private static WeakeningSet of(Weakening one) {

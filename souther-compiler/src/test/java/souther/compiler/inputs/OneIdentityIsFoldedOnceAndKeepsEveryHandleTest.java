@@ -2,6 +2,8 @@ package souther.compiler.inputs;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.check.Clause;
+import souther.compiler.check.ClauseName;
 import souther.compiler.check.RuleCitation;
 import souther.compiler.types.WrittenOwner;
 import souther.compiler.check.RuleRef;
@@ -10,6 +12,8 @@ import souther.compiler.diag.SourcePos;
 import souther.compiler.source.SourceId;
 import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.TypeKey;
+import souther.compiler.types.TypeSymbols;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +32,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * reader wrote for itself would keep whichever handle it met first, and a fold further down could
  * only accumulate what those let through.
  *
+ * <p>Two handles of one rule are two places and never a name and a place. Which of the two ways a
+ * rule is found is the rule's own answer, so a rule the author named has one handle however many
+ * readers offered it, and one written rather than named has a handle per place it was reached at —
+ * a helper's comparison read from two calls.
+ *
  * <p>And two lists there, folded apart. What a report says about a rule that came to no line and
  * what holds a measure open until somebody reads further are different things about one rule, so
  * neither is an account of the other and each is folded on its own.
@@ -37,20 +46,21 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
 
-    private static final RuleCitation NAMED = new RuleCitation.Named("n");
-    private static final RuleCitation PLACED =
-            new RuleCitation.WrittenAt(Citation.of(new SourcePos(3, 3)));
+    private static final RuleCitation HERE =
+            new RuleCitation.WrittenAt(comparison(),Citation.of(new SourcePos(3, 3)));
+    private static final RuleCitation REACHED_FROM_A_CALL =
+            new RuleCitation.WrittenAt(comparison(),Citation.of(new SourcePos(9, 1)));
 
     @Test
     void oneRuleFoundTwiceIsOneFindingCitedBothWays() {
         RulesWithNoLine.Gathered gathered = new RulesWithNoLine.Gathered();
-        gathered.add(found(NAMED, "x"));
-        gathered.add(found(PLACED, "x"));
+        gathered.add(found(HERE, "x"));
+        gathered.add(found(REACHED_FROM_A_CALL, "x"));
 
         assertEquals(1, gathered.found().reported().size(),
                 () -> "one rule at one position for one reason is one finding: "
                         + gathered.found().reported());
-        assertEquals(Set.of(NAMED, PLACED), gathered.found().reported().get(0).cited(),
+        assertEquals(Set.of(HERE, REACHED_FROM_A_CALL), gathered.found().reported().get(0).cited(),
                 "and a reader can be sent to it either way either reader offered");
     }
 
@@ -58,11 +68,11 @@ class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
     @Test
     void whichReaderFoundItFirstDecidesNothing() {
         RulesWithNoLine.Gathered one = new RulesWithNoLine.Gathered();
-        one.add(found(NAMED, "x"));
-        one.add(found(PLACED, "x"));
+        one.add(found(HERE, "x"));
+        one.add(found(REACHED_FROM_A_CALL, "x"));
         RulesWithNoLine.Gathered theOtherWayRound = new RulesWithNoLine.Gathered();
-        theOtherWayRound.add(found(PLACED, "x"));
-        theOtherWayRound.add(found(NAMED, "x"));
+        theOtherWayRound.add(found(REACHED_FROM_A_CALL, "x"));
+        theOtherWayRound.add(found(HERE, "x"));
 
         assertEquals(one.found(), theOtherWayRound.found(),
                 "and what each hands on is one value, which compares by what is in it");
@@ -72,8 +82,8 @@ class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
     @Test
     void twoRulesAreTwoFindings() {
         RulesWithNoLine.Gathered gathered = new RulesWithNoLine.Gathered();
-        gathered.add(found(NAMED, "x"));
-        gathered.add(found(NAMED, "y"));
+        gathered.add(found(HERE, "x"));
+        gathered.add(found(HERE, "y"));
 
         assertEquals(2, gathered.found().reported().size(), () -> gathered.found().reported().toString());
     }
@@ -81,10 +91,33 @@ class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
     /** And nothing puts together two findings that are not one rule. */
     @Test
     void twoFindingsThatAreNotOneRuleAreNotPutTogether() {
-        RuleWithoutALine here = found(NAMED, "x");
-        RuleWithoutALine elsewhere = found(NAMED, "y");
+        RuleWithoutALine here = found(HERE, "x");
+        RuleWithoutALine elsewhere = found(HERE, "y");
 
         assertThrows(IllegalArgumentException.class, () -> here.mergedWith(elsewhere));
+    }
+
+    /**
+     * A rule is reached the way rules of its kind are reached, and a finding says so.
+     *
+     * <p>What the fold keeps is the rule once and the places beside it, so a handle it hands back
+     * is of that rule and can be of no other. A rule the author named has no place to keep, and one
+     * written rather than named has nowhere for a reader to be sent without one.
+     */
+    @Test
+    void aRuleIsReachedTheWayItsKindIsReached() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new RuleWithoutALine(
+                        new RuleWithoutALine.Fact(comparison(), at("x"),
+                                new BlockReason.ComparisonBetweenPositions()),
+                        Set.of()),
+                "a comparison with no place is one nobody can be sent to look at");
+        assertThrows(IllegalArgumentException.class,
+                () -> new RuleWithoutALine(
+                        new RuleWithoutALine.Fact(invariant(), at("x"),
+                                new BlockReason.ComparisonBetweenPositions()),
+                        Set.of(Citation.of(new SourcePos(3, 3)))),
+                "and a place beside a rule the author named is a second way to say one thing");
     }
 
     /**
@@ -97,14 +130,15 @@ class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
     @Test
     void aQuestionAboutAnUnclassifiedRuleIsFoldedBesideTheFindings() {
         RulesWithNoLine.Gathered gathered = new RulesWithNoLine.Gathered();
-        gathered.unclassified(comparison(), NAMED, at("x"), new BlockReason.UnreadComparisonForm());
-        gathered.unclassified(comparison(), PLACED, at("x"),
+        gathered.unclassified(HERE, at("x"), new BlockReason.UnreadComparisonForm());
+        gathered.unclassified(REACHED_FROM_A_CALL, at("x"),
                 new BlockReason.UnreadComparisonForm());
-        gathered.add(comparison(), NAMED, at("x"), new BlockReason.ComparisonBetweenPositions());
+        gathered.add(HERE, at("x"), new BlockReason.ComparisonBetweenPositions());
 
         assertEquals(1, gathered.found().unclassified().size(),
                 () -> "one rule, one place, one limit: " + gathered.found().unclassified());
-        assertEquals(Set.of(NAMED, PLACED), gathered.found().unclassified().get(0).cited(),
+        assertEquals(Set.of(HERE, REACHED_FROM_A_CALL),
+                gathered.found().unclassified().get(0).cited(),
                 "and both handles are kept, as they are for a finding");
         assertEquals(1, gathered.found().reported().size(),
                 () -> "the rule read to the end is beside it and not folded into it: "
@@ -115,9 +149,10 @@ class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
      *  wrote it short of is untouched. */
     @Test
     void oneQuestionCitedTwoWaysKeepsBothHandlesAndTheAuthorsOrder() {
-        StandingQuestion both = asked(NAMED, standingOn()).mergedWith(asked(PLACED, standingOn()));
+        StandingQuestion both = asked(HERE, standingOn())
+                .mergedWith(asked(REACHED_FROM_A_CALL, standingOn()));
 
-        assertEquals(Set.of(NAMED, PLACED), both.cited());
+        assertEquals(Set.of(HERE, REACHED_FROM_A_CALL), both.cited());
         assertEquals(standingOn(), both.stopped());
     }
 
@@ -126,8 +161,9 @@ class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
     void twoAccountsOfOneQuestionCannotDisagreeAboutWhatTheAuthorWrote() {
         BlockReason.RuleReadingStopped form = new BlockReason.UnreadComparisonForm();
         BlockReason.RuleReadingStopped domain = new BlockReason.UnreadComparisonDomain();
-        StandingQuestion one = asked(NAMED, standingOn(form, domain));
-        StandingQuestion theOtherWayRound = asked(PLACED, standingOn(domain, form));
+        StandingQuestion one = asked(HERE, standingOn(form, domain));
+        StandingQuestion theOtherWayRound =
+                asked(REACHED_FROM_A_CALL, standingOn(domain, form));
 
         assertThrows(TwoAccountsOfOneQuestion.class, () -> one.mergedWith(theOtherWayRound));
     }
@@ -144,10 +180,10 @@ class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
      */
     @Test
     void anAccountThatMetTheAnswersLimitIsNotDisagreeingWithOneThatDidNot() {
-        StandingQuestion both = asked(NAMED, standingOn())
-                .mergedWith(asked(PLACED, itsRuleAlone()));
+        StandingQuestion both = asked(HERE, standingOn())
+                .mergedWith(asked(REACHED_FROM_A_CALL, itsRuleAlone()));
 
-        assertEquals(Set.of(NAMED, PLACED), both.cited());
+        assertEquals(Set.of(HERE, REACHED_FROM_A_CALL), both.cited());
         assertEquals(Optional.of(new BlockReason.ExactValuesTooCostly()),
                 both.stopped().itsPositionWasShortOf(),
                 "the question stands on it, and it was met once");
@@ -156,8 +192,8 @@ class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
     /** And two that met different limits are disagreeing about the position. */
     @Test
     void andTwoThatMetDifferentLimitsAreRefused() {
-        StandingQuestion one = asked(NAMED, standingOn());
-        StandingQuestion other = asked(PLACED, new WhatAQuestionStandsOn(
+        StandingQuestion one = asked(HERE, standingOn());
+        StandingQuestion other = asked(REACHED_FROM_A_CALL, new WhatAQuestionStandsOn(
                 RuleReasons.one(new BlockReason.UnreadComparisonForm()),
                 Optional.of(new BlockReason.RulesNotHandedOnAsSets())));
 
@@ -173,9 +209,9 @@ class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
     /** And a question that asks something is not an account of one that asks nothing. */
     @Test
     void theTwoKindsOfStandingQuestionAreNotTwoAccountsOfOneThing() {
-        StandingQuestion asks = asked(NAMED, standingOn());
+        StandingQuestion asks = asked(HERE, standingOn());
         StandingQuestion unclassified = StandingQuestion.NothingClassifiesIt.of(
-                comparison(), NAMED, at("x"), new BlockReason.UnreadComparisonForm());
+                HERE, at("x"), new BlockReason.UnreadComparisonForm());
 
         assertThrows(IllegalArgumentException.class, () -> asks.mergedWith(unclassified));
         assertThrows(IllegalArgumentException.class, () -> unclassified.mergedWith(asks));
@@ -194,9 +230,9 @@ class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
     void whatStoppedAReadingIsAskedOfTheFindingsAndOfTheQuestions() {
         BlockReason.RuleReadingStopped form = new BlockReason.UnreadComparisonForm();
         RulesWithNoLine.Gathered asFinding = new RulesWithNoLine.Gathered();
-        asFinding.add(comparison(), NAMED, at("x"), form);
+        asFinding.add(HERE, at("x"), form);
         RulesWithNoLine.Gathered asQuestion = new RulesWithNoLine.Gathered();
-        asQuestion.unclassified(comparison(), NAMED, at("x"), form);
+        asQuestion.unclassified(HERE, at("x"), form);
 
         assertEquals(null, RulesWithNoLine.NONE.aReadingThatStopped(),
                 "nothing found, so nothing stopped");
@@ -210,14 +246,14 @@ class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
     @Test
     void aRuleReadFromEndToEndStoppedNothing() {
         RulesWithNoLine.Gathered gathered = new RulesWithNoLine.Gathered();
-        gathered.add(found(NAMED, "x"));
+        gathered.add(found(HERE, "x"));
 
         assertEquals(null, gathered.found().aReadingThatStopped(),
                 () -> "the reading got through it: " + gathered.found().reported());
     }
 
     private static RuleWithoutALine found(RuleCitation cited, String at) {
-        return RuleWithoutALine.of(comparison(), cited, at(at),
+        return RuleWithoutALine.of(cited, at(at),
                 new BlockReason.ComparisonBetweenPositions());
     }
 
@@ -226,7 +262,7 @@ class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
     }
 
     private static StandingQuestion asked(RuleCitation cited, WhatAQuestionStandsOn stopped) {
-        return StandingQuestion.Exact.of(comparison(), cited,
+        return StandingQuestion.Exact.of(cited,
                 new InputQuestion.AboutAPosition(TermPath.of("x")), stopped);
     }
 
@@ -247,8 +283,15 @@ class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
         return new WhatAQuestionStandsOn(RuleReasons.from(written), Optional.empty());
     }
 
-    private static RuleRef comparison() {
+    private static RuleRef.Comparison comparison() {
         return new RuleRef.Comparison("b", new SourceConstructOrigin(
                 new WrittenOwner.Body("m", "b"), 1, 1, SourceConstruct.IF));
+    }
+
+    /** A rule the author named, for the half of the pairing that has no place. */
+    private static RuleRef.Invariant invariant() {
+        return new RuleRef.Invariant(new Clause.Ref(
+                new Clause.Id(TypeSymbols.declared(new TypeKey("m", "Amount")), 0),
+                Optional.of(new ClauseName("cap"))));
     }
 }

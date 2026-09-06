@@ -76,10 +76,10 @@ public record BorderObligationId(AuthoredLine line, Level at) {
         return line.rule();
     }
 
-    /** What a report calls this line, which is the rule's own name and never a place a body reached
-     *  it at. */
-    public String named() {
-        return line.named();
+    /** What a report calls this line — the author's word for the rule where they wrote one and what
+     *  the rule is where they did not, and never a place a body reached it at. */
+    public String saidWithoutAPlace() {
+        return line.saidWithoutAPlace();
     }
 
     /** The declaration this line is owed to, where a declaration's clause drew it. */

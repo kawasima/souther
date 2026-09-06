@@ -252,7 +252,7 @@ class WhatAStandingQuestionIsAccountedForByTest {
                     if (outcome instanceof RuleAccounting.Outcome.Unaccounted unaccounted
                             && unaccounted.why()
                             instanceof RuleAccounting.Why.TheValueReadingSays says) {
-                        out.put(((RuleCitation.Named) accounting.cited()).name() + " at " + owed,
+                        out.put(accounting.cited().rule().citedName() + " at " + owed,
                                 new StandsOn(says.why(), says.aboutTheAnswer().reasons()));
                     }
                 }));
@@ -305,7 +305,7 @@ class WhatAStandingQuestionIsAccountedForByTest {
         read(source).accounting().values().forEach(accounting ->
                 accounting.answers().forEach((owed, outcome) -> {
                     if (outcome instanceof RuleAccounting.Outcome.Unaccounted unaccounted) {
-                        out.put(((RuleCitation.Named) accounting.cited()).name() + " at " + owed,
+                        out.put(accounting.cited().rule().citedName() + " at " + owed,
                                 unaccounted.why().getClass().getSimpleName());
                     }
                 }));

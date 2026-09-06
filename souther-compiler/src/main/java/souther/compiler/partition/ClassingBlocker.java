@@ -52,7 +52,6 @@ public record ClassingBlocker(NumericTerm.FromOnePosition at, PredicateOrigin by
 
     /** What a person is shown, which is the other thing this is. */
     public RuleWithoutALine reported() {
-        return RuleWithoutALine.of(by.rule(), by.cited(),
-                FilingCoordinate.at(at.position()), why);
+        return RuleWithoutALine.of(by.cited(), FilingCoordinate.at(at.position()), why);
     }
 }
