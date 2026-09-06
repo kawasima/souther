@@ -1,14 +1,12 @@
 package souther.compiler.partition;
 
 import souther.compiler.check.Comparison;
-import souther.compiler.check.PathReachability;
+import souther.compiler.diag.Citation;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
-import souther.compiler.coverage.ComparisonCatalog;
-import souther.compiler.coverage.ComparisonOccurrence;
-import souther.compiler.coverage.CoverageSites;
 import souther.compiler.types.BinOp;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.inputs.InputReading;
 import souther.compiler.inputs.InputReads;
 
@@ -73,33 +71,18 @@ record ComparisonReadings(List<Reading> comparisons) {
      *                reading has no arithmetic for is on the list as a decline, so the two are not
      *                one answer
      */
-    record Reading(ComparisonCatalog.Catalogued catalogued, InputReads reads,
+    record Reading(ConstructOccurrence occurrence, Comparison comparison, Citation at,
+                   InputReads reads,
                    List<OnTheWay> assumed, BoundaryPolicy.Standing standing) {
 
-        /** Which comparison this is a reading of, which is what every reader joins on. */
-        ComparisonOccurrence at() {
-            return catalogued.which();
-        }
-
-        /** What the recognition established: what the comparison placed, and on which two sides. */
-        Comparison comparison() {
-            return catalogued.comparison();
-        }
-    }
-
-    /** What each comparison stands under, filed under the site a run through it is recorded at. */
-    ReachingCuts reaching(CoverageSites.Plan plan) {
-        ReachingCuts.Collected cuts = new ReachingCuts.Collected();
-        for (Reading each : comparisons) {
-            // Only where a run through it is written down. What stands on the way to a comparison
-            // nothing records is a fact about the body all the same, and there is no run for a
-            // reader of this to hold it against.
-            if (plan.instruments(each.at())) {
-                cuts.reached(each.at(), each.assumed());
+        Reading {
+            if (occurrence == null || comparison == null || at == null) {
+                throw new IllegalArgumentException(
+                        "a reading is of some comparison of the model, placed somewhere");
             }
         }
-        return cuts.made();
     }
+
 
     /**
      * What is the same at every comparison of one body: whose body it is, what the plan numbered,
@@ -111,9 +94,7 @@ record ComparisonReadings(List<Reading> comparisons) {
      * reading is one value for the whole of this walk. Put in it, the reading would be copied at
      * every step and asked of whichever copy a reader happened to hold.
      */
-    private record Body(CoverageSites.Plan plan,
-                        InputReading read,
-                        PathReachability.Answers arrives) {
+    private record Body(String behavior, InputReading read) {
 
         Symbols symbols() {
             return read.symbols();
@@ -127,20 +108,19 @@ record ComparisonReadings(List<Reading> comparisons) {
     /**
      * One reading of {@code body}.
      *
-     * <p>Whose body it is is not asked for: what a reading is of is a comparison the catalog named,
-     * and a name says which behavior's body it stands in. Taken as a parameter beside that, a
-     * caller could read one body under another's name and nothing would refuse it.
+     * <p>Whose body it is is asked for, and it is what a report calls the rules read here. Which
+     * comparison of the model each is comes off the node ({@link ModelOccurrence}) and not from the
+     * name, so the two cannot come apart: a body read under another's name says the wrong thing in a
+     * report and names no other comparison.
      *
-     * <p>{@code arrives} is what the walk of the whole body found reaching each comparison, which is
-     * one of the two domains a line is held against — the declarations leave the other. It is handed
-     * in here because this is where a comparison is read, and a reading of it is made once.
+     * <p><b>Nothing here is asked about the tree that runs.</b> Where a run through a comparison is
+     * recorded, and what a run leaves arriving at its line, are read where the language's operations
+     * are expanded — and this reads where they stand. A reading that took either would be one no
+     * tree could make on its own.
      */
-    static ComparisonReadings of(Core body, CoverageSites.Plan plan,
-                                 InputReading read,
-                                 InputReads reads,
-                                 PathReachability.Answers arrives) {
+    static ComparisonReadings of(String behavior, Core body, InputReading read, InputReads reads) {
         List<Reading> readings = new ArrayList<>();
-        walk(body, new Body(plan, read, arrives), reads,
+        walk(body, new Body(behavior, read), reads,
                 LiveFlow.of(body), List.of(), true, readings);
         return new ComparisonReadings(readings);
     }
@@ -153,37 +133,28 @@ record ComparisonReadings(List<Reading> comparisons) {
      */
     private static void walk(Core e, Body in, InputReads reads, LiveFlow flow,
                              List<OnTheWay> assumed, boolean live, List<Reading> out) {
-        CoverageSites.Plan plan = in.plan();
         Symbols symbols = in.symbols();
         RuleReadingSource ruleSource = in.rules();
-        ComparisonCatalog.Catalogued catalogued = e instanceof Core.Binary binary
-                ? plan.comparisons().at(binary).orElse(null) : null;
-        if (catalogued != null) {
-            // What the catalog holds, kept whole. It carries which comparison this is, what the
-            // recognition established and where it is written, and all three travel to whoever
-            // reads this — taken apart here, a reader wanting one of them again would have to find
-            // its way back to the node, which is the arrangement this replaces.
-            Comparison comparison = catalogued.comparison();
+        // A comparison the source wrote, recognised by the one thing that says what one is
+        // ({@link Comparison#of}). A binary this compiler composed states no rule of the model and
+        // is not one, which is what an unwritten construct says of itself.
+        Comparison comparison = e instanceof Core.Binary binary && binary.origin() != null
+                && binary.origin().isWritten() ? Comparison.of(binary).orElse(null) : null;
+        if (comparison != null) {
+            Core.Binary binary = (Core.Binary) e;
+            // Which comparison of the model it is, off the node. The two readings of a body hold
+            // different comparisons and agree about this, so it is what a reader below joins on.
+            ConstructOccurrence stands = binary.occurrence();
+            Citation where = Citation.of(binary.pos());
             // Read only where the policy admits it, and under the names in force here, which is
             // the one environment the comparison is about. `answer` is null: a body has nothing
             // that is the answer.
-            //
-            // And under what arrives at it, which is where a body's comparison differs from a
-            // clause's: it stands somewhere, and what the conditions on the way leave is the other
-            // domain its line is held against. Required and not looked up leniently — the policy
-            // refuses a comparison the plan numbers no site for, so reaching here is the site
-            // existing. Asked as an optional, a policy that stopped proving it would hand the
-            // reading below the answer that restricts nothing, and this stage disagreeing with the
-            // plan would go out as an arrival nobody could project.
-            BoundaryPolicy.Standing standing =
-                    BoundaryPolicy.refuses(catalogued.which(), plan, live)
+            BoundaryPolicy.Standing standing = BoundaryPolicy.refuses(live)
                     .<BoundaryPolicy.Standing>map(BoundaryPolicy.Standing.Refused::new)
                     .orElseGet(() -> new BoundaryPolicy.Standing.Admitted(
-                            ComparisonAssessment.of(catalogued.which().behavior(), comparison,
-                                    catalogued.at(), in.read(), reads,
-                                    null, false,
-                                    in.arrives().arrivalAt(catalogued.which()))));
-            out.add(new Reading(catalogued, reads, assumed, standing));
+                            ComparisonAssessment.of(in.behavior(), comparison, where,
+                                    in.read(), reads, null, false)));
+            out.add(new Reading(stands, comparison, where, reads, assumed, standing));
         }
         switch (e) {
             // The right operand runs only where the left came out the way that leaves the answer

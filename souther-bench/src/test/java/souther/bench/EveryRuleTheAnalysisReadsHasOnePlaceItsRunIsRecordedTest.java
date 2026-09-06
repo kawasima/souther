@@ -59,10 +59,10 @@ class EveryRuleTheAnalysisReadsHasOnePlaceItsRunIsRecordedTest {
         for (BothReadings both : everyBodyBothWays()) {
             Map<ModelOccurrence, List<ConstructOccurrence>> arriving = new LinkedHashMap<>();
             Set<ModelOccurrence> stated = new LinkedHashSet<>();
-            both.analysis().forEach(each -> stated.add(ModelOccurrence.of(each)));
+            both.analysis().forEach(each -> ModelOccurrence.statedAt(each).ifPresent(stated::add));
             for (ConstructOccurrence which : both.emitted()) {
-                ModelOccurrence states = ModelOccurrence.of(which);
-                if (stated.contains(states)) {
+                ModelOccurrence states = ModelOccurrence.statedAt(which).orElse(null);
+                if (states != null && stated.contains(states)) {
                     arriving.computeIfAbsent(states, _ -> new ArrayList<>()).add(which);
                 } else {
                     onlyEmitted[0]++;
@@ -129,7 +129,8 @@ class EveryRuleTheAnalysisReadsHasOnePlaceItsRunIsRecordedTest {
                         continue;
                     }
                     Set<ModelOccurrence> stated = new LinkedHashSet<>();
-                    comparisonsIn(read.core()).forEach(each -> stated.add(ModelOccurrence.of(each)));
+                    comparisonsIn(read.core()).forEach(each ->
+                            ModelOccurrence.statedAt(each).ifPresent(stated::add));
 
                     Map<ModelOccurrence, Set<ComparisonEmissionSite>> placed =
                             new LinkedHashMap<>();
@@ -137,8 +138,9 @@ class EveryRuleTheAnalysisReadsHasOnePlaceItsRunIsRecordedTest {
                             new LinkedHashMap<>();
                     for (Map.Entry<ConstructOccurrence, Core.Binary> at
                             : comparisonNodesIn(body.getValue()).entrySet()) {
-                        ModelOccurrence states = ModelOccurrence.of(at.getKey());
-                        if (!stated.contains(states)) {
+                        ModelOccurrence states =
+                                ModelOccurrence.statedAt(at.getKey()).orElse(null);
+                        if (states == null || !stated.contains(states)) {
                             onlyEmitted[0]++;
                             continue;
                         }

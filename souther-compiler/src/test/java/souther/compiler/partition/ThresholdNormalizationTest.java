@@ -58,7 +58,7 @@ class ThresholdNormalizationTest {
         Core body = checked.behaviorBodies().get(behavior);
         assertNotNull(body);
         CoverageSites.Plan plan = checked.plan();
-        GuardThresholds.Guards guards = GuardThresholds.of(body, plan,
+        GuardThresholds.Guards guards = GuardThresholds.of(behavior, body, plan,
                 compilation.db().ask(new souther.compiler.query.Adequacy.Inputs(module)).value().get(behavior), rules);
         List<Threshold> thresholds = guards.thresholds();
         InputDomain domain = InputDomain.of(spec, sigs.get(behavior), rules,

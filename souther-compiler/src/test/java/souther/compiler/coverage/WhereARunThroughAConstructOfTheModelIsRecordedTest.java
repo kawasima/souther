@@ -115,7 +115,7 @@ class WhereARunThroughAConstructOfTheModelIsRecordedTest {
     private static void walk(Core e, Set<ModelOccurrence> out) {
         if (e instanceof Core.Binary binary && binary.origin() != null
                 && binary.origin().isWritten()) {
-            out.add(ModelOccurrence.of(binary.occurrence()));
+            ModelOccurrence.statedAt(binary.occurrence()).ifPresent(out::add);
         }
         Core.forEachChild(e, child -> walk(child, out));
     }

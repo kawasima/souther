@@ -7,7 +7,7 @@ import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.report.AdequacyReport;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,12 +21,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * the same, a comparison the arithmetic reads to the end is reported as one whose form went unread,
  * and the measurement is marked short of something no reader fell short of.
  *
- * <p>What refuses it is asked of the standing, so the claim is made at both levels: that this
- * comparison is one the policy refuses for that reason, and that the report says nothing of it.
- * Without the first, the second would hold of a model whose comparison was simply a line. And the
- * silence is shown to be the right answer rather than a missing one: the case the comparison stands
- * in is reported as one the model rules out, and everything the model does answer by is measured
- * whole.
+ * <p>The claim is made at both levels, and they are two levels now. The reading says what the model
+ * states, and the model states this comparison whether or not a run answers through it — so the
+ * reading admits it. What refuses it is where a run through it would be recorded, which the emitted
+ * tree answers and the reading is not asked. Without the first, the silence below would hold of a
+ * model whose comparison was simply a line.
+ *
+ * <p>And the silence is shown to be the right answer rather than a missing one: the case the
+ * comparison stands in is reported as one the model rules out, and everything the model does answer
+ * by is measured whole.
  */
 class AComparisonNoRunReachesIsNotARuleWithoutALineTest {
 
@@ -70,10 +73,19 @@ class AComparisonNoRunReachesIsNotARuleWithoutALineTest {
         return AdequacyReport.of(compilation).human(SourceNameResolver.identity());
     }
 
+    /**
+     * The reading reads it, because the model states it.
+     *
+     * <p>Whether a run answers through the comparison is a fact about the tree that runs, and the
+     * reading is of what the model states. Refused here, a comparison the emitter numbers nothing
+     * for would have no reading at all — and the report below would be silent about it for want of
+     * anything to say rather than because there is nothing to say.
+     */
     @Test
-    void theComparisonIsOneNoRunAnswersThrough() {
-        assertEquals(new BoundaryPolicy.Standing.Refused(NotABoundary.NO_RUN_ANSWERS_THROUGH_IT),
-                ReadComparisons.of(model(READ), "pick").only().standing());
+    void theComparisonIsReadWhereItStandsAllTheSame() {
+        assertInstanceOf(BoundaryPolicy.Standing.Admitted.class,
+                ReadComparisons.of(model(READ), "pick").only().standing(),
+                "the model states this comparison whether or not a run answers through it");
     }
 
     @Test

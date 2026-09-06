@@ -84,8 +84,7 @@ public final class DeclaredThresholds {
         // to, which reads as an arrival that restricts nothing.
         ComparisonAssessment assessed = ComparisonAssessment.of(behavior, comparison,
                 Citation.of(binary.pos()), read,
-                InputReads.ofADeclaredClause(roots), null, true,
-                new souther.compiler.reach.ComparisonArrival.NoProjection());
+                InputReads.ofADeclaredClause(roots), null, true);
         // Only the quantity that is on no position. Why this drew no line where it drew none is not
         // said here: the reading of ends already answered for this clause at each position it names,
         // and a second sentence about one rule is two answers to one question.

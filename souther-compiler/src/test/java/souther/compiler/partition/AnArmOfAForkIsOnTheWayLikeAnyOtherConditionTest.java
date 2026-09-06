@@ -147,7 +147,7 @@ class AnArmOfAForkIsOnTheWayLikeAnyOtherConditionTest {
         Map<String, souther.compiler.inputs.InputDomain> inputs =
                 compilation.db().ask(new Adequacy.Inputs(module)).value();
         GuardThresholds.Guards guards =
-                GuardThresholds.of(body, plan, inputs.get(behavior), rules);
+                GuardThresholds.of(behavior, body, plan, inputs.get(behavior), rules);
         return List.copyOf(guards.reaching().byComparison().values());
     }
 }

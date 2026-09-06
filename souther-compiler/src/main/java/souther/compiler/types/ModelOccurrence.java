@@ -40,24 +40,27 @@ public record ModelOccurrence(SourceConstructOrigin origin, ExpansionLineage lin
     }
 
     /**
-     * What {@code occurrence} is an occurrence of, with the copies the language's operations brought
-     * taken off.
+     * Which construct of the model {@code occurrence} is a materialisation of, or empty where the
+     * model states nothing where it stands.
      *
-     * <p>The one crossing from a reading of a body to what the model states, so the two readings
-     * reach one value or neither does.
+     * <p><b>Partial, and that is what the name says.</b> A construct written inside one of the
+     * language's own operations is materialised once per call of that operation, and the model
+     * states nothing at any of them: what the language defines the meaning of is the operation, and
+     * the reading that states rules never enters its body. Made total, those materialisations would
+     * all come back as one construct of the model — one key over as many places as a body calls the
+     * operation, which is what a reader asking where a run is recorded cannot have.
      *
-     * <p>What comes back for a construct written inside an operation's own body is a value like any
-     * other, and it is not a value the other reading holds — that reading never enters the body it
-     * was written in. Whether the model states anything where a construct stands is answered by
-     * looking for it in the reading that states rules, and never by this value on its own.
+     * <p>Empty says that and only that. Where a run through a construct the model does state is
+     * recorded is a further question and a different absence
+     * ({@code ComparisonEmissionIndex#siteOf}), and the two are answered by different things so that
+     * neither can be read off the other.
      *
-     * <p>An envelope left open at the end is a construct standing inside an operation's own body:
-     * the operation takes no block, or takes one and this stands before it. Nothing closes it and
-     * nothing should — what is inside an operation is inside it, and what comes back is the copies
-     * the caller made on the way, which is what the other reading holds too.
-     *
+     * <p>An envelope left open at the end is what says it: the construct stands inside an
+     * operation's own body, either because the operation takes no block or because this stands
+     * before the block it takes. A closed one says the operation's body reached the code its caller
+     * handed over, and what stands after that is the caller's again.
      */
-    public static ModelOccurrence of(ConstructOccurrence occurrence) {
+    public static java.util.Optional<ModelOccurrence> statedAt(ConstructOccurrence occurrence) {
         Deque<ExpansionLineage.Expansion> open = new ArrayDeque<>();
         ExpansionLineage model = ExpansionLineage.ORIGINAL;
         for (ExpansionLineage.Expansion step : copiesIn(occurrence.lineage())) {
@@ -80,7 +83,9 @@ public record ModelOccurrence(SourceConstructOrigin origin, ExpansionLineage lin
                 model = model.copiedInto(step.expanded(), step.at());
             }
         }
-        return new ModelOccurrence(occurrence.origin(), model);
+        return open.isEmpty()
+                ? java.util.Optional.of(new ModelOccurrence(occurrence.origin(), model))
+                : java.util.Optional.empty();
     }
 
     /**

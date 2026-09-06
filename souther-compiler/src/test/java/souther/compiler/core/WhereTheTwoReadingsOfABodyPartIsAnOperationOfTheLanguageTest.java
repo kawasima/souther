@@ -122,10 +122,10 @@ class WhereTheTwoReadingsOfABodyPartIsAnOperationOfTheLanguageTest {
         for (BothReadings both : everyBodyBothWays()) {
             Map<ModelOccurrence, List<ConstructOccurrence>> arriving = new LinkedHashMap<>();
             Set<ModelOccurrence> stated = new LinkedHashSet<>();
-            both.analysis().forEach(each -> stated.add(ModelOccurrence.of(each)));
+            both.analysis().forEach(each -> ModelOccurrence.statedAt(each).ifPresent(stated::add));
             for (ConstructOccurrence which : both.emitted()) {
-                ModelOccurrence states = ModelOccurrence.of(which);
-                if (stated.contains(states)) {
+                ModelOccurrence states = ModelOccurrence.statedAt(which).orElse(null);
+                if (states != null && stated.contains(states)) {
                     arriving.computeIfAbsent(states, _ -> new ArrayList<>()).add(which);
                 } else {
                     onlyEmitted[0]++;

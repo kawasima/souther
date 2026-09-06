@@ -1,6 +1,7 @@
 package souther.compiler.coverage;
 
 import souther.compiler.core.Core;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.ModelOccurrence;
 
 import java.util.LinkedHashMap;
@@ -30,10 +31,10 @@ public final class ComparisonEmissionIndex {
 
     private final Map<ModelOccurrence, ComparisonEmissionSite> sites;
 
-    private final Map<ModelOccurrence, ComparisonOccurrence> emitted;
+    private final Map<ConstructOccurrence, ComparisonOccurrence> emitted;
 
     private ComparisonEmissionIndex(Map<ModelOccurrence, ComparisonEmissionSite> sites,
-                                    Map<ModelOccurrence, ComparisonOccurrence> emitted) {
+                                    Map<ConstructOccurrence, ComparisonOccurrence> emitted) {
         this.sites = sites;
         this.emitted = emitted;
     }
@@ -54,32 +55,51 @@ public final class ComparisonEmissionIndex {
      */
     public static ComparisonEmissionIndex of(ModuleBodies of, CoverageSites.Plan plan) {
         Map<ModelOccurrence, ComparisonEmissionSite> sites = new LinkedHashMap<>();
-        Map<ModelOccurrence, ComparisonOccurrence> emitted = new LinkedHashMap<>();
+        Map<ConstructOccurrence, ComparisonOccurrence> emitted = new LinkedHashMap<>();
+        Map<ModelOccurrence, ComparisonOccurrence> stated = new LinkedHashMap<>();
         for (Map.Entry<String, Core> body : of.bodies().entrySet()) {
-            walk(body.getValue(), body.getKey(), plan, sites, emitted);
+            walk(body.getValue(), body.getKey(), plan, sites, emitted, stated);
         }
+        return new ComparisonEmissionIndex(Map.copyOf(sites), Map.copyOf(emitted));
+    }
+
+    /** The same over one body, for a reader that holds one rather than the module's. */
+    public static ComparisonEmissionIndex ofBody(String behavior, Core body,
+                                                 CoverageSites.Plan plan) {
+        Map<ModelOccurrence, ComparisonEmissionSite> sites = new LinkedHashMap<>();
+        Map<ConstructOccurrence, ComparisonOccurrence> emitted = new LinkedHashMap<>();
+        Map<ModelOccurrence, ComparisonOccurrence> stated = new LinkedHashMap<>();
+        walk(body, behavior, plan, sites, emitted, stated);
         return new ComparisonEmissionIndex(Map.copyOf(sites), Map.copyOf(emitted));
     }
 
     private static void walk(Core e, String behavior, CoverageSites.Plan plan,
                              Map<ModelOccurrence, ComparisonEmissionSite> sites,
-                             Map<ModelOccurrence, ComparisonOccurrence> emitted) {
+                             Map<ConstructOccurrence, ComparisonOccurrence> emitted,
+                             Map<ModelOccurrence, ComparisonOccurrence> stated) {
         // Which comparison of the emitted tree this is, asked of the catalog, which is what the
         // numbering was taken over. A node it does not hold is one no site was planned for and one
         // no rule is read off — a comparison this compiler composed, or one of another module.
         ComparisonOccurrence which = e instanceof Core.Binary binary
                 ? plan.comparisons().occurrenceAt(binary).orElse(null) : null;
         if (which != null) {
-            ModelOccurrence states = ModelOccurrence.of(((Core.Binary) e).occurrence());
-            ComparisonOccurrence already = emitted.put(states, which);
-            if (already != null && !already.equals(which)) {
-                throw new IllegalStateException("two comparisons of `" + behavior
-                        + "` are one construct of the model: " + already + " and " + which
-                        + " are both " + states);
-            }
-            plan.emissionSiteOf(which).ifPresent(site -> sites.put(states, site));
+            ConstructOccurrence stands = ((Core.Binary) e).occurrence();
+            emitted.put(stands, which);
+            // Only where the model states something. A comparison inside one of the language's own
+            // operations is materialised once per call of it and the model states none of them, so
+            // asking them all for one place would be one key over as many places as the body calls
+            // the operation.
+            ModelOccurrence.statedAt(stands).ifPresent(states -> {
+                ComparisonOccurrence already = stated.put(states, which);
+                if (already != null && !already.equals(which)) {
+                    throw new IllegalStateException("two comparisons of `" + behavior
+                            + "` are one construct of the model: " + already + " and " + which
+                            + " are both " + states);
+                }
+                plan.emissionSiteOf(which).ifPresent(site -> sites.put(states, site));
+            });
         }
-        Core.forEachChild(e, child -> walk(child, behavior, plan, sites, emitted));
+        Core.forEachChild(e, child -> walk(child, behavior, plan, sites, emitted, stated));
     }
 
     /** Where a run through {@code occurrence} is recorded, or empty where the emitter numbered
@@ -90,7 +110,7 @@ public final class ComparisonEmissionIndex {
 
     /** What the walk that numbered the sites called each of them, for the one reader that still
      *  names a comparison that way ({@link LegacyComparisonAddresses}). */
-    Map<ModelOccurrence, ComparisonOccurrence> emittedNames() {
+    Map<ConstructOccurrence, ComparisonOccurrence> emittedNames() {
         return emitted;
     }
 }

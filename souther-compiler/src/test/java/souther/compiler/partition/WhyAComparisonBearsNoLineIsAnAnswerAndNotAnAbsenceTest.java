@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.core.Core;
-import souther.compiler.coverage.CoverageSites;
 import souther.compiler.inputs.InputReads;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Bodies;
@@ -67,7 +66,6 @@ class WhyAComparisonBearsNoLineIsAnAnswerAndNotAnAbsenceTest {
         assertNotNull(checked, "the model under test compiles");
         Core body = checked.behaviorBodies().get("read");
         assertNotNull(body);
-        CoverageSites.Plan plan = checked.plan();
         souther.compiler.inputs.InputDomain inputs = compilation.db()
                 .ask(new Adequacy.Inputs(module)).value().get("read");
 
@@ -75,14 +73,11 @@ class WhyAComparisonBearsNoLineIsAnAnswerAndNotAnAbsenceTest {
 
         Map<Integer, BoundaryPolicy.Standing> byLine = new LinkedHashMap<>();
         for (ComparisonReadings.Reading each
-                : ComparisonReadings.of(body, plan, inputs.reading(rules),
+                : ComparisonReadings.of("read", body, inputs.reading(rules),
                         InputReads.ofParameters(inputs.parameterReads(),
-                                checked.elementBindings().get("read")),
-                        // What arrives is not what this is about: read with nothing said about it,
-                        // every line is held to the declarations alone.
-                        souther.compiler.check.PathReachability.Answers.NONE).comparisons()) {
+                                checked.elementBindings().get("read"))).comparisons()) {
             souther.compiler.diag.Citation.Written at = assertInstanceOf(
-                    souther.compiler.diag.Citation.Written.class, each.catalogued().at(),
+                    souther.compiler.diag.Citation.Written.class, each.at(),
                     "the model under test is written in this compile's own source");
             byLine.put(at.at().line(), each.standing());
         }

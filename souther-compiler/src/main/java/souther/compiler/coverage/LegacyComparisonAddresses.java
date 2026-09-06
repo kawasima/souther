@@ -1,6 +1,6 @@
 package souther.compiler.coverage;
 
-import souther.compiler.types.ModelOccurrence;
+import souther.compiler.types.ConstructOccurrence;
 
 import java.util.Map;
 
@@ -23,9 +23,9 @@ import java.util.Map;
  */
 public final class LegacyComparisonAddresses {
 
-    private final Map<ModelOccurrence, ComparisonOccurrence> emitted;
+    private final Map<ConstructOccurrence, ComparisonOccurrence> emitted;
 
-    private LegacyComparisonAddresses(Map<ModelOccurrence, ComparisonOccurrence> emitted) {
+    private LegacyComparisonAddresses(Map<ConstructOccurrence, ComparisonOccurrence> emitted) {
         this.emitted = emitted;
     }
 
@@ -42,7 +42,7 @@ public final class LegacyComparisonAddresses {
      *                               readings disagreeing about what a body holds, which is a
      *                               finding and not a thing to answer around
      */
-    public ComparisonOccurrence of(ModelOccurrence occurrence) {
+    public ComparisonOccurrence of(ConstructOccurrence occurrence) {
         ComparisonOccurrence which = emitted.get(occurrence);
         if (which == null) {
             throw new IllegalStateException(
@@ -52,7 +52,7 @@ public final class LegacyComparisonAddresses {
     }
 
     /** Whether the emitted bodies hold a comparison for it at all. */
-    public boolean holds(ModelOccurrence occurrence) {
+    public boolean holds(ConstructOccurrence occurrence) {
         return emitted.containsKey(occurrence);
     }
 }

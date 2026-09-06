@@ -219,7 +219,7 @@ class GivingASubexpressionANameDoesNotChangeWhatIsReadOfItTest {
         Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().stream()
                 .filter(each -> each.name().equals(behavior)).findFirst().orElseThrow();
         Core body = checked.behaviorBodies().get(spec.name());
-        GuardThresholds.Guards guards = GuardThresholds.of(body,
+        GuardThresholds.Guards guards = GuardThresholds.of(behavior, body,
                 checked.plan(),
                 compilation.db().ask(new Adequacy.Inputs(module)).value().get(behavior), rules);
         List<String> out = new java.util.ArrayList<>();

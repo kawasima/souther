@@ -241,8 +241,7 @@ sealed interface ComparisonAssessment {
     static ComparisonAssessment of(String behavior, Comparison comparison, Citation at,
                                    InputReading read, InputReads reads,
                                    BindingId answer,
-                                   boolean drawnByAnInvariant,
-                                   souther.compiler.reach.ComparisonArrival arrival) {
+                                   boolean drawnByAnInvariant) {
         Quantities quantities = read.quantities();
         // Asked first, and of the whole comparison. A rule that reads the answer anywhere in it is
         // one this reading does not put on the input space, whichever side the answer is on and
@@ -253,8 +252,7 @@ sealed interface ComparisonAssessment {
         }
         return switch (Cutting.read(behavior, comparison, read, reads)) {
             case Cutting.Read.Cuts cuts ->
-                    onTheQuantity(at, cuts.cutting(), quantities, drawnByAnInvariant,
-                            arrival);
+                    onTheQuantity(at, cuts.cutting(), quantities, drawnByAnInvariant);
             // Read to the end and cutting nothing, which is a fact about the rule and not a limit
             // of this compiler: `a <= a` holds of every row. Where the comparison names no position
             // either, there is no rule about a position to say it of — `2 > 1` is a comparison of
@@ -278,6 +276,48 @@ sealed interface ComparisonAssessment {
                     ? aboutNoPosition(comparison, reads, read.symbols())
                     : new Unread(atEachOf(over.over(),
                             new BlockReason.UnreadComparisonDomain()));
+        };
+    }
+
+    /**
+     * The same reading, on the narrower domain the run leaves at the comparison's line.
+     *
+     * <p>The declarations first and the place second, because the two are different sentences and
+     * the first holds wherever the comparison stands. What is asked here is the same predicate on
+     * the narrower domain, not a second reading of the rule — so a line the declarations already
+     * dropped is not asked about again, and what arrives cannot put one back.
+     *
+     * <p><b>Apart from the reading, because the two are read off different trees.</b> What the rule
+     * states is read where the language's operations stand; what arrives at a place is read where
+     * they are expanded, which is where a run has places at all. Asked inside the reading, the
+     * reading would be one no tree could answer on its own.
+     *
+     * <p>Only a proof drops a line. An arrival nothing could project restricts nothing and the line
+     * stands, which is what {@link souther.compiler.reach.ComparisonArrival.NoProjection} says —
+     * and it is not what a comparison the emitter numbered nothing for says, because that one is
+     * not asked this at all.
+     */
+    static ComparisonAssessment narrowedByWhatArrives(
+            ComparisonAssessment read, souther.compiler.reach.ComparisonArrival arrival,
+            boolean drawnByAnInvariant) {
+        Cutting cutting = switch (read) {
+            case AtAPosition at -> at.cutting();
+            case AcrossPositions across -> across.cutting();
+            // Every other reading is one the declarations settled without reaching a line, and
+            // there is nothing for a narrower domain to settle differently.
+            default -> null;
+        };
+        if (cutting == null) {
+            return read;
+        }
+        return switch (arrival) {
+            case souther.compiler.reach.ComparisonArrival.NothingArrives _ ->
+                    new NothingArrivesAtItsLine(cutting);
+            case souther.compiler.reach.ComparisonArrival.Values values ->
+                    Border.reaches(cutting.at(), cutting.seam(), cutting.claim(),
+                            drawnByAnInvariant, cutting.withinGiven(values))
+                            ? read : new NothingArrivesAtItsLine(cutting);
+            case souther.compiler.reach.ComparisonArrival.NoProjection _ -> read;
         };
     }
 
@@ -322,7 +362,7 @@ sealed interface ComparisonAssessment {
     /** What a line comes to on the input space, from the quantity it is on. */
     private static ComparisonAssessment onTheQuantity(
             Citation at, Cutting cutting, Quantities quantities,
-            boolean drawnByAnInvariant, souther.compiler.reach.ComparisonArrival arrival) {
+            boolean drawnByAnInvariant) {
         // Whether there is an input at all, before anything is asked about where its values run.
         // A quantity is a function of the input, so where the rules admit no input they admit no
         // value of any quantity — and every question below is about one quantity's values against
@@ -337,23 +377,6 @@ sealed interface ComparisonAssessment {
         if (!Border.reaches(cutting.at(), cutting.seam(), cutting.claim(), drawnByAnInvariant,
                 cutting.within())) {
             return new OutsideTheDomain(cutting);
-        }
-        // The declarations first and the place second, because the two are different sentences and
-        // the first holds wherever the comparison stands. The place answers as two nested domains
-        // around one line: what the declarations leave, and that met with what arrives — the same
-        // predicate on the narrower domain, not a second reading of the rule. Only a proof drops a
-        // line; an arrival nothing could project restricts nothing and the line stands.
-        switch (arrival) {
-            case souther.compiler.reach.ComparisonArrival.NothingArrives _ -> {
-                return new NothingArrivesAtItsLine(cutting);
-            }
-            case souther.compiler.reach.ComparisonArrival.Values values -> {
-                if (!Border.reaches(cutting.at(), cutting.seam(), cutting.claim(),
-                        drawnByAnInvariant, cutting.withinGiven(values))) {
-                    return new NothingArrivesAtItsLine(cutting);
-                }
-            }
-            case souther.compiler.reach.ComparisonArrival.NoProjection _ -> { }
         }
         NumericTerm.FromOnePosition divided = cutting.dividedPosition();
         if (divided == null) {

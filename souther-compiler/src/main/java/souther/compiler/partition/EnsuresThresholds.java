@@ -221,8 +221,7 @@ public final class EnsuresThresholds {
         // whole domain — which is what an arrival that restricts nothing reads as.
         ComparisonAssessment assessed = ComparisonAssessment.of(out.behavior(), comparison,
                 Citation.of(e.pos()), read,
-                reads, rule.value(), false,
-                new souther.compiler.reach.ComparisonArrival.NoProjection());
+                reads, rule.value(), false);
         // What the positions this names are left with, where the reading of lines drew none. Asked
         // of the assessment and not worked out per arm here: the same table stood in the guard
         // reader, and a case added to an assessment had to be answered in both.
