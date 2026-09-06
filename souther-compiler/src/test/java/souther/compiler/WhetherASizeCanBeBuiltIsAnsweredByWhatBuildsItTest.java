@@ -108,6 +108,70 @@ class WhetherASizeCanBeBuiltIsAnsweredByWhatBuildsItTest {
         assertEquals("C(\"xxxx\")", rowAt(filled, "String.length(c) = 4"));
     }
 
+    // --- built, and then refused ------------------------------------------------------------------
+
+    /**
+     * A value that was composed and refused is said to have been refused.
+     *
+     * <p>The two halves of the answer belong to different things: whether a value of that size
+     * exists to try is what builds values, and whether the model admits it is the decoder's.
+     * Collapsed into one, a type whose format refuses the string a length asked for reports that
+     * nothing composes a string of that length — a claim about strings taken from an opinion about
+     * this type.
+     *
+     * <p>The two rules stand on different declarations, which is what leaves a line here to ask the
+     * question at: `Text` is written about its length and nothing else, so that is what its
+     * position is measured at, and the record states which strings may stand there. Written on one
+     * type they would be rules about both of its numbers, the position would be measured at
+     * neither, and there would be no line for anything to have been refused at.
+     *
+     * <p>Both ends of the same line, because one of them alone proves nothing. A model that
+     * composes at neither end is a model that cannot be built for reasons of its own, and the
+     * refusal at the low end says something only beside a row the same generation wrote at the
+     * high end.
+     */
+    @Test
+    void aSizedValueTheFormatRefusesIsReportedAsRefusedAndNotAsUnbuildable() {
+        Generator.GenerationResult filled = boundaries("""
+                module sz.refused
+
+                data Size = Int
+                    invariant value >= 1
+
+                data Tag = Big | Small
+
+                data Text = String
+                    invariant String.length(value) >= 2 && String.length(value) <= 4
+
+                data C = { text: Text }
+                    invariant String.matches("xxx+", text.value)
+
+                behavior label : (c: C, s: Size) -> Tag
+
+                let label (c, s) = if s.value >= 5 then Big else Small
+
+                example label
+                    | (C { text = Text("xxx") }, Size(9)) -> Big
+                """);
+
+        assertEquals(Generator.UnresolvedCombination.Reason.ALL_CANDIDATES_REJECTED,
+                whyNot(filled, "String.length(c.text) = 2"),
+                "the string of that length composes and the model refuses it");
+        assertEquals("C { text = Text(\"xxxx\") }", rowAt(filled, "String.length(c.text) = 4"),
+                "and the same generation writes a row at the other end of the same line");
+    }
+
+    /** Why no row was offered at {@code edge}, or null where one was. */
+    private static Generator.UnresolvedCombination.Reason whyNot(Generator.GenerationResult filled,
+                                                                 String edge) {
+        for (Generator.UnresolvedCombination left : filled.unresolved()) {
+            if (left.classes().contains(edge)) {
+                return left.reason();
+            }
+        }
+        return null;
+    }
+
     // --- a collection counted the same way --------------------------------------------------------
 
     /**
