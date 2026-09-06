@@ -9,7 +9,6 @@ import souther.compiler.values.AdmissibleValues;
 import souther.compiler.values.AdmittedPlan;
 import souther.compiler.values.Allowance;
 import souther.compiler.values.AsACompilationAllows;
-import souther.compiler.values.Emptiness;
 import souther.compiler.values.PlannedValues;
 import souther.compiler.values.Value;
 import souther.compiler.values.ValueSet;
@@ -52,7 +51,7 @@ class ADeadBranchIsSettledTheSameHoweverTheChoiceWasBracketedTest {
 
     /** What every dead branch here was shown dead by, which is not what is under test. */
     private static final Confinement.Admission<String> SHOWN =
-            Confinement.Admission.left(Emptiness.EMPTY);
+            Confinement.Admission.left(souther.compiler.values.Emptiness.EMPTY);
 
     private final Allowance<String> sets = AsACompilationAllows.forAdmittedValues();
 
