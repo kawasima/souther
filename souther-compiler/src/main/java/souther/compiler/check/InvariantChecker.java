@@ -682,12 +682,12 @@ public final class InvariantChecker {
         if (!settled.isEmpty() || !reach.everything()) {
             return seedFieldsFresh(named, source, policy, settled, reach, readings, answers);
         }
-        Seeded lent = readings.seeded(named.key(), policy);
+        Seeded lent = readings.seeded(named.key(), source, policy);
         if (lent != null) {
             return lent;
         }
         Seeded made = seedFieldsFresh(named, source, policy, settled, reach, readings, answers);
-        readings.made(named.key(), policy, made);
+        readings.made(named.key(), source, policy, made);
         return made;
     }
 

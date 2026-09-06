@@ -26,11 +26,19 @@ public interface DeclarationReadings {
     StringMachineAnswers of(TypeKey declaration);
 
     /**
-     * The canonical reading of {@code declaration} under {@code policy}, where one has been made in
-     * this revision and this lends readings, or null where it lends none and the caller reads for
-     * itself. A different policy is a different reading, not the same one under other terms.
+     * The canonical reading of {@code declaration} as {@code source} and {@code policy} decide it,
+     * where one has been made in this revision and this lends readings, or null where it lends none
+     * and the caller reads for itself.
+     *
+     * <p>All three, because all three decide what the reading comes to. A policy is what a reading
+     * may spend, and a reading made under other terms is another reading. A source is where the
+     * clauses are read from and what the names in them mean: a reader may hand over one that
+     * answers for fewer clauses than the store holds — a count asking what it would come to without
+     * one declaration's rules does exactly that — and what comes back is a reading of what that
+     * source left, which is not the declaration's own.
      */
-    default InvariantChecker.Seeded seeded(TypeKey declaration, ReadingPolicy policy) {
+    default InvariantChecker.Seeded seeded(TypeKey declaration, RuleReadingSource source,
+                                           ReadingPolicy policy) {
         return null;
     }
 
@@ -40,7 +48,8 @@ public interface DeclarationReadings {
      * reader that made it, at the one place a canonical reading is made; a lender that keeps none
      * ignores it.
      */
-    default void made(TypeKey declaration, ReadingPolicy policy, InvariantChecker.Seeded seeded) {
+    default void made(TypeKey declaration, RuleReadingSource source, ReadingPolicy policy,
+                      InvariantChecker.Seeded seeded) {
     }
 
     /**
@@ -67,14 +76,15 @@ public interface DeclarationReadings {
             }
 
             @Override
-            public InvariantChecker.Seeded seeded(TypeKey declaration, ReadingPolicy policy) {
+            public InvariantChecker.Seeded seeded(TypeKey declaration, RuleReadingSource source,
+                                                  ReadingPolicy policy) {
                 return null;
             }
 
             @Override
-            public void made(TypeKey declaration, ReadingPolicy policy,
+            public void made(TypeKey declaration, RuleReadingSource source, ReadingPolicy policy,
                              InvariantChecker.Seeded seeded) {
-                lender.made(declaration, policy, seeded);
+                lender.made(declaration, source, policy, seeded);
             }
         };
     }

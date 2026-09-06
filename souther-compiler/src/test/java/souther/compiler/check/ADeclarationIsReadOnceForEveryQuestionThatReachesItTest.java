@@ -57,6 +57,23 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
             let lineOf (order) = order.line
             """;
 
+    /** The same declarations, with more questions reaching them: four more behaviors, each
+     *  constructing and taking them apart again. */
+    private static final String MORE_QUESTIONS = MODULE + """
+
+            behavior codeOf : (order: Order) -> Code
+            let codeOf (order) = order.line.code
+
+            behavior noteOf : (order: Order) -> String
+            let noteOf (order) = order.note
+
+            behavior lineFor : (code: Code, amount: Amount) -> Line
+            let lineFor (code, amount) = Line { code = code, amount = amount }
+
+            behavior orderFor : (line: Line) -> Order
+            let orderFor (line) = Order { line = line, note = "" }
+            """;
+
     private static Compilation compiled() {
         Compilation compilation = Compilation.ofSources(List.of(MODULE), ModulePath.EMPTY);
         compilation.answerEverything();
@@ -66,21 +83,37 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
     }
 
     /**
-     * A compile reads each declaration a handful of times and no more — where the readers each read
-     * for themselves it is a multiple of how many declarations there are, and that multiple is what
-     * this refuses.
+     * What a compile reads is settled by how many declarations it has, and not by how many
+     * questions reach them.
+     *
+     * <p>Two models with the same declarations and different numbers of questions over them: the
+     * constructions in the bodies, the domains of the inputs and the count of what the module's
+     * types hold all reach the same declarations, and the second model reaches them far more often.
+     * Where each question reads for itself the second costs more; where a reading is lent, the two
+     * cost the same.
+     *
+     * <p>Said as a comparison rather than as a number, because the number is what a reading is
+     * asked for under — one for each place clauses are read from — and a test pinning it would be
+     * pinning how many readers there are rather than that they share.
      */
     @Test
-    void aWholeCompileReadsEachDeclarationAboutOnce() {
-        long before = InvariantChecker.readingsMade();
-        Compilation compilation = compiled();
-        long made = InvariantChecker.readingsMade() - before;
-        long declarations = compilation.module("demo").defs().size();
+    void moreQuestionsOverTheSameDeclarationsReadThemNoMoreTimes() {
+        long few = readingsMadeCompiling(MODULE);
+        long many = readingsMadeCompiling(MORE_QUESTIONS);
 
-        assertTrue(made <= declarations * 2,
-                () -> "a compile of " + declarations + " declarations made " + made
-                        + " readings, so the questions that reach a declaration are reading it"
-                        + " again rather than being lent the one reading there is");
+        assertEquals(few, many,
+                () -> "a model with more questions over the same declarations read them " + many
+                        + " times against " + few + ", so a question that reaches a declaration is"
+                        + " reading it again rather than being lent the reading there is");
+    }
+
+    private static long readingsMadeCompiling(String source) {
+        long before = InvariantChecker.readingsMade();
+        Compilation compilation = Compilation.ofSources(List.of(source), ModulePath.EMPTY);
+        compilation.answerEverything();
+        assertTrue(compilation.diagnostics().values().stream().allMatch(List::isEmpty),
+                "the model under test compiles clean");
+        return InvariantChecker.readingsMade() - before;
     }
 
     /**
@@ -96,13 +129,13 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
         ReadingPolicy policy = AS_THE_COMPILE_READS;
         TypeSymbol.AtModule code = TypeSymbols.declared(new TypeKey("demo", "Code"));
 
-        long before = InvariantChecker.readingsMade();
         InvariantChecker.Seeded first = InvariantChecker.seedFields(code, source, policy, readings);
+        long afterTheFirst = InvariantChecker.readingsMade();
         InvariantChecker.Seeded second = InvariantChecker.seedFields(code, source, policy, readings);
 
         assertSame(first, second, "the second asker is handed the reading the first was");
-        assertEquals(0, InvariantChecker.readingsMade() - before,
-                "and the declaration was read for neither of them: the compile had read it");
+        assertEquals(afterTheFirst, InvariantChecker.readingsMade(),
+                "and the declaration was not read for the second of them");
     }
 
     /** A second policy is a second reading, not the same one under other terms. */
@@ -113,12 +146,13 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
         RuleReadingSource source = RuleReadings.of(compilation, "demo");
         TypeSymbol.AtModule code = TypeSymbols.declared(new TypeKey("demo", "Code"));
 
-        long before = InvariantChecker.readingsMade();
         InvariantChecker.seedFields(code, source, AS_THE_COMPILE_READS, readings);
-        assertEquals(0, InvariantChecker.readingsMade() - before, "lent, as above");
+        long afterTheFirst = InvariantChecker.readingsMade();
+        InvariantChecker.seedFields(code, source, AS_THE_COMPILE_READS, readings);
+        assertEquals(afterTheFirst, InvariantChecker.readingsMade(), "lent, as above");
 
         InvariantChecker.seedFields(code, source, OTHER_TERMS, readings);
-        assertEquals(1, InvariantChecker.readingsMade() - before,
+        assertEquals(afterTheFirst + 1, InvariantChecker.readingsMade(),
                 "and read again under terms the reading in hand was not made under");
     }
 
@@ -161,11 +195,11 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
 
         InvariantChecker.Seeded read =
                 InvariantChecker.seedFields(code, source, AS_THE_COMPILE_READS, lender);
-        assertSame(read, lender.seeded(code.key(), AS_THE_COMPILE_READS),
+        assertSame(read, lender.seeded(code.key(), source, AS_THE_COMPILE_READS),
                 "what was read of this world is lent while it is this world");
 
         world[0]++;
-        assertNull(lender.seeded(code.key(), AS_THE_COMPILE_READS),
+        assertNull(lender.seeded(code.key(), source, AS_THE_COMPILE_READS),
                 "and is not lent into the next, which it is not a reading of");
     }
 }

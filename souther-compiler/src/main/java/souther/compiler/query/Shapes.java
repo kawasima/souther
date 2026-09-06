@@ -594,7 +594,7 @@ public final class Shapes {
      * that could answer that module's way, which is the arrangement this replaces.
      */
     public static ExpandedClauseLookup expandedClauses(Db db) {
-        return named -> db.ask(new ClausesExpandedFor(named)).value();
+        return db.expandedClauses();
     }
 
     /**
