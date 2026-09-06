@@ -42,7 +42,10 @@ class OnlyAFoldOverAWholeClauseTreeIsOneTest {
      * leaving them owed. {@code Predicates.Owing} says what a clause owes and {@code
      * Predicates.Quantifiers} says which quantifiers it states: two answers about one clause, each
      * reading it to the depth its own answer composes to, and both meeting the connectives the
-     * shape already recognised rather than either recognising them again.
+     * shape already recognised rather than either recognising them again. {@code
+     * Predicates.Assuming} says what taking a condition in makes known, which is the third answer
+     * over that same shape; it composes a conjunction by taking its right half under what the left
+     * half left, so what it reads a clause into is a state and not a value.
      *
      * <p>A row for a reading of one language — the values, the ranges, or whatever is written next
      * — is the edge this exists to refuse. Those interpret leaves, and the fold that composes them
@@ -51,6 +54,7 @@ class OnlyAFoldOverAWholeClauseTreeIsOneTest {
     private static final Set<String> FOLDS = Set.of(
             "souther.compiler.check.Conditions$Stating",
             "souther.compiler.check.ExpansionCost",
+            "souther.compiler.check.Predicates$Assuming",
             "souther.compiler.check.Predicates$Owing",
             "souther.compiler.check.Predicates$Quantifiers",
             "souther.compiler.check.StatedByClauses$Reading");

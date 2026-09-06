@@ -51,8 +51,8 @@ class AClauseUnderABindingIsReadInsideItTest {
         private final List<AtALeaf> leaves = new ArrayList<>();
 
         @Override
-        public List<AtALeaf> whole(Core e, boolean positive, String at) {
-            leaves.add(new AtALeaf(e, positive, at));
+        public List<AtALeaf> whole(ClauseExpr.Part part, String at) {
+            leaves.add(new AtALeaf(part.of(), part.positive(), at));
             return List.of(leaves.get(leaves.size() - 1));
         }
 
@@ -114,6 +114,22 @@ class AClauseUnderABindingIsReadInsideItTest {
         assertEquals(List.of(), reading(clause).stream()
                         .filter(one -> one.part() instanceof Core.LetIn).toList(),
                 "what a binder means is the environment's answer and no evaluator's");
+    }
+
+    /**
+     * And there is nowhere for one to be handed.
+     *
+     * <p>The same thing said of the types rather than of a walk. What a reading is given is a part,
+     * and the parts are the leaf and the connective it takes whole; a binding is a shape of its own
+     * and goes to {@link ClauseScope}. So a second account of what a binder means is not something
+     * anybody has to be stopped from writing — it does not compile.
+     */
+    @Test
+    void aBindingIsNotAPartAReadingCanBeHanded() {
+        assertEquals(List.of(List.of(ClauseExpr.Leaf.class, ClauseExpr.Joined.class), false),
+                List.of(List.of(ClauseExpr.Part.class.getPermittedSubclasses()),
+                        ClauseExpr.Part.class.isAssignableFrom(ClauseExpr.Scoped.class)),
+                "what a reading may be handed, and whether a binding is among it");
     }
 
     @Test
