@@ -12,6 +12,7 @@ import souther.compiler.types.TypeSymbols;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -75,16 +76,53 @@ class ACounterfactualIsReadOncePerSetOfRulesLeftOutTest {
                 "and the same clauses left out is the same reading, made once");
     }
 
+    /**
+     * A number with an end either way, and a conjunct about it that places neither.
+     *
+     * <p>{@code hole} places no end, so what the conjuncts about {@code n} were holding is asked by
+     * leaving conjuncts out rather than read off the ends they placed. Both ends are asked, and
+     * they ask it of the same conjuncts: the reading without all three, and the reading without
+     * each one of them.
+     */
+    private static final String BOTH_ENDS = """
+            module demo exposing ( Bounded, keep )
+
+            data Bounded = { n: Int }
+                invariant floor = n >= 0
+                invariant hole = n /= 0
+                invariant ceiling = n <= 100
+
+            behavior keep : (b: Bounded) -> Bounded
+
+            let keep (b) = b
+            """;
+
+    @Test
+    void theSecondEndOfANumberLeavesTheSameConjunctsOutAsTheFirst() {
+        FieldDomains reading = reading(BOTH_ENDS, "Bounded");
+
+        long before = InvariantChecker.readingsMade();
+        assertFalse(reading.movedEnds().isEmpty(),
+                "the conjuncts about `n` are attributed by leaving them out");
+        assertEquals(4, InvariantChecker.readingsMade() - before,
+                "four sets are left out over the two ends — all three conjuncts, and each of them"
+                        + " alone — and the second end asks for the ones the first already made");
+    }
+
     /** The floor of a coordinate is held by whoever the reading says, asked with that floor. */
     private static List<TypeSymbol.AtModule> holding(NarrowedBounds narrowed) {
         return AReadingOfAPosition.holding(narrowed, EndSide.LOWER);
     }
 
     private static FieldDomains reading() {
-        Compilation compilation = Compilation.ofSource(SOURCE, "Main");
+        return reading(SOURCE, "Held");
+    }
+
+    private static FieldDomains reading(String source, String declaration) {
+        Compilation compilation = Compilation.ofSource(source, "Main");
         compilation.answerEverything();
-        TypeSymbol.AtModule held = TypeSymbols.declared(new TypeKey("demo", "Held"));
-        return FieldDomains.of(held,
+        TypeSymbol.AtModule of = TypeSymbols.declared(new TypeKey("demo", declaration));
+        return FieldDomains.of(of,
                 RuleReadings.of(compilation, compilation.modules().get(0)),
                 ReadAs.THE_COMPILATION_DOES);
     }
