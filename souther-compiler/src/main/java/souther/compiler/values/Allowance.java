@@ -79,7 +79,10 @@ public final class Allowance<A> {
 
     /** A fresh allowance for every position of one answer. */
     public static <A> Allowance<A> of(PatternPlan.Budget budget) {
-        return of(budget, Known.nothing());
+        if (budget == null) {
+            throw new IllegalArgumentException("an allowance allows something");
+        }
+        return new Allowance<>(budget, Known.nothing());
     }
 
     /**
