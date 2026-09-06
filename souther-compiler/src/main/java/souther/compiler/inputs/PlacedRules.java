@@ -108,8 +108,16 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
                 machines);
     }
 
-    /** The answers about the string machines of the declaration {@code read} names, or none
-     *  where it names no declaration of a module. */
+    /**
+     * The answers about the string machines of the declaration {@code read} names, or none where it
+     * names no declaration of a module.
+     *
+     * <p>What is lent to an allowance and to the questions {@link #answers()} serves, and not a
+     * reading's own answers — a reading makes those where it is made, and this is asked again each
+     * time because one of them is not a value and this is inside an answer. So the empty case is
+     * {@link StringMachineAnswers#NONE} and not a reading's: there is nothing here for anything to
+     * keep what it builds for.
+     */
     private static StringMachineAnswers answersFor(TypeSymbol read, DeclarationReadings machines) {
         return read instanceof TypeSymbol.AtModule at
                 ? machines.of(at.key()) : StringMachineAnswers.NONE;

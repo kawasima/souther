@@ -1,7 +1,6 @@
 package souther.compiler.check;
 
 import souther.compiler.types.TypeKey;
-import souther.compiler.values.StringFacts;
 import souther.compiler.values.StringMachineAnswers;
 
 import java.util.function.Supplier;
@@ -78,7 +77,8 @@ public interface DeclarationReadings {
      * declaration's own machines are {@code recorder}, so that what the reading builds is what the
      * answer comes to hold; every other declaration's are worked out by the reading itself, since
      * asking for another declaration's answer from inside this one is how two declarations that
-     * reach each other come to wait on each other.
+     * reach each other come to wait on each other. Worked out and kept: a reading of one of those
+     * is a reading like any other, and what it comes to is what its own counterfactual is handed.
      *
      * <p>And what it makes is kept, because the reading that answer is made by is the declaration's
      * canonical reading: the question that asked for the answer is the next to want it, and is
@@ -90,7 +90,7 @@ public interface DeclarationReadings {
 
             @Override
             public StringMachineAnswers of(TypeKey declaration) {
-                return declaration.equals(named) ? recorder : StringMachineAnswers.NONE;
+                return declaration.equals(named) ? recorder : StringMachineAnswers.unborrowed();
             }
 
             @Override
@@ -118,5 +118,5 @@ public interface DeclarationReadings {
      * counterfactual is handed. Handing out one shared object would make every such reading write
      * into the same maps.
      */
-    DeclarationReadings NONE = _ -> StringMachineAnswers.borrowing(StringFacts.NONE);
+    DeclarationReadings NONE = _ -> StringMachineAnswers.unborrowed();
 }

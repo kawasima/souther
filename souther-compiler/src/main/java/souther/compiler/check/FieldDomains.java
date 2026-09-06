@@ -764,8 +764,9 @@ public final class FieldDomains {
      * came to them, and nothing else.
      *
      * <p>This declaration's, because they are what is here. Another declaration's are a store's
-     * answer about it, and asking for one takes a store — which a reading standing inside a
-     * comparison has no way to reach, and which is not what this holds.
+     * answer about it, and asking for one takes a store, which a reading standing inside a
+     * comparison has no way to reach — so a reading of one of those borrows nothing and keeps what
+     * it builds, which is what {@link StringMachineAnswers#unborrowed()} is.
      *
      * <p>Nothing of the reading itself is lent. What a counterfactual is depends on what it leaves
      * out, so no counterfactual is the declaration's canonical reading and none is kept as one —
@@ -774,7 +775,7 @@ public final class FieldDomains {
      */
     private DeclarationReadings borrowingMachines() {
         return declaration -> declaration.equals(named.key())
-                ? StringMachineAnswers.borrowing(stringMachines) : StringMachineAnswers.NONE;
+                ? StringMachineAnswers.borrowing(stringMachines) : StringMachineAnswers.unborrowed();
     }
 
     /**

@@ -267,7 +267,7 @@ public final class InvariantChecker {
      * reading's to keep: it is asked of these, which answer from what the store keeps for the
      * declaration and work out the rest.
      */
-    private StringMachineAnswers answers = StringMachineAnswers.NONE;
+    private StringMachineAnswers answers = StringMachineAnswers.unborrowed();
     private final List<CompileException> errors = new ArrayList<>();
     private final List<Diagnostic> warnings = new ArrayList<>();
 

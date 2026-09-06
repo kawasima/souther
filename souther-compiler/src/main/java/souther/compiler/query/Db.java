@@ -189,11 +189,12 @@ public final class Db implements StoreWork {
 
 
     /** What this store answers about {@code declaration}'s string machines, for a reading to
-     *  borrow — nothing, where it has no answer for the declaration at all. */
+     *  borrow — nothing to borrow, where it has no answer for the declaration at all. Either way
+     *  the reading keeps what it builds: that is what its own counterfactual is handed. */
     private StringMachineAnswers machinesOf(TypeKey declaration) {
         Answer<StringFacts> facts = ask(new Machines.OfDeclaration(declaration));
         return facts.present()
-                ? StringMachineAnswers.borrowing(facts.value()) : StringMachineAnswers.NONE;
+                ? StringMachineAnswers.borrowing(facts.value()) : StringMachineAnswers.unborrowed();
     }
 
     private final Map<Key<?>, Memo> memos = new HashMap<>();

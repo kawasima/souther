@@ -54,7 +54,7 @@ public final class Machines {
             if (!source.present() || !policy.present()) {
                 return Answer.absent();
             }
-            StringMachineAnswers recorder = StringMachineAnswers.borrowing(StringFacts.NONE);
+            StringMachineAnswers recorder = StringMachineAnswers.unborrowed();
             FieldDomains domains = FieldDomains.of(TypeSymbols.declared(named), source.value(),
                     policy.value(),
                     db.readings().whileTheAnswerIsMade(named, recorder));

@@ -124,6 +124,35 @@ class ACounterfactualBorrowsTheMachinesTheReadingMadeTest {
     }
 
     /**
+     * The same, for a declaration read from inside another declaration's answer.
+     *
+     * <p>The machines a declaration's answer is made of are built by that declaration's own
+     * reading, its fields' declarations included, because asking the store for one of those from
+     * inside would be two declarations waiting on each other. A reading of one of those is a
+     * reading all the same: it borrows nothing, and what it builds is what its own counterfactual
+     * is handed. Handed answers that keep nothing, it comes to nothing — and it is handed on inside
+     * the revision, so what asks for that declaration next gets the reading that came to nothing.
+     */
+    @Test
+    void aDeclarationReadFromInsideAnothersAnswerKeepsWhatItBuilt() {
+        Compilation compilation = Compilation.ofSource(SOURCE, "Main");
+        TypeKey inner = new TypeKey("demo", "Common");
+        compilation.db().ask(new Machines.OfDeclaration(new TypeKey("demo", "Held")));
+
+        FieldDomains reading = FieldDomains.of(TypeSymbols.declared(inner),
+                RuleReadings.of(compilation, compilation.modules().get(0)),
+                ReadAs.THE_COMPILATION_DOES,
+                compilation.db().readings());
+
+        long before = StringMachineAnswers.machinesMade();
+        assertFalse(AReadingOfAPosition.holding(reading.at(RuleKey.of("hi")), EndSide.LOWER)
+                        .isEmpty(),
+                "the floor under `hi` is attributed, so a counterfactual was taken");
+        assertEquals(before, StringMachineAnswers.machinesMade(),
+                "and the reading it comes from kept what it built, wherever it was read");
+    }
+
+    /**
      * The same reading, asked for what it holds rather than for who holds it.
      *
      * <p>A negative control on the count above: machines are made when this declaration is read at

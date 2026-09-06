@@ -34,8 +34,14 @@ public final class StringMachineAnswers {
      * Answering from nothing and keeping nothing: every machine worked out on the spot.
      *
      * <p>For a question asked outside a reading — whether a state is bottom, whether a set meets a
-     * range — where there is nothing to borrow from and nothing that will be read again. Shared,
-     * which is why this one keeps nothing: a reading's answers are its own.
+     * range — where there is nothing to borrow from and nothing that will be asked again. Shared,
+     * which is why this one keeps nothing.
+     *
+     * <p><b>Never handed to a reading.</b> A reading's answers are its own and keep what they make,
+     * because what a reading came to is what its counterfactual is handed; handed this one, a
+     * reading would come to nothing and the counterfactual would build all of it again. A reading
+     * with nothing to borrow is {@link #unborrowed()}, which is a different thing from this and
+     * reads like it.
      */
     public static final StringMachineAnswers NONE = new StringMachineAnswers(StringFacts.NONE, false);
 
@@ -55,15 +61,26 @@ public final class StringMachineAnswers {
     /**
      * A reading's own answers, made from {@code facts} and keeping what it works out beside them.
      *
-     * <p>{@link StringFacts#NONE} for a reading with nothing to borrow, which is a reading that
-     * builds all of them and holds all of them — the canonical reading of a declaration, whose
-     * machines become the facts the store keeps, is one of those.
+     * <p>{@link #unborrowed()} where there is nothing to borrow, which is the same thing over no
+     * facts at all.
      */
     public static StringMachineAnswers borrowing(StringFacts facts) {
         if (facts == null) {
             throw new IllegalArgumentException("a reading borrows from some facts, or from none");
         }
         return new StringMachineAnswers(facts, true);
+    }
+
+    /**
+     * A reading's own answers with nothing to borrow: it builds every machine it meets and holds
+     * every one it built.
+     *
+     * <p>Which is what a reading with no lender is, and what a reading of a declaration the lender
+     * has nothing for is. Not {@link #NONE}: having nothing to borrow and keeping nothing are two
+     * things, and they parted when what a reading came to became what its counterfactual is handed.
+     */
+    public static StringMachineAnswers unborrowed() {
+        return new StringMachineAnswers(StringFacts.NONE, true);
     }
 
     /** What {@code plan} admits where somebody has made it, or null; asking makes nothing and
