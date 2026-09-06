@@ -30,6 +30,7 @@ import java.util.TreeSet;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -127,6 +128,25 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
     record TwoWaysThroughAnArray(souther.compiler.check.RuleRef[] rules,
                                  souther.compiler.check.RuleCitation cited) { }
 
+    /** A state keeping rules and no handle, which is a table of them and not a state about one. */
+    record HoldsManyRules(souther.compiler.check.RuleRef[] rules) { }
+
+    /** A state that passes what it is given on, wrapped, to the one above it. */
+    static class Passes<U> extends Holds<Optional<U>> { }
+
+    /**
+     * And the pair where the rule reaches the field through a variable inside another type.
+     *
+     * <p>What a class below gives a parameter is a type and not always a name: {@code Passes} hands
+     * {@code Holds} an {@code Optional<U>}, and {@code U} is answered a step further down. Read as a
+     * name to look up, the argument is kept whole and the answer under it is left in a frame that
+     * has none.
+     */
+    static class TwoWaysThroughAWrappedVariable
+            extends Passes<souther.compiler.check.RuleRef> {
+        souther.compiler.check.RuleCitation cited;
+    }
+
     @Test
     void nothingThisRepositoryPublishesHoldsARuleAndAHandleBesideIt() {
         Carried carried = Carried.ofWhatThisRepositoryPublishes();
@@ -162,11 +182,18 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
                         + " among them");
         assertEquals(2, carried.waysToARuleFrom(fixture("TwoWaysThroughAParameterizedSuperclass")),
                 "and a variable is answered by what the subclass gave the frame it is written in");
+        assertEquals(2, carried.waysToARuleFrom(fixture("TwoWaysThroughAWrappedVariable")),
+                "wherever in what was given the variable stands");
         assertEquals(1, carried.waysToARuleFrom(fixture("OneWayToOneRule")),
                 "and a handle alone is one, since the rule it carries is not a second way");
         assertEquals(1, carried.waysToARuleFrom(fixture("HoldsARule")),
                 "and the half that holds only the rule is one way, so the pair above is the"
                         + " hierarchy's and not either half's");
+        assertFalse(carried.isAboutOneRule(fixture("HoldsManyRules")),
+                "an array of rules is many of them, as a collection of them is, so a state whose"
+                        + " only rules are in one is not a state about one rule");
+        assertTrue(carried.isAboutOneRule(fixture("HoldsARule")),
+                "and one that keeps a rule is, which is what the array is being told from");
     }
 
     /**
@@ -346,7 +373,7 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
          */
         private List<Carries> carriedBy(ClassModel model) {
             List<Carries> out = new ArrayList<>();
-            Map<String, Signature> given = Map.of();
+            Map<String, Given> given = Map.of();
             for (ClassModel each = model; each != null; ) {
                 Optional<RecordAttribute> record = each.findAttribute(Attributes.record());
                 if (record.isPresent()) {
@@ -383,8 +410,8 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
          * read {@code T} against a declaration that bounds it by nothing and lose the rule handed
          * to it.
          */
-        private static Map<String, Signature> givenTo(ClassModel above, ClassModel below,
-                                                      Map<String, Signature> givenToBelow) {
+        private static Map<String, Given> givenTo(ClassModel above, ClassModel below,
+                                                  Map<String, Given> givenToBelow) {
             List<Signature.TypeParam> parameters = WhatASignatureReaches.typeParametersOf(above);
             Signature.ClassTypeSig extended = below.findAttribute(Attributes.signature())
                     .map(SignatureAttribute::asClassSignature)
@@ -393,23 +420,30 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
             if (parameters.isEmpty() || extended == null) {
                 return Map.of();
             }
-            Map<String, Signature> out = new LinkedHashMap<>();
+            Map<String, Given> out = new LinkedHashMap<>();
             List<Signature.TypeArg> arguments = extended.typeArgs();
             for (int i = 0; i < parameters.size() && i < arguments.size(); i++) {
                 if (arguments.get(i) instanceof Signature.TypeArg.Bounded bounded) {
-                    Signature argument = bounded.boundType();
-                    // Resolved as far as the frame below already knows: a subclass may pass on a
-                    // variable of its own, and what that one is was settled a step further down.
-                    if (argument instanceof Signature.TypeVarSig passed) {
-                        argument = givenToBelow.get(passed.identifier());
-                    }
-                    if (argument != null) {
-                        out.put(parameters.get(i).identifier(), argument);
-                    }
+                    // Kept with the frame it was written in rather than rewritten into the frame
+                    // above. An argument is a type and not a name — {@code extends Holds<Optional<U>>}
+                    // hands one over with a variable inside it — so what makes it answerable is
+                    // reading it where it was written, at whatever depth its variables stand.
+                    out.put(parameters.get(i).identifier(),
+                            new Given(bounded.boundType(), below, givenToBelow));
                 }
             }
             return out;
         }
+
+        /**
+         * A type a class below handed to a parameter above, and the frame to read it in.
+         *
+         * <p>The frame is the whole of why this is not a signature on its own. What was handed over
+         * may name variables of the class that handed it, and those are answered a step further
+         * down — so an argument read in the frame above is a name with nothing to say, and one
+         * rewritten into that frame would have to be rebuilt shape by shape.
+         */
+        private record Given(Signature type, ClassModel frame, Map<String, Given> env) { }
 
         /** The class above this one, where this repository built it. A class whose parent it did
          *  not build carries nothing this walk can read, which is where the walk stops. */
@@ -428,7 +462,7 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
          * because a bound says what may be handed in and an argument says what was.
          */
         private record Carries(Signature type, ClassModel declaredBy,
-                               Map<String, Signature> given) { }
+                               Map<String, Given> given) { }
 
         /** How much of what a state carries a walk is allowed through. */
         private enum Through {
@@ -532,27 +566,33 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
          * looked up in, which is whoever wrote the field.
          */
         private static Set<String> namesIn(Signature type, Through through, ClassModel declaredBy,
-                                           Map<String, Signature> given) {
+                                           Map<String, Given> given) {
             Set<String> out = new LinkedHashSet<>();
             collect(type, through, declaredBy, given, out);
             return out;
         }
 
         private static void collect(Signature type, Through through, ClassModel declaredBy,
-                                    Map<String, Signature> given, Set<String> into) {
+                                    Map<String, Given> given, Set<String> into) {
             switch (type) {
                 case Signature.BaseTypeSig _ -> { }
-                case Signature.ArrayTypeSig array ->
+                // Many of what is inside it, as a collection is. A state keeping an array of rules
+                // keeps rules and not a rule, so the walk that tells one from many stops here for
+                // the reason it stops at a collection.
+                case Signature.ArrayTypeSig array -> {
+                    if (through == Through.ANYTHING) {
                         collect(array.componentSignature(), through, declaredBy, given, into);
+                    }
+                }
                 // What was handed in first, and the bound its declaration gives it after. A bound
                 // says what may be handed to a variable and an argument says what was, and both
                 // answer the question this asks: whether the state can hold a rule of its own.
                 // Which of the two is present depends on where the field was written, so both are
                 // read and neither stands in for the other.
                 case Signature.TypeVarSig variable -> {
-                    Signature handedIn = given.get(variable.identifier());
+                    Given handedIn = given.get(variable.identifier());
                     if (handedIn != null) {
-                        collect(handedIn, through, declaredBy, given, into);
+                        collect(handedIn.type(), through, handedIn.frame(), handedIn.env(), into);
                     }
                     for (Signature.TypeParam declared
                             : WhatASignatureReaches.typeParametersOf(declaredBy)) {
