@@ -15,8 +15,9 @@ import java.util.function.Function;
  * <p>A question with two answers and no third. Whether an assignment exists is a fact about the
  * blocks and the values, so a reading that ran out of what it allowed itself to do would be
  * answering about its own budget — and which way it went would turn on where the walk started,
- * which is a fact about how the rules were written. So how much work this is, is decided before it
- * begins ({@link #assignments}), and inside that it is walked to the end.
+ * which is a fact about how the rules were written. So how much work this is, is decided before
+ * there is a question to ask it of ({@link #isWorthLookingThrough}), and inside that it is walked to
+ * the end.
  *
  * <p><b>Every block's values are written down.</b> A block whose values nobody counted, or whose
  * values are more than a caller was counting, is not one of these — which of those it was, and what
