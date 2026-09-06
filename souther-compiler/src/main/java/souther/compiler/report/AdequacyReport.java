@@ -1685,8 +1685,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case UNRESOLVED_CASE_PAIRING -> "it reaches case-specific positions on both sides, and "
                     + "how those positions pair up is not worked out";
             case COMPETING_COORDINATES ->
-                    "a rule beside it is about the position's other coordinate, so neither can be"
-                            + " chosen";
+                    "the rules of this position are about more than one of its numbers, so it is"
+                            + " measured at none of them and this end has nowhere to go";
+            case RULE_ABOUT_ANOTHER_COORDINATE ->
+                    "it says where another of this position's numbers stops, and the position is"
+                            + " measured at the one its own rules are about";
             case UNSUPPORTED_PARTITION_SHAPE ->
                     "it relates two positions rather than dividing one";
             case RULE_ABOUT_A_RUN ->

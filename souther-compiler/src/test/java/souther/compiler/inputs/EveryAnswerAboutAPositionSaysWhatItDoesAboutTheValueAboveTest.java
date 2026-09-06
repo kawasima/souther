@@ -110,6 +110,16 @@ class EveryAnswerAboutAPositionSaysWhatItDoesAboutTheValueAboveTest {
                         + "the ends this value's own conjuncts state on its own coordinates, which "
                         + "is where a rule stating no comparison puts one",
                 "ARunOfTheStringsIsABoundAndIsOwedItsEdgeTest"));
+        table.put("ownEndsAt", new Decided(Above.NOT_ASKED,
+                "the two above, asked about one position rather than about the reading, and so the "
+                        + "same answer for the same reason: an end of the value above is placed "
+                        + "under that value and accounted for there. What this adds to them is "
+                        + "which position their ends are of — they are the ends of the value this "
+                        + "reading is opened at, and at any other position they are ends of "
+                        + "another value. Answered here because this reading is what knows which "
+                        + "value that is; answered by the caller, the root's ends were held "
+                        + "against the numbers of whatever it was reading",
+                "ATypeWritingAboutBothOfItsNumbersChoosesNeitherTest"));
         table.put("bounds", new Decided(Above.NOT_ASKED,
                 "what a reading holds of its own value, which is what the answers above are taken "
                         + "from — the value above is asked through them and not through this",

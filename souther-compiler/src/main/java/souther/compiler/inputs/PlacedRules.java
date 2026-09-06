@@ -505,6 +505,26 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
     }
 
     /**
+     * The same, and the moved ones beside them, for a reader asking about one position.
+     *
+     * <p><b>Whose ends these are is this reading's answer and not the asker's.</b> They are the
+     * ends of the value the reading is opened at, so at any other position they are ends of another
+     * value — and a reader that took them anyway would be holding the root's ends against the
+     * numbers of whatever it happened to be reading. That was a silent nothing while the only thing
+     * done with them was to keep the ones on the position's own number, and stops being one the
+     * moment somebody asks what became of each of them.
+     */
+    List<FieldDomains.Placed> ownEndsAt(TermPath path) {
+        RuleKey where = keyOf(path);
+        if (where == null || !where.isTheValueItself()) {
+            return List.of();
+        }
+        List<FieldDomains.Placed> out = new ArrayList<>(statedAtTheValue());
+        out.addAll(movedAtTheValue());
+        return List.copyOf(out);
+    }
+
+    /**
      * The rules saying where the coordinate at {@code path} stops that no end came out of.
      *
      * <p>At every path the value has, its own included — unlike {@link #placedAt}, whose empty

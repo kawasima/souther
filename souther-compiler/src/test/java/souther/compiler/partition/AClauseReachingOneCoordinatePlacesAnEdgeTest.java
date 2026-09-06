@@ -452,9 +452,25 @@ class AClauseReachingOneCoordinatePlacesAnEdgeTest {
 
         assertTrue(report.contains("no row is at the ON point value = m (invariant Name #1)"),
                 report);
-        assertFalse(report.contains("String.length(v.name"),
-                "the record's clause states an end on a coordinate this position is not measured at:\n"
-                        + report);
+    }
+
+    /**
+     * And the rule it states that end with is named, rather than going out in silence.
+     *
+     * <p>The author wrote a clause about this position and this reading draws no line from it. Told
+     * nothing, they are looking at a report of a model that bounds the length of a name and at a
+     * position with no sign of it — so what a report says is which number the rule is about, beside
+     * the number the position turned out to be measured at.
+     *
+     * <p>Not the word two competing rules get. Nothing here is undecided: `Name`'s own clause chose
+     * the coordinate, the line at `m` is drawn, and a reader sent looking for the clause competing
+     * with this one would find the choice already made.
+     */
+    @Test
+    void aRuleAtTheOtherCoordinateIsNamedRatherThanDropped() {
+        assertEquals(List.of("String.length(v.name): RULE_ABOUT_ANOTHER_COORDINATE"),
+                notReadIn(TWO_WAYS, "onPerson"),
+                "the record's clause is named at the number it is about");
     }
 
     /**

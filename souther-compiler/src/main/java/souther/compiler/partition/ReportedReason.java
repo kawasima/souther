@@ -178,6 +178,14 @@ public final class ReportedReason {
                     UndividedPosition.Reason.UNSUPPORTED_DOMAIN;
             case BlockReason.CompetingCoordinates _ ->
                     UndividedPosition.Reason.COMPETING_COORDINATES;
+            // Its own word beside the one above, and the two are the opposite halves of one
+            // question. That one is a position no number could be chosen for; this one is a
+            // position measured at a number, holding a rule about a different one. A reader of the
+            // first is looking at a position whose rules leave more than one number in play, and a
+            // reader of this one has nothing to look for — their rule states what it states, at a
+            // number this position is not divided along.
+            case BlockReason.RuleAboutAnotherCoordinate _ ->
+                    UndividedPosition.Reason.RULE_ABOUT_ANOTHER_COORDINATE;
             // Its own word, and not the shape one below. Both sides of this line are read and
             // ordered and a line is drawn on them; what is missing is which positions the line runs
             // between, which is a question about the model and not about the form it was written in.
