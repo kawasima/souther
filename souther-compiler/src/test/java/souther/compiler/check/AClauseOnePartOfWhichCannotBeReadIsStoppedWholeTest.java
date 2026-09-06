@@ -12,6 +12,7 @@ import souther.compiler.types.TypeSymbols;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 /**
  * A clause one part of which this reading cannot read leaves nothing, including for the parts it
@@ -95,6 +96,39 @@ class AClauseOnePartOfWhichCannotBeReadIsStoppedWholeTest {
                 String.valueOf(read(STANDING, "value >= 1 && step(value) >= 0")
                         .admits(RuleKey.THE_VALUE)),
                 "and where a clause one part of which could not be read stopped");
+    }
+
+    /**
+     * And the stop is recorded once for the clause, however many parts it was written in.
+     *
+     * <p>Preparing the parts and answering for the clause are two things, and only the second is
+     * what a reader sees. A clause read a part at a time and recorded a part at a time would say
+     * this reading met its limit twice where an author wrote one rule it could not read.
+     *
+     * <p>Held as the two counts being one number rather than as the number. How many times a
+     * declaration is read at all is the compilation's business and is not what this is about; that
+     * a clause of two parts stops as often as a clause of one is.
+     */
+    @Test
+    void theStopIsRecordedAsOftenForAClauseOfTwoPartsAsForOne() {
+        int one = stopsIn(() -> read(STANDING, "step(value) >= 0"));
+        int two = stopsIn(() -> read(STANDING, "value >= 1 && step(value) >= 0"));
+
+        assertNotEquals(0, one, "no limit was recorded at all, so nothing here is being compared");
+        assertEquals(one, two,
+                "how many limits were recorded, for a clause of one part and for one of two");
+    }
+
+    /** How many limits the reading of {@code domains} met, as the check records them. */
+    private static int stopsIn(java.util.function.Supplier<FieldDomains> domains) {
+        List<InvariantChecker.GaveUp> met = new java.util.ArrayList<>();
+        InvariantChecker.GAVE_UP = met;
+        try {
+            domains.get();
+        } finally {
+            InvariantChecker.GAVE_UP = null;
+        }
+        return met.size();
     }
 
     /** And what the clause is recorded as having raised and answered. */
