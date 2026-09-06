@@ -14,11 +14,12 @@
     <name>Souther Architecture Tests</name>
 
     <description>
-        Holds the checks whose population is the compiled output of the whole reactor, and nothing
-        else. A check that reads compiled classes sees what has been built when it runs, so where it
-        lives is what it measures: one living in the module it is about reads that module and passes
-        over every module built after it, saying nothing about them while looking as though it did.
-        A check that a module can answer on its own belongs in that module.
+        Holds the checks whose population is the whole reactor, and nothing else — its compiled
+        output, or its sources where the fact a check is about is written in them rather than kept
+        in a class file. A check that reads compiled classes sees what has been built when it runs,
+        so where it lives is what it measures: one living in the module it is about reads that
+        module and passes over every module built after it, saying nothing about them while looking
+        as though it did. A check that a module can answer on its own belongs in that module.
 
         The reactor had no such place. This is one: it depends on every other module and nothing
         depends on it, so Maven builds it last and every module's classes are there when its tests

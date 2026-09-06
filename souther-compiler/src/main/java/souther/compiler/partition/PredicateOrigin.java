@@ -29,7 +29,7 @@ import souther.compiler.check.RuleRef;
  */
 public record PredicateOrigin(RuleRef.Predicate rule, PredicateOccurrence occurrence,
                               RuleCitation.WrittenAt written)
-        implements PartitionEvidenceOrigin {
+        implements RuleEvidenceOrigin {
 
     public PredicateOrigin {
         if (rule == null || occurrence == null || written == null) {

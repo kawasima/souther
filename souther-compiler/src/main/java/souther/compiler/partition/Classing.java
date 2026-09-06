@@ -85,12 +85,12 @@ final class Classing {
      * classes are written in the day a set rule was written beside it, and the classes it already
      * had would be rewritten under a rule that says nothing about them.
      */
-    static Vocabulary vocabularyOf(List<PartitionEvidence> mine, Carrier carrier) {
+    static Vocabulary vocabularyOf(List<RuleEvidence> mine, Carrier carrier) {
         boolean sets = true;
         boolean lines = true;
-        for (PartitionEvidence each : mine) {
+        for (RuleEvidence each : mine) {
             sets &= asASet(each, carrier) != null;
-            lines &= !(each instanceof PartitionEvidence.BySet);
+            lines &= !(each instanceof RuleEvidence.BySet);
         }
         if (lines) {
             return Vocabulary.ON_AN_ORDER;
@@ -107,11 +107,11 @@ final class Classing {
      * has no such writing, and neither has a value singled out of anything but a string — a run of
      * values is not a set this compiler holds, and saying so is what keeps the two apart.
      */
-    private static AsASet asASet(PartitionEvidence evidence, Carrier carrier) {
+    private static AsASet asASet(RuleEvidence evidence, Carrier carrier) {
         return switch (evidence) {
-            case PartitionEvidence.BySet(SetStatement it) ->
+            case RuleEvidence.BySet(SetStatement it) ->
                     new AsASet(it.whenTrue(), it.whenFalse(), it.statement());
-            case PartitionEvidence.Singles(GuardThresholds.Guards.Singled it) -> {
+            case RuleEvidence.Singles(GuardThresholds.Guards.Singled it) -> {
                 if (!(carrier instanceof Carrier.Text) || !(it.value() instanceof Text text)) {
                     yield null;
                 }
@@ -120,7 +120,7 @@ final class Classing {
                         new ValueSet.Cofinite(Set.of(one)),
                         new PredicateStatement.Equalling(text.at()));
             }
-            case PartitionEvidence.Divides _ -> null;
+            case RuleEvidence.Divides _ -> null;
         };
     }
 
@@ -155,16 +155,16 @@ final class Classing {
         }
 
         /** The rules the classes were made out of. */
-        List<PartitionEvidence> dividing() {
+        List<RuleEvidence> dividing() {
             return of(Outcome.DIVIDED);
         }
 
         /** And the rules the classes were not composed out of, because there are none. */
-        List<PartitionEvidence> notComposed() {
+        List<RuleEvidence> notComposed() {
             return of(Outcome.NOT_COMPOSED);
         }
 
-        private List<PartitionEvidence> of(Outcome outcome) {
+        private List<RuleEvidence> of(Outcome outcome) {
             return forEach.stream().filter(each -> each.outcome() == outcome)
                     .map(Disposed::what).toList();
         }
@@ -204,7 +204,7 @@ final class Classing {
     }
 
     /** One rule of a position and what became of it. */
-    record Disposed(PartitionEvidence what, Outcome outcome,
+    record Disposed(RuleEvidence what, Outcome outcome,
                     BlockReason.RuleWithoutLineReason why) {
 
         Disposed {
@@ -263,7 +263,7 @@ final class Classing {
      * @param writing what a row would carry for a value of this position, or null where nothing
      *                here composes one
      */
-    static Result of(NumericTerm.FromOnePosition term, List<PartitionEvidence> mine,
+    static Result of(NumericTerm.FromOnePosition term, List<RuleEvidence> mine,
                      List<ClassingBlocker> blocked, Carrier carrier, ValueSet admits,
                      Allowance<NumericTerm.FromOnePosition> allowance,
                      Function<Place, FixtureTemplate> writing) {
@@ -273,9 +273,9 @@ final class Classing {
         // one that states none must not be in the population that chooses a vocabulary or composes
         // a class. Left in, a rule that divides nothing would put the position's classes in one
         // algebra or the other, and would stand in every label the classes carry.
-        List<PartitionEvidence> active = new ArrayList<>();
+        List<RuleEvidence> active = new ArrayList<>();
         List<Disposed> told = new ArrayList<>();
-        for (PartitionEvidence each : mine) {
+        for (RuleEvidence each : mine) {
             // Only a rule read as a set of the strings is asked. A line and a value singled out are
             // settled where they were read — the reader that makes one has already held it to what
             // the position may take — and what a rule of the strings names is every string there
@@ -284,7 +284,7 @@ final class Classing {
             // Asked of all of them, a value singled out of a string would buy machines out of the
             // allowance for what a behavior tells apart, and a model that only writes equalities
             // could lose its classes to a limit meant for something else.
-            if (!(each instanceof PartitionEvidence.BySet set)) {
+            if (!(each instanceof RuleEvidence.BySet set)) {
                 active.add(each);
                 continue;   // filled in below, once it is known whether the classes took it up
             }
@@ -346,10 +346,10 @@ final class Classing {
      * are said to be that rather than left out. Left out, a reader cannot tell a rule this decided
      * nothing about from one it forgot — and the account that follows is the reader.
      */
-    private static List<Disposed> filled(List<PartitionEvidence> mine, List<Disposed> told,
+    private static List<Disposed> filled(List<RuleEvidence> mine, List<Disposed> told,
                                          Outcome otherwise) {
         List<Disposed> out = new ArrayList<>();
-        for (PartitionEvidence each : mine) {
+        for (RuleEvidence each : mine) {
             Disposed already = told.stream().filter(one -> one.what().equals(each))
                     .findFirst().orElse(null);
             out.add(already != null ? already : new Disposed(each, otherwise, null));
@@ -368,17 +368,17 @@ final class Classing {
      * <p>Written here so that the places that say "no classes" say it the same way: one of them
      * keeping its own list is one of them able to leave a rule out.
      */
-    private static Result notComposed(List<PartitionEvidence> mine, List<Disposed> told,
+    private static Result notComposed(List<RuleEvidence> mine, List<Disposed> told,
                                       BlockReason.RuleWithoutLineReason why) {
         List<Disposed> out = new ArrayList<>();
-        for (PartitionEvidence each : mine) {
+        for (RuleEvidence each : mine) {
             Disposed already = told.stream().filter(one -> one.what().equals(each))
                     .findFirst().orElse(null);
             if (already != null && already.outcome() == Outcome.TOLD_NOTHING_APART) {
                 out.add(already);
             } else {
                 out.add(new Disposed(each,
-                        each instanceof PartitionEvidence.BySet
+                        each instanceof RuleEvidence.BySet
                                 ? Outcome.NOT_COMPOSED : Outcome.LEFT_TO_THE_WALK, null));
             }
         }

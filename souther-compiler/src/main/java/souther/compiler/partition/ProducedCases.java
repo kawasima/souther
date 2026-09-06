@@ -4,7 +4,6 @@ import souther.compiler.core.Core;
 import souther.compiler.check.PathReachability;
 import souther.compiler.coverage.ControlPointId;
 import souther.compiler.coverage.CoverageSites;
-import souther.compiler.reach.Reachability;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.TypeSymbol;
 
@@ -133,7 +132,7 @@ public final class ProducedCases {
                                 PathReachability.Answers arrives,
                                 Set<TypeSymbol> declared, Seen seen) {
         boolean proven = under.stream().anyMatch(arm ->
-                arrives.at(arm) instanceof Reachability.Unreachable);
+                arrives.at(arm) instanceof souther.compiler.reach.Reachability.Unreachable);
         if (built == null || !declared.contains(built)) {
             // Not a case this can name. Reachable, it could be any of them and nothing is taken away;
             // behind a proven arm it answers nothing and says nothing about any case either.

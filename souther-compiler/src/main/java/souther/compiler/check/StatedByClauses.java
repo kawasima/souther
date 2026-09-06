@@ -6,7 +6,6 @@ import souther.compiler.types.Type;
 import souther.compiler.values.AdmissibleValues;
 import souther.compiler.values.AdmittedPlan;
 import souther.compiler.values.Allowance;
-import souther.compiler.values.Emptiness;
 import souther.compiler.values.PlannedValues;
 import souther.compiler.values.Realizations;
 import souther.compiler.values.Realized;
@@ -650,8 +649,8 @@ sealed interface StatedByClauses {
                     && other instanceof StatedTogether.Said there) {
                 Confinement.Admission<FactSubject> mine = here.confinement().admission();
                 Confinement.Admission<FactSubject> theirs = there.confinement().admission();
-                Emptiness a = mine.emptiness();
-                Emptiness b = theirs.emptiness();
+                souther.compiler.values.Emptiness a = mine.emptiness();
+                souther.compiler.values.Emptiness b = theirs.emptiness();
                 // A branch the descriptions already show empty is decided here whichever way the
                 // declaration holds its choices. The answer is definitive — a description empty
                 // before anything is built admits nothing however the other clauses refine it —
@@ -659,16 +658,16 @@ sealed interface StatedByClauses {
                 // so nothing a deferral waits for can reach a different decision. Deferred anyway,
                 // the dead branch would widen the met-together tree for nothing.
                 //
-                if (a == Emptiness.EMPTY && b == Emptiness.EMPTY) {
+                if (a == souther.compiler.values.Emptiness.EMPTY && b == souther.compiler.values.Emptiness.EMPTY) {
                     decided.put(choice.id(), settled(mine, theirs));
                     return new StatedTogether.Said(here.confinement().bothDead(there.confinement(),
                             Confinement.Admission.bothShown(mine, theirs)));
                 }
-                if (a == Emptiness.EMPTY) {
+                if (a == souther.compiler.values.Emptiness.EMPTY) {
                     decided.put(choice.id(), settled(mine, theirs));
                     return other;
                 }
-                if (b == Emptiness.EMPTY) {
+                if (b == souther.compiler.values.Emptiness.EMPTY) {
                     decided.put(choice.id(), settled(mine, theirs));
                     return one;
                 }
@@ -679,7 +678,7 @@ sealed interface StatedByClauses {
                 // deferral costs was counted over the whole declaration before any clause was
                 // read, which is what admitted the declaration as APART at all.
                 if (alternatives == Alternatives.MERGED
-                        && a == Emptiness.NONEMPTY && b == Emptiness.NONEMPTY) {
+                        && a == souther.compiler.values.Emptiness.NONEMPTY && b == souther.compiler.values.Emptiness.NONEMPTY) {
                     decided.put(choice.id(), settled(mine, theirs));
                     return new StatedTogether.Said(
                             either(here.confinement(), there.confinement()));
@@ -748,16 +747,16 @@ sealed interface StatedByClauses {
          */
         private StatedTogether.Said decided(StatedTogether.Said one, Settlement.Sided here,
                                             StatedTogether.Said other, Settlement.Sided there) {
-            if (here.emptiness() == Emptiness.EMPTY && there.emptiness() == Emptiness.EMPTY) {
+            if (here.emptiness() == souther.compiler.values.Emptiness.EMPTY && there.emptiness() == souther.compiler.values.Emptiness.EMPTY) {
                 // The rule for a choice nobody can take, named rather than arrived at: a join is
                 // what two branches somebody can take come to, and neither of these is one.
                 return new StatedTogether.Said(one.confinement().bothDead(other.confinement(),
                         Confinement.Admission.bothShown(here.shown(), there.shown())));
             }
-            if (here.emptiness() == Emptiness.EMPTY) {
+            if (here.emptiness() == souther.compiler.values.Emptiness.EMPTY) {
                 return keptTogether(other, there);
             }
-            if (there.emptiness() == Emptiness.EMPTY) {
+            if (there.emptiness() == souther.compiler.values.Emptiness.EMPTY) {
                 return keptTogether(one, here);
             }
             StatedTogether.Said left = keptTogether(one, here);
@@ -775,7 +774,7 @@ sealed interface StatedByClauses {
          */
         private StatedTogether.Said keptTogether(StatedTogether.Said read,
                                                  Settlement.Sided known) {
-            if (known.emptiness() != Emptiness.UNDECIDED) {
+            if (known.emptiness() != souther.compiler.values.Emptiness.UNDECIDED) {
                 return read;
             }
             return new StatedTogether.Said(
@@ -798,7 +797,7 @@ sealed interface StatedByClauses {
         private Settlement.Sided probed(StatedTogether.Said read,
                                         Allowance<FactSubject> by) {
             Confinement.Admission<FactSubject> said = read.confinement().admission();
-            if (said.emptiness() != Emptiness.UNDECIDED) {
+            if (said.emptiness() != souther.compiler.values.Emptiness.UNDECIDED) {
                 return Settlement.Sided.settledAs(said);
             }
             // Worked out, the descriptions become sets and every alternative can be asked where its
@@ -806,7 +805,7 @@ sealed interface StatedByClauses {
             // what a pattern comes to.
             Confinement.Worked<FactSubject> worked = read.confinement().resolve(by);
             Confinement.Admission<FactSubject> admitted = worked.admission();
-            if (admitted.emptiness() != Emptiness.UNDECIDED) {
+            if (admitted.emptiness() != souther.compiler.values.Emptiness.UNDECIDED) {
                 return Settlement.Sided.settledAs(admitted);
             }
             Realized<FactSubject> made = worked.made();
@@ -818,7 +817,7 @@ sealed interface StatedByClauses {
                     new LinkedHashMap<>();
             made.aboutTheAnswer().forEach(each -> answered.merge(each.at(),
                     List.of(each.why()), ReadByClauses::alsoSaying));
-            return new Settlement.Sided(Confinement.Admission.left(Emptiness.UNDECIDED), answered,
+            return new Settlement.Sided(Confinement.Admission.left(souther.compiler.values.Emptiness.UNDECIDED), answered,
                     made.aboutARule(), made.unbuilt());
         }
 
@@ -889,7 +888,7 @@ sealed interface StatedByClauses {
          */
         private static boolean nobodyIsIn(StatedTogether.Said branch,
                                           Allowance<FactSubject> by) {
-            return branch.confinement().alreadyEstablished(by) == Emptiness.EMPTY;
+            return branch.confinement().alreadyEstablished(by) == souther.compiler.values.Emptiness.EMPTY;
         }
 
         /**
@@ -979,15 +978,15 @@ sealed interface StatedByClauses {
                         throw new IllegalStateException(
                                 "a choice of a rule was never met in the settled reading");
                     }
-                    Emptiness here = fate.left().emptiness();
-                    Emptiness there = fate.right().emptiness();
-                    if (here == Emptiness.EMPTY && there == Emptiness.EMPTY) {
+                    souther.compiler.values.Emptiness here = fate.left().emptiness();
+                    souther.compiler.values.Emptiness there = fate.right().emptiness();
+                    if (here == souther.compiler.values.Emptiness.EMPTY && there == souther.compiler.values.Emptiness.EMPTY) {
                         yield one.bothDead(other);
                     }
-                    if (here == Emptiness.EMPTY) {
+                    if (here == souther.compiler.values.Emptiness.EMPTY) {
                         yield keptAs(other, fate.right()).beside(one);
                     }
-                    if (there == Emptiness.EMPTY) {
+                    if (there == souther.compiler.values.Emptiness.EMPTY) {
                         yield keptAs(one, fate.left()).beside(other);
                     }
                     // Here, where both branches have their fate. What an alternative nothing could
@@ -1015,7 +1014,7 @@ sealed interface StatedByClauses {
          * taken in until this is applied.
          */
         private Taken keptAs(Taken read, Settlement.Sided known) {
-            if (known.emptiness() != Emptiness.UNDECIDED) {
+            if (known.emptiness() != souther.compiler.values.Emptiness.UNDECIDED) {
                 return read;
             }
             return read.mapped(part -> new Part(

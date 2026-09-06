@@ -46,8 +46,8 @@ class AnAccountEstablishesItsDenominatorBeforeItCountsTest {
      */
     @Test
     void twoPiecesOfEvidenceUnderOneNameAreRefusedWhereTheyAreHandedOver() {
-        PartitionEvidence one = dividing("10");
-        PartitionEvidence other = dividing("20");
+        RuleEvidence one = dividing("10");
+        RuleEvidence other = dividing("20");
         assertEquals(one.id(), other.id(), "the same rule and the same number");
 
         IllegalStateException refused = assertThrows(IllegalStateException.class,
@@ -65,7 +65,7 @@ class AnAccountEstablishesItsDenominatorBeforeItCountsTest {
      */
     @Test
     void onePieceHandedOverTwiceIsOnePiece() {
-        PartitionEvidence one = dividing("10");
+        RuleEvidence one = dividing("10");
 
         EvidenceAccount account = new EvidenceAccount(List.of(one, one), List.of());
         account.measured(one, new AxisId("f", AT.toString()));
@@ -87,8 +87,8 @@ class AnAccountEstablishesItsDenominatorBeforeItCountsTest {
         assertTrue(refused.getMessage().contains("under the name of"), refused.getMessage());
     }
 
-    private static PartitionEvidence dividing(String at) {
-        return new PartitionEvidence.Divides(new Threshold(AT,
+    private static RuleEvidence dividing(String at) {
+        return new RuleEvidence.Divides(new Threshold(AT,
                 Seam.of(LevelSpace.onACarrier(new Carrier.Whole()),
                         new Level.OnACarrier(new Carrier.Whole(),
                                 new Count(new java.math.BigDecimal(at))),

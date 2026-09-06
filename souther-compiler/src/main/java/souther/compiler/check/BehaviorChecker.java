@@ -1,7 +1,6 @@
 package souther.compiler.check;
 
 import souther.compiler.ast.Hir;
-import souther.compiler.check.BehaviorContract.Clause;
 import souther.compiler.check.BehaviorContract.Rule;
 import souther.compiler.check.BehaviorContract.RuleId;
 import souther.compiler.core.Contract;
@@ -156,7 +155,7 @@ public final class BehaviorChecker {
         // one pass — what a rule states is which case it applies to and what holds there, and every
         // refusal here is this not having been able to read that — so an arm that fails contributes
         // no rule and stops nothing else.
-        List<Clause> clauses = new ArrayList<>();
+        List<BehaviorContract.Clause> clauses = new ArrayList<>();
         int armOrdinal = 0;
         for (int c = 0; c < behavior.ensures().size(); c++) {
             Hir.EnsuresClause written = behavior.ensures().get(c);
@@ -167,7 +166,8 @@ public final class BehaviorChecker {
                 collect(found, () -> rules.addAll(
                         read(behavior, arm, answer, symbols, owner, params.size(), clauseIndex, ordinal)));
             }
-            clauses.add(new Clause(written.name(), rules, written.pos(), written.region()));
+            clauses.add(new BehaviorContract.Clause(written.name(), rules, written.pos(),
+                    written.region()));
         }
         return new Reading(new BehaviorContract(name, params, sig.outputType(), clauses), found);
     }

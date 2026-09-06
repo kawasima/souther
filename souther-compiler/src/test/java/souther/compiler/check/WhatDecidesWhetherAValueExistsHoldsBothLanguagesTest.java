@@ -7,7 +7,6 @@ import souther.compiler.regex.Meter;
 import souther.compiler.regex.PatternPlan;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbols;
-import souther.compiler.values.Emptiness;
 import souther.compiler.values.ValueSet;
 
 import java.io.File;
@@ -106,9 +105,9 @@ class WhatDecidesWhetherAValueExistsHoldsBothLanguagesTest {
                 "a carrier this could not make is one the answer below is not asked of");
         for (Carrier each : carriers) {
             Meter meter = PatternPlan.Budget.OF_WHAT_A_SET_AND_A_RANGE_SHARE.meter();
-            assertEquals(Emptiness.NONEMPTY, each.meets(ValueSet.ANY, each.extent(), meter),
+            assertEquals(souther.compiler.values.Emptiness.NONEMPTY, each.meets(ValueSet.ANY, each.extent(), meter),
                     each + " holds values, and every one of them is admitted");
-            assertEquals(Emptiness.EMPTY, each.meets(ValueSet.NONE, each.extent(), meter),
+            assertEquals(souther.compiler.values.Emptiness.EMPTY, each.meets(ValueSet.NONE, each.extent(), meter),
                     each + " holds no value a rule admitting none allows");
         }
     }

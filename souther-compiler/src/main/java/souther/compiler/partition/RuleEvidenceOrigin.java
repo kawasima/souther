@@ -30,7 +30,7 @@ import souther.compiler.check.RuleRef;
  * which each kind holds its own answer to — so an account keyed by {@link #rule()} would close on
  * the first reading everything the rest were owed.
  */
-public sealed interface PartitionEvidenceOrigin permits LineOrigin, PredicateOrigin {
+public sealed interface RuleEvidenceOrigin permits LineOrigin, PredicateOrigin {
 
     /**
      * Which rule of the model this is a reading of.

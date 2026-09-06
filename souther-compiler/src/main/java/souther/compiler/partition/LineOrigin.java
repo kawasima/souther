@@ -18,8 +18,8 @@ import java.util.List;
  * the rule placed on the values either side of what it wrote, which of its lines this is, which
  * point a row against it stands at, what a declaration is owed for it. So a rule that divides a
  * position without drawing a line is not one of these — it is the other kind of reading a piece of
- * partition evidence carries ({@link PredicateOrigin}), and what the two share is identity alone
- * ({@link PartitionEvidenceOrigin}). Named for neither, this type was one a predicate looked as
+ * rule evidence carries ({@link PredicateOrigin}), and what the two share is identity alone
+ * ({@link RuleEvidenceOrigin}). Named for neither, this type was one a predicate looked as
  * though it belonged in, and putting one here would have made the line's answers total over a
  * reading that has no line.
  *
@@ -40,7 +40,7 @@ import java.util.List;
  * they merge into one partition while staying separate obligations. Reaching the boundary through one
  * guard says nothing about the other.
  */
-public sealed interface LineOrigin extends PartitionEvidenceOrigin {
+public sealed interface LineOrigin extends RuleEvidenceOrigin {
 
     /**
      * A clause of a {@code data}'s invariant, as the clause it is.

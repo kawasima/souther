@@ -64,7 +64,7 @@ import java.util.List;
  *                short of the lines that have no value
  */
 public record Axis(AxisId id, NumericTerm.FromOnePosition term,
-                   List<PartitionClass> classes, List<PartitionEvidenceOrigin> divides,
+                   List<PartitionClass> classes, List<RuleEvidenceOrigin> divides,
                    List<Cut> cuts, List<Parting> parted, NarrowedBounds narrowed) {
 
     public Axis {
@@ -146,7 +146,7 @@ public record Axis(AxisId id, NumericTerm.FromOnePosition term,
      * a reader rebuilding a measure it already has.
      */
     public static Axis of(String behavior, NumericTerm.FromOnePosition term,
-                          List<PartitionClass> classes, List<PartitionEvidenceOrigin> divides,
+                          List<PartitionClass> classes, List<RuleEvidenceOrigin> divides,
                           List<Cut> cuts, List<Parting> parted, NarrowedBounds narrowed) {
         return new Axis(AxisId.of(behavior, term), term, classes, divides, cuts, parted, narrowed);
     }
