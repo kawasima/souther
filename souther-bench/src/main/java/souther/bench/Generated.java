@@ -9,6 +9,8 @@ import souther.runtime.Behavior;
 import souther.runtime.PersistentVector;
 
 import java.lang.reflect.Constructor;
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -55,6 +57,7 @@ final class Generated {
         Behavior<Object, Object> keyed = behavior(loader, "Keyed");
         Behavior<Object, Object> modded = behavior(loader, "Modded");
         Behavior<Object, Object> parted = behavior(loader, "Parted");
+        Behavior<Object, Object> priced = behavior(loader, "Priced");
         Behavior<Object, Object> amountOf = behavior(loader, "AmountOf");
 
         for (int elements : SIZES) {
@@ -68,6 +71,7 @@ final class Generated {
             perElement(report, "keyed", elements, keyed, input);
             perElement(report, "modded", elements, modded, input);
             perElement(report, "parted", elements, parted, input);
+            perElement(report, "priced", elements, priced, decimals(elements));
         }
         perElement(report, "amountOf", 1, amountOf, 42L);
     }
@@ -96,6 +100,16 @@ final class Generated {
         PersistentVector<Long> input = PersistentVector.empty();
         for (long i = 0; i < elements; i++) {
             input = input.append(i);
+        }
+        return input;
+    }
+
+    /** The same numbers as Decimals, for a behavior taking {@code List<Decimal>}: built outside
+     *  the timing so that no conversion is in the loop being measured. */
+    private static PersistentVector<BigDecimal> decimals(int elements) {
+        PersistentVector<BigDecimal> input = PersistentVector.empty();
+        for (long i = 0; i < elements; i++) {
+            input = input.append(BigDecimal.valueOf(i));
         }
         return input;
     }
@@ -164,6 +178,27 @@ final class Generated {
         });
         report.line("RUN   %-14s %7.2f ns/element   (the same counting, on a java.util.HashMap)",
                 "merge", counting.medianMillis() * scale);
+
+        // What `priced` is doing, written by hand against BigDecimal: the same product and sum per
+        // element, the rate held once. What the figure above is to be read against — the distance
+        // between the two is what the run time puts around a Decimal operation, since the
+        // arithmetic underneath is the same.
+        List<BigDecimal> decimals = new ArrayList<>();
+        for (long i = 0; i < elements; i++) {
+            decimals.add(BigDecimal.valueOf(i));
+        }
+        BigDecimal rate = new BigDecimal("1.1");
+        Timing pricing = Timing.of(4, 7, () -> {
+            for (int r = 0; r < repetitions; r++) {
+                BigDecimal acc = BigDecimal.ZERO;
+                for (BigDecimal x : decimals) {
+                    acc = acc.add(x.multiply(rate));
+                }
+                sink = acc;
+            }
+        });
+        report.line("RUN   %-14s %7.2f ns/element   (the same pricing, on java.math.BigDecimal)",
+                "pricing", pricing.medianMillis() * scale);
     }
 
 }

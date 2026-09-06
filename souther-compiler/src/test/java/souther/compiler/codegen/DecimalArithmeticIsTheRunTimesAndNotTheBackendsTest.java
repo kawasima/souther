@@ -11,7 +11,11 @@ import java.lang.classfile.ClassFile;
 import java.lang.classfile.CodeElement;
 import java.lang.classfile.CodeModel;
 import java.lang.classfile.MethodModel;
+import java.lang.classfile.instruction.ConstantInstruction.LoadConstantInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
+import java.lang.constant.ConstantDesc;
+import java.lang.constant.DirectMethodHandleDesc;
+import java.lang.constant.DynamicConstantDesc;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -56,7 +60,7 @@ class DecimalArithmeticIsTheRunTimesAndNotTheBackendsTest {
      * language has, and those are {@code DecimalMath}'s.
      */
     private static final Set<String> REPRESENTATION = Set.of(
-            "<init>",       // a literal
+            "<init>",       // a literal, named as the bootstrap of the constant that loads it
             "signum",       // the zero test the `/` operator branches on
             "compareTo",    // the comparison operators, and a Map/Set key
             "equals", "hashCode", "toString");
@@ -99,24 +103,65 @@ class DecimalArithmeticIsTheRunTimesAndNotTheBackendsTest {
                     | DivisionByZero -> Out { value = i.a, m = 0 }
             """;
 
+    /**
+     * Two ways a method reaches a {@code BigDecimal} method, read into one vocabulary. An
+     * invocation stands in the code. A literal is loaded as a dynamic constant whose bootstrap
+     * arguments name the constructor as a method handle, and the JVM runs it at resolution — which
+     * is a way to run any {@code BigDecimal} method without an invoke instruction to read. Both go
+     * through the same allowlist, so that there is one policy and not one per way.
+     */
+    private static List<String> reaches(CodeElement element) {
+        return switch (element) {
+            case InvokeInstruction call ->
+                    List.of(call.owner().asInternalName() + "." + call.name().stringValue());
+            case LoadConstantInstruction loaded
+                    when loaded.constantValue() instanceof DynamicConstantDesc<?> constant -> {
+                List<String> handles = new ArrayList<>();
+                for (ConstantDesc argument : constant.bootstrapArgs()) {
+                    if (argument instanceof DirectMethodHandleDesc handle) {
+                        handles.add(handle.owner().descriptorString()
+                                .replaceAll("^L|;$", "") + "." + handle.methodName());
+                    }
+                }
+                yield handles;
+            }
+            default -> List.of();
+        };
+    }
+
     @Test
     void noEmittedCodeRunsADecimalOperationOnBigDecimalItself() {
         Set<String> byTheBackend = new TreeSet<>();
+        Set<String> onBigDecimal = new TreeSet<>();
         for (Map.Entry<String, ClassFileImage> emitted : Compiler.compile(MODULE).entrySet()) {
             for (MethodModel method : ClassFile.of().parse(emitted.getValue().bytes()).methods()) {
                 if (!(method.code().orElse(null) instanceof CodeModel body)) {
                     continue;
                 }
                 for (CodeElement element : body) {
-                    if (element instanceof InvokeInstruction call
-                            && "java/math/BigDecimal".equals(call.owner().asInternalName())
-                            && !REPRESENTATION.contains(call.name().stringValue())) {
-                        byTheBackend.add(emitted.getKey() + "." + method.methodName().stringValue()
-                                + " calls BigDecimal." + call.name().stringValue());
+                    for (String target : reaches(element)) {
+                        if (!target.startsWith("java/math/BigDecimal.")) {
+                            continue;
+                        }
+                        String name = target.substring(target.lastIndexOf('.') + 1);
+                        onBigDecimal.add(name);
+                        if (!REPRESENTATION.contains(name)) {
+                            byTheBackend.add(emitted.getKey() + "."
+                                    + method.methodName().stringValue()
+                                    + " calls BigDecimal." + name);
+                        }
                     }
                 }
             }
         }
+
+        // The literal in `lit` reaches the constructor through a dynamic constant and through no
+        // invoke instruction. If the walk stops seeing it, the allowlist above is being applied to
+        // half of what reaches BigDecimal, and this test is green over an emitter that hides an
+        // operation the same way.
+        assertEquals(true, onBigDecimal.contains("<init>"),
+                "no literal's constructor was read out of a dynamic constant; what reached"
+                        + " BigDecimal was " + onBigDecimal);
 
         assertEquals(Set.of(), byTheBackend,
                 "the backend invokes something on BigDecimal that is not building a value or asking"
