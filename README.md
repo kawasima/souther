@@ -65,7 +65,7 @@ mvn install
 ./souther-cli/target/souther compile hello.sou -d /tmp/out
 ```
 
-That executable is the `souther-cli` module: the compiler, the runtime, and their dependencies in one really-executable jar (a launcher stub prepended to an uber jar), so no classpath and no `java -jar` are needed.
+That executable is the `souther-cli` module: the compiler, the runtime, and their dependencies in one really-executable jar (a launcher stub prepended to an uber jar), so no classpath and no `java -jar` are needed. Most of what a small compile from the command line costs is the JVM loading and verifying the compiler's classes, so the first compile leaves an archive of them under `${XDG_CACHE_HOME:-~/.cache}/souther`, named for the version, and the compiles after it start from that. Deleting it costs one slower compile; where it cannot be written, nothing is written and every compile is that one.
 
 `souther init` writes a project rather than leaving one to be copied from an example. It takes the coordinate — a group and an artifact are yours to decide — and writes a build that already declares the Souther plugin, a model, the `example` rows covering it, and a Java test that reaches the generated types, so `mvn test` and `souther examples` both answer on the first run. `--build gradle` writes a Gradle build instead. Run inside a project that already has a `pom.xml` or a `build.gradle.kts`, it reads the coordinate out of that build and adds a source directory and the plugin declaration to it. Nothing already written is overwritten, and what it left alone it says.
 
