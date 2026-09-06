@@ -137,7 +137,8 @@ public sealed interface StandingQuestion {
      *
      * @param fact    which rule raised it and what it asks, which is what tells one question from
      *                another ({@link Fact})
-     * @param cited   how a reader finds that rule
+     * @param reachedAt every place a reader was offered for that rule, empty exactly where the
+     *                author named it and it is found by that name from anywhere
      * @param stopped every reason it stands. A question is answered when every part that asked it
      *                has been read, so a part standing behind another is a second thing to lift.
      *                What the parts of the rule left keeps the order the author wrote them in and
@@ -409,7 +410,8 @@ public sealed interface StandingQuestion {
      * and everything that reads one of these has to say what it does about it.
      *
      * @param filed which rule, where it was filed and what stopped the reading
-     * @param cited how a reader finds the rule
+     * @param reachedAt every place a reader was offered for that rule, empty exactly where the
+     *                  author named it
      */
     record BoundaryUndetermined(BoundaryUndetermined.Filed filed,
                                 Set<Citation> reachedAt) implements Unclassified {

@@ -2741,9 +2741,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * How schema 3 spells which kind of rule an identity is of.
      *
      * <p>A wire value and not a word for the rule, which is what the name used to say. What a rule
-     * is called is {@link RuleCitation}'s answer, and the two say one thing
-     * again as of version 4 — they are still separate values, because what a document groups by is a
-     * contract a version pins and what a reader is shown is not.
+     * with no name is called is {@link RuleRef.Written#whatItIs}'s answer, and what one with a name
+     * is called is the author's; the two surfaces say one thing and are still separate values,
+     * because what a document groups by is a contract a version pins and what a reader is shown is
+     * not. That they agree today is held over every kind of rule the seal has rather than by their
+     * being one string.
      *
      * <p>Here rather than at the one place it is written, for the reason the others are. No
      * {@code default}, so a rule shape added and not given a spelling stops the compile rather than

@@ -4727,10 +4727,10 @@ public final class Adequacy {
                                                 owed.against(), owed.debt().id().saidWithoutAPlace());
                         // A body's line, owed once wherever it is read, so the sentence names no
                         // quantity: which of the four points, and which rule — by name where the
-                        // author gave it one, and as the construct where it is a comparison found
-                        // by where it is written. Writing where the point is takes a quantity and
-                        // a quantity is a reading's, so that is said under this, by the reading
-                        // whose word it is.
+                        // author gave it one, and as what the rule is where they gave none and it
+                        // is found by where it is written. Writing where the point is takes a
+                        // quantity and a quantity is a reading's, so that is said under this, by
+                        // the reading whose word it is.
                         case About.APointOfABorder(var point) -> switch (point.cited()) {
                             case souther.compiler.check.RuleCitation.Named named ->
                                     point.role().againstTheLine()
@@ -4892,6 +4892,12 @@ public final class Adequacy {
          * and the catalog holds them in every language. No {@code default}, so a kind of written
          * rule added to the seal arrives here as a case with no phrase rather than as one quietly
          * answered with its neighbour's.
+         *
+         * <p>What reaches this is a rule that drew a line, which today is a comparison: the sentence
+         * is about a line and a predicate draws none, so a border's rule is a comparison's
+         * ({@link souther.compiler.partition.LineOrigin}). The predicate phrase is here because the
+         * seal is total and not because a document writes one, and what holds the two words together
+         * for a document that does is asked where such a document is written.
          */
         private static souther.compiler.diag.Localizable whatItIs(
                 souther.compiler.check.RuleRef.Written rule) {

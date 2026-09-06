@@ -112,8 +112,7 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      * comparison is not modelled, because no measure asks it: a row meets the line by lighting the
      * comparison's own probe.
      *
-     * @param rule  which comparison, which is the rule and the whole of it
-     * @param read  which reading of that rule this is, and where it was met
+     * @param read  which comparison this is, which reading of it, and where it was met
      * @param facts what the rule placed on the values ({@link souther.compiler.check.ComparisonClaim
      *              ComparisonClaim}), which decides which neighbour is the other class's edge:
      *              {@code <= 3000} leaves 3001 over there, {@code < 3000} leaves 2999
@@ -134,6 +133,7 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
          * would put an identity and a sentence about different rules in one entry of a document
          * ({@link souther.compiler.check.RuleCitation}).
          */
+        @Override
         public RuleRef.Comparison rule() {
             return read.rule();
         }
@@ -499,22 +499,28 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      *
      * <p>Asked rather than matched on the text: what a rule is called is a rendering, and two of
      * them read the same word.
+     *
+     * <p>And asked of the rule, which is what says so ({@link RuleRef.Named},
+     * {@link RuleRef.Written}). Read off which reading this is, the answer would be a second one
+     * beside the rule's own — agreeing while the arms line up, and coming apart the day a reading
+     * is added for a rule with no name, where this would answer {@code false} about a rule
+     * {@link #cited} sends a reader to by its place.
      */
     default boolean isWrittenRatherThanNamed() {
-        return switch (this) {
-            case ComparisonOrigin _ -> true;
-            case NarrowedOrigin n -> n.bound().isWrittenRatherThanNamed();
-            case InvariantOrigin _, EnsuresOrigin _ -> false;
-        };
+        return rule() instanceof RuleRef.Written;
     }
 
-    /** Where the rule is written, where it is a rule that has a place rather than a name. */
+    /**
+     * Where the rule is written, where it is a rule that has a place rather than a name.
+     *
+     * <p>Taken out of the handle, for the reason above: the handle is what carries the place, and a
+     * reading that answered from its own arm would be a second answer to what the handle already
+     * says.
+     */
     default java.util.Optional<Citation> citation() {
-        return switch (this) {
-            case ComparisonOrigin g -> java.util.Optional.of(g.read().written().at());
-            case NarrowedOrigin n -> n.bound().citation();
-            case InvariantOrigin _, EnsuresOrigin _ -> java.util.Optional.empty();
-        };
+        return cited() instanceof souther.compiler.check.RuleCitation.WrittenAt written
+                ? java.util.Optional.of(written.at())
+                : java.util.Optional.empty();
     }
 
     /**

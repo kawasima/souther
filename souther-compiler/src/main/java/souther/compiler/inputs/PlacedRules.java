@@ -10,7 +10,6 @@ import souther.compiler.check.Owed;
 import souther.compiler.check.Requirement;
 import souther.compiler.check.RuleAccounting;
 import souther.compiler.check.RuleCitation;
-import souther.compiler.check.RuleRef;
 import souther.compiler.check.ProjectionEvidence;
 import souther.compiler.check.Rules;
 import souther.compiler.check.Shape;
@@ -340,13 +339,7 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
 
     /** How a reader finds the rule, which says which rule it is, and one place its classification
      *  did not come out. */
-    record RuleUnclassifiedAt(RuleCitation cited, Requirement.BoundaryUndetermined at) {
-
-        /** Which rule of the model, which the handle for it carries. */
-        RuleRef rule() {
-            return cited.rule();
-        }
-    }
+    record RuleUnclassifiedAt(RuleCitation cited, Requirement.BoundaryUndetermined at) {}
 
     /**
      * How much of what the rules say the bounds at {@code path} are able to state.

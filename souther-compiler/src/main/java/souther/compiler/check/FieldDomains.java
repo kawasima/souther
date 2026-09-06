@@ -111,7 +111,7 @@ public final class FieldDomains {
     private final Map<RuleRef.Invariant, Required> raised;
     /** The same per part of each clause. A reader that found one conjunct wanting names what that
      *  conjunct is about, and not what the conjunct written beside it raised. */
-    private final Map<RuleRef, Map<Core, Required>> raisedByPart;
+    private final Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart;
 
     /** What the reading answered for each boundary question it raised and left standing. */
     private final Map<BoundaryQuestion, BoundaryStanding> standing;
@@ -174,7 +174,7 @@ public final class FieldDomains {
     private final Map<RuleKey, Counted> countAt;
     /** What the reading that builds the bounds made of each part of each rule. Per part, because a
      *  rule is represented where every part of it is. */
-    private final Map<RuleRef, Map<Core, InvariantChecker.PartRead>> readBy;
+    private final Map<RuleRef.Invariant, Map<Core, InvariantChecker.PartRead>> readBy;
     /** How each atom's values are spaced, so that settling one afterwards states the same equality
      *  the reading would have stated for it. */
     private final Map<FactSubject, souther.compiler.numeric.Granularity> spacing;
@@ -189,7 +189,7 @@ public final class FieldDomains {
                          List<AboutOneCoordinate> aboutTheStrings,
                          PartsLeftOut withoutParts,
                          Map<RuleRef.Invariant, Required> raised,
-                         Map<RuleRef, Map<Core, Required>> raisedByPart,
+                         Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
                          Map<BoundaryQuestion, BoundaryStanding> standing, ReadingEvidence took,
                          Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
                          Map<RuleKey, Set<RulesMissed>> notGathered, Set<RuleKey> handedOn,
@@ -199,7 +199,7 @@ public final class FieldDomains {
                          Map<NumberAt<RuleKey>, Count> settled,
                          Set<RuleKey> unreadOfEveryValue,
                          Map<RuleKey, FactSubject> atomAt, Map<RuleKey, Counted> countAt,
-                         Map<RuleRef, Map<Core, InvariantChecker.PartRead>> readBy,
+                         Map<RuleRef.Invariant, Map<Core, InvariantChecker.PartRead>> readBy,
                          Map<FactSubject, souther.compiler.numeric.Granularity> spacing) {
         this.byName = byName;
         this.heldByName = heldByName;
@@ -900,7 +900,7 @@ public final class FieldDomains {
      * here while the question was an obligation beside a subject and the pair admitted combinations
      * nothing raises.
      */
-    private RuleAccounting.Outcome answered(RuleRef rule, Owed owed) {
+    private RuleAccounting.Outcome answered(RuleRef.Invariant rule, Owed owed) {
         return switch (owed) {
             case Owed.AdmittedValues it -> admissionAnswered(rule, it.path());
             case Owed.Boundary it -> boundaryAnswered(rule, it.on());
@@ -928,7 +928,8 @@ public final class FieldDomains {
      * question's word depend on a table nobody had asked it of, and left every reader downstream
      * looking at a list where the model has one answer.
      */
-    private RuleAccounting.Outcome boundaryAnswered(RuleRef rule, NumberAt<RuleKey> where) {
+    private RuleAccounting.Outcome boundaryAnswered(RuleRef.Invariant rule,
+                                                    NumberAt<RuleKey> where) {
         BoundaryStanding said = rule instanceof RuleRef.Invariant invariant
                 ? standing.get(new BoundaryQuestion(invariant, where)) : null;
         return said == null
@@ -949,7 +950,7 @@ public final class FieldDomains {
      * clause beside it: {@code value >= 1} leaves the reading of values short at a name, and
      * {@code value == 7} written beside it was taken in whole.
      */
-    private RuleAccounting.Outcome admissionAnswered(RuleRef rule, RuleKey at) {
+    private RuleAccounting.Outcome admissionAnswered(RuleRef.Invariant rule, RuleKey at) {
         List<FactSubject> named = named(at);
         // A part of the rule nothing took in outranks everything else about it. An end placed by
         // one conjunct is not an account of the conjunct written beside it.
@@ -996,7 +997,8 @@ public final class FieldDomains {
      * <p>Both empty is the accounting coming apart. The rule was met by the walk that asks and by
      * nothing that reads, and neither the rule nor the position has a word for it.
      */
-    private RuleAccounting.Why stoppedBy(RuleRef rule, RuleKey at, List<FactSubject> named) {
+    private RuleAccounting.Why stoppedBy(RuleRef.Invariant rule, RuleKey at,
+                                         List<FactSubject> named) {
         // What a rule is answerable for, as the facts it is answerable for. Asked for the reasons
         // alone here, the written places they were decided at would be gone one call before the
         // account that names the rule, and two facts about two clauses would arrive as one.

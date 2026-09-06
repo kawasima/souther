@@ -995,7 +995,8 @@ public record Border(BoundaryTarget cut, LineOrigin origin, Map<DomainPoint, Poi
         Level leaves = Seam.of(space, cut, valueBelongs(origin)).leaving(kept);
         if (end == null || !end.at().sameAs(placeOf(leaves))) {
             throw new IllegalStateException(
-                    "a bound whose line is not where what it leaves stops: " + origin.saidWithoutAPlace());
+                    "a bound whose line is not where what it leaves stops: "
+                            + origin.saidWithoutAPlace());
         }
     }
 

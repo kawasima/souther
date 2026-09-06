@@ -5,6 +5,7 @@ import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.source.SourceId;
 
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * How a reader finds the rule a question is about.
@@ -129,7 +130,7 @@ public sealed interface RuleCitation {
             case RuleRef.Named it -> Set.of(new Named(it));
             case RuleRef.Written it -> reachedAt.stream()
                     .map(each -> (RuleCitation) new WrittenAt(it, each))
-                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
+                    .collect(Collectors.toUnmodifiableSet());
         };
     }
 

@@ -169,11 +169,6 @@ public final class RuleAccounting {
                         + " stands for a reason");
             }
         }
-
-        /** Which rule raised it, which the handle for it carries. */
-        public RuleRef.Named rule() {
-            return cited.rule();
-        }
     }
 
     @Override

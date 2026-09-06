@@ -94,9 +94,10 @@ public record AuthoredLine(RuleRef rule, int conjunct, LineFacts facts,
      * reached first. Where a reading of it is being said rather than the line, the place is there to
      * point at and {@link LineOrigin#describe} says it.
      *
-     * <p>The two halves of the seal, spelled here because this is the sentence being written. A rule
-     * with no name has no name to be given one at the type that holds it, and a word for it that
-     * lived there would answer {@code named()} for something nobody named.
+     * <p>The two halves of the seal, spelled here because this is the sentence being written. Which
+     * of the two a rule is found by is the rule's own answer and it says nothing about what a
+     * sentence with no place in it should read; a fold over both that lived on the rule would be one
+     * word for a question only a caller writing a sentence has.
      */
     public String saidWithoutAPlace() {
         return said(switch (rule) {
