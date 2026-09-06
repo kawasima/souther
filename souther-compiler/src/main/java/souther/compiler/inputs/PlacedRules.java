@@ -547,15 +547,14 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
     List<ClauseWithoutAnEnd> clausesWithoutAnEnd() {
         java.util.Map<Key, ClauseWithoutAnEnd> once = new java.util.LinkedHashMap<>();
         for (FieldDomains.WithoutAnEnd each : bounds().withoutAnEnd()) {
-            once.putIfAbsent(new Key(each.from(), each.conjunct()),
-                    new ClauseWithoutAnEnd(each.from(), each.conjunct(), each.part(), root,
-                            bounds().named()));
+            once.putIfAbsent(new Key(each.part()),
+                    new ClauseWithoutAnEnd(each.part(), each.read(), root, bounds().named()));
         }
         return List.copyOf(once.values());
     }
 
-    /** What makes two of them one: the clause, and which of its conjuncts. */
-    private record Key(souther.compiler.check.RuleRef.Invariant rule, int conjunct) {}
+    /** What makes two of them one: which part of which rule it is. */
+    private record Key(souther.compiler.check.PartId part) {}
 
     /**
      * The declaration a value of {@code type} is read under: the name the signature wrote where it

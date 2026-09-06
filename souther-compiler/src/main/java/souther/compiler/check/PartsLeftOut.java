@@ -80,8 +80,8 @@ sealed interface PartsLeftOut permits PartsLeftOut.Nothing, PartsLeftOut.Some {
 
         @Override
         public Predicates.PartsToRead of(RuleRef.Invariant of) {
-            Set<Core> here = parts.stream().filter(each -> each.rule().equals(of))
-                    .map(AuthoredPart::part).collect(java.util.stream.Collectors.toSet());
+            Set<Core> here = parts.stream().filter(each -> each.part().rule().equals(of))
+                    .map(AuthoredPart::read).collect(java.util.stream.Collectors.toSet());
             return here.isEmpty() ? Predicates.PartsToRead.ALL
                     : Predicates.PartsToRead.without(here);
         }
@@ -92,11 +92,19 @@ sealed interface PartsLeftOut permits PartsLeftOut.Nothing, PartsLeftOut.Some {
         }
     }
 
-    /** One conjunct of one rule, which is what a counterfactual reading is asked without. */
-    record AuthoredPart(RuleRef.Invariant rule, Core part) {
+    /**
+     * One part of one rule, which is what a counterfactual reading is asked without.
+     *
+     * <p>Named by what the split that wrote the parts down called it, and holding the tree the
+     * reading of predicates matches on. The tree is not the identity: it is how the reading that
+     * walks a clause recognises the part it was told to leave out, and a reading asked without a
+     * part types the clause again, so what it walks is a node equal to this one rather than the
+     * same one.
+     */
+    record AuthoredPart(PartId part, Core read) {
 
         public AuthoredPart {
-            if (rule == null || part == null) {
+            if (part == null || read == null) {
                 throw new IllegalArgumentException("a part left out is some rule's own");
             }
         }

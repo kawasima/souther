@@ -67,7 +67,7 @@ public final class DeclaredThresholds {
     private static void drawn(String behavior, ClauseWithoutAnEnd clause,
                               InputReading read, List<LineDrawn> out) {
         Symbols symbols = read.symbols();
-        if (!(clause.part() instanceof Core.Binary binary)) {
+        if (!(clause.read() instanceof Core.Binary binary)) {
             return;
         }
         Comparison comparison = Comparison.of(binary).orElse(null);
@@ -120,8 +120,8 @@ public final class DeclaredThresholds {
             throw new IllegalStateException("which end a clause keeps, asked of one that names a"
                     + " value: " + clause.rule());
         }
-        return new LineOrigin.InvariantOrigin(clause.rule(), clause.conjunct(),
-                endKept(order), order.holdsAtTheValue());
+        return new LineOrigin.InvariantOrigin(clause.part(), endKept(order),
+                order.holdsAtTheValue());
     }
 
     /**

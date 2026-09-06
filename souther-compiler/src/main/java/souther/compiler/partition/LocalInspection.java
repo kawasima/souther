@@ -178,8 +178,7 @@ final class LocalInspection {
         // these declarations — which is nothing the rule says about itself.
         for (DeclaredBounds.Drawn from : end.from()) {
             put(into, carrier, end.value(),
-                    new LineOrigin.InvariantOrigin(from.rule(), from.conjunct(), side,
-                            end.at().inclusive()),
+                    new LineOrigin.InvariantOrigin(from.part(), side, end.at().inclusive()),
                     end.at(), took);
         }
     }

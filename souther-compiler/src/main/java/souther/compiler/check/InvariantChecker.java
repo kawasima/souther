@@ -1022,8 +1022,7 @@ public final class InvariantChecker {
      *                 one value are two rules a row could be owed to, and held as declarations
      *                 they came back as one
      */
-    record Direct(NumberAt<RuleKey> at, RuleRef.Invariant from,
-                  InvariantBound bound, Core part, int conjunct) {
+    record Direct(NumberAt<RuleKey> at, PartId part, InvariantBound bound, Core read) {
 
         /** What the value's rules call where the end was placed. Never which end it is: one name
          *  carries more than one number and {@link #at} is what says which of them this is. */
@@ -1481,7 +1480,7 @@ public final class InvariantChecker {
      * same rule written out places — and a helper calling a helper is bindings all the way down.
      * What a helper's body joined is still this one part, and this reading has one end for it.
      */
-    private void direct(Core clause, RuleRef.Invariant from, PartId conjunct, Denotations at,
+    private void direct(Core clause, RuleRef.Invariant from, PartId part, Denotations at,
                         Map<FactSubject, Coordinate> byName, List<Direct> out,
                         List<FieldDomains.NoLine> noLines,
                         List<FieldDomains.WithoutAnEnd> withoutAnEnd,
@@ -1496,14 +1495,12 @@ public final class InvariantChecker {
                                 FieldDomains.BoundaryStanding> standing,
                         PartsLeftOut withoutParts) {
         if (clause instanceof Core.LetIn li) {
-            direct(li.body(), from, conjunct, terms.inside(li, at), byName, out, noLines,
+            direct(li.body(), from, part, terms.inside(li, at), byName, out, noLines,
                     withoutAnEnd, naming, namingTheStrings, narrowers, raised, took, typeAt, parts,
                     raisedByPart, standing, withoutParts);
             return;
         }
-        // Which part of the clause this is, as the split that wrote the parts down numbered them.
-        int part = conjunct.ordinal();
-        // And a part this reading was not asked for is walked no further.
+        // A part this reading was not asked for is walked no further.
         //
         // Here as well as in the reader of predicates, because the two walk the clause together: a
         // part this one reached that the other never read is a value whose rules were not gathered
@@ -1555,7 +1552,7 @@ public final class InvariantChecker {
         // did to it. Every shape of rule alike: whether an end is read from it below decides which
         // reader states where the values stop, and decides nothing about which conjuncts account
         // for where they stop.
-        aboutOneCoordinate(read, from, part, bin, naming);
+        aboutOneCoordinate(read, part, bin, naming);
         // The coordinate-bearing side read as the left one, as `0 <= value` says what `value >= 0`
         // says.
         //
@@ -1579,7 +1576,7 @@ public final class InvariantChecker {
             // out places no end and is no failure of this reading, so there is nothing here for an
             // author to lift and there is a conjunct for the reading that draws lines to make what
             // it can of.
-            withoutAnEnd.add(new FieldDomains.WithoutAnEnd(from, part, bin));
+            withoutAnEnd.add(new FieldDomains.WithoutAnEnd(part, bin));
             return;
         }
         // An end where the other side is a constant, and a relation everywhere else. Which it is
@@ -1650,11 +1647,11 @@ public final class InvariantChecker {
             // §example-partition). A position carries more than one statement, and an end read at
             // it says nothing about the rule beside it: kept as what the position was left with,
             // a bound on a field's own type swallowed the record's clause about the same field.
-            noLineDrawn(read, from, bin, part, at, byName, noLines);
+            noLineDrawn(read, bin, part, at, byName, noLines);
             // The hand-over beside the finding, and not read off it. Both come of this conjunct
             // having no end, and they answer different questions: what an author is owed a word
             // about, and what the next reading is given to read.
-            withoutAnEnd.add(new FieldDomains.WithoutAnEnd(from, part, bin));
+            withoutAnEnd.add(new FieldDomains.WithoutAnEnd(part, bin));
             // The declaration and not the clause. Which declaration took an edge in is what ADR-0090
             // names beside a line, and what a reader is sent to look at is the declaration holding
             // the relation.
@@ -1662,7 +1659,7 @@ public final class InvariantChecker {
             return;
         }
         if (end instanceof InvariantBound.Read.AnEnd placed) {
-            out.add(new Direct(found.at(), from, placed.bound(), bin, part));
+            out.add(new Direct(found.at(), part, placed.bound(), bin));
         }
     }
 
@@ -1930,7 +1927,7 @@ public final class InvariantChecker {
      * what the arithmetic made of them are three readings of one comparison, and handed over as
      * three arguments they are as much one comparison as the caller left them.
      */
-    private void noLineDrawn(CanonicalForm read, RuleRef.Invariant from, Core clause, int conjunct,
+    private void noLineDrawn(CanonicalForm read, Core clause, PartId part,
                             Denotations at,
                             Map<FactSubject, Coordinate> byName, List<FieldDomains.NoLine> out) {
         if (!(read.comparison().claim() instanceof ComparisonClaim.Cut)) {
@@ -1949,14 +1946,14 @@ public final class InvariantChecker {
                 BlockReason.RuleWithoutLineReason why =
                         UnreadComparison.ofTheQuantity(quantity, ordered);
                 for (RuleKey path : UnreadComparison.filedAt(quantity, List.copyOf(met.keySet()))) {
-                    file(met.get(path), from, clause, conjunct, why, out);
+                    file(met.get(path), part, clause, why, out);
                 }
             }
             // Where the reading stopped there is no quantity to be a subject, so every place the
             // walk met is asked, and asked for itself.
             case UnreadComparison.Quantity.NotRead<RuleKey> notRead -> {
                 for (Coordinate each : met.values()) {
-                    file(each, from, clause, conjunct,
+                    file(each, part, clause,
                             UnreadComparison.whereItStopped(ruleAt(each, left, right), notRead,
                                     ordered),
                             out);
@@ -2000,7 +1997,7 @@ public final class InvariantChecker {
      * beside a rule that says nothing lends the second its narrowing — and the reason goes out
      * against the one rule that holds the position to nothing.
      */
-    private void restricting(Core clause, RuleRef.Invariant from, int part,
+    private void restricting(Core clause, RuleRef.Invariant from, PartId part,
                              Map<FactSubject, Coordinate> byName, PartsRead parts,
                              List<FieldDomains.NoLine> noLines, RunsRead runs) {
         ReadByClauses.OfAPart account = parts.accountIn(from, clause);
@@ -2032,7 +2029,7 @@ public final class InvariantChecker {
             List<BlockReason.RuleReadingStopped> stopped = runs.stoppedAt(position);
             if (!stopped.isEmpty()) {
                 stopped.forEach(why -> add(noLines,
-                        new FieldDomains.NoLine(each.getValue().at(), from, clause, part, why)));
+                        new FieldDomains.NoLine(each.getValue().at(), part, clause, why)));
                 continue;
             }
             // And where the position could not hand its rules on as sets, the same thing is
@@ -2040,7 +2037,7 @@ public final class InvariantChecker {
             // from an absence here is that the model draws no line, and the truth is that nobody
             // worked out whether it does.
             if (runs.notPublishedAt(position)) {
-                add(noLines, new FieldDomains.NoLine(each.getValue().at(), from, clause, part,
+                add(noLines, new FieldDomains.NoLine(each.getValue().at(), part, clause,
                         new BlockReason.RulesNotHandedOnAsSets()));
                 continue;
             }
@@ -2051,8 +2048,8 @@ public final class InvariantChecker {
             if (!rule.narrows(position)) {
                 continue;
             }
-            FieldDomains.NoLine said = new FieldDomains.NoLine(each.getValue().at(), from, clause,
-                    part, new BlockReason.RuleRestrictingToAdmittedValues());
+            FieldDomains.NoLine said = new FieldDomains.NoLine(each.getValue().at(), part, clause,
+                    new BlockReason.RuleRestrictingToAdmittedValues());
             add(noLines, said);
         }
     }
@@ -2099,7 +2096,7 @@ public final class InvariantChecker {
      * characters they hold; a rule about the length is a rule about a whole number and is read
      * where whole numbers are.
      */
-    private RunsRead runsOf(Core clause, RuleRef.Invariant from, int part,
+    private RunsRead runsOf(Core clause, RuleRef.Invariant from, PartId part,
                         Map<FactSubject, Coordinate> byName, PartsRead parts,
                         List<FieldDomains.AboutOneCoordinate> naming, List<Direct> out) {
         ReadByClauses.OfAPart account = parts.accountIn(from, clause);
@@ -2116,14 +2113,14 @@ public final class InvariantChecker {
             // position measured by a count of itself has one of those, and a rule about the strings
             // is about neither that count nor whichever of the two this map happens to hold.
             NumberAt<RuleKey> value = NumberAt.valueOf(found.path());
-            naming.add(new FieldDomains.AboutOneCoordinate(value, from, clause, part));
+            naming.add(new FieldDomains.AboutOneCoordinate(value, part, clause));
             // And the strings only where the rule was read to them. What a rule this could not read
             // admits is not every string; it is not known, and a run read off what the reading left
             // would be a run of a set the rule does not have. Whether it states where the values
             // stop is undecided, which is not the same as its stating that they stop nowhere.
             switch (stated) {
                 case AdmittedStrings.Admitting it ->
-                        byPosition.put(position, placed(it.set(), value, from, clause, part, out));
+                        byPosition.put(position, placed(it.set(), value, part, clause, out));
                 case AdmittedStrings.NotKnown it ->
                         byPosition.put(position, new Run.Undecided(it.why()));
                 // And a rule of a position that could not hand its sets on leaves the question
@@ -2151,8 +2148,8 @@ public final class InvariantChecker {
      * with no end above them has said where none of them stop — and it is a run all the same, which
      * is why what is asked of it is which of its ends the rule placed.
      */
-    private Run placed(ValueSet set, NumberAt<RuleKey> value, RuleRef.Invariant from,
-                       Core clause, int part, List<Direct> out) {
+    private Run placed(ValueSet set, NumberAt<RuleKey> value, PartId part, Core clause,
+                       List<Direct> out) {
         switch (extentOf(set)) {
             // A run holding one string is the rule naming a value rather than bounding a range, and
             // a value it names is a distinction of the position rather than an edge on it.
@@ -2163,15 +2160,13 @@ public final class InvariantChecker {
                 boolean placed = false;
                 if (run.holdsFromAbove()) {
                     placed = true;
-                    out.add(new Direct(value, from,
-                            new InvariantBound(true, Endpoint.inclusive(run.first())),
-                            clause, part));
+                    out.add(new Direct(value, part,
+                            new InvariantBound(true, Endpoint.inclusive(run.first())), clause));
                 }
                 if (run.after() != null) {
                     placed = true;
-                    out.add(new Direct(value, from,
-                            new InvariantBound(false, Endpoint.exclusive(run.after())),
-                            clause, part));
+                    out.add(new Direct(value, part,
+                            new InvariantBound(false, Endpoint.exclusive(run.after())), clause));
                 }
                 return placed ? new Run.Bounding(value) : new Run.NotBounding();
             }
@@ -2319,22 +2314,20 @@ public final class InvariantChecker {
      * what the rules leave the coordinate without this conjunct
      * ({@link FieldDomains#movedEndsOf}).
      */
-    private static void aboutOneCoordinate(CanonicalForm read, RuleRef.Invariant from, int part,
-                                          Core.Binary bin,
+    private static void aboutOneCoordinate(CanonicalForm read, PartId part, Core.Binary bin,
                                           List<FieldDomains.AboutOneCoordinate> out) {
         if (!(read instanceof CanonicalForm.Over over) || over.numbers().size() != 1) {
             return;
         }
-        out.add(new FieldDomains.AboutOneCoordinate(over.numbers().iterator().next().at(), from,
-                bin, part));
+        out.add(new FieldDomains.AboutOneCoordinate(over.numbers().iterator().next().at(), part,
+                bin));
     }
 
     /** One finding, kept once. A coordinate reached twice is one place with one thing to say. */
-    private static void file(Coordinate where, RuleRef.Invariant from, Core clause,
-                             int conjunct, BlockReason.RuleWithoutLineReason why,
+    private static void file(Coordinate where, PartId part, Core clause,
+                             BlockReason.RuleWithoutLineReason why,
                              List<FieldDomains.NoLine> out) {
-        FieldDomains.NoLine said =
-                new FieldDomains.NoLine(where.at(), from, clause, conjunct, why);
+        FieldDomains.NoLine said = new FieldDomains.NoLine(where.at(), part, clause, why);
         if (!out.contains(said)) {
             out.add(said);
         }

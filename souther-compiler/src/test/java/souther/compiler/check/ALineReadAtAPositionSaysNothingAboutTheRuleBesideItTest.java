@@ -412,7 +412,8 @@ class ALineReadAtAPositionSaysNothingAboutTheRuleBesideItTest {
         List<FieldDomains.NoLine> said = read.noLineAt(RuleKey.THE_VALUE);
         assertEquals(1, said.size(), () -> "said " + said);
         assertInstanceOf(BlockReason.UnreadComparisonForm.class, said.getFirst().why());
-        assertTrue(said.getFirst().from().clause().id().declaredOn().name().endsWith("Stepped"),
+        assertTrue(said.getFirst().part().rule() instanceof RuleRef.Invariant it
+                        && it.clause().id().declaredOn().name().endsWith("Stepped"),
                 "the rule a reader is sent to look at is the one that wrote the clause");
     }
 

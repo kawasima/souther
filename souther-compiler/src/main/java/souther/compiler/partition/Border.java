@@ -374,7 +374,8 @@ public record Border(BoundaryTarget cut, LineOrigin origin, Map<DomainPoint, Poi
      * of every behavior carrying the type.
      */
     public BorderObligationId obligation() {
-        return new BorderObligationId(origin.authoredLine(), cut.at());
+        return new BorderObligationId(origin.authoredLine(), cut.at(),
+                origin.declaredLine().orElse(null));
     }
 
     /** Where the line is, as a report names it. Not what any one of its points asks for: that is

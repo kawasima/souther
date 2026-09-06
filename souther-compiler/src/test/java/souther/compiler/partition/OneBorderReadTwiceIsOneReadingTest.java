@@ -210,9 +210,12 @@ class OneBorderReadTwiceIsOneReadingTest {
 
     /** The clause the bound is written in, which is only an identity here. */
     private static LineOrigin aBound() {
-        return new LineOrigin.InvariantOrigin(new RuleRef.Invariant(new Clause.Ref(
-                new Clause.Id(TypeSymbols.declared(new TypeKey("example.weigh", "Amount")), 0),
-                Optional.of(new ClauseName("cap")))), 0, EndSide.LOWER, true);
+        return new LineOrigin.InvariantOrigin(
+                new souther.compiler.check.PartId(new RuleRef.Invariant(new Clause.Ref(
+                        new Clause.Id(
+                                TypeSymbols.declared(new TypeKey("example.weigh", "Amount")), 0),
+                        Optional.of(new ClauseName("cap")))), 0),
+                EndSide.LOWER, true);
     }
 
     /** A line of a body, for a place to be parted by something other than the bound. */

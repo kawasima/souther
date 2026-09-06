@@ -81,22 +81,27 @@ public sealed interface LineOrigin extends PartitionEvidenceOrigin {
      *                        derivation gets and not one about the end, and reading the end is what
      *                        keeps the two from being confused if it ever does get further
      */
-    record InvariantOrigin(RuleRef.Invariant rule, int conjunct,
+    record InvariantOrigin(souther.compiler.check.PartId part,
                            souther.compiler.numeric.EndSide keeps, boolean holdsAtTheValue)
             implements LineOrigin {
 
         public InvariantOrigin {
-            if (rule == null) {
+            if (part == null) {
                 throw new IllegalArgumentException("a bound drawn by no clause");
             }
             if (keeps == null) {
                 throw new IllegalArgumentException(
-                        "a bound places one of a range's two ends: " + rule.named());
+                        "a bound places one of a range's two ends: " + part);
             }
-            if (conjunct < 0) {
-                throw new IllegalArgumentException(
-                        "a conjunct of a clause is counted from zero: " + conjunct);
+        }
+
+        /** Which clause of which declaration drew it. */
+        public RuleRef.Invariant rule() {
+            if (part.rule() instanceof RuleRef.Invariant it) {
+                return it;
             }
+            throw new IllegalStateException("a declaration's own clause draws this line, and "
+                    + part.rule() + " is not one");
         }
     }
 
@@ -433,7 +438,7 @@ public sealed interface LineOrigin extends PartitionEvidenceOrigin {
     default AuthoredLine authoredLine() {
         return switch (this) {
             case InvariantOrigin i ->
-                    new AuthoredLine(i.rule(), i.conjunct(), lineFacts(), List.of());
+                    new AuthoredLine(i.rule(), i.part().ordinal(), lineFacts(), List.of());
             // One line, so the zeroth of the one. A comparison is a rule apiece — a condition
             // holding three comparisons is three rules — so there is no second line of it to tell
             // this one from.
@@ -527,7 +532,14 @@ public sealed interface LineOrigin extends PartitionEvidenceOrigin {
      * the rule's, so both are asked of it.
      */
     default java.util.Optional<souther.compiler.check.DeclaredBorders.Key> declaredLine() {
-        return authoredLine().declaredLine();
+        return switch (this) {
+            case InvariantOrigin i ->
+                    java.util.Optional.of(new souther.compiler.check.DeclaredBorders.Key(i.part()));
+            // The bound's line, which the narrowing did not draw.
+            case NarrowedOrigin n -> n.bound().declaredLine();
+            // A rule written in a body places no end for a declaration to have words for.
+            case ComparisonOrigin _, EnsuresOrigin _ -> java.util.Optional.empty();
+        };
     }
 
     /**

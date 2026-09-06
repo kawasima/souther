@@ -36,7 +36,7 @@ class ALineIsNamedInTheTermsItWasWrittenInTest {
     void aNewtypesClauseIsAboutTheValueItWraps() {
         var line = lineAt("String.length(u) = 1");
         assertEquals("String.length(value)",
-                declaredBy("UserId").nameOf(line.rule(), line.conjunct()));
+                declaredBy("UserId").nameOf(line.part()));
     }
 
     /**
@@ -51,8 +51,8 @@ class ALineIsNamedInTheTermsItWasWrittenInTest {
         DeclaredBorders lines = declaredBy("Pair");
         var name = lineAt("String.length(p.name) = 1");
         var code = lineAt("String.length(p.code) = 1");
-        assertEquals("String.length(name)", lines.nameOf(name.rule(), name.conjunct()));
-        assertEquals("String.length(code)", lines.nameOf(code.rule(), code.conjunct()));
+        assertEquals("String.length(name)", lines.nameOf(name.part()));
+        assertEquals("String.length(code)", lines.nameOf(code.part()));
     }
 
     /** Both ends of a range are the one number, which is what tells this from the case above. */
@@ -61,9 +61,9 @@ class ALineIsNamedInTheTermsItWasWrittenInTest {
         DeclaredBorders lines = declaredBy("Range");
         var bottom = lineAt("r = 1");
         var top = lineAt("r = 10");
-        assertEquals("value", lines.nameOf(bottom.rule(), bottom.conjunct()));
-        assertEquals("value", lines.nameOf(top.rule(), top.conjunct()));
-        org.junit.jupiter.api.Assertions.assertNotEquals(bottom.conjunct(), top.conjunct(),
+        assertEquals("value", lines.nameOf(bottom.part()));
+        assertEquals("value", lines.nameOf(top.part()));
+        org.junit.jupiter.api.Assertions.assertNotEquals(bottom.part(), top.part(),
                 "the two ends are the one number and different lines");
     }
 
@@ -77,9 +77,9 @@ class ALineIsNamedInTheTermsItWasWrittenInTest {
     @Test
     void aDeclarationAnswersForTheClausesItWrote() {
         var line = lineAt("s.d = 0");
-        assertNotNull(declaredBy("Day").at(line.rule(), line.conjunct()),
+        assertNotNull(declaredBy("Day").at(line.part()),
                 "Day wrote the clause, so Day names the line");
-        assertNull(declaredBy("Span").at(line.rule(), line.conjunct()),
+        assertNull(declaredBy("Span").at(line.part()),
                 "and Span holds a value that is held to it, which is not the same thing");
     }
 

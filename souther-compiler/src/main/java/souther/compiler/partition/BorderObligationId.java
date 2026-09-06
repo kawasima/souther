@@ -52,8 +52,13 @@ package souther.compiler.partition;
  * @param line which line of the model a row here is owed for
  * @param at   where on the quantity it cut. A level and not a place: what a line is drawn on is not
  *             always a position, and two of the three shapes count something no position holds
+ * @param declaredLine which part of which clause drew it, where a declaration's clause did, and
+ *             null where none did. Taken from the reading that drew it rather than worked out from
+ *             the line afterwards: which part of a rule a line came out of is the reading's answer,
+ *             and a caller putting a rule beside a number would be naming a part nobody issued
  */
-public record BorderObligationId(AuthoredLine line, Level at) {
+public record BorderObligationId(AuthoredLine line, Level at,
+                                 souther.compiler.check.DeclaredBorders.Key declaredLine) {
 
     public BorderObligationId {
         if (line == null || at == null) {
@@ -88,8 +93,8 @@ public record BorderObligationId(AuthoredLine line, Level at) {
     }
 
     /** Which authored line of that declaration it is, for a reader that wants the words the
-     *  declaration wrote it in. */
-    public java.util.Optional<souther.compiler.check.DeclaredBorders.Key> declaredLine() {
-        return line.declaredLine();
+     *  declaration wrote it in. Empty where no declaration's clause drew it. */
+    public java.util.Optional<souther.compiler.check.DeclaredBorders.Key> declaredLineIfAny() {
+        return java.util.Optional.ofNullable(declaredLine);
     }
 }

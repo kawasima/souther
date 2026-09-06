@@ -1,6 +1,5 @@
 package souther.compiler.partition;
 
-import souther.compiler.check.DeclaredBorders;
 import souther.compiler.check.RuleRef;
 import souther.compiler.types.TypeSymbol;
 
@@ -141,19 +140,6 @@ public record AuthoredLine(RuleRef rule, int conjunct, LineFacts facts,
     public Optional<TypeSymbol> owedToTheDeclaration() {
         return rule instanceof RuleRef.Invariant i
                 ? Optional.of(i.clause().id().declaredOn())
-                : Optional.empty();
-    }
-
-    /**
-     * Which authored line of a declaration this is, where it is a declaration's line.
-     *
-     * <p>The clause and the conjunct that drew the end, which together name one line the author
-     * wrote — what a report reads the declaration's own words for the line by
-     * ({@link DeclaredBorders}).
-     */
-    public Optional<DeclaredBorders.Key> declaredLine() {
-        return rule instanceof RuleRef.Invariant i
-                ? Optional.of(new DeclaredBorders.Key(i, conjunct))
                 : Optional.empty();
     }
 

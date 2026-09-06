@@ -90,7 +90,7 @@ class WhatIsHandedOnIsNotWhatIsReportedTest {
     void theClausesHandedOverAreTheOnesWithoutAnEnd() {
         assertEquals(List.of("ordered", "notZero", "exactlyFive"),
                 read().clausesWithoutAnEnd().stream()
-                        .map(each -> named(each.rule())).distinct().toList());
+                        .map(each -> named(each.part())).distinct().toList());
     }
 
     /**
@@ -105,7 +105,7 @@ class WhatIsHandedOnIsNotWhatIsReportedTest {
     void aRuleAboutANumberTakenOfTheValueIsHandedOnToo() {
         assertEquals(List.of("notBlank", "exactlyFive"),
                 read(MEASURED, "n").clausesWithoutAnEnd().stream()
-                        .map(each -> named(each.rule())).distinct().toList());
+                        .map(each -> named(each.part())).distinct().toList());
     }
 
     /** A newtype measured by the length of what stands at it, with both shapes of rule that name a
@@ -125,7 +125,7 @@ class WhatIsHandedOnIsNotWhatIsReportedTest {
 
     private static List<String> handedOn() {
         return read().bounds().withoutAnEnd().stream()
-                .map(each -> named(each.from()))
+                .map(each -> named(each.part()))
                 .distinct().toList();
     }
 
@@ -141,13 +141,13 @@ class WhatIsHandedOnIsNotWhatIsReportedTest {
             java.util.function.Predicate<BlockReason.RuleWithoutLineReason> of) {
         return read().bounds().noLines().stream()
                 .filter(each -> of.test(each.why()))
-                .map(each -> named(each.from()))
+                .map(each -> named(each.part()))
                 .distinct().toList();
     }
 
     /** What the clause is called, taken out of the name a report prints it under. */
-    private static String named(souther.compiler.check.RuleRef.Invariant rule) {
-        String written = rule.named();
+    private static String named(souther.compiler.check.PartId part) {
+        String written = ((souther.compiler.check.RuleRef.Invariant) part.rule()).named();
         return written.substring(written.indexOf('(') + 1, written.indexOf(')'));
     }
 

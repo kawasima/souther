@@ -188,7 +188,8 @@ class ABorderDebtIsTheLineTheAuthorWroteTest {
     void aComparisonAndABoundAtOneValueAreTwoDebts() {
         Border guard = Border.at(aLineAt(100), readAt(1), ANYWHERE);
         Border bound = Border.at(aLineAt(100),
-                new LineOrigin.InvariantOrigin(aClause(), 0,
+                new LineOrigin.InvariantOrigin(
+                        new souther.compiler.check.PartId(aClause(), 0),
                         souther.compiler.numeric.EndSide.LOWER, true),
                 new souther.compiler.numeric.NumericDomain.Bounds(
                         souther.compiler.numeric.Endpoint.inclusive(

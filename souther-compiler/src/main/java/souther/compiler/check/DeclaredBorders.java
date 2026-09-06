@@ -34,8 +34,8 @@ import java.util.Map;
 public record DeclaredBorders(souther.compiler.diag.Citation at,
                               Map<Key, NumberAt<RuleKey>> forms) {
 
-    /** Which authored line: the clause, and which of its conjuncts placed the end. */
-    public record Key(RuleRef.Invariant rule, int conjunct) {}
+    /** Which authored line: which part of which rule placed the end. */
+    public record Key(PartId part) {}
 
     public DeclaredBorders {
         if (at == null) {
@@ -67,8 +67,9 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
             // A clause reaching this declaration through a spread is written on another one and is
             // that one's to name, the way a line is named by the rule that drew it (ADR-0090). Its
             // own reading answers for it.
-            if (placed.from().clause().id().declaredOn().equals(declaredOn)) {
-                forms.put(new Key(placed.from(), placed.conjunct()), placed.at());
+            if (placed.part().rule() instanceof RuleRef.Invariant rule
+                    && rule.clause().id().declaredOn().equals(declaredOn)) {
+                forms.put(new Key(placed.part()), placed.at());
             }
         }
         return new DeclaredBorders(at, forms);
@@ -81,8 +82,8 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
      * not read is a clause with no form to print, and a caller handed one has nothing to call the
      * line but the rule's own name.
      */
-    public NumberAt<RuleKey> at(RuleRef.Invariant rule, int conjunct) {
-        return at(new Key(rule, conjunct));
+    public NumberAt<RuleKey> at(PartId part) {
+        return at(new Key(part));
     }
 
     /** The same, for a caller holding the key the rule handed it
@@ -112,8 +113,8 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
                 ? taken.operation() + "(" + where + ")" : where;
     }
 
-    /** The same, for a caller holding the rule and the conjunct that drew the line. */
-    public String nameOf(RuleRef.Invariant rule, int conjunct) {
-        return nameOf(new Key(rule, conjunct));
+    /** The same, for a caller holding the part that drew the line. */
+    public String nameOf(PartId part) {
+        return nameOf(new Key(part));
     }
 }

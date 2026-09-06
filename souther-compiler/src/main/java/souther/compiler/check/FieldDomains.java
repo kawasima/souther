@@ -499,8 +499,7 @@ public final class FieldDomains {
      *              other kind of rule reaches this reading
      * @param lower whether this bounds the coordinate below; otherwise above
      */
-    public record Placed(NumberAt<RuleKey> at, RuleRef.Invariant from, boolean lower, Endpoint end,
-                        int conjunct) {
+    public record Placed(NumberAt<RuleKey> at, PartId part, boolean lower, Endpoint end) {
 
         /** What the value's rules call where the end sits. Never which number it is on: that is
          *  {@link #at}, and reading one off the other is what the pair exists to stop. */
@@ -526,20 +525,14 @@ public final class FieldDomains {
      * number, are the next reading's to establish in its own vocabulary — said here, this would be
      * the reading that placed no end answering the question it just failed to answer.
      *
-     * @param from     the clause it is a conjunct of
-     * @param conjunct which of that clause's conjuncts it is, counted as every other reading of the
-     *                 clause counts them
-     * @param part     the conjunct itself
+     * @param part which part of which rule it is, as the split that wrote the parts down named it
+     * @param read the part itself
      */
-    public record WithoutAnEnd(RuleRef.Invariant from, int conjunct, Core part) {
+    public record WithoutAnEnd(PartId part, Core read) {
 
         public WithoutAnEnd {
-            if (from == null || part == null) {
+            if (part == null || read == null) {
                 throw new IllegalArgumentException("a conjunct handed on is some clause's text");
-            }
-            if (conjunct < 0) {
-                throw new IllegalArgumentException(
-                        "a conjunct of a clause is counted from zero: " + conjunct);
             }
         }
     }
@@ -568,29 +561,27 @@ public final class FieldDomains {
      * <p>What such a rule does to the number is not here and is not this reading's: it is read by
      * asking what the rules leave the coordinate without it, and comparing ({@link #movedEndsOf}).
      *
-     * @param at       the number its quantity is over
-     * @param from     the clause it is a conjunct of
-     * @param part     the conjunct itself, which is what a counterfactual reading is asked without
-     * @param conjunct which of the clause's conjuncts it is
+     * @param at   the number its quantity is over
+     * @param part which part of which rule it is
+     * @param read the part itself, which is what a counterfactual reading is asked without
      */
-    public record AboutOneCoordinate(NumberAt<RuleKey> at, RuleRef.Invariant from, Core part,
-                                     int conjunct) {
+    public record AboutOneCoordinate(NumberAt<RuleKey> at, PartId part, Core read) {
 
         public AboutOneCoordinate {
-            if (at == null || from == null || part == null) {
+            if (at == null || part == null || read == null) {
                 throw new IllegalArgumentException("a quantity over one number is some rule's");
             }
         }
 
-        /** Which authored line this is a conjunct of, which is what tells a candidate from an end
+        /** Which authored line this is a part of, which is what tells a candidate from an end
          *  the reading of comparisons already placed. */
         Line line() {
-            return new Line(from, conjunct);
+            return new Line(part);
         }
     }
 
-    /** One authored line: the clause, and which of its conjuncts. */
-    record Line(RuleRef.Invariant from, int conjunct) {}
+    /** One authored line: which part of which rule drew it. */
+    record Line(PartId part) {}
 
     /**
      * A rule about where one coordinate's values stop that this reading placed no end from, and
@@ -609,22 +600,17 @@ public final class FieldDomains {
      *             One name carries both — a {@code String} bounded on its length has an end on the
      *             count and values of its own — and a rule stopped at one of them is no account of
      *             the other, so the two travel together
-     * @param from the rule that says where the values stop, which is what a reader is sent to look
-     *             at
-     * @param part which conjunct of it this is. A rule is read a conjunct at a time and a reason
+     * @param part which part of which rule this is. A rule is read a part at a time and a reason
      *             belongs to the one it came out of: asked of the rule and the name alone,
      *             {@code x <= y && x <= 10 * 2} said its bound went unread because a comparison
-     *             relates two places, which is what the conjunct beside it does
-     * @param conjunct where in the clause that conjunct is, counted from zero over every conjunct
-     *             the clause has. Beside the conjunct itself and not read back off it: what tells
-     *             one authored line from another is the clause and this number
-     *             ({@link souther.compiler.partition.AuthoredLine}), and a reader holding the
-     *             expression alone has no way to say which of two identical conjuncts it is
+     *             relates two places, which is what the part beside it does. Named rather than read
+     *             back off the text: a reader holding the expression alone has no way to say which
+     *             of two identical parts it is
+     * @param read the part itself
      * @param why  what would have to change before this rule could be a line, in this compiler's
      *             own terms
      */
-    public record NoLine(NumberAt<RuleKey> at, RuleRef.Invariant from,
-                         Core part, int conjunct,
+    public record NoLine(NumberAt<RuleKey> at, PartId part, Core read,
                          souther.compiler.inputs.BlockReason.RuleWithoutLineReason why) {
 
         /** What the value's rules call where the end was to have been placed. */
@@ -668,7 +654,7 @@ public final class FieldDomains {
      *                  written
      */
     public record BoundaryStanding(
-            souther.compiler.inputs.BlockReason.RuleReadingStopped why, List<Integer> conjuncts) {
+            souther.compiler.inputs.BlockReason.RuleReadingStopped why, List<PartId> conjuncts) {
 
         public BoundaryStanding {
             if (why == null) {
@@ -681,13 +667,13 @@ public final class FieldDomains {
             conjuncts = List.copyOf(conjuncts);
         }
 
-        /** The same answer, with the part written at {@code conjunct} standing behind it too. */
-        BoundaryStanding and(int conjunct) {
-            if (conjuncts.contains(conjunct)) {
+        /** The same answer, with {@code part} standing behind it too. */
+        BoundaryStanding and(PartId part) {
+            if (conjuncts.contains(part)) {
                 return this;
             }
-            List<Integer> both = new ArrayList<>(conjuncts);
-            both.add(conjunct);
+            List<PartId> both = new ArrayList<>(conjuncts);
+            both.add(part);
             return new BoundaryStanding(why, both);
         }
     }
@@ -1018,7 +1004,7 @@ public final class FieldDomains {
         }
         // The reading that turns this clause into where the values stop, said by the end it placed.
         if (directs.stream()
-                .anyMatch(d -> d.from().equals(rule) && d.path().equals(at))) {
+                .anyMatch(d -> d.part().rule().equals(rule) && d.path().equals(at))) {
             return new RuleAccounting.Outcome.Accounted(RuleAccounting.Reader.THE_END_READING);
         }
         // And the readings that hold what a clause says about the values themselves, each said by
@@ -1163,8 +1149,8 @@ public final class FieldDomains {
      */
     public List<Placed> stated() {
         return directs.stream()
-                .map(each -> new Placed(each.at(), each.from(),
-                        each.bound().lower(), each.bound().end(), each.conjunct()))
+                .map(each -> new Placed(each.at(), each.part(),
+                        each.bound().lower(), each.bound().end()))
                 .toList();
     }
 
@@ -1236,7 +1222,7 @@ public final class FieldDomains {
      */
     private boolean needsAttributing(List<AboutOneCoordinate> candidates) {
         Set<Line> ends = directs.stream()
-                .map(each -> new Line(each.from(), each.conjunct()))
+                .map(each -> new Line(each.part()))
                 .collect(java.util.stream.Collectors.toSet());
         return candidates.stream().anyMatch(each -> !ends.contains(each.line()));
     }
@@ -1264,7 +1250,7 @@ public final class FieldDomains {
         }
         for (AboutOneCoordinate each : EndNarrowing.read(end, candidates,
                 removed -> sideWithout(removed, at, lower), inWrittenOrder()).names()) {
-            out.add(new Placed(at, each.from(), lower, end, each.conjunct()));
+            out.add(new Placed(at, each.part(), lower, end));
         }
     }
 
@@ -1292,9 +1278,24 @@ public final class FieldDomains {
      */
     private static java.util.Comparator<AboutOneCoordinate> inWrittenOrder() {
         return java.util.Comparator
-                .comparing((AboutOneCoordinate each) -> each.from().clause().id().declaredOn())
-                .thenComparingInt(each -> each.from().clause().id().ordinal())
-                .thenComparingInt(AboutOneCoordinate::conjunct);
+                .comparing((AboutOneCoordinate each) -> clauseOf(each.part()).id().declaredOn())
+                .thenComparingInt(each -> clauseOf(each.part()).id().ordinal())
+                .thenComparingInt(each -> each.part().ordinal());
+    }
+
+    /**
+     * The clause {@code part} is a part of.
+     *
+     * <p>Every part these readings hold is a part of a clause a declaration wrote — that is what
+     * this file reads — so a part of anything else arriving here is this compiler disagreeing with
+     * itself rather than a case to answer.
+     */
+    private static Clause.Ref clauseOf(PartId part) {
+        if (part.rule() instanceof RuleRef.Invariant it) {
+            return it.clause();
+        }
+        throw new IllegalStateException("the ends a declaration's rules place are read here, and "
+                + part.rule() + " is not one of its clauses");
     }
 
     /** The ends the rules place on the coordinates at {@code path}, in the order they were read. */
@@ -1398,8 +1399,7 @@ public final class FieldDomains {
      */
     public List<InvariantBound> movedEndsOf(AboutOneCoordinate over) {
         return movedEnds().stream()
-                .filter(each -> each.from().equals(over.from()) && each.conjunct() == over.conjunct()
-                        && each.at().equals(over.at()))
+                .filter(each -> each.part().equals(over.part()) && each.at().equals(over.at()))
                 .map(each -> new InvariantBound(each.lower(), each.end()))
                 .toList();
     }
@@ -1408,7 +1408,7 @@ public final class FieldDomains {
     private FieldDomains without(Set<AboutOneCoordinate> removed) {
         return of(named, data, source, policy, settled,
                 InvariantChecker.Reach.withoutParts(removed.stream()
-                        .map(each -> new PartsLeftOut.AuthoredPart(each.from(), each.part()))
+                        .map(each -> new PartsLeftOut.AuthoredPart(each.part(), each.read()))
                         .collect(java.util.stream.Collectors.toSet())));
     }
 
@@ -1904,7 +1904,7 @@ public final class FieldDomains {
                 // the comparison rather than from the interval algebra, and counting only the
                 // algebra calls a bounded `Date` a rule the bounds do not hold — and takes every
                 // boundary beside it down with it.
-                if (directs.stream().anyMatch(d -> d.part() == part)) {
+                if (directs.stream().anyMatch(d -> d.read() == part)) {
                     return;
                 }
                 // What this part is about, and not what the rule is. A conjunction is one rule the

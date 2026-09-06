@@ -48,15 +48,11 @@ public final class DeclaredBounds {
      * that could make nothing of one conjunct still numbers the next the same as a reading that
      * could.
      */
-    public record Drawn(RuleRef.Invariant rule, int conjunct) {
+    public record Drawn(PartId part) {
 
         public Drawn {
-            if (rule == null) {
+            if (part == null) {
                 throw new IllegalArgumentException("a rule put an end here, and this is which");
-            }
-            if (conjunct < 0) {
-                throw new IllegalArgumentException(
-                        "a conjunct of a clause is counted from zero: " + conjunct);
             }
         }
     }
@@ -172,7 +168,7 @@ public final class DeclaredBounds {
                 continue;
             }
             InvariantBound read = placed.bound();
-            End end = new End(read.end(), List.of(new Drawn(each.rule(), each.conjunct())));
+            End end = new End(read.end(), List.of(new Drawn(each.part())));
             if (read.lower()) {
                 min = End.tighter(min, end, false);
             } else {
@@ -204,7 +200,7 @@ public final class DeclaredBounds {
             if (!each.at().of().equals(kind)) {
                 continue;
             }
-            End end = new End(each.end(), List.of(new Drawn(each.from(), each.conjunct())));
+            End end = new End(each.end(), List.of(new Drawn(each.part())));
             if (each.lower()) {
                 min = End.tighter(min, end, false);
             } else {

@@ -42,19 +42,14 @@ public final class DeclaredClauses {
     /**
      * One conjunct of one rule of a declaration.
      *
-     * @param rule     the clause it is a conjunct of, as a report names it
-     * @param conjunct which of that clause's conjuncts it is, counted from zero over all of them
-     * @param expr     the conjunct itself
+     * @param part which part of which rule it is, as the split that wrote the parts down named it
+     * @param expr the conjunct itself
      */
-    public record Conjunct(RuleRef.Invariant rule, int conjunct, Hir.Expr expr) {
+    public record Conjunct(PartId part, Hir.Expr expr) {
 
         public Conjunct {
-            if (rule == null || expr == null) {
+            if (part == null || expr == null) {
                 throw new IllegalArgumentException("a conjunct is some clause's text");
-            }
-            if (conjunct < 0) {
-                throw new IllegalArgumentException(
-                        "a conjunct of a clause is counted from zero: " + conjunct);
             }
         }
     }
@@ -109,7 +104,7 @@ public final class DeclaredClauses {
             RuleRef.Invariant rule = new RuleRef.Invariant(Clause.Ref.of(declared));
             for (ClauseHelpers.AuthoredPart each
                     : ClauseHelpers.conjunctsOf(declared.clause().expr())) {
-                out.add(new Conjunct(rule, each.idFor(rule).ordinal(), each.written()));
+                out.add(new Conjunct(each.idFor(rule), each.written()));
             }
         }
         return out;

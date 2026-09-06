@@ -87,10 +87,10 @@ class AnAuthoredPartThatStatesTwoRulesIsReadAsOnePartTest {
     @Test
     void eachEndIsNamedByTheConjunctItsAuthorWrote() {
         assertEquals(List.of(0, 1), writtenOut().placed().stream()
-                        .map(FieldDomains.Placed::conjunct).sorted().toList(),
+                        .map(each -> each.part().ordinal()).sorted().toList(),
                 "which conjunct each end written out is named by");
         assertEquals(List.of(), named().placed().stream()
-                        .map(FieldDomains.Placed::conjunct).toList(),
+                        .map(each -> each.part().ordinal()).toList(),
                 "and the same where the rules were named");
     }
 
@@ -141,10 +141,10 @@ class AnAuthoredPartThatStatesTwoRulesIsReadAsOnePartTest {
     void aPartThatPlacedNoEndLeavesOneRecordPerConjunct() {
         List<FieldDomains.WithoutAnEnd> left = read("", "value >= 1 && value /= 5").withoutAnEnd();
 
-        assertEquals(List.of(1), left.stream().map(FieldDomains.WithoutAnEnd::conjunct).toList(),
+        assertEquals(List.of(1),
+                left.stream().map(each -> each.part().ordinal()).toList(),
                 "which conjunct each record is of");
-        assertEquals(1, left.stream()
-                        .map(each -> List.of(each.from(), each.conjunct())).distinct().count(),
+        assertEquals(1, left.stream().map(FieldDomains.WithoutAnEnd::part).distinct().count(),
                 "how many conjuncts the records are spread over");
     }
 

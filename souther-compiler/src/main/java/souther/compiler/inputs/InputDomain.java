@@ -2,6 +2,8 @@ package souther.compiler.inputs;
 
 import souther.compiler.ast.Hir;
 import souther.compiler.check.NumberAt;
+import souther.compiler.check.PartId;
+import souther.compiler.check.RuleRef;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.Carrier;
 import souther.compiler.check.DeclaredBounds;
@@ -1518,8 +1520,8 @@ public final class InputDomain {
                                              RuleReadingSource source,
                                              RulesWithNoLine.Gathered out) {
         for (FieldDomains.Placed each : stated) {
-            out.boundaryUndetermined(each.from(),
-                    souther.compiler.check.RuleCitation.named(each.from()),
+            out.boundaryUndetermined(ruleOf(each.part()),
+                    souther.compiler.check.RuleCitation.named(ruleOf(each.part())),
                     // Each rule at the coordinate that rule is about, which is what makes the two
                     // two. What is undecided is which of them the position is measured at, and that
                     // is a fact about the position rather than about either rule — this reading has
@@ -1718,10 +1720,25 @@ public final class InputDomain {
             // At the number that rule is about, which the rule itself says. Nothing is missing here
             // for the position to stand in for: a clause was read far enough to be about one number
             // or the other, and it is only the line that nothing came of.
-            out.add(each.from(),
-                    souther.compiler.check.RuleCitation.named(each.from()),
+            out.add(ruleOf(each.part()),
+                    souther.compiler.check.RuleCitation.named(ruleOf(each.part())),
                     filedAt(path, each.at(), type, source),
                     each.why());
         }
+    }
+
+    /**
+     * The rule {@code part} is a part of.
+     *
+     * <p>Every part these readings hold is a part of a clause a declaration wrote, which is what a
+     * reading of ends reads; a part of anything else arriving here is this compiler disagreeing
+     * with itself rather than a case to answer.
+     */
+    private static RuleRef.Invariant ruleOf(PartId part) {
+        if (part.rule() instanceof RuleRef.Invariant it) {
+            return it;
+        }
+        throw new IllegalStateException("the ends a declaration's rules place are read here, and "
+                + part.rule() + " is not one of its clauses");
     }
 }
