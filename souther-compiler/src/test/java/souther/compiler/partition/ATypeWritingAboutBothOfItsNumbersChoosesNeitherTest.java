@@ -100,13 +100,11 @@ class ATypeWritingAboutBothOfItsNumbersChoosesNeitherTest {
     }
 
     /**
-     * A type writing about both, where only one of the two placed an end.
+     * A type writing about both, where one of the two draws no comparison.
      *
      * <p>`Code` is written about its own order and about its length, and the length rule places no
-     * end — a disequality states where nothing stops. So what reaches the position from `Holder`
-     * is an end on one coordinate and one only, which is the case that tells the two standings
-     * apart: read in the other order, a rule of the record would settle a question `Code`'s own
-     * clauses left open, and the model `Code` describes would depend on which records hold one.
+     * end: a disequality states where nothing stops. What it does do is take a value away from the
+     * end of the range, which is an end at this position that no comparison put there.
      */
     private static final String ONE_OF_THEM_PLACES_NO_END = """
             module noend
@@ -127,20 +125,18 @@ class ATypeWritingAboutBothOfItsNumbersChoosesNeitherTest {
             """;
 
     /**
-     * The standing below answers once, and the question stays open all the same.
+     * An end nothing compared is an end at the position, and is named with the rest.
      *
-     * <p>What chooses is what the rules are written about, and `Code` wrote about both of its
-     * numbers. What reaches the position places an end on one of them, so a reading that let the
-     * rules beside a type settle what the type left open would have an answer here — and it would
-     * be `Code` measured on its own order because a record said so.
+     * <p>What chooses the coordinate is what the rules are written about, and `Code` wrote about
+     * both of its numbers however each of them came out. So the position is measured at neither,
+     * and every end at it — the two on its own order and the one the disequality moved — is a rule
+     * an author would have to rewrite.
      *
-     * <p><b>And the length rule is named at the length.</b> It draws no comparison and it accounts
-     * for one: a disequality takes a value away from the end of the range, which is an end nothing
-     * placed and something moved. So it is an end at this position like the others, and what
-     * became of it is owed to its author for the same reason theirs is.
+     * <p>Read off the comparisons instead, the length rule is a rule that placed nothing and the
+     * report would name two of the three, leaving an author to find the third for themselves.
      */
     @Test
-    void aRuleBesideATypeSettlesNothingTheTypeLeftOpen() {
+    void anEndNothingComparedIsNamedWithTheRest() {
         assertEquals(List.of("v.c: COMPETING_COORDINATES",
                         "String.length(v.c): COMPETING_COORDINATES",
                         "v.c: COMPETING_COORDINATES"),
