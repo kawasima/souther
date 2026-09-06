@@ -64,10 +64,12 @@ public final class StringMachineAnswers {
         if (known != null) {
             return known;
         }
-        MADE.incrementAndGet();
         TextExtent made = TextExtents.of(set);
-        if (recording && !(made instanceof TextExtent.NotBuilt)) {
-            extents.put(set, made);
+        if (!(made instanceof TextExtent.NotBuilt)) {
+            MADE.incrementAndGet();
+            if (recording) {
+                extents.put(set, made);
+            }
         }
         return made;
     }
@@ -84,10 +86,12 @@ public final class StringMachineAnswers {
         if (known != null) {
             return known;
         }
-        MADE.incrementAndGet();
         Emptiness made = TextExtents.inside(language, held, meter);
-        if (recording && made != Emptiness.UNDECIDED) {
-            inside.put(stretch, made);
+        if (made != Emptiness.UNDECIDED) {
+            MADE.incrementAndGet();
+            if (recording) {
+                inside.put(stretch, made);
+            }
         }
         return made;
     }
@@ -112,8 +116,11 @@ public final class StringMachineAnswers {
                     case AdmittedPlan.Pattern _, AdmittedPlan.Both _, AdmittedPlan.Either _ ->
                             true;
                 };
-                if (recording && machine && made instanceof Realization.Exact it) {
-                    realized.put(plan, it.set());
+                if (machine && made instanceof Realization.Exact it) {
+                    MADE.incrementAndGet();
+                    if (recording) {
+                        realized.put(plan, it.set());
+                    }
                 }
             }
         };
@@ -123,9 +130,14 @@ public final class StringMachineAnswers {
      * How many machines have been made rather than answered from the facts, for a test holding a
      * reading to what it borrows.
      *
-     * <p>Counted where the answer is not there to be had, which is the one place a machine is
-     * built. What a caller is held to is that a second reading of a declaration asks the same
-     * string questions and is answered from what the first came to — a shape, and not a speed.
+     * <p>All three of the questions this answers, counted where the answer was not there to be had
+     * and what was built came out: a plan realized into a set, the extent of a set, and whether a
+     * language has a string inside a stretch. Counted whatever this does with it afterwards, since
+     * keeping what was built is what a recording one does and building it is what any of them may
+     * have to do.
+     *
+     * <p>What a caller is held to is that a second reading of a declaration asks the same string
+     * questions and is answered from what the first came to — a shape, and not a speed.
      */
     public static long machinesMade() {
         return MADE.get();
