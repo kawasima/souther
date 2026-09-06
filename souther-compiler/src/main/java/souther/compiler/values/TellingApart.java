@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -61,8 +62,9 @@ final class TellingApart<A> {
      * does not change the answer — the search runs to the end either way — and it changes how much
      * of it is reached before a branch is refused.
      */
-    static <A> TellingApart<A> over(Map<Sameness.Block<A>, Set<Value>> mayHold,
-                                    Function<Sameness.Block<A>, Set<Sameness.Block<A>>> apartFrom) {
+    private static <A> TellingApart<A> over(
+            Map<Sameness.Block<A>, Set<Value>> mayHold,
+            Function<Sameness.Block<A>, Set<Sameness.Block<A>>> apartFrom) {
         Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart = new LinkedHashMap<>();
         for (Sameness.Block<A> block : mayHold.keySet()) {
             Set<Sameness.Block<A>> theirs = new LinkedHashSet<>(apartFrom.apply(block));
@@ -138,6 +140,30 @@ final class TellingApart<A> {
     private static final int MOST_BLOCKS = 64;
 
     /**
+     * The question over {@code mayHold} where it is one worth looking through, and nothing where
+     * it is not.
+     *
+     * <p><b>The only way to hold one of these.</b> Every figure the search is bounded by is asked
+     * here, before the question is made, and there is no way of making one that does not come
+     * through this — so a figure cannot be forgotten by a caller and the asking cannot be put after
+     * the making. Both of those had happened while this was two calls with the order written
+     * between them in a comment: a comment is not violated, it only stops being true.
+     *
+     * <p>Nothing where the shape is past what is looked through, which is the absence of a question
+     * and never an answer to one. What the search answers stays two-valued; a shape nobody may ask
+     * about is not a third thing it says.
+     *
+     * @param relation how large the relation this is a part of is, which the making of the question
+     *                 reads once however few blocks the question is over
+     */
+    static <A> Optional<TellingApart<A>> lookingThrough(
+            Apartness.Extent relation, Map<Sameness.Block<A>, Set<Value>> mayHold,
+            Function<Sameness.Block<A>, Set<Sameness.Block<A>>> apartFrom) {
+        return relation.isSmallEnoughToRead() && isWorthLookingThrough(mayHold)
+                ? Optional.of(over(mayHold, apartFrom)) : Optional.empty();
+    }
+
+    /**
      * Whether a question over {@code mayHold} is one worth looking through.
      *
      * <p>Asked of the values alone and before anything is built, which is what makes it a bound.
@@ -153,7 +179,7 @@ final class TellingApart<A> {
      *
      * <p>A question over no blocks is within both, and is one an empty assignment answers.
      */
-    static <A> boolean isWorthLookingThrough(Map<Sameness.Block<A>, Set<Value>> mayHold) {
+    private static <A> boolean isWorthLookingThrough(Map<Sameness.Block<A>, Set<Value>> mayHold) {
         if (mayHold.size() > MOST_BLOCKS) {
             return false;
         }

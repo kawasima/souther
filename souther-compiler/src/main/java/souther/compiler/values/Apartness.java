@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -198,8 +199,21 @@ public final class Apartness<A> {
          * are, and a relation of few pairs left out has as many pairs as blocks allow.
          */
         boolean admitsCounting() {
-            return edges <= MOST_EDGES_HELD
+            return isSmallEnoughToRead()
                     && (blocks <= MOST_BLOCKS_WALKED || pairsLeftOut() <= MOST_PAIRS_LEFT_OUT);
+        }
+
+        /**
+         * Whether the relation itself is small enough for anything here to read its shape.
+         *
+         * <p>Asked by both of the things that read it and not by one of them. Every pair is
+         * something a walk over the sets holds in an adjacency, and every pair is something the
+         * making of a search question reads however few blocks that question is over — so a
+         * relation past this is one neither may be handed, and a reader that asked only its own
+         * figures would be reading a relation of any size at all.
+         */
+        boolean isSmallEnoughToRead() {
+            return edges <= MOST_EDGES_HELD;
         }
     }
 
@@ -350,16 +364,22 @@ public final class Apartness<A> {
      * is the same question asked again — once per subset, which is as many as there are subsets.
      *
      * <p>Walked to the end or not walked at all. Whether the shape is one worth walking is read off
-     * the relation before there is a walk ({@link Extent#admitsCounting}); stopped part-way
-     * instead, this would answer with the sets one order of the pairs happened to reach first, and
-     * a relation written the other way round would be answered differently.
+     * the relation before there is a walk ({@link Extent#admitsCounting}).
      *
-     * <p>Which is why this is not something a reader outside can call. What it costs is bounded by
-     * the shape and by nothing it does itself, so a caller that had not asked the shape would be
-     * walking a relation nobody had agreed to spend that much on — and the agreement is
-     * {@link #counting}, which asks before it walks.
+     * <p>Which is why nothing reaches the walk itself. What it costs is bounded by the shape and by
+     * nothing it does itself, so an entry that left the asking to whoever called it would be a
+     * bound held by whatever the caller remembered — which is what this was while the asking was
+     * the caller's, written in the walk's own words for the caller to honour.
+     *
+     * <p>Nothing where the shape is past it, and never a shorter list. A walk that answered with
+     * the sets it happened to reach would decide a declaration by how far it got, and the same
+     * relation written the other way round would be answered differently.
      */
-    List<Set<Sameness.Block<A>>> everyPairwiseApartSet() {
+    Optional<List<Set<Sameness.Block<A>>>> everySetWorthWalkingFor() {
+        return extent().admitsCounting() ? Optional.of(everyPairwiseApartSet()) : Optional.empty();
+    }
+
+    private List<Set<Sameness.Block<A>>> everyPairwiseApartSet() {
         Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart = new LinkedHashMap<>();
         for (Edge<A> edge : edges) {
             if (edge.isOfOneBlock()) {
@@ -536,15 +556,12 @@ public final class Apartness<A> {
      * shape the search is not admitted for is neither.
      */
     private Reduction<A> lookedFor(Map<Sameness.Block<A>, Set<Value>> mayHold, Reduction<A> found) {
-        // Before the question is made and not after. Both figures the search is bounded by are
-        // read off the values — how many blocks there are and what their values come to between
-        // them — and making the question out of them costs the square of the blocks, so an
-        // admission asked of the made question would be a bound on the looking and none at all on
-        // the making.
-        if (!TellingApart.isWorthLookingThrough(mayHold)) {
+        Optional<TellingApart<A>> asked =
+                TellingApart.lookingThrough(extent(), mayHold, this::apartFrom);
+        if (asked.isEmpty()) {
             return new Reduction.NotKnown<>();
         }
-        TellingApart<A> over = TellingApart.over(mayHold, this::apartFrom);
+        TellingApart<A> over = asked.get();
         // The blocks the search was over, asked of the search. Read off what was handed to it
         // instead, this would be the same set worked out twice, and the day the two differ is the
         // day a lack names blocks nothing was looked for over.
@@ -688,10 +705,11 @@ public final class Apartness<A> {
      * sets hold enough values.
      */
     private RelationalWitness<A> counting(Map<Sameness.Block<A>, Admits> left) {
-        if (!extent().admitsCounting()) {
+        Optional<List<Set<Sameness.Block<A>>>> walked = everySetWorthWalkingFor();
+        if (walked.isEmpty()) {
             return null;
         }
-        for (Set<Sameness.Block<A>> apart : everyPairwiseApartSet()) {
+        for (Set<Sameness.Block<A>> apart : walked.get()) {
             Map<Sameness.Block<A>, Set<Value>> counted = new LinkedHashMap<>();
             apart.forEach(block -> {
                 if (left.get(block) instanceof Admits.These it) {

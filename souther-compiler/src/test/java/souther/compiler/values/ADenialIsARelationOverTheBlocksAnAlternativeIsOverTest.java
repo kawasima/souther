@@ -317,11 +317,11 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         Apartness<String> triangle = Apartness.of("p", "q")
                 .and(Apartness.of("q", "r")).and(Apartness.of("r", "p"));
 
-        assertEquals(List.of(Set.of(P, Q, R)), triangle.everyPairwiseApartSet(),
+        assertEquals(List.of(Set.of(P, Q, R)), triangle.everySetWorthWalkingFor().orElseThrow(),
                 "one set, and not every part of it nor every order its blocks come in");
 
         Apartness<String> chain = Apartness.of("p", "q").and(Apartness.of("q", "r"));
-        assertEquals(List.of(Set.of(P, Q), Set.of(Q, R)), chain.everyPairwiseApartSet(),
+        assertEquals(List.of(Set.of(P, Q), Set.of(Q, R)), chain.everySetWorthWalkingFor().orElseThrow(),
                 "and a chain is two of them, neither of which the other holds");
     }
 
@@ -344,7 +344,7 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
             }
         }
 
-        assertEquals(1, all.everyPairwiseApartSet().size(),
+        assertEquals(1, all.everySetWorthWalkingFor().orElseThrow().size(),
                 "one set, and not every part of it nor every order its blocks come in");
         assertInstanceOf(RelationalWitness.TooFewValuesBetweenThem.class,
                 refusedBy(all.reduce(holding(java.util.Map.of()))));
@@ -395,17 +395,26 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
     @Test
     void andARelationPastBothOfThoseIsOneThisSaysNothingAbout() {
         List<String> named = everyOneOf(34);
+        Apartness<String> past = leavingOut(named, 13);
+        Apartness<String> within = leavingOut(named, 12);
 
         assertInstanceOf(Apartness.Reduction.NotKnown.class,
-                leavingOut(named, 20).reduce(holding(java.util.Map.of())),
+                past.reduce(holding(java.util.Map.of())),
                 "past what either question admits, and so unanswered");
         assertInstanceOf(RelationalWitness.TooFewValuesBetweenThem.class,
-                refusedBy(leavingOut(named, 12).reduce(holding(java.util.Map.of()))),
-                "and inside the bound the same count refuses it");
+                refusedBy(within.reduce(holding(java.util.Map.of()))),
+                "and one pair fewer left out is inside it, and counted");
     }
 
-    /** Every pair of {@code named} stated to differ but for {@code many} of them, no two of which
-     *  share a block, which is the most sets that many left-out pairs can make. */
+    /**
+     * Every pair of {@code named} stated to differ but for {@code many} of them, no two of which
+     * share a block, which is the most sets that many left-out pairs can make.
+     *
+     * <p>How many were left out is asserted rather than assumed. Asked for more pairs than the
+     * blocks can supply without sharing an end, this leaves out as many as it can and says nothing
+     * — and a boundary asserted through it would then be about a shape it never built, passing
+     * whatever the figure it is meant to hold was moved to.
+     */
     private static Apartness<String> leavingOut(List<String> named, int many) {
         Apartness<String> all = Apartness.nothing();
         for (int first = 0; first < named.size(); first++) {
@@ -416,6 +425,8 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
                 all = all.and(Apartness.of(named.get(first), named.get(second)));
             }
         }
+        assertEquals(many, all.extent().pairsLeftOut(),
+                "the fixture leaves out what it was asked to and not as many as it could");
         return all;
     }
 
@@ -539,7 +550,7 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         Set<Value> three = new LinkedHashSet<>(Set.of(A, B));
         three.add(C);
 
-        assertEquals(2, made.everyPairwiseApartSet().getFirst().size(),
+        assertEquals(2, made.everySetWorthWalkingFor().orElseThrow().getFirst().size(),
                 "the largest set of blocks all stated to differ is a pair");
         assertInstanceOf(RelationalWitness.NoAssignmentTellsThemApart.class,
                 refusedBy(made.reduce((_, _) -> new Admits.These(three))),
@@ -667,6 +678,41 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         String named = block.members().iterator().next();
         return new Admits.These(Set.of(
                 Integer.parseInt(named.substring(1)) % 2 == 0 ? A : B));
+    }
+
+    /**
+     * And how large the relation is reaches the search as well as the count.
+     *
+     * <p>A search over two blocks is a small question however large the relation holding them, and
+     * making it reads every pair the relation has. So the figure bounding what may be read at all
+     * is asked of both readers — asked of the count alone, a relation of any size could be read
+     * through by leaving all but two of its blocks holding more values than were counted.
+     *
+     * <p>Asserted of the shape rather than of a relation that size. Building one costs the square
+     * of its pairs, which is minutes at the figure this is about, and what the assertion is of is
+     * the question the shape is asked.
+     */
+    @Test
+    void andHowLargeTheRelationIsReachesTheSearchAsWellAsTheCount() {
+        assertFalse(new Apartness.Extent(101, 5050).isSmallEnoughToRead(),
+                "a relation of this many pairs is past what may be read at all");
+        assertTrue(new Apartness.Extent(100, 4950).isSmallEnoughToRead(),
+                "and one pair fewer is inside it");
+        assertFalse(new Apartness.Extent(101, 5050).admitsCounting(),
+                "so the count is not taken of it either, which is the reader it was written for");
+
+        // And the search is not made of it, asked at the seam the relation's size arrives through.
+        // Two blocks holding two values apiece is a question inside every figure of its own, so
+        // what is left to refuse it is how large the relation those blocks are part of is.
+        java.util.Map<Sameness.Block<String>, Set<Value>> two =
+                java.util.Map.of(P, Set.of(A, B), Q, Set.of(A, B));
+        assertTrue(TellingApart.lookingThrough(new Apartness.Extent(101, 5050), two,
+                        _ -> Set.of()).isEmpty(),
+                "a search over two blocks is a small question, and the relation holding them is"
+                        + " read once to make it however small the question is");
+        assertTrue(TellingApart.lookingThrough(new Apartness.Extent(100, 4950), two,
+                        _ -> Set.of()).isPresent(),
+                "and one pair fewer leaves a question to ask");
     }
 
     /**
