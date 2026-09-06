@@ -11,7 +11,6 @@ import souther.compiler.types.WrittenOwner;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
-import tools.jackson.databind.node.ObjectNode;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -252,24 +251,70 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
         PublishedRuleHandle handle = new PublishedRuleHandle.NamedInvariant("Amount", "cap");
         PublishedSentence sentence = PublishedSentence.AroundAHandle.alone(handle);
         for (RuleHandleSurface each : RuleHandleSurface.values()) {
-            ObjectNode into = JSON.createObjectNode();
+            DocumentItem into = whereItBelongs(each);
             switch (each.carries()) {
                 case THE_HANDLE_ALONE -> {
                     each.put(into, handle, SourceId::value, null);
                     assertThrows(IllegalStateException.class,
-                            () -> each.put(JSON.createObjectNode(), sentence, SourceId::value, null),
+                            () -> each.put(whereItBelongs(each), sentence, SourceId::value, null),
                             () -> "a field that is the handle is not told a sentence: " + each);
                 }
                 case A_SENTENCE_AROUND_IT -> {
                     each.put(into, sentence, SourceId::value, null);
                     assertThrows(IllegalStateException.class,
-                            () -> each.put(JSON.createObjectNode(), handle, SourceId::value, null),
+                            () -> each.put(whereItBelongs(each), handle, SourceId::value, null),
                             () -> "a field with words of its own is not handed a handle: " + each);
                 }
             }
-            assertTrue(into.has(each.key()),
+            assertTrue(into.node().has(each.key()),
                     () -> "and either way the field is written under the key this names: " + each);
         }
+    }
+
+    /**
+     * A field is written into the object the schema declares it on, and refused anywhere else.
+     *
+     * <p>What a field is includes where it lives, and that was the half nothing compared: the
+     * contract said where each of these sits and the writer said which part of the document it was
+     * building, and the two answers never met. A handle written into some other object is a field
+     * the schema declares nothing about, however carefully the surfaces themselves are counted —
+     * which is this issue's own defect, arrived at from the writing side.
+     */
+    @Test
+    void aFieldIsRefusedWhereTheSchemaDoesNotDeclareIt() {
+        PublishedRuleHandle handle = new PublishedRuleHandle.NamedInvariant("Amount", "cap");
+        PublishedSentence sentence = PublishedSentence.AroundAHandle.alone(handle);
+        for (RuleHandleSurface each : RuleHandleSurface.values()) {
+            DocumentItem elsewhere =
+                    new DocumentItem(JSON.createObjectNode(), "/$defs/somewhereElse/items");
+
+            assertThrows(IllegalStateException.class,
+                    () -> {
+                        switch (each.carries()) {
+                            case THE_HANDLE_ALONE ->
+                                    each.put(elsewhere, handle, SourceId::value, null);
+                            case A_SENTENCE_AROUND_IT ->
+                                    each.put(elsewhere, sentence, SourceId::value, null);
+                        }
+                    },
+                    () -> "a handle written into an object the schema does not declare this field"
+                            + " on: " + each);
+            assertTrue(elsewhere.node().isEmpty(),
+                    () -> "and nothing was written there: " + each);
+        }
+    }
+
+    /**
+     * An object at the place the schema declares {@code surface} on.
+     *
+     * <p>Read off the surface, which is what makes the pair above say something: what is asked is
+     * whether writing anywhere else is refused, and an object built from some other answer would be
+     * refused for being that other answer rather than for being elsewhere.
+     */
+    private static DocumentItem whereItBelongs(RuleHandleSurface surface) {
+        String path = surface.schemaPath();
+        return new DocumentItem(JSON.createObjectNode(),
+                path.substring(0, path.length() - "/properties/".length() - surface.key().length()));
     }
 
     /** The same, read off the schema: a field that is a handle refers to the canonical definition,

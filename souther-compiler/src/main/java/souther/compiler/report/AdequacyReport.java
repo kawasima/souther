@@ -75,6 +75,8 @@ import souther.compiler.publish.PublicationOrders;
 import souther.compiler.publish.PublishedAt;
 import souther.compiler.publish.PublishedIncompleteness;
 import souther.compiler.publish.PublishedOpening;
+import souther.compiler.publish.DocumentArray;
+import souther.compiler.publish.DocumentItem;
 import souther.compiler.publish.PublishedRuleHandle;
 import souther.compiler.publish.PublishedSentence;
 import souther.compiler.publish.RuleHandleProse;
@@ -3098,9 +3100,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // inside one. Every measure here is a reader of them, and a position no axis came back for
         // still has whatever was written about it.
         if (!partition.unanswered().isEmpty()) {
-            ArrayNode standing = out.putArray("unanswered");
+            DocumentArray standing = new DocumentArray(out.putArray("unanswered"),
+                    "/$defs/partition/properties/unanswered");
             for (PartitionEvidence.Unanswered each : partition.unanswered()) {
-                ObjectNode one = standing.addObject();
+                DocumentItem said = standing.addObject();
+                ObjectNode one = said.node();
                 one.put("at", each.at());
                 // The rendered label, which is what this key has always been. What it is rendered
                 // from is beside it: a name is a name, and a place is a place, and a consumer that
@@ -3108,7 +3112,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 // The same handle the border prints for a line the comparison drew, through the
                 // table of sources this document carries.
                 RuleHandleSurface.UNANSWERED_RULE.put(
-                        one, PublishedRuleHandle.of(handle(each.cited())), sources::written, null);
+                        said, PublishedRuleHandle.of(handle(each.cited())), sources::written, null);
                 // What tells one rule from another, beside the words for finding it. A handle is a
                 // projection of the rule and not the rule: two arms of one `ensures` clause may
                 // name the same case, so the author's words for them are the same words, and two
@@ -3154,9 +3158,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 c.put("why", word(said.why()));
             }
         }
-        ArrayNode boundaries = out.putArray("boundaries");
+        DocumentArray boundaries = new DocumentArray(out.putArray("boundaries"),
+                "/$defs/partition/properties/boundaries");
         for (BorderAssessment boundary : lines.made().orElseGet(List::of)) {
-            ObjectNode b = boundaries.addObject();
+            DocumentItem drawn = boundaries.addObject();
+            ObjectNode b = drawn.node();
             b.put("axis", boundary.axis());
             // The identity, and never left out. This document says what it is about with the
             // ids the caller handed its sources over as, and `sources` explains each one; a
@@ -3167,7 +3173,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // a place written without its source is a line and a column belonging to nothing —
             // and where a boundary is the only place a report points at, the `sources` table has
             // no other entry to guess from.
-            RuleHandleSurface.BOUNDARY_ORIGIN.put(b, boundary.describe(), sources::written, null);
+            RuleHandleSurface.BOUNDARY_ORIGIN.put(
+                    drawn, boundary.describe(), sources::written, null);
             // What the line is a line at, said rather than left to be inferred from the text beside
             // it. A line between two positions writes the other position where a line at a count
             // writes the count, and the two read alike.
@@ -3245,7 +3252,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // to a reader that checks whether the field is there, and this document's shape is what the
         // schema is written against.
         ArrayNode undivided = out.putArray("notDerivable");
-        ArrayNode unread = out.putArray("notRead");
+        DocumentArray unread = new DocumentArray(out.putArray("notRead"),
+                "/$defs/partition/properties/notRead");
         // Only the positions the model divides no way. The list is what a consumer reads for that
         // claim, and the other two answers are about a reading that stopped and about a rule this
         // measure has no line for — neither of which is the model saying nothing.
@@ -3265,7 +3273,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // measure — which a person reading the report was shown and a consumer keyed on this
         // document was not.
         partition.notRead().forEach(each -> {
-            ObjectNode said = unread.addObject();
+            DocumentItem row = unread.addObject();
+            ObjectNode said = row.node();
             said.put("position", each.at());
             said.put("reason", word(each.reason()));
             // And which rule, where one was read and could not be used. Absent where the reading
@@ -3276,12 +3285,12 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // name of its own.
             if (each instanceof PartitionEvidence.NotRead.ARule rule) {
                 RuleHandleSurface.NOT_READ_RULE.put(
-                        said, PublishedRuleHandle.of(handle(rule.cited())), sources::written, null);
+                        row, PublishedRuleHandle.of(handle(rule.cited())), sources::written, null);
                 ruleId(said.putObject("ruleId"), rule.rule());
             }
             if (each instanceof PartitionEvidence.NotRead.AnUnclassifiedRule rule) {
                 RuleHandleSurface.NOT_READ_RULE.put(
-                        said, PublishedRuleHandle.of(handle(rule.cited())), sources::written, null);
+                        row, PublishedRuleHandle.of(handle(rule.cited())), sources::written, null);
                 ruleId(said.putObject("ruleId"), rule.rule());
             }
         });
@@ -3461,17 +3470,21 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      *             that has such words. Null for a body's own lines, which have none: a reading
      *             names the position it met the line at and no reading can stand for the rest
      */
-    private void obligations(ArrayNode out, List<BorderObligationPointAssessment> account,
+    private void obligations(ArrayNode written, List<BorderObligationPointAssessment> account,
                              Map<BorderObligationPoint, String> axes,
                              DocumentSources sources) {
+        // The definition being filled in and not the field it is reached through. Two sections write
+        // this shape, and what a row of it must look like is written where the definition is.
+        DocumentArray out = new DocumentArray(written, "/$defs/obligations");
         for (BorderObligationPointAssessment point : account) {
-            ObjectNode o = out.addObject();
+            DocumentItem owed = out.addObject();
+            ObjectNode o = owed.node();
             // The identity first, because it is what a finding joins on. The words below are what
             // a person reads, and two obligations can share every one of them.
             obligationId(o.putObject("obligationId"), point.point());
             o.put("point", word(point.role()));
             RuleHandleSurface.OBLIGATION_RULE.put(
-                    o, point.handle(), sources::written, null);
+                    owed, point.handle(), sources::written, null);
             ruleId(o.putObject("ruleId"), point.id().provenance());
             o.put("relation", point.operator());
             // What the line is on, where the author wrote a word for it. A body's line has none,
@@ -3582,12 +3595,15 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * Written twice, a consumer joining on the fields would find them agreeing until one of the two
      * was edited.
      */
-    private void findings(ArrayNode out, List<Adequacy.Finding> written, DocumentSources sources) {
+    private void findings(ArrayNode into, List<Adequacy.Finding> written, DocumentSources sources) {
+        // The definition, for the reason `obligations` gives: two sections write this shape.
+        DocumentArray out = new DocumentArray(into, "/$defs/findings");
         for (Adequacy.Finding finding : written) {
-            ObjectNode f = out.addObject();
+            DocumentItem found = out.addObject();
+            ObjectNode f = found.node();
             f.put("kind", word(finding.kind()));
             f.put("disposition", word(finding.disposition(held)));
-            RuleHandleSurface.FINDING_SUBJECT.put(f, subject(finding), sources::written, null);
+            RuleHandleSurface.FINDING_SUBJECT.put(found, subject(finding), sources::written, null);
             // Which rule this is about, where the finding is about one. The words in `subject` are
             // how a reader finds it, and two rules an author named alike have the same words — so a
             // consumer joining findings to the questions they came from wants this.

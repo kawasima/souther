@@ -3,8 +3,6 @@ package souther.compiler.publish;
 import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.source.SourceId;
 
-import tools.jackson.databind.node.ObjectNode;
-
 /**
  * A field of the adequacy document that carries a rule handle.
  *
@@ -76,13 +74,13 @@ public enum RuleHandleSurface {
      * <p>Only where the field is the handle. A field with words of its own has a sentence to put
      * together, and handed a bare handle it would carry the shortest true answer and lose the rest.
      */
-    public void put(ObjectNode into, PublishedRuleHandle handle, SourceNameResolver names,
+    public void put(DocumentItem into, PublishedRuleHandle handle, SourceNameResolver names,
                     SourceId sectionSource) {
         if (carries != Carries.THE_HANDLE_ALONE) {
             throw new IllegalStateException(
                     "this field writes a sentence with a handle in it: " + this);
         }
-        into.put(key, RuleHandleSentence.said(handle, names, sectionSource));
+        into.node().put(here(into), RuleHandleSentence.said(handle, names, sectionSource));
     }
 
     /**
@@ -91,12 +89,29 @@ public enum RuleHandleSurface {
      * <p>Only where the field has words of its own. A field that is the handle would carry words
      * beside it that a consumer reading it as a handle cannot take apart.
      */
-    public void put(ObjectNode into, PublishedSentence sentence, SourceNameResolver names,
+    public void put(DocumentItem into, PublishedSentence sentence, SourceNameResolver names,
                     SourceId sectionSource) {
         if (carries != Carries.A_SENTENCE_AROUND_IT) {
             throw new IllegalStateException("this field is the handle and nothing else: " + this);
         }
-        into.put(key, RuleHandleSentence.of(sentence, names, sectionSource));
+        into.node().put(here(into), RuleHandleSentence.of(sentence, names, sectionSource));
+    }
+
+    /**
+     * The key, once the object being written is the one the schema declares this field on.
+     *
+     * <p>Where a field is written is half of what it is, and it was the half nothing compared. The
+     * place this names and the place the writer reached are two answers arrived at apart — the
+     * contract says where the field lives, the writer says which part of the document it is
+     * building — so a handle put into some other object is a field the schema declares nothing
+     * about, whatever the check that counts these constants had to say.
+     */
+    private String here(DocumentItem into) {
+        if (!schemaPath.equals(into.fieldPath(key))) {
+            throw new IllegalStateException("this field is declared at " + schemaPath
+                    + " and was written into " + into.fieldPath(key));
+        }
+        return key;
     }
 
     /** How much of the field a handle is. */

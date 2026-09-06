@@ -7,15 +7,17 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.classfile.ClassFile;
+import java.lang.classfile.MethodModel;
 import java.lang.classfile.constantpool.FieldRefEntry;
-import java.lang.classfile.constantpool.MemberRefEntry;
 import java.lang.classfile.constantpool.PoolEntry;
+import java.lang.classfile.instruction.InvokeInstruction;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -58,8 +60,15 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
      * and it is why this list is short on purpose.
      */
     private static final List<String> SAYING_IT_IN_PROSE = List.of(
-            "souther/compiler/report/AdequacyReport -> " + PROSE + "#said",
-            "souther/compiler/report/GeneratedRows -> " + PROSE + "#said");
+            "souther/compiler/report/AdequacyReport"
+                    + "#cited(Set, SourceNameResolver, SourceId)",
+            "souther/compiler/report/AdequacyReport"
+                    + "#declared(StringBuilder, AdequacyReport$ModuleReport, SourceNameResolver)",
+            "souther/compiler/report/AdequacyReport#partition lambda taking (StringBuilder,"
+                    + " BorderAssessment, SourceNameResolver, SourceId, PointRole, RoleAnswer)",
+            "souther/compiler/report/AdequacyReport#partition(StringBuilder,"
+                    + " AdequacyReport$BehaviorReport, SourceId, SourceNameResolver)",
+            "souther/compiler/report/GeneratedRows#about(Adequacy$Finding)");
 
     /**
      * And every class that writes one into the document, which is one.
@@ -68,7 +77,13 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
      * writers of one document are two vocabularies for a consumer to learn.
      */
     private static final List<String> WRITING_IT_INTO_THE_DOCUMENT = List.of(
-            "souther/compiler/report/AdequacyReport -> " + SURFACE + "#put");
+            "souther/compiler/report/AdequacyReport#findings(ArrayNode, List, DocumentSources)",
+            "souther/compiler/report/AdequacyReport"
+                    + "#obligations(ArrayNode, List, Map, DocumentSources)",
+            "souther/compiler/report/AdequacyReport#partition lambda taking (DocumentArray,"
+                    + " DocumentSources, PartitionEvidence$NotRead)",
+            "souther/compiler/report/AdequacyReport#partition(ObjectNode, PartitionEvidence,"
+                    + " Measure, List, ClaimAnnotations, DocumentSources)");
 
     @Test
     void everyClassThatTurnsARuleHandleIntoWordsIsWrittenDown() {
@@ -121,22 +136,62 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
                 "the classes this reads are in more than the one module that declares the sentence");
     }
 
-    /** Every class naming a method called {@code member} on {@code owner}, as the class and what it
-     *  named. */
+    /**
+     * Every method calling {@code member} on {@code owner}, as the class and the method.
+     *
+     * <p>The method and not the class, because the class is not the boundary. One class writes the
+     * report a person reads and the document a consumer keys on, so a class allowed to say a handle
+     * in prose is a class that may put those words under any field of the document and add no row
+     * here. Which method it happened in is what tells those two apart.
+     */
     private static Set<String> naming(String owner, String member) {
         Set<String> found = new TreeSet<>();
         for (Path module : REPOSITORY.modules()) {
             for (Path each : classesUnder(module)) {
-                for (PoolEntry entry : constantPoolOf(each)) {
-                    if (entry instanceof MemberRefEntry named
-                            && owner.equals(named.owner().name().stringValue())
-                            && member.equals(named.name().stringValue())) {
-                        found.add(internalName(module, each) + " -> " + owner + "#" + member);
+                for (MethodModel method : ClassFile.of().parse(bytesOf(each)).methods()) {
+                    if (calls(method, owner, member)) {
+                        found.add(internalName(module, each) + "#" + said(method));
                     }
                 }
             }
         }
         return found;
+    }
+
+    /**
+     * The method somebody wrote, as a name and what it takes.
+     *
+     * <p>What it takes, because a name is not a method: this writer says a partition in the report a
+     * person reads and in the document, and both are called {@code partition}. Told apart by name
+     * alone, a handle rendered in prose inside the one that writes the document would arrive here as
+     * a row that was already allowed — which is the whole distinction these rows exist to draw.
+     *
+     * <p>And the method somebody wrote, because a lambda is compiled to a method of its own, named
+     * after the one it was written in and numbered within the class. The number moves when a lambda
+     * is added anywhere above it, so a row carrying one would go red for edits that have nothing to
+     * do with handles.
+     */
+    private static String said(MethodModel method) {
+        String compiled = method.methodName().stringValue();
+        String taking = method.methodTypeSymbol().parameterList().stream()
+                .map(each -> each.displayName())
+                .collect(Collectors.joining(", ", "(", ")"));
+        if (compiled.startsWith("lambda$")) {
+            // What a lambda takes is what it captured and what it is applied to, which is not what
+            // the method around it takes — and is what tells one lambda of that method from
+            // another now that the number is gone.
+            return compiled.substring("lambda$".length(), compiled.lastIndexOf('$'))
+                    + " lambda taking " + taking;
+        }
+        return compiled + taking;
+    }
+
+    /** Whether {@code method}'s own code names {@code member} on {@code owner}. */
+    private static boolean calls(MethodModel method, String owner, String member) {
+        return method.code().map(code -> code.elementStream().anyMatch(element ->
+                element instanceof InvokeInstruction called
+                        && owner.equals(called.owner().name().stringValue())
+                        && member.equals(called.name().stringValue()))).orElse(false);
     }
 
     /**
@@ -194,8 +249,12 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
     }
 
     private static Iterable<PoolEntry> constantPoolOf(Path compiled) {
+        return ClassFile.of().parse(bytesOf(compiled)).constantPool();
+    }
+
+    private static byte[] bytesOf(Path compiled) {
         try {
-            return ClassFile.of().parse(Files.readAllBytes(compiled)).constantPool();
+            return Files.readAllBytes(compiled);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
