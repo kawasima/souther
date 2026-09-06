@@ -195,11 +195,6 @@ public final class Allowance<A> {
         return put(block, AdmittedPlan.meeting(both(one, other)));
     }
 
-    /** The values either admits — what a rule stated as one of two alternatives leaves. */
-    public Composed join(Sameness.Block<A> block, ValueSet one, ValueSet other) {
-        return put(block, AdmittedPlan.joining(both(one, other)));
-    }
-
     /**
      * The values any of them admits, said as one plan over all of them.
      *
@@ -238,11 +233,6 @@ public final class Allowance<A> {
      */
     public Composed meetPromised(Sameness.Block<A> block, ValueSet one, ValueSet other) {
         return promised(meet(block, one, other));
-    }
-
-    /** The same for a choice, on the same terms. */
-    public Composed joinPromised(Sameness.Block<A> block, ValueSet one, ValueSet other) {
-        return promised(join(block, one, other));
     }
 
     private static Composed promised(Composed made) {
