@@ -233,13 +233,15 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
      *
      * <p>Two answers of one decision, and they are not the same set. An author has to look at the
      * choice wherever the alternative beside the unread one reached a position; a position is
-     * reported wider than the rules only where that alternative promised it something. What neither
-     * of them holds is a position the alternative merely settled — a branch nobody can be in
-     * settles what it named, and a choice imposes nothing extra there.
+     * reported wider than the rules only where the choice would be narrower without the unread
+     * alternative, which is settled where the values are and arrives here. What neither of them
+     * holds is a position the alternative merely settled — a branch nobody can be in settles what
+     * it named, and a choice imposes nothing extra there.
      */
     @Test
-    void whatAChoiceLeftOpenIsWhatTheAlternativeBesideTheUnreadOneReachedAndPromised() {
+    void whatAChoiceLeftOpenIsWhatTheAlternativeBesideTheUnreadOneReachedAndWidened() {
         StatedByClauses.AlternativeOpening opened = StatedByClauses.opens(new ChoiceId(),
+                new Settlement.WidthDependency(java.util.Set.of(), java.util.Set.of(CONSTRAINED)),
                 theBranchRead(java.util.Set.of()).byValues(),
                 theBranchNothingRead(java.util.Set.of()).byValues());
 
@@ -247,26 +249,48 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
                 "an author is sent here about the position the branch beside it constrained, and"
                         + " not about the one it settled");
         assertEquals(java.util.Set.of(CONSTRAINED), opened.positions(),
-                "and the position hears about it for the same reason");
+                "and the position hears about it, the width there being the unread branch's");
         assertEquals(java.util.Set.of(), opened.byTheLeftGoingUnread(),
                 "the left alternative was read, so nothing is open by its going unread");
     }
 
     /**
-     * And an alternative holding a clause nothing could read promises nothing.
+     * A position neither alternative is why the choice is wide at is one the choice can still speak
+     * for, however many of them went unread.
      *
-     * <p>What a branch promises is what it promises having read everything it was given, so a
-     * choice between two such branches leaves the positions whatever account they already had —
-     * {@code (P(a) && f(b)) || (P(a) && f(b))} holds {@code a} exactly where {@code P} does.
+     * <p>{@code (P(a) && f(b)) || (P(a) && f(b))} holds {@code a} exactly where {@code P} does:
+     * either branch dropped leaves the other saying the same thing there, so nothing about
+     * {@code a} rests on the branch that may hold nothing.
      */
     @Test
-    void anAlternativeHoldingSomethingUnreadPromisesNothingForTheOtherToTakeBack() {
+    void aPositionNoAlternativeWidenedIsNotOpenedByEitherOfThemGoingUnread() {
         StatedByClauses.AlternativeOpening opened = StatedByClauses.opens(new ChoiceId(),
+                Settlement.WidthDependency.none(),
                 theBranchNothingRead(java.util.Set.of()).byValues(),
                 theBranchNothingRead(java.util.Set.of()).byValues());
 
         assertEquals(java.util.Set.of(), opened.positions(),
-                "neither alternative promised anything, so neither has anything taken back");
+                "the choice is as wide as it is at every position without either of them");
+    }
+
+    /**
+     * And where one of two unread alternatives is what the width rests on, the position is opened.
+     *
+     * <p>The rule holds of a choice neither alternative of which was read whole, as it holds of one
+     * where the branch beside the unread one was: {@code (a == A && f(b)) || f(b)} leaves {@code a}
+     * at every value only because the right branch is one this compiler cannot show anybody is in.
+     * Answered off what the branches took in, both of them holding a clause nothing read would say
+     * neither promised anything, and the reading would speak for {@code a}.
+     */
+    @Test
+    void whereTwoUnreadAlternativesAreOneTheWidthRestsOnThePositionIsStillOpened() {
+        StatedByClauses.AlternativeOpening opened = StatedByClauses.opens(new ChoiceId(),
+                new Settlement.WidthDependency(java.util.Set.of(), java.util.Set.of(CONSTRAINED)),
+                theBranchNothingRead(java.util.Set.of()).byValues(),
+                theBranchNothingRead(java.util.Set.of()).byValues());
+
+        assertEquals(java.util.Set.of(CONSTRAINED), opened.positions(),
+                "the right alternative is why the choice is that wide, and nothing read it");
     }
 
     /**

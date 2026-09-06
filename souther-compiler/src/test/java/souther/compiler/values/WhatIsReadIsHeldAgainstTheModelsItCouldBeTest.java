@@ -30,13 +30,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * that narrows only the positions the rule names. Two positions over a carrier of two values give
  * sixteen sets of records, so the whole of that can be enumerated rather than sampled.
  *
- * <p><b>Two assumptions of the reading are written into the model, because they are what a
- * conjunction's account of an unread rule rests on.</b> A rule this could not read narrows only the
- * positions it names, and leaves the type with a value in it. Without the first, a rule naming
- * nothing could narrow everything and no conjunction could speak for any position; without the
- * second, one could empty the type and every answer about every position would be wrong. Both are
- * what {@code AdmissibleValues} says of itself, and a model that let them go would be testing a
- * different language.
+ * <p><b>One assumption of the reading is written into the model, because it is what a conjunction's
+ * account of an unread rule rests on.</b> A rule this could not read narrows only the positions it
+ * names. Without it a rule naming nothing could narrow everything, and no conjunction could speak
+ * for any position. It is what {@code AdmissibleValues} says of itself, and a model that let it go
+ * would be testing a different language.
+ *
+ * <p><b>That the type is left with a value in it is asked of the whole and not of a rule.</b> The
+ * three questions above are about what stands at a position, which is a question about a type that
+ * has a value — a model leaving none is what {@code isBottom} is for. Required of each rule
+ * instead, a choice would be read only against models in all of which both its alternatives stand,
+ * and what a reading says on the strength of a branch nobody may be in would never be asked about.
  */
 class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
 
@@ -128,13 +132,20 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
     }
 
     /**
-     * A rule this reading has no word for: every set of records that narrows only what it names and
-     * leaves the type with a value in it.
+     * A rule this reading has no word for: every set of records that narrows only what it names,
+     * the empty one among them.
+     *
+     * <p>A rule nothing could read may be one nothing satisfies, and where it is an alternative of
+     * a choice the branch beside it is what the rules leave. Left out, every choice would be read
+     * against models in all of which both its alternatives stand, and what a reading says on the
+     * strength of a branch nobody may be in would never be asked about. What is asked of the
+     * positions is still asked of models that leave a value — {@link #heldAgainstItsModels} skips
+     * the empty one, since what stands at a position is a question about a type that has one.
      */
     private static Rule unread(String wrote, Set<String> names, UnreadReason why) {
         List<Integer> could = new ArrayList<>();
         for (int records = 0; records <= EVERY_RECORD; records++) {
-            if (records != 0 && narrowsOnly(names, records)) {
+            if (narrowsOnly(names, records)) {
                 could.add(records);
             }
         }
@@ -170,14 +181,34 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
     }
 
     /**
-     * What an alternative promised, which is what an unread one beside it takes back.
+     * The positions a choice between these two is left narrower at without {@code alternative},
+     * which is what an unread one takes back.
      *
-     * <p>Nothing where it holds a clause nothing read: what a rule promises is what it promises
-     * having read everything it was given, so there is nothing there for the alternative beside it
-     * to widen.
+     * <p>Out of the record sets and nothing else. What the compiler does with this question it
+     * does by comparing descriptions, so a model side that compared descriptions too would be the
+     * compiler agreeing with itself — which is the one thing this file exists not to do. Here it
+     * is what the models say: a choice between two sets of records is their union, so the question
+     * is whether taking one side away leaves fewer values standing at the position.
+     *
+     * <p>Over every pair a model could be, since what is opened is said of the clause and not of
+     * one model of it. A pair leaving no record at all is passed over, as it is where the answers
+     * are asked: what stands at a position is a question about a type that has a value.
      */
-    private static Set<String> promisedBy(Rule alternative) {
-        return alternative.holdsSomethingUnread() ? Set.of() : alternative.readAbout();
+    private static Set<String> widthRestingOn(Rule alternative, Rule beside) {
+        Set<String> out = new LinkedHashSet<>();
+        for (int mine : alternative.leaves()) {
+            for (int theirs : beside.leaves()) {
+                if ((mine | theirs) == 0) {
+                    continue;
+                }
+                for (String atom : List.of(VALUE, OTHER)) {
+                    if (standingAt(atom, mine | theirs) != standingAt(atom, theirs)) {
+                        out.add(atom);
+                    }
+                }
+            }
+        }
+        return out;
     }
 
     private static Rule both(Rule left, Rule right) {
@@ -192,7 +223,7 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
      * The half of a rule that is this compiler's answer, as one value.
      *
      * <p>Held together because a choice settles all of it or none of it. What an alternative
-     * promised and whether it holds a clause nothing read are what the next choice out reads to
+     * leaves and whether it holds a clause nothing read are what the next choice out reads to
      * decide what it opened, so a settlement that took the branch that stands for the values and
      * left these as the two branches together would answer the outer choice out of a branch nobody
      * can be in. Built nowhere but in the two below, so a part of it added later has to be settled
@@ -245,12 +276,12 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
      * the other.
      *
      * <p><b>The whole of the answer follows the four cases and not the values alone.</b> Where one
-     * branch stands the choice is that branch, so what it promised, whether it holds a clause
+     * branch stands the choice is that branch, so what it leaves, whether it holds a clause
      * nothing read, and what its own choices reached are the standing branch's — these are what the
      * next choice out reads to decide what it opened, and taken from the two branches together it
      * would be answering out of a branch nobody can be in.
      *
-     * <p>A choice neither branch of which stands is neither of them. It promises nothing and its
+     * <p>A choice neither branch of which stands is neither of them. It leaves nothing and its
      * alternatives lost nothing, and what showed it empty is what showed both — which is why that
      * one keeps what either branch could not read.
      */
@@ -273,13 +304,13 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
         about.addAll(right.readAbout());
         Set<String> opened = new LinkedHashSet<>(left.opened());
         opened.addAll(right.opened());
-        // The positions the alternative beside an unread one reached, said where the two of them
-        // are what was written.
+        // The positions the choice is as wide as it is at because of an alternative nothing could
+        // read, said where the two of them are what was written.
         if (left.holdsSomethingUnread()) {
-            opened.addAll(promisedBy(right));
+            opened.addAll(widthRestingOn(left, right));
         }
         if (right.holdsSomethingUnread()) {
-            opened.addAll(promisedBy(left));
+            opened.addAll(widthRestingOn(right, left));
         }
         return new Answer(left.planned().joinLive(right.planned()), opened, about,
                 left.choicesOverOnePosition() && right.choicesOverOnePosition()
@@ -382,8 +413,8 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
      * <p>What the choice comes to is the branch that stands, which read everything it was given.
      * Answered with the two branches' accounts put together, it would say a clause of it went
      * unread — and the next choice out reads that to decide what an alternative beside an unread
-     * one promised, so the reading would take back a position on the strength of a branch nobody
-     * can be in.
+     * one leaves, so the reading would take back a position on the strength of a branch nobody can
+     * be in.
      *
      * <p>Three rules deep on one side, which is what it takes: a conjunction of two is dead only
      * where both were read, so the clause nothing read is the third.
