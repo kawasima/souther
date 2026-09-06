@@ -256,8 +256,6 @@ class WhereAnOperatorMayStillBeHeldIsWrittenDownTest {
                     "the shape an author wrote a clause in, which is walking into what composes"
                             + " both halves. The one walk that says what the parts are; everything"
                             + " else about them is read off the shape it leaves"),
-            new Held("souther.compiler.check.Conditions.stating",
-                    "the same under a polarity, for what a condition states on its own"),
             new Held("souther.compiler.check.FieldDomains.lambda$projection$2",
                     "walks into both halves for the clause that bounds a field"),
             new Held("souther.compiler.check.Predicates.assumeCond",

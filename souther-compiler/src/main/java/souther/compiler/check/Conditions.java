@@ -5,7 +5,6 @@ import souther.compiler.numeric.Granularity;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.Rel;
-import souther.compiler.semantics.ConditionJoin;
 import souther.compiler.semantics.ConstantArguments;
 import souther.compiler.semantics.ResultRange;
 import souther.compiler.types.BinOp;
@@ -137,27 +136,64 @@ final class Conditions {
      */
     static void stating(Terms terms, Core rawCond, Denotations at, boolean positive,
                         List<NumericConstraint> out) {
-        Core cond = asSizeComparison(rawCond);
-        Restated under = restated(cond);
-        if (under != null) {
-            stating(terms, under.condition(), at, under.denied() != positive, out);
-            return;
-        }
-        if (cond instanceof Core.Binary b
-                && ConditionJoin.of(b.op()).map(join -> join.under(positive)).orElse(null)
-                        == ConditionJoin.BOTH) {
-            stating(terms, b.left(), at, positive, out);
-            stating(terms, b.right(), at, positive, out);
-            return;
-        }
-        // Every reading, because each of them holds of the values and an arm read without one of
-        // them is an arm bounded by less than what choosing it settles.
-        for (StatedComparison stated : comparisonsStatedBy(terms, cond, at).inReadingOrder()) {
-            LinearForm<FactSubject> left = terms.affineOf(stated.left(), at);
-            LinearForm<FactSubject> right = terms.affineOf(stated.right(), at);
-            if (left != null && right != null) {
-                out.add(new NumericConstraint(left.minus(right), stated.relationUnder(positive)));
+        out.addAll(new Stating(terms).read(rawCond, positive, at, terms::inside));
+    }
+
+    /**
+     * What a condition states, read over the shape it was written in.
+     *
+     * <p>Over the shape and not over the tree, so that what a connective composes is recognised in
+     * one place ({@link ClauseExpr}) and this reading agrees with every other by having been given
+     * the answer. And a binding is crossed on the way in, so a rule stated through a helper states
+     * what the same rule written out states — read as a shape with no word for it, such a rule
+     * stated nothing at all.
+     */
+    private record Stating(Terms terms)
+            implements ClauseReading<List<NumericConstraint>, Denotations> {
+
+        /**
+         * Every reading of one part, because each of them holds of the values: an arm read without
+         * one of them is an arm bounded by less than what choosing it settles.
+         *
+         * <p>Read through the same normalisation a guard is, which is where it belongs: an
+         * emptiness check is the comparison it means, and what that comparison composes is nothing,
+         * so nothing above this had a shape to recognise differently for it.
+         */
+        @Override
+        public List<NumericConstraint> whole(Core e, boolean positive, Denotations at) {
+            List<NumericConstraint> out = new ArrayList<>();
+            for (StatedComparison stated
+                    : comparisonsStatedBy(terms, asSizeComparison(e), at).inReadingOrder()) {
+                LinearForm<FactSubject> left = terms.affineOf(stated.left(), at);
+                LinearForm<FactSubject> right = terms.affineOf(stated.right(), at);
+                if (left != null && right != null) {
+                    out.add(new NumericConstraint(left.minus(right),
+                            stated.relationUnder(positive)));
+                }
             }
+            return out;
+        }
+
+        /**
+         * A conjunction states both of what it composes, and a choice states neither.
+         *
+         * <p>One of a choice's parts holds and this cannot say which, so what is left of it is that
+         * the author named the two — which is nothing this reading has a constraint for. Descending
+         * would state each part of a choice as though the values had to satisfy it.
+         */
+        @Override
+        public Descent<List<NumericConstraint>> at(ClauseExpr.Joined join) {
+            return switch (join.how()) {
+                case BOTH -> new Descent.Into<>(Stating::and);
+                case EITHER -> new Descent.Whole<>();
+            };
+        }
+
+        private static List<NumericConstraint> and(List<NumericConstraint> one,
+                                                   List<NumericConstraint> other) {
+            List<NumericConstraint> both = new ArrayList<>(one);
+            both.addAll(other);
+            return both;
         }
     }
 
