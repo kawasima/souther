@@ -107,7 +107,18 @@ public record AuthoredLine(WhichLine which, LineFacts facts,
      * in both places, the two spellings of one narrowing read as two.
      */
     public String said(String rule) {
-        return rule + (narrowedWithin.isEmpty() ? "" : " within " + naming(narrowedWithin));
+        return rule + narrowing();
+    }
+
+    /**
+     * What this reading adds after the rule, which is nothing where no declaration took an end in.
+     *
+     * <p>The words on their own, for a reader putting them after a handle it renders itself. A rule
+     * has one spelling and it is not this one's to write, so what is offered here is the rest of the
+     * sentence rather than the whole of it.
+     */
+    public String narrowing() {
+        return narrowedWithin.isEmpty() ? "" : " within " + naming(narrowedWithin);
     }
 
     /**

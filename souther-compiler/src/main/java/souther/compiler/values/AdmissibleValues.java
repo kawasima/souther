@@ -869,30 +869,6 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
     }
 
     /**
-     * This where it already admits nothing, and a state admitting nothing where it does not.
-     *
-     * <p>What a caller says when something outside this showed that nothing satisfies the rules —
-     * another domain reading the same clause, say. Nothing is claimed about any position: what is
-     * known is about the whole, and writing it at a position would name one the rules are fine with.
-     */
-    public AdmissibleValues<A> leavingNothing() {
-        // What it was proved about goes with it into the coordinates a reading admitting nothing
-        // has, which are the positions on their own: there are no alternatives left to agree that
-        // two of them hold one value.
-        return isBottom() ? this
-                : new AdmissibleValues<>(new Held.Nothing<>(), Map.of(), standing,
-                        Map.of(), ValueSet.NONE, true, eachApart(tangled), eachApart(widened));
-    }
-
-    /** The same blocks as the positions they are made of, which is the coordinate a reading with
-     *  no alternatives left answers in. */
-    private static <A> Set<Sameness.Block<A>> eachApart(Set<Sameness.Block<A>> these) {
-        Set<Sameness.Block<A>> out = new LinkedHashSet<>();
-        these.forEach(block -> block.members().forEach(each -> out.add(Sameness.Block.of(each))));
-        return out;
-    }
-
-    /**
      * The same blocks, said in {@code into}'s coordinates.
      *
      * <p>Both ways round, which is what a conjunction and a choice each need. A conjunction leaves

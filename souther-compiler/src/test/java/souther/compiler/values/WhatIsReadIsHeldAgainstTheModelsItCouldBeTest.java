@@ -259,7 +259,7 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
         boolean rightStands = !right.planned().holdsNothingAsBuilt(SETS);
         if (!leftStands && !rightStands) {
             return new Answer(
-                    left.planned().leavingNothing().bothDead(right.planned().leavingNothing()),
+                    left.planned().bothDead(right.planned()),
                     Set.of(), Set.of(), true,
                     left.holdsSomethingUnread() || right.holdsSomethingUnread());
         }

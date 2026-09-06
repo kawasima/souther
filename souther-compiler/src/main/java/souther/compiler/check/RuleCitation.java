@@ -1,8 +1,6 @@
 package souther.compiler.check;
 
 import souther.compiler.diag.Citation;
-import souther.compiler.diag.SourceNameResolver;
-import souther.compiler.source.SourceId;
 
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -81,29 +79,6 @@ public sealed interface RuleCitation {
     }
 
     /**
-     * How a report writes this, where it knows what to call a source.
-     *
-     * <p>The one formatter, shared with the borders a comparison draws — a rule and a line the same
-     * rule drew are found the same way, and two spellings of one place would read as two places.
-     * What is not shared is an identity: where a rule was read is
-     * {@link souther.compiler.partition.LineOrigin}'s and one rule has as many of those as it has
-     * readings.
-     *
-     * <p>Every word here is read off {@link #rule}. What goes in front of a place is what that rule
-     * is, so a kind of rule added to the seal is one this sentence has words for or one that stops
-     * the compile.
-     */
-    default String said(SourceNameResolver names, SourceId sectionSource) {
-        return switch (this) {
-            case Named it -> it.rule().citedName();
-            // Written here, and reached from somewhere else: a comparison inside a helper is one
-            // rule and a reader is sent to two places, which the citation already tells apart.
-            case WrittenAt it -> it.rule().whatItIs()
-                    + joining(it.at()) + it.at().said(names, sectionSource);
-        };
-    }
-
-    /**
      * Where a handle reaches its rule, which is nothing for a rule the author named.
      *
      * <p>The one place a handle is taken apart. What a fold over these keeps is the rule once and
@@ -146,15 +121,5 @@ public sealed interface RuleCitation {
             throw new IllegalArgumentException("a rule with no name is reached at a place and a rule"
                     + " with one is reached by it: " + rule + " at " + reachedAt);
         }
-    }
-
-    /**
-     * What goes between the construct and the place.
-     *
-     * <p>Shared with the borders the same rule drew, which is the whole of what those two have in
-     * common: a word, and how it joins to a place. Neither holds the other's identity.
-     */
-    static String joining(Citation at) {
-        return at instanceof Citation.Elsewhere ? " in " : "@";
     }
 }

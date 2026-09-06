@@ -386,23 +386,8 @@ public sealed interface PlannedValues<A> {
         return emptiness() == Emptiness.EMPTY;
     }
 
-    /**
-     * This where it already admits nothing, and a reading admitting nothing where it does not —
-     * see {@link AdmissibleValues#leavingNothing}.
-     */
-    default PlannedValues<A> leavingNothing() {
-        if (isBottom()) {
-            return this;
-        }
-        return switch (this) {
-            case Settled<A> it -> new Settled<>(new PlannedHeld.Nothing<>(), Map.of(),
-                    it.standing(), Map.of(), AdmittedPlan.NONE, true,
-                    eachApart(it.tangled()), eachApart(it.widened()));
-        };
-    }
-
     /** The same blocks as the positions they are made of, which is the coordinate a reading with
-     *  no alternatives left answers in — see {@link AdmissibleValues#leavingNothing}. */
+     *  no alternatives left answers in. */
     private static <A> Set<Sameness.Block<A>> eachApart(Set<Sameness.Block<A>> these) {
         Set<Sameness.Block<A>> out = new LinkedHashSet<>();
         these.forEach(block -> block.members().forEach(each -> out.add(Sameness.Block.of(each))));
@@ -586,6 +571,14 @@ public sealed interface PlannedValues<A> {
      * whole value. A block one branch was left nothing at is one the other may stand at, so what
      * the choice is left nothing at is what neither of them has a value for; where there is no such
      * position the choice still admits nothing, and says so of no position in particular.
+     *
+     * <p>This realises a decision rather than making one, and what arrives is the readings as they
+     * were read. Which alternatives nobody can take is a fact of the whole clause, and a branch
+     * these values are perfectly happy with is one the ranges may have refused — so the whole
+     * admits nothing because the choice does, and a position is named only where every alternative
+     * of these values left it empty. There is no operation for saying the first fact to a reading,
+     * and there is nothing for one to do: a reading records what these rules left, and what a
+     * composition of them settled is the composition's to hold.
      */
     default PlannedValues<A> bothDead(PlannedValues<A> other) {
         Settled<A> here = settled();

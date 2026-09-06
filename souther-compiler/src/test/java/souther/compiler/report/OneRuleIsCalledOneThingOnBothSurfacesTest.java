@@ -10,6 +10,9 @@ import souther.compiler.check.RuleRef;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.diag.SourcePos;
+import souther.compiler.publish.PublishedRuleHandle;
+import souther.compiler.publish.PublishedRuleKind;
+import souther.compiler.publish.RuleHandleProse;
 import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.TypeKey;
@@ -116,12 +119,21 @@ class OneRuleIsCalledOneThingOnBothSurfacesTest {
             }
             RuleCitation cited = new RuleCitation.WrittenAt(written,
                     Citation.of(new SourcePos(1, 1)));
-            String said = cited.said(SourceNameResolver.identity(), null);
+            String said = RuleHandleProse.said(
+                    PublishedRuleHandle.of(cited), SourceNameResolver.identity(), null);
 
             assertEquals(AdequacyReport.schemaRuleKind(each),
                     said.substring(0, said.indexOf('@')),
                     () -> "the word a reader is shown and the word a document groups by, for "
                             + each);
+            assertEquals(AdequacyReport.schemaRuleKind(each),
+                    PublishedRuleKind.of(written).word(),
+                    () -> "and the word the handle is built from is that same word, for " + each);
+            // And the word a diagnostic says of the rule, which is a third surface: a reader met by
+            // a sentence about a comparison and sent to a handle that calls it something else is
+            // reading about two rules.
+            assertEquals(PublishedRuleKind.of(written).word(), written.whatItIs(),
+                    () -> "and the word a diagnostic says of it, for " + each);
         }
     }
 
@@ -139,7 +151,8 @@ class OneRuleIsCalledOneThingOnBothSurfacesTest {
             }
             RuleCitation cited = new RuleCitation.Named(named);
 
-            assertEquals(named.citedName(), cited.said(SourceNameResolver.identity(), null),
+            assertEquals(named.citedName(), RuleHandleProse.said(
+                            PublishedRuleHandle.of(cited), SourceNameResolver.identity(), null),
                     () -> "a rule with a name is cited by it: " + each);
             assertTrue(!named.citedName().isBlank(),
                     () -> "and there is a name to cite it by: " + each);

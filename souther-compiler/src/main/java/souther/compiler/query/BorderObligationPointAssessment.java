@@ -5,6 +5,8 @@ import souther.compiler.partition.BorderQuantity;
 import souther.compiler.partition.Demand;
 import souther.compiler.partition.DomainPoint;
 import souther.compiler.partition.PointRole;
+import souther.compiler.publish.PublishedRuleHandle;
+import souther.compiler.publish.PublishedSentence;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -264,9 +266,18 @@ public record BorderObligationPointAssessment(BorderObligationPoint point,
      * author named is found by that name wherever it is read, and a comparison by the place it is
      * written.
      */
-    public String describe(souther.compiler.diag.SourceNameResolver names,
-                           souther.compiler.source.SourceId sectionSource) {
-        return cited.said(names, sectionSource);
+    public PublishedSentence describe() {
+        return PublishedSentence.AroundAHandle.alone(handle());
+    }
+
+    /**
+     * How a document sends a reader to the rule that drew this line.
+     *
+     * <p>The handle rather than what it reads as, for the field that is the handle and nothing
+     * else. What that field says is the surface's to write.
+     */
+    public PublishedRuleHandle handle() {
+        return PublishedRuleHandle.of(cited);
     }
 
     /**
@@ -599,8 +610,7 @@ public record BorderObligationPointAssessment(BorderObligationPoint point,
      * be at two places, and two runs beside one line can stop in two places, and this says the
      * same of both — a consumer joins on {@code obligationId} and shows this.
      */
-    public String said(souther.compiler.diag.SourceNameResolver names,
-                       souther.compiler.source.SourceId sectionSource) {
-        return role() + " point of " + describe(names, sectionSource);
+    public PublishedSentence said() {
+        return new PublishedSentence.AroundAHandle(role() + " point of ", handle(), "");
     }
 }

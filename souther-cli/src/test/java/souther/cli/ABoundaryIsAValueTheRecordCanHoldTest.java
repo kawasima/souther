@@ -3,6 +3,8 @@ package souther.cli;
 import souther.cli.Main;
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.publish.RuleHandleProse;
+
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
@@ -111,10 +113,10 @@ class ABoundaryIsAValueTheRecordCanHoldTest {
                 out.add(point.role().againstTheLine()
                         ? "no row is at the " + point.role() + " point " + behavior + "/"
                                 + line.axis() + " = " + point.against()
-                                + " (" + line.describe(names, null) + ")"
+                                + " (" + RuleHandleProse.said(line.describe(), names, null) + ")"
                         : "no row is at an " + point.role() + " point of " + behavior + "/"
                                 + line.axis() + ", " + point.against()
-                                + " (" + line.describe(names, null) + ")");
+                                + " (" + RuleHandleProse.said(line.describe(), names, null) + ")");
             }
         }));
         return List.copyOf(out);

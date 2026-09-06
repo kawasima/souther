@@ -15,6 +15,7 @@ import souther.compiler.values.ValueSet;
 
 import souther.compiler.numeric.Count;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import souther.compiler.types.ValueName;
@@ -169,6 +170,15 @@ public final class FieldDomains {
     /** How each atom's values are spaced, so that settling one afterwards states the same equality
      *  the reading would have stated for it. */
     private final Map<FactSubject, souther.compiler.numeric.Granularity> spacing;
+    /**
+     * The counterfactual readings this one has been asked for, kept under what each leaves out
+     * ({@link #counterfactual}).
+     *
+     * <p>Beside the state rather than part of it. Each is the reading this already is, read out for
+     * what one rule did, so nothing here answers anything the rules of this value do not already
+     * say.
+     */
+    private final Map<LeftOut, FieldDomains> counterfactuals = new HashMap<>();
 
     private FieldDomains(Map<RuleKey, NumericDomain.Bounds> byName,
                          Map<RuleKey, NumericDomain.Bounds> heldByName,
@@ -661,14 +671,74 @@ public final class FieldDomains {
      * standing one up is a second place for that comparison to be written a different way round.
      */
     private Endpoint endWithout(Set<TypeSymbol.AtModule> removed, RuleKey path, boolean lower) {
-        NumericDomain.Bounds bounds = without(removed::contains).byName.get(path);
+        NumericDomain.Bounds bounds = withoutClausesOf(removed).byName.get(path);
         return bounds == null ? null : lower ? bounds.min() : bounds.max();
     }
 
-    /** This value read again without the clauses of the declarations {@code skip} names. */
-    private FieldDomains without(java.util.function.Predicate<TypeSymbol> skip) {
-        return of(named, data, source, policy, settled,
-                InvariantChecker.Reach.withoutClausesOf(skip), DeclarationReadings.NONE);
+    /** This value read again without the clauses of the declarations {@code removed} names. */
+    private FieldDomains withoutClausesOf(Set<TypeSymbol.AtModule> removed) {
+        return counterfactual(new LeftOut.ClausesOf(removed));
+    }
+
+    /**
+     * What a counterfactual reading leaves out, which is the whole of what decides what it comes
+     * to.
+     *
+     * <p>Two kinds of omission and one identity. A declaration's clauses are left out to ask which
+     * declaration is holding an end, and authored conjuncts are left out to ask what those
+     * conjuncts were holding — and what either reading comes to is decided by which rules are gone:
+     * not by the name the question was asked at, and not by which side of a coordinate is being
+     * attributed. Said as a value, that is what a reading is kept under, and a third thing to leave
+     * out has to say what it leaves out before it can be one of these at all.
+     */
+    private sealed interface LeftOut {
+
+        /** How far the reading that leaves this out reaches. */
+        InvariantChecker.Reach reach();
+
+        /** Everything these declarations wrote, wherever it was read. */
+        record ClausesOf(Set<TypeSymbol.AtModule> declarations) implements LeftOut {
+
+            public ClausesOf {
+                declarations = Set.copyOf(declarations);
+            }
+
+            @Override
+            public InvariantChecker.Reach reach() {
+                return InvariantChecker.Reach.withoutClausesOf(declarations::contains);
+            }
+        }
+
+        /** These conjuncts of the rules, everything else the declaration says being read. */
+        record Conjuncts(Set<PartId> parts) implements LeftOut {
+
+            public Conjuncts {
+                parts = Set.copyOf(parts);
+            }
+
+            @Override
+            public InvariantChecker.Reach reach() {
+                return InvariantChecker.Reach.withoutParts(parts);
+            }
+        }
+    }
+
+    /**
+     * This value read again with {@code omitted} left out, made when the first question asks for
+     * it.
+     *
+     * <p>The one place a counterfactual of this reading is stood up, so that what one is — the
+     * declaration, its source, what it may spend, and what it leaves out — is settled once. The
+     * questions that leave the same rules out get the reading that was made: both ends of a
+     * coordinate leave the same rules out, a declaration reaching several of a record's names
+     * leaves them out again at each of them, and the questions {@link EndNarrowing} puts ask for
+     * the reading without every candidate and the one without a single candidate, which where
+     * there is one candidate are the same reading.
+     */
+    private FieldDomains counterfactual(LeftOut omitted) {
+        return counterfactuals.computeIfAbsent(omitted,
+                left -> of(named, data, source, policy, settled, left.reach(),
+                        DeclarationReadings.NONE));
     }
 
     /**
@@ -1204,7 +1274,7 @@ public final class FieldDomains {
     /** Where the coordinate stops on one side with these conjuncts taken away. */
     private Endpoint sideWithout(Set<AboutOneCoordinate> removed, NumberAt<RuleKey> at,
                                  boolean lower) {
-        NumericDomain.Bounds without = without(removed).leftAt(at.position(), at.of());
+        NumericDomain.Bounds without = withoutConjuncts(removed).leftAt(at.position(), at.of());
         return without == null ? null : lower ? without.min() : without.max();
     }
 
@@ -1308,13 +1378,16 @@ public final class FieldDomains {
                 .toList();
     }
 
-    /** This value read again without some conjuncts of its rules. */
-    private FieldDomains without(Set<AboutOneCoordinate> removed) {
-        return of(named, data, source, policy, settled,
-                InvariantChecker.Reach.withoutParts(removed.stream()
-                        .map(AboutOneCoordinate::part)
-                        .collect(java.util.stream.Collectors.toSet())),
-                DeclarationReadings.NONE);
+    /**
+     * This value read again without some conjuncts of its rules.
+     *
+     * <p>Which conjuncts, and not which candidates named them: two sets of candidates writing the
+     * same conjuncts leave the same rules out, and are one reading.
+     */
+    private FieldDomains withoutConjuncts(Set<AboutOneCoordinate> removed) {
+        return counterfactual(new LeftOut.Conjuncts(removed.stream()
+                .map(AboutOneCoordinate::part)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet())));
     }
 
     /**
