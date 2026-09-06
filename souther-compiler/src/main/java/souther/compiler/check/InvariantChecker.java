@@ -1763,7 +1763,7 @@ public final class InvariantChecker {
         // did to it. Every shape of rule alike: whether an end is read from it below decides which
         // reader states where the values stop, and decides nothing about which conjuncts account
         // for where they stop.
-        aboutOneCoordinate(read, part, bin, naming);
+        aboutOneCoordinate(read, part, naming);
         // The coordinate-bearing side read as the left one, as `0 <= value` says what `value >= 0`
         // says.
         //
@@ -2324,7 +2324,7 @@ public final class InvariantChecker {
             // position measured by a count of itself has one of those, and a rule about the strings
             // is about neither that count nor whichever of the two this map happens to hold.
             NumberAt<RuleKey> value = NumberAt.valueOf(found.path());
-            naming.add(new FieldDomains.AboutOneCoordinate(value, part, clause));
+            aboutOneCoordinate(value, part, naming);
             // And the strings only where the rule was read to them. What a rule this could not read
             // admits is not every string; it is not known, and a run read off what the reading left
             // would be a run of a set the rule does not have. Whether it states where the values
@@ -2525,13 +2525,24 @@ public final class InvariantChecker {
      * what the rules leave the coordinate without this conjunct
      * ({@link FieldDomains#movedEndsOf}).
      */
-    private static void aboutOneCoordinate(CanonicalForm read, PartId part, Core.Binary bin,
+    private static void aboutOneCoordinate(CanonicalForm read, PartId part,
                                           List<FieldDomains.AboutOneCoordinate> out) {
         if (!(read instanceof CanonicalForm.Over over) || over.numbers().size() != 1) {
             return;
         }
-        out.add(new FieldDomains.AboutOneCoordinate(over.numbers().iterator().next().at(), part,
-                bin));
+        aboutOneCoordinate(over.numbers().iterator().next().at(), part, out);
+    }
+
+    /**
+     * One candidate, kept once. A part reaching one number twice is one thing to ask a
+     * counterfactual about, because taking a part away takes away everything it stated.
+     */
+    private static void aboutOneCoordinate(NumberAt<RuleKey> at, PartId part,
+                                           List<FieldDomains.AboutOneCoordinate> out) {
+        FieldDomains.AboutOneCoordinate said = new FieldDomains.AboutOneCoordinate(at, part);
+        if (!out.contains(said)) {
+            out.add(said);
+        }
     }
 
     /** One finding, kept once. A coordinate reached twice is one place with one thing to say. */

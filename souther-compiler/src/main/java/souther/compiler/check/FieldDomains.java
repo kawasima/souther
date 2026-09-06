@@ -528,14 +528,21 @@ public final class FieldDomains {
      * <p>What such a rule does to the number is not here and is not this reading's: it is read by
      * asking what the rules leave the coordinate without it, and comparing ({@link #movedEndsOf}).
      *
+     * <p><b>The part and not what inside it was read.</b> This is what a counterfactual reading is
+     * asked without, and what such a reading can be asked without is a part its author wrote: an
+     * author told a rule holds an end rewrites the conjunct they typed, and half of a rule named
+     * through a helper is not something they can take away. So a part stating two rules that both
+     * reach one number is one candidate here — carrying the subtree each was read from, it was two,
+     * and a reading asked without either of them was asked without the part they share, which named
+     * the same part twice as holding an end it holds once.
+     *
      * @param at   the number its quantity is over
      * @param part which part of which rule it is
-     * @param read the part itself, which is what a counterfactual reading is asked without
      */
-    public record AboutOneCoordinate(NumberAt<RuleKey> at, PartId part, Core read) {
+    public record AboutOneCoordinate(NumberAt<RuleKey> at, PartId part) {
 
         public AboutOneCoordinate {
-            if (at == null || part == null || read == null) {
+            if (at == null || part == null) {
                 throw new IllegalArgumentException("a quantity over one number is some rule's");
             }
         }

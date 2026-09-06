@@ -153,16 +153,51 @@ class AnAuthoredPartThatStatesTwoRulesIsReadAsOnePartTest {
     /** What is left of the other readings of the same clause. */
     @Test
     void whatTheOtherReadingsOfTheClauseLeave() {
-        assertEquals(List.of(2, 2), List.of(
+        // Two parts written out and one part named, because what a counterfactual reading can be
+        // asked without is a part: the two rules of the named spelling are one thing to take away
+        // and the two conjuncts of the written-out one are two.
+        assertEquals(List.of(2, 1), List.of(
                         writtenOut().aboutOneCoordinate().size(),
                         named().aboutOneCoordinate().size()),
-                "how many rules are read as being about one number");
+                "how many parts are read as being about one number");
         assertEquals(List.of(0, 0), List.of(
                         writtenOut().noLines().size(), named().noLines().size()),
                 "how many parts left no line at a number they are about");
         assertEquals(List.of(0, 0), List.of(
                         writtenOut().movedEnds().size(), named().movedEnds().size()),
                 "how many ends a counterfactual reading found another part holding");
+    }
+
+    /**
+     * And a counterfactual reading names the part once, however many of its rules reach the number.
+     *
+     * <p>What such a reading is asked without is a part an author wrote: half of a rule named
+     * through a helper is not something they can take away, so a part whose rules both bear on one
+     * number is one candidate to ask about. Held as two — one per subtree a rule was read from —
+     * every question about either is a question asked without the part they share, and the part
+     * comes back holding an end it holds once as though it held it twice.
+     *
+     * <p>Two rules no end is read from, because that is the reading that attributes an end at all:
+     * where a part placed a line of its own, where the values stop and who put them there is the
+     * reading of ends' answer and this is not asked.
+     */
+    @Test
+    void aPartIsNamedOnceHoweverManyOfItsRulesReachTheNumber() {
+        String rules = "%s * 2 >= 4 && %s * 3 >= 3";
+
+        assertEquals(List.of("0 true Endpoint[at=2, inclusive=true]"),
+                ends(read("", rules.formatted("value", "value"))),
+                "which part holds the lower end where the two rules were written out");
+        assertEquals(List.of("0 true Endpoint[at=2, inclusive=true]"),
+                ends(read("let two (n: Int) = " + rules.formatted("n", "n"), "two(value)")),
+                "and the same one part, named once, where they were named as one");
+    }
+
+    /** Each end a counterfactual found another part holding: whose part, which side, and where. */
+    private static List<String> ends(FieldDomains of) {
+        return of.movedEnds().stream()
+                .map(each -> each.part().ordinal() + " " + each.lower() + " " + each.end())
+                .toList();
     }
 
     /**
