@@ -86,12 +86,21 @@ public final class Apartness<A> {
      * holding many values is not, and how many blocks there are tells the two apart the wrong way
      * round.
      *
-     * <p>What it comes to. The search stands on at most about twice this many assignments, each
-     * checked against the blocks given a value before it, which holds one relation to a fraction of
-     * a second whatever shape it is. Measured on the shapes that are actually hard — a relation
-     * with no three blocks all stated to differ that three values are still not enough for — it is
-     * a few milliseconds, so what this figure is doing is bounding the case nobody has built rather
+     * <p>What it comes to. Every branch the search takes is one assignment, and it stands on a
+     * block of that assignment at each step — so what it does is this many assignments times how
+     * many blocks there are, and not twice this many: a block left one value is a step the search
+     * takes all the same, so the branches are not all two ways. That holds one relation to a
+     * fraction of a second whatever shape it is. Measured on the shapes that are actually hard — a
+     * relation with no three blocks all stated to differ that three values are still not enough for
+     * — it is a few milliseconds, so what this figure bounds is the case nobody has built rather
      * than the ones there are.
+     *
+     * <p>Read off what the rules leave and not off what they started from. Taking away the values
+     * one-valued blocks hold makes the search smaller, so a relation that would be past this figure
+     * as written may be inside it once that has run — and what a reading may still be asked is a
+     * question about what it holds now. Which does not put the answer back on the order the rules
+     * were written in: taking values away runs to a fixpoint, and where it stops is the same
+     * whichever block it started at.
      *
      * <p>Read the other way it is what a declaration may ask for: ten positions over a sum of four
      * cases, or twenty over two. A position count and a carrier past that is a relation this says
@@ -461,12 +470,24 @@ public final class Apartness<A> {
      * nothing stands. And what none of those reaches is looked for: whether some way of giving the
      * blocks values tells every stated pair apart.
      *
-     * <p><b>Why the first three stay, once the fourth decides.</b> Refusing by reading the rule and
-     * by taking values away is what says which blocks the lack is about — one pair, or a chain of
-     * four — where looking for an assignment can only name the blocks it looked over. The first is
-     * also what the fourth rests on: a block holding more values than the relation has blocks is
-     * left out of the search because it can be given one after every other block has, and a block
-     * stated to differ from itself is a block no such argument holds for.
+     * <p><b>Why the first three stay, once the fourth decides.</b> Not one reason but three.
+     *
+     * <p>Refusing by reading the rule and by taking values away is what says which blocks the lack
+     * is about — one pair, or a chain of four — where looking for an assignment can only name the
+     * blocks it looked over. Reading the rule is also what the fourth rests on: a block holding
+     * more values than the relation has blocks is left out of the search because it can be given
+     * one after every other block has, and a block stated to differ from itself is a block no such
+     * argument holds for.
+     *
+     * <p>Counting decides where the fourth is not admitted to look, which is most of what a large
+     * relation is. Blocks all stated to differ are refused however many of them there are, and a
+     * search over that many blocks is past what it looks through several times over.
+     *
+     * <p>And taking values away makes the search smaller as well as refusing: a relation whose
+     * blocks lose the values their one-valued neighbours hold may be inside what the fourth looks
+     * through where it was not before. So the three are what decides outside the fourth's reach and
+     * what says the lack better inside it, and neither of those is being kept for the sake of the
+     * other.
      *
      * <p><b>What it still cannot.</b> A relation whose shape is past what either search is admitted
      * by, and a relation naming a block whose values nothing wrote down. Both are
@@ -600,10 +621,17 @@ public final class Apartness<A> {
      * denials were stated and writes what it finds as it goes, so a chain running that way is
      * followed to its end within one sweep — and a refusal by taking values away is a chain from a
      * block left one value, which is the only shape this argument refuses. What a second round can
-     * still do is tighten a set the count below then reads. It is here for that and because a
-     * single sweep would make the answer turn on the order the denials happen to be stated in;
-     * measured, removing it leaves the whole suite green, so nothing yet holds it to what it is
-     * for.
+     * still do is tighten what the two arguments below then read: a set the count is taken of, and
+     * how much of a search there is left to make. It is here for that and because a single sweep
+     * would make the answer turn on the order the denials happen to be stated in; measured,
+     * removing it leaves the whole suite green, so nothing yet holds it to what it is for.
+     *
+     * <p><b>What this leaves is what the search is asked over.</b> Taking values away is not only a
+     * way of refusing sooner and of saying the lack more nearly than a search can. A relation past
+     * what the search looks through as it was written may be inside it once this has run, and then
+     * this is what made an answer possible rather than what explained one. Which does not put the
+     * answer back on how the rules were written: this runs to a fixpoint, and where it stops does
+     * not depend on which block it started at.
      */
     private RelationalWitness<A> takingWhatOneValueBlocksHold(Map<Sameness.Block<A>, Admits> left) {
         // The blocks and not the entries, because taking a value away writes back into the map this

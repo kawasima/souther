@@ -429,6 +429,12 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         return all;
     }
 
+    private static Set<Value> five() {
+        Set<Value> these = four();
+        these.add(Value.text("E"));
+        return these;
+    }
+
     private static Set<Value> four() {
         Set<Value> these = new LinkedHashSet<>(Set.of(A, B));
         these.add(C);
@@ -571,6 +577,38 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
     void andABlockHoldingMoreValuesThanThereAreBlocksNeverRunsOut() {
         assertInstanceOf(Apartness.Reduction.Standing.class,
                 Apartness.of("p", "r").reduce((_, _) -> new Admits.MoreThanCounted()));
+    }
+
+    /**
+     * And what may still be asked is read off what the rules leave, not off what they started from.
+     *
+     * <p>One block pinned to a value and ten stated to differ from it, each holding five. As
+     * written that is more assignments than are looked through; once the ten have lost the value
+     * the pinned one holds, it is not, and the relation is answered.
+     *
+     * <p>So taking values away is not only what says a lack more nearly than a search can. It makes
+     * the search smaller, and a reading that read the shape before it ran would go quiet on a
+     * relation it can answer.
+     */
+    @Test
+    void andWhatMayStillBeAskedIsReadOffWhatTheRulesLeave() {
+        List<String> around = everyOneOf(10);
+        Apartness<String> all = Apartness.nothing();
+        for (String each : around) {
+            all = all.and(Apartness.of("pinned", each));
+        }
+        Set<Value> five = five();
+
+        assertInstanceOf(Apartness.Reduction.Standing.class,
+                all.reduce((block, _) -> block.equals(Sameness.Block.of("pinned"))
+                        ? new Admits.These(Set.of(A)) : new Admits.These(five)),
+                "the ten are left four values apiece, which is a search this makes");
+
+        // The same relation with nothing pinned, so that what changed is the narrowing and not the
+        // blocks or the pairs.
+        assertInstanceOf(Apartness.Reduction.NotKnown.class,
+                all.reduce((_, _) -> new Admits.These(five)),
+                "and five apiece is more assignments than are looked through");
     }
 
     /**
