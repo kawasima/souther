@@ -75,10 +75,9 @@ public interface ProgramExecution {
      * definitions its rows reach — which are classes a compile produced, which is why this is asked
      * here at all. It is not a run of the model.
      *
-     * <p>Answers that nothing was built only where there was something to build. Which tables a
-     * source is the one to build is a question about the module — a second table for one dependency
-     * answers nothing, so whether this file states anything that answers depends on the files
-     * before it — and a source that states none of them built all none of them.
+     * <p>Answers that nothing was built only where there was something to build. Every block here
+     * whose target reached a behavior is built, whether or not it is the one standing in for that
+     * behavior, and a source that writes none of them built all none of them.
      */
     TableBuild fakeTables(ExampleExecution asked, SourceId source);
 

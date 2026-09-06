@@ -105,6 +105,15 @@ public final class Acceptance {
                 for (Report failure : Report.errorsIn(db.ask(new Front.RowNames(id)).reports())) {
                     refused.add(new Located(failure.diagnostic(), ReportContext.inFile(id)));
                 }
+                // And how many blocks the module writes for one behavior, before what a stand-in
+                // does while a row runs: a behavior more than one names has none, so a report about
+                // dispatching through one, or about holding one against a recorded row, would be
+                // about a table standing in for nothing. What such a block states inside itself is
+                // said all the same.
+                for (Report failure
+                        : Report.errorsIn(db.ask(new Names.StandInBlocks(id)).reports())) {
+                    refused.add(new Located(failure.diagnostic(), ReportContext.inFile(id)));
+                }
                 // Only the errors: this key also carries what a clean run wants to say about how
                 // well the rows cover the model, and a warning is not a reason to fail the build.
                 for (Report failure

@@ -378,8 +378,8 @@ public sealed interface BlockReason {
 
     /**
      * The type at the position could not be interpreted: a name denoting no declaration, or a
-     * newtype whose {@code value} the walk over the names could not reach. Such a model compiles, so
-     * this is a position a report is asked about and cannot be answered for.
+     * newtype whose {@code value} the walk over the names could not reach. A report is written
+     * about such a model, so this is a position a report is asked about and cannot be answered for.
      */
     record TypeUnresolved() implements AboutThePosition {}
 

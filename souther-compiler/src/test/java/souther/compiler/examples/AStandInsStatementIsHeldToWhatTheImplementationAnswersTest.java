@@ -2,6 +2,8 @@ package souther.compiler.examples;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.diag.CompileException;
+import souther.compiler.diag.Diagnostic;
 import souther.compiler.observe.ObservedValue;
 
 import javax.tools.ToolProvider;
@@ -11,6 +13,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -178,32 +181,25 @@ class AStandInsStatementIsHeldToWhatTheImplementationAnswersTest {
                 | _           -> NotFound { id = TodoId(0) }
             """;
 
-    private static final String TWICE_IMPL = """
-            package example.twice;
-            public final class FindTodoImpl extends FindTodo {
-                public FindTodoResult apply(TodoId id) { return new NotFound(id); }
-            }
-            """;
-
     /**
-     * A second table written for a target that already has one is not read.
+     * A behavior two blocks name has no entries here, because it has no stand-in.
      *
-     * <p>Dispatch takes the first table for a dependency, so a second one never stands in for
-     * anything and states nothing the implementation could contradict. Nothing refuses it — the
-     * model above compiles with no diagnostic at all — so the enumeration is what keeps its entries
-     * out. Running them would report disagreements about values the fake would never answer with,
-     * which is the mistake ADR-0093 was written to avoid, one level up from the row it was written
+     * <p>The model is refused where the blocks are written (E1933), neither of them standing in for
+     * the behavior. Enumerating either would hand a caller entries of a table nothing dispatches
+     * through, and running them would report disagreements about values no fake would ever answer
+     * with — the mistake ADR-0093 was written to avoid, one level up from the row it was written
      * about.
      */
     @Test
-    void aTableShadowedByAnEarlierOneStatesNothingToObserve() throws Exception {
-        List<StandinEntry> entries = SoutherExamples.ofSource(TWICE)
-                .bind(builtElsewhere(TWICE, "example.twice", TWICE_IMPL))
-                .standinEntries();
+    void aBehaviorNamedByTwoBlocksHasNoEntries() {
+        CompileException refused = assertThrows(CompileException.class,
+                () -> SoutherExamples.ofSource(TWICE));
 
-        assertEquals(1, entries.size(), "only the table that answers is read");
-        assertTrue(entries.get(0).shownStated().contains("the table that answers"),
-                entries.get(0).shownStated());
+        List<String> codes = new ArrayList<>();
+        for (Diagnostic said : refused.diagnostics()) {
+            codes.add(said.code());
+        }
+        assertEquals(List.of("E1933", "E1933"), codes, refused.getMessage());
     }
 
     private static BoundExamples bound() throws Exception {

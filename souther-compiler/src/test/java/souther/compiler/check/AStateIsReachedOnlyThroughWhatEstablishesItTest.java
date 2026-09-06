@@ -223,8 +223,12 @@ class AStateIsReachedOnlyThroughWhatEstablishesItTest {
                         + "make");
         assertEquals(Set.of(), waysInto(Prepared.Example.class),
                 "an example block is projected from the module it is one of");
-        assertEquals(Set.of(), waysInto(Prepared.FakeTable.class),
-                "and so is a fake table");
+        assertEquals(Set.of("classify(Module)", "namesWrittenOut(FakeTables, String)"),
+                waysInto(FakeTables.class),
+                "what a module's fake blocks declare, made from the resolved module; the second is "
+                        + "for a rung that wrote the names in them out, and it carries the "
+                        + "classification across rather than making it again of what the rewrite "
+                        + "produced");
         assertEquals(Set.of(), waysInto(Prepared.ForExamples.class),
                 "a run is asked for of the module, which is what pairs the blocks with the "
                         + "artifact");
@@ -733,9 +737,10 @@ class AStateIsReachedOnlyThroughWhatEstablishesItTest {
                 }
             }
         }
-        assertEquals(List.of("CheckSurface.assemble(InvariantSettled, Map, Map, Symbols, Map)",
-                        "CheckSurface.<init>(InvariantSettled, List, List, List, List, List, List,"
-                                + " Map)",
+        assertEquals(List.of("CheckSurface.assemble(InvariantSettled, Map, Map, Symbols, Map,"
+                                + " FakeTables)",
+                        "CheckSurface.<init>(InvariantSettled, List, List, List, List, FakeTables,"
+                                + " List, Map)",
                         "CheckSurface.settling"),
                 handling,
                 "a class here that is handed a state can reach its projection, and taking a part "

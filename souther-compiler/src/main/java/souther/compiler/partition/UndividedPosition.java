@@ -269,8 +269,8 @@ public record UndividedPosition(TermPath at, Why why) {
         RETURNS_TO_A_DECLARATION_ALREADY_READ,
         /**
          * The type at this position could not be interpreted, so nothing about its values is
-         * established. A model carrying one compiles, which is why this is a word a report writes
-         * rather than a state nothing reaches.
+         * established. A report is written about a model carrying one, which is why this is a word
+         * a report writes rather than a state nothing reaches.
          */
         TYPE_UNRESOLVED,
         /**

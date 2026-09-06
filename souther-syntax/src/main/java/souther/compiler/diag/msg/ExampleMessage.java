@@ -96,6 +96,23 @@ public sealed interface ExampleMessage extends Message {
     @Code(DiagnosticCode.E1932)
     record AFakeNamesNoBehavior(String named) implements ExampleMessage, Reported {}
 
+    /**
+     * More than one {@code fake} block names one behavior, so none of them stands in for it.
+     *
+     * <p>Said at every block that names it, in the source that block is written in. The rows of one
+     * block are an ordered table and there is no order between a module's own source and the files
+     * attached to it, so two of them cannot be read as one; which is the one to write differently
+     * is not a question the language answers.
+     */
+    @Code(DiagnosticCode.E1933)
+    record MoreThanOneFakeStandsInForOneBehavior(String behavior) implements ExampleMessage, Reported {}
+
+    /** What to write instead. */
+    record WriteTheRowsAsOneFake(String behavior) implements ExampleMessage, Supporting {}
+
+    /** Where another of the blocks standing in for it is written. */
+    record AnotherFakeStandsInForItHere(String behavior) implements ExampleMessage, Supporting {}
+
     /** A dependency has no fake. */
     @Code(DiagnosticCode.E1908)
     record ADependencyHasNoFake(String behavior, String dependency) implements ExampleMessage, Reported {}

@@ -11,42 +11,37 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The two words this branch added to the published vocabulary, in a document.
+ * Which word a position whose rules were never arrived at gets, and what such a model is.
  *
- * <p>The schema says which words a {@code notDerivable} reason may be, and a test next door holds
- * that list against the enum it spells. Neither of them says a word is ever written: a vocabulary
- * and a document are different things, and a word promised by one and emitted by neither is what
- * that test was written after.
+ * <p>Two questions about one model, and neither is whether the vocabulary's words reach a document
+ * at all. That is asked of every word of it in one place
+ * ({@link souther.compiler.query.EveryNotReadReasonIsWrittenBySomeCompilationTest}), which is
+ * where a word added arrives as a question — so what a model writes is settled there, and what is
+ * left here is what that answer does not say.
  *
- * <p>So these are the two models the words are for, taken to the document a build reads. A
- * declaration reachable from itself is a type this could not work out; a threshold on a list's
- * elements is values held inside something the walk does not reach into. Both compile, which is why
- * a report is asked about them at all.
+ * <p>The first is which of two words. A position the walk reached and whose rules it did not is not
+ * a position holding values inside something the walk does not reach into, and the model below is
+ * one a reading could take either way: the reaching was made, and what went unread is a clause.
+ * Read as the second, an author is sent after a container that is not the matter.
  *
- * <p>The version is unchanged by their arrival, and the schema says why in its own words: a word
- * added to an enumerated field is one no earlier document carried, so a document written before it
- * existed is still a document of this version.
+ * <p>The second is what this model is. It reaches the word through a clause the front end could not
+ * type, and the same model is one this compiler refuses — two facts about one witness, kept
+ * together so that neither is read without the other.
+ *
+ * <p><b>And no further than this witness.</b> Nothing here says every route to the word wants a
+ * refused model: a declaration that resolves while nothing expands the clauses of its module
+ * reaches it too ({@code AnExpansionThatDidNotHappenIsARuleNotReachedTest}), so what the word means
+ * is not read off what this fixture is. Written as a property of the word, the sentence would be
+ * one this cannot fail on — another route arriving tomorrow leaves this witness refused and this
+ * test green.
  */
-class AWordTheSchemaAdmitsIsOneADocumentCarriesTest {
+class AClauseNothingCouldTypeLeavesAPositionShortOfItsRulesTest {
 
     private static String reportOf(String model) {
         Compilation compilation = Compilation.ofSource(model, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         return AdequacyReport.of(compilation).json(SourceNameResolver.identity());
-    }
-
-    @Test
-    void aTypeThisCouldNotWorkOutIsWrittenAsThatWord() {
-        String json = reportOf("""
-                module demo
-                data Ok
-                data Cyclic = Cyclic
-                behavior run : (x: Cyclic) -> Ok
-                let run (x) = Ok
-                """);
-
-        assertTrue(json.contains("\"type_unresolved\""), json);
     }
 
     /**
@@ -83,18 +78,19 @@ class AWordTheSchemaAdmitsIsOneADocumentCarriesTest {
         assertFalse(json.contains("\"unsupported_traversal\""), json);
     }
     /**
-     * And the model that carries the word is one this compiler refuses.
+     * And the witness above is a model this compiler refuses.
      *
-     * <p>Said out loud, because it is what the word means now and not an accident of the fixture.
-     * A rule written under a container, a case or an optional is read where it governs, one position
-     * down (#1072). What is left that can go unread at a position this reading arrived at is a
-     * clause the front end could not type, and a model carrying one is refused.
+     * <p>Said out loud, and about this model. What it reaches the word through is a clause the
+     * front end could not type, and a model carrying one is refused — so the pair of facts is what
+     * the fixture is, and a reader taking the word from it is reading a model nobody can compile.
      *
-     * <p>A tripwire and not a preference. The day a clause can go unread in a model that compiles,
-     * this fails and whoever made it so is the one who should decide what the word means then.
+     * <p>A tripwire for the fixture and not a property of the word. The day this model compiles,
+     * what it is a witness of has changed and the entry above is about something else; the day
+     * some other model reaches the word without a diagnostic, nothing here notices and nothing
+     * here claimed to.
      */
     @Test
-    void theModelThatCarriesThatWordIsOneThisCompilerRefuses() {
+    void thisWitnessIsOneTheCompilerRefuses() {
         Compilation compilation = Compilation.ofSource(RULES_NEVER_ARRIVED_AT, "Main");
         compilation.answerEverything();
         assertFalse(compilation.diagnostics().values().stream()

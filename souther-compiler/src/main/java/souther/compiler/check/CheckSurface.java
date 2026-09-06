@@ -39,7 +39,9 @@ public final class CheckSurface implements Assembly {
     private final List<Normalized.Def> declarations;
     private final List<Desugared.Fn> fns;
     private final List<Hir.Example> examples;
-    private final List<Hir.Fake> fakes;
+    /** What the module declares a stand-in for, and how many blocks declare each: read once, where
+     *  the names were, and carried rather than worked out again from the blocks. */
+    private final FakeTables fakes;
     private final List<Hir.FnDef> rowDefs;
     /**
      * The definitions this was joined from, as they were handed in.
@@ -56,14 +58,14 @@ public final class CheckSurface implements Assembly {
 
     private CheckSurface(InvariantSettled settling, List<Normalized.Def> declarations,
                          List<Desugared.Fn> fns, List<Desugared.Fn> desugaredFrom,
-                         List<Hir.Example> examples, List<Hir.Fake> fakes,
+                         List<Hir.Example> examples, FakeTables fakes,
                          List<Hir.FnDef> rowDefs, Map<Hir.Expr, String> operandMethods) {
         this.settling = settling;
         this.declarations = List.copyOf(declarations);
         this.fns = List.copyOf(fns);
         this.desugaredFrom = List.copyOf(desugaredFrom);
         this.examples = List.copyOf(examples);
-        this.fakes = List.copyOf(fakes);
+        this.fakes = fakes;
         this.rowDefs = List.copyOf(rowDefs);
         this.operandMethods = operandMethods;
     }
@@ -99,7 +101,8 @@ public final class CheckSurface implements Assembly {
     public static CheckSurface assemble(InvariantSettled settling,
                                         Map<String, Normalized.Def> normalized,
                                         Map<String, Desugared.Fn> desugared, Symbols scope,
-                                        Map<ValueName.Behavior, Sig> signatures) {
+                                        Map<ValueName.Behavior, Sig> signatures,
+                                        FakeTables declared) {
         Hir.Module settled = settling.module();
         List<Normalized.Def> declarations = new ArrayList<>();
         for (InvariantSettled.Def def : settling.defs()) {
@@ -148,16 +151,16 @@ public final class CheckSurface implements Assembly {
         for (Hir.Example block : settled.examples()) {
             examples.add(HelperNames.qualifyImportsIn(block, self));
         }
-        List<Hir.Fake> fakes = new ArrayList<>();
-        for (Hir.Fake table : settled.fakes()) {
-            fakes.add(HelperNames.qualifyImportsIn(table, self));
-        }
+        // The blocks with their imported names spelled out, classified as they already were: what
+        // a block stands in for and how many blocks name it were settled where the names were
+        // read, and writing a name out does not touch either.
+        FakeTables fakes = FakeTables.namesWrittenOut(declared, self);
         CheckSurface written = new CheckSurface(settling, declarations, fns, desugaredFrom, examples, fakes,
                 List.of(), Map.of());
         // What each row operand computes, emitted beside the module's own so a row runs its operand
         // in the program the behavior it is about is applied in. Which method is whose is kept with
         // the assembly: it is decided here and read wherever a row is run, never counted out again.
-        RowFixtures.Emitted rows = RowFixtures.emitted(written.module(), scope, signatures);
+        RowFixtures.Emitted rows = RowFixtures.emitted(written, scope, signatures);
         return rows.defs().isEmpty() ? written
                 : new CheckSurface(settling, declarations, fns, desugaredFrom, examples, fakes,
                         List.copyOf(rows.defs().values()), rows.methods());
@@ -219,8 +222,9 @@ public final class CheckSurface implements Assembly {
         return examples;
     }
 
-    /** And its fake tables. */
-    public List<Hir.Fake> fakes() {
+    /** And what it declares a stand-in for, the blocks written with their imported names spelled
+     *  out. */
+    public FakeTables fakes() {
         return fakes;
     }
 
@@ -265,8 +269,12 @@ public final class CheckSurface implements Assembly {
         for (Normalized.Def declared : declarations) {
             nodes.add(declared.node());
         }
+        List<Hir.Fake> blocks = new ArrayList<>();
+        for (FakeTables.Occurrence occurrence : fakes.written()) {
+            blocks.add(occurrence.read());
+        }
         projected = built = settling.module().withDefs(nodes).withFns(definitions)
-                .withExamples(examples).withFakes(fakes);
+                .withExamples(examples).withFakes(blocks);
         return built;
     }
 

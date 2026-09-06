@@ -207,8 +207,8 @@ public sealed interface StructuralInspection {
                     new Retained(new Continuation.Branches(branchesOf(shape, declared)));
             case Shape.Mapping _ -> stoppedAt(new BlockReason.UnsupportedTraversal(
                     BlockReason.Traversal.MAPPING_CONTENT));
-            // Nothing was interpreted, so there is nothing to be made of. A model carrying one
-            // compiles, which is why this is answered rather than refused.
+            // Nothing was interpreted, so there is nothing to be made of. A report is written about
+            // a model carrying one, which is why this is answered rather than refused.
             case Shape.Unresolved _ -> stoppedAt(new BlockReason.TypeUnresolved());
             // Nothing follows. A value of one of these is one value — which is a different
             // statement from the position having no classes, and this makes neither.
