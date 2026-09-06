@@ -6,13 +6,14 @@ import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.ImportTree;
 import com.sun.source.tree.Tree;
+import com.sun.source.tree.VariableTree;
 import com.sun.source.util.JavacTask;
+import com.sun.source.util.TreePath;
+import com.sun.source.util.Trees;
 
 import org.junit.jupiter.api.Test;
 
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.util.ElementFilter;
-import javax.lang.model.util.Elements;
 import javax.tools.Diagnostic;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
@@ -64,11 +65,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p><b>Whichever of the two ways the import is spelled.</b> {@code import static b.Outer.X} binds
  * {@code X} to a member type and shadows the package's own just as {@code import b.X} does, so the
- * rule is about what an import binds and not about the keyword in front of it. Which of them a
- * static import binds is the owner's answer, and it is asked of the compiler
- * ({@link MemberTypes}): the members of a type are the ones it inherits as well as the ones it
- * declares, so no reading of the owner's source text answers this. An owner nothing here resolves
- * is a third answer and is listed rather than let through
+ * rule is about what an import binds and not about the keyword in front of it. A static import
+ * brings in the accessible static members the owner has by that name, which is not the same as the
+ * members it has: a member class that is not static binds nothing, and neither does one the
+ * importing source may not reach. So what is asked is what the bare name comes to mean where the
+ * import is written, and the whole of the answer is the compiler's ({@link NameMeanings}). An
+ * owner nothing here resolves is a third answer and is listed rather than let through
  * ({@link #everyStaticImportThatCouldTakeANameIsOneThisCanAnswerAbout}).
  *
  * <p>An on-demand import is not one of these. {@code import b.*} and {@code import static b.Outer.*}
@@ -95,7 +97,7 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
      */
     @Test
     void noSourceRebindsANameItsOwnPackageDeclares() {
-        assertEquals(List.of(), read(repositorySources(), repositoryMembers()).rebindings(),
+        assertEquals(List.of(), read(repositorySources(), repositoryMeanings()).rebindings(),
                 "a file whose package declares this name and which imports another package's:"
                         + " inside it the bare name means the other one, and nothing says so."
                         + " Drop the import and write the foreign type out where it is used");
@@ -111,7 +113,7 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
      */
     @Test
     void everyStaticImportThatCouldTakeANameIsOneThisCanAnswerAbout() {
-        assertEquals(List.of(), read(repositorySources(), repositoryMembers()).unanswered(),
+        assertEquals(List.of(), read(repositorySources(), repositoryMeanings()).unanswered(),
                 "a static import whose simple name a package here declares, taken from an owner"
                         + " this repository does not declare: whether it binds a member type is"
                         + " that owner's answer and nothing here has it");
@@ -194,16 +196,16 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
     /**
      * A static import takes the name where it binds a member type, and not where it binds a member.
      *
-     * <p>The three answers the owner gives. A member type shadows the package's own name exactly as
-     * a plain import does; a field or a method is a different namespace and shadows nothing; and an
-     * owner this repository does not declare is one nothing here can ask, which is said rather than
-     * decided either way.
+     * <p>A member type the import brings in shadows the package's own name exactly as a plain
+     * import does; a field or a method is a different namespace and shadows nothing.
      */
     @Test
     void aStaticImportTakesTheNameWhereWhatItBindsIsAType() {
-        Map<String, String> owner = Map.of("p/A.java", "package p; class A {}",
-                "q/Outer.java",
-                "package q; class Outer { static class A {} static int B; static void C() {} }");
+        // Reachable from `p`, because a static import of what a source may not reach binds
+        // nothing and would be asking this about a program that does not compile.
+        Map<String, String> owner = Map.of("p/A.java", "package p; public class A {}",
+                "q/Outer.java", "package q; public class Outer { public static class A {}"
+                        + " public static int B; public static void C() {} }");
 
         Map<String, String> aType = new LinkedHashMap<>(owner);
         aType.put("p/C.java", "package p; import static q.Outer.A; class C { A a; }");
@@ -211,7 +213,7 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
                 rebindingsIn(aType), "a member type takes the name, however the import is spelled");
 
         Map<String, String> aMember = new LinkedHashMap<>(owner);
-        aMember.put("p/B.java", "package p; class B {}");
+        aMember.put("p/B.java", "package p; public class B {}");
         aMember.put("p/C.java", "package p; import static q.Outer.B; class C { B b; }");
         assertEquals(List.of(), rebindingsIn(aMember),
                 "a field is a different namespace and takes no type name");
@@ -228,38 +230,71 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
      * <p>The case a reading of the owner's source text cannot answer. {@code Child} declares
      * nothing, and {@code import static q.Child.A} binds {@code Base}'s {@code A} all the same —
      * so a check that looked for the declaration inside {@code Child} would find none, call it a
-     * field or a method, and let the rebinding through.
+     * field or a method, and let the rebinding through. What is named is the type the name comes to
+     * mean, which is where it is declared and not the way the import reached it.
      */
     @Test
     void aStaticImportOfAnInheritedMemberTypeTakesTheName() {
-        assertEquals(List.of("p/C.java rebinds `A`, which p declares, to q.Child.A"),
+        assertEquals(List.of("p/C.java rebinds `A`, which p declares, to q.Base.A"),
                 rebindingsIn(Map.of(
                         "q/Base.java", "package q; public class Base { public static class A {} }",
                         "q/Child.java", "package q; public class Child extends Base {}",
-                        "p/A.java", "package p; class A {}",
+                        "p/A.java", "package p; public class A {}",
                         "p/C.java", "package p; import static q.Child.A; class C { A a; }")),
                 "the owner has the member type by inheriting it, and the import binds it");
     }
 
     /**
-     * And what a static import binds is the compiler's answer, over types nothing here wrote.
+     * A member the import does not bring in takes no name, though the owner has one by that name.
      *
-     * <p>Beside the fixtures, which pin what the rule does with each of the three answers. This
-     * pins the answers themselves against a type this repository does not own and cannot edit:
-     * {@code HashMap} has {@code SimpleEntry} by inheriting it from {@code AbstractMap}, and its
-     * own body says nothing about it.
+     * <p>The two ways "the owner has a member type called this" is not "the import binds a type
+     * called this". A member class that is not static is no part of what a static import brings in,
+     * and neither is one the importing source may not reach — in both, what the import does bring
+     * in is the field beside it, and the bare name goes on meaning the package's own type. Refused
+     * on the strength of the member existing, each would be a source held to a name it never took.
      */
     @Test
-    void whatAnOwnerHasByANameIsAskedOfTheCompiler() {
-        MemberTypes members = repositoryMembers();
+    void aMemberTheImportDoesNotBringInTakesNoName() {
+        assertEquals(List.of(),
+                rebindingsIn(Map.of("p/A.java", "package p; public class A {}",
+                        "q/Outer.java", "package q; public class Outer {"
+                                + " public class A {} public static int A = 1; }",
+                        "p/C.java", "package p; import static q.Outer.A;"
+                                + " class C { A type; int value = A; }")),
+                "a member class that is not static is not what a static import brings in");
 
-        assertEquals(Boolean.TRUE, members.bindsATypeNamed("java.util.AbstractMap", "SimpleEntry"),
-                "a member type the owner declares");
-        assertEquals(Boolean.TRUE, members.bindsATypeNamed("java.util.HashMap", "SimpleEntry"),
-                "and one it inherits, which no reading of its own text finds");
-        assertEquals(Boolean.FALSE, members.bindsATypeNamed("java.util.HashMap", "size"),
-                "a method is a different namespace and takes no type name");
-        assertNull(members.bindsATypeNamed("nothing.declares.This", "A"),
+        assertEquals(List.of(),
+                rebindingsIn(Map.of("p/A.java", "package p; public class A {}",
+                        "q/Outer.java", "package q; public class Outer {"
+                                + " private static class A {} public static int A = 1; }",
+                        "p/C.java", "package p; import static q.Outer.A;"
+                                + " class C { A type; int value = A; }")),
+                "and neither is a member type the importing source may not reach");
+    }
+
+    /**
+     * And what a name comes to mean is the compiler's answer, over types nothing here wrote.
+     *
+     * <p>Beside the fixtures, which pin what the rule does with each answer. This pins the answer
+     * itself against a type this repository does not own and cannot edit: {@code HashMap} has
+     * {@code SimpleEntry} by inheriting it from {@code AbstractMap}, and its own body says nothing
+     * about it.
+     */
+    @Test
+    void whatANameMeansIsAskedOfTheCompiler() {
+        NameMeanings meanings =
+                meaningsIn(Map.of("p/SimpleEntry.java", "package p; public class SimpleEntry {}"));
+
+        assertEquals("java.util.AbstractMap.SimpleEntry",
+                meanings.meaningOf("p", "SimpleEntry",
+                        new Import("java.util.HashMap.SimpleEntry", true)),
+                "a member type reached through a supertype, which no reading of HashMap finds");
+        assertEquals("p.SimpleEntry",
+                meanings.meaningOf("p", "SimpleEntry",
+                        new Import("java.util.HashMap.entrySet", true)),
+                "a method leaves the package's own type meaning the name");
+        assertNull(meanings.meaningOf("p", "SimpleEntry",
+                        new Import("nothing.declares.This.SimpleEntry", true)),
                 "and an owner nothing resolves is neither of those");
     }
 
@@ -290,12 +325,12 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
 
         assertEquals(List.of("p/C.java rebinds `A`, which p declares, to q.A"),
                 read(inRoots(Map.of("main", declaresA), Map.of("test", takesIt)),
-                        membersOf(merged(declaresA, takesIt))).rebindings(),
+                        meaningsIn(merged(declaresA, takesIt))).rebindings(),
                 "the test root resolves against the main sources of the package");
 
         assertEquals(List.of(),
                 read(inRoots(Map.of("main", takesIt), Map.of("test", declaresA)),
-                        membersOf(merged(declaresA, takesIt))).rebindings(),
+                        meaningsIn(merged(declaresA, takesIt))).rebindings(),
                 "a class declared only under a test root shadows nothing in a main source");
     }
 
@@ -362,7 +397,7 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
      * <p>Sorted, so that what a failure lists is the same on every machine and reads as a list of
      * places to go rather than as whatever order a walk happened to have.
      */
-    private static Found read(List<Unit> units, MemberTypes members) {
+    private static Found read(List<Unit> units, NameMeanings meanings) {
         Map<String, Set<String>> byMain = new LinkedHashMap<>();
         Map<String, Map<String, Set<String>>> byTestRoot = new LinkedHashMap<>();
         for (Unit unit : units) {
@@ -393,16 +428,18 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
                 if (!each.isStatic() && each.owner().equals(unit.pkg())) {
                     continue;
                 }
-                // A plain single import names a type by being one. A static import names whichever
-                // member the owner has by that name, so the owner is asked.
-                Boolean binds = each.isStatic()
-                        ? members.bindsATypeNamed(each.owner(), each.name()) : Boolean.TRUE;
-                if (Boolean.TRUE.equals(binds)) {
-                    found.add(unit.where() + " rebinds `" + each.name() + "`, which " + unit.pkg()
-                            + " declares, to " + each.spelled());
-                } else if (binds == null) {
+                // A plain single import names a type by being one — that is what makes it well
+                // formed. A static import names whichever member the owner has by that name, and
+                // only an accessible static member type of them binds a type name, so what the
+                // bare name comes to mean is asked rather than worked out.
+                String means = each.isStatic()
+                        ? meanings.meaningOf(unit.pkg(), each.name(), each) : each.spelled();
+                if (means == null) {
                     unanswered.add(unit.where() + " imports `" + each.name() + "` from "
                             + each.owner() + ", which nothing here resolves");
+                } else if (!means.equals(unit.pkg() + "." + each.name())) {
+                    found.add(unit.where() + " rebinds `" + each.name() + "`, which " + unit.pkg()
+                            + " declares, to " + means);
                 }
             }
         }
@@ -465,7 +502,7 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
 
     /** What reading sources written here comes to, resolved against those same sources. */
     private static Found ofWritten(Map<String, String> sources) {
-        return read(written(sources), membersOf(sources));
+        return read(written(sources), meaningsIn(sources));
     }
 
     /**
@@ -550,67 +587,85 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
     }
 
     /**
-     * Whether a static import of {@code name} from {@code owner} binds a type.
+     * What a bare name comes to mean in a package once an import is written there.
      *
-     * <p>Three answers. What a static import brings in is whichever member the owner has by that
-     * name, and a member type shadows the package's own where a field or a method does not — so the
-     * two have to be told apart, and an owner nothing can resolve is a third thing rather than
-     * either of them.
+     * <p><b>The question the rule asks, and not one beside it.</b> Whether the owner has a member
+     * of that name is a different question: a single static import brings in the accessible static
+     * members, so a member class that is not static binds nothing, and neither does one the
+     * importing source may not reach. Either of those, read as "the owner has a member type", is a
+     * source refused for a name it never took.
      *
-     * <p><b>Asked of the compiler and never of the owner's source text.</b> The members of a type
-     * include the ones it inherits, so a class whose own body declares nothing can still be the
-     * owner of a member type: {@code java.util.HashMap} has {@code SimpleEntry} because
-     * {@code AbstractMap} declares it, and no reading of {@code HashMap}'s text says so. Answered
-     * by walking declarations, this would be Java's member lookup written a second time here —
-     * superclasses, interfaces, hiding, accessibility — and the second copy is the one that gets a
-     * case wrong and reports a pass.
+     * <p>So what is asked is what the name means where the import is written, and every part of
+     * the answer — static, accessible, inherited, hidden — is the compiler's. Assembled from
+     * conditions here, this would be Java's import resolution written a second time, and the second
+     * copy is the one that has a case wrong and reports a pass.
      */
-    private interface MemberTypes {
+    private interface NameMeanings {
 
-        /** {@code TRUE} where the owner has a member type of that name, {@code FALSE} where what it
-         *  has by that name is not a type, and null where the owner is not resolvable here. */
-        Boolean bindsATypeNamed(String owner, String name);
-    }
-
-    /** The compiler's own answer, over whatever {@code elements} can reach. */
-    private static MemberTypes memberTypesOf(Elements elements) {
-        return (owner, name) -> {
-            TypeElement it = elements.getTypeElement(owner);
-            if (it == null) {
-                return null;
-            }
-            return ElementFilter.typesIn(elements.getAllMembers(it)).stream()
-                    .anyMatch(each -> each.getSimpleName().contentEquals(name));
-        };
+        /**
+         * The type a bare {@code name} denotes in a source of {@code pkg} that writes
+         * {@code importing}, or null where nothing here resolves it.
+         *
+         * <p>Null two ways and they are one answer: the owner is not on what this reads, or the
+         * package's own type is not either. Both are this being unable to say, which is neither
+         * "the name was taken" nor "it was not".
+         */
+        String meaningOf(String pkg, String name, Import importing);
     }
 
     /**
-     * What the classes this test runs against declare.
+     * The compiler's answer, over the classes this test runs against and {@code also}.
      *
-     * <p>This module depends on every other, so the owners a repository source imports from are on
-     * the classpath along with the libraries beside them. An owner that is not — a test class of
-     * another module, which nothing depends on — comes back unresolvable and is said to be.
+     * <p>Asked by writing the one source that asks it: a class in the package, with the import
+     * above it and the name used as a type. What that name resolves to is what a reader of the real
+     * source would be given, arrived at by the same resolution.
      */
-    private static MemberTypes repositoryMembers() {
-        return memberTypesOf(((JavacTask) compiler().getTask(null, null, diagnostic -> { },
-                List.of("-proc:none"), null, List.of())).getElements());
+    private static NameMeanings meaningsOver(List<JavaFileObject> also) {
+        return (pkg, name, importing) -> {
+            List<JavaFileObject> sources = new ArrayList<>(also);
+            sources.add(new Written("probe", "Probe.java", "package " + pkg + "; "
+                    + (importing.isStatic() ? "import static " : "import ") + importing.spelled()
+                    + "; class Probe { " + name + " field; }"));
+            JavacTask task = (JavacTask) compiler().getTask(null, null, diagnostic -> { },
+                    List.of("-proc:none"), null, sources);
+            List<CompilationUnitTree> units = new ArrayList<>();
+            try {
+                task.parse().forEach(units::add);
+                task.analyze();
+            } catch (IOException unreadable) {
+                throw new UncheckedIOException(unreadable);
+            }
+            if (task.getElements().getTypeElement(importing.owner()) == null) {
+                return null;   // the owner is not something this reads, so it says nothing
+            }
+            Trees trees = Trees.instance(task);
+            for (CompilationUnitTree unit : units) {
+                if (!unit.getSourceFile().toUri().toString().endsWith("/Probe.java")) {
+                    continue;
+                }
+                ClassTree probe = (ClassTree) unit.getTypeDecls().getFirst();
+                Tree written = probe.getMembers().stream()
+                        .filter(VariableTree.class::isInstance).map(VariableTree.class::cast)
+                        .findFirst().orElseThrow().getType();
+                return trees.getElement(TreePath.getPath(unit, written))
+                        instanceof TypeElement it ? it.getQualifiedName().toString() : null;
+            }
+            throw new IllegalStateException("the source written to ask what `" + name
+                    + "` means in " + pkg + " did not come back");
+        };
     }
 
-    /** The same, of types written here rather than compiled. */
-    private static MemberTypes membersOf(Map<String, String> sources) {
+    /** What the names of this repository's compiled classes mean, which is what its sources are
+     *  read against. */
+    private static NameMeanings repositoryMeanings() {
+        return meaningsOver(List.of());
+    }
+
+    /** The same, over types written here rather than compiled. */
+    private static NameMeanings meaningsIn(Map<String, String> sources) {
         List<JavaFileObject> written = new ArrayList<>();
         sources.forEach((at, text) -> written.add(new Written("main", at, text)));
-        JavacTask task = (JavacTask) compiler().getTask(null, null, diagnostic -> { },
-                List.of("-proc:none"), null, written);
-        try {
-            // Entered and attributed, because a member of a type is known once the type is. What
-            // the sources here fail to resolve is not this question — a fixture may import from an
-            // owner nobody declares, which is one of the three answers.
-            task.analyze();
-        } catch (IOException unreadable) {
-            throw new UncheckedIOException(unreadable);
-        }
-        return memberTypesOf(task.getElements());
+        return meaningsOver(written);
     }
 
     /**
