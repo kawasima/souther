@@ -33,7 +33,7 @@ final class Clauses {
 
     private final Symbols symbols;
     private final ExpandedClauseLookup expandedClauses;
-    private final StringMachineLookup machines;
+    private final DeclarationReadings machines;
     private final Map<TypeSymbol.AtModule, Map<String, Type>> fields = new HashMap<>();
     private final Map<TypeSymbol.AtModule, Map<String, BindingId>> bindings =
             new HashMap<>();
@@ -57,7 +57,7 @@ final class Clauses {
      *        what those readings answer with.
      */
     Clauses(Symbols symbols,
-            ExpandedClauseLookup expandedClauses, StringMachineLookup machines) {
+            ExpandedClauseLookup expandedClauses, DeclarationReadings machines) {
         this.symbols = symbols;
         this.expandedClauses = expandedClauses;
         this.machines = machines;
@@ -71,7 +71,7 @@ final class Clauses {
 
     /** Where the answers about a declaration's string machines are asked for, for the same
      *  reader. */
-    StringMachineLookup machines() {
+    DeclarationReadings machines() {
         return machines;
     }
 

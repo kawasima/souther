@@ -57,7 +57,7 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
     private final Hir.Binders binders = new Hir.Binders(OWNER);
     private final PathEngine engine =
             new PathEngine(Symbols.none(DefaultStdlib.get()),
-                RuleReadings.noClauseFiled(), StringMachineLookup.NONE, Terms.Of.THE_DISCHARGE_TREE,
+                RuleReadings.noClauseFiled(), DeclarationReadings.NONE, Terms.Of.THE_DISCHARGE_TREE,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
 
     @Test
@@ -189,7 +189,7 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
         Core.Binder x = CoreBinders.of(binders.binder("x", POS));
         Core.Binder y = CoreBinders.of(binders.binder("y", POS));
         PathEngine reading = new PathEngine(Symbols.none(DefaultStdlib.get()),
-                RuleReadings.noClauseFiled(), StringMachineLookup.NONE,
+                RuleReadings.noClauseFiled(), DeclarationReadings.NONE,
                 Map.of(FIND, statesThatTheIntIsPositive()), Terms.Of.THE_DISCHARGE_TREE,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
 
@@ -278,7 +278,7 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
     void aRuleHoldsOfAnArmWhoseValuesAreAllOnesItIsAbout() {
         Symbols symbols = symbolsOf(NESTED);
         PathEngine reading = new PathEngine(symbols, RuleReadings.noClauseFiled(),
-                StringMachineLookup.NONE, Terms.Of.THE_DISCHARGE_TREE,
+                DeclarationReadings.NONE, Terms.Of.THE_DISCHARGE_TREE,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
         TypeSymbol once = named(symbols, "OnceKind");
         TypeSymbol station = named(symbols, "Station");
@@ -298,7 +298,7 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
     void anArmNamingSeveralTakesARuleThatIsAboutAllOfThem() {
         Symbols symbols = symbolsOf(NESTED);
         PathEngine reading = new PathEngine(symbols, RuleReadings.noClauseFiled(),
-                StringMachineLookup.NONE, Terms.Of.THE_DISCHARGE_TREE,
+                DeclarationReadings.NONE, Terms.Of.THE_DISCHARGE_TREE,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
         TypeSymbol once = named(symbols, "OnceKind");
         TypeSymbol station = named(symbols, "Station");

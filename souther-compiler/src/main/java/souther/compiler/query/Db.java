@@ -1,6 +1,16 @@
 package souther.compiler.query;
 
+import souther.compiler.check.DeclarationReadings;
+import souther.compiler.check.LentReadings;
+import souther.compiler.check.ResolvedSymbols;
+import souther.compiler.check.RuleReadingSource;
+import souther.compiler.check.StoreWork;
+import souther.compiler.check.Symbols;
+import souther.compiler.check.TheCompilationsSources;
 import souther.compiler.source.SourceId;
+import souther.compiler.types.TypeKey;
+import souther.compiler.values.StringFacts;
+import souther.compiler.values.StringMachineAnswers;
 
 import java.util.ArrayDeque;
 import souther.compiler.diag.Diagnostic;
@@ -17,6 +27,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * The store a compilation's questions are asked of: it answers a {@link Key} by running it once,
@@ -92,10 +103,16 @@ import java.util.Set;
  * one report that reads every name in sight depends on every name in sight. That is issue #835,
  * and {@code IncrementalCompilationTest} holds both halves.
  *
+ * <p>Not everything a store holds is an answer. What runs its programs is one such thing, and so is
+ * what a reading of a declaration borrows from ({@link #readings()}): the reading of a declaration
+ * that one question made is handed to the next question that would have made it, for as long as the
+ * revision it was made under is the current one. Neither is compared and neither decides what is
+ * recomputed — that is settled by the memos, before either is asked anything.
+ *
  * <p>One store is one workspace over time, not one compile. It is not thread-safe and does not need
  * to be: the work inside a compile is a graph walk, not a set of independent jobs.
  */
-public final class Db {
+public final class Db implements StoreWork {
 
     /**
      * What is known about one key.
@@ -114,6 +131,70 @@ public final class Db {
 
     /** Bumped by every input that is given a value it did not already have. */
     private long revision;
+
+    /**
+     * Which world the answers in hand are of. What it counts is not how much has been asked but
+     * how often the outside changed, so two questions answered at one revision were answered of
+     * one world — which is what {@link #readings()} lends work across and nothing else here needs.
+     */
+    long revision() {
+        return revision;
+    }
+
+    /**
+     * What a reading of a declaration borrows from, for this store.
+     *
+     * <p>Beside the memos, as what runs the programs is, and for the same reason: it is not a value
+     * and this store never compares it. What it holds is work that has been done — the reading of a
+     * declaration that a question of this store already made — and handing that to the next reader
+     * is not an answer being kept. Which questions are recomputed is settled by the memos and by
+     * them alone, before this is asked anything.
+     *
+     * <p>One per store, made when it is first asked for, because sharing among readers is the whole
+     * of what it does and two of them would share nothing.
+     */
+    public DeclarationReadings readings() {
+        if (readings == null) {
+            readings = new LentReadings(this::machinesOf, this::revision, this);
+        }
+        return readings;
+    }
+
+    private DeclarationReadings readings;
+
+    /**
+     * Where this store's modules' rules are read from.
+     *
+     * <p>Kept here because it is this compilation's, and made from what this compilation answers:
+     * a module's scope is read off the store when it is asked for, and the clauses are read from
+     * the one place a declaration's are answered. Nothing about a source is taken from whoever asks
+     * for one, so no reader can bring parts of its own and have them read as the compilation's.
+     */
+    RuleReadingSource ruleReadingFor(String module) {
+        if (sources == null) {
+            sources = new TheCompilationsSources(this::scopeOf,
+                    named -> ask(new Shapes.ClausesExpandedFor(named)).value());
+        }
+        return sources.of(module);
+    }
+
+    private TheCompilationsSources sources;
+
+    /** The scope {@code module}'s names resolve in, or null where this compilation resolves no such
+     *  module. Asked once: what it answers is assembled where it is asked for. */
+    private Symbols scopeOf(String module) {
+        Answer<ResolvedSymbols> scope = Names.resolvedSymbols(this, module);
+        return scope.present() ? scope.value() : null;
+    }
+
+
+    /** What this store answers about {@code declaration}'s string machines, for a reading to
+     *  borrow — nothing, where it has no answer for the declaration at all. */
+    private StringMachineAnswers machinesOf(TypeKey declaration) {
+        Answer<StringFacts> facts = ask(new Machines.OfDeclaration(declaration));
+        return facts.present()
+                ? StringMachineAnswers.borrowing(facts.value()) : StringMachineAnswers.NONE;
+    }
 
     private final Map<Key<?>, Memo> memos = new HashMap<>();
     /** The keys being answered right now, outermost first — the chain a cycle is found on. */
@@ -415,6 +496,29 @@ public final class Db {
                 case Primary.InAnUnnamedText _, Primary.Unavailable _, Primary.Nowhere _ -> sourceId;
             };
         }
+    }
+
+    /**
+     * Does work whose result another question may be handed, and answers with what this store was
+     * asked while it was done.
+     *
+     * <p>The reads are recorded for the question being answered, as they would be had it done the
+     * work itself — it did, this once — and they are handed back so that the next question to be
+     * given the result can be recorded as having read them too. Without that, work shared between
+     * two questions would leave the second kept over an edit to what doing it read.
+     */
+    @Override
+    public <T> Made<T> watching(Supplier<T> work) {
+        frames.push(new LinkedHashSet<>());
+        Set<Key<?>> read;
+        T made;
+        try {
+            made = work.get();
+        } finally {
+            read = Set.copyOf(frames.pop());
+        }
+        read.forEach(this::recordRead);
+        return new Made<>(made, () -> read.forEach(this::recordRead));
     }
 
     private void recordRead(Key<?> key) {

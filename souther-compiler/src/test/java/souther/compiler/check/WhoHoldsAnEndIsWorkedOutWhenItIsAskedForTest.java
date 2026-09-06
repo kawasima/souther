@@ -59,18 +59,18 @@ class WhoHoldsAnEndIsWorkedOutWhenItIsAskedForTest {
     void readingTheEndsReadsNoDeclarationAndAskingWhoHoldsThemDoes() {
         FieldDomains reading = reading();
 
-        long beforeEnds = FieldDomains.readingsMade();
+        long beforeEnds = InvariantChecker.readingsMade();
         NarrowedBounds hi = reading.at(RuleKey.of("hi"));
         assertNotNull(hi.bounds().min(), "something puts a floor under `hi`");
-        assertEquals(beforeEnds, FieldDomains.readingsMade(),
+        assertEquals(beforeEnds, InvariantChecker.readingsMade(),
                 "where the coordinate stops was settled when this reading was made");
 
-        long beforeNames = FieldDomains.readingsMade();
+        long beforeNames = InvariantChecker.readingsMade();
         assertEquals(java.util.List.of("Common"),
                 holding(hi).stream().map(TypeSymbol::name).toList(),
                 "and ten above is Common's doing: a rule a spread brought in is held by the"
                         + " declaration that wrote it, not the one it was read at");
-        assertTrue(FieldDomains.readingsMade() > beforeNames,
+        assertTrue(InvariantChecker.readingsMade() > beforeNames,
                 "which took reading the declaration again without a declaration's clauses");
     }
 
@@ -80,9 +80,9 @@ class WhoHoldsAnEndIsWorkedOutWhenItIsAskedForTest {
         NarrowedBounds hi = reading().at(RuleKey.of("hi"));
         holding(hi);
 
-        long before = FieldDomains.readingsMade();
+        long before = InvariantChecker.readingsMade();
         assertEquals(holding(hi), holding(hi), "the same answer");
-        assertEquals(before, FieldDomains.readingsMade(), "and no reading to arrive at it again");
+        assertEquals(before, InvariantChecker.readingsMade(), "and no reading to arrive at it again");
     }
 
     /**
@@ -105,11 +105,11 @@ class WhoHoldsAnEndIsWorkedOutWhenItIsAskedForTest {
                 java.util.List.of());
 
         NarrowedBounds met = lost.meet(tighter);
-        long before = FieldDomains.readingsMade();
+        long before = InvariantChecker.readingsMade();
         assertEquals(java.util.List.of("Elsewhere"),
                 holding(met).stream().map(TypeSymbol::name).toList(),
                 "200 is where it starts, and only what says 200 is holding it");
-        assertEquals(before, FieldDomains.readingsMade(),
+        assertEquals(before, InvariantChecker.readingsMade(),
                 "and what the losing reading would have named was never worked out");
     }
 

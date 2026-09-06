@@ -3,11 +3,10 @@ package souther.compiler.query;
 import souther.compiler.check.FieldDomains;
 import souther.compiler.check.ReadingPolicy;
 import souther.compiler.check.RuleReadingSource;
-import souther.compiler.check.StringMachineLookup;
+import souther.compiler.values.StringMachineAnswers;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbols;
 import souther.compiler.values.StringFacts;
-import souther.compiler.values.StringMachineAnswers;
 
 /**
  * The string machines a declaration's rules come to, answered once per declaration.
@@ -18,7 +17,7 @@ import souther.compiler.values.StringMachineAnswers;
  * What those readings build is the same machines, because a machine is a fact about a plan, a set
  * or a pair of a language and a stretch, and about nothing else. So the declaration's own reading
  * is made once here, what it built is kept as the declaration's answer, and every other reading
- * borrows from it through the capability {@link #of} hands out.
+ * borrows from it through the capability the store hands out ({@code Db.readings}).
  *
  * <p>Under the declaration and not under the plan. Keyed by what it is a fact about, a machine
  * would be an answer of no module, which a store keeps for as long as it lives: every pattern an
@@ -30,19 +29,15 @@ import souther.compiler.values.StringMachineAnswers;
  * — its own declaration's and those of the declarations its fields reach — so no question is put
  * to the store from inside this one, and two declarations that reach each other do not ask for each
  * other's answers in a circle.
+ *
+ * <p>The reading made here is the declaration's canonical one, and the store's lender hands it to
+ * whoever asks next for the rest of the revision. What the store keeps is still what is written
+ * above and only that: the machines, under the declaration, compared as the values they are. The
+ * reading beside them is shared work and is not an answer of anything.
  */
 public final class Machines {
 
     private Machines() {}
-
-    /** Where a reading gets the answers about a declaration's string machines, asking this store. */
-    public static StringMachineLookup of(Db db) {
-        return declaration -> {
-            Answer<StringFacts> facts = db.ask(new OfDeclaration(declaration));
-            return facts.present()
-                    ? StringMachineAnswers.borrowing(facts.value()) : StringMachineAnswers.NONE;
-        };
-    }
 
     /** The machines {@code named}'s rules come to, as its own reading builds them. */
     public record OfDeclaration(TypeKey named) implements Key<StringFacts> {
@@ -62,7 +57,7 @@ public final class Machines {
             StringMachineAnswers recorder = StringMachineAnswers.recording();
             FieldDomains domains = FieldDomains.of(TypeSymbols.declared(named), source.value(),
                     policy.value(),
-                    declaration -> declaration.equals(named) ? recorder : StringMachineAnswers.NONE);
+                    db.readings().whileTheAnswerIsMade(named, recorder));
             // And whether the rules leave a value at all, which is the question every reading of
             // an input puts to the declaration and the one that meets each language with the
             // whole of the order. Asked here so that the machines it takes are the declaration's
