@@ -66,7 +66,7 @@ public final class FieldDomains {
      */
     public static final FieldDomains NONE =
             new FieldDomains(Map.of(), Map.of(), Map.of(), Map.of(), Set.of(), List.of(), List.of(),
-                    List.of(), List.of(), List.of(), PartsLeftOut.NONE, Map.of(),
+                    List.of(), List.of(), PartsLeftOut.NONE, Map.of(),
                     Map.of(), Map.of(), new ReadingEvidence(), Map.of(),
                     Map.of(RuleKey.THE_VALUE, Set.of(new RulesMissed.NoReadingWasMade())), Set.of(),
                     NOTHING_NAMED,
@@ -86,16 +86,6 @@ public final class FieldDomains {
     private final List<WithoutAnEnd> withoutAnEnd;
     /** The conjuncts whose quantity is over one number — see {@link #aboutOneCoordinate}. */
     private final List<AboutOneCoordinate> aboutOneCoordinate;
-    /**
-     * The conjuncts stating a rule about the strings at one number.
-     *
-     * <p>Beside the list above and read by one question of the two that one answers. Both say which
-     * number a conjunct is written about, and only the first are candidates for working out which
-     * conjuncts account for where the values stop — a candidate that placed no end turns that
-     * working out on for every conjunct about the number, and each of those readings reads the
-     * declaration again. A conjunct stating a run states its own ends and needs no such attribution.
-     */
-    private final List<AboutOneCoordinate> aboutTheStrings;
     /**
      * Which conjunct this reading was asked to leave out, so that a reading standing in for a
      * counterfactual is not asked one of its own.
@@ -187,7 +177,6 @@ public final class FieldDomains {
                          Set<RuleKey> notSeparatedByName,
                          List<InvariantChecker.Direct> directs, List<NoLine> noLines,
                          List<WithoutAnEnd> withoutAnEnd, List<AboutOneCoordinate> aboutOneCoordinate,
-                         List<AboutOneCoordinate> aboutTheStrings,
                          PartsLeftOut withoutParts,
                          Map<RuleRef.Invariant, Required> raised,
                          Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
@@ -211,7 +200,6 @@ public final class FieldDomains {
         this.noLines = noLines;
         this.withoutAnEnd = List.copyOf(withoutAnEnd);
         this.aboutOneCoordinate = List.copyOf(aboutOneCoordinate);
-        this.aboutTheStrings = List.copyOf(aboutTheStrings);
         this.withoutParts = withoutParts;
         this.raised = raised;
         this.raisedByPart = raisedByPart;
@@ -437,7 +425,6 @@ public final class FieldDomains {
                 Map.copyOf(seeded.unreadAt()), Set.copyOf(seeded.notSeparated()),
                 seeded.reading().directs(), seeded.reading().noLines(),
                 seeded.reading().withoutAnEnd(), seeded.reading().aboutOneCoordinate(),
-                seeded.reading().aboutTheStrings(),
                 reach.withoutParts(),
                 seeded.reading().raised(), seeded.reading().raisedByPart(),
                 seeded.reading().standing(), seeded.took(),
