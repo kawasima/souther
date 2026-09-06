@@ -226,14 +226,4 @@ class AnUnreadRuleWidensAndSaysThatItDidTest {
 
         assertEquals(List.of(UnreadReason.RELATES_TWO_POSITIONS), either.whyUnread(VALUE));
     }
-
-    /** And a reading shown impossible from outside admits nothing and names no position. */
-    @Test
-    void aReadingShownImpossibleFromOutsideNamesNoPosition() {
-        AdmissibleValues<String> outside = says(VALUE, A).leavingNothing();
-
-        assertTrue(outside.isBottom());
-        assertFalse(outside.at(VALUE).isEmpty(),
-                "what is known is about the whole and not about the position");
-    }
 }

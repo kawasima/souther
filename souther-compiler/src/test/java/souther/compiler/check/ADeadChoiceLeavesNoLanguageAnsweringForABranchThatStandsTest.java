@@ -4,9 +4,12 @@ import souther.compiler.numeric.Count;
 import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.OrderedInterval;
 import souther.compiler.numeric.OrderedIntervals;
+import souther.compiler.values.AdmittedPlan;
 import souther.compiler.values.Allowance;
 import souther.compiler.values.AsACompilationAllows;
 import souther.compiler.values.PlannedValues;
+import souther.compiler.values.Value;
+import souther.compiler.values.ValueSet;
 
 import org.junit.jupiter.api.Test;
 
@@ -40,9 +43,20 @@ class ADeadChoiceLeavesNoLanguageAnsweringForABranchThatStandsTest {
                 Endpoint.inclusive(Count.of(high)));
     }
 
-    /** A branch the values refused, whose ranges are ends somebody could be at. */
-    private static Confinement.Planned<String> refusedByItsValues(OrderedInterval range) {
-        return new Confinement.Planned<>(PlannedValues.<String>top().leavingNothing(),
+    /**
+     * A branch the values refused, whose ranges are ends somebody could be at.
+     *
+     * <p>Refused by two rules about {@code refusedAt} leaving it no value, which is how a branch
+     * comes to be one nobody can be in: what shows it is a rule somebody wrote, and a language is
+     * never told from outside that its reading admits nothing. Each alternative below is refused at
+     * a position of its own, so the choice between them is empty with neither position at fault.
+     */
+    private static Confinement.Planned<String> refusedByItsValues(String refusedAt,
+                                                                  OrderedInterval range) {
+        return new Confinement.Planned<>(
+                PlannedValues.at(refusedAt, AdmittedPlan.of(ValueSet.just(Value.text("A"))))
+                        .meet(PlannedValues.at(refusedAt,
+                                AdmittedPlan.of(ValueSet.just(Value.text("B"))))),
                 OrderedIntervals.at(POSITION, range), Map.of());
     }
 
@@ -55,8 +69,8 @@ class ADeadChoiceLeavesNoLanguageAnsweringForABranchThatStandsTest {
      */
     private Set<String> whatIsLeftEmptyAfterMeeting(OrderedInterval left, OrderedInterval right,
                                                     OrderedInterval afterwards) {
-        Confinement.Planned<String> dead = refusedByItsValues(left).bothDead(
-                refusedByItsValues(right),
+        Confinement.Planned<String> dead = refusedByItsValues("x", left).bothDead(
+                refusedByItsValues("y", right),
                 Confinement.Admission.left(souther.compiler.values.Emptiness.EMPTY));
         Confinement.Planned<String> met = dead.meet(new Confinement.Planned<>(
                 PlannedValues.top(), OrderedIntervals.at(POSITION, afterwards), Map.of()));

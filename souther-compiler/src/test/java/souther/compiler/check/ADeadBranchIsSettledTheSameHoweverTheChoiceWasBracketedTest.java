@@ -118,10 +118,10 @@ class ADeadBranchIsSettledTheSameHoweverTheChoiceWasBracketedTest {
         out.put("x == A", new Branch(reading(says(X, A), 1, 2), false));
         out.put("y == B", new Branch(reading(says(Y, B), 3, 4), false));
         out.put("x == A && x == B", new Branch(
-                reading(says(X, A).meet(says(X, B)).leavingNothing(), 100, 200), true));
+                reading(says(X, A).meet(says(X, B)), 100, 200), true));
         out.put("x == y && x /= y", new Branch(
                 reading(PlannedValues.<String>holdingAsOne(X, Y)
-                        .meet(PlannedValues.heldApart(X, Y)).leavingNothing(), 300, 400), true));
+                        .meet(PlannedValues.heldApart(X, Y)), 300, 400), true));
         return out;
     }
 

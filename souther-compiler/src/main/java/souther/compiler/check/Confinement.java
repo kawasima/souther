@@ -596,12 +596,6 @@ sealed interface Confinement<A> {
                     Confinement.both(carriers, other.carriers));
         }
 
-        /** This, taken as holding nothing at all, remembering what showed it. */
-        Planned<A> leavingNothing() {
-            return new Planned<>(values.leavingNothing(), ordered.leavingNothing(), carriers,
-                    admission());
-        }
-
         /**
          * Two branches neither of which anybody can be in, said as that.
          *
@@ -609,20 +603,16 @@ sealed interface Confinement<A> {
          * both were refused. Neither speaks for the other: alternatives refused at different
          * positions leave a choice no position is why, which is what the proof has to say.
          *
-         * <p>Each language is asked what two dead branches leave it, and neither is asked whether
-         * they are dead — a language may be perfectly happy with a branch the other refused, and
-         * asked through the entry for a choice that stands it would answer for that branch with the
-         * ends it read.
-         *
-         * <p>The values are taken as leaving nothing before they are asked and the ranges are not.
-         * A reading that already admits nothing is left as it is, so that is not the difference it
-         * looks like: what a branch another language killed leaves the values is a reading that
-         * holds nothing and names no position, and what a branch the values killed leaves them is
-         * the positions they emptied. Either language names a position only where every alternative
-         * of that language left it empty.
+         * <p>Each language is asked what two dead branches leave it, of the readings as they were
+         * read. Neither is asked whether they are dead — a language may be perfectly happy with a
+         * branch the other refused, and asked through the entry for a choice that stands it would
+         * answer for that branch with the ends it read. Neither is told, either: what showed the
+         * choice empty arrives as {@code shown} and is written into the whole here, and each
+         * language names a position only where every alternative of that language left it empty,
+         * which is a question about what it read and not about what became of the branch.
          */
         Planned<A> bothDead(Planned<A> other, Admission<A> shown) {
-            return new Planned<>(values.leavingNothing().bothDead(other.values.leavingNothing()),
+            return new Planned<>(values.bothDead(other.values),
                     ordered.bothDead(other.ordered),
                     Confinement.both(carriers, other.carriers), shown);
         }

@@ -146,8 +146,7 @@ class AlternativesHeldApartAnswerThePositionExactlyTest {
 
         // Neither branch is one anybody can be in, which is the settlement a caller reaches for
         // once both are known dead rather than a choice between two that stand.
-        AdmissibleValues<String> either =
-                built(here.leavingNothing().bothDead(there.leavingNothing()));
+        AdmissibleValues<String> either = built(here.bothDead(there));
 
         assertTrue(either.isBottom(), "neither alternative can be taken");
         assertEquals(ValueSet.ANY, either.at(A), "and neither position is one the choice empties");
