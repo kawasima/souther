@@ -39,10 +39,6 @@ class AlternativesHeldApartAnswerThePositionExactlyTest {
     private final Allowance<String> sets = AsACompilationAllows.forAdmittedValues();
 
 
-    private static AdmissibleValues<String> says(String atom, Value value) {
-        return AdmissibleValues.at(atom, ValueSet.just(value));
-    }
-
     /** One rule while it is still a description, which is where a choice between two of them is
      *  taken. */
     private static PlannedValues<String> plans(String atom, Value value) {

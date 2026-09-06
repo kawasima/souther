@@ -7,9 +7,11 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -58,11 +60,27 @@ class AChoiceIsNotFormedOnAReadingThatIsBuiltTest {
             }
             for (Type parameter : method.getGenericParameterTypes()) {
                 if (mentionsAReading(parameter)) {
-                    out.add(reading.getSimpleName() + "#" + method.getName());
+                    out.add(named(reading, method));
                 }
             }
         }
         return out;
+    }
+
+    /**
+     * One operation, said so that another with the same name is another operation.
+     *
+     * <p>Whether it is taken on an instance or on the class, what it is given and what it hands
+     * back — which is the whole of what a caller reaches for. Written as the name alone, an
+     * overload beside one of these would be filed under the entry already here, and a second
+     * spelling would only have to borrow a name to pass.
+     */
+    private static String named(Class<?> reading, Method method) {
+        return reading.getSimpleName() + "#" + method.getName()
+                + Arrays.stream(method.getParameterTypes()).map(Class::getSimpleName)
+                        .collect(Collectors.joining(",", "(", ")"))
+                + " -> " + method.getReturnType().getSimpleName()
+                + (Modifier.isStatic(method.getModifiers()) ? " [static]" : "");
     }
 
     /** Whether {@code type} is a reading, or names one as an argument — a list of them is a
@@ -93,10 +111,11 @@ class AChoiceIsNotFormedOnAReadingThatIsBuiltTest {
      * was bracketed. {@code of} lifts one reading into a conjunction of one factor.
      */
     private static final Set<String> COMPOSING = Set.of(
-            "AdmissibleValues#meet",
-            "AdmissibleValues#metAll",
-            "ConjoinedAdmissibleValues#meet",
-            "ConjoinedAdmissibleValues#of");
+            "AdmissibleValues#meet(AdmissibleValues,Allowance) -> AdmissibleValues",
+            "AdmissibleValues#metAll(List,Allowance) -> AdmissibleValues [static]",
+            "ConjoinedAdmissibleValues#meet(ConjoinedAdmissibleValues,Allowance)"
+                    + " -> ConjoinedAdmissibleValues",
+            "ConjoinedAdmissibleValues#of(AdmissibleValues) -> ConjoinedAdmissibleValues [static]");
 
     @Test
     void nothingButAConjunctionTurnsTwoBuiltReadingsIntoOne() {

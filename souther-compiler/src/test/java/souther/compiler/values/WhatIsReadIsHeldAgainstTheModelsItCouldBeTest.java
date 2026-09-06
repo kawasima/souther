@@ -195,27 +195,66 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
         about.addAll(right.readAbout());
         boolean overOne = left.choicesOverOnePosition() && right.choicesOverOnePosition()
                 && (by.equals("&&") || about.size() <= 1);
-        // What a choice between these two leaves open, said where the two of them are what was
-        // written: the positions the alternative beside an unread one reached. A conjunction leaves
-        // nothing open, since both of its clauses hold.
         Set<String> opened = new LinkedHashSet<>();
-        if (by.equals("||")) {
-            if (left.holdsSomethingUnread()) {
-                opened.addAll(promisedBy(right));
-            }
-            if (right.holdsSomethingUnread()) {
-                opened.addAll(promisedBy(left));
-            }
+        PlannedValues<String> planned;
+        if (by.equals("&&")) {
+            planned = left.planned().meet(right.planned());
+            // A conjunction leaves nothing open, since both of its clauses hold. What either side
+            // already had opened travels up with it: the positions are told to the answer once,
+            // where the whole of what the clauses came to is in hand.
+            opened.addAll(left.opened());
+            opened.addAll(right.opened());
+        } else {
+            planned = settled(left, right, opened);
         }
-        // What either side already had opened travels up with it: the positions are told to the
-        // answer once, where the whole of what the clauses came to is in hand.
+        return new Rule("(" + left.wrote() + " " + by + " " + right.wrote() + ")",
+                planned, opened, List.copyOf(could), about, overOne,
+                left.holdsSomethingUnread() || right.holdsSomethingUnread());
+    }
+
+    /**
+     * What a choice comes to, settled the way the holder of both languages settles one.
+     *
+     * <p>Four cases and not one. A branch nobody can be in is not composed: where one is, the
+     * choice is the branch that stands, and where neither is, the settlement says so of the two of
+     * them. Composed instead, this would be asking the description algebra a question its contract
+     * says it is not asked — and then what is compared against the models below would be this
+     * compiler's arithmetic reached a way no compile reaches it.
+     *
+     * <p>Which branches those are is asked of this compiler's own reading and never of the models:
+     * taken from the sets a rule was written down as leaving, the answer would be the expected side
+     * deciding what the compiler does, and the two would agree because one of them was made out of
+     * the other.
+     *
+     * <p>What a choice left open follows the same four cases. A position is open in a branch, so a
+     * branch nobody can be in takes what it opened with it — kept, the values would be settled and
+     * the account beside them would still be the one a choice that stands leaves.
+     */
+    private static PlannedValues<String> settled(Rule left, Rule right, Set<String> opened) {
+        boolean leftStands = !left.planned().holdsNothingAsBuilt(SETS);
+        boolean rightStands = !right.planned().holdsNothingAsBuilt(SETS);
+        if (!leftStands && !rightStands) {
+            return left.planned().leavingNothing().bothDead(right.planned().leavingNothing());
+        }
+        if (!leftStands) {
+            opened.addAll(right.opened());
+            return right.planned();
+        }
+        if (!rightStands) {
+            opened.addAll(left.opened());
+            return left.planned();
+        }
         opened.addAll(left.opened());
         opened.addAll(right.opened());
-        return new Rule("(" + left.wrote() + " " + by + " " + right.wrote() + ")",
-                by.equals("&&") ? left.planned().meet(right.planned())
-                        : left.planned().joinLive(right.planned()),
-                opened, List.copyOf(could), about, overOne,
-                left.holdsSomethingUnread() || right.holdsSomethingUnread());
+        // The positions the alternative beside an unread one reached, said where the two of them
+        // are what was written.
+        if (left.holdsSomethingUnread()) {
+            opened.addAll(promisedBy(right));
+        }
+        if (right.holdsSomethingUnread()) {
+            opened.addAll(promisedBy(left));
+        }
+        return left.planned().joinLive(right.planned());
     }
 
     /**
@@ -274,7 +313,29 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
             heldAgainstItsModels(both(either(left, middle), right));
             heldAgainstItsModels(both(left, either(middle, right)));
             heldAgainstItsModels(either(both(left, middle), right));
+            // A conjunction of two rules is where a branch nobody can be in comes from, and the
+            // enumeration above only ever puts one on the left of a choice. Without this, what a
+            // choice with a dead branch leaves would be held one way round out of two.
+            heldAgainstItsModels(either(left, both(middle, right)));
             heldAgainstItsModels(both(both(left, middle), right));
         })));
+    }
+
+    /**
+     * And a choice neither branch of which anybody can be in.
+     *
+     * <p>The fourth of the four cases a choice is settled by, which the enumerations above do not
+     * reach: they compose one dead branch at a time, and this one needs two. Written out of rules
+     * that were read, so that what makes each branch impossible is something this compiler worked
+     * out rather than something a model was told.
+     */
+    @Test
+    void andAChoiceNeitherBranchOfWhichAnybodyCanBeIn() {
+        Rule isA = rules().get(0);
+        Rule isB = rules().get(1);
+        Rule notA = rules().get(3);
+
+        heldAgainstItsModels(either(both(isA, isB), both(isA, notA)));
+        heldAgainstItsModels(either(both(isA, notA), both(isA, isB)));
     }
 }
