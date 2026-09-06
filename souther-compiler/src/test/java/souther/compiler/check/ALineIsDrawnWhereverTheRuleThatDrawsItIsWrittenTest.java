@@ -26,12 +26,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * <p>Held on the lines themselves rather than on a verdict. A construction reads the rule through
  * one more reader, so the two spellings can come to one verdict while the lines under them differ.
  *
- * <p><b>The conjuncts stay the author's.</b> A binding is crossed and never split: which parts a
- * clause has is what its author wrote ({@link ClauseHelpers#conjunctsOf}, over the tree before any
- * expansion), so a helper whose body joins two rules is one conjunct and not two. What one authored
- * part states may still be more than one rule, and telling those two decompositions apart is not
- * about binders — it is what a third reader of a clause's topology costs, and it is held below as
- * that rather than as a binding this reading did not cross.
+ * <p><b>The conjuncts stay the author's.</b> Which parts a clause has is what its author wrote
+ * ({@link ClauseHelpers#conjunctsOf}, over the tree before any expansion), so a helper whose body
+ * joins two rules is one conjunct and not two. What that one part states is still two rules, and
+ * both of them draw their line: which parts there are and which rules one of them states are two
+ * questions, and the answers below are named by the part either way.
  */
 class ALineIsDrawnWhereverTheRuleThatDrawsItIsWrittenTest {
 
@@ -84,26 +83,28 @@ class ALineIsDrawnWhereverTheRuleThatDrawsItIsWrittenTest {
     }
 
     /**
-     * A helper whose body joins two rules is one conjunct, and one conjunct places one end here.
+     * A helper whose body joins two rules is one authored part stating both, and both ends are
+     * drawn.
      *
-     * <p>Not a binding this reading fails to cross. It crosses it and arrives at a conjunction,
-     * which is two rules where the reader below wants one — and reading its halves as two ends would
-     * number them as parts the reading beside this one does not have, since the conjuncts of a
-     * clause are the author's and the author wrote one.
+     * <p>Which parts a clause has is the author's answer and which rules a part states is the
+     * language's, and they are not the same question: the author wrote one part here and the part
+     * states two rules. Read as one rule, the part drew neither end; numbered as two parts, the
+     * lines would be named as parts no reader beside this one has.
      *
-     * <p>So what is left is not about binders at all: an authored part may state more than one rule,
-     * and telling a clause's semantic decomposition from its authored-part decomposition is what a
-     * third reader of the topology costs. That is the subject of the issue on recognising a clause's
-     * topology once — this reading is one of the readers named there — and it is where this case
-     * belongs rather than here.
+     * <p>So both ends are drawn and both are named by the one part. What a report prints for them
+     * is the same conjunct twice, which is what a part stating two rules is.
      */
     @Test
-    void aHelperWhoseBodyJoinsTwoRulesIsOneAuthoredPart() {
+    void aHelperWhoseBodyJoinsTwoRulesStatesBothOfThem() {
         assertEquals(2, linesOf("Int", "", "value >= 1 && value <= 9").size(),
                 "written out, the two conjuncts place an end each");
-        assertEquals(List.of(),
-                linesOf("Int", "let inRange (n: Int) = n >= 1 && n <= 9", "inRange(value)"),
-                "and one authored conjunct states both rules, which this reader has one end for");
+        assertEquals(2,
+                linesOf("Int", "let inRange (n: Int) = n >= 1 && n <= 9", "inRange(value)").size(),
+                "and one authored conjunct stating both rules places both ends");
+        assertEquals(1,
+                linesOf("Int", "let inRange (n: Int) = n >= 1 && n <= 9", "inRange(value)").stream()
+                        .map(FieldDomains.Placed::part).distinct().count(),
+                "which is one part with two ends and not two parts");
     }
 
     /** And the corpus above is about lines, so the written-out spellings have to draw some. */

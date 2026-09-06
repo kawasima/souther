@@ -68,30 +68,31 @@ class AnAuthoredPartThatStatesTwoRulesIsReadAsOnePartTest {
                 "what the values reading leaves the position");
     }
 
-    /** And the lines: an end each where the rules were written out, and neither where they were
-     *  named — the reading arrives at a conjunction where one part is wanted. */
+    /** And the lines: an end each, whichever way the rules were written. */
     @Test
-    void theLinesAreDrawnWhereTheRulesWereWrittenOutAndNotWhereTheyWereNamed() {
-        assertEquals(List.of(2, 0), List.of(
+    void theLinesAreDrawnWhicheverWayTheRulesWereWritten() {
+        assertEquals(List.of(2, 2), List.of(
                         writtenOut().placed().size(), named().placed().size()),
                 "how many ends each spelling places");
     }
 
     /**
-     * Which conjunct each end is named by, which is what a report prints and what a reader holding
-     * a line against the clause it came from matches on.
+     * Which part each end is named by, which is what a report prints and what a reader holding a
+     * line against the clause it came from matches on.
      *
-     * <p>Written out, the two ends are the two conjuncts the author wrote. Named, there are no ends
-     * to number.
+     * <p>Written out, the two ends are the two parts the author wrote. Named, they are the one part
+     * the author wrote, twice — which is the whole of what one part stating two rules comes to.
      */
     @Test
-    void eachEndIsNamedByTheConjunctItsAuthorWrote() {
+    void eachEndIsNamedByThePartItsAuthorWrote() {
         assertEquals(List.of(0, 1), writtenOut().placed().stream()
                         .map(each -> each.part().ordinal()).sorted().toList(),
-                "which conjunct each end written out is named by");
-        assertEquals(List.of(), named().placed().stream()
+                "which part each end written out is named by");
+        assertEquals(List.of(0, 0), named().placed().stream()
                         .map(each -> each.part().ordinal()).toList(),
                 "and the same where the rules were named");
+        assertEquals(1, named().placed().stream().map(FieldDomains.Placed::part).distinct().count(),
+                "which is one part with two ends and not two parts");
     }
 
     /**
@@ -108,7 +109,8 @@ class AnAuthoredPartThatStatesTwoRulesIsReadAsOnePartTest {
                         "false Endpoint[at=9, inclusive=true]"), writtenOut().placed().stream()
                         .map(each -> each.lower() + " " + each.end()).toList(),
                 "each end written out, as the side it is on and where it sits");
-        assertEquals(List.of(), named().placed().stream()
+        assertEquals(List.of("true Endpoint[at=1, inclusive=true]",
+                        "false Endpoint[at=9, inclusive=true]"), named().placed().stream()
                         .map(each -> each.lower() + " " + each.end()).toList(),
                 "and the same where the rules were named");
     }
@@ -151,10 +153,10 @@ class AnAuthoredPartThatStatesTwoRulesIsReadAsOnePartTest {
     /** What is left of the other readings of the same clause. */
     @Test
     void whatTheOtherReadingsOfTheClauseLeave() {
-        assertEquals(List.of(2, 0), List.of(
+        assertEquals(List.of(2, 2), List.of(
                         writtenOut().aboutOneCoordinate().size(),
                         named().aboutOneCoordinate().size()),
-                "how many parts are read as being about one number");
+                "how many rules are read as being about one number");
         assertEquals(List.of(0, 0), List.of(
                         writtenOut().noLines().size(), named().noLines().size()),
                 "how many parts left no line at a number they are about");
@@ -164,16 +166,15 @@ class AnAuthoredPartThatStatesTwoRulesIsReadAsOnePartTest {
     }
 
     /**
-     * And what the clause raises is one question per authored part, which is where the two
-     * spellings part.
+     * And what the clause raises is one question per rule it states, which is not the same as one
+     * per part its author wrote.
      *
-     * <p>Written out, each conjunct raises its own; named, the one part raises one. The questions
-     * are the same question about the same position, so what differs is how many of them there are
-     * to answer and not what any of them asks.
+     * <p>A part stating two rules raises what both of them raise. The questions are about the same
+     * position either way, and both spellings now ask as many as the rules there are.
      */
     @Test
-    void whatTheClauseRaisesIsOneQuestionPerAuthoredPart() {
-        assertEquals(List.of(2, 1), List.of(
+    void whatTheClauseRaisesIsOneQuestionPerRuleItStates() {
+        assertEquals(List.of(2, 2), List.of(
                         writtenOut().required().values().stream()
                                 .mapToInt(each -> each.obligations().size()).sum(),
                         named().required().values().stream()

@@ -9,6 +9,7 @@ import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.core.Core;
+import souther.compiler.semantics.ConditionJoin;
 import souther.compiler.core.Evaluated;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.Diagnostic;
@@ -1383,6 +1384,32 @@ public final class InvariantChecker {
                 Collections.unmodifiableMap(new LinkedHashMap<>(standing)));
     }
 
+    /**
+     * One rule stated inside a part, read as the part it is a rule of.
+     *
+     * <p>The shape says where the rule stands and the part says whose it is. Which node that is is
+     * the outermost the shape was written as, so a rule under a denial is read as the denial and
+     * not as what it denies — the same node the reading above would have been handed.
+     */
+    private void statedIn(ClauseExpr stated, RuleRef.Invariant from, PartId part, Denotations at,
+                          Map<FactSubject, Coordinate> byName, List<Direct> out,
+                          List<FieldDomains.NoLine> noLines,
+                          List<FieldDomains.WithoutAnEnd> withoutAnEnd,
+                          List<FieldDomains.AboutOneCoordinate> naming,
+                          List<FieldDomains.AboutOneCoordinate> namingTheStrings,
+                          Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
+                          Map<RuleRef, Required> raised, ReadingEvidence took,
+                          Map<RuleKey, Type> typeAt,
+                          PartsRead parts,
+                          Map<RuleRef, Map<Core, Required>> raisedByPart,
+                          Map<FieldDomains.BoundaryQuestion,
+                                  FieldDomains.BoundaryStanding> standing,
+                          PartsLeftOut withoutParts) {
+        direct(stated.spelled().get(0), from, part, at, byName, out, noLines, withoutAnEnd, naming,
+                namingTheStrings, narrowers, raised, took, typeAt, parts, raisedByPart, standing,
+                withoutParts);
+    }
+
     /** What {@code clause} raises, taken together with whatever its other conjuncts raised. */
     private static void raises(Map<RuleRef, Required> into, RuleRef.Invariant rule,
                                ClauseStates states) {
@@ -1506,6 +1533,24 @@ public final class InvariantChecker {
         // part this one reached that the other never read is a value whose rules were not gathered
         // ({@link APartNoReadingSaw}), and leaving it out of one walk alone is exactly that.
         if (withoutParts.excludes(from, clause)) {
+            return;
+        }
+        // What one part states may be more than one rule: a part that names a rule is that rule's
+        // body written here, and a body joining two of them states both. Each is read where it
+        // stands and both are this part's, which is what telling a clause's shape from its parts is
+        // worth — the parts are the author's and the rules under one of them are the language's.
+        //
+        // Asked of the shape and never of the operator, so that what a connective composes is
+        // recognised in one place ({@link ClauseExpr}). A denial is left alone: what is under one
+        // states the opposite of what it reads as, and the reading below has no word for that.
+        if (ClauseExpr.of(clause, true) instanceof ClauseExpr.Joined joined
+                && joined.how() == ConditionJoin.BOTH && joined.spelled().size() == 1) {
+            statedIn(joined.left(), from, part, at, byName, out, noLines, withoutAnEnd, naming,
+                    namingTheStrings, narrowers, raised, took, typeAt, parts, raisedByPart,
+                    standing, withoutParts);
+            statedIn(joined.right(), from, part, at, byName, out, noLines, withoutAnEnd, naming,
+                    namingTheStrings, narrowers, raised, took, typeAt, parts, raisedByPart,
+                    standing, withoutParts);
             return;
         }
         // What a rule about the strings at a position says about where they stop, which is a rule
