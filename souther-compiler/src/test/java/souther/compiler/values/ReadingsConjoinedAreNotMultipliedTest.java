@@ -194,8 +194,9 @@ class ReadingsConjoinedAreNotMultipliedTest {
      */
     @Test
     void aPositionAChoiceOpenedIsOneTheReadingIsAbout() {
-        AdmissibleValues<String> opened = AdmissibleValues.at("x", just("A"))
-                .join(AdmissibleValues.unreadable(Set.of(), UnreadReason.FORM_NOT_READ), SETS)
+        AdmissibleValues<String> opened = PlannedValues.at("x", AdmittedPlan.of(just("A")))
+                .joinLive(PlannedValues.unreadable(Set.of(), UnreadReason.FORM_NOT_READ))
+                .resolve(SETS).values()
                 .alsoOpenedAt(Set.of("x"))
                 .leavingNothing();
 
@@ -251,10 +252,14 @@ class ReadingsConjoinedAreNotMultipliedTest {
     /** A reading of two positions leaving two alternatives, which is what a choice written across
      *  two positions comes to. */
     private static AdmissibleValues<String> twoAlternatives(String one, String other) {
-        return AdmissibleValues.at(one, just("x"))
-                .meet(AdmissibleValues.at(other, just("y")), SETS)
-                .joinApart(AdmissibleValues.at(one, just("p"))
-                        .meet(AdmissibleValues.at(other, just("q")), SETS), SETS);
+        return pair(one, "x", other, "y").joinLiveApart(pair(one, "p", other, "q"))
+                .resolve(SETS).values();
+    }
+
+    /** One alternative of that reading, while it is still a description. */
+    private static PlannedValues<String> pair(String one, String here, String other, String there) {
+        return PlannedValues.at(one, AdmittedPlan.of(just(here)))
+                .meet(PlannedValues.at(other, AdmittedPlan.of(just(there))));
     }
 
     private static ValueSet just(String text) {
