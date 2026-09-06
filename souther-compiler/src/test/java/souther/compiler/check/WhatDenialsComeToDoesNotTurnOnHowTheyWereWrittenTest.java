@@ -116,4 +116,34 @@ class WhatDenialsComeToDoesNotTurnOnHowTheyWereWrittenTest {
                     invariant ok = p == q && q /= r && p == Ready && r == Done
                 """);
     }
+
+    /**
+     * A ring of positions each stated to differ from the next needs a third value where it is of
+     * odd length.
+     *
+     * <p>No position here is pinned to a value, so no position takes one from its neighbours; and no
+     * three of them are all stated to differ, so counting them against what the type holds shows
+     * nothing. What refuses it is that there is no way of giving five positions two values with
+     * every neighbouring pair different, which is read off the rules by looking for one.
+     */
+    @Test
+    void aRingOfOddLengthOverTwoCasesHasNoValue() {
+        assertEquals(List.of("NoValuesTheseCanAllDifferIn"), saidOf(STAGE + """
+                data Five = { a: Stage, b: Stage, c: Stage, d: Stage, e: Stage }
+                    invariant no = a /= b && b /= c && c /= d && d /= e && e /= a
+                """), "a ring of five over two cases");
+    }
+
+    /** And a ring of even length has one, as does a run of them that does not close. */
+    @Test
+    void andARingOfEvenLengthHasOneAsDoesARunThatDoesNotClose() {
+        admits(STAGE + """
+                data Four = { a: Stage, b: Stage, c: Stage, d: Stage }
+                    invariant ok = a /= b && b /= c && c /= d && d /= a
+                """);
+        admits(STAGE + """
+                data Five = { a: Stage, b: Stage, c: Stage, d: Stage, e: Stage }
+                    invariant ok = a /= b && b /= c && c /= d && d /= e
+                """);
+    }
 }
