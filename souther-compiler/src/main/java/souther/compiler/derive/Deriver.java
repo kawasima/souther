@@ -51,24 +51,27 @@ public final class Deriver {
      * <p>Null and not a report. A field whose type nobody could name was reported where the name is
      * written, and saying it again here would say the same thing twice; what a caller does with the
      * absence is answer nothing about the declaration, which is what a module holding one is worth.
-     * Anywhere in the type, because the walk below reaches every position of it and would report
-     * the unnamed part as a type with no representation — which it is not; it is a type with no
-     * name, already said.
+     *
+     * <p>Only that leaf is left unsaid. The walk meets the unnamed type where it sits, so what
+     * stands outside it — a tuple around it, a map keyed by something no map that crosses may be
+     * keyed by — is refused first, in the order the walk refuses everything else: {@code (T, Int)}
+     * with {@code T} unnamed is refused as a tuple, and {@code Map<Int, T>} for its key. What is
+     * absorbed is the one report there would be about {@code T} itself, which was already made.
      */
     public static Codecs derive(Hir.Data d, Symbols symbols) {
         Map<String, Type> fields = TypeOps.fieldTypes(d, symbols);
-        if (fields.values().stream()
-                .anyMatch(t -> Type.mentions(t, inside -> inside instanceof Type.Erroneous))) {
-            return null;
-        }
         // One walk decides what each field carries, and the decoder and the encoder are both lowered
         // from it. Asked separately they would agree only by coincidence: a builder with an arm the
         // other lacks reports the shape it did not implement as one the language refuses, which is
         // how an unimplemented case comes to look like a rule (see CodecShape).
         Map<String, CodecShape> shapes = new LinkedHashMap<>();
-        for (Map.Entry<String, Type> f : fields.entrySet()) {
-            shapes.put(f.getKey(), CodecShape.of(f.getValue(), d, f.getKey(),
-                    fieldPos(d, f.getKey()), symbols));
+        try {
+            for (Map.Entry<String, Type> f : fields.entrySet()) {
+                shapes.put(f.getKey(), CodecShape.of(f.getValue(), d, f.getKey(),
+                        fieldPos(d, f.getKey()), symbols));
+            }
+        } catch (CodecShape.Unnamed _) {
+            return null;
         }
         // the decoder and the encoder each read the value under a name of their own, so each owns
         // the bindings it writes rather than sharing the declaration's
