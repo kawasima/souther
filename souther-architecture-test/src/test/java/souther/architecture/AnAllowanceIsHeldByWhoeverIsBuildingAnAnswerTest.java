@@ -120,9 +120,11 @@ class AnAllowanceIsHeldByWhoeverIsBuildingAnAnswerTest {
      * The methods of {@code owner} a caller can reach whose signature mentions an allowance, by
      * name.
      *
-     * <p>What a caller can reach, because the rule is about what may be asked of the value. A
-     * private helper of one of these is part of how that operation is written and reaches no purse
-     * a caller did not hand over.
+     * <p>What a caller can reach, because the rule is about which of a value's questions come with
+     * a purse. A private helper is part of how one of them is written and spends what that
+     * operation was handed; what it must not do is make an allowance of its own, and that is a
+     * different rule with a walk of its own
+     * ({@code WhoMayBuildALanguageAboutAPositionTest} counts every making and every asking).
      */
     private static List<String> namingAnAllowance(String owner) {
         TreeSet<String> out = new TreeSet<>();

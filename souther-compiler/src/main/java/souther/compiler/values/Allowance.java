@@ -45,9 +45,10 @@ import java.util.Set;
  * answers.</b> A value carrying one is a value carrying a fact about no reading in it, and a
  * composition of two such values has two purses to pick from — so which of them pays, and with it
  * how exactly the composition comes out, would be settled by which side the call was written on.
- * Every operation here that may build takes the allowance it spends
- * ({@link AdmissibleValues#meet}, {@link ConjoinedAdmissibleValues#meet}), and the ones that build
- * nothing take none.
+ * So an operation that may build is told which allowance it spends, and one that builds nothing
+ * takes none. Who holds one is written down and counted off the compiled classes
+ * ({@code AnAllowanceIsHeldByWhoeverIsBuildingAnAnswerTest}), rather than listed here, where a
+ * holder added later would be one this sentence had not heard of.
  *
  * <p><b>And nothing composes outside it.</b> Everything that may build is asked for through
  * {@link AdmittedPlan} and worked out by a {@link Realizer}, which is what makes the order the work

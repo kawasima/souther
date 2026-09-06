@@ -684,9 +684,9 @@ sealed interface Confinement<A> {
         /**
          * Both conjunctions holding at once, in both languages.
          *
-         * <p>{@code sets} is the answer this is being met into, which is the caller's. What the two
-         * readings come to where their vocabularies meet is a set neither of them holds, and it is
-         * built here.
+         * <p>What the two readings come to where their vocabularies meet is a set neither of them
+         * holds, so it belongs to the answer being built out of the pair — and {@code sets} is what
+         * that answer may spend, handed over by whoever is building it.
          */
         Conjoined<A> meet(Conjoined<A> other, Allowance<A> sets) {
             return new Conjoined<>(values.meet(other.values, sets), ordered.meet(other.ordered),
