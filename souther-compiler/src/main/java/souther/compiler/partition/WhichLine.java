@@ -61,6 +61,23 @@ public sealed interface WhichLine {
                 throw new IllegalArgumentException(
                         "the comparisons of a rule are counted from zero: " + line);
             }
+            // Which rules count their lines this way, said once and over every kind of rule there
+            // is. A declaration's clause counts them by the parts its author wrote and is named by
+            // one of those instead, so a rule standing here as well would be a line that is a
+            // part's and is not — answering that a declaration owes it and that no part drew it.
+            //
+            // Written as a switch with no default, so a kind of rule added later is one this stops
+            // at until somebody says which of the two counts its lines. Asked as a list of the
+            // kinds that may stand here, the new kind would be refused for not being on a list
+            // nobody had reason to revisit.
+            switch (rule) {
+                case RuleRef.Comparison _, RuleRef.Ensures _ -> { }
+                case RuleRef.Invariant _ -> throw new IllegalArgumentException(
+                        "a declaration's clause counts its lines by the parts its author wrote: "
+                                + rule);
+                case RuleRef.Predicate _ -> throw new IllegalArgumentException(
+                        "a rule that tells values apart draws no line to count: " + rule);
+            }
         }
     }
 }

@@ -111,24 +111,40 @@ class AClauseOnePartOfWhichCannotBeReadIsStoppedWholeTest {
      */
     @Test
     void theStopIsRecordedAsOftenForAClauseOfTwoPartsAsForOne() {
-        int one = stopsIn(() -> read(STANDING, "step(value) >= 0"));
-        int two = stopsIn(() -> read(STANDING, "value >= 1 && step(value) >= 0"));
+        Stopping one = stopsIn(() -> read(STANDING, "step(value) >= 0"));
+        Stopping two = stopsIn(() -> read(STANDING, "value >= 1 && step(value) >= 0"));
 
-        assertNotEquals(0, one, "no limit was recorded at all, so nothing here is being compared");
-        assertEquals(one, two,
+        assertEquals(List.of(true, true), List.of(one.stopped(), two.stopped()),
+                "both readings met the limit, or the counts below are of readings that never"
+                        + " reached one");
+        assertNotEquals(0, one.met(),
+                "no limit was recorded at all, so nothing here is being compared");
+        assertEquals(one.met(), two.met(),
                 "how many limits were recorded, for a clause of one part and for one of two");
     }
 
-    /** How many limits the reading of {@code domains} met, as the check records them. */
-    private static int stopsIn(java.util.function.Supplier<FieldDomains> domains) {
+    /** What a reading met, and that it is a reading that met it. */
+    private record Stopping(int met, boolean stopped) {}
+
+    /**
+     * How many limits the reading {@code domains} makes met, as the check records them, and whether
+     * that reading stopped at all.
+     *
+     * <p>Both, because a count of what was recorded says nothing on its own: a reading that never
+     * ran records none, and so does one that ran and read everything. What the reading answers is
+     * what tells those apart, so it is asked rather than dropped.
+     */
+    private static Stopping stopsIn(java.util.function.Supplier<FieldDomains> domains) {
         List<InvariantChecker.GaveUp> met = new java.util.ArrayList<>();
         InvariantChecker.GAVE_UP = met;
+        FieldDomains read;
         try {
-            domains.get();
+            read = domains.get();
         } finally {
             InvariantChecker.GAVE_UP = null;
         }
-        return met.size();
+        return new Stopping(met.size(),
+                String.valueOf(read.admits(RuleKey.THE_VALUE)).contains("RuleUnread"));
     }
 
     /** And what the clause is recorded as having raised and answered. */
