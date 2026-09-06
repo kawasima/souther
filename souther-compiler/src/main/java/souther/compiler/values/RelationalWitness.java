@@ -14,10 +14,11 @@ import java.util.Set;
  *
  * <p><b>Not one shape, because it is not one argument.</b> A block stated to differ from itself is
  * refused by reading the rule; a block left no value by its neighbours is refused by taking values
- * away; a set of blocks with fewer values between them than there are blocks is refused by counting.
- * Held as the counting one alone, the first two would be reported as a shortage of values that no
- * count was taken of — and a reduction learned later is a case added here rather than a sentence
- * somebody has to rewrite.
+ * away; a set of blocks with fewer values between them than there are blocks is refused by counting;
+ * and blocks no assignment of what they hold tells apart are refused by looking for one. Held as the
+ * counting one alone, the others would be reported as a shortage of values that no count was taken
+ * of — and a reduction learned later is a case added here rather than a sentence somebody has to
+ * rewrite.
  *
  * @param <A> what a position is called
  */
@@ -40,6 +41,11 @@ public sealed interface RelationalWitness<A> {
                 Set<Sameness.Block<B>> blocks = new LinkedHashSet<>();
                 it.blocks().forEach(block -> blocks.add(block.renamed(naming)));
                 yield new TooFewValuesBetweenThem<>(blocks, it.available());
+            }
+            case NoAssignmentTellsThemApart<A> it -> {
+                Set<Sameness.Block<B>> blocks = new LinkedHashSet<>();
+                it.blocks().forEach(block -> blocks.add(block.renamed(naming)));
+                yield new NoAssignmentTellsThemApart<>(blocks);
             }
         };
     }
@@ -116,6 +122,44 @@ public sealed interface RelationalWitness<A> {
                 throw new IllegalArgumentException("blocks stated to differ are refused by there"
                         + " being fewer values than blocks, and " + blocks + " have " + available);
             }
+        }
+    }
+
+    /**
+     * Blocks no way of giving them values tells apart.
+     *
+     * <p>Shown by looking for one and running out, which is what a shortage cannot show and is not
+     * a stronger version of it: {@code a /= b && b /= c && c /= d && d /= e && e /= a} over two
+     * values has no set of three blocks all stated to differ and needs three values all the same.
+     * So this is beside {@link TooFewValuesBetweenThem} and never a way of writing one — which
+     * that one refuses to be written as, since it is given the values it counted and there are not
+     * fewer of them here.
+     *
+     * <p><b>The blocks and no values beside them.</b> What has nothing is an assignment to all of
+     * them, and no set of values stands for which assignments there were: the same blocks holding
+     * the same values are refused in a ring of odd length and satisfied in a ring of even length,
+     * so a reader handed the values could not tell the two apart. {@link TooFewValuesBetweenThem}
+     * carries them because a shortage is a fact about how many there are; this is not, and carrying
+     * them would be carrying what a count was not taken of.
+     *
+     * <p><b>Read as the same sentence as a shortage, and rightly.</b> What a report says of either
+     * is that these positions are left no way of differing, and an author is sent to the same
+     * rules. The two are told apart here because a proof is not a sentence — a reduction learned
+     * later reads which argument refused — and not because the words would have to differ.
+     *
+     * <p>Several of them wherever the block each is left something on its own, which is what a
+     * relation is asked about: a lack at one block is that block's own answer and is reached before
+     * anything asks what the denials between blocks come to.
+     *
+     * @param blocks the blocks an assignment was looked for over, which are those whose values are
+     *               written down: a block holding more of them than the relation has blocks was
+     *               never going to run out and is not part of what has nothing
+     */
+    record NoAssignmentTellsThemApart<A>(
+            Set<Sameness.Block<A>> blocks) implements RelationalWitness<A> {
+
+        public NoAssignmentTellsThemApart {
+            blocks = Collections.unmodifiableSet(new LinkedHashSet<>(blocks));
         }
     }
 }
