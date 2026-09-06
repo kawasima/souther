@@ -37,6 +37,18 @@ class EveryAnswerOfAReadingIsFiledUnderItsOwnBlocksTest {
         return AsACompilationAllows.forAdmittedValues();
     }
 
+    /** A rule while it is still a description, which is where a choice between two of them is
+     *  taken. */
+    private static PlannedValues<String> plans(String atom, Value value) {
+        return PlannedValues.at(atom, AdmittedPlan.of(ValueSet.just(value)));
+    }
+
+    /** A description worked out, which is the only way a reading holding alternatives is made. */
+    private static AdmissibleValues<String> built(PlannedValues<String> planned,
+                                                  Allowance<String> by) {
+        return planned.resolve(by).values();
+    }
+
     /** Every coordinate this reading files an answer under. */
     private static Set<Sameness.Block<String>> filedUnder(AdmissibleValues<String> reading) {
         Set<Sameness.Block<String>> out = new LinkedHashSet<>(reading.guaranteed().keySet());
@@ -117,10 +129,10 @@ class EveryAnswerOfAReadingIsFiledUnderItsOwnBlocksTest {
      *  apart into it. */
     @Test
     void aChoiceCarriesEachBranchesAnswersIntoTheFinerRelation() {
-        AdmissibleValues<String> reading = AdmissibleValues.<String>holdingAsOne("p", "r")
-                .meet(AdmissibleValues.at("p", ValueSet.just(A)), allowing())
-                .join(AdmissibleValues.<String>holdingAsOne("p", "s")
-                        .meet(AdmissibleValues.at("p", ValueSet.just(B)), allowing()), allowing());
+        AdmissibleValues<String> reading = built(
+                PlannedValues.<String>holdingAsOne("p", "r").meet(plans("p", A))
+                        .joinLive(PlannedValues.<String>holdingAsOne("p", "s")
+                                .meet(plans("p", B))), allowing());
 
         assertTrue(reading.sameness().isDiscrete(),
                 "neither equality is stated by both branches");
@@ -130,10 +142,10 @@ class EveryAnswerOfAReadingIsFiledUnderItsOwnBlocksTest {
     /** And held apart, each alternative keeps the equality it states. */
     @Test
     void alternativesHeldApartKeepTheirOwnEqualities() {
-        AdmissibleValues<String> reading = AdmissibleValues.<String>holdingAsOne("p", "r")
-                .meet(AdmissibleValues.at("p", ValueSet.just(A)), allowing())
-                .joinApart(AdmissibleValues.<String>holdingAsOne("p", "s")
-                        .meet(AdmissibleValues.at("p", ValueSet.just(B)), allowing()), allowing());
+        AdmissibleValues<String> reading = built(
+                PlannedValues.<String>holdingAsOne("p", "r").meet(plans("p", A))
+                        .joinLiveApart(PlannedValues.<String>holdingAsOne("p", "s")
+                                .meet(plans("p", B))), allowing());
 
         assertTrue(reading.sameness().isDiscrete(),
                 "what the union can say of a position is what both alternatives say");
@@ -156,8 +168,8 @@ class EveryAnswerOfAReadingIsFiledUnderItsOwnBlocksTest {
      */
     @Test
     void aChoiceBetweenTwoEqualitiesLosesARelationAndSaysSo() {
-        AdmissibleValues<String> merged = AdmissibleValues.<String>holdingAsOne("p", "r")
-                .join(AdmissibleValues.holdingAsOne("p", "s"), allowing());
+        AdmissibleValues<String> merged = built(PlannedValues.<String>holdingAsOne("p", "r")
+                .joinLive(PlannedValues.holdingAsOne("p", "s")), allowing());
 
         assertFalse(merged.relationExact(), "neither pair survives the merge");
         assertTrue(merged.projectionExactAt("p"), "and what each position holds is still exact");
@@ -168,8 +180,8 @@ class EveryAnswerOfAReadingIsFiledUnderItsOwnBlocksTest {
     /** And held apart, nothing is lost: the alternatives keep the relation between them. */
     @Test
     void andHeldApartTheRelationSurvives() {
-        AdmissibleValues<String> apart = AdmissibleValues.<String>holdingAsOne("p", "r")
-                .joinApart(AdmissibleValues.holdingAsOne("p", "s"), allowing());
+        AdmissibleValues<String> apart = built(PlannedValues.<String>holdingAsOne("p", "r")
+                .joinLiveApart(PlannedValues.holdingAsOne("p", "s")), allowing());
 
         assertTrue(apart.relationExact(), "the union of two products is what it is");
     }
@@ -203,9 +215,8 @@ class EveryAnswerOfAReadingIsFiledUnderItsOwnBlocksTest {
     @Test
     void aReadingNoEqualityReachedIsAProductOverItsPositions() {
         Allowance<String> sets = allowing();
-        AdmissibleValues<String> reading = AdmissibleValues.at("p", ValueSet.just(A))
-                .meet(AdmissibleValues.at("r", ValueSet.just(B)), sets)
-                .joinApart(AdmissibleValues.at("p", ValueSet.just(B)), sets);
+        AdmissibleValues<String> reading = built(
+                plans("p", A).meet(plans("r", B)).joinLiveApart(plans("p", B)), sets);
 
         assertTrue(reading.sameness().isDiscrete());
         filedUnder(reading).forEach(block ->

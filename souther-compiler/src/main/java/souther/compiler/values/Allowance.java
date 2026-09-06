@@ -195,11 +195,6 @@ public final class Allowance<A> {
         return put(block, AdmittedPlan.meeting(both(one, other)));
     }
 
-    /** The values either admits — what a rule stated as one of two alternatives leaves. */
-    public Composed join(Sameness.Block<A> block, ValueSet one, ValueSet other) {
-        return put(block, AdmittedPlan.joining(both(one, other)));
-    }
-
     /**
      * The values any of them admits, said as one plan over all of them.
      *
@@ -227,22 +222,17 @@ public final class Allowance<A> {
     }
 
     /**
-     * The same two, where what comes out is a promise rather than a bound.
+     * The same two sets, where what comes out is a promise rather than a bound.
      *
      * <p>Giving up leaves nothing and not everything, which is the other direction. What
-     * {@link #meet} and {@link #join} answer is which values a position may hold, so an answer this
-     * did not build widens to every value and stays true. A promise says which values it certainly
+     * {@link #meet} answers is which values a position may hold, so an answer this did not build
+     * widens to every value and stays true. A promise says which values it certainly
      * may hold, and every value is the strongest thing that can be said rather than the weakest —
      * so an unbuilt one promises nothing, and a reader is short of a guarantee instead of holding
      * one nobody proved.
      */
     public Composed meetPromised(Sameness.Block<A> block, ValueSet one, ValueSet other) {
         return promised(meet(block, one, other));
-    }
-
-    /** The same for a choice, on the same terms. */
-    public Composed joinPromised(Sameness.Block<A> block, ValueSet one, ValueSet other) {
-        return promised(join(block, one, other));
     }
 
     private static Composed promised(Composed made) {

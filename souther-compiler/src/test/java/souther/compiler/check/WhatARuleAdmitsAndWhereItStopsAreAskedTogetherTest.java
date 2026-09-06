@@ -12,9 +12,10 @@ import souther.compiler.query.ReadAs;
 import souther.compiler.query.Scopes;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbols;
-import souther.compiler.values.AdmissibleValues;
+import souther.compiler.values.AdmittedPlan;
 import souther.compiler.values.Allowance;
 import souther.compiler.values.AsACompilationAllows;
+import souther.compiler.values.PlannedValues;
 import souther.compiler.values.Value;
 import souther.compiler.values.ValueSet;
 
@@ -233,16 +234,15 @@ class WhatARuleAdmitsAndWhereItStopsAreAskedTogetherTest {
     @Test
     void alternativesAreAskedWholeAndNotThroughWhatTheyProjectOntoAPosition() {
         Allowance<FactSubject> sets = AsACompilationAllows.forAdmittedValues();
-        AdmissibleValues<FactSubject> here = AdmissibleValues.at(X, ValueSet.just(Value.text("A")))
-                .meet(AdmissibleValues.at(Y, ValueSet.just(Value.text("B"))), sets);
-        AdmissibleValues<FactSubject> there = AdmissibleValues.at(X, ValueSet.just(Value.text("C")))
-                .meet(AdmissibleValues.at(Y, ValueSet.just(Value.text("D"))), sets);
+        PlannedValues<FactSubject> here = pair("A", "B");
+        PlannedValues<FactSubject> there = pair("C", "D");
         OrderedIntervals<FactSubject> ends = OrderedIntervals
                 .at(X, new OrderedInterval(null, Endpoint.inclusive(Text.of("A"))))
                 .meet(OrderedIntervals.at(Y, new OrderedInterval(
                         Endpoint.inclusive(Text.of("D")), null)));
         ConstraintState<FactSubject> state = ConstraintState.<FactSubject>top()
-                .takingRead(Confinement.Worked.of(here.joinApart(there, sets), ends,
+                .takingRead(Confinement.Worked.of(
+                        here.joinLiveApart(there).resolve(sets).values(), ends,
                         Map.of(X, Carrier.TEXT, Y, Carrier.TEXT)), sets);
 
         assertEquals(ValueSet.oneOf(new LinkedHashSet<>(List.of(
@@ -263,6 +263,13 @@ class WhatARuleAdmitsAndWhereItStopsAreAskedTogetherTest {
 
     private static Emptiness atAField(String spelled, Emptiness under) {
         return new Emptiness.AtAField(new Emptiness.AtAField.Where.In(spelled), under);
+    }
+
+    /** One alternative of the choice below, while it is still a description — which is where a
+     *  choice is taken. */
+    private static PlannedValues<FactSubject> pair(String here, String there) {
+        return PlannedValues.<FactSubject>at(X, AdmittedPlan.of(ValueSet.just(Value.text(here))))
+                .meet(PlannedValues.at(Y, AdmittedPlan.of(ValueSet.just(Value.text(there)))));
     }
 
     /** How the one declaration of {@code source} was shown to have no value, or null where it has

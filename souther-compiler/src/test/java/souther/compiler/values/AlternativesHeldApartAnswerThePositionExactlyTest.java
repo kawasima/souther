@@ -39,13 +39,20 @@ class AlternativesHeldApartAnswerThePositionExactlyTest {
     private final Allowance<String> sets = AsACompilationAllows.forAdmittedValues();
 
 
-    private static AdmissibleValues<String> says(String atom, Value value) {
-        return AdmissibleValues.at(atom, ValueSet.just(value));
+    /** One rule while it is still a description, which is where a choice between two of them is
+     *  taken. */
+    private static PlannedValues<String> plans(String atom, Value value) {
+        return PlannedValues.at(atom, AdmittedPlan.of(ValueSet.just(value)));
     }
 
     /** Both positions of one alternative, which is a product and is held as one. */
-    private AdmissibleValues<String> pair(Value a, Value b) {
-        return says(A, a).meet(says(B, b), sets);
+    private static PlannedValues<String> pair(Value a, Value b) {
+        return plans(A, a).meet(plans(B, b));
+    }
+
+    /** A description worked out, which is the only way a reading holding alternatives is made. */
+    private AdmissibleValues<String> built(PlannedValues<String> planned) {
+        return planned.resolve(sets).values();
     }
 
     /**
@@ -58,8 +65,8 @@ class AlternativesHeldApartAnswerThePositionExactlyTest {
      */
     @Test
     void twoChoicesAcrossTwoPositionsLeaveTheOnePairThatStands() {
-        AdmissibleValues<String> one = pair(FIVE, ZERO).joinApart(pair(SIX, ONE), sets);
-        AdmissibleValues<String> two = pair(FIVE, ZERO).joinApart(pair(SIX, ZERO), sets);
+        AdmissibleValues<String> one = built(pair(FIVE, ZERO).joinLiveApart(pair(SIX, ONE)));
+        AdmissibleValues<String> two = built(pair(FIVE, ZERO).joinLiveApart(pair(SIX, ZERO)));
 
         AdmissibleValues<String> both = one.meet(two, sets);
 
@@ -79,30 +86,29 @@ class AlternativesHeldApartAnswerThePositionExactlyTest {
      */
     @Test
     void theAlternativesAreASetAndNotASequence() {
-        AdmissibleValues<String> a = pair(FIVE, ZERO);
-        AdmissibleValues<String> b = pair(SIX, ONE);
-        AdmissibleValues<String> c = pair(SIX, ZERO);
+        PlannedValues<String> a = pair(FIVE, ZERO);
+        PlannedValues<String> b = pair(SIX, ONE);
+        PlannedValues<String> c = pair(SIX, ZERO);
 
-        assertEquals(a.joinApart(b, sets).held(),
-                b.joinApart(a, sets).held(),
+        assertEquals(built(a.joinLiveApart(b)).held(),
+                built(b.joinLiveApart(a)).held(),
                 "either order, one union");
-        assertEquals(a.held(), a.joinApart(a, sets).held(),
+        assertEquals(built(a).held(), built(a.joinLiveApart(a)).held(),
                 "and the same alternative twice is one");
-        assertEquals(a.joinApart(b, sets)
-                        .joinApart(c, sets).held(),
-                a.joinApart(b.joinApart(c, sets), sets).held(),
+        assertEquals(built(a.joinLiveApart(b).joinLiveApart(c)).held(),
+                built(a.joinLiveApart(b.joinLiveApart(c))).held(),
                 "and three of them are the same three, bracketed either way");
     }
 
     /** Held apart, three alternatives are three, which is what a merged one cannot say. */
     @Test
     void whatIsHeldIsTheAlternativesAndNotTheirHull() {
-        AdmissibleValues<String> three = pair(FIVE, ZERO).joinApart(pair(SIX, ONE), sets)
-                .joinApart(pair(SIX, ZERO), sets);
+        AdmissibleValues<String> three = built(pair(FIVE, ZERO).joinLiveApart(pair(SIX, ONE))
+                .joinLiveApart(pair(SIX, ZERO)));
 
         assertEquals(3, ((AdmissibleValues.Held.Alternatives<String>) three.held()).boxes().size());
-        assertNotEquals(three.held(), pair(FIVE, ZERO).join(pair(SIX, ONE), sets)
-                .join(pair(SIX, ZERO), sets).held());
+        assertNotEquals(three.held(), built(pair(FIVE, ZERO).joinLive(pair(SIX, ONE))
+                .joinLive(pair(SIX, ZERO))).held());
         assertEquals(ValueSet.oneOf(Set.of(FIVE, SIX)), three.at(A), "and the projection is theirs");
     }
 
@@ -115,8 +121,8 @@ class AlternativesHeldApartAnswerThePositionExactlyTest {
      */
     @Test
     void aPositionBesideThemKeepsItsOwnAnswer() {
-        AdmissibleValues<String> one = pair(FIVE, ZERO).joinApart(pair(SIX, ONE), sets);
-        AdmissibleValues<String> two = pair(FIVE, ZERO).joinApart(pair(SIX, ZERO), sets);
+        AdmissibleValues<String> one = built(pair(FIVE, ZERO).joinLiveApart(pair(SIX, ONE)));
+        AdmissibleValues<String> two = built(pair(FIVE, ZERO).joinLiveApart(pair(SIX, ZERO)));
         AdmissibleValues<String> apart = AdmissibleValues.at(C, ValueSet.just(ZERO));
 
         AdmissibleValues<String> all = one.meet(two, sets).meet(apart, sets);
@@ -135,10 +141,13 @@ class AlternativesHeldApartAnswerThePositionExactlyTest {
      */
     @Test
     void aChoiceBetweenTwoImpossibleAlternativesNamesNoPosition() {
-        AdmissibleValues<String> here = says(A, FIVE).meet(says(A, SIX), sets);
-        AdmissibleValues<String> there = says(B, ZERO).meet(says(B, ONE), sets);
+        PlannedValues<String> here = plans(A, FIVE).meet(plans(A, SIX));
+        PlannedValues<String> there = plans(B, ZERO).meet(plans(B, ONE));
 
-        AdmissibleValues<String> either = here.joinApart(there, sets);
+        // Neither branch is one anybody can be in, which is the settlement a caller reaches for
+        // once both are known dead rather than a choice between two that stand.
+        AdmissibleValues<String> either =
+                built(here.leavingNothing().bothDead(there.leavingNothing()));
 
         assertTrue(either.isBottom(), "neither alternative can be taken");
         assertEquals(ValueSet.ANY, either.at(A), "and neither position is one the choice empties");
@@ -149,15 +158,13 @@ class AlternativesHeldApartAnswerThePositionExactlyTest {
      *  is about which rules went unread, and holding a union reads none of them. */
     @Test
     void holdingThemApartPromisesWhatMergingThemDid() {
-        for (List<AdmissibleValues<String>> each : List.of(
-                List.of(says(A, FIVE), says(A, SIX)),
+        for (List<PlannedValues<String>> each : List.of(
+                List.of(plans(A, FIVE), plans(A, SIX)),
                 List.of(pair(FIVE, ZERO), pair(SIX, ONE)),
-                List.of(says(A, FIVE), AdmissibleValues.<String>unreadable(Set.of(B),
+                List.of(plans(A, FIVE), PlannedValues.<String>unreadable(Set.of(B),
                         UnreadReason.FORM_NOT_READ)))) {
-            AdmissibleValues<String> merged =
-                    each.get(0).join(each.get(1), sets);
-            AdmissibleValues<String> apart =
-                    each.get(0).joinApart(each.get(1), sets);
+            AdmissibleValues<String> merged = built(each.get(0).joinLive(each.get(1)));
+            AdmissibleValues<String> apart = built(each.get(0).joinLiveApart(each.get(1)));
 
             assertEquals(merged.guaranteedAt(A), apart.guaranteedAt(A), each + " at a");
             assertEquals(merged.guaranteedAt(B), apart.guaranteedAt(B), each + " at b");

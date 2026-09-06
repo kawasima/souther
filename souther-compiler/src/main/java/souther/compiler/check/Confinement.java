@@ -648,6 +648,11 @@ sealed interface Confinement<A> {
      *
      * <p>The sets are in hand, so every alternative can be asked where its positions stop and the
      * answer is settled either way.
+     *
+     * <p>Nothing here composes two readings. Every connective a clause is read by is spent by the
+     * time one of these exists — the conjunction that outlives it is the one between declarations,
+     * and a caller relating two holds {@link Conjoined}. What is left to do to one of these is ask
+     * it, and tell it what a choice already settled left open.
      */
     final class Worked<A> implements Confinement<A> {
 
