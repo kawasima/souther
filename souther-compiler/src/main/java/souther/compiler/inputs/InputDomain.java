@@ -1326,12 +1326,11 @@ public final class InputDomain {
         // and a constant places an end wherever it is written, so where the rule was written is not
         // what decides whether there is a line here (ADR-0090).
         List<FieldDomains.Placed> stated = placed.placedAt(path);
-        // The position's own rules, read once for the ends they placed. Asked of the reading that
-        // turned the clauses into constraints, which is the one place the canonical quantity of
-        // each of them was worked out. A second reader recognising the number off the spelling of a
-        // side answers nothing for `String.length(value) * 2 >= 4`, whose sides are neither a name
-        // nor a measure of one.
-        List<FieldDomains.Placed> ownRules =
+        // Where the reading that turns this type's clauses into constraints put an end on the
+        // value. Read for the check below and for nothing else: what bounds the position is the
+        // reading of the clauses as they are written ({@code boundsOn}), and a second answer about
+        // the same clauses is one this would have to choose between rather than intersect.
+        List<FieldDomains.Placed> constrained =
                 DeclaredCoordinates.placedOnItsOwnValue(type, source, policy, placed.machines());
         // And the ends the value's own conjuncts state that no comparison says: a rule about the
         // strings places no comparison, and a conjunct that placed no end can still move one.
@@ -1339,10 +1338,10 @@ public final class InputDomain {
         RulesWithNoLine.Gathered found = new RulesWithNoLine.Gathered();
         // The numbers this position has, which its type settles and no rule votes on.
         List<NumberAt.OfWhatNumber> kinds = numbersOf(taken);
-        // And every end placed here is on one of them, whichever list it arrived in. Nothing is
-        // filed out: an end names the number it was placed on, and each of the bounds below takes
-        // the ends that name its own.
-        everyEndIsOnANumberOfThisPosition(kinds, ownRules, path);
+        // And every end placed here is on one of them, whichever reading found it. Nothing is filed
+        // out: an end names the number it was placed on, and each of the bounds below takes the
+        // ends that name its own.
+        everyEndIsOnANumberOfThisPosition(kinds, constrained, path);
         everyEndIsOnANumberOfThisPosition(kinds, movedHere, path);
         everyEndIsOnANumberOfThisPosition(kinds, stated, path);
         // A value whose rules contradict has no positions to cover: every edge of every field of it
@@ -1356,7 +1355,7 @@ public final class InputDomain {
         List<PositionBounds> bounds = new ArrayList<>();
         for (NumberAt.OfWhatNumber kind : kinds) {
             bounds.add(boundsOn(kind, path, type, taken, view, source, carried, placed,
-                    ownRules, movedHere, stated, nothingExists));
+                    movedHere, stated, nothingExists));
         }
         rulesWithoutALineAt(placed, path, type, source, found);
         // Everything left open about the rules of this position: what the accounting of the
@@ -1481,17 +1480,26 @@ public final class InputDomain {
      * What the rules leave one number of one position.
      *
      * <p>Every answer here is about {@code kind} and about no other number of the place. Three
-     * sources of ends and not one: what the type's own comparisons wrote, what its conjuncts state
-     * or moved that no comparison says — a rule about the strings at a position leaves them running
+     * sources of ends and not one: what the type's own clauses wrote, what its conjuncts state or
+     * moved that no comparison says — a rule about the strings at a position leaves them running
      * between two places and orders nothing — and what the value this position sits in placed. Each
      * list holds ends of every number, and each is asked for this one's; they are intersected, and
      * every rule that put an end where it is kept.
+     *
+     * <p><b>One reading of the type's own clauses, and it is {@link #ofTheType}.</b> There is a
+     * second — the one that turns those clauses into constraints, which {@code read} holds for its
+     * own question — and it answers about more of them: it reaches the end under
+     * {@code String.length(value) * 2 >= 4}, under a disequality that moves a floor and under an
+     * equality that states both ends, where reading the comparison as written finds none. Handed
+     * both and intersected, this would take whichever answer is tighter and there would be nothing
+     * to say which of the two the position is bounded by — one clause read two ways, with the
+     * difference kept out of sight by the intersection rather than settled. So the second reading
+     * is not a parameter here.
      */
     private static PositionBounds boundsOn(NumberAt.OfWhatNumber kind, TermPath path, Type type,
                                            ValueName.Stdlib taken, TypeView view,
                                            RuleReadingSource source, Carrier carried,
                                            PlacedRules placed,
-                                           List<FieldDomains.Placed> ownRules,
                                            List<FieldDomains.Placed> movedHere,
                                            List<FieldDomains.Placed> stated,
                                            boolean nothingExists) {
@@ -1507,9 +1515,7 @@ public final class InputDomain {
         }
         Carrier on = carrierOn(kind, carried);
         DeclaredBounds.Bounds own = on == null ? null
-                : DeclaredBounds.and(
-                        DeclaredBounds.and(ofTheType(kind, on, view, source),
-                                DeclaredBounds.placed(ownRules, kind, on)),
+                : DeclaredBounds.and(ofTheType(kind, on, view, source),
                         DeclaredBounds.and(
                                 DeclaredBounds.placed(movedHere, kind, on),
                                 DeclaredBounds.placed(stated, kind, on)));
