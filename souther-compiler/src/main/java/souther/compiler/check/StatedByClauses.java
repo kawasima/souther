@@ -298,18 +298,20 @@ sealed interface StatedByClauses {
      *
      * <p><b>Two sets and not one, because the two sides ask two questions of it.</b> An author has
      * to look at this choice wherever the alternative beside the unread one <em>reached</em> a
-     * position, whether or not the reading could promise anything there — that is a fact about
-     * clauses somebody wrote. A position is left wider than the rules only where that alternative
-     * <em>promised</em> it something the unread one takes back; an alternative holding a clause
-     * nothing could read promises nothing, so it has nothing to be taken back and the position
-     * keeps whatever account it already had. Made one, {@code (P(a) && f(b)) || (P(a) && f(b))}
-     * came out with {@code a} reported wider than the rules hold it.
+     * position, whether or not the answer there turned on it — that is a fact about clauses
+     * somebody wrote, and it is read off the tree that keeps their shape. A position is reported
+     * wider than the rules only where nothing showed the choice leaves it what it would without
+     * the unread alternative, which is a fact about values and is settled where the branches are
+     * ({@link Settlement.WidthDependency}). Made one,
+     * {@code (P(a) && f(b)) || (P(a) && f(b))} came out with {@code a} reported wider than the
+     * rules hold it: both alternatives reached {@code a}, and dropping either was shown to leave
+     * it where it was.
      *
      * @param byTheLeftGoingUnread  the positions the right alternative reached, where the left is
      *                              one nothing could read. Empty where it was read
      * @param byTheRightGoingUnread the same the other way round
-     * @param positions             the positions the unread alternative left open, which is what
-     *                              the one beside it promised
+     * @param positions             the positions an alternative nothing could read was not shown
+     *                              to leave where they were
      */
     record AlternativeOpening(ChoiceId choice, Set<FactSubject> byTheLeftGoingUnread,
                               Set<FactSubject> byTheRightGoingUnread, Set<FactSubject> positions) {
@@ -332,42 +334,40 @@ sealed interface StatedByClauses {
     }
 
     /**
-     * What one choice left open, out of what its two alternatives took in.
+     * What one choice left open, out of which of its alternatives went unread and what its width
+     * depends on.
      *
-     * <p>Over what each of them reached and did not merely settle: a position a dead branch settled
-     * is an answer, and an alternative nothing could read widens a constraint rather than an
-     * answer.
+     * <p>Two questions and two sources, and neither answers the other's. Which alternative nothing
+     * could read is a fact about the clause somebody wrote and is read off the tree that keeps that
+     * shape ({@link Adoption#dropped}). Whether anything showed the choice leaves a position what
+     * it would without an alternative is a fact about the values, is worked out where the branches
+     * were settled, and arrives here decided ({@link Settlement.WidthDependency}) — asked of the
+     * positions each branch took in instead, the answer would be that a branch narrowing a position
+     * its neighbour narrows the same way is why the choice is as wide as it is.
+     *
+     * <p>What arrives is the side a reader may act on: a position left out of it is one dropping
+     * the alternative was shown not to narrow, and one kept is one nobody settled. So a position
+     * this opens may be one the rules hold exactly where the reading says, and the cost of that is
+     * a reading declining to speak for a position it could have — never an answer handed out as
+     * exact when it is not.
      *
      * <p>Of the reading of values alone, which is the one a choice is asked of. Where a position's
      * order stops is not what an alternative takes back — a range says nothing about which values
      * stand anywhere, so a branch nothing read leaves the ranges beside it saying what they said.
      */
-    static AlternativeOpening opens(ChoiceId choice, Adoption<FactSubject> one,
-                                    Adoption<FactSubject> other) {
+    static AlternativeOpening opens(ChoiceId choice, Settlement.WidthDependency width,
+                                    Adoption<FactSubject> one, Adoption<FactSubject> other) {
         Set<FactSubject> opened = new LinkedHashSet<>();
         if (one.dropped()) {
-            opened.addAll(promisedBy(other));
+            opened.addAll(width.mayRestOnLeft());
         }
         if (other.dropped()) {
-            opened.addAll(promisedBy(one));
+            opened.addAll(width.mayRestOnRight());
         }
         return new AlternativeOpening(choice,
                 one.dropped() ? reachedBy(other) : Set.of(),
                 other.dropped() ? reachedBy(one) : Set.of(),
                 opened);
-    }
-
-    /**
-     * The positions an alternative promised something at, which is what an unread one beside it
-     * takes back.
-     *
-     * <p>Nothing where it holds a clause this could not read. What a branch promises is what it
-     * promises having read everything it was given, and a conjunct nothing could read is exactly
-     * what it was not given — so there is nothing there for the alternative beside it to widen, and
-     * whatever account the position has is its own.
-     */
-    private static Set<FactSubject> promisedBy(Adoption<FactSubject> of) {
-        return of.dropped() ? Set.of() : of.read();
     }
 
     /** The positions a reading reached and did not merely settle: what it constrained, and what it
@@ -661,16 +661,16 @@ sealed interface StatedByClauses {
                 // the dead branch would widen the met-together tree for nothing.
                 //
                 if (a == souther.compiler.values.Emptiness.EMPTY && b == souther.compiler.values.Emptiness.EMPTY) {
-                    decided.put(choice.id(), settled(mine, theirs));
+                    decided.put(choice.id(), settled(here, mine, there, theirs));
                     return new StatedTogether.Said(here.confinement().bothDead(there.confinement(),
                             Confinement.Admission.bothShown(mine, theirs)));
                 }
                 if (a == souther.compiler.values.Emptiness.EMPTY) {
-                    decided.put(choice.id(), settled(mine, theirs));
+                    decided.put(choice.id(), settled(here, mine, there, theirs));
                     return other;
                 }
                 if (b == souther.compiler.values.Emptiness.EMPTY) {
-                    decided.put(choice.id(), settled(mine, theirs));
+                    decided.put(choice.id(), settled(here, mine, there, theirs));
                     return one;
                 }
                 // Two live branches are another matter: merging them is the one decision a clause
@@ -681,7 +681,7 @@ sealed interface StatedByClauses {
                 // read, which is what admitted the declaration as APART at all.
                 if (alternatives == Alternatives.MERGED
                         && a == souther.compiler.values.Emptiness.NONEMPTY && b == souther.compiler.values.Emptiness.NONEMPTY) {
-                    decided.put(choice.id(), settled(mine, theirs));
+                    decided.put(choice.id(), settled(here, mine, there, theirs));
                     return new StatedTogether.Said(
                             either(here.confinement(), there.confinement()));
                 }
@@ -692,10 +692,34 @@ sealed interface StatedByClauses {
         }
 
         /** The fate of a choice the descriptions alone decided, for the account to read. */
-        private static Settlement.OfAChoice settled(Confinement.Admission<FactSubject> one,
-                                                    Confinement.Admission<FactSubject> other) {
-            return new Settlement.OfAChoice(Settlement.Sided.settledAs(one),
-                    Settlement.Sided.settledAs(other));
+        private static Settlement.OfAChoice settled(StatedTogether.Said one,
+                                                    Confinement.Admission<FactSubject> mine,
+                                                    StatedTogether.Said other,
+                                                    Confinement.Admission<FactSubject> theirs) {
+            return outcome(one, Settlement.Sided.settledAs(mine),
+                    other, Settlement.Sided.settledAs(theirs));
+        }
+
+        /**
+         * What one occurrence of a choice came to: the fate of both branches and what the width of
+         * the choice depends on.
+         *
+         * <p>The one place either is made. Both are about the same two branches and a reader of one
+         * needs the other, so a second place making one of them would be a second answer to the
+         * question this compiler has just answered — which is what the fates are gathered here to
+         * avoid.
+         *
+         * <p>What the fates come to is the width's to read: an occurrence one branch of which
+         * admits nothing is no choice there, and what that leaves the width resting on is stated
+         * where the width is ({@link Settlement.WidthDependency#of}).
+         */
+        private static Settlement.OfAChoice outcome(StatedTogether.Said one,
+                                                    Settlement.Sided here,
+                                                    StatedTogether.Said other,
+                                                    Settlement.Sided there) {
+            return new Settlement.OfAChoice(here, there,
+                    Settlement.WidthDependency.of(here.emptiness(), one.confinement().values(),
+                            there.emptiness(), other.confinement().values()));
         }
 
         /**
@@ -733,7 +757,7 @@ sealed interface StatedByClauses {
                     StatedTogether.Said other = settling(it.right(), by, outcomes);
                     Settlement.Sided here = probed(one, by);
                     Settlement.Sided there = probed(other, by);
-                    outcomes.merge(it.id(), new Settlement.OfAChoice(here, there),
+                    outcomes.merge(it.id(), outcome(one, here, other, there),
                             Settlement.OfAChoice::alsoSeen);
                     yield decided(one, here, other, there);
                 }
@@ -1000,7 +1024,8 @@ sealed interface StatedByClauses {
                     Taken beside = keptAs(other, fate.right());
                     yield live.either(
                             new RuleShortfall.Site.AtAChoice(it.id(), it.writtenAt().pos()),
-                            opens(it.id(), live.took().byValues(), beside.took().byValues()),
+                            opens(it.id(), fate.width(), live.took().byValues(),
+                                    beside.took().byValues()),
                             beside);
                 }
             };
