@@ -11,10 +11,14 @@ import java.util.function.Supplier;
  * <p>Two things, for two lifetimes. The answers about a declaration's string machines
  * ({@link #of}) are borrowed from the store's own answer for the declaration, which outlives an
  * edit that leaves the declaration's clauses as they were. The declaration's canonical reading
- * ({@link #seeded}) — its rules read whole, with nothing settled and nothing left out — is lent for
- * the revision it was made in and no longer: it is not a value, so no store answer holds it, and
- * what makes lending it sound is that within one revision every world it could be read from is the
- * same world. What is shared is the work, not an answer.
+ * ({@link #reading}) — its rules read whole, with nothing settled and nothing left out — is handed
+ * on for the revision it was made in and no longer: it is not a value, so no store answer holds it,
+ * and what makes handing it on sound is that within one revision every world it could be read from
+ * is the same world.
+ *
+ * <p>What is shared there is work rather than an answer, and it is shared with the reads it was
+ * made by: a question of the store is kept by what it read, so one handed a reading and nothing
+ * else would hold an answer made from rules it does not depend on ({@link StoreWork}).
  *
  * <p>A capability and not a value, either way. What comes back from {@link #of} is the thing a
  * reading asks as it goes ({@link StringMachineAnswers}), so this is made where a store is to hand,
