@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.lang.classfile.Attributes;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.FieldModel;
@@ -14,8 +15,14 @@ import java.lang.reflect.AccessFlag;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -30,18 +37,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * purses to be charged to, so which of them pays, and with it how exactly the composition comes out,
  * is settled by which side the call was written on rather than by anything either reading says.
  *
- * <p>So the holders are written down, and every one of them is somewhere an answer is under
- * construction:
+ * <p>So everywhere one can be reached from is written down, and every one of them is a reading that
+ * has not finished answering or something holding one.
  *
- * <pre>
- *     AdmissibleReading         reads one declaration's clauses into the sets they leave
- *     PlacedRules               reads one value's rules at the paths its positions have
- *     InvariantChecker$Seeded   one such reading part-built, for a reader that finishes it
- * </pre>
+ * <p><b>Reached from and not held in.</b> What a reader can spend is what it can reach, so a purse
+ * put in a carrier that several readers keep is a purse those readers have. Asked one field deep,
+ * the carrier would be the only row and the readers keeping it would hold an allowance with nothing
+ * saying so — which is what this walk missed while the rule was being written, and is why it is
+ * transitive.
  *
- * <p>Read off the compiled classes, so a record component is a row here as readily as a field: the
- * two are one thing to a reader that can spend what it finds. A row that is new is a finding —
- * either an answer is being built somewhere new, or a purse has moved into a value.
+ * <p>Read off the compiled classes, so a record component is a row as readily as a field: the two
+ * are one thing to a reader that can spend what it finds. A row that is new is a finding — either a
+ * reading is being made somewhere new, or an answer has taken a purse on.
  */
 class AnAllowanceIsHeldByWhoeverIsBuildingAnAnswerTest {
 
@@ -51,11 +58,28 @@ class AnAllowanceIsHeldByWhoeverIsBuildingAnAnswerTest {
 
     private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
 
-    /** Every production class that holds one, which is every place an answer is being built. */
+    /**
+     * Every production class an allowance can be reached from, which is every reading still
+     * answering and everything holding one.
+     *
+     * <p>Two of them are the readers. {@code AdmissibleReading} turns one declaration's clauses into
+     * the sets they leave; {@code PlacedRules} answers what the rules leave a value's positions and
+     * builds the sets as they are asked for, so it is a reading that has not finished. The rest hold
+     * one of those and reach the purse through it.
+     *
+     * <p>What is not here is the list's point. A reading's published answers —
+     * {@code AdmissibleValues}, {@code ConjoinedAdmissibleValues}, {@code ConstraintState}, and the
+     * seeded reading a later reader keeps — carry sets and no way to buy another, so two of them met
+     * have no purse of their own to be composed under.
+     */
     private static final List<String> HOLDING_AN_ALLOWANCE = List.of(
             "souther/compiler/check/AdmissibleReading",
-            "souther/compiler/check/InvariantChecker$Seeded",
-            "souther/compiler/inputs/PlacedRules");
+            "souther/compiler/check/StatedByClauses$Reading",
+            "souther/compiler/inputs/OpenedRules",
+            "souther/compiler/inputs/PlacedRules",
+            "souther/compiler/inputs/PlacedRules$Reaching",
+            "souther/compiler/inputs/ReadQuantities",
+            "souther/compiler/inputs/ReadRegion");
 
     /**
      * And what a conjunction of readings names one for.
@@ -101,20 +125,103 @@ class AnAllowanceIsHeldByWhoeverIsBuildingAnAnswerTest {
                         + " finding nothing at all");
     }
 
-    /** Every class with a field of that type, which is a record component as well. */
-    private static List<String> holdingAnAllowance() {
-        TreeSet<String> out = new TreeSet<>();
+    /**
+     * And it sees the two ways a purse is held without being spelled at the holder.
+     *
+     * <p>The row above is a class with a field of that type, which the plainest walk finds. These
+     * two are what a plain walk misses: a holder that reaches one through what it holds, and a
+     * declared type the erasure throws away. Left unasked, both lists would match a walk that had
+     * quietly stopped looking for either.
+     */
+    @Test
+    void andItSeesAPurseHeldThroughAnotherAndOneInsideAContainer() {
+        assertEquals(List.of(), fieldTypesOf("souther/compiler/inputs/OpenedRules").stream()
+                        .filter(ALLOWANCE::equals).toList(),
+                "this one names no allowance of its own");
+        assertTrue(holdingAnAllowance().contains("souther/compiler/inputs/OpenedRules"),
+                "and it holds a reading that has one, so it can spend what that reading has —"
+                        + " a walk that stops at the first field cannot say so");
+
+        assertTrue(typesIn("Ljava/util/List<L" + ALLOWANCE + "<TA;>;>;").contains(ALLOWANCE),
+                "a purse inside a collection is a purse; the erasure leaves `java/util/List` and"
+                        + " the declaration is where it is still named");
+    }
+
+    /** Every type named by a field of {@code owner}, for asking what it names of itself. */
+    private static Set<String> fieldTypesOf(String owner) {
+        Set<String> out = new LinkedHashSet<>();
         for (Path module : REPOSITORY.modules()) {
             for (Path each : classesUnder(module)) {
-                for (FieldModel field : classOf(each).fields()) {
-                    if (field.fieldType().stringValue().equals("L" + ALLOWANCE + ";")) {
-                        out.add(internalName(module, each));
-                    }
+                if (internalName(module, each).equals(owner)) {
+                    classOf(each).fields().forEach(field -> out.addAll(typesIn(declared(field))));
                 }
             }
         }
-        return new ArrayList<>(out);
+        return out;
     }
+
+    /**
+     * Every class that can reach an allowance through what it holds.
+     *
+     * <p><b>Through what it holds and not only in it.</b> A class holding a value that holds one has
+     * the purse: what a reader of it can spend is what it can reach, however many fields away that
+     * is. Read one field deep, a purse moved into a carrier several readers keep would be a row for
+     * the carrier alone, and the readers keeping it would be holding an allowance with nothing
+     * saying so — which is what happened while this rule was being written.
+     *
+     * <p><b>And what a field says of itself, not what the erasure left.</b> A field of {@code
+     * List<Allowance>} is a field of {@code List}, so the type is gone from the descriptor and reads
+     * here as no allowance at all. The declared type is in the signature where there is one, and
+     * that is what is asked.
+     */
+    private static List<String> holdingAnAllowance() {
+        Map<String, Set<String>> holds = new LinkedHashMap<>();
+        for (Path module : REPOSITORY.modules()) {
+            for (Path each : classesUnder(module)) {
+                Set<String> reaching = new LinkedHashSet<>();
+                for (FieldModel field : classOf(each).fields()) {
+                    reaching.addAll(typesIn(declared(field)));
+                }
+                holds.put(internalName(module, each), reaching);
+            }
+        }
+        // What reaches an allowance, and then what reaches that, until nothing new arrives.
+        Set<String> reaches = new TreeSet<>(Set.of(ALLOWANCE));
+        boolean growing = true;
+        while (growing) {
+            growing = false;
+            for (Map.Entry<String, Set<String>> each : holds.entrySet()) {
+                if (!reaches.contains(each.getKey())
+                        && each.getValue().stream().anyMatch(reaches::contains)) {
+                    reaches.add(each.getKey());
+                    growing = true;
+                }
+            }
+        }
+        reaches.remove(ALLOWANCE);
+        return new ArrayList<>(reaches);
+    }
+
+    /** What a field says its type is: the signature where the declaration has one, and the
+     *  descriptor where it does not. */
+    private static String declared(FieldModel field) {
+        return field.findAttribute(Attributes.signature())
+                .map(each -> each.signature().stringValue())
+                .orElseGet(() -> field.fieldType().stringValue());
+    }
+
+    /** Every class named anywhere in a descriptor or signature, arguments of a generic type
+     *  included. */
+    private static Set<String> typesIn(String descriptor) {
+        Set<String> out = new LinkedHashSet<>();
+        Matcher found = NAMED.matcher(descriptor);
+        while (found.find()) {
+            out.add(found.group(1));
+        }
+        return out;
+    }
+
+    private static final Pattern NAMED = Pattern.compile("L([^;<>]+)[;<]");
 
     /**
      * The methods of {@code owner} a caller can reach whose signature mentions an allowance, by
@@ -130,18 +237,31 @@ class AnAllowanceIsHeldByWhoeverIsBuildingAnAnswerTest {
         TreeSet<String> out = new TreeSet<>();
         for (Path module : REPOSITORY.modules()) {
             for (Path each : classesUnder(module)) {
-                if (!internalName(module, each).equals(owner)) {
+                String here = internalName(module, each);
+                // The type and everything declared inside it. What may be asked of a conjunction
+                // includes what its own nested types offer, and one of those taking a purse is the
+                // same capability under another name.
+                if (!here.equals(owner) && !here.startsWith(owner + "$")) {
                     continue;
                 }
+                String within = here.equals(owner) ? "" : here.substring(owner.length() + 1) + ".";
                 for (MethodModel method : classOf(each).methods()) {
                     if (!method.flags().has(AccessFlag.PRIVATE)
-                            && method.methodType().stringValue().contains("L" + ALLOWANCE + ";")) {
-                        out.add(method.methodName().stringValue());
+                            && typesIn(declared(method)).contains(ALLOWANCE)) {
+                        out.add(within + method.methodName().stringValue());
                     }
                 }
             }
         }
         return new ArrayList<>(out);
+    }
+
+    /** What a method says its signature is: the declaration where it has one, and the descriptor
+     *  where it does not — so an allowance inside a generic type is still named. */
+    private static String declared(MethodModel method) {
+        return method.findAttribute(Attributes.signature())
+                .map(each -> each.signature().stringValue())
+                .orElseGet(() -> method.methodType().stringValue());
     }
 
     private static ClassModel classOf(Path compiled) {

@@ -100,6 +100,10 @@ class WhatAConjunctionCostsIsTheComposersToSayTest {
                         + " not told about, an answer nobody budgeted for would come back exact");
         assertEquals(PLENTY - forward.left(HERE), PLENTY - backward.left(HERE),
                 "and the same is spent building it");
+        assertEquals(forward.spentSoFar(), backward.spentSoFar(),
+                "over every purse the answer opened and not the one this test can name: which"
+                        + " blocks a reading has is settled by its equalities, so a composition"
+                        + " that opened another would spend where nothing was watching");
     }
 
     /**
@@ -128,6 +132,8 @@ class WhatAConjunctionCostsIsTheComposersToSayTest {
         assertEquals(one.whyUnread("here"), other.whyUnread("here"));
         assertEquals(Set.of(HERE), forward.spent());
         assertEquals(forward.spent(), backward.spent());
+        assertEquals(forward.spentSoFar(), backward.spentSoFar(),
+                "and the same is spent finding out, over every purse the answer opened");
     }
 
     /**
