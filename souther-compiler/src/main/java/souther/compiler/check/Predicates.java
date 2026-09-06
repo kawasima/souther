@@ -1,6 +1,5 @@
 package souther.compiler.check;
 
-import souther.compiler.semantics.ConditionJoin;
 import souther.compiler.check.Combinators.Handed;
 import souther.compiler.check.DischargeRules.Carrying;
 import souther.compiler.check.DischargeRules.Projection;
@@ -125,8 +124,9 @@ final class Predicates {
         }
 
         @Override
-        public List<Quantified> whole(Core e, boolean positive, Denotations at) {
-            return of.quantifierStatedBy(Conditions.asSizeComparison(e), positive, at);
+        public List<Quantified> whole(ClauseExpr.Part part, Denotations at) {
+            return of.quantifierStatedBy(Conditions.asSizeComparison(part.of()), part.positive(),
+                    at);
         }
 
         private static List<Quantified> together(List<Quantified> left, List<Quantified> right) {
@@ -722,9 +722,9 @@ final class Predicates {
         }
 
         @Override
-        public Owed whole(Core e, boolean positive, Denotations at) {
-            return of.owing(Conditions.asSizeComparison(e), at, unnamed, positive, decidesFalse,
-                    discharge);
+        public Owed whole(ClauseExpr.Part part, Denotations at) {
+            return of.owing(Conditions.asSizeComparison(part.of()), at, unnamed, part.positive(),
+                    decidesFalse, discharge);
         }
     }
 
@@ -945,38 +945,92 @@ final class Predicates {
      * numeric domain, a stdlib predicate settles a fact. A condition of neither shape, and an operand
      * outside the affine fragment, leave {@code k} unchanged (sound). */
     Assumed assumeCond(Core rawCond, Known k, Denotations at, boolean positive) {
-        Core cond = Conditions.asSizeComparison(rawCond);
-        if (cond instanceof Core.Binary b) {
-            // Recognised once, and both of what a connective can compose read off the answer. A
-            // connective composing both halves under the polarity in force gives each of them under
-            // that polarity; one composing either of them gives neither, and what is left of it is
-            // that the author named the two.
-            ConditionJoin join =
-                    ConditionJoin.of(b.op()).map(each -> each.under(positive)).orElse(null);
-            if (join == ConditionJoin.BOTH) {
-                Assumed left = assumeCond(b.left(), k, at, positive);
-                // Either side taken in is the condition taken in. A conjunction one half of which
-                // reads is not one nothing was read of, and calling it that would name this
-                // compiler's limit where the limit was reached on one operand only.
-                return assumeCond(b.right(), left.known(), at, positive)
-                        .alsoRead(left.taken(), left.shapeRead());
-            }
-            if (join == ConditionJoin.EITHER) {
-                return taking(cond, List.of(b.left(), b.right()), k, at, positive);
-            }
+        return new Assuming(this).read(rawCond, positive, at, terms::inside).from(k);
+    }
+
+    /**
+     * What taking a clause as holding does to what is known, before it is given a state to do it to.
+     *
+     * <p>Threading a state through the parts is this reading's own algebra and not the shape's: the
+     * right half of a conjunction is taken under what the left half left, so the two are read in
+     * order. Held as a state the fold carried downward, every reading over a clause would be one
+     * that runs left to right, which is true of this one and of none of the others.
+     */
+    @FunctionalInterface
+    private interface Assumption {
+
+        /** What this comes to, taken under {@code known}. */
+        Assumed from(Known known);
+    }
+
+    /**
+     * What a condition taken in makes known, read over the shape it was written in.
+     *
+     * <p>Over the shape ({@link ClauseExpr}) and not over the tree, so that what a connective
+     * composes, where a denial goes and where a binding stands are recognised once and this reading
+     * agrees with every other by having been given the answer. Read as a tree of its own, this had
+     * words for a connective and a denial and none for a binding — so a rule an author stated by
+     * naming it made nothing known, while the same rule written out made the comparison known, and
+     * the one reader with no tree-rebuilding above it named a dead branch on one spelling only.
+     */
+    private record Assuming(Predicates of) implements ClauseReading<Assumption, Denotations> {
+
+        /**
+         * A conjunction is taken in a half at a time, and a choice whole.
+         *
+         * <p>One of a choice's parts holds and this cannot say which, so taking either of them in
+         * would rule out values the condition admits. What is left of it is that the author named
+         * the two, which the part it is read as says.
+         */
+        @Override
+        public Descent<Assumption> at(ClauseExpr.Joined join) {
+            return switch (join.how()) {
+                case BOTH -> new Descent.Into<>(Assuming::both);
+                case EITHER -> new Descent.Whole<>();
+            };
         }
-        Conditions.Restated under = Conditions.restated(cond);
-        if (under != null) {
-            return assumeCond(under.condition(), k, at, under.denied() != positive);
+
+        @Override
+        public Assumption whole(ClauseExpr.Part part, Denotations at) {
+            return known -> of.taking(part, known, at);
         }
+
+        /**
+         * The right half under what the left half left.
+         *
+         * <p>Either side taken in is the condition taken in. A conjunction one half of which reads
+         * is not one nothing was read of, and calling it that would name this compiler's limit
+         * where the limit was reached on one operand only.
+         */
+        private static Assumption both(Assumption left, Assumption right) {
+            return known -> {
+                Assumed one = left.from(known);
+                return right.from(one.known()).alsoRead(one.taken(), one.shapeRead());
+            };
+        }
+    }
+
+    /**
+     * What taking one part of a condition as holding comes to.
+     *
+     * <p>Every reading of the comparison it states, because each of them holds of the same values:
+     * the order a call decides, and the bound on the sign that decides it. Which one a clause is
+     * read against is settled where the clause is read, so a guard states each of them rather than
+     * choosing here.
+     */
+    private Assumed taking(ClauseExpr.Part part, Known k, Denotations at) {
+        boolean positive = part.positive();
+        Core cond = Conditions.asSizeComparison(part.of());
         List<StatedComparison> readings =
                 Conditions.comparisonsStatedBy(terms, cond, at).inReadingOrder();
         if (readings.isEmpty()) {
-            return taking(cond, List.of(), k, at, positive);
+            // What a choice names is its two halves, taken from the shape that composed them: this
+            // reading states neither of them, and without saying they were named a value one of
+            // them computes is one nothing has ever spoken of.
+            return taking(cond,
+                    part instanceof ClauseExpr.Joined join ? join.writtenHalves() : List.of(),
+                    k, at, positive);
         }
-        // Every reading, because each of them holds of the same values: the order a call decides,
-        // and the bound on the sign that decides it. Which one a clause is read against is settled
-        // where the clause is read, so a guard states each of them rather than choosing here.
         Assumed so = new Assumed(k, false, false);
         for (StatedComparison stated : readings) {
             Assumed one = taking(stated, so.known(), at, positive);
