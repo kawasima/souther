@@ -2,13 +2,11 @@ package souther.compiler.partition;
 
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.NarrowedBounds;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.Place;
 import souther.compiler.numeric.Towards;
-import souther.compiler.publish.RuleHandleSurface;
-import souther.compiler.source.SourceId;
+import souther.compiler.publish.PublishedSentence;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -420,11 +418,9 @@ public record Border(BoundaryTarget cut, LineOrigin origin, Map<DomainPoint, Poi
         return criterion == null ? null : criterion.written(cut.of());
     }
 
-    /** The rule that drew this line, as the surface {@code surface} names writes it in a report
-     *  about {@code sectionSource}. */
-    public String describe(RuleHandleSurface surface, SourceNameResolver names,
-                           SourceId sectionSource) {
-        return origin.describe(surface, names, sectionSource);
+    /** The rule that drew this line, as what a report writes about it. */
+    public PublishedSentence describe() {
+        return origin.describe();
     }
 
     /**

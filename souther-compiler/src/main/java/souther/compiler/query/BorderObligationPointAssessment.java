@@ -5,10 +5,8 @@ import souther.compiler.partition.BorderQuantity;
 import souther.compiler.partition.Demand;
 import souther.compiler.partition.DomainPoint;
 import souther.compiler.partition.PointRole;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.publish.PublishedRuleHandle;
-import souther.compiler.publish.RuleHandleSurface;
-import souther.compiler.source.SourceId;
+import souther.compiler.publish.PublishedSentence;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -268,9 +266,8 @@ public record BorderObligationPointAssessment(BorderObligationPoint point,
      * author named is found by that name wherever it is read, and a comparison by the place it is
      * written.
      */
-    public String describe(RuleHandleSurface surface, SourceNameResolver names,
-                           SourceId sectionSource) {
-        return surface.render(handle(), names, sectionSource);
+    public PublishedSentence describe() {
+        return PublishedSentence.AroundAHandle.alone(handle());
     }
 
     /**
@@ -613,8 +610,7 @@ public record BorderObligationPointAssessment(BorderObligationPoint point,
      * be at two places, and two runs beside one line can stop in two places, and this says the
      * same of both — a consumer joins on {@code obligationId} and shows this.
      */
-    public String said(RuleHandleSurface surface, SourceNameResolver names,
-                       SourceId sectionSource) {
-        return role() + " point of " + describe(surface, names, sectionSource);
+    public PublishedSentence said() {
+        return new PublishedSentence.AroundAHandle(role() + " point of ", handle(), "");
     }
 }

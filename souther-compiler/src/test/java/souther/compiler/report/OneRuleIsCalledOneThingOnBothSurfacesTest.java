@@ -12,7 +12,7 @@ import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.publish.PublishedRuleHandle;
 import souther.compiler.publish.PublishedRuleKind;
-import souther.compiler.publish.RuleHandleSurface;
+import souther.compiler.publish.RuleHandleProse;
 import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.TypeKey;
@@ -119,7 +119,7 @@ class OneRuleIsCalledOneThingOnBothSurfacesTest {
             }
             RuleCitation cited = new RuleCitation.WrittenAt(written,
                     Citation.of(new SourcePos(1, 1)));
-            String said = RuleHandleSurface.PROSE.render(
+            String said = RuleHandleProse.said(
                     PublishedRuleHandle.of(cited), SourceNameResolver.identity(), null);
 
             assertEquals(AdequacyReport.schemaRuleKind(each),
@@ -151,7 +151,7 @@ class OneRuleIsCalledOneThingOnBothSurfacesTest {
             }
             RuleCitation cited = new RuleCitation.Named(named);
 
-            assertEquals(named.citedName(), RuleHandleSurface.PROSE.render(
+            assertEquals(named.citedName(), RuleHandleProse.said(
                             PublishedRuleHandle.of(cited), SourceNameResolver.identity(), null),
                     () -> "a rule with a name is cited by it: " + each);
             assertTrue(!named.citedName().isBlank(),

@@ -7,7 +7,7 @@ import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.publish.PublishedRuleHandle;
-import souther.compiler.publish.RuleHandleSurface;
+import souther.compiler.publish.RuleHandleProse;
 import souther.compiler.query.PartitionEvidence;
 import souther.compiler.report.AdequacyReport;
 
@@ -91,7 +91,7 @@ class AGuardsQuestionIsCitedByWhereItIsWrittenTest {
                 .map(each -> (RuleCitation.WrittenAt) each).findFirst()
                 .orElseThrow(() -> new AssertionError("a comparison has no name, so it is cited by"
                         + " where it is written: " + one.cited()));
-        String said = RuleHandleSurface.PROSE.render(
+        String said = RuleHandleProse.said(
                 PublishedRuleHandle.of(written), SourceNameResolver.identity(), null);
         assertTrue(said.startsWith("comparison@"),
                 () -> "what the rule is and where it is written: " + said);

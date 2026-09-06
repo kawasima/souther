@@ -2,11 +2,16 @@ package souther.compiler.publish;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.check.RuleRef;
 import souther.compiler.report.AdequacyReport;
 import souther.compiler.source.SourceId;
+import souther.compiler.types.SourceConstruct;
+import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.WrittenOwner;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -20,6 +25,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -79,8 +85,7 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
             out.add(new PublishedRuleHandle.Written(kind, inATextWithNoName()));
             out.add(new PublishedRuleHandle.Reached(kind, inASourceThisCompileHolds(), "Money"));
             out.add(new PublishedRuleHandle.Reached(kind, inATextWithNoName(), "Money"));
-            out.add(new PublishedRuleHandle.Reached(kind, new PublishedRuleHandle.Place.Nowhere(),
-                    "Money"));
+            out.add(new PublishedRuleHandle.ReachedOutOfSight(kind, "Money"));
         }
         return List.copyOf(out);
     }
@@ -127,6 +132,46 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
     }
 
     /**
+     * Every published word for a rule with no name is one some rule of the model is called by.
+     *
+     * <p>The projection read the other way round. Every kind of written rule has a word because the
+     * switch that chooses one is total, and what is not total by anything the compiler checks is the
+     * far side: a word added here that no rule projects to is a word the contract would go on
+     * promising and no document could ever carry — which is this issue's own defect, in the one
+     * place the population above is taken from a declaration rather than from what is produced.
+     */
+    @Test
+    void everyPublishedWordIsOneSomeRuleIsCalledBy() {
+        assertEquals(
+                Set.of(PublishedRuleKind.values()),
+                everyKindOfWrittenRule().stream().map(PublishedRuleKind::of)
+                        .collect(Collectors.toSet()),
+                "the words a rule of the model is called by, and the words the contract has");
+    }
+
+    /**
+     * One rule of every kind the author writes rather than names.
+     *
+     * <p>From the seal, so the day a third kind of written rule exists this is asked about it. Walked
+     * to the leaves: what {@code RuleRef.Written} permits is what a document names, and a half of the
+     * seal above it is nothing an author writes.
+     */
+    private static List<RuleRef.Written> everyKindOfWrittenRule() {
+        WrittenOwner.Body body = new WrittenOwner.Body("m", "b");
+        List<RuleRef.Written> out = List.of(
+                new RuleRef.Comparison("b",
+                        new SourceConstructOrigin(body, 0, 0, SourceConstruct.BINARY)),
+                new RuleRef.Predicate("b",
+                        new SourceConstructOrigin(body, 1, 0, SourceConstruct.CALL)));
+
+        assertEquals(
+                Set.of(RuleRef.Written.class.getPermittedSubclasses()),
+                out.stream().map(each -> (Class<?>) each.getClass()).collect(Collectors.toSet()),
+                "one of each kind of rule an author writes rather than names, and no other");
+        return out;
+    }
+
+    /**
      * What the compiler writes and what the contract gives as examples are the same set.
      *
      * <p>Rendered through the surface a person's report writes, which is the same spelling every
@@ -161,7 +206,7 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
     /** The sentences this compiler writes, one per form. */
     private static Set<String> rendered() {
         return everyForm().stream()
-                .map(each -> RuleHandleSurface.PROSE.render(each, SourceId::value, null))
+                .map(each -> RuleHandleProse.said(each, SourceId::value, null))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
@@ -184,13 +229,47 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
     @Test
     void everyFieldTheCompilerWritesAHandleIntoIsOneTheSchemaSaysCarriesOne() {
         Map<String, RuleHandleSurface.Carries> written = new LinkedHashMap<>();
-        for (RuleHandleSurface.InADocument each : RuleHandleSurface.InADocument.values()) {
+        for (RuleHandleSurface each : RuleHandleSurface.values()) {
             written.put(each.schemaPath(), each.carries());
         }
 
         assertEquals(declaredInTheSchema(), written,
                 "the fields the schema says carry a handle and the fields the compiler writes one"
                         + " into");
+    }
+
+    /**
+     * A field that is a handle writes one, and a field that puts words around one writes those.
+     *
+     * <p>The two are not interchangeable and the surface is what says which: handed a handle, a
+     * field whose sentence has more in it would carry a document's shortest true answer and lose the
+     * rest, and told a sentence, a field a consumer reads as a handle would carry words it cannot
+     * take apart. Which each is, is already the pair the check above compares, so this asks that the
+     * writing side act on it rather than carry it.
+     */
+    @Test
+    void aFieldIsWrittenTheWayItSaysItCarriesAHandle() {
+        PublishedRuleHandle handle = new PublishedRuleHandle.NamedInvariant("Amount", "cap");
+        PublishedSentence sentence = PublishedSentence.AroundAHandle.alone(handle);
+        for (RuleHandleSurface each : RuleHandleSurface.values()) {
+            ObjectNode into = JSON.createObjectNode();
+            switch (each.carries()) {
+                case THE_HANDLE_ALONE -> {
+                    each.put(into, handle, SourceId::value, null);
+                    assertThrows(IllegalStateException.class,
+                            () -> each.put(JSON.createObjectNode(), sentence, SourceId::value, null),
+                            () -> "a field that is the handle is not told a sentence: " + each);
+                }
+                case A_SENTENCE_AROUND_IT -> {
+                    each.put(into, sentence, SourceId::value, null);
+                    assertThrows(IllegalStateException.class,
+                            () -> each.put(JSON.createObjectNode(), handle, SourceId::value, null),
+                            () -> "a field with words of its own is not handed a handle: " + each);
+                }
+            }
+            assertTrue(into.has(each.key()),
+                    () -> "and either way the field is written under the key this names: " + each);
+        }
     }
 
     /** The same, read off the schema: a field that is a handle refers to the canonical definition,
@@ -209,13 +288,7 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
             if (at.has(EMBEDS) && REFERENCE.equals(at.get(EMBEDS).asString())) {
                 out.put(path, RuleHandleSurface.Carries.A_SENTENCE_AROUND_IT);
             }
-            // Under the canonical definition itself there is nothing to find, and walking into it
-            // would name the definition as a field that carries a handle.
-            at.propertyNames().forEach(key -> {
-                if (!(path + "/" + key).equals(CANONICAL)) {
-                    walk(at.get(key), path + "/" + key, out);
-                }
-            });
+            at.propertyNames().forEach(key -> walk(at.get(key), path + "/" + key, out));
         } else if (at.isArray()) {
             for (int i = 0; i < at.size(); i++) {
                 walk(at.get(i), path + "/" + i, out);

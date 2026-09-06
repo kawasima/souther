@@ -28,6 +28,15 @@ final class RuleHandleSentence {
      * <p>No {@code default} arm, so a form added to the grammar is one somebody spells rather than
      * one that arrives at a reader as a sentence about something else.
      */
+    static String of(PublishedSentence sentence, SourceNameResolver names,
+                     SourceId sectionSource) {
+        return switch (sentence) {
+            case PublishedSentence.Words it -> it.said();
+            case PublishedSentence.AroundAHandle it ->
+                    it.before() + said(it.handle(), names, sectionSource) + it.after();
+        };
+    }
+
     static String said(PublishedRuleHandle handle, SourceNameResolver names,
                        SourceId sectionSource) {
         return switch (handle) {
@@ -42,11 +51,12 @@ final class RuleHandleSentence {
             case PublishedRuleHandle.Written it ->
                     it.kind().word() + "@" + place(it.at(), names, sectionSource);
             // Written somewhere else and reached from here: the rule is one and the reader is sent
-            // to two places, which the sentence keeps apart. Where this compile met no position
-            // there is nothing to send them to but the declaration.
+            // to two places, which the sentence keeps apart.
             case PublishedRuleHandle.Reached it -> it.kind().word() + " in `" + it.reachedBy() + "`"
-                    + (it.at() instanceof PublishedRuleHandle.Place.Nowhere ? ""
-                            : ", reached at " + place(it.at(), names, sectionSource));
+                    + ", reached at " + place(it.at(), names, sectionSource);
+            // And with no position to send them to, the declaration is the whole of it.
+            case PublishedRuleHandle.ReachedOutOfSight it ->
+                    it.kind().word() + " in `" + it.reachedBy() + "`";
         };
     }
 
@@ -68,11 +78,6 @@ final class RuleHandleSentence {
                         : names.nameOf(where.source()) + ":" + numbers;
             }
             case PublishedRuleHandle.Place.Unplaced it -> it.line() + ":" + it.column();
-            // Refused rather than spelled as nothing. The one form that reaches here without a
-            // position says so in its own sentence, and a place written as an empty string would be
-            // a reader sent to a file with no line in it.
-            case PublishedRuleHandle.Place.Nowhere _ -> throw new IllegalStateException(
-                    "code out of sight is said by what reaches it and not by where it is");
         };
     }
 }

@@ -76,6 +76,8 @@ import souther.compiler.publish.PublishedAt;
 import souther.compiler.publish.PublishedIncompleteness;
 import souther.compiler.publish.PublishedOpening;
 import souther.compiler.publish.PublishedRuleHandle;
+import souther.compiler.publish.PublishedSentence;
+import souther.compiler.publish.RuleHandleProse;
 import souther.compiler.publish.RuleHandleSurface;
 import souther.compiler.publish.WeakeningVocabulary;
 import souther.compiler.publish.WeakeningWord;
@@ -581,7 +583,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // of a point nobody read as much as of one nothing could show writable.
         for (Adequacy.DeclaredDebt each : account.undecided()) {
             for (String said : undecidedBecause(each.debt().owed().disposition(),
-                    pointOf(each, each.debt().describe(RuleHandleSurface.PROSE, names, null)))) {
+                    pointOf(each, RuleHandleProse.said(each.debt().describe(), names, null)))) {
                 out.append(String.format("      ? %s%n", said));
             }
             readings(out, each.debt(), _ -> true, at -> whatWasTried(
@@ -1457,7 +1459,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // alone a reader is told a difference with nothing under it to act on.
         for (BorderObligationPointAssessment point : owed.undecided()) {
             for (String said : undecidedBecause(point.owed().disposition(),
-                    point.role() + " point (" + point.describe(RuleHandleSurface.PROSE, names, declaredIn) + ")")) {
+                    point.role() + " point ("
+                            + RuleHandleProse.said(point.describe(), names, declaredIn) + ")")) {
                 out.append(String.format("      ? %s%n", said));
             }
             readings(out, point, _ -> true, at -> whatWasTried(
@@ -1499,7 +1502,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                     // and neither of them said which value was being asked for.
                     out.append(String.format("      %s no row is at %s %s point%s (%s)%n",
                             mark(f), againstTheLine ? "the" : "an", point.role(),
-                            point.whichSide(), point.describe(RuleHandleSurface.PROSE, names, declaredIn)));
+                            point.whichSide(),
+                            RuleHandleProse.said(point.describe(), names, declaredIn)));
                     readings(out, point, _ -> true, _ -> "");
                 }
             }
@@ -1513,7 +1517,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                     at -> !at.owedAt(point.at()).hasRowWitness())) {
                 out.append(String.format("      · the %s point (%s) is answered, and not at every"
                                 + " reading of the line%n",
-                        point.role(), point.describe(RuleHandleSurface.PROSE, names, declaredIn)));
+                        point.role(),
+                        RuleHandleProse.said(point.describe(), names, declaredIn)));
                 readings(out, point, at -> !at.owedAt(point.at()).hasRowWitness(), _ -> "");
             }
         }
@@ -1524,7 +1529,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             if (p.item() instanceof ItemAssessment.NotOwed not) {
                 out.append(String.format("      · no %s point%s is owed at %s (%s): %s%n",
                         p.role(), p.border().border().whichSide(p.at()), p.border().label(),
-                        p.border().describe(RuleHandleSurface.PROSE, names, declaredIn), whyNotOwed(not.reason())));
+                        RuleHandleProse.said(p.border().describe(), names, declaredIn),
+                        whyNotOwed(not.reason())));
             }
         }
         // And a word of the technique this line has no point in at all, which is not the same news.
@@ -1535,7 +1541,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             line.border().inEachRole().forEach((role, answer) -> {
                 if (answer instanceof RoleAnswer.NoPoint none) {
                     out.append(String.format("      · no %s point exists at %s (%s): %s%n",
-                            role, line.label(), line.describe(RuleHandleSurface.PROSE, names, declaredIn),
+                            role, line.label(),
+                            RuleHandleProse.said(line.describe(), names, declaredIn),
                             whyNoPoint(none.why())));
                 }
             });
@@ -2488,8 +2495,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     private static String cited(Set<RuleCitation> offered,
                                 SourceNameResolver names,
                                 SourceId declaredIn) {
-        return RuleHandleSurface.PROSE.render(
-                PublishedRuleHandle.of(handle(offered)), names, declaredIn);
+        return RuleHandleProse.said(PublishedRuleHandle.of(handle(offered)), names, declaredIn);
     }
 
     /**
@@ -3101,7 +3107,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 // needs to open a file wants the second rather than a string to take apart.
                 // The same handle the border prints for a line the comparison drew, through the
                 // table of sources this document carries.
-                RuleHandleSurface.InADocument.UNANSWERED_RULE.put(
+                RuleHandleSurface.UNANSWERED_RULE.put(
                         one, PublishedRuleHandle.of(handle(each.cited())), sources::written, null);
                 // What tells one rule from another, beside the words for finding it. A handle is a
                 // projection of the rule and not the rule: two arms of one `ensures` clause may
@@ -3161,9 +3167,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // a place written without its source is a line and a column belonging to nothing —
             // and where a boundary is the only place a report points at, the `sources` table has
             // no other entry to guess from.
-            RuleHandleSurface.InADocument.BOUNDARY_ORIGIN.putSentence(b,
-                    boundary.describe(RuleHandleSurface.InADocument.BOUNDARY_ORIGIN,
-                            sources::written, null));
+            RuleHandleSurface.BOUNDARY_ORIGIN.put(b, boundary.describe(), sources::written, null);
             // What the line is a line at, said rather than left to be inferred from the text beside
             // it. A line between two positions writes the other position where a line at a count
             // writes the count, and the two read alike.
@@ -3271,12 +3275,12 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // what tells one rule from another, and the two are not in step wherever a rule has no
             // name of its own.
             if (each instanceof PartitionEvidence.NotRead.ARule rule) {
-                RuleHandleSurface.InADocument.NOT_READ_RULE.put(
+                RuleHandleSurface.NOT_READ_RULE.put(
                         said, PublishedRuleHandle.of(handle(rule.cited())), sources::written, null);
                 ruleId(said.putObject("ruleId"), rule.rule());
             }
             if (each instanceof PartitionEvidence.NotRead.AnUnclassifiedRule rule) {
-                RuleHandleSurface.InADocument.NOT_READ_RULE.put(
+                RuleHandleSurface.NOT_READ_RULE.put(
                         said, PublishedRuleHandle.of(handle(rule.cited())), sources::written, null);
                 ruleId(said.putObject("ruleId"), rule.rule());
             }
@@ -3466,7 +3470,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // a person reads, and two obligations can share every one of them.
             obligationId(o.putObject("obligationId"), point.point());
             o.put("point", word(point.role()));
-            RuleHandleSurface.InADocument.OBLIGATION_RULE.put(
+            RuleHandleSurface.OBLIGATION_RULE.put(
                     o, point.handle(), sources::written, null);
             ruleId(o.putObject("ruleId"), point.id().provenance());
             o.put("relation", point.operator());
@@ -3583,7 +3587,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             ObjectNode f = out.addObject();
             f.put("kind", word(finding.kind()));
             f.put("disposition", word(finding.disposition(held)));
-            RuleHandleSurface.InADocument.FINDING_SUBJECT.putSentence(f, subject(finding, sources));
+            RuleHandleSurface.FINDING_SUBJECT.put(f, subject(finding), sources::written, null);
             // Which rule this is about, where the finding is about one. The words in `subject` are
             // how a reader finds it, and two rules an author named alike have the same words — so a
             // consumer joining findings to the questions they came from wants this.
@@ -3671,30 +3675,35 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * with it, because two parameters of one type give two findings a class name alone cannot tell
      * apart — and a class of a position carries its position for exactly that reason, which this
      * used to say of the inputs and not of the axes.
+     *
+     * <p>What the field says rather than the words it says, because some of these are about a rule
+     * and the handle for one is not this method's to spell. Handed the finished words, this field
+     * would be the one place a handle reached a reader without the layer that owns the sentence
+     * being asked ({@link RuleHandleSurface}).
      */
-    private static String subject(Adequacy.Finding finding, DocumentSources sources) {
+    private static PublishedSentence subject(Adequacy.Finding finding) {
         return switch (finding.about()) {
             // The label and not the arm, and the same label `branch.obligations` writes: this field
             // exists to join to that entry, and a value spelled a second way here would join to
             // nothing.
-            case About.AnArmNoRowGoesThrough(var arm) -> ArmVocabulary.label(arm);
-            case About.ACaseNoRowExpects(var missing) -> missing.name();
-            case About.ACaseNothingWasSeenToProduce(var missing) -> missing.name();
+            case About.AnArmNoRowGoesThrough(var arm) -> words(ArmVocabulary.label(arm));
+            case About.ACaseNoRowExpects(var missing) -> words(missing.name());
+            case About.ACaseNothingWasSeenToProduce(var missing) -> words(missing.name());
             case About.AClassNoRowIsIn(var missing) ->
-                    missing.name() + " (at " + missing.axis().name() + ")";
-            case About.APositionNoLineDivides(var position) -> position.at().toString();
-            case About.APositionThisCouldNotRead(var it) -> it.at();
-            case About.ARuleWithoutALine(var it) -> it.at();
+                    words(missing.name() + " (at " + missing.axis().name() + ")");
+            case About.APositionNoLineDivides(var position) -> words(position.at().toString());
+            case About.APositionThisCouldNotRead(var it) -> words(it.at());
+            case About.ARuleWithoutALine(var it) -> words(it.at());
             // Where a reader is sent to look at the rule, which is what such a finding has instead
             // of a subject: what the rule states there is what nothing worked out.
-            case About.ARuleNothingClassified(var it) -> it.at();
+            case About.ARuleNothingClassified(var it) -> words(it.at());
             // The position and not a number measured of it: which of this position's rules went
             // unread is a fact about the location, and the measures on it are as many as the rules
             // name numbers there.
-            case About.APositionWhoseRulesWereNotReached(var gap) -> gap.at().toString();
+            case About.APositionWhoseRulesWereNotReached(var gap) -> words(gap.at().toString());
             // The position, as the two above write it. What is said of it is the kind's; there is
             // no rule to name and no class this is about, so the position is the whole subject.
-            case About.APositionReadWiderThanItsRules(var it) -> it.at().toString();
+            case About.APositionReadWiderThanItsRules(var it) -> words(it.at().toString());
             // The rule and what it was left saying. Named by the position alone, two rules nothing
             // took in at one position serialised as two identical objects, and the human line named
             // them while a consumer of the document could not tell them apart.
@@ -3703,24 +3712,25 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // for a rule with a name and broke for every rule found by where it is written.
             // The handle, and what tells this rule from another beside it: two arms of one clause
             // may name the same case, so the words alone joined two questions into one row.
-            case About.AQuestionNothingAnswered(var asked) ->
-                    RuleHandleSurface.InADocument.FINDING_SUBJECT.render(
-                                    PublishedRuleHandle.of(handle(asked.cited())),
-                                    sources::written, null)
-                            + " — " + asked(asked.asked())
-                            + " " + subjectOf(asked);
+            case About.AQuestionNothingAnswered(var asked) -> new PublishedSentence.AroundAHandle(
+                    "", PublishedRuleHandle.of(handle(asked.cited())),
+                    " — " + asked(asked.asked()) + " " + subjectOf(asked));
             case About.ACaseNoRowAppliesItTo(var input, var missing) ->
-                    missing.name() + " (in #" + (input.at() + 1) + ")";
+                    words(missing.name() + " (in #" + (input.at() + 1) + ")");
             // The point and the line, and no quantity: a body's line is owed once wherever it is
             // read, so what joins this to a `partition.obligations` entry is the role, where on
             // the line, and the rule — the same three that entry is keyed on.
-            case About.APointOfABorder(var point) -> point.said(
-                    RuleHandleSurface.InADocument.FINDING_SUBJECT, sources::written, null);
+            case About.APointOfABorder(var point) -> point.said();
             // The same sentence, on what the declaration wrote. A line owed once over every reading
             // of it is named by the terms the author used and not by the position some behavior met
             // it at, which is what the debt is (issue #1062).
-            case About.APointOfADeclaredBorder(var debt) -> debt.said();
+            case About.APointOfADeclaredBorder(var debt) -> words(debt.said());
         };
+    }
+
+    /** What a finding about something other than a rule says, which is words and no handle. */
+    private static PublishedSentence words(String said) {
+        return new PublishedSentence.Words(said);
     }
 
     /**

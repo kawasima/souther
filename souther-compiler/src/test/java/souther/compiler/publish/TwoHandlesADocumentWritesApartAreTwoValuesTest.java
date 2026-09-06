@@ -107,21 +107,38 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
      */
     @Test
     void twoHandlesAreOneValueExactlyWhereADocumentWritesThemAlike() {
-        List<RuleCitation> population = everyShapeOfSentence();
-        for (RuleCitation one : population) {
-            for (RuleCitation other : population) {
-                PublishedRuleHandle here = PublishedRuleHandle.of(one);
-                PublishedRuleHandle there = PublishedRuleHandle.of(other);
-                boolean written = said(one).equals(said(other));
+        List<PublishedRuleHandle> population = everyHandle();
+        for (PublishedRuleHandle here : population) {
+            for (PublishedRuleHandle there : population) {
+                boolean written = said(here).equals(said(there));
 
                 assertEquals(written, here.equals(there),
                         () -> "one value exactly where a document writes them alike: "
-                                + said(one) + " and " + said(other));
+                                + said(here) + " and " + said(there));
                 assertEquals(written, here.compareTo(there) == 0,
                         () -> "and the order agrees with the equality: "
-                                + said(one) + " and " + said(other));
+                                + said(here) + " and " + said(there));
             }
         }
+    }
+
+    /**
+     * The handles the property above is asked over.
+     *
+     * <p>What a compilation offers, and beside it the one form no compilation here writes: code out
+     * of sight with no position at all is met where a body is put back together out of what a module
+     * published, which none of these fixtures does. Left to the fixtures, that arm would be the one
+     * whose ordering nothing asks about — and it was, while it was an arm of the place instead of a
+     * sentence of its own and the checks below were satisfied by the placed one beside it.
+     */
+    private static List<PublishedRuleHandle> everyHandle() {
+        List<PublishedRuleHandle> out = new ArrayList<>(
+                everyShapeOfSentence().stream().map(PublishedRuleHandle::of).toList());
+        for (PublishedRuleKind kind : PublishedRuleKind.values()) {
+            out.add(new PublishedRuleHandle.ReachedOutOfSight(kind, "Int.clamp"));
+            out.add(new PublishedRuleHandle.ReachedOutOfSight(kind, "Int.abs"));
+        }
+        return List.copyOf(out);
     }
 
     /**
@@ -321,9 +338,8 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
         return out;
     }
 
-    private static String said(RuleCitation cited) {
-        return RuleHandleSurface.PROSE.render(
-                PublishedRuleHandle.of(cited), SourceNameResolver.identity(), null);
+    private static String said(PublishedRuleHandle handle) {
+        return RuleHandleProse.said(handle, SourceNameResolver.identity(), null);
     }
 
     /**
@@ -336,11 +352,9 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
      */
     @Test
     void thePopulationHoldsEveryKindOfSentenceADocumentWrites() {
-        List<PublishedRuleHandle> handles = everyShapeOfSentence().stream()
-                .map(PublishedRuleHandle::of).toList();
+        List<PublishedRuleHandle> handles = everyHandle();
 
-        assertTrue(everyShapeOfSentence().stream().map(
-                        TwoHandlesADocumentWritesApartAreTwoValuesTest::said)
+        assertTrue(handles.stream().map(TwoHandlesADocumentWritesApartAreTwoValuesTest::said)
                 .distinct().count() > 1,
                 "a population a document writes one sentence for says nothing about telling two"
                         + " apart");
@@ -350,7 +364,8 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
                         PublishedRuleHandle.NamedEnsures.class,
                         PublishedRuleHandle.WholeEnsures.class,
                         PublishedRuleHandle.Written.class,
-                        PublishedRuleHandle.Reached.class),
+                        PublishedRuleHandle.Reached.class,
+                        PublishedRuleHandle.ReachedOutOfSight.class),
                 Set.of(PublishedRuleHandle.class.getPermittedSubclasses()),
                 "the kinds of sentence this type has");
         for (Class<?> each : PublishedRuleHandle.class.getPermittedSubclasses()) {

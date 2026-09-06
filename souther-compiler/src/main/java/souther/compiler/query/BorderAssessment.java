@@ -1,14 +1,12 @@
 package souther.compiler.query;
 
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.partition.Border;
 import souther.compiler.partition.Demand;
 import souther.compiler.partition.BoundaryTarget;
 import souther.compiler.partition.DomainPoint;
 import souther.compiler.partition.LineOrigin;
 import souther.compiler.partition.PointRole;
-import souther.compiler.publish.RuleHandleSurface;
-import souther.compiler.source.SourceId;
+import souther.compiler.publish.PublishedSentence;
 
 import java.util.Map;
 
@@ -123,11 +121,9 @@ public record BorderAssessment(Border border, Map<DomainPoint, ItemAssessment> i
         return border.cut().shape();
     }
 
-    /** The rule that drew the line, as the surface {@code surface} names writes it in a report about
-     *  {@code sectionSource}. */
-    public String describe(RuleHandleSurface surface, SourceNameResolver names,
-                           SourceId sectionSource) {
-        return border.describe(surface, names, sectionSource);
+    /** The rule that drew the line, as what a report writes about it. */
+    public PublishedSentence describe() {
+        return border.describe();
     }
 
     /**
