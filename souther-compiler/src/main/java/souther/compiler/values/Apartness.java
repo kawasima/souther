@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -35,20 +36,59 @@ import java.util.function.Function;
 public final class Apartness<A> {
 
     /**
-     * How many sets of blocks this will look at before it stops.
+     * How many blocks a relation may have for the sets of them all stated to differ to be looked
+     * for.
      *
-     * <p>Looked at and not found. How many sets a relation has does not say how much work finding
-     * them is: a relation whose blocks are all stated to differ has one such set and as many ways
-     * of reaching it as anyone likes, so a bound on the answers is no bound on the walk. What is
-     * counted is every set the walk stands on, whether or not it turns out to be one nothing can be
-     * added to.
+     * <p>A bound on the shape and never on a walk part-way through one. How far a walk gets by some
+     * number of steps depends on which block it started from, and two writings of one relation are
+     * one relation ({@link #equals}) that would then be decided one way written this way round and
+     * another written the other. Read off the shape before anything is walked, the answer is a fact
+     * about the relation.
      *
-     * <p>A stated limit and not a figure anything derives. How much work a relation is worth is not
-     * bounded by how many rules were written, and a reduction that walked all of it would make what
-     * a declaration costs turn on a shape nothing else here charges for. Reaching it is this saying
-     * nothing, which is what it says of every relation it has no argument for.
+     * <p>Which is what gives this figure something to be derived from. {@link #grow} takes as its
+     * pivot the block stated to differ from most of what may still be added, and the exponential
+     * part of a maximal-clique walk that pivots this way is {@code 3^(n/3)} in the number of blocks
+     * — the same figure as the most sets of pairwise-apart blocks that {@code n} blocks can have.
+     * What is left to measure is how much a step of this walk costs, and on the shape that reaches
+     * that bound thirty blocks is a tenth of a second, with every three blocks after it three times
+     * as much.
+     *
+     * <p><b>So the pivot is part of this bound and not a way of going faster.</b> Taking the first
+     * block still in play instead leaves the walk reaching one set once for every order its blocks
+     * come in, and this figure would be a bound on nothing.
      */
-    private static final int SETS_LOOKED_AT = 4096;
+    private static final int MOST_BLOCKS_WALKED = 30;
+
+    /**
+     * How many pairs a relation may leave out for its blocks to be walked however many there are.
+     *
+     * <p>The other way a walk over the sets is cheap, and it is not the bound above with a
+     * different figure. Each pair a relation leaves out can double how many sets of blocks all
+     * stated to differ it has — a relation leaving none has one — so a relation of many blocks
+     * leaving few pairs out has as few of them to find as a small relation.
+     *
+     * <p><b>Which is what the figure is derived from, and not what it is.</b> How many sets there
+     * are is not how much walking finding them is: this walk is not one whose steps a count of its
+     * answers bounds, and a bound read off the first alone would be a bound on nothing. What the
+     * left-out pairs give is the axis the work runs along; where on that axis to stop is measured,
+     * on the shape that reaches the doubling — a relation leaving this many pairs out is walked in
+     * about a fiftieth of a second, and every four more of them is sixteen times as much.
+     */
+    private static final int MOST_PAIRS_LEFT_OUT = 12;
+
+    /**
+     * And how large a relation may be for its shape to be looked at at all.
+     *
+     * <p>What the relation itself comes to as an adjacency and what each level of the walk costs,
+     * which neither bound above reaches: a relation leaving few pairs out is walked in nearly one
+     * path however many blocks it has, so it is admitted past the first and would otherwise be
+     * admitted with no bound at all.
+     *
+     * <p>Measured: a relation of this many pairs all of which are stated is walked in about a
+     * fiftieth of a second. A relation the block bound admits has at most a few hundred pairs, so
+     * this is the one that reaches a relation admitted the other way.
+     */
+    private static final int MOST_EDGES_HELD = 5000;
 
     /** In the order they were stated, so that what is written out of a reading comes out the same
      *  on two compiles of one model. */
@@ -105,6 +145,76 @@ public final class Apartness<A> {
     /** Whether some pair states a block differs from itself, which nothing satisfies. */
     public boolean holdsABlockApartFromItself() {
         return edges.stream().anyMatch(Edge::isOfOneBlock);
+    }
+
+    /** How much walking this relation is, before any of it is walked. */
+    Extent extent() {
+        return new Extent(blocks().size(), edges.size());
+    }
+
+    /**
+     * How large a relation is, as the numbers a reduction over it can be admitted by.
+     *
+     * <p>Read off the relation and not off a walk of it, which is what lets an admission be a fact
+     * about the relation: a walk stopped part-way through has got as far as the order its pairs
+     * were stated in took it, and one relation written two ways round would be decided one way and
+     * not the other. So how much walking a shape is, is settled before there is a walk to stop.
+     *
+     * @param blocks how many blocks some pair names
+     * @param edges how many pairs are stated
+     */
+    record Extent(int blocks, int edges) {
+
+        /**
+         * How many pairs of blocks are not stated to differ.
+         *
+         * <p>What decides the walk on a relation nearly all of whose pairs are stated, which the
+         * count of blocks does not. {@link #grow} pivots on the block stated to differ from most of
+         * what may still be added, so where a block is stated to differ from every other, each
+         * level has one way in and the whole relation is one path however many blocks it has. Each
+         * pair left out is a level with a way in beside that one, and can double how many sets
+         * there are to find. How much walking that comes to is measured rather than read off the
+         * doubling — how many answers a walk has is not how many steps it takes.
+         *
+         * <p>The property and not the shape that has none of them. A relation all of whose pairs
+         * are stated is this at nothing, and one pair short of it is a relation the walk is as
+         * cheap on — so an admission that named the first would be about an example rather than
+         * about what makes it cheap, and would say nothing of the relation beside it.
+         */
+        long pairsLeftOut() {
+            return (long) blocks * (blocks - 1) / 2 - edges;
+        }
+
+        /**
+         * Whether every set of blocks all stated to differ can be found.
+         *
+         * <p>Two ways in, because two different things make this walk cheap and neither covers the
+         * other. A relation of few blocks is cheap because there are few sets to find at all; a
+         * relation of few pairs left out is cheap however many blocks it has, because the pivot
+         * leaves almost no way in at each level. A relation of many blocks nearly all of whose
+         * pairs are stated is the second and not the first.
+         *
+         * <p>And a bound on the relation itself beside them, which neither reaches: what it comes
+         * to as an adjacency and what one level of the walk costs are set by how many pairs there
+         * are, and a relation of few pairs left out has as many pairs as blocks allow.
+         */
+        boolean admitsCounting() {
+            return isSmallEnoughToRead()
+                    && (blocks <= MOST_BLOCKS_WALKED || pairsLeftOut() <= MOST_PAIRS_LEFT_OUT);
+        }
+
+        /**
+         * Whether the relation itself is small enough for anything here to read its shape.
+         *
+         * <p>Asked by both of the things that read it and not by one of them. Every pair is
+         * something a walk over the sets holds in an adjacency, and every pair is something the
+         * making of a search question reads however few blocks that question is over — so a
+         * relation past this is one neither may be handed, and a reader that asked only its own
+         * figures would be reading a relation of any size at all.
+         */
+        boolean isSmallEnoughToRead() {
+            return edges <= MOST_EDGES_HELD;
+        }
     }
 
     /**
@@ -253,12 +363,23 @@ public final class Apartness<A> {
      * apiece for every part of it. So the parts are covered by the whole and emitting them as well
      * is the same question asked again — once per subset, which is as many as there are subsets.
      *
-     * <p>Bounded by {@code most}, and by refusing rather than by answering with less: how many of
-     * these there are is not something the rules bound, and a reading that stopped partway would
-     * decide a declaration by how far it happened to get. A relation too large to walk is one this
-     * says nothing about, which is what it says about every relation it has no reduction for.
+     * <p>Walked to the end or not walked at all. Whether the shape is one worth walking is read off
+     * the relation before there is a walk ({@link Extent#admitsCounting}).
+     *
+     * <p>Which is why nothing reaches the walk itself. What it costs is bounded by the shape and by
+     * nothing it does itself, so an entry that left the asking to whoever called it would be a
+     * bound held by whatever the caller remembered — which is what this was while the asking was
+     * the caller's, written in the walk's own words for the caller to honour.
+     *
+     * <p>Nothing where the shape is past it, and never a shorter list. A walk that answered with
+     * the sets it happened to reach would decide a declaration by how far it got, and the same
+     * relation written the other way round would be answered differently.
      */
-    public List<Set<Sameness.Block<A>>> everyPairwiseApartSet(int most) {
+    Optional<List<Set<Sameness.Block<A>>>> everySetWorthWalkingFor() {
+        return extent().admitsCounting() ? Optional.of(everyPairwiseApartSet()) : Optional.empty();
+    }
+
+    private List<Set<Sameness.Block<A>>> everyPairwiseApartSet() {
         Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart = new LinkedHashMap<>();
         for (Edge<A> edge : edges) {
             if (edge.isOfOneBlock()) {
@@ -267,53 +388,11 @@ public final class Apartness<A> {
             apart.computeIfAbsent(edge.one(), _ -> new LinkedHashSet<>()).add(edge.other());
             apart.computeIfAbsent(edge.other(), _ -> new LinkedHashSet<>()).add(edge.one());
         }
-        Walk<A> walk = new Walk<>(most);
+        List<Set<Sameness.Block<A>>> found = new ArrayList<>();
         grow(new LinkedHashSet<>(), new LinkedHashSet<>(apart.keySet()), new LinkedHashSet<>(),
-                apart, walk);
-        if (walk.spent()) {
-            return List.of();
-        }
-        walk.found().sort(
-                Comparator.comparingInt((Set<Sameness.Block<A>> each) -> each.size()).reversed());
-        return walk.found();
-    }
-
-    /**
-     * What a walk over the sets has found and what it has spent finding it.
-     *
-     * <p>Both, because the second is what the bound is on. How many sets there are does not say how
-     * much work finding them is — a relation whose blocks are all stated to differ has one set and
-     * a search that looks at every way to reach it — so a bound on the answers is no bound at all,
-     * and the walk that ran into it would be the walk nobody was counting.
-     */
-    private static final class Walk<A> {
-
-        private final List<Set<Sameness.Block<A>>> found = new ArrayList<>();
-        private final int most;
-        private int steps;
-
-        private Walk(int most) {
-            this.most = most;
-        }
-
-        List<Set<Sameness.Block<A>>> found() {
-            return found;
-        }
-
-        /** Whether this has looked at as much as it is allowed to. */
-        boolean spent() {
-            return steps > most || found.size() > most;
-        }
-
-        /** One more set looked at, whether or not it turned out to be one nothing can be added
-         *  to. */
-        void looked() {
-            steps++;
-        }
-
-        void add(Set<Sameness.Block<A>> these) {
-            found.add(Collections.unmodifiableSet(new LinkedHashSet<>(these)));
-        }
+                apart, found);
+        found.sort(Comparator.comparingInt((Set<Sameness.Block<A>> each) -> each.size()).reversed());
+        return found;
     }
 
     /**
@@ -332,14 +411,11 @@ public final class Apartness<A> {
      */
     private void grow(Set<Sameness.Block<A>> sofar, Set<Sameness.Block<A>> may,
                       Set<Sameness.Block<A>> taken,
-                      Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart, Walk<A> walk) {
-        walk.looked();
-        if (walk.spent()) {
-            return;
-        }
+                      Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart,
+                      List<Set<Sameness.Block<A>>> found) {
         if (may.isEmpty()) {
             if (taken.isEmpty() && sofar.size() > 1) {
-                walk.add(sofar);
+                found.add(Collections.unmodifiableSet(new LinkedHashSet<>(sofar)));
             }
             return;
         }
@@ -364,10 +440,7 @@ public final class Apartness<A> {
             still.retainAll(apartFromNext);
             Set<Sameness.Block<A>> covered = new LinkedHashSet<>(aside);
             covered.retainAll(apartFromNext);
-            grow(grown, still, covered, apart, walk);
-            if (walk.spent()) {
-                return;
-            }
+            grow(grown, still, covered, apart, found);
             left.remove(next);
             aside.add(next);
         }
@@ -406,18 +479,37 @@ public final class Apartness<A> {
      * {@link Reduction.NotKnown}, which says that this reduction did not settle it and never that
      * something stands.
      *
-     * <p><b>What it can refuse, in the order it tries.</b> A block stated to differ from itself is
+     * <p><b>Four arguments, in the order it tries them.</b> A block stated to differ from itself is
      * read off the rule. A block whose neighbours each hold one value loses those values, and where
      * that leaves it none, nothing stands — run to a fixpoint, because a block cut down to one
-     * value cuts down its own neighbours. And a set of blocks each stated to differ from every
-     * other needs a value apiece, so where there are fewer values between them than there are
-     * blocks, nothing stands.
+     * value cuts down its own neighbours. A set of blocks each stated to differ from every other
+     * needs a value apiece, so where there are fewer values between them than there are blocks,
+     * nothing stands. And what none of those reaches is looked for: whether some way of giving the
+     * blocks values tells every stated pair apart.
      *
-     * <p><b>What it cannot.</b> Which values a general relation leaves is a colouring, and this is
-     * not one: {@code a /= b && b /= c && c /= d && d /= e && e /= a} over two values is refused by
-     * no pair and by no set of blocks that are all apart, and this says nothing about it. That is a
-     * widening like every other here — the relation is carried whole, and what a later reduction
-     * shows is shown of what is already held.
+     * <p><b>Why the first three stay, once the fourth decides.</b> Not one reason but three.
+     *
+     * <p>Refusing by reading the rule and by taking values away is what says which blocks the lack
+     * is about — one pair, or a chain of four — where looking for an assignment can only name the
+     * blocks it looked over. Reading the rule is also what the fourth rests on: a block holding
+     * more values than the relation has blocks is left out of the search because it can be given
+     * one after every other block has, and a block stated to differ from itself is a block no such
+     * argument holds for.
+     *
+     * <p>Counting decides where the fourth is not admitted to look, which is most of what a large
+     * relation is. Blocks all stated to differ are refused however many of them there are, and a
+     * search over that many blocks is past what it looks through several times over.
+     *
+     * <p>And taking values away makes the search smaller as well as refusing: a relation whose
+     * blocks lose the values their one-valued neighbours hold may be inside what the fourth looks
+     * through where it was not before. So the three are what decides outside the fourth's reach and
+     * what says the lack better inside it, and neither of those is being kept for the sake of the
+     * other.
+     *
+     * <p><b>What it still cannot.</b> A relation whose shape is past what either search is admitted
+     * by, and a relation naming a block whose values nothing wrote down. Both are
+     * {@link Reduction.NotKnown}, which says that this did not settle it and never that something
+     * stands.
      *
      * @param admitting what each block is left, which is a question about a block and a range and
      *                  belongs to whoever holds both
@@ -446,7 +538,90 @@ public final class Apartness<A> {
         if (why != null) {
             return new Reduction.Nothing<>(why);
         }
-        return assignable(left, atMost) ? new Reduction.Standing<>() : new Reduction.NotKnown<>();
+        return switch (projection(left)) {
+            case Projection.TheWholeOfIt<A> it ->
+                    lookedFor(it.mayHold(), new Reduction.Standing<>());
+            case Projection.APartOfIt<A> it ->
+                    lookedFor(it.mayHold(), new Reduction.NotKnown<>());
+        };
+    }
+
+    /**
+     * What looking for an assignment over {@code over} comes to, where finding one leaves
+     * {@code found}.
+     *
+     * <p>Two answers from the search and three from here. Running out says nothing satisfies the
+     * denials, which is true of the relation whichever part of it was searched; finding one says
+     * what the caller passed in, which is what the two arms of a {@link Projection} differ about. A
+     * shape the search is not admitted for is neither.
+     */
+    private Reduction<A> lookedFor(Map<Sameness.Block<A>, Set<Value>> mayHold, Reduction<A> found) {
+        Optional<TellingApart<A>> asked =
+                TellingApart.lookingThrough(extent(), mayHold, this::apartFrom);
+        if (asked.isEmpty()) {
+            return new Reduction.NotKnown<>();
+        }
+        TellingApart<A> over = asked.get();
+        // The blocks the search was over, asked of the search. Read off what was handed to it
+        // instead, this would be the same set worked out twice, and the day the two differ is the
+        // day a lack names blocks nothing was looked for over.
+        return over.isSatisfiable() ? found
+                : new Reduction.Nothing<>(
+                        new RelationalWitness.NoAssignmentTellsThemApart<>(over.blocks()));
+    }
+
+    /**
+     * The blocks an assignment is looked for over, and whether finding one answers for the whole
+     * relation.
+     *
+     * <p>Two blocks are left out, for reasons that are not each other's. A block holding more
+     * values than the relation has blocks can be given one after every other block has — it has
+     * more values than it has neighbours, so one of them is always free — which makes leaving it
+     * out cost nothing in either direction. A block whose values nothing wrote down is left out
+     * because there is nothing to search; and that is sound one way only, since such a block may
+     * hold no value at all.
+     *
+     * <p>So the two are told apart by being two arms rather than by a condition somebody has to
+     * remember to ask. Refusing carries from a part of the relation to the whole of it in both,
+     * because an assignment to all the blocks is an assignment to some of them; standing carries
+     * only from {@link Projection.TheWholeOfIt}.
+     *
+     * <p>The first of them is the argument {@link #reduce} refuses a block stated to differ from
+     * itself before reaching: such a block has no free value however many it holds, and reading it
+     * as one that can be given a value last is what leaving it out would be.
+     */
+    private Projection<A> projection(Map<Sameness.Block<A>, Admits> left) {
+        Map<Sameness.Block<A>, Set<Value>> mayHold = new LinkedHashMap<>();
+        boolean whole = true;
+        for (Map.Entry<Sameness.Block<A>, Admits> each : left.entrySet()) {
+            switch (each.getValue()) {
+                case Admits.These it -> mayHold.put(each.getKey(), it.values());
+                case Admits.MoreThanCounted _ -> { }
+                case Admits.NotKnown _ -> whole = false;
+            }
+        }
+        return whole ? new Projection.TheWholeOfIt<>(mayHold) : new Projection.APartOfIt<>(mayHold);
+    }
+
+    /**
+     * What of a relation an assignment is looked for over, and what finding one there shows.
+     *
+     * <p>Held as two arms and not as a set with a flag beside it, so that a reader is made to say
+     * which of the two it has before it can read the blocks. Written as one, the condition that
+     * tells them apart would be asked once for refusing and once for standing, and the two are not
+     * the same condition.
+     *
+     * @param <A> what a position is called
+     */
+    private sealed interface Projection<A> {
+
+        /** The whole relation: what is left out was going to be given a value whatever the rest
+         *  held, so an assignment found here is an assignment to all of it. */
+        record TheWholeOfIt<A>(Map<Sameness.Block<A>, Set<Value>> mayHold) implements Projection<A> {}
+
+        /** A part of it: some block's values are not written down, so an assignment found here is
+         *  one for the blocks it covers and says nothing about the block left out. */
+        record APartOfIt<A>(Map<Sameness.Block<A>, Set<Value>> mayHold) implements Projection<A> {}
     }
 
     /**
@@ -461,10 +636,17 @@ public final class Apartness<A> {
      * denials were stated and writes what it finds as it goes, so a chain running that way is
      * followed to its end within one sweep — and a refusal by taking values away is a chain from a
      * block left one value, which is the only shape this argument refuses. What a second round can
-     * still do is tighten a set the count below then reads. It is here for that and because a
-     * single sweep would make the answer turn on the order the denials happen to be stated in;
-     * measured, removing it leaves the whole suite green, so nothing yet holds it to what it is
-     * for.
+     * still do is tighten what the two arguments below then read: a set the count is taken of, and
+     * how much of a search there is left to make. It is here for that and because a single sweep
+     * would make the answer turn on the order the denials happen to be stated in; measured,
+     * removing it leaves the whole suite green, so nothing yet holds it to what it is for.
+     *
+     * <p><b>What this leaves is what the search is asked over.</b> Taking values away is not only a
+     * way of refusing sooner and of saying the lack more nearly than a search can. A relation past
+     * what the search looks through as it was written may be inside it once this has run, and then
+     * this is what made an answer possible rather than what explained one. Which does not put the
+     * answer back on how the rules were written: this runs to a fixpoint, and where it stops does
+     * not depend on which block it started at.
      */
     private RelationalWitness<A> takingWhatOneValueBlocksHold(Map<Sameness.Block<A>, Admits> left) {
         // The blocks and not the entries, because taking a value away writes back into the map this
@@ -517,9 +699,17 @@ public final class Apartness<A> {
      * values than a caller counted never runs out, and a block this cannot say the values of is one
      * nothing is known about — dropped from the set either way, which leaves a smaller set, and a
      * shortage shown of fewer blocks is a shortage.
+     *
+     * <p>And asked only of a relation whose shape says the sets can all be found. A relation past
+     * that is one this argument says nothing about, which is what it says of every relation whose
+     * sets hold enough values.
      */
     private RelationalWitness<A> counting(Map<Sameness.Block<A>, Admits> left) {
-        for (Set<Sameness.Block<A>> apart : everyPairwiseApartSet(SETS_LOOKED_AT)) {
+        Optional<List<Set<Sameness.Block<A>>>> walked = everySetWorthWalkingFor();
+        if (walked.isEmpty()) {
+            return null;
+        }
+        for (Set<Sameness.Block<A>> apart : walked.get()) {
             Map<Sameness.Block<A>, Set<Value>> counted = new LinkedHashMap<>();
             apart.forEach(block -> {
                 if (left.get(block) instanceof Admits.These it) {
@@ -574,31 +764,6 @@ public final class Apartness<A> {
             }
         }
         return false;
-    }
-
-    /**
-     * Whether every block can be given a value no block it is stated to differ from takes, shown by
-     * an argument that does not depend on which block is taken first.
-     *
-     * <p><b>And by no other.</b> An assignment found by taking the blocks in some order is an
-     * assignment, but which orders find one is not a fact about the relation: two writings of one
-     * rule are one relation, and a reading that stood on the order they were stated in would answer
-     * a model one way written this way round and another written the other. So what is claimed here
-     * is the one thing every order shows.
-     *
-     * <p>What that leaves is a relation whose blocks each hold more values than the relation has
-     * blocks. Anything else is {@link Reduction.NotKnown}, which is what this says of every relation
-     * it has no argument for — a satisfiable one included.
-     */
-    private boolean assignable(Map<Sameness.Block<A>, Admits> left, int atMost) {
-        // Every block holding more values than there are blocks, so each of them can be given one
-        // no other took whatever order they are taken in. Which is the whole of what is claimed
-        // here: taking them in an order and giving each the first value its neighbours have not
-        // taken finds an assignment for some relations and not for others, and which it is turns on
-        // the order the denials were stated in — so a relation would stand written one way and be
-        // undecided written the other, and the two are one relation.
-        return atMost >= left.size()
-                && left.values().stream().allMatch(each -> each instanceof Admits.MoreThanCounted);
     }
 
     /**

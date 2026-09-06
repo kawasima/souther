@@ -258,9 +258,6 @@ class WhereAnOperatorMayStillBeHeldIsWrittenDownTest {
                             + " else about them is read off the shape it leaves"),
             new Held("souther.compiler.check.FieldDomains.lambda$projection$2",
                     "walks into both halves for the clause that bounds a field"),
-            new Held("souther.compiler.check.Predicates.assumeCond",
-                    "walks into both halves under the polarity in force, for what a condition"
-                            + " taken in makes known"),
             new Held("souther.compiler.partition.Condition.of",
                     "the composition, which the shape it makes carries"),
             new Held("souther.compiler.partition.ClauseStatements.walk",
@@ -342,7 +339,7 @@ class WhereAnOperatorMayStillBeHeldIsWrittenDownTest {
                             + " until somebody says what it means here"),
             new Held("souther.compiler.check.Conditions.asSizeComparison",
                     "writes the equality an emptiness check means: a size stood against nought"),
-            new Held("souther.compiler.check.Conditions.againstATruthValue",
+            new Held("souther.compiler.check.ClauseExpr.againstATruthValue",
                     "asks whether the operator is the equality or the disequality, for a comparison"
                             + " one side of which is a written truth value: which of the two it is"
                             + " and which value was written are together what says whether such a"

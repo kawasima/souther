@@ -1,0 +1,462 @@
+package souther.architecture;
+
+import souther.compiler.values.Emptiness;
+import souther.test.RepositoryLayout;
+
+import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassModel;
+import java.lang.classfile.CodeElement;
+import java.lang.classfile.CodeModel;
+import java.lang.classfile.MethodModel;
+import java.lang.classfile.instruction.FieldInstruction;
+import java.lang.classfile.instruction.InvokeDynamicInstruction;
+import java.lang.classfile.instruction.InvokeInstruction;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.DirectMethodHandleDesc;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/**
+ * Who may say that a position admits something, and who may only say that one admits nothing.
+ *
+ * <p>{@link Emptiness} answers three ways and the two settled answers are not one another's mirror.
+ * Either half of a pair holding nothing leaves the pair nothing, so {@code EMPTY} is sound from
+ * whichever reading reached it. {@code NONEMPTY} is a claim about the whole of what was asked, and
+ * {@code Confinement} says in its own words what that whole is: which values a position may take
+ * and where its order stops, and nothing else. The components beside it stay outside, so a reader
+ * taking one of these answers for "a value of this declaration exists" would be holding a claim no
+ * reduction here carries.
+ *
+ * <p>So everywhere the word is said is written down. What the lists hold is readings that work an
+ * admission out and hand it on; what they must not grow is a reader that acts on the settled
+ * positive answer as though it were about more than the reading that gave it.
+ *
+ * <p><b>Three rules and not one, because they are three claims.</b> The widest names every nest
+ * that touches a settled answer at all — said as a constant, or asked of one through the operations
+ * that observe and compose settledness, since {@code a.joined(b)} carries a positive answer onwards
+ * without spelling one. Inside it is who may make the positive answer. Inside that is the one the
+ * contract is about: which nests outside the readings themselves say it.
+ *
+ * <p><b>What these rules do not say.</b> They fix who may name a settled answer, and not who may
+ * act on one: a nest already on a list can grow a second reader of an answer it was already making,
+ * and no owner set changes. Nor is {@code x != EMPTY} caught, which is a weaker reading than
+ * {@code NONEMPTY} and says less. What is claimed is what a walk over the compiled classes holds.
+ *
+ * <p>Read off those classes, because a call is what the compiler made of it: a lambda body, a
+ * method reference and a switch are three spellings a scan of source text would have to know about
+ * one at a time. Every module's classes, because this module is built last and a check living in
+ * the module it is about passes over everything built after it.
+ */
+class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
+
+    private static final String EMPTINESS = "souther/compiler/values/Emptiness";
+
+    /** The two answers that settle something, which is what these rules are about.
+     *  {@code UNDECIDED} settles nothing and is named freely. */
+    private static final Set<String> SETTLED = Set.of("EMPTY", "NONEMPTY");
+
+    /** The operations that read whether an answer is settled or carry one onwards. A caller of
+     *  these holds a settled answer without naming one, which is why calling them counts as saying
+     *  it. */
+    private static final Set<String> OBSERVES_OR_COMPOSES = Set.of("isEmpty", "met", "joined");
+
+    /** What javac writes for a switch over this word: a synthetic table of its constants, read by
+     *  whoever switched. Taking the answer apart by which of the three it is, under a spelling that
+     *  names no constant in the code that does it. */
+    private static final String TAKEN_APART = "$SwitchMap$souther$compiler$values$Emptiness";
+
+    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+
+    /**
+     * Every nest that says a position is settled one way or the other.
+     *
+     * <p>The readings that work an admission out, and nothing else. {@code Carrier} and
+     * {@code TextExtents} answer what a set of values and a range come to between them, which is
+     * the bottom of the pair; {@code Confinement} owns the pair and the walk over the alternatives
+     * that both halves are asked along. {@code AdmissibleValues},
+     * {@code ConjoinedAdmissibleValues} and {@code PlannedValues} are that walk over what a reading
+     * holds, and {@code Apartness} is what the denials between two blocks come to.
+     * {@code Realized} says whether everything asked for was built. {@code StatedByClauses} and
+     * {@code Settlement} put the answers of a choice's branches together.
+     *
+     * <p>What is not here is the list's point. Nothing else in {@code check}, nothing downstream of
+     * the compiler, and nothing that reports: a settled answer reaching one of those would be a
+     * claim travelling further than the reading that made it.
+     */
+    private static final List<String> SAYS_A_POSITION_IS_SETTLED = List.of(
+            "souther/compiler/check/Carrier",
+            "souther/compiler/check/Confinement",
+            "souther/compiler/check/Settlement",
+            "souther/compiler/check/StatedByClauses",
+            "souther/compiler/values/AdmissibleValues",
+            "souther/compiler/values/Apartness",
+            "souther/compiler/values/ConjoinedAdmissibleValues",
+            "souther/compiler/values/PlannedValues",
+            "souther/compiler/values/Realized",
+            "souther/compiler/values/TextExtents");
+
+    /**
+     * And who may make the settled positive answer.
+     *
+     * <p>{@code Settlement} is the one nest that says a position is settled without ever saying it
+     * admits something: it joins two branches' answers and reads whether the join came out empty. A
+     * nest arriving here is one that has begun to claim something exists, which is what these rules
+     * are about.
+     */
+    private static final List<String> SAYS_SOMETHING_IS_ADMITTED = List.of(
+            "souther/compiler/check/Carrier",
+            "souther/compiler/check/Confinement",
+            "souther/compiler/check/StatedByClauses",
+            "souther/compiler/values/AdmissibleValues",
+            "souther/compiler/values/Apartness",
+            "souther/compiler/values/ConjoinedAdmissibleValues",
+            "souther/compiler/values/PlannedValues",
+            "souther/compiler/values/Realized",
+            "souther/compiler/values/TextExtents");
+
+    /**
+     * And which of them are outside the readings that hold the values.
+     *
+     * <p>{@code values} is where an admission is worked out, so a nest there saying something is
+     * admitted is a reading answering about itself. These three are in {@code check}:
+     * {@code Carrier} makes the answer at the bottom of the pair, {@code Confinement} owns the
+     * pair, and {@code StatedByClauses} is where an answer that came out positive decides something
+     * else — a choice whose two branches both stand is held open rather than merged.
+     */
+    private static final List<String> SAYS_IT_OUTSIDE_THE_READINGS = List.of(
+            "souther/compiler/check/Carrier",
+            "souther/compiler/check/Confinement",
+            "souther/compiler/check/StatedByClauses");
+
+    /** One saying of the word, and whose code holds it. */
+    private record Use(String nest, String method, String said) {}
+
+    @Test
+    void everyNestThatSaysAPositionIsSettledIsWrittenDown() {
+        assertEquals(SAYS_A_POSITION_IS_SETTLED, nestsSaying(saidInProduction(),
+                        use -> SETTLED.contains(use.said())
+                                || OBSERVES_OR_COMPOSES.contains(use.said())),
+                "a settled answer is about the reading that reached it, so where it is said is"
+                        + " written down: said somewhere new, a claim about which values a position"
+                        + " may take and where its order stops is being read as one about more");
+    }
+
+    @Test
+    void andOnlyTheseSayThatSomethingIsAdmitted() {
+        assertEquals(SAYS_SOMETHING_IS_ADMITTED,
+                nestsSaying(saidInProduction(), use -> use.said().equals("NONEMPTY")),
+                "nothing is admitted where either half of the pair holds nothing, and something is"
+                        + " admitted only where both were asked: the second is a claim about the"
+                        + " pair, and a nest that has begun making it is a nest to read");
+    }
+
+    @Test
+    void andOutsideTheReadingsThreeSayIt() {
+        assertEquals(SAYS_IT_OUTSIDE_THE_READINGS, nestsSaying(saidInProduction(),
+                        use -> use.said().equals("NONEMPTY")
+                                && !use.nest().startsWith("souther/compiler/values/")),
+                "an admission is worked out in the readings; outside them it is made at the bottom"
+                        + " of the pair, by the pair itself, and read once where two branches that"
+                        + " both stand are held open");
+    }
+
+    /**
+     * And the walk reads a body the source does not name.
+     *
+     * <p>Two of the sayings are inside lambdas — the stand-in answering that the values refuse
+     * nothing, so that what the ranges alone refuse can be asked. A walk that read declared methods
+     * and not the synthetic ones javac writes for these would miss both and go on reporting the
+     * same owner sets, since those two nests say the word elsewhere as well.
+     */
+    @Test
+    void andTheWalkReadsALambdaBody() {
+        assertEquals(List.of("souther/compiler/check/Confinement",
+                        "souther/compiler/values/PlannedValues"),
+                nestsSaying(saidInProduction(), use -> use.said().equals("NONEMPTY")
+                        && use.method().startsWith("lambda$")),
+                "these say it in a lambda body, and a walk that cannot see one is reading less than"
+                        + " it reports");
+    }
+
+    /**
+     * And nothing takes the answer apart by which of the three it is.
+     *
+     * <p>A switch over this word says something the three rules above do not watch for: it reads
+     * the answer as a choice between arms rather than asking whether it settles anything. It is
+     * also the one shape whose constants are named in a synthetic class rather than in the code
+     * that switched, so what is asserted is that there is none.
+     *
+     * <p>Shown with the same detector run over a body that does switch ({@link Taking}), because an
+     * expectation of none passes just as well when the detector has stopped working — which is what
+     * the day javac writes a switch some other way would look like.
+     */
+    @Test
+    void andNothingTakesTheAnswerApartByWhichOfTheThreeItIs() {
+        assertEquals(1, Taking.by(Emptiness.NONEMPTY), "the fixture answers by switching");
+        assertTrue(saidHere().stream().anyMatch(use -> use.said().equals(TAKEN_APART)),
+                "the fixture beside this test switches over the word, so a detector that cannot"
+                        + " find it there is one that would report none anywhere");
+
+        assertEquals(List.of(),
+                nestsSaying(saidInProduction(), use -> use.said().equals(TAKEN_APART)),
+                "this takes the answer apart by which of the three it is, which the rules above do"
+                        + " not watch: what they read is who names one");
+    }
+
+    /**
+     * And it reads a saying that is written as a reference to one.
+     *
+     * <p>{@code Emptiness::isEmpty} puts no call to the word in the code that wrote it: what it
+     * names is a handle among a bootstrap's arguments. A walk over calls alone would read a nest
+     * observing a settled answer as one saying nothing, and nothing in production is written that
+     * way today — so what holds the walk to it is a body beside this test that is.
+     */
+    @Test
+    void andItReadsASayingWrittenAsAReference() {
+        assertFalse(Referring.OBSERVES.test(Emptiness.NONEMPTY), "the fixture observes by handle");
+        assertTrue(saidHere().stream().anyMatch(use -> use.said().equals("isEmpty")),
+                "the fixture beside this test observes a settled answer through a reference, so a"
+                        + " walk that cannot find it there is one that would let one past");
+    }
+
+    /**
+     * And the walk sees classes at all, in every module the repository has.
+     *
+     * <p>Matched against a name nothing has, every list above would be empty and equal to an empty
+     * expectation. And a module whose classes are not there is one the walk reads nothing of while
+     * the lists still match — so what is asserted is that every module the reactor names was read,
+     * and not only that something was.
+     */
+    @Test
+    void andEveryModuleTheRepositoryHoldsWasRead() {
+        List<String> unbuilt = new ArrayList<>();
+        int read = 0;
+        for (Path module : REPOSITORY.modules()) {
+            Path where = classesOf(module);
+            if (!classesUnder(where).isEmpty()) {
+                read++;
+            } else if (Files.isDirectory(module.resolve("src").resolve("main").resolve("java"))) {
+                // A module holding only tests or only a pom leaves no classes and is not one this
+                // walk is missing.
+                unbuilt.add(module.getFileName().toString());
+            }
+        }
+
+        assertEquals(List.of(), unbuilt,
+                "a module whose classes are not built is one this walk passes over, and a walk that"
+                        + " passes over a module answers about the rest while saying it answers"
+                        + " about all of them");
+        assertTrue(read > 1, "the classes this reads are in more than the one module that declares"
+                + " the word");
+        assertTrue(nestsSaying(saidInProduction(), _ -> true)
+                        .contains("souther/compiler/check/Confinement"),
+                "and the pair's own reading says the word, so a walk that cannot find it there is"
+                        + " finding nothing at all");
+    }
+
+    /**
+     * A body that switches over the word, for the detector to be held to.
+     *
+     * <p>Compiled beside this test and never among the classes the rules read, which are the
+     * modules' own. What it is for is that a rule expecting none has something to be shown finding.
+     */
+    private enum Taking {
+        ;
+
+        static int by(Emptiness said) {
+            return switch (said) {
+                case EMPTY -> 0;
+                case NONEMPTY -> 1;
+                case UNDECIDED -> 2;
+            };
+        }
+    }
+
+    /**
+     * A body that observes a settled answer through a reference to the observation, for the same
+     * reason.
+     *
+     * <p>Nothing in production is written this way today, so a walk that could not read it would go
+     * on reporting the same owner sets — and the day something is, it would pass the rules without
+     * being one of the nests they name.
+     */
+    private enum Referring {
+        ;
+
+        static final Predicate<Emptiness> OBSERVES = Emptiness::isEmpty;
+    }
+
+    /** The nests of the sayings {@code which} keeps, each once and in one order. */
+    private static List<String> nestsSaying(List<Use> said, Predicate<Use> which) {
+        Set<String> out = new TreeSet<>();
+        said.stream().filter(which).forEach(use -> out.add(use.nest()));
+        return new ArrayList<>(out);
+    }
+
+    private static Path classesOf(Path module) {
+        return module.resolve("target").resolve("classes");
+    }
+
+    /** Every saying of the word in the reactor's own compiled classes. */
+    private static List<Use> saidInProduction() {
+        List<Path> where = new ArrayList<>();
+        for (Path module : REPOSITORY.modules()) {
+            where.add(classesOf(module));
+        }
+        List<Use> found = saidUnder(where);
+        assertFalse(found.isEmpty(), "no saying of the word was read at all");
+        return found;
+    }
+
+    /** Every saying in the classes compiled beside this test, which is the fixture above. */
+    private static List<Use> saidHere() {
+        try {
+            return saidUnder(List.of(Path.of(
+                    WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest.class
+                            .getProtectionDomain().getCodeSource().getLocation().toURI())));
+        } catch (URISyntaxException notAPath) {
+            throw new IllegalStateException("this test's own classes are somewhere unreadable",
+                    notAPath);
+        }
+    }
+
+    /**
+     * Every saying of the word under {@code roots}.
+     *
+     * <p>The word's own class is passed over: what an enum's constants do among themselves is how
+     * one is written, and read as sayings they would put the word on every list as a namer of
+     * itself.
+     */
+    private static List<Use> saidUnder(List<Path> roots) {
+        List<Use> found = new ArrayList<>();
+        for (Path root : roots) {
+            for (Path each : classesUnder(root)) {
+                byte[] bytes = bytesOf(each);
+                // Cheap first, so the code of a class with nothing to do with this is never walked.
+                // The filter admits more than these rules are about — another type in `check` is
+                // called the same — and refuses nothing that could match, which is the direction it
+                // has to err in.
+                if (!holdsTheWord(bytes)) {
+                    continue;
+                }
+                ClassModel model = ClassFile.of().parse(bytes);
+                String nest = nestOf(model.thisClass().asInternalName());
+                if (nest.equals(EMPTINESS)) {
+                    continue;
+                }
+                for (MethodModel method : model.methods()) {
+                    CodeModel code = method.code().orElse(null);
+                    if (code == null) {
+                        continue;
+                    }
+                    String where = method.methodName().stringValue();
+                    for (CodeElement element : code) {
+                        for (String what : saidBy(element)) {
+                            found.add(new Use(nest, where, what));
+                        }
+                    }
+                }
+            }
+        }
+        return found;
+    }
+
+    /**
+     * What one instruction says of the word, where it says anything.
+     *
+     * <p>A reference is the call it stands for. {@code Emptiness::isEmpty} puts no call to the word
+     * in the code that wrote it — what it names is a handle among a bootstrap's arguments — so a
+     * walk over calls alone reads a nest that observes a settled answer as one that says nothing.
+     */
+    private static List<String> saidBy(CodeElement element) {
+        if (element instanceof FieldInstruction field) {
+            String named = field.name().stringValue();
+            if (named.equals(TAKEN_APART)) {
+                return List.of(TAKEN_APART);
+            }
+            return field.owner().asInternalName().equals(EMPTINESS)
+                    ? List.of(named) : List.of();
+        }
+        if (element instanceof InvokeInstruction call) {
+            return call.owner().asInternalName().equals(EMPTINESS)
+                    ? List.of(call.name().stringValue()) : List.of();
+        }
+        if (element instanceof InvokeDynamicInstruction lambda) {
+            List<String> out = new ArrayList<>();
+            for (var argument : lambda.bootstrapArgs()) {
+                if (argument instanceof DirectMethodHandleDesc handle
+                        && named(handle.owner()).equals(EMPTINESS)) {
+                    // Whichever kind of handle it is, what it names is what the code would have
+                    // said had it been written out: a field for a constant, a method for the rest.
+                    out.add(handle.methodName());
+                }
+            }
+            return out;
+        }
+        return List.of();
+    }
+
+    /** What a descriptor names, as a class is named in a class file. */
+    private static String named(ClassDesc owner) {
+        String descriptor = owner.descriptorString();
+        return descriptor.startsWith("L") && descriptor.endsWith(";")
+                ? descriptor.substring(1, descriptor.length() - 1) : descriptor;
+    }
+
+    /** Whether the bytes name the word anywhere at all. */
+    private static boolean holdsTheWord(byte[] bytes) {
+        byte[] word = "Emptiness".getBytes(StandardCharsets.US_ASCII);
+        for (int start = 0; start + word.length <= bytes.length; start++) {
+            int at = 0;
+            while (at < word.length && bytes[start + at] == word[at]) {
+                at++;
+            }
+            if (at == word.length) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** What a class is written inside: a helper, a lambda's synthetic method and a switch's
+     *  synthetic table are all part of the type they were written in. */
+    private static String nestOf(String internalName) {
+        int nested = internalName.indexOf('$');
+        return nested < 0 ? internalName : internalName.substring(0, nested);
+    }
+
+    private static byte[] bytesOf(Path compiled) {
+        try {
+            return Files.readAllBytes(compiled);
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException(unreadable);
+        }
+    }
+
+    private static List<Path> classesUnder(Path where) {
+        if (!Files.isDirectory(where)) {
+            return List.of();
+        }
+        try (Stream<Path> found = Files.walk(where)) {
+            return found.filter(each -> each.toString().endsWith(".class")).toList();
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException(unreadable);
+        }
+    }
+}
