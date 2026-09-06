@@ -2,6 +2,7 @@ package souther.compiler.query;
 
 import souther.compiler.check.ReadingPolicy;
 import souther.compiler.values.AdmittedPlan;
+import souther.compiler.values.Allowance;
 import souther.compiler.values.Realization;
 import souther.compiler.values.StringMachines;
 import souther.compiler.values.TextExtent;
@@ -71,7 +72,12 @@ public final class Machines {
         @Override
         public Answer<Realization> compute(Db db) {
             ReadingPolicy policy = db.ask(new Front.Reading()).value();
-            return Answer.of(policy.allowanceForAdmittedValues(of(db).lending()).realized(plan));
+            // The parts are borrowed and the plan itself is built: a realizer asks its lender for
+            // the plan before building it, and the lender for this plan is this question.
+            StringMachines parts = of(db);
+            Allowance<Object> allowance = policy.allowanceForAdmittedValues(
+                    (_, asked) -> asked.equals(plan) ? null : parts.lent(asked));
+            return Answer.of(allowance.realized(plan));
         }
     }
 
