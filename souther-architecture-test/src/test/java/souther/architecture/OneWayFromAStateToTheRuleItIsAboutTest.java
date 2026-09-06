@@ -10,6 +10,7 @@ import java.lang.classfile.Attributes;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.FieldModel;
+import java.lang.classfile.ClassSignature;
 import java.lang.classfile.Signature;
 import java.lang.classfile.attribute.RecordAttribute;
 import java.lang.classfile.attribute.RecordComponentInfo;
@@ -19,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -103,6 +105,28 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
         souther.compiler.check.RuleCitation cited;
     }
 
+    /** A state that holds whatever it is given, for the pair below to fill in. */
+    static class Holds<T> {
+        T held;
+    }
+
+    /**
+     * And the same pair again, with the rule given to a class above as a type argument.
+     *
+     * <p>The two above, together. A variable is read in the frame of whoever wrote the field, and
+     * what a subclass gave that frame is where the variable's answer is: read against the
+     * superclass's own declaration alone, {@code T} is bounded by nothing and the rule handed to it
+     * is gone.
+     */
+    static class TwoWaysThroughAParameterizedSuperclass
+            extends Holds<souther.compiler.check.RuleRef> {
+        souther.compiler.check.RuleCitation cited;
+    }
+
+    /** And the same pair with the rule in an array, which is the last shape a field's type has. */
+    record TwoWaysThroughAnArray(souther.compiler.check.RuleRef[] rules,
+                                 souther.compiler.check.RuleCitation cited) { }
+
     @Test
     void nothingThisRepositoryPublishesHoldsARuleAndAHandleBesideIt() {
         Carried carried = Carried.ofWhatThisRepositoryPublishes();
@@ -136,6 +160,8 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
         assertEquals(2, carried.waysToARuleFrom(fixture("TwoWaysThroughASuperclass")),
                 "and what a state carries is what an instance of it holds, the fields above it"
                         + " among them");
+        assertEquals(2, carried.waysToARuleFrom(fixture("TwoWaysThroughAParameterizedSuperclass")),
+                "and a variable is answered by what the subclass gave the frame it is written in");
         assertEquals(1, carried.waysToARuleFrom(fixture("OneWayToOneRule")),
                 "and a handle alone is one, since the rule it carries is not a second way");
         assertEquals(1, carried.waysToARuleFrom(fixture("HoldsARule")),
@@ -162,6 +188,59 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
             assertEquals(1, carried.waysToARuleFrom(each),
                     () -> "and it reaches the rule it is about, by one way: " + each);
         }
+    }
+
+    /**
+     * Every shape a field's type has is one the walk goes through.
+     *
+     * <p>The population is the language's own, taken from the seal the class file API writes a
+     * signature with rather than from the shapes anybody thought of. Each hole found in this walk so
+     * far was a shape it passed over — a variable, then a variable answered by a subclass — and each
+     * was found by a reader rather than by the check, because what the walk covered was the states
+     * in front of it.
+     *
+     * <p>A base type names no class and can hold no rule, which is why it is the one shape with no
+     * fixture: the assertion is that every shape which <em>can</em> carry one is a shape a state
+     * built here is found through. A shape added to the seal arrives as a case with no fixture and
+     * fails, rather than as a way to hold a rule that nothing walks.
+     */
+    @Test
+    void everyShapeAFieldsTypeHasIsOneTheWalkGoesThrough() {
+        assertEquals(
+                Set.of(Signature.BaseTypeSig.class, Signature.ArrayTypeSig.class,
+                        Signature.ClassTypeSig.class, Signature.TypeVarSig.class),
+                shapesOf(Signature.class),
+                "the shapes the class file API writes a field's type with");
+
+        Carried carried = Carried.ofEverythingCompiledHere();
+        // One state per shape that can name a class, each holding a rule through that shape and a
+        // handle beside it. Found as two ways is the walk having gone through the shape.
+        assertEquals(2, carried.waysToARuleFrom(fixture("TwoWaysToOneRule")),
+                "a class named outright");
+        assertEquals(2, carried.waysToARuleFrom(fixture("TwoWaysThroughAnArray")),
+                "an array of them");
+        assertEquals(2, carried.waysToARuleFrom(fixture("TwoWaysThroughAVariable")),
+                "a variable bounded by one");
+        assertEquals(2, carried.waysToARuleFrom(fixture("TwoWaysThroughAParameterizedSuperclass")),
+                "and a variable a class below answered");
+    }
+
+    /**
+     * The shapes a value of {@code sealed} has, as the API declares them.
+     *
+     * <p>Down to the last interface the class file API names and no further: what a seal permits
+     * below that is the one implementation the platform ships, which is not a shape of the language
+     * and would make this a list of somebody's classes.
+     */
+    private static Set<Class<?>> shapesOf(Class<?> sealed) {
+        Class<?>[] permits = sealed.getPermittedSubclasses();
+        Set<Class<?>> out = new LinkedHashSet<>();
+        for (Class<?> each : permits == null ? new Class<?>[0] : permits) {
+            if (each.isInterface() && each.getName().startsWith("java.lang.classfile.")) {
+                out.addAll(shapesOf(each));
+            }
+        }
+        return out.isEmpty() ? Set.of(sealed) : out;
     }
 
     /** The name the compiler gives a record declared in this test. */
@@ -267,23 +346,66 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
          */
         private List<Carries> carriedBy(ClassModel model) {
             List<Carries> out = new ArrayList<>();
-            for (ClassModel each = model; each != null; each = superclassOf(each)) {
+            Map<String, Signature> given = Map.of();
+            for (ClassModel each = model; each != null; ) {
                 Optional<RecordAttribute> record = each.findAttribute(Attributes.record());
                 if (record.isPresent()) {
                     for (RecordComponentInfo component : record.get().components()) {
                         out.add(new Carries(WhatASignatureReaches.componentSignature(component),
-                                each));
+                                each, given));
                     }
-                    continue;
+                } else {
+                    for (FieldModel field : each.fields()) {
+                        if (field.flags().has(AccessFlag.STATIC)) {
+                            continue;
+                        }
+                        ClassModel owner = each;
+                        out.add(new Carries(field.findAttribute(Attributes.signature())
+                                .map(SignatureAttribute::asTypeSignature)
+                                .orElseGet(() -> Signature.of(field.fieldTypeSymbol())),
+                                owner, given));
+                    }
                 }
-                for (FieldModel field : each.fields()) {
-                    if (field.flags().has(AccessFlag.STATIC)) {
-                        continue;
+                ClassModel above = superclassOf(each);
+                given = above == null ? Map.of() : givenTo(above, each, given);
+                each = above;
+            }
+            return out;
+        }
+
+        /**
+         * What {@code below} gave the type parameters of {@code above}, resolved in the frame
+         * {@code below} was itself read in.
+         *
+         * <p>What makes a variable in an inherited field answerable. {@code class Two extends
+         * Holds<RuleRef>} says what {@code Holds}'s {@code T} is, and that is written in {@code
+         * Two}'s frame and nowhere in {@code Holds} — so a walk that went up carrying nothing would
+         * read {@code T} against a declaration that bounds it by nothing and lose the rule handed
+         * to it.
+         */
+        private static Map<String, Signature> givenTo(ClassModel above, ClassModel below,
+                                                      Map<String, Signature> givenToBelow) {
+            List<Signature.TypeParam> parameters = WhatASignatureReaches.typeParametersOf(above);
+            Signature.ClassTypeSig extended = below.findAttribute(Attributes.signature())
+                    .map(SignatureAttribute::asClassSignature)
+                    .map(ClassSignature::superclassSignature)
+                    .orElse(null);
+            if (parameters.isEmpty() || extended == null) {
+                return Map.of();
+            }
+            Map<String, Signature> out = new LinkedHashMap<>();
+            List<Signature.TypeArg> arguments = extended.typeArgs();
+            for (int i = 0; i < parameters.size() && i < arguments.size(); i++) {
+                if (arguments.get(i) instanceof Signature.TypeArg.Bounded bounded) {
+                    Signature argument = bounded.boundType();
+                    // Resolved as far as the frame below already knows: a subclass may pass on a
+                    // variable of its own, and what that one is was settled a step further down.
+                    if (argument instanceof Signature.TypeVarSig passed) {
+                        argument = givenToBelow.get(passed.identifier());
                     }
-                    ClassModel owner = each;
-                    out.add(new Carries(field.findAttribute(Attributes.signature())
-                            .map(SignatureAttribute::asTypeSignature)
-                            .orElseGet(() -> Signature.of(field.fieldTypeSymbol())), owner));
+                    if (argument != null) {
+                        out.put(parameters.get(i).identifier(), argument);
+                    }
                 }
             }
             return out;
@@ -297,9 +419,16 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
                     .orElse(null);
         }
 
-        /** One thing a state carries, and the class whose type parameters its signature is read
-         *  against. */
-        private record Carries(Signature type, ClassModel declaredBy) { }
+        /**
+         * One thing a state carries, the class whose type parameters its signature is read against,
+         * and what a class below gave those parameters.
+         *
+         * <p>The third is what tells an inherited field's variable from a name with no answer. A
+         * variable is looked up in what was given first and in its own declaration's bound after,
+         * because a bound says what may be handed in and an argument says what was.
+         */
+        private record Carries(Signature type, ClassModel declaredBy,
+                               Map<String, Signature> given) { }
 
         /** How much of what a state carries a walk is allowed through. */
         private enum Through {
@@ -314,7 +443,8 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
 
         /** Whether one thing a class carries reaches the rule it is about. */
         private boolean reachesARule(Carries carried, Through through) {
-            for (String named : namesIn(carried.type(), through, carried.declaredBy())) {
+            for (String named : namesIn(carried.type(), through, carried.declaredBy(),
+                    carried.given())) {
                 if (reachesARule(named, through)) {
                     return true;
                 }
@@ -401,36 +531,38 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
          * <p>{@code declaredBy} is the class whose type parameters a variable in the signature is
          * looked up in, which is whoever wrote the field.
          */
-        private static Set<String> namesIn(Signature type, Through through,
-                                           ClassModel declaredBy) {
+        private static Set<String> namesIn(Signature type, Through through, ClassModel declaredBy,
+                                           Map<String, Signature> given) {
             Set<String> out = new LinkedHashSet<>();
-            collect(type, through, declaredBy, out);
+            collect(type, through, declaredBy, given, out);
             return out;
         }
 
         private static void collect(Signature type, Through through, ClassModel declaredBy,
-                                    Set<String> into) {
+                                    Map<String, Signature> given, Set<String> into) {
             switch (type) {
                 case Signature.BaseTypeSig _ -> { }
-                case Signature.ArrayTypeSig array -> {
-                    if (through == Through.ANYTHING) {
-                        collect(array.componentSignature(), through, declaredBy, into);
-                    }
-                }
-                // Through the bound its declaration gives it. What a variable is instantiated with
-                // is settled where the state is built and is not what is being asked: the question
-                // is whether the state can hold a rule of its own, and a variable bounded by one
-                // says so wherever it is instantiated.
+                case Signature.ArrayTypeSig array ->
+                        collect(array.componentSignature(), through, declaredBy, given, into);
+                // What was handed in first, and the bound its declaration gives it after. A bound
+                // says what may be handed to a variable and an argument says what was, and both
+                // answer the question this asks: whether the state can hold a rule of its own.
+                // Which of the two is present depends on where the field was written, so both are
+                // read and neither stands in for the other.
                 case Signature.TypeVarSig variable -> {
+                    Signature handedIn = given.get(variable.identifier());
+                    if (handedIn != null) {
+                        collect(handedIn, through, declaredBy, given, into);
+                    }
                     for (Signature.TypeParam declared
                             : WhatASignatureReaches.typeParametersOf(declaredBy)) {
                         if (!declared.identifier().equals(variable.identifier())) {
                             continue;
                         }
-                        declared.classBound()
-                                .ifPresent(each -> collect(each, through, declaredBy, into));
+                        declared.classBound().ifPresent(
+                                each -> collect(each, through, declaredBy, given, into));
                         for (Signature.RefTypeSig each : declared.interfaceBounds()) {
-                            collect(each, through, declaredBy, into);
+                            collect(each, through, declaredBy, given, into);
                         }
                     }
                 }
@@ -442,10 +574,14 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
                     }
                     for (Signature.TypeArg argument : named.typeArgs()) {
                         if (argument instanceof Signature.TypeArg.Bounded bounded) {
-                            collect(bounded.boundType(), through, declaredBy, into);
+                            collect(bounded.boundType(), through, declaredBy, given, into);
                         }
                     }
                 }
+                // Not something a field is written as. What a class keeps is a field's type, and
+                // the shapes below are the ones a field's type has ({@link
+                // #everyShapeAFieldsTypeHas}).
+                default -> { }
             }
         }
 
