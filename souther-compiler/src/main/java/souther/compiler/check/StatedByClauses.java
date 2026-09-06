@@ -563,10 +563,6 @@ sealed interface StatedByClauses {
             };
         }
 
-        private StatedByClauses both(StatedByClauses one, StatedByClauses other) {
-            return new Both(one, other);
-        }
-
         /**
          * What was read, remembering that it is what {@code e} came to.
          *
