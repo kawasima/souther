@@ -95,10 +95,9 @@ class ANameIsReadOnceHoweverTheRuleSpelledItTest {
         TermPath root = TermPath.of("h");
         souther.compiler.check.RuleRef.Invariant rule = someRule(measuredIn(TWO_WAYS));
         PlacementSeed values = PlacementSeed.of(root,
-                new Owed.AdmittedValues(RuleKey.of("name")), rule, someCitation(rule));
+                new Owed.AdmittedValues(RuleKey.of("name")), someCitation(rule));
         PlacementSeed line = PlacementSeed.of(root,
-                new Owed.Boundary(NumberAt.valueOf(RuleKey.of("name"))), rule,
-                someCitation(rule));
+                new Owed.Boundary(NumberAt.valueOf(RuleKey.of("name"))), someCitation(rule));
 
         assertEquals(values.address(), line.address());
         assertEquals(new PlacementSeed.Placed.TheValuesThere(), values.placed());
@@ -210,14 +209,14 @@ class ANameIsReadOnceHoweverTheRuleSpelledItTest {
      *  it at. */
     private static PlacementSeed seedOf(TermPath root, NumericTerm term,
                                         souther.compiler.check.RuleRef.Invariant rule) {
-        return PlacementSeed.of(RuleAddress.of(root, term.subjectPath()), term, rule,
+        return PlacementSeed.of(RuleAddress.of(root, term.subjectPath()), term,
                 someCitation(rule));
     }
 
     /** How a report would send a reader to it. */
     private static souther.compiler.check.RuleCitation someCitation(
             souther.compiler.check.RuleRef.Invariant rule) {
-        return souther.compiler.check.RuleCitation.named(rule);
+        return new souther.compiler.check.RuleCitation.Named(rule);
     }
 
     private static InputDomain reading(String source, String behavior) {

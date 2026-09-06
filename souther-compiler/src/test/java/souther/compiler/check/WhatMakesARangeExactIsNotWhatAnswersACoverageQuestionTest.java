@@ -328,7 +328,8 @@ class WhatMakesARangeExactIsNotWhatAnswersACoverageQuestionTest {
             FieldDomains domains = read(only(written));
             assertEquals(List.of("invariant Length (nonfive)"),
                     domains.projection().causes().stream()
-                            .map(cause -> ((ProjectionEvidence.Cause.Lossy) cause).rule().named())
+                            .map(cause -> ((RuleRef.Named)
+                                    ((ProjectionEvidence.Cause.Lossy) cause).rule()).citedName())
                             .distinct().toList(),
                     "written as `" + written.replace('\n', ';') + "`");
         }
@@ -399,7 +400,7 @@ class WhatMakesARangeExactIsNotWhatAnswersACoverageQuestionTest {
                 .filter(rule -> rule instanceof RuleRef.Invariant invariant
                         && invariant.clause().name().map(ClauseName::value)
                                 .filter(name::equals).isPresent())
-                .map(rule -> ((RuleRef.Invariant) rule).clause())
+                .map(RuleRef.Invariant::clause)
                 .findFirst().orElseThrow(() -> new AssertionError("no clause called `" + name + "`"));
     }
 }

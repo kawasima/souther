@@ -9,24 +9,65 @@ import java.util.Optional;
 /**
  * How a document sends a reader to a rule, as the things a document's words for it are made of.
  *
- * <p>The projection of a {@link RuleCitation} onto what varies in the sentence a report writes:
- * the name where the author gave one, and otherwise whether the code is here or reached from here,
- * where it is, and what it is reached by. Everything else a citation carries is how this compiler
- * came to be holding it.
+ * <p>The projection of a {@link RuleCitation} onto what varies in the sentence a report writes: the
+ * name where the author gave one, and otherwise what the rule is, whether the code is here or
+ * reached from here, where it is, and what it is reached by. Everything else a citation carries is
+ * how this compiler came to be holding it.
  *
  * <p><b>Made so that two handles a document writes alike are one value.</b> Choosing one of several
  * takes a comparison, and a comparison over what a citation is rather than over what is written of
  * it can come out equal for two handles a reader can tell apart — and then which is written is
- * whichever the set of them happened to iterate first, which is the thing this whole change exists
- * to have removed.
+ * whichever the set of them happened to iterate first, which is the thing this whole type exists to
+ * have removed.
  *
- * <p>So this and never {@link RuleCitation} is what the order is over. Two citations that project
- * here alike are two a reader cannot tell apart, and which of those a document writes is not a
- * question about the document.
+ * <p>So this and never {@link RuleCitation} is what the order is over, and what it must keep is one
+ * property: two of these that are equal are two a document writes the same sentence for. A rule's
+ * kind is in the sentence, so it is here — left out, a comparison and a predicate written at one
+ * place would come to one value and be printed two ways.
+ *
+ * <p>Three and not one with a field that is sometimes absent, because they are three kinds of
+ * evidence. A name is what the author called the rule; a place is where this document's own source
+ * has it; and a reach is a place in code out of sight together with what reaches it, which is what
+ * makes the place mean something. Read back out of an absent field, the third would be the second
+ * with something extra, and every consumer would rebuild the distinction from the absence.
  */
-public record PublishedRuleHandle(Optional<String> name, Where where, Place at,
-                                  Optional<String> reachedBy)
-        implements Comparable<PublishedRuleHandle> {
+public sealed interface PublishedRuleHandle extends Comparable<PublishedRuleHandle> {
+
+    /** The author gave it a name, and that is what a reader is told. */
+    record Named(String name) implements PublishedRuleHandle {
+
+        public Named {
+            if (name == null || name.isEmpty()) {
+                throw new IllegalArgumentException("a rule called nothing is reached by where it is");
+            }
+        }
+    }
+
+    /** It has no name and is written where a reader can be sent, so what is said is what it is and
+     *  where. */
+    record Written(String kind, Place at) implements PublishedRuleHandle {
+
+        public Written {
+            if (kind == null || kind.isEmpty() || at == null) {
+                throw new IllegalArgumentException("a rule with no name is said as what it is and"
+                        + " where: " + kind + " at " + at);
+            }
+        }
+    }
+
+    /** It has no name and the code is out of sight, so what is said is what it is, where it came
+     *  from, and what reaches it. */
+    record Reached(String kind, Place at, String reachedBy) implements PublishedRuleHandle {
+
+        public Reached {
+            if (kind == null || kind.isEmpty() || at == null
+                    || reachedBy == null || reachedBy.isEmpty()) {
+                throw new IllegalArgumentException("code out of sight is said as what it is, where"
+                        + " it came from and what reaches it: " + kind + " at " + at + " by "
+                        + reachedBy);
+            }
+        }
+    }
 
     /**
      * Where a report says the rule is, as it says it.
@@ -40,7 +81,7 @@ public record PublishedRuleHandle(Optional<String> name, Where where, Place at,
      * at different lines of an unnamed text came out as one value — and the choice between them
      * fell back to whichever the set of them iterated first.
      */
-    public sealed interface Place extends Comparable<Place> {
+    sealed interface Place extends Comparable<Place> {
 
         /** In a file this compile holds, so a reader can be sent to it. */
         record InSource(PublishedAt at) implements Place {}
@@ -81,38 +122,14 @@ public record PublishedRuleHandle(Optional<String> name, Where where, Place at,
         }
     }
 
-    /** Which of the three kinds of sentence a report writes for a rule. */
-    public enum Where {
-
-        /** The author gave it a name, and that is what a reader is told. */
-        NAMED,
-
-        /** It has no name and is written where a reader can be sent. */
-        WRITTEN,
-
-        /** It has no name and the code is out of sight, so what is said is where it came from. */
-        ELSEWHERE
-    }
-
-    public PublishedRuleHandle {
-        if (where == null || at == null) {
-            throw new IllegalArgumentException("a rule is reached one of three ways");
-        }
-        name = name == null ? Optional.empty() : name;
-        reachedBy = reachedBy == null ? Optional.empty() : reachedBy;
-    }
-
     /** How a document would write {@code cited}. */
-    public static PublishedRuleHandle of(RuleCitation cited) {
+    static PublishedRuleHandle of(RuleCitation cited) {
         return switch (cited) {
-            case RuleCitation.Named it ->
-                    new PublishedRuleHandle(Optional.of(it.name()), Where.NAMED,
-                            new Place.Nowhere(), Optional.empty());
-            case RuleCitation.WrittenAt it -> new PublishedRuleHandle(Optional.empty(),
-                    it.at() instanceof Citation.Elsewhere ? Where.ELSEWHERE : Where.WRITTEN,
-                    placeOf(it.at()),
-                    it.at() instanceof Citation.Elsewhere out
-                            ? Optional.of(out.provenance().reachedBy()) : Optional.empty());
+            case RuleCitation.Named it -> new Named(it.rule().citedName());
+            case RuleCitation.WrittenAt it -> it.at() instanceof Citation.Elsewhere out
+                    ? new Reached(it.rule().whatItIs(), placeOf(it.at()),
+                            out.provenance().reachedBy())
+                    : new Written(it.rule().whatItIs(), placeOf(it.at()));
         };
     }
 
@@ -145,36 +162,49 @@ public record PublishedRuleHandle(Optional<String> name, Where where, Place at,
 
     /**
      * Which of two a document writes first: a name the author gave before a place they did not,
-     * a place before code out of sight, and two of one kind by where they are and what they say.
+     * a place before code out of sight, and two of one kind by what they say and where they are.
      *
      * <p>A rank and not a ranking: what it is for is that a run choosing between the same two
      * chooses the same way, and a reader given a name has the word the model uses where a reader
      * given a place has what there is instead.
+     *
+     * <p>Over every part of each kind, so that this is zero for exactly the pairs {@code equals} is
+     * true of. Two that a document writes alike are one value and either may be written; two it
+     * writes apart are ordered, and which comes first does not depend on the order a set of them
+     * came out in.
      */
     @Override
-    public int compareTo(PublishedRuleHandle other) {
-        int kind = Integer.compare(rank(where), rank(other.where));
+    default int compareTo(PublishedRuleHandle other) {
+        int kind = Integer.compare(rank(this), rank(other));
         if (kind != 0) {
             return kind;
         }
-        int named = name.orElse("").compareTo(other.name.orElse(""));
-        if (named != 0) {
-            return named;
-        }
-        int reached = reachedBy.orElse("").compareTo(other.reachedBy.orElse(""));
-        if (reached != 0) {
-            return reached;
-        }
-        return at.compareTo(other.at);
+        return switch (this) {
+            case Named it -> it.name().compareTo(((Named) other).name());
+            case Written it -> {
+                Written also = (Written) other;
+                int word = it.kind().compareTo(also.kind());
+                yield word != 0 ? word : it.at().compareTo(also.at());
+            }
+            case Reached it -> {
+                Reached also = (Reached) other;
+                int word = it.kind().compareTo(also.kind());
+                if (word != 0) {
+                    yield word;
+                }
+                int by = it.reachedBy().compareTo(also.reachedBy());
+                yield by != 0 ? by : it.at().compareTo(also.at());
+            }
+        };
     }
 
     /** Which of the three kinds of sentence comes first, written out rather than read off how the
-     *  constants happen to be declared. */
-    private static int rank(Where where) {
-        return switch (where) {
-            case NAMED -> 0;
-            case WRITTEN -> 1;
-            case ELSEWHERE -> 2;
+     *  arms happen to be declared. */
+    private static int rank(PublishedRuleHandle handle) {
+        return switch (handle) {
+            case Named _ -> 0;
+            case Written _ -> 1;
+            case Reached _ -> 2;
         };
     }
 }

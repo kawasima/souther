@@ -323,16 +323,16 @@ public final class EnsuresThresholds {
             return;
         }
         souther.compiler.check.RuleCitation cited =
-                souther.compiler.check.RuleCitation.named(rule);
+                new souther.compiler.check.RuleCitation.Named(rule);
         // And what each place is left with, which for a clause of an `ensures` turns on whether its
         // reading finished. Nothing works out what such a clause raises about an input — what it
         // states is a relation the behavior is held to — so where the reading stopped there is
         // nothing that was determined.
         left.forEach((named, why) -> {
             if (why instanceof BlockReason.RuleReadingStopped stopped) {
-                withoutALine.unclassified(rule, cited, named, stopped);
+                withoutALine.unclassified(cited, named, stopped);
             } else {
-                withoutALine.add(rule, cited, named, why);
+                withoutALine.add(cited, named, why);
             }
         });
     }

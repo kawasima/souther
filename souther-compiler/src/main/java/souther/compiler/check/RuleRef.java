@@ -30,7 +30,89 @@ import souther.compiler.types.WrittenOwner;
  * those are answers about a boundary, they are the same rule's whichever way they come out, and a
  * key holding them files one rule under several.
  */
-public sealed interface RuleRef {
+public sealed interface RuleRef permits RuleRef.Named, RuleRef.Written {
+
+    /**
+     * A rule the author wrote a name beside, which is how a reader finds it.
+     *
+     * <p>Which of the two ways a rule is found is a property of the kind of rule it is, and this is
+     * that property made a type. A clause of an invariant and a clause of an {@code ensures} always
+     * have something the author called them; a comparison and a predicate never do. Left implicit,
+     * the division was a thing every caller had to know and none could be held to — a citation was
+     * free to be built the wrong way round for the rule it was of, and what refused it was a
+     * {@code switch} throwing at whichever build first wrote such a rule.
+     */
+    sealed interface Named extends RuleRef permits Invariant, Ensures {
+
+        /**
+         * What a report calls this rule, which is the name the author gave it.
+         *
+         * <p>A name and not a place. A diagnostic is built where no reader is — nothing there knows
+         * what to call a source — so a place written into its text would be a line and a column with
+         * no file. A rule with no name is not here at all: it is found by where it is written, which
+         * is {@link Written}'s side of the seal.
+         *
+         * <p>The words of both kinds together, so a reader holding one can be held to them without
+         * reading whoever writes the sentence. No {@code default} arm: a kind added to this seal and
+         * left without words stops the compile.
+         *
+         * <p>English, like every other word this writes. What a diagnostic says instead is chosen in
+         * the reader's language, from the same rule.
+         */
+        default String citedName() {
+            return switch (this) {
+                // What the author called it, and where they called it nothing, which of the
+                // declaration's clauses it is — counted from one, as somebody reading the
+                // declaration counts them. Two unnamed clauses of one declaration are two rules,
+                // and rendered by the declaration alone they are one word twice.
+                case Invariant i -> "invariant " + i.clause().id().declaredOn().name()
+                        + i.clause().name().map(n -> " (" + n + ")")
+                                .orElse(" #" + (i.clause().id().ordinal() + 1));
+                // The behavior, and the words that tell one of its rules from another. A clause
+                // belongs to a behavior, so there is always something to call it; only a clause
+                // stating one rule over every answer has neither a name nor a case, and the
+                // behavior's own name is then the whole of it.
+                case Ensures e -> "ensures " + e.rule().behavior().name()
+                        + (e.clause().isEmpty() ? "" : " (" + e.clause() + ")");
+            };
+        }
+    }
+
+    /**
+     * A rule the author wrote rather than named, which is found by where it is written.
+     *
+     * <p>The other half of the seal, and what tells the two halves apart is what a reader is given
+     * to act on. Nothing here has a name to be looked up by, so a report writes what the rule is
+     * and where it stands, and the place is one no reader can invent.
+     */
+    sealed interface Written extends RuleRef permits Comparison, Predicate {
+
+        /**
+         * What a report calls a rule that has no name, which is one word per kind of them.
+         *
+         * <p>A word about the rule and not about the construct it stands in. A comparison may stand
+         * in the condition of an {@code if} or a {@code guard}, be given a name a line above the
+         * fork that tests it, or be what the behavior answers with, and it is one rule in all of
+         * those — so a word for the thing around it is a word the rule can lose.
+         *
+         * <p>One word per kind and not one word over the seal, because the kind is what a reader
+         * acts on. Sent to a comparison they are sent to a line on the order the values are counted
+         * on and owed a row either side of it; sent to a predicate they are sent to a set told from
+         * the rest, where there is no line and no side. That division is the one
+         * {@link souther.compiler.partition.RuleEvidenceOrigin} is split along.
+         *
+         * <p>The words of both kinds together, and no {@code default} arm, for the reason
+         * {@link Named#citedName} gives.
+         *
+         * <p>English, like every other word this writes.
+         */
+        default String whatItIs() {
+            return switch (this) {
+                case Comparison _ -> "comparison";
+                case Predicate _ -> "predicate";
+            };
+        }
+    }
 
     /**
      * A clause of a {@code data}'s invariant.
@@ -38,7 +120,7 @@ public sealed interface RuleRef {
      * <p>The clause and not the declaration it is on. Two clauses of one declaration are two rules,
      * and a report owes a line to each ({@link Clause}).
      */
-    record Invariant(Clause.Ref clause) implements RuleRef {
+    record Invariant(Clause.Ref clause) implements Named {
 
         public Invariant {
             if (clause == null) {
@@ -68,7 +150,7 @@ public sealed interface RuleRef {
      *                 comparison from another wherever it is met
      */
     record Comparison(String behavior, SourceConstructOrigin origin)
-            implements RuleRef {
+            implements Written {
 
         public Comparison {
             if (behavior == null || origin == null) {
@@ -112,7 +194,7 @@ public sealed interface RuleRef {
      *                 from another wherever it is met
      */
     record Predicate(String behavior, SourceConstructOrigin origin)
-            implements RuleRef {
+            implements Written {
 
         public Predicate {
             if (behavior == null || origin == null) {
@@ -167,11 +249,14 @@ public sealed interface RuleRef {
      *
      * @param rule   which rule of which clause, which is what tells one from another. Two arms of
      *               one clause may name the same case, so the author's words for it are not enough
-     * @param clause what a report calls it: the name the author gave the clause, or the case the arm
+     * @param clause the author's words for it: the name they gave the clause, or the case the arm
      *               names where they gave none, or empty where the clause states one rule over every
-     *               answer
+     *               answer. Part of the identity as well as the source of
+     *               {@link Named#citedName}'s words for this rule — two of these agreeing on
+     *               {@code rule} and differing here are two values and not one, so this is not
+     *               presentation a reader may drop from the equality
      */
-    record Ensures(BehaviorContract.RuleId rule, String clause) implements RuleRef {
+    record Ensures(BehaviorContract.RuleId rule, String clause) implements Named {
 
         public Ensures {
             if (rule == null) {
@@ -185,41 +270,5 @@ public sealed interface RuleRef {
                         "a clause the author named nothing is named by nothing, not by null");
             }
         }
-    }
-
-    /**
-     * What a report calls this rule.
-     *
-     * <p>A name and not a place. A diagnostic is built where no reader is — nothing there knows what
-     * to call a source — so a place written into its text would be a line and a column with no file.
-     * Where the rule is a comparison, the place is pointed at instead, by whoever holds the reading
-     * it was met in.
-     *
-     * <p>English, like every other word this writes. What a diagnostic says instead is chosen in the
-     * reader's language, from the same rule.
-     */
-    default String named() {
-        return switch (this) {
-            // What the author called it, and where they called it nothing, which of the
-            // declaration's clauses it is — counted from one, as somebody reading the declaration
-            // counts them. Two unnamed clauses of one declaration are two rules, and rendered by the
-            // declaration alone they are one word twice.
-            case Invariant i -> "invariant " + i.clause().id().declaredOn().name()
-                    + i.clause().name().map(n -> " (" + n + ")")
-                            .orElse(" #" + (i.clause().id().ordinal() + 1));
-            // The behavior, and the words that tell one of its rules from another. A clause belongs
-            // to a behavior, so there is always something to call it; only a clause stating one rule
-            // over every answer has neither a name nor a case, and the behavior's own name is then
-            // the whole of it.
-            case Ensures e -> "ensures " + e.rule().behavior().name()
-                    + (e.clause().isEmpty() ? "" : " (" + e.clause() + ")");
-            // A comparison is written rather than named, so this is what it is and not what the
-            // author called it. Never rendered to a reader on its own: a rule with no name gets a
-            // sentence of its own, and the catalog holds those words in every language. What reaches
-            // this is a caller that wanted something to call the rule anyway.
-            case Comparison _ -> "the comparison";
-            // A predicate is applied rather than named, so this is what it is, for the reason above.
-            case Predicate _ -> "the predicate";
-        };
     }
 }

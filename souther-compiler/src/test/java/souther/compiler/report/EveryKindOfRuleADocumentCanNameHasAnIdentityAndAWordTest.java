@@ -78,11 +78,30 @@ class EveryKindOfRuleADocumentCanNameHasAnIdentityAndAWordTest {
     @Test
     void thePopulationIsEveryKindTheSealHas() {
         assertEquals(
-                Set.copyOf(RuleRef.class.getPermittedSubclasses() == null ? List.of()
-                        : List.of(RuleRef.class.getPermittedSubclasses())),
+                kindsOf(RuleRef.class),
                 everyKind().stream().map(each -> (Class<?>) each.getClass())
                         .collect(Collectors.toSet()),
                 "one of each kind of rule the seal has, and no other");
+    }
+
+    /**
+     * Every kind of rule the seal names, which are its leaves.
+     *
+     * <p>Walked to the leaves rather than read off what {@code RuleRef} permits directly. The seal
+     * divides first by how a reader finds a rule and then by which kind of rule it is, so its own
+     * permits are the two halves and none of them is a kind a document names. Read one level deep,
+     * this population would be two things nobody can build and no kind at all.
+     */
+    private static Set<Class<?>> kindsOf(Class<?> sealed) {
+        Class<?>[] permits = sealed.getPermittedSubclasses();
+        if (permits == null || permits.length == 0) {
+            return Set.of(sealed);
+        }
+        Set<Class<?>> out = new java.util.LinkedHashSet<>();
+        for (Class<?> each : permits) {
+            out.addAll(kindsOf(each));
+        }
+        return out;
     }
 
     @Test

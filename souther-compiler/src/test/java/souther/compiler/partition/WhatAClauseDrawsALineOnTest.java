@@ -99,7 +99,7 @@ class WhatAClauseDrawsALineOnTest {
                     ensures asked = NotFound -> id.value > 0
                 """, "findTodo");
 
-        assertEquals("ensures findTodo (asked)", clauses.thresholds().get(0).origin().named());
+        assertEquals("ensures findTodo (asked)", clauses.thresholds().get(0).origin().saidWithoutAPlace());
     }
 
     /** Where the author named no clause, the case the arm is about is what is left to say. */
@@ -116,7 +116,7 @@ class WhatAClauseDrawsALineOnTest {
                     ensures NotFound -> id.value > 0
                 """, "findTodo");
 
-        assertEquals("ensures findTodo (NotFound)", clauses.thresholds().get(0).origin().named());
+        assertEquals("ensures findTodo (NotFound)", clauses.thresholds().get(0).origin().saidWithoutAPlace());
     }
 
     /**

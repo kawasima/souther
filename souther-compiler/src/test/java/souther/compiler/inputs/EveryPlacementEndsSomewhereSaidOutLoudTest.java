@@ -75,7 +75,7 @@ class EveryPlacementEndsSomewhereSaidOutLoudTest {
                 new RuleAddress(TermPath.of("q"), RuleKey.of("limit")),
                 new PlacementSeed.Placed.ANumberOfIt(
                         new NumberAt.OfWhatNumber.OfItsOwnValue()),
-                aRule(read), someCitation(aRule(read))));
+                someCitation(aRule(read))));
 
         assertEquals(List.of("q@A.limit", "q@B.limit"),
                 filedAt(filing));
@@ -94,7 +94,7 @@ class EveryPlacementEndsSomewhereSaidOutLoudTest {
         InputDomain read = reading(SHARED, "read");
         PlacementFiling filing = read.file(new PlacementSeed(
                 new RuleAddress(TermPath.of("h"), new RuleKey(List.of("q", "limit"))),
-                new PlacementSeed.Placed.TheValuesThere(), aRule(read), someCitation(aRule(read))));
+                new PlacementSeed.Placed.TheValuesThere(), someCitation(aRule(read))));
 
         assertEquals(List.of("h.q@A.limit", "h.q@B.limit"),
                 filedAt(filing));
@@ -113,7 +113,7 @@ class EveryPlacementEndsSomewhereSaidOutLoudTest {
         // returns to `Chain`, so the name gets that far and no further.
         PlacementFiling filing = read.file(new PlacementSeed(
                 new RuleAddress(pathOf(read, "c@Cons"), new RuleKey(List.of("tail", "head"))),
-                new PlacementSeed.Placed.TheValuesThere(), aRule(read), someCitation(aRule(read))));
+                new PlacementSeed.Placed.TheValuesThere(), someCitation(aRule(read))));
 
         assertEquals(List.of(), filedAt(filing));
         assertTrue(filing.anythingUnresolved(), "and nothing else stands in its place");
@@ -259,7 +259,7 @@ class EveryPlacementEndsSomewhereSaidOutLoudTest {
     /** How a report would send a reader to it. */
     private static souther.compiler.check.RuleCitation someCitation(
             souther.compiler.check.RuleRef.Invariant rule) {
-        return souther.compiler.check.RuleCitation.named(rule);
+        return new souther.compiler.check.RuleCitation.Named(rule);
     }
 
     private static InputDomain reading(String source, String behavior) {

@@ -509,10 +509,10 @@ public final class GuardThresholds {
         // Whose body it is, from the name the catalog issued. Taken from a caller beside it, the
         // rule this reports and the comparison it is read off would be free to be of two behaviors,
         // and the occurrence being one this plan holds would not refuse it.
-        RuleRef.Comparison rule =
-                new RuleRef.Comparison(comparison.which().behavior(), comparison.origin());
         souther.compiler.check.RuleCitation cited =
-                new souther.compiler.check.RuleCitation.WrittenAt(comparison.at());
+                new souther.compiler.check.RuleCitation.WrittenAt(
+                        new RuleRef.Comparison(comparison.which().behavior(), comparison.origin()),
+                        comparison.at());
         // What each place is left with, and which places there are, are the assessment's one
         // answer. A rule that was read is filed at its quantity's coordinates and says one thing
         // there, because the quantity is one subject; a reading that stopped has none, and each
@@ -523,9 +523,9 @@ public final class GuardThresholds {
         // reading stopped there is nothing that was determined and nothing that could have been.
         read.whatEachPlaceIsLeftWith().forEach((at, why) -> {
             if (why instanceof BlockReason.RuleReadingStopped stopped) {
-                out.unclassified(rule, cited, at, stopped);
+                out.unclassified(cited, at, stopped);
             } else {
-                out.add(rule, cited, at, why);
+                out.add(cited, at, why);
             }
         });
     }
@@ -539,9 +539,9 @@ public final class GuardThresholds {
         // and it is required rather than looked up leniently because only an admitted reading
         // reaches here and the policy admits nothing the plan does not number.
         return new LineOrigin.ComparisonOrigin(
-                new RuleRef.Comparison(each.which().behavior(), each.origin()),
                 new LineOrigin.ComparisonOrigin.Read(each.which(),
-                        new souther.compiler.check.RuleCitation.WrittenAt(each.at()),
+                        new RuleRef.Comparison(each.which().behavior(), each.origin()),
+                        each.at(),
                         plan.requireEmissionSiteOf(each.which())),
                 new LineFacts(cutting.claim()));
     }

@@ -613,8 +613,7 @@ public final class Partitions {
                 // Read, and tells none of the position's values from the others. Reported, and the
                 // rules beside it divide the position exactly as they would have without it.
                 case TOLD_NOTHING_APART -> {
-                    found.add(RuleWithoutALine.of(each.what().by().rule(),
-                            each.what().by().cited(),
+                    found.add(RuleWithoutALine.of(each.what().by().cited(),
                             new FilingCoordinate.AtPosition(term.position()), each.why()));
                     account.disposedOf(each.what(),
                             new EvidenceAccount.Disposition.TheRuleDividedNothing(term));
@@ -670,8 +669,7 @@ public final class Partitions {
         // finding kept here would be one nobody reads.
         if (made.why() != null && blocked.isEmpty()) {
             RuleEvidence.statementsIn(answered.notComposed())
-                    .forEach(each -> found.add(RuleWithoutALine.of(each.origin().rule(),
-                            each.origin().cited(),
+                    .forEach(each -> found.add(RuleWithoutALine.of(each.origin().cited(),
                             new FilingCoordinate.AtPosition(term.position()), made.why())));
         }
         // Said here because this is where they were asked. A blocker carried in and never reached

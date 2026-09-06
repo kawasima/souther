@@ -1576,13 +1576,13 @@ public final class InputDomain {
             // one rule — each rule chose a number for itself, and this reading answers for the
             // position.
             FilingCoordinate at = filedAt(path, each.at(), type, source);
-            RuleCitation cited = RuleCitation.named(each.from());
+            RuleCitation cited = new RuleCitation.Named(each.from());
             switch (measured) {
                 // No number answers for the position, so none of these ends has anywhere to go —
                 // the ones the choice was between and the ones that arrived at a position already
                 // undecided alike. Which values may stand there is what the rules say, and nothing
                 // about the choice of number touches it.
-                case MeasuredCoordinate.Undetermined _ -> out.boundaryUndetermined(each.from(),
+                case MeasuredCoordinate.Undetermined _ -> out.boundaryUndetermined(
                         cited, at, new BlockReason.CompetingCoordinates());
                 case MeasuredCoordinate.At it -> {
                     if (it.coordinate().equals(each.at().of())) {
@@ -1591,8 +1591,7 @@ public final class InputDomain {
                         // Read to the end, at a number this position is not measured at. Nothing is
                         // undecided about it and no question stands: the rule says where a number
                         // of this place stops, and the position is divided along another.
-                        out.add(each.from(), cited, at,
-                                new BlockReason.RuleAboutAnotherCoordinate());
+                        out.add(cited, at, new BlockReason.RuleAboutAnotherCoordinate());
                     }
                 }
             }
@@ -1706,11 +1705,11 @@ public final class InputDomain {
             // time is stopped by whatever stopped each branch — so they are asked as the several
             // questions they are rather than one of them standing for the rest.
             each.at().why().forEach(why ->
-                    found.asked(StandingQuestion.BoundaryUndetermined.of(each.rule(), each.cited(),
+                    found.asked(StandingQuestion.BoundaryUndetermined.of(each.cited(),
                             FilingCoordinate.at(path), why)));
         }
         for (souther.compiler.check.RuleAccounting.Unanswered each : placed.unanswered(path)) {
-            out.add(StandingQuestion.Exact.of(each.rule(), each.cited(),
+            out.add(StandingQuestion.Exact.of(each.cited(),
                     switch (each.owed()) {
                         case souther.compiler.check.Owed.AdmittedValues _ ->
                                 new InputQuestion.AboutAPosition(path);
@@ -1759,8 +1758,7 @@ public final class InputDomain {
             // At the number that rule is about, which the rule itself says. Nothing is missing here
             // for the position to stand in for: a clause was read far enough to be about one number
             // or the other, and it is only the line that nothing came of.
-            out.add(each.from(),
-                    RuleCitation.named(each.from()),
+            out.add(new RuleCitation.Named(each.from()),
                     filedAt(path, each.at(), type, source),
                     each.why());
         }

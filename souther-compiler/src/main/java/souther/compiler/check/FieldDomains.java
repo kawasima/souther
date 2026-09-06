@@ -109,17 +109,17 @@ public final class FieldDomains {
      *  {@link #movedEnds}. */
     private volatile List<Placed> moved;
     /** What each clause reaching this value raises, keyed on the rule it is. */
-    private final Map<RuleRef, Required> raised;
+    private final Map<RuleRef.Invariant, Required> raised;
     /** The same per part of each clause. A reader that found one conjunct wanting names what that
      *  conjunct is about, and not what the conjunct written beside it raised. */
-    private final Map<RuleRef, Map<Core, Required>> raisedByPart;
+    private final Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart;
 
     /** What the reading answered for each boundary question it raised and left standing. */
     private final Map<BoundaryQuestion, BoundaryStanding> standing;
     /** Which readings took each clause in, as each of them said so. */
     private final ReadingEvidence took;
     /** The accounting, worked out once. Every name of a value asks the same question of it. */
-    private volatile Map<RuleRef, RuleAccounting> accounting;
+    private volatile Map<RuleRef.Invariant, RuleAccounting> accounting;
     /** Which declarations relate each coordinate to something else, and so could have moved where it
      * stops — see {@link #narrowedBy}. */
     private final Map<RuleKey, List<TypeSymbol.AtModule>> narrowers;
@@ -175,7 +175,7 @@ public final class FieldDomains {
     private final Map<RuleKey, Counted> countAt;
     /** What the reading that builds the bounds made of each part of each rule. Per part, because a
      *  rule is represented where every part of it is. */
-    private final Map<RuleRef, Map<Core, InvariantChecker.PartRead>> readBy;
+    private final Map<RuleRef.Invariant, Map<Core, InvariantChecker.PartRead>> readBy;
     /** How each atom's values are spaced, so that settling one afterwards states the same equality
      *  the reading would have stated for it. */
     private final Map<FactSubject, souther.compiler.numeric.Granularity> spacing;
@@ -189,8 +189,8 @@ public final class FieldDomains {
                          List<WithoutAnEnd> withoutAnEnd, List<AboutOneCoordinate> aboutOneCoordinate,
                          List<AboutOneCoordinate> aboutTheStrings,
                          PartsLeftOut withoutParts,
-                         Map<RuleRef, Required> raised,
-                         Map<RuleRef, Map<Core, Required>> raisedByPart,
+                         Map<RuleRef.Invariant, Required> raised,
+                         Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
                          Map<BoundaryQuestion, BoundaryStanding> standing, ReadingEvidence took,
                          Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
                          Map<RuleKey, Set<RulesMissed>> notGathered, Set<RuleKey> handedOn,
@@ -200,7 +200,7 @@ public final class FieldDomains {
                          Map<NumberAt<RuleKey>, Count> settled,
                          Set<RuleKey> unreadOfEveryValue,
                          Map<RuleKey, FactSubject> atomAt, Map<RuleKey, Counted> countAt,
-                         Map<RuleRef, Map<Core, InvariantChecker.PartRead>> readBy,
+                         Map<RuleRef.Invariant, Map<Core, InvariantChecker.PartRead>> readBy,
                          Map<FactSubject, souther.compiler.numeric.Granularity> spacing) {
         this.byName = byName;
         this.heldByName = heldByName;
@@ -867,7 +867,7 @@ public final class FieldDomains {
      * managed — the second is what a completeness written per reader amounts to, and it says the
      * model was read in full for exactly as long as nobody adds a reader.
      */
-    public Map<RuleRef, Required> required() {
+    public Map<RuleRef.Invariant, Required> required() {
         return raised;
     }
 
@@ -897,12 +897,12 @@ public final class FieldDomains {
      * first case and by the reading of values in the second — so a completeness read off either
      * reading alone reports a model that was read in full as one this compiler could not read.
      */
-    public Map<RuleRef, RuleAccounting> accounting() {
-        Map<RuleRef, RuleAccounting> had = accounting;
+    public Map<RuleRef.Invariant, RuleAccounting> accounting() {
+        Map<RuleRef.Invariant, RuleAccounting> had = accounting;
         if (had != null) {
             return had;
         }
-        Map<RuleRef, RuleAccounting> out = new LinkedHashMap<>();
+        Map<RuleRef.Invariant, RuleAccounting> out = new LinkedHashMap<>();
         raised.forEach((rule, required) ->
                 out.put(rule,
                         RuleAccounting.of(rule, required, owed -> answered(rule, owed))));
@@ -921,7 +921,7 @@ public final class FieldDomains {
      * here while the question was an obligation beside a subject and the pair admitted combinations
      * nothing raises.
      */
-    private RuleAccounting.Outcome answered(RuleRef rule, Owed owed) {
+    private RuleAccounting.Outcome answered(RuleRef.Invariant rule, Owed owed) {
         return switch (owed) {
             case Owed.AdmittedValues it -> admissionAnswered(rule, it.path());
             case Owed.Boundary it -> boundaryAnswered(rule, it.on());
@@ -949,7 +949,8 @@ public final class FieldDomains {
      * question's word depend on a table nobody had asked it of, and left every reader downstream
      * looking at a list where the model has one answer.
      */
-    private RuleAccounting.Outcome boundaryAnswered(RuleRef rule, NumberAt<RuleKey> where) {
+    private RuleAccounting.Outcome boundaryAnswered(RuleRef.Invariant rule,
+                                                    NumberAt<RuleKey> where) {
         BoundaryStanding said = rule instanceof RuleRef.Invariant invariant
                 ? standing.get(new BoundaryQuestion(invariant, where)) : null;
         return said == null
@@ -970,7 +971,7 @@ public final class FieldDomains {
      * clause beside it: {@code value >= 1} leaves the reading of values short at a name, and
      * {@code value == 7} written beside it was taken in whole.
      */
-    private RuleAccounting.Outcome admissionAnswered(RuleRef rule, RuleKey at) {
+    private RuleAccounting.Outcome admissionAnswered(RuleRef.Invariant rule, RuleKey at) {
         List<FactSubject> named = named(at);
         // A part of the rule nothing took in outranks everything else about it. An end placed by
         // one conjunct is not an account of the conjunct written beside it.
@@ -1017,7 +1018,8 @@ public final class FieldDomains {
      * <p>Both empty is the accounting coming apart. The rule was met by the walk that asks and by
      * nothing that reads, and neither the rule nor the position has a word for it.
      */
-    private RuleAccounting.Why stoppedBy(RuleRef rule, RuleKey at, List<FactSubject> named) {
+    private RuleAccounting.Why stoppedBy(RuleRef.Invariant rule, RuleKey at,
+                                         List<FactSubject> named) {
         // What a rule is answerable for, as the facts it is answerable for. Asked for the reasons
         // alone here, the written places they were decided at would be gone one call before the
         // account that names the rule, and two facts about two clauses would arrive as one.
@@ -1669,14 +1671,28 @@ public final class FieldDomains {
                 : "the algebra proved no rule of its own and this reading names none";
     }
 
+    /**
+     * A rule as a sort key, which is the author's word for it or what it is where they wrote none.
+     *
+     * <p>Spelled here because what it is for is here. Nobody is shown this: what a reader is sent to
+     * a rule by is a citation, which carries a place for the rules that have no name, and an order
+     * has no place to put one.
+     */
+    private static String orderOf(RuleRef rule) {
+        return switch (rule) {
+            case RuleRef.Named it -> it.citedName();
+            case RuleRef.Written it -> "the " + it.whatItIs();
+        };
+    }
+
     /** What a cause is filed under, so that two runs print them the same way round. */
     private static String orderOf(ProjectionEvidence.Cause cause) {
         return switch (cause) {
             case ProjectionEvidence.Cause.Unavailable it -> "1 " + it.path();
             case ProjectionEvidence.Cause.Unrepresented it ->
-                    "2 " + it.rule().named() + " " + it.path();
+                    "2 " + orderOf(it.rule()) + " " + it.path();
             case ProjectionEvidence.Cause.Lossy it ->
-                    "3 " + it.rule().named() + " " + it.atom() + " " + it.unstated();
+                    "3 " + orderOf(it.rule()) + " " + it.atom() + " " + it.unstated();
             case ProjectionEvidence.Cause.Rounded it -> "4 " + it.atom();
             case ProjectionEvidence.Cause.NothingIsLeft _ -> "5";
             case ProjectionEvidence.Cause.PositionsSpacedDifferently _ -> "6";

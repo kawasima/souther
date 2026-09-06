@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.ast.Hir;
 import souther.compiler.check.RuleReadingSource;
+import souther.compiler.check.RuleRef;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.CoverageObligation;
 import souther.compiler.check.Prepared;
@@ -111,7 +112,7 @@ class APositionSaysWhichOfItsRulesWentUnansweredTest {
         List<StandingQuestion> open = positionOf(ONE_RULE_UNANSWERED).unansweredQuestions();
 
         assertEquals(List.of("invariant Length (even)", "invariant Length (even)"),
-                open.stream().map(each -> each.rule().named()).toList(),
+                open.stream().map(each -> ((RuleRef.Named) each.rule()).citedName()).toList(),
                 "the clause the author wrote, as a report names it — and not the position it "
                         + "is about");
         StandingQuestion.Exact asked = open.stream()

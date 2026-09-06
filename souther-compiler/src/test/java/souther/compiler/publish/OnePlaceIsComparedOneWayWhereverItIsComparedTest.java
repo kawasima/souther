@@ -2,10 +2,17 @@ package souther.compiler.publish;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.check.Clause;
 import souther.compiler.check.RuleCitation;
+import souther.compiler.check.RuleRef;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.source.SourceId;
+import souther.compiler.types.SourceConstruct;
+import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.TypeKey;
+import souther.compiler.types.TypeSymbols;
+import souther.compiler.types.WrittenOwner;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,15 +37,30 @@ class OnePlaceIsComparedOneWayWhereverItIsComparedTest {
     private static final Citation EARLIER = Citation.of(pos(9, 1));
     private static final Citation LATER = Citation.of(pos(10, 1));
 
+    /** One rule with no name, so that what tells two handles of it apart is where each was
+     *  reached. */
+    private static final RuleRef.Comparison WRITTEN_RATHER_THAN_NAMED =
+            new RuleRef.Comparison("b", new SourceConstructOrigin(
+                    new WrittenOwner.Body("m", "b"), 0, 0, SourceConstruct.BINARY));
+
+    /** And one the author named, which is reached by that name from anywhere. */
+    private static final RuleRef.Invariant NAMED = new RuleRef.Invariant(new Clause.Ref(
+            new Clause.Id(TypeSymbols.declared(new TypeKey("m", "Amount")), 0),
+            Optional.empty()));
+
+    private static RuleCitation writtenAt(Citation at) {
+        return new RuleCitation.WrittenAt(WRITTEN_RATHER_THAN_NAMED, at);
+    }
+
     @Test
     void theHandleAndThePlaceAgreeAboutWhichOfTwoLinesComesFirst() {
         Optional<PublishedAt> place = PublicationOrders.placeFor(List.of(LATER, EARLIER));
         Optional<RuleCitation> handle = PublicationOrders.handleFor(List.of(
-                new RuleCitation.WrittenAt(LATER), new RuleCitation.WrittenAt(EARLIER)));
+                writtenAt(LATER), writtenAt(EARLIER)));
 
         assertEquals(Optional.of(9), place.map(PublishedAt::line),
                 "the place nearest the top of the file is the one a fact is written at");
-        assertEquals(Optional.of(new RuleCitation.WrittenAt(EARLIER)), handle,
+        assertEquals(Optional.of(writtenAt(EARLIER)), handle,
                 "and the handle at that same place is the one a rule is reached by");
     }
 
@@ -57,8 +79,8 @@ class OnePlaceIsComparedOneWayWhereverItIsComparedTest {
     void aHandleIsComparedByTheOrderOverPlaces() {
         assertEquals(PublicationOrders.placeFor(List.of(EARLIER, LATER)),
                 PublicationOrders.handleFor(List.of(
-                                new RuleCitation.WrittenAt(EARLIER),
-                                new RuleCitation.WrittenAt(LATER)))
+                                writtenAt(EARLIER),
+                                writtenAt(LATER)))
                         .map(each -> ((RuleCitation.WrittenAt) each).at())
                         .flatMap(PublishedAt::of),
                 "one order over places, asked twice");
@@ -74,8 +96,8 @@ class OnePlaceIsComparedOneWayWhereverItIsComparedTest {
      */
     @Test
     void twoRulesInATextThisCannotNameAreToldApartByWhereTheyAre() {
-        RuleCitation earlier = new RuleCitation.WrittenAt(Citation.of(new SourcePos(1, 1)));
-        RuleCitation later = new RuleCitation.WrittenAt(Citation.of(new SourcePos(2, 2)));
+        RuleCitation earlier = writtenAt(Citation.of(new SourcePos(1, 1)));
+        RuleCitation later = writtenAt(Citation.of(new SourcePos(2, 2)));
 
         assertEquals(PublicationOrders.handleFor(List.of(earlier, later)),
                 PublicationOrders.handleFor(List.of(later, earlier)),
@@ -87,8 +109,8 @@ class OnePlaceIsComparedOneWayWhereverItIsComparedTest {
     /** And a place a reader can be sent to comes before one nobody can. */
     @Test
     void aPlaceAReaderCanBeSentToComesBeforeOneNobodyCan() {
-        RuleCitation held = new RuleCitation.WrittenAt(EARLIER);
-        RuleCitation unnamed = new RuleCitation.WrittenAt(Citation.of(new SourcePos(1, 1)));
+        RuleCitation held = writtenAt(EARLIER);
+        RuleCitation unnamed = writtenAt(Citation.of(new SourcePos(1, 1)));
 
         assertEquals(Optional.of(held), PublicationOrders.handleFor(List.of(unnamed, held)),
                 "a reader sent to a file is better served than one sent to two numbers");
@@ -97,9 +119,9 @@ class OnePlaceIsComparedOneWayWhereverItIsComparedTest {
     /** A name the author gave comes before a place they did not. */
     @Test
     void aNameComesBeforeAPlace() {
-        assertEquals(Optional.of(new RuleCitation.Named("n")),
+        assertEquals(Optional.of(new RuleCitation.Named(NAMED)),
                 PublicationOrders.handleFor(List.of(
-                        new RuleCitation.WrittenAt(EARLIER), new RuleCitation.Named("n"))));
+                        writtenAt(EARLIER), new RuleCitation.Named(NAMED))));
     }
 
     private static SourcePos pos(int line, int column) {

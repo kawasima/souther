@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  */
 class WhatARuleRaisesIsAskedOfTheRuleTest {
 
-    private static Map<RuleRef, Required> raisedBy(String source, String type) {
+    private static Map<RuleRef.Invariant, Required> raisedBy(String source, String type) {
         Compilation compilation = Compilation.ofSource(source, "Main");
         compilation.answerEverything();
         String module = compilation.modules().get(0);
@@ -57,7 +57,7 @@ class WhatARuleRaisesIsAskedOfTheRuleTest {
                 ? invariant.clause().name().map(ClauseName::value) : java.util.Optional.empty();
     }
 
-    private static Required only(Map<RuleRef, Required> raised, String clause) {
+    private static Required only(Map<RuleRef.Invariant, Required> raised, String clause) {
         return raised.entrySet().stream()
                 .filter(e -> nameOf(e.getKey()).filter(clause::equals).isPresent())
                 .map(Map.Entry::getValue).findFirst()
@@ -74,7 +74,7 @@ class WhatARuleRaisesIsAskedOfTheRuleTest {
      */
     @Test
     void anOrderingBoundRaisesTheValuesAndTheLine() {
-        Map<RuleRef, Required> raised = raisedBy("""
+        Map<RuleRef.Invariant, Required> raised = raisedBy("""
                 module example.rooms
 
                 data Length = Int
@@ -183,7 +183,7 @@ class WhatARuleRaisesIsAskedOfTheRuleTest {
      */
     @Test
     void aRelationBetweenTwoPositionsRaisesNothing() {
-        Map<RuleRef, Required> raised = raisedBy("""
+        Map<RuleRef.Invariant, Required> raised = raisedBy("""
                 module example.booking
 
                 data Span = { startsAt: Int, endsAt: Int }
@@ -235,7 +235,7 @@ class WhatARuleRaisesIsAskedOfTheRuleTest {
      */
     @Test
     void aConjunctionRaisesWhatItsPartsRaiseTogether() {
-        Map<RuleRef, Required> raised = raisedBy("""
+        Map<RuleRef.Invariant, Required> raised = raisedBy("""
                 module example.booking
 
                 data Span = { startsAt: Int, endsAt: Int }

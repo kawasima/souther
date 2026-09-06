@@ -4182,7 +4182,7 @@ public final class Adequacy {
                 .nameOf(id.declaredLine().orElseThrow());
         // A clause whose end this could not read from the declaration has no form to print, and
         // the rule's own name is the whole of what there is to call the line.
-        return named == null ? id.named() : named;
+        return named == null ? id.saidWithoutAPlace() : named;
     }
 
     /** The declaration's own reading of its own rules, kept: it draws as many lines as its
@@ -4721,33 +4721,37 @@ public final class Adequacy {
                                 owed.debt().role().againstTheLine()
                                         ? new ExampleMessage.NoRowIsAtThePointOfTheBorderARuleDrew(
                                                 owed.debt().role().name(), owed.axis(),
-                                                owed.against(), owed.debt().id().named())
+                                                owed.against(), owed.debt().id().saidWithoutAPlace())
                                         : new ExampleMessage
                                                 .NoRowIsAtThePointAwayFromTheBorderARuleDrew(
                                                 owed.debt().role().name(), owed.axis(),
-                                                owed.against(), owed.debt().id().named());
+                                                owed.against(), owed.debt().id().saidWithoutAPlace());
                         // A body's line, owed once wherever it is read, so the sentence names no
                         // quantity: which of the four points, and which rule — by name where the
-                        // author gave it one, and as the construct where it is a comparison found
-                        // by where it is written. Writing where the point is takes a quantity and
-                        // a quantity is a reading's, so that is said under this, by the reading
-                        // whose word it is.
+                        // author gave it one, and as what the rule is where they gave none and it
+                        // is found by where it is written. Writing where the point is takes a
+                        // quantity and a quantity is a reading's, so that is said under this, by
+                        // the reading whose word it is.
                         case About.APointOfABorder(var point) -> switch (point.cited()) {
                             case souther.compiler.check.RuleCitation.Named named ->
                                     point.role().againstTheLine()
                                             ? new ExampleMessage.NoRowIsAtThePointOfTheLineARuleDrew(
-                                                    point.role().name(), named.name())
+                                                    point.role().name(),
+                                                    named.rule().citedName())
                                             : new ExampleMessage
                                                     .NoRowIsAtThePointAwayFromTheLineARuleDrew(
-                                                    point.role().name(), named.name());
-                            case souther.compiler.check.RuleCitation.WrittenAt _ ->
+                                                    point.role().name(),
+                                                    named.rule().citedName());
+                            case souther.compiler.check.RuleCitation.WrittenAt written ->
                                     point.role().againstTheLine()
                                             ? new ExampleMessage
                                                     .NoRowIsAtThePointOfTheLineAConstructDrew(
-                                                    point.role().name(), theComparison())
+                                                    point.role().name(),
+                                                    whatItIs(written.rule()))
                                             : new ExampleMessage
                                                     .NoRowIsAtThePointAwayFromTheLineAConstructDrew(
-                                                    point.role().name(), theComparison());
+                                                    point.role().name(),
+                                                    whatItIs(written.rule()));
                         };
                         case About.AnArmNoRowGoesThrough(var arm) ->
                                 new ExampleMessage.NoRowGoesThroughThatArm(
@@ -4808,16 +4812,16 @@ public final class Adequacy {
                     // the file the diagnostic is in; a label no longer takes its file from where it
                     // is shown, so what was left unsaid can be said.
                     if (point.cited()
-                            instanceof souther.compiler.check.RuleCitation.WrittenAt(var cited)) {
-                        switch (cited) {
+                            instanceof souther.compiler.check.RuleCitation.WrittenAt written) {
+                        switch (written.at()) {
                             case souther.compiler.diag.Citation.Written w ->
                                     built.secondary(souther.compiler.diag.Region.point(w.at()),
                                             new ExampleMessage.TheConstructThatDrawsTheLine(
-                                                    theComparison()));
+                                                    whatItIs(written.rule())));
                             case souther.compiler.diag.Citation.Reached r ->
                                     built.secondary(souther.compiler.diag.Region.point(r.at()),
                                             new ExampleMessage.TheConstructThatDrawsTheLine(
-                                                    theComparison()));
+                                                    whatItIs(written.rule())));
                             // Nowhere this compilation can put a marker. Where the guard is written
                             // out of sight the label says so instead; where it is in a text the
                             // caller handed over there is no declaration to name and nothing to say,
@@ -4826,7 +4830,7 @@ public final class Adequacy {
                             case souther.compiler.diag.Citation.Elsewhere e ->
                                     built.secondaryOutOfSight(e.provenance(),
                                             new ExampleMessage.TheConstructThatDrawsTheLine(
-                                                    theComparison()));
+                                                    whatItIs(written.rule())));
                             case souther.compiler.diag.Citation.Unplaced _ -> { }
                         }
                     }
@@ -4876,11 +4880,34 @@ public final class Adequacy {
             };
         }
 
-        /** What a sentence calls a rule that has no name, as a phrase the reader's language
-         *  supplies. One phrase, because a rule found by where it is written is a comparison —
-         *  which construct stands around it is a fact about the body and not about the rule. */
-        private static souther.compiler.diag.Localizable theComparison() {
-            return souther.compiler.diag.Localizable.of("construct.comparison");
+        /**
+         * What a sentence calls a rule that has no name, as a phrase the reader's language supplies.
+         *
+         * <p>One phrase per kind of such rule and not one over them, because a reader acts on the
+         * kind: sent to a comparison they are sent to a line and owed a row either side of it, and
+         * sent to a predicate they are sent to a set of values told from the rest. Which construct
+         * stands around either is a fact about the body and not about the rule, so no phrase here is
+         * a keyword.
+         *
+         * <p>Written out rather than built from the rule's own word, because these are catalog keys
+         * and the catalog holds them in every language. No {@code default}, so a kind of written
+         * rule added to the seal arrives here as a case with no phrase rather than as one quietly
+         * answered with its neighbour's.
+         *
+         * <p>What reaches this is a rule that drew a line, which today is a comparison: the sentence
+         * is about a line and a predicate draws none, so a border's rule is a comparison's
+         * ({@link souther.compiler.partition.LineOrigin}). The predicate phrase is here because the
+         * seal is total and not because a document writes one, and what holds the two words together
+         * for a document that does is asked where such a document is written.
+         */
+        private static souther.compiler.diag.Localizable whatItIs(
+                souther.compiler.check.RuleRef.Written rule) {
+            return switch (rule) {
+                case souther.compiler.check.RuleRef.Comparison _ ->
+                        souther.compiler.diag.Localizable.of("construct.comparison");
+                case souther.compiler.check.RuleRef.Predicate _ ->
+                        souther.compiler.diag.Localizable.of("construct.predicate");
+            };
         }
 
         /**

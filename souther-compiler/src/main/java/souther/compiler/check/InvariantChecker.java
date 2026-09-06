@@ -476,7 +476,7 @@ public final class InvariantChecker {
                   Map<RuleKey, FieldDomains.Counted> held, Reading reading, ReadingEvidence took,
                   boolean everyClauseRead, Map<RuleKey, Set<RulesMissed>> notGathered,
                   Set<RuleKey> unreadOfEveryValue, Set<RuleKey> handedOn,
-                  Map<RuleRef, Map<Core, PartRead>> readBy,
+                  Map<RuleRef.Invariant, Map<Core, PartRead>> readBy,
                   Map<FactSubject, souther.compiler.numeric.Granularity> spacing,
                   Map<RuleKey, ValueSet> admitted,
                   Map<RuleKey, List<UnreadReason>> unreadAt,
@@ -677,7 +677,7 @@ public final class InvariantChecker {
         // Per part, because a rule is represented where every part of it is: a conjunct the bounds
         // hold nothing of leaves the range wider than the rule however well the conjunct beside it
         // went, and a set unioned over the whole clause says the opposite.
-        Map<RuleRef, Map<Core, PartRead>> readBy = new LinkedHashMap<>();
+        Map<RuleRef.Invariant, Map<Core, PartRead>> readBy = new LinkedHashMap<>();
 
         Gathering gathering = new Gathering() {
 
@@ -814,8 +814,8 @@ public final class InvariantChecker {
         // the two went unanswered would turn on the order they were written in.
         Allowance<FactSubject> allowed =
                 policy.allowanceForAdmittedValues(c.answers.lending());
-        Map<RuleRef, Map<Core, ReadByClauses.OfAPart>> adoptedBy = new LinkedHashMap<>();
-        Map<RuleRef, ReadByClauses.OfARule> narrowedBy = new LinkedHashMap<>();
+        Map<RuleRef.Invariant, Map<Core, ReadByClauses.OfAPart>> adoptedBy = new LinkedHashMap<>();
+        Map<RuleRef.Invariant, ReadByClauses.OfARule> narrowedBy = new LinkedHashMap<>();
         // One reader for this value's positions, used over however many clauses reach it, and
         // the one that decides the choices in what they came to.
         StatedByClauses.Reading reader = StatedByClauses
@@ -1309,9 +1309,9 @@ public final class InvariantChecker {
      *                reaching the position, so a reader taking it for one rule's would lend a rule
      *                that narrows nothing whatever its neighbours narrowed
      */
-    record PartsRead(Map<RuleRef, Map<Core, PartRead>> read,
-                     Map<RuleRef, Map<Core, ReadByClauses.OfAPart>> account,
-                     Map<RuleRef, ReadByClauses.OfARule> byRule) {
+    record PartsRead(Map<RuleRef.Invariant, Map<Core, PartRead>> read,
+                     Map<RuleRef.Invariant, Map<Core, ReadByClauses.OfAPart>> account,
+                     Map<RuleRef.Invariant, ReadByClauses.OfARule> byRule) {
 
         /** What the reading that builds the bounds made of {@code part} of {@code rule}, or null
          *  where it read no such part — which is not the same as having read it and made nothing of
@@ -1454,8 +1454,8 @@ public final class InvariantChecker {
                    List<FieldDomains.AboutOneCoordinate> aboutOneCoordinate,
                    List<FieldDomains.AboutOneCoordinate> aboutTheStrings,
                    Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
-                   Map<RuleRef, Required> raised,
-                   Map<RuleRef, Map<Core, Required>> raisedByPart,
+                   Map<RuleRef.Invariant, Required> raised,
+                   Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
                    Map<FieldDomains.BoundaryQuestion, FieldDomains.BoundaryStanding> standing) {}
 
     private Reading directsIn(List<Written> stated, Denotations at,
@@ -1491,8 +1491,8 @@ public final class InvariantChecker {
         // put among them it would set every other conjunct about the number to be read again.
         List<FieldDomains.AboutOneCoordinate> aboutTheStrings = new ArrayList<>();
         Map<RuleKey, List<TypeSymbol.AtModule>> narrowers = new LinkedHashMap<>();
-        Map<RuleRef, Required> raised = new LinkedHashMap<>();
-        Map<RuleRef, Map<Core, Required>> raisedByPart = new LinkedHashMap<>();
+        Map<RuleRef.Invariant, Required> raised = new LinkedHashMap<>();
+        Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart = new LinkedHashMap<>();
         Map<FieldDomains.BoundaryQuestion, FieldDomains.BoundaryStanding> standing =
                 new LinkedHashMap<>();
         stated.forEach(each ->
@@ -1510,7 +1510,7 @@ public final class InvariantChecker {
     }
 
     /** What {@code clause} raises, taken together with whatever its other conjuncts raised. */
-    private static void raises(Map<RuleRef, Required> into, RuleRef.Invariant rule,
+    private static void raises(Map<RuleRef.Invariant, Required> into, RuleRef.Invariant rule,
                                ClauseStates states) {
         into.merge(rule, Required.ofInvariant(states), Required::and);
     }
@@ -1526,10 +1526,10 @@ public final class InvariantChecker {
      */
     private void settle(Core part, RuleRef.Invariant rule, ClauseStates states,
                         InvariantBound.Read placed,
-                        Map<FactSubject, Coordinate> byName, Map<RuleRef, Required> raised,
+                        Map<FactSubject, Coordinate> byName, Map<RuleRef.Invariant, Required> raised,
                         ReadingEvidence took,
                         PartsRead parts,
-                        Map<RuleRef, Map<Core, Required>> raisedByPart) {
+                        Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart) {
         raises(raised, rule, states);
         // And what this part of it raises, kept apart from what the rule raises. A reader that found
         // one conjunct wanting reaches for this: the questions of the conjunct written beside it are
@@ -1604,10 +1604,10 @@ public final class InvariantChecker {
                         List<FieldDomains.AboutOneCoordinate> naming,
                         List<FieldDomains.AboutOneCoordinate> namingTheStrings,
                         Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
-                        Map<RuleRef, Required> raised, ReadingEvidence took,
+                        Map<RuleRef.Invariant, Required> raised, ReadingEvidence took,
                         Map<RuleKey, Type> typeAt,
                         PartsRead parts,
-                        Map<RuleRef, Map<Core, Required>> raisedByPart,
+                        Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
                         Map<FieldDomains.BoundaryQuestion,
                                 FieldDomains.BoundaryStanding> standing,
                         PartsLeftOut withoutParts) {
@@ -1662,10 +1662,10 @@ public final class InvariantChecker {
                         List<FieldDomains.AboutOneCoordinate> naming,
                         List<FieldDomains.AboutOneCoordinate> namingTheStrings,
                         Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
-                        Map<RuleRef, Required> raised, ReadingEvidence took,
+                        Map<RuleRef.Invariant, Required> raised, ReadingEvidence took,
                         Map<RuleKey, Type> typeAt,
                         PartsRead parts,
-                        Map<RuleRef, Map<Core, Required>> raisedByPart,
+                        Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
                         Map<FieldDomains.BoundaryQuestion,
                                 FieldDomains.BoundaryStanding> standing,
                         PartsLeftOut withoutParts) {
