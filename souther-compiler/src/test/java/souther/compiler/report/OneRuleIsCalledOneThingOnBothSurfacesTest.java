@@ -17,6 +17,7 @@ import souther.compiler.types.TypeSymbols;
 import souther.compiler.types.ValueName;
 import souther.compiler.types.WrittenOwner;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -75,16 +76,29 @@ class OneRuleIsCalledOneThingOnBothSurfacesTest {
     @Test
     void thePopulationIsEveryKindTheSealHas() {
         assertEquals(
-                Set.of(RuleRef.Invariant.class, RuleRef.Ensures.class,
-                        RuleRef.Comparison.class, RuleRef.Predicate.class),
+                kindsOf(RuleRef.class),
                 everyKind().stream().map(each -> (Class<?>) each.getClass())
                         .collect(Collectors.toSet()),
                 "one of each kind of rule the seal has, and no other");
         assertEquals(
                 Set.of(RuleRef.Named.class, RuleRef.Written.class),
                 Set.of(RuleRef.class.getPermittedSubclasses()),
-                "and the seal divides them by how a reader finds them, which is what the two"
+                "and the seal divides them first by how a reader finds them, which is what the two"
                         + " surfaces are two ways of saying");
+    }
+
+    /** Every kind of rule the seal names, which are its leaves — the halves it divides into first
+     *  are not kinds a document names. */
+    private static Set<Class<?>> kindsOf(Class<?> sealed) {
+        Class<?>[] permits = sealed.getPermittedSubclasses();
+        if (permits == null || permits.length == 0) {
+            return Set.of(sealed);
+        }
+        Set<Class<?>> out = new LinkedHashSet<>();
+        for (Class<?> each : permits) {
+            out.addAll(kindsOf(each));
+        }
+        return out;
     }
 
     /**
@@ -100,7 +114,7 @@ class OneRuleIsCalledOneThingOnBothSurfacesTest {
             if (!(each instanceof RuleRef.Written written)) {
                 continue;
             }
-            RuleCitation cited = new RuleCitation.WrittenAt<>(written,
+            RuleCitation cited = new RuleCitation.WrittenAt(written,
                     Citation.of(new SourcePos(1, 1)));
             String said = cited.said(SourceNameResolver.identity(), null);
 

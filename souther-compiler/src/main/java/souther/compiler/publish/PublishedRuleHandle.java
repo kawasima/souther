@@ -126,7 +126,7 @@ public sealed interface PublishedRuleHandle extends Comparable<PublishedRuleHand
     static PublishedRuleHandle of(RuleCitation cited) {
         return switch (cited) {
             case RuleCitation.Named it -> new Named(it.rule().citedName());
-            case RuleCitation.WrittenAt<?> it -> it.at() instanceof Citation.Elsewhere out
+            case RuleCitation.WrittenAt it -> it.at() instanceof Citation.Elsewhere out
                     ? new Reached(it.rule().whatItIs(), placeOf(it.at()),
                             out.provenance().reachedBy())
                     : new Written(it.rule().whatItIs(), placeOf(it.at()));

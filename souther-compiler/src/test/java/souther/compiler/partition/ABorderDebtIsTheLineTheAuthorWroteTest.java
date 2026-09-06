@@ -234,9 +234,9 @@ class ABorderDebtIsTheLineTheAuthorWroteTest {
                 new LineOrigin.ComparisonOrigin.Read(
                         new souther.compiler.coverage.ComparisonOccurrence(
                                 "example.banding", "twice", occurrence),
-                        new souther.compiler.check.RuleCitation.WrittenAt<>(rule,
-                                souther.compiler.diag.Citation.of(
-                                        new souther.compiler.diag.SourcePos(15, 16))),
+                        rule,
+                        souther.compiler.diag.Citation.of(
+                                new souther.compiler.diag.SourcePos(15, 16)),
                         WHERE.comparison(occurrence)),
                 new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(
                         souther.compiler.numeric.Towards.BELOW, true)));

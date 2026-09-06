@@ -252,7 +252,7 @@ class OneFactIsOneWeakeningHoweverItWasEvidencedTest {
      * rule's own answer, so a comparison is reached where it was read and never by a name.
      */
     private static RuleCitation reachedAt(int line) {
-        return new RuleCitation.WrittenAt<>(comparison(), Citation.of(new SourcePos(line, 1)));
+        return new RuleCitation.WrittenAt(comparison(),Citation.of(new SourcePos(line, 1)));
     }
 
     private static WeakeningSet of(Weakening one) {

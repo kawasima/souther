@@ -4741,7 +4741,7 @@ public final class Adequacy {
                                                     .NoRowIsAtThePointAwayFromTheLineARuleDrew(
                                                     point.role().name(),
                                                     named.rule().citedName());
-                            case souther.compiler.check.RuleCitation.WrittenAt<?> written ->
+                            case souther.compiler.check.RuleCitation.WrittenAt written ->
                                     point.role().againstTheLine()
                                             ? new ExampleMessage
                                                     .NoRowIsAtThePointOfTheLineAConstructDrew(
@@ -4811,7 +4811,7 @@ public final class Adequacy {
                     // the file the diagnostic is in; a label no longer takes its file from where it
                     // is shown, so what was left unsaid can be said.
                     if (point.cited()
-                            instanceof souther.compiler.check.RuleCitation.WrittenAt<?> written) {
+                            instanceof souther.compiler.check.RuleCitation.WrittenAt written) {
                         switch (written.at()) {
                             case souther.compiler.diag.Citation.Written w ->
                                     built.secondary(souther.compiler.diag.Region.point(w.at()),

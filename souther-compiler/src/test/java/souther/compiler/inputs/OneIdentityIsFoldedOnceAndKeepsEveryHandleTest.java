@@ -47,9 +47,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class OneIdentityIsFoldedOnceAndKeepsEveryHandleTest {
 
     private static final RuleCitation HERE =
-            new RuleCitation.WrittenAt<>(comparison(), Citation.of(new SourcePos(3, 3)));
+            new RuleCitation.WrittenAt(comparison(),Citation.of(new SourcePos(3, 3)));
     private static final RuleCitation REACHED_FROM_A_CALL =
-            new RuleCitation.WrittenAt<>(comparison(), Citation.of(new SourcePos(9, 1)));
+            new RuleCitation.WrittenAt(comparison(),Citation.of(new SourcePos(9, 1)));
 
     @Test
     void oneRuleFoundTwiceIsOneFindingCitedBothWays() {

@@ -510,7 +510,7 @@ public final class GuardThresholds {
         // rule this reports and the comparison it is read off would be free to be of two behaviors,
         // and the occurrence being one this plan holds would not refuse it.
         souther.compiler.check.RuleCitation cited =
-                new souther.compiler.check.RuleCitation.WrittenAt<>(
+                new souther.compiler.check.RuleCitation.WrittenAt(
                         new RuleRef.Comparison(comparison.which().behavior(), comparison.origin()),
                         comparison.at());
         // What each place is left with, and which places there are, are the assessment's one
@@ -540,9 +540,8 @@ public final class GuardThresholds {
         // reaches here and the policy admits nothing the plan does not number.
         return new LineOrigin.ComparisonOrigin(
                 new LineOrigin.ComparisonOrigin.Read(each.which(),
-                        new souther.compiler.check.RuleCitation.WrittenAt<>(
-                                new RuleRef.Comparison(each.which().behavior(), each.origin()),
-                                each.at()),
+                        new RuleRef.Comparison(each.which().behavior(), each.origin()),
+                        each.at(),
                         plan.requireEmissionSiteOf(each.which())),
                 new LineFacts(cutting.claim()));
     }

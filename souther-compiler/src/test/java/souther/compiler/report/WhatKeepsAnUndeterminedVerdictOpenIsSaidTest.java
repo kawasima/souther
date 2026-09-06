@@ -373,7 +373,7 @@ class WhatKeepsAnUndeterminedVerdictOpenIsSaidTest {
     private static Weakening ruleUnread(BlockReason.RuleReadingStopped why, String term) {
         return new Weakening.ModelReadingIncomplete(ClosureGap.QuestionUnanswered.of(
                 StandingQuestion.NothingClassifiesIt.of(
-                        new RuleCitation.WrittenAt<>(
+                        new RuleCitation.WrittenAt(
                                 new RuleRef.Comparison("go",
                                         new SourceConstructOrigin(
                                                 new WrittenOwner.Body("m", "b"), 0, 0,

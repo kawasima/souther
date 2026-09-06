@@ -7,7 +7,6 @@ import souther.compiler.coverage.Numberings;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.Carrier;
-import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleRef;
 import souther.compiler.diag.Citation;
 import souther.compiler.inputs.NumericTerm;
@@ -106,12 +105,11 @@ class AnAccountEstablishesItsDenominatorBeforeItCountsTest {
         return new LineOrigin.ComparisonOrigin(
                 new LineOrigin.ComparisonOrigin.Read(
                         new souther.compiler.coverage.ComparisonOccurrence("example.one", "f", 0),
-                        new RuleCitation.WrittenAt<>(
-                                new RuleRef.Comparison("f",
-                                        new souther.compiler.types.SourceConstructOrigin(
-                                                new WrittenOwner.Body("example.one", "f"), 2, 0,
-                                                souther.compiler.types.SourceConstruct.BINARY)),
-                                Citation.of(new souther.compiler.diag.SourcePos(1, 1))),
+                        new RuleRef.Comparison("f",
+                                new souther.compiler.types.SourceConstructOrigin(
+                                        new WrittenOwner.Body("example.one", "f"), 2, 0,
+                                        souther.compiler.types.SourceConstruct.BINARY)),
+                        Citation.of(new souther.compiler.diag.SourcePos(1, 1)),
                         WHERE),
                 new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(Towards.BELOW, true)));
     }

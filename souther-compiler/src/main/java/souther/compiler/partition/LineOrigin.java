@@ -135,7 +135,7 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
          * ({@link souther.compiler.check.RuleCitation}).
          */
         public RuleRef.Comparison rule() {
-            return read.written().rule();
+            return read.rule();
         }
 
         /**
@@ -158,10 +158,12 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
          *              {@code B} false and rows that never reached {@code B}. The comparison and not
          *              the number it is instrumented under — two readers agreeing that they mean one
          *              place should not come down to their having been handed the same int
-         * @param written which comparison of the model this is, and how a reader finds it, which is
-         *              where it is written. The comparison's own place and not the fork's — a
-         *              condition holding three comparisons is three rules, and a reader sent to the
-         *              {@code if} is given one handle for all of them
+         * @param rule which comparison of the model this is, which is the same value however many
+         *              times the comparison is read
+         * @param writtenAt where a reader finds it, which is where it is written. The comparison's
+         *              own place and not the fork's — a condition holding three comparisons is
+         *              three rules, and a reader sent to the {@code if} is given one handle for all
+         *              of them
          * @param recordedAt where a run through that comparison is written down. Beside the
          *              comparison and not instead of it: which comparison this reads is what
          *              everything about the rule is said of, and this is only how a run is asked
@@ -169,15 +171,28 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
          *              that numbered it, so the two cannot come from different builds
          */
         public record Read(souther.compiler.coverage.ComparisonOccurrence comparison,
-                           souther.compiler.check.RuleCitation.WrittenAt<RuleRef.Comparison> written,
+                           RuleRef.Comparison rule, Citation writtenAt,
                            souther.compiler.coverage.ComparisonEmissionSite recordedAt) {
 
             public Read {
-                if (comparison == null || written == null || recordedAt == null) {
+                if (comparison == null || rule == null || writtenAt == null
+                        || recordedAt == null) {
                     throw new IllegalArgumentException(
                             "a rule read off a comparison names one, cites it and says where a run"
                                     + " through it is recorded");
                 }
+            }
+
+            /**
+             * How a reader finds the rule, which is where it is written.
+             *
+             * <p>Made here rather than kept, so that the handle is of {@link #rule} and can be of no
+             * other. Kept beside the rule, the two could be built about different comparisons — and
+             * a document writing both would file an entry under one rule with a sentence about
+             * another.
+             */
+            public souther.compiler.check.RuleCitation.WrittenAt written() {
+                return new souther.compiler.check.RuleCitation.WrittenAt(rule, writtenAt);
             }
         }
 

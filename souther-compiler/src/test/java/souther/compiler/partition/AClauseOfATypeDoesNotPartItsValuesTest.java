@@ -196,14 +196,12 @@ class AClauseOfATypeDoesNotPartItsValuesTest {
                 new LineOrigin.ComparisonOrigin.Read(
                         new souther.compiler.coverage.ComparisonOccurrence(
                                 "example.weigh", "weigh", 0),
-                        new souther.compiler.check.RuleCitation.WrittenAt<>(
-                                new RuleRef.Comparison("weigh",
-                                        new souther.compiler.types.SourceConstructOrigin(
-                                                new WrittenOwner.Body("example.weigh", "weigh"),
-                                                2, 0,
-                                                souther.compiler.types.SourceConstruct.BINARY)),
-                                souther.compiler.diag.Citation.of(
-                                        new souther.compiler.diag.SourcePos(3, 5))),
+                        new RuleRef.Comparison("weigh",
+                                new souther.compiler.types.SourceConstructOrigin(
+                                        new WrittenOwner.Body("example.weigh", "weigh"), 2, 0,
+                                        souther.compiler.types.SourceConstruct.BINARY)),
+                        souther.compiler.diag.Citation.of(
+                                new souther.compiler.diag.SourcePos(3, 5)),
                         WHERE),
                 new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(Towards.BELOW, true)));
     }

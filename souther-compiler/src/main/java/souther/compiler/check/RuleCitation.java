@@ -62,15 +62,14 @@ public sealed interface RuleCitation {
      * reader is standing are not always the same file: a comparison inside a helper is written
      * there and reached from the call, and the same type says both.
      *
-     * <p>Which kind of written rule, kept in the type. A reading that draws a line is a comparison's
-     * and a reading that tells a set of values from the rest is a predicate's, and a holder of one
-     * says which it is ({@link souther.compiler.partition.RuleEvidenceOrigin}). Erased to
-     * {@link RuleRef.Written} here, a holder wanting the kind back would either narrow it at a cast
-     * or keep the rule a second time, and the second is what this type exists to have removed.
-     *
-     * @param <R> which kind of written rule this is the handle for
+     * <p>{@link RuleRef.Written} and not a kind of one. A holder that answers for a comparison and
+     * for nothing else keeps the comparison and the place, and makes the handle
+     * ({@link souther.compiler.partition.LineOrigin.ComparisonOrigin}) — which is the shape a fold
+     * over these already has. Carried as a type variable here instead, the variable is unbound
+     * wherever a handle is reached through this interface, and a document's own answers are then
+     * types nothing settles.
      */
-    record WrittenAt<R extends RuleRef.Written>(R rule, Citation at) implements RuleCitation {
+    record WrittenAt(RuleRef.Written rule, Citation at) implements RuleCitation {
 
         public WrittenAt {
             if (rule == null || at == null) {
@@ -98,7 +97,7 @@ public sealed interface RuleCitation {
             case Named it -> it.rule().citedName();
             // Written here, and reached from somewhere else: a comparison inside a helper is one
             // rule and a reader is sent to two places, which the citation already tells apart.
-            case WrittenAt<?> it -> it.rule().whatItIs()
+            case WrittenAt it -> it.rule().whatItIs()
                     + joining(it.at()) + it.at().said(names, sectionSource);
         };
     }
@@ -113,7 +112,7 @@ public sealed interface RuleCitation {
     static Set<Citation> placeOf(RuleCitation cited) {
         return switch (cited) {
             case Named _ -> Set.of();
-            case WrittenAt<?> it -> Set.of(it.at());
+            case WrittenAt it -> Set.of(it.at());
         };
     }
 
@@ -129,7 +128,7 @@ public sealed interface RuleCitation {
         return switch (rule) {
             case RuleRef.Named it -> Set.of(new Named(it));
             case RuleRef.Written it -> reachedAt.stream()
-                    .map(each -> (RuleCitation) new WrittenAt<>(it, each))
+                    .map(each -> (RuleCitation) new WrittenAt(it, each))
                     .collect(java.util.stream.Collectors.toUnmodifiableSet());
         };
     }

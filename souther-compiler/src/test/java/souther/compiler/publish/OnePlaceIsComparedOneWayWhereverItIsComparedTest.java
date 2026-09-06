@@ -49,7 +49,7 @@ class OnePlaceIsComparedOneWayWhereverItIsComparedTest {
             Optional.empty()));
 
     private static RuleCitation writtenAt(Citation at) {
-        return new RuleCitation.WrittenAt<>(WRITTEN_RATHER_THAN_NAMED, at);
+        return new RuleCitation.WrittenAt(WRITTEN_RATHER_THAN_NAMED, at);
     }
 
     @Test
@@ -81,7 +81,7 @@ class OnePlaceIsComparedOneWayWhereverItIsComparedTest {
                 PublicationOrders.handleFor(List.of(
                                 writtenAt(EARLIER),
                                 writtenAt(LATER)))
-                        .map(each -> ((RuleCitation.WrittenAt<?>) each).at())
+                        .map(each -> ((RuleCitation.WrittenAt) each).at())
                         .flatMap(PublishedAt::of),
                 "one order over places, asked twice");
     }

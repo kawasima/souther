@@ -84,9 +84,9 @@ class AGuardsQuestionIsCitedByWhereItIsWrittenTest {
     void itIsCitedByThePlaceAndNamedByNothing() {
         PartitionEvidence.NotRead.AnUnclassifiedRule one = writtenComparisons().getFirst();
 
-        RuleCitation.WrittenAt<?> written = one.cited().stream()
+        RuleCitation.WrittenAt written = one.cited().stream()
                 .filter(RuleCitation.WrittenAt.class::isInstance)
-                .map(each -> (RuleCitation.WrittenAt<?>) each).findFirst()
+                .map(each -> (RuleCitation.WrittenAt) each).findFirst()
                 .orElseThrow(() -> new AssertionError("a comparison has no name, so it is cited by"
                         + " where it is written: " + one.cited()));
         assertTrue(written.said(SourceNameResolver.identity(), null).startsWith("comparison@"),

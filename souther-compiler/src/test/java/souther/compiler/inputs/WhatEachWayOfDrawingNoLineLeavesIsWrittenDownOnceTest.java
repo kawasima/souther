@@ -315,7 +315,7 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
     void aReasonSaysWhatBecameOfTheReadingAndNotWhatAMeasureIsShortOf() {
         for (BlockReason.RuleWithoutLineReason each : everyRuleWithoutALine()) {
             RulesWithNoLine.Gathered gathered = new RulesWithNoLine.Gathered();
-            gathered.add(new RuleCitation.WrittenAt<>(
+            gathered.add(new RuleCitation.WrittenAt(
                             new RuleRef.Comparison("b",
                                     new SourceConstructOrigin(new WrittenOwner.Body("m", "b"),
                                             1, 1, SourceConstruct.IF)),

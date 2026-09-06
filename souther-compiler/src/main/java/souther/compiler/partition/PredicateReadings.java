@@ -3,7 +3,6 @@ package souther.compiler.partition;
 import souther.compiler.check.AnalysisBody;
 import souther.compiler.check.ElementBindings;
 import souther.compiler.check.PredicateStatement;
-import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleRef;
 import souther.compiler.check.StatedContract;
 import souther.compiler.check.StringPredicates;
@@ -181,9 +180,8 @@ record PredicateReadings(List<Reading> predicates) {
                              StringPredicates.Stated states, InputReads reads, List<Reading> out) {
         out.add(new Reading(
                 new PredicateOrigin(new PredicateOccurrence(out.size()),
-                        new RuleCitation.WrittenAt<>(
-                                new RuleRef.Predicate(behavior, call.origin()),
-                                Citation.of(call.pos()))),
+                        new RuleRef.Predicate(behavior, call.origin()),
+                        Citation.of(call.pos())),
                 states, reads));
     }
 
