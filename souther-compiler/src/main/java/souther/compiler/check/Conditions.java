@@ -356,12 +356,18 @@ final class Conditions {
             // rule can be read as the comparison it states — and giving it the written call's own
             // identity would put two applications under one. So it is a name and an application of
             // this pass's, each derived from the one the comparison it is read off reached.
+            // The size is a call of this pass's, so it is an occurrence of its own and is derived
+            // from the one the comparison reached. A call that cannot say which occurrence it is —
+            // one composed for a fixture, or a term with its places taken out — is not one a rule
+            // is read off: what states a rule is what an author wrote.
+            if (!(call.application() instanceof ApplicationOrigin.Identified applied)) {
+                return e;
+            }
             Core size = new Core.PreservedCall(means.size(), call.args(),
                     new DerivedReferenceOrigin(
                             new ReferenceDerivationCause.SizeMeaningOfReference(call.reference()), 0),
                     new ApplicationOrigin.Derived(
-                            new ApplicationDerivationCause.SizeMeaningOfApplication(
-                                    call.application()), 0),
+                            new ApplicationDerivationCause.SizeMeaningOfApplication(applied), 0),
                     Type.INT, call.pos());
             return new Core.Binary(BinOp.EQ, size, new Core.Int(0, Type.INT, call.pos()),
                     SourceConstructOrigin.unwritten(), Type.BOOL, call.pos());

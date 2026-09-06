@@ -2666,6 +2666,37 @@ final class Terms {
         return asWrittenValue(e, at, Map.of());
     }
 
+    /**
+     * The application this writing composes, said by the one the value was folded from.
+     *
+     * <p>Writing a value back out as the construction it was written as makes a new application:
+     * the one that was folded away is not this one, and what this says is which it stands for. That
+     * is the same act over any application that can be told from every other of its kind — one the
+     * author wrote, the one inside a block a name was expanded into, one another pass derived — so
+     * none of them is read for which kind it was.
+     *
+     * <p>A value composed for a fixture is the other case, and it is not derived from anything: two
+     * of them carry the same answer, so a derivation of one would be a value equal to a derivation
+     * of the other while claiming to be an occurrence of its own. What is written back from a
+     * composed thing is another composed thing, and it says so.
+     */
+    private static ApplicationOrigin writtenBackFrom(ApplicationOrigin folded) {
+        return switch (folded) {
+            case ApplicationOrigin.Identified identified ->
+                    new ApplicationOrigin.Derived(
+                            new ApplicationDerivationCause.ApplicationWrittenBack(identified), 0);
+            case ApplicationOrigin.ComposedFixture _ -> new ApplicationOrigin.ComposedFixture();
+            // A term with its places taken out, which is a comparison key and not a term to write
+            // back: `Core.withoutItsPlace` says it is for comparing two readings of one term and
+            // for nothing else, and drops every origin because they move with edits the term
+            // cannot see. Answering with a composed one would say a fixture made this, which
+            // nothing did; answering with a derivation would derive it from an absence. So what is
+            // said is that a key arrived where a term was wanted.
+            case null -> throw new IllegalStateException(
+                    "a term with its places taken out was written back out as a construction");
+        };
+    }
+
     /** {@code given} with {@code li}'s binder standing for what it was given. */
     private static Map<BindingId, Core> withGiven(Map<BindingId, Core> given, Core.LetIn li) {
         Map<BindingId, Core> out = new HashMap<>(given);
@@ -2705,21 +2736,14 @@ final class Terms {
             case Core.PreservedCall call -> {
                 List<Hir.Expr> args = written(call.args(), at, given);
                 // The operation is named again here because the name the author wrote is gone by
-                // now, and the application they wrote is what made that necessary.
-                // Both occurrences are this writing's, and each is derived from the one it stands
-                // for. Written out from whatever the kept call was — one the author wrote, the
-                // application inside a block a name was expanded into, one composed — because
-                // writing a call out again is the same act over any of them, and reading which kind
-                // it was would be this pass deciding something about a tree it did not build.
+                // now, and the application they wrote is what made that necessary. Both occurrences
+                // are this writing's, and each is said by what it stands for.
                 yield args == null ? null
                         : Hir.Apply.synthetic(call.operation().name(), reachOf(call.operation()),
                                 new DerivedReferenceOrigin(
                                         new ReferenceDerivationCause.ReferenceWrittenBack(
                                                 call.reference()), 0),
-                                new ApplicationOrigin.Derived(
-                                        new ApplicationDerivationCause.ApplicationWrittenBack(
-                                                call.application()), 0),
-                                args, call.pos(), null);
+                                writtenBackFrom(call.application()), args, call.pos(), null);
             }
             // A temporal is written as a literal with its text spelled out (spec
             // §a-temporal-value-is-written-as-a-literal). Rendered here for the same reason every
@@ -2735,13 +2759,10 @@ final class Terms {
                 ValueName.Stdlib.Namespace namespace =
                         ValueName.Stdlib.namespace(t.kind().shown());
                 // A namespace is not a declaration, so there is no reference of one to be. The
-                // application is this writing's, derived from the construction the value was folded
-                // from — whichever kind that was.
+                // application is this writing's, said by the construction the value was folded from.
                 yield Hir.Apply.synthetic(namespace.qualified(),
                         new ReachName.TheNamespace(namespace), null,
-                        new ApplicationOrigin.Derived(
-                                new ApplicationDerivationCause.ApplicationWrittenBack(
-                                        t.application()), 0),
+                        writtenBackFrom(t.application()),
                         List.of(new Hir.StringLit(t.text(), t.pos(), null)), t.pos(), null);
             }
             // A case of an enumeration is written by naming it, so the value is the name.

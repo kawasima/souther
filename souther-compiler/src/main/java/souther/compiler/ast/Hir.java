@@ -2244,6 +2244,17 @@ public interface Hir {
         // was reached for, or a row was composed — so a reader working it out from the shape gets
         // the common case right and answers the rest with what the common case says.
 
+        public Apply {
+            // Every application in this tree answers it, which is what lets a reader below take the
+            // answer rather than work one out. Held by the factories alone, the rule would be one
+            // the record itself did not keep, and a pass reaching for the constructor could leave a
+            // reader nothing — which is the state this exists to remove.
+            if (application == null) {
+                throw new IllegalArgumentException(
+                        "an application is here for some reason: " + function);
+            }
+        }
+
         /**
          * The application {@code surface} spells, of whatever {@code function} is — the one way an
          * application is made from a source that writes one.

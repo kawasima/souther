@@ -42,13 +42,19 @@ public sealed interface ApplicationDerivationCause {
      * computed is another. So this is not the application it was written back from — it says which
      * one it was written back from.
      *
-     * <p>Whatever that one was. One the author wrote, the application inside a block a name was
-     * expanded into, one another pass derived, one composed for a fixture: writing an application
-     * out again is the same act over any of them, and this is not interpreting which kind it was.
-     * So an application arriving in a form this did not foresee is carried rather than refused, and
-     * nothing has to be added here when another kind is.
+     * <p>Whatever that one was, so long as it is one that can be told from every other of its kind.
+     * One the author wrote, the application inside a block a name was expanded into, one another
+     * pass derived: writing an application out again is the same act over any of them, and this
+     * does not interpret which it was.
+     *
+     * <p><b>And not one that cannot.</b> What is written back from a composed fixture is another
+     * composed thing, not a derivation of it — given one here, two of them would come out as one
+     * value and the {@link ApplicationOrigin.Identified} this sits under would be promising an
+     * identity it does not have. The caller says which case it is in; the type will not let it skip
+     * the question.
      */
-    record ApplicationWrittenBack(ApplicationOrigin from) implements ApplicationDerivationCause {
+    record ApplicationWrittenBack(ApplicationOrigin.Identified from)
+            implements ApplicationDerivationCause {
 
         public ApplicationWrittenBack {
             if (from == null) {
@@ -86,7 +92,8 @@ public sealed interface ApplicationDerivationCause {
      * an application of its own, derived from the one the author wrote. Given that one's identity
      * instead, two applications would answer as one.
      */
-    record SizeMeaningOfApplication(ApplicationOrigin from) implements ApplicationDerivationCause {
+    record SizeMeaningOfApplication(ApplicationOrigin.Identified from)
+            implements ApplicationDerivationCause {
 
         public SizeMeaningOfApplication {
             if (from == null) {

@@ -1,5 +1,6 @@
 package souther.compiler.ast;
 
+import souther.compiler.diag.Region;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.ReferenceDerivationCause;
@@ -13,6 +14,8 @@ import souther.compiler.types.ValueName;
 import souther.compiler.types.WrittenOwner;
 
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -116,6 +119,25 @@ class ANameReachingADeclarationIsSomeReferenceOfItTest {
 
         assertEquals(true, nothingBehindIt.getMessage().contains("collection"),
                 nothingBehindIt.getMessage());
+    }
+
+    /**
+     * And an application says why it is here, refused where it is put together rather than left for
+     * a reader to find.
+     *
+     * <p>Asked of the record and not of the factories alone. A rule the factories keep is one the
+     * representation does not: a pass reaching for the constructor would leave a reader nothing, and
+     * what a reader does with nothing is work it out from the shape — which is the reading this
+     * exists to remove.
+     */
+    @Test
+    void anApplicationWithNoReasonToBeHereIsRefusedWhereItIsMade() {
+        IllegalArgumentException noReason = assertThrows(IllegalArgumentException.class,
+                () -> new Hir.Apply(new Hir.IntLit(1, POS, null), List.of(),
+                        souther.compiler.ast.Origins.Own.IT_IS,
+                        new Hir.AppliedCallee(null, Region.point(POS)), null, POS, null));
+
+        assertEquals(true, noReason.getMessage().contains("some reason"), noReason.getMessage());
     }
 
     /** A read of a binding carries none: the binding is what tells it from every other read. */

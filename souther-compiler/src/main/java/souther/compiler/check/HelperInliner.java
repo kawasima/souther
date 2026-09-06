@@ -1378,14 +1378,7 @@ public final class HelperInliner {
                 asked.add(reaches);
             }
         }
-        // What this expands writes bindings, and an expansion is what they belong to — so two
-        // expansions have to be two, and an application is one this expands only if it says which
-        // one it is ({@link ApplicationOrigin.Identified}). A value composed for a fixture says why
-        // it is there and no more, which is enough for what a fixture is shown for and not enough
-        // to own bindings. Settled here, where what is expanded is decided, rather than asked again
-        // further in where the only answer left would be to stop the run.
-        if (helper == null || standing
-                || !(call.application() instanceof ApplicationOrigin.Identified at)) {
+        if (helper == null || standing) {
             // builtin, injected behavior, a function-typed parameter, or a recursive helper —
             // a recursive helper is lowered to a method, so its call stays a Call (spec §fn-declaration);
             // only its args inline.
@@ -1406,6 +1399,16 @@ public final class HelperInliner {
         // declared return is carried on, and every binding copied out of the callee's body.
         // One minter, so no two of them are the same binding, and a reader can ask of any of
         // them which call it came from.
+        // An expansion is what its bindings belong to, so two of them have to be two — and what
+        // says so is that the application it is of can be told from every other of its kind. Asked
+        // here, after what is expanded has been decided, because the two are separate questions:
+        // whether a call is expanded is about the callee, and this is about what the expansion can
+        // be named by. A call reaching here with no such application is not a call to leave
+        // standing — nothing composes one — and saying so is what this is.
+        if (!(call.application() instanceof ApplicationOrigin.Identified at)) {
+            throw new IllegalStateException(
+                    "a helper expanded at an application that says only why it is here: " + call);
+        }
         BindingOwner mine =
                 new BindingOwner.Expansion(writing.enclosing(), callee.denotes(), at);
         Hir.Binders ours = new Hir.Binders(mine);
