@@ -64,55 +64,64 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
     }
 
     /**
-     * Which positions a choice is as wide as it is because of one of its alternatives.
+     * Which positions a choice may be as wide as it is at because of one of its alternatives.
      *
      * <p>A relation between two branches and not an attribute of one, which is why it is here
-     * rather than in {@link Sided}: {@code onLeft} is read off what the <em>right</em> branch
-     * leaves, and the other way round.
+     * rather than in {@link Sided}: what may rest on the left is read off what the <em>right</em>
+     * branch leaves, and the other way round.
      *
-     * <p>A position is on a branch where the choice without that branch is not what the choice
-     * with it is. Since a choice admits whatever either of its branches admits, the one is
-     * contained in the other, and being different is being narrower — so this is asked as an
-     * equality of what the two descriptions were normalised to and needs no set arithmetic of its
-     * own. Descriptions that state one thing two ways come out different and the position is kept:
-     * what this is read for is whether a branch that may turn out to hold nothing is why an answer
-     * is as wide as it is, and keeping a position no branch was really answerable for costs a
-     * reading that could have spoken for it, while dropping one hands out an answer as exact when
-     * it is not.
+     * <p><b>What a member and a non-member each say, which is not the same strength.</b> Write
+     * {@code D} for the positions where the choice without a branch truly leaves less than the
+     * choice with it. A position left out is one where the two are the same set and dropping the
+     * branch changes nothing — that is proven. A position kept is one where nothing here proved
+     * them the same, which is weaker than their differing: two descriptions of one set written
+     * differently are kept apart. So {@code D} is contained in what is held and is not what is
+     * held, and a reader may take a non-member as a fact and a member only as a question nobody
+     * settled. Read the other way, a position no alternative was really answerable for would be
+     * published as one an author has to look at.
+     *
+     * <p>Which is what the comparison can be an equality of normalised descriptions and cost
+     * nothing. A choice admits whatever either of its branches admits, so what it leaves without
+     * one of them is contained in what it leaves with both, and equal descriptions are the same
+     * set — the proof runs in the direction a non-member is read in, and no machine is built to
+     * decide the other.
      *
      * <p><b>An occurrence at a time, and a union over them.</b> The same written choice stands
      * wherever a conjunction beside it was distributed in, and a branch dropped is dropped at every
-     * one of them — so a position any occurrence's width depends on is one the whole answer's does.
-     * Union is associative, commutative and idempotent, which is what lets the order the copies are
-     * met in stay out of the answer. An occurrence one branch of which admits nothing is not a
-     * choice there at all and contributes neither side.
+     * one of them — so a position any occurrence's width may rest on is one the whole answer's
+     * may. Union is associative, commutative and idempotent, which is what lets the order the
+     * copies are met in stay out of the answer, and it is the second reason a member is a question
+     * rather than a fact: an occurrence's own widening can be covered by what another occurrence
+     * leaves. An occurrence one branch of which admits nothing is not a choice there at all and
+     * contributes neither side.
      *
-     * @param onLeft  the positions the choice would leave narrower without its left alternative
-     * @param onRight the same for the right
+     * @param mayRestOnLeft  the positions where the choice without its left alternative was not
+     *                       shown to leave what the choice with it leaves
+     * @param mayRestOnRight the same for the right
      */
-    record WidthDependency(Set<FactSubject> onLeft, Set<FactSubject> onRight) {
+    record WidthDependency(Set<FactSubject> mayRestOnLeft, Set<FactSubject> mayRestOnRight) {
 
         WidthDependency {
-            onLeft = Set.copyOf(onLeft);
-            onRight = Set.copyOf(onRight);
+            mayRestOnLeft = Set.copyOf(mayRestOnLeft);
+            mayRestOnRight = Set.copyOf(mayRestOnRight);
         }
 
-        /** A choice whose width no alternative of it is answerable for. */
+        /** A choice shown to leave what it leaves without either of its alternatives. */
         static WidthDependency none() {
             return new WidthDependency(Set.of(), Set.of());
         }
 
         /**
-         * What one occurrence of a choice between these two branches is as wide as it is because
-         * of, read off the descriptions and building nothing.
+         * What one occurrence of a choice between these two branches may be as wide as it is
+         * because of, read off the descriptions and building nothing.
          *
          * <p>Over the positions either of them narrowed, since a position neither did is one both
          * of them leave at every value and so is the choice, with or without either.
          *
          * <p><b>Nothing where either branch admits nothing here.</b> There is no choice at such an
-         * occurrence — what it leaves is the branch beside the dead one — so neither alternative is
-         * why it is as wide as it is. Another occurrence of the same written choice may still be
-         * one both branches stand at, and what that one's width rests on is joined in beside this
+         * occurrence — what it leaves is the branch beside the dead one — so its width rests on
+         * neither alternative. Another occurrence of the same written choice may still be one both
+         * branches stand at, and what that one's width may rest on is joined in beside this
          * ({@link #alsoSeen}): a branch is dead for the author only where nobody can be in it
          * anywhere, and that is not this occurrence's to say.
          */
@@ -124,30 +133,33 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
                     || there == souther.compiler.values.Emptiness.EMPTY) {
                 return none();
             }
-            Set<FactSubject> onLeft = new LinkedHashSet<>();
-            Set<FactSubject> onRight = new LinkedHashSet<>();
+            Set<FactSubject> mayRestOnLeft = new LinkedHashSet<>();
+            Set<FactSubject> mayRestOnRight = new LinkedHashSet<>();
             Set<FactSubject> narrowed = new LinkedHashSet<>(one.adoptedAt());
             narrowed.addAll(other.adoptedAt());
             for (FactSubject position : narrowed) {
                 AdmittedPlan left = one.at(position);
                 AdmittedPlan right = other.at(position);
                 AdmittedPlan joined = AdmittedPlan.joining(List.of(left, right));
+                // Equal descriptions are one set, so this side of each is a proof that dropping
+                // the branch leaves the position where it was. Unequal ones are not a proof of
+                // anything, and the position is kept as one nobody settled.
                 if (!right.equals(joined)) {
-                    onLeft.add(position);
+                    mayRestOnLeft.add(position);
                 }
                 if (!left.equals(joined)) {
-                    onRight.add(position);
+                    mayRestOnRight.add(position);
                 }
             }
-            return new WidthDependency(onLeft, onRight);
+            return new WidthDependency(mayRestOnLeft, mayRestOnRight);
         }
 
         /** The width of one more occurrence of the same choice, taken in beside this. */
         WidthDependency alsoSeen(WidthDependency occurrence) {
-            Set<FactSubject> left = new LinkedHashSet<>(onLeft);
-            left.addAll(occurrence.onLeft());
-            Set<FactSubject> right = new LinkedHashSet<>(onRight);
-            right.addAll(occurrence.onRight());
+            Set<FactSubject> left = new LinkedHashSet<>(mayRestOnLeft);
+            left.addAll(occurrence.mayRestOnLeft());
+            Set<FactSubject> right = new LinkedHashSet<>(mayRestOnRight);
+            right.addAll(occurrence.mayRestOnRight());
             return new WidthDependency(left, right);
         }
     }

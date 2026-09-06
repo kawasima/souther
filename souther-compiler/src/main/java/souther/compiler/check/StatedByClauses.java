@@ -299,18 +299,19 @@ sealed interface StatedByClauses {
      * <p><b>Two sets and not one, because the two sides ask two questions of it.</b> An author has
      * to look at this choice wherever the alternative beside the unread one <em>reached</em> a
      * position, whether or not the answer there turned on it — that is a fact about clauses
-     * somebody wrote, and it is read off the tree that keeps their shape. A position is left wider
-     * than the rules only where the choice would be narrower without the unread alternative, which
-     * is a fact about values and is settled where the branches are. Made one,
+     * somebody wrote, and it is read off the tree that keeps their shape. A position is reported
+     * wider than the rules only where nothing showed the choice leaves it what it would without
+     * the unread alternative, which is a fact about values and is settled where the branches are
+     * ({@link Settlement.WidthDependency}). Made one,
      * {@code (P(a) && f(b)) || (P(a) && f(b))} came out with {@code a} reported wider than the
-     * rules hold it: both alternatives reached {@code a} and neither is why the choice is as wide
-     * there as it is.
+     * rules hold it: both alternatives reached {@code a}, and dropping either was shown to leave
+     * it where it was.
      *
      * @param byTheLeftGoingUnread  the positions the right alternative reached, where the left is
      *                              one nothing could read. Empty where it was read
      * @param byTheRightGoingUnread the same the other way round
-     * @param positions             the positions the choice is as wide as it is at because of an
-     *                              alternative nothing could read
+     * @param positions             the positions an alternative nothing could read was not shown
+     *                              to leave where they were
      */
     record AlternativeOpening(ChoiceId choice, Set<FactSubject> byTheLeftGoingUnread,
                               Set<FactSubject> byTheRightGoingUnread, Set<FactSubject> positions) {
@@ -338,11 +339,17 @@ sealed interface StatedByClauses {
      *
      * <p>Two questions and two sources, and neither answers the other's. Which alternative nothing
      * could read is a fact about the clause somebody wrote and is read off the tree that keeps that
-     * shape ({@link Adoption#dropped}). Whether the choice would be narrower without an alternative
-     * is a fact about the values, is worked out where the branches were settled, and arrives here
-     * decided ({@link Settlement.WidthDependency}) — asked of the positions each branch took in
-     * instead, the answer would be that a branch narrowing a position its neighbour narrows the
-     * same way is why the choice is as wide as it is.
+     * shape ({@link Adoption#dropped}). Whether anything showed the choice leaves a position what
+     * it would without an alternative is a fact about the values, is worked out where the branches
+     * were settled, and arrives here decided ({@link Settlement.WidthDependency}) — asked of the
+     * positions each branch took in instead, the answer would be that a branch narrowing a position
+     * its neighbour narrows the same way is why the choice is as wide as it is.
+     *
+     * <p>What arrives is the side a reader may act on: a position left out of it is one dropping
+     * the alternative was shown not to narrow, and one kept is one nobody settled. So a position
+     * this opens may be one the rules hold exactly where the reading says, and the cost of that is
+     * a reading declining to speak for a position it could have — never an answer handed out as
+     * exact when it is not.
      *
      * <p>Of the reading of values alone, which is the one a choice is asked of. Where a position's
      * order stops is not what an alternative takes back — a range says nothing about which values
@@ -352,10 +359,10 @@ sealed interface StatedByClauses {
                                     Adoption<FactSubject> one, Adoption<FactSubject> other) {
         Set<FactSubject> opened = new LinkedHashSet<>();
         if (one.dropped()) {
-            opened.addAll(width.onLeft());
+            opened.addAll(width.mayRestOnLeft());
         }
         if (other.dropped()) {
-            opened.addAll(width.onRight());
+            opened.addAll(width.mayRestOnRight());
         }
         return new AlternativeOpening(choice,
                 one.dropped() ? reachedBy(other) : Set.of(),

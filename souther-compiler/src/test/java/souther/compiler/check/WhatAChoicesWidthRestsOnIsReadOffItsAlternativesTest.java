@@ -71,9 +71,9 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
     void anAlternativeThatSaysNothingIsWhyTheChoiceSaysNothing() {
         Settlement.WidthDependency width = between(isA(), unread(Set.of(OTHER)));
 
-        assertEquals(Set.of(), width.onLeft(),
+        assertEquals(Set.of(), width.mayRestOnLeft(),
                 "without the left the choice still admits every value at value");
-        assertEquals(Set.of(VALUE), width.onRight(),
+        assertEquals(Set.of(VALUE), width.mayRestOnRight(),
                 "without the right it admits one");
     }
 
@@ -129,8 +129,8 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
         Settlement.WidthDependency width = between(isA(),
                 PlannedValues.at(VALUE, AdmittedPlan.of(ValueSet.just(B))));
 
-        assertEquals(Set.of(VALUE), width.onLeft());
-        assertEquals(Set.of(VALUE), width.onRight());
+        assertEquals(Set.of(VALUE), width.mayRestOnLeft());
+        assertEquals(Set.of(VALUE), width.mayRestOnRight());
     }
 
     /**
@@ -147,9 +147,9 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
         Settlement.WidthDependency width = between(isA().meet(otherIsA()),
                 notA().meet(otherIsA()));
 
-        assertEquals(Set.of(VALUE), width.onLeft(),
+        assertEquals(Set.of(VALUE), width.mayRestOnLeft(),
                 "other is A under either alternative, so neither is why the choice leaves it so");
-        assertEquals(Set.of(VALUE), width.onRight());
+        assertEquals(Set.of(VALUE), width.mayRestOnRight());
     }
 
     /**
