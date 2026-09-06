@@ -92,10 +92,28 @@ sealed interface CodecShape {
                     of(m.value(), d, field, pos, symbols));
             case Type.OptionOf o -> new OptionOf(present(o, d, field, pos, symbols));
             case Type.TupleOf _ -> throw aTuple(t, d, field, pos);
-            case Type.FnOf _, Type.Union _, Type.Erroneous _,
+            // Not a refusal: a type nobody could name was reported where the name is written, and
+            // a shape cannot be built over it. Met here and not before the walk, so that what stands
+            // outside it in the type — a tuple, a map's key — is refused in the order the walk
+            // refuses everything else, and only this leaf is left unsaid.
+            case Type.Erroneous _ -> throw new Unnamed();
+            case Type.FnOf _, Type.Union _,
                  Type.Var _, Type.MetaVar _, Type.Nothing _, Type.Never _ ->
                     throw noRepresentation(t, d, field, pos);
         };
+    }
+
+    /**
+     * The walk met a type nobody could name. Carries nothing and no stack: it is how the absence of
+     * a shape leaves the walk, and {@link Deriver#derive} is where it lands and becomes the absence
+     * of a representation.
+     */
+    final class Unnamed extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        Unnamed() {
+            super(null, null, false, false);
+        }
     }
 
     /** What an optional holds, which is not another optional. */
