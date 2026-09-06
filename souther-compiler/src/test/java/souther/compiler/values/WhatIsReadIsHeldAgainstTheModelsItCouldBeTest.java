@@ -7,6 +7,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -187,28 +188,45 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
         return compose(left, right, "||");
     }
 
+    /**
+     * The half of a rule that is this compiler's answer, as one value.
+     *
+     * <p>Held together because a choice settles all of it or none of it. What an alternative
+     * promised and whether it holds a clause nothing read are what the next choice out reads to
+     * decide what it opened, so a settlement that took the branch that stands for the values and
+     * left these as the two branches together would answer the outer choice out of a branch nobody
+     * can be in. Built nowhere but in the two below, so a part of it added later has to be settled
+     * rather than composed beside them.
+     */
+    private record Answer(PlannedValues<String> planned, Set<String> opened, Set<String> readAbout,
+                          boolean choicesOverOnePosition, boolean holdsSomethingUnread) {}
+
     private static Rule compose(Rule left, Rule right, String by) {
         Set<Integer> could = new LinkedHashSet<>();
         left.leaves().forEach(here -> right.leaves().forEach(there ->
                 could.add(by.equals("&&") ? here & there : here | there)));
+        Answer answer = by.equals("&&") ? conjoined(left, right) : settled(left, right);
+        return new Rule("(" + left.wrote() + " " + by + " " + right.wrote() + ")",
+                answer.planned(), answer.opened(), List.copyOf(could), answer.readAbout(),
+                answer.choicesOverOnePosition(), answer.holdsSomethingUnread());
+    }
+
+    /**
+     * Both readings holding at once.
+     *
+     * <p>Every clause of both is one somebody satisfying the whole is under, so all of what either
+     * side is answerable for is what the conjunction is answerable for. Nothing is opened: a
+     * conjunction has no alternative for a position to be open in, and what either side already had
+     * opened travels up with it, to be told to the answer once where the whole of what the clauses
+     * came to is in hand.
+     */
+    private static Answer conjoined(Rule left, Rule right) {
         Set<String> about = new LinkedHashSet<>(left.readAbout());
         about.addAll(right.readAbout());
-        boolean overOne = left.choicesOverOnePosition() && right.choicesOverOnePosition()
-                && (by.equals("&&") || about.size() <= 1);
-        Set<String> opened = new LinkedHashSet<>();
-        PlannedValues<String> planned;
-        if (by.equals("&&")) {
-            planned = left.planned().meet(right.planned());
-            // A conjunction leaves nothing open, since both of its clauses hold. What either side
-            // already had opened travels up with it: the positions are told to the answer once,
-            // where the whole of what the clauses came to is in hand.
-            opened.addAll(left.opened());
-            opened.addAll(right.opened());
-        } else {
-            planned = settled(left, right, opened);
-        }
-        return new Rule("(" + left.wrote() + " " + by + " " + right.wrote() + ")",
-                planned, opened, List.copyOf(could), about, overOne,
+        Set<String> opened = new LinkedHashSet<>(left.opened());
+        opened.addAll(right.opened());
+        return new Answer(left.planned().meet(right.planned()), opened, about,
+                left.choicesOverOnePosition() && right.choicesOverOnePosition(),
                 left.holdsSomethingUnread() || right.holdsSomethingUnread());
     }
 
@@ -226,25 +244,34 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
      * deciding what the compiler does, and the two would agree because one of them was made out of
      * the other.
      *
-     * <p>What a choice left open follows the same four cases. A position is open in a branch, so a
-     * branch nobody can be in takes what it opened with it — kept, the values would be settled and
-     * the account beside them would still be the one a choice that stands leaves.
+     * <p><b>The whole of the answer follows the four cases and not the values alone.</b> Where one
+     * branch stands the choice is that branch, so what it promised, whether it holds a clause
+     * nothing read, and what its own choices reached are the standing branch's — these are what the
+     * next choice out reads to decide what it opened, and taken from the two branches together it
+     * would be answering out of a branch nobody can be in.
+     *
+     * <p>A choice neither branch of which stands is neither of them. It promises nothing and its
+     * alternatives lost nothing, and what showed it empty is what showed both — which is why that
+     * one keeps what either branch could not read.
      */
-    private static PlannedValues<String> settled(Rule left, Rule right, Set<String> opened) {
+    private static Answer settled(Rule left, Rule right) {
         boolean leftStands = !left.planned().holdsNothingAsBuilt(SETS);
         boolean rightStands = !right.planned().holdsNothingAsBuilt(SETS);
         if (!leftStands && !rightStands) {
-            return left.planned().leavingNothing().bothDead(right.planned().leavingNothing());
+            return new Answer(
+                    left.planned().leavingNothing().bothDead(right.planned().leavingNothing()),
+                    Set.of(), Set.of(), true,
+                    left.holdsSomethingUnread() || right.holdsSomethingUnread());
         }
         if (!leftStands) {
-            opened.addAll(right.opened());
-            return right.planned();
+            return standing(right);
         }
         if (!rightStands) {
-            opened.addAll(left.opened());
-            return left.planned();
+            return standing(left);
         }
-        opened.addAll(left.opened());
+        Set<String> about = new LinkedHashSet<>(left.readAbout());
+        about.addAll(right.readAbout());
+        Set<String> opened = new LinkedHashSet<>(left.opened());
         opened.addAll(right.opened());
         // The positions the alternative beside an unread one reached, said where the two of them
         // are what was written.
@@ -254,7 +281,17 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
         if (right.holdsSomethingUnread()) {
             opened.addAll(promisedBy(left));
         }
-        return left.planned().joinLive(right.planned());
+        return new Answer(left.planned().joinLive(right.planned()), opened, about,
+                left.choicesOverOnePosition() && right.choicesOverOnePosition()
+                        && about.size() <= 1,
+                left.holdsSomethingUnread() || right.holdsSomethingUnread());
+    }
+
+    /** What a choice one branch of which nobody can be in comes to, which is that branch — all of
+     *  it, and not its values with the two branches' account beside them. */
+    private static Answer standing(Rule branch) {
+        return new Answer(branch.planned(), branch.opened(), branch.readAbout(),
+                branch.choicesOverOnePosition(), branch.holdsSomethingUnread());
     }
 
     /**
@@ -337,5 +374,35 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
 
         heldAgainstItsModels(either(both(isA, isB), both(isA, notA)));
         heldAgainstItsModels(either(both(isA, notA), both(isA, isB)));
+    }
+
+    /**
+     * And a choice whose dead branch is the only one holding a clause nothing read.
+     *
+     * <p>What the choice comes to is the branch that stands, which read everything it was given.
+     * Answered with the two branches' accounts put together, it would say a clause of it went
+     * unread — and the next choice out reads that to decide what an alternative beside an unread
+     * one promised, so the reading would take back a position on the strength of a branch nobody
+     * can be in.
+     *
+     * <p>Three rules deep on one side, which is what it takes: a conjunction of two is dead only
+     * where both were read, so the clause nothing read is the third.
+     */
+    @Test
+    void andAChoiceWhoseDeadBranchIsTheOnlyOneThatMissedARule() {
+        Rule isA = rules().get(0);
+        Rule isB = rules().get(1);
+        Rule otherIsA = rules().get(2);
+        Rule unreadAboutValue = rules().get(4);
+        Rule dead = both(both(unreadAboutValue, isA), isB);
+
+        assertTrue(dead.holdsSomethingUnread(), "the dead branch is the one that missed a rule");
+        assertFalse(otherIsA.holdsSomethingUnread(), "and the standing one read what it was given");
+
+        heldAgainstItsModels(either(dead, otherIsA));
+        heldAgainstItsModels(either(otherIsA, dead));
+        // And with one more choice around it, which is what reads the account the settlement left.
+        heldAgainstItsModels(either(either(dead, otherIsA), isB));
+        heldAgainstItsModels(either(isB, either(otherIsA, dead)));
     }
 }
