@@ -111,7 +111,7 @@ class AStandingQuestionSaysWhatItStandsForTest {
     /**
      * Two parts of one clause stopped in two ways, and the line says both.
      *
-     * <p>{@code a /= b} relates the position to another, which this reading recognised and has no
+     * <p>{@code a < b} relates the position to another, which this reading recognised and has no
      * set of one position's values for; the other is a form it does not take apart.
      * The two are lifted by different work, so an author told only one of them lifts it and finds
      * the question still standing.
@@ -129,7 +129,7 @@ class AStandingQuestionSaysWhatItStandsForTest {
                         module probe.two
 
                         data Pair = { a: String, b: String }
-                            invariant both = a /= b && UNREAD_A
+                            invariant both = a < b && UNREAD_A
 
                         behavior read : (p: Pair) -> Ok
                         """), "invariant Pair (both)"));
@@ -142,7 +142,7 @@ class AStandingQuestionSaysWhatItStandsForTest {
                         module probe.two
 
                         data Pair = { a: String, b: String }
-                            invariant both = UNREAD_A && a /= b
+                            invariant both = UNREAD_A && a < b
 
                         behavior read : (p: Pair) -> Ok
                         """), "invariant Pair (both)"),
@@ -254,7 +254,7 @@ class AStandingQuestionSaysWhatItStandsForTest {
                         module probe.two
 
                         data Pair = { a: String, b: String }
-                            invariant both = a /= b && UNREAD_A
+                            invariant both = a < b && UNREAD_A
 
                         behavior read : (p: Pair) -> Ok
                         """));
@@ -264,7 +264,7 @@ class AStandingQuestionSaysWhatItStandsForTest {
                         module probe.two
 
                         data Pair = { a: String, b: String }
-                            invariant both = UNREAD_A && a /= b
+                            invariant both = UNREAD_A && a < b
 
                         behavior read : (p: Pair) -> Ok
                         """),

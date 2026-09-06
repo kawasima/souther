@@ -118,6 +118,28 @@ public sealed interface DataMessage extends Message {
     record NoValueTheseCanAllHold(String data, String at) implements DataMessage, Reported {}
 
     /**
+     * Positions the rules state to hold different values cannot all differ.
+     *
+     * <p>The rule the other way round from {@link NoValueTheseCanAllHold}, and a sentence of its
+     * own rather than that one with the places changed. There the places are one value and it has
+     * none; here each of them holds a value and there are not enough values for them all to differ
+     * — so an author sent to look for a value they share would find one and be none the wiser.
+     */
+    @Code(DiagnosticCode.E1013)
+    record NoValuesTheseCanAllDifferIn(String data, String at) implements DataMessage, Reported {}
+
+    /**
+     * Positions the rules hold as one value are also stated to differ.
+     *
+     * <p>Beside {@link NoValuesTheseCanAllDifferIn} and not it. That one says there are too few
+     * values for these to differ, which sends an author to look for more; here there is no number
+     * of values that would do, because one value is not two whatever it is.
+     */
+    @Code(DiagnosticCode.E1013)
+    record TheseAreHeldAsOneValueAndStatedToDiffer(String data, String at)
+            implements DataMessage, Reported {}
+
+    /**
      * The values positions held as one value are allowed and the range they share have none in
      * common.
      *

@@ -89,7 +89,7 @@ class AProofNamesOneBlockAndNotAllOfThemTest {
         Allowance<FactSubject> sets = AsACompilationAllows.forAdmittedValues();
         AdmissibleValues<FactSubject> both =
                 emptiedAt(R, S, sets).meet(emptiedAt(P, Q, sets), sets);
-        assertEquals(2, both.emptiedBlocks().size(), "or this measures one block twice");
+        assertEquals(2, both.refusedBy().blocks().size(), "or this measures one block twice");
 
         ConstraintState<FactSubject> state = ConstraintState.<FactSubject>top()
                 .takingRead(Confinement.Worked.of(both, OrderedIntervals.top(), Map.of()), sets);
@@ -118,7 +118,7 @@ class AProofNamesOneBlockAndNotAllOfThemTest {
             AdmissibleValues<FactSubject> other = emptiedAt(P, Q, sets);
             AdmissibleValues<FactSubject> both = reversed
                     ? other.meet(one, sets) : one.meet(other, sets);
-            assertEquals(2, both.emptiedBlocks().size(), "or the two witnesses are not both here");
+            assertEquals(2, both.refusedBy().blocks().size(), "or the two witnesses are not both here");
 
             ConstraintState<FactSubject> state = ConstraintState.<FactSubject>top()
                     .takingRead(Confinement.Worked.of(both, OrderedIntervals.top(), Map.of()),
@@ -145,12 +145,14 @@ class AProofNamesOneBlockAndNotAllOfThemTest {
         Confinement.Admission<FactSubject> one = new Confinement.Admission<>(
                 souther.compiler.values.Emptiness.EMPTY,
                 Confinement.EmptyBy.POSITIONS_HELD_AS_ONE,
-                Set.of(souther.compiler.values.Sameness.of(P, Q).joining(Q, R).blockOf(P)),
+                new souther.compiler.values.Refusal.AtEachOf<>(
+                        Set.of(souther.compiler.values.Sameness.of(P, Q).joining(Q, R).blockOf(P))),
                 Confinement.Shown.BY_THE_READINGS);
         Confinement.Admission<FactSubject> other = new Confinement.Admission<>(
                 souther.compiler.values.Emptiness.EMPTY,
                 Confinement.EmptyBy.POSITIONS_HELD_AS_ONE,
-                Set.of(souther.compiler.values.Sameness.of(P, Q).joining(Q, S).blockOf(P)),
+                new souther.compiler.values.Refusal.AtEachOf<>(
+                        Set.of(souther.compiler.values.Sameness.of(P, Q).joining(Q, S).blockOf(P))),
                 Confinement.Shown.BY_THE_READINGS);
 
         assertTrue(Confinement.Admission.bothShown(one, other).at().isEmpty(),

@@ -257,7 +257,7 @@ class WhatAPositionMayHoldIsHandedOverWithHowMuchOfItWasReadTest {
      * And what such a position is told is that an alternative took it back, whatever the unread
      * branch was about.
      *
-     * <p>{@code left /= right} relates two positions and {@code code} is neither of them, so the
+     * <p>{@code left < right} relates two positions and {@code code} is neither of them, so the
      * reason the branch stopped is not a reason about {@code code}. Lent across, a report would
      * tell an author that a rule compares {@code code} with another position, and no rule does.
      *
@@ -273,7 +273,7 @@ class WhatAPositionMayHoldIsHandedOverWithHowMuchOfItWasReadTest {
                 module demo
 
                 data Triple = { left: String, right: String, code: String }
-                    invariant either = left /= right || code == "A"
+                    invariant either = left < right || code == "A"
                 """, "Triple");
 
         asFarAsRead(ValueSet.ANY, UnreadReason.ALTERNATIVE_NOT_READ, read, "code");
@@ -323,7 +323,7 @@ class WhatAPositionMayHoldIsHandedOverWithHowMuchOfItWasReadTest {
      *
      * <p>{@code a == 5} admits every {@code b}, so the choice does and nothing about {@code b} went
      * unread — while that alternative stands. {@code a == 7} refuses every value it admits, and what
-     * is left is {@code a /= b} with {@code a} at 7, which is a rule this cannot read about a
+     * is left is {@code a < b} with {@code a} at 7, which is a rule this cannot read about a
      * {@code b} that is now not every value. A reading that had struck the rule off where the
      * choice was read would answer that the model leaves {@code b} every value and that this was
      * read in full.
@@ -334,7 +334,7 @@ class WhatAPositionMayHoldIsHandedOverWithHowMuchOfItWasReadTest {
                 module demo
 
                 data R = { a: Int, b: Int }
-                    invariant one = a == 5 || a /= b
+                    invariant one = a == 5 || a < b
                     invariant two = a == 7
                 """, "R");
 
@@ -417,11 +417,15 @@ class WhatAPositionMayHoldIsHandedOverWithHowMuchOfItWasReadTest {
     /**
      * A rule relating two positions is told apart from one written in a form this cannot read.
      *
-     * <p>Both leave the positions open and neither is the other. Nothing about {@code left /= right}
+     * <p>Both leave the positions open and neither is the other. Nothing about {@code left < right}
      * was beyond this reading — both sides were recognised, and what it says is a fact about the
      * pair, which a set of one position's values is not. A regex over one of them is a form this
      * reading does not take apart, which is a fact about the reading and is lifted by different
      * work.
+     *
+     * <p>An ordering and not a denial, which is the relation this reading now holds: a denial
+     * between two positions is read, and what it leaves them is a relation beside the product
+     * rather than a rule that reached nothing.
      *
      * <p>Told apart where the reading gave up, since that is the only place both sides are still in
      * hand. Recovered afterwards from the spoiled positions alone, the two would be one answer.
@@ -432,7 +436,7 @@ class WhatAPositionMayHoldIsHandedOverWithHowMuchOfItWasReadTest {
                 module demo
 
                 data Pair = { left: String, right: String }
-                    invariant differ = left /= right
+                    invariant differ = left < right
                 """, "Pair");
         asFarAsRead(ValueSet.ANY, UnreadReason.RELATES_TWO_POSITIONS, related, "left");
         asFarAsRead(ValueSet.ANY, UnreadReason.RELATES_TWO_POSITIONS, related, "right");
@@ -444,6 +448,31 @@ class WhatAPositionMayHoldIsHandedOverWithHowMuchOfItWasReadTest {
                     invariant shape = UNREAD_LEFT
                 """, "Pair");
         asFarAsRead(ValueSet.ANY, UnreadReason.FORM_NOT_READ, shaped, "left");
+    }
+
+    /**
+     * And a denial between two positions is not one of them either, because it is read.
+     *
+     * <p>The reason above is about a rule this reading recognised and could not turn into a set of
+     * one position's values. A denial is one it takes in — as a relation beside the product rather
+     * than as a set — so nothing about it went unread, and a position it names is one this reading
+     * speaks for. Left standing, the accounting would say the model draws a distinction this could
+     * not follow, and an author would be sent to a rule that was read in full.
+     *
+     * <p>What the positions hold is still every value. A denial narrows neither of them on its own,
+     * which is what parts being read from being narrowed.
+     */
+    @Test
+    void andADenialBetweenTwoPositionsIsReadRatherThanStoodOn() {
+        FieldDomains read = of("""
+                module demo
+
+                data Pair = { left: String, right: String }
+                    invariant differ = left /= right
+                """, "Pair");
+
+        wholly(ValueSet.ANY, read, "left");
+        wholly(ValueSet.ANY, read, "right");
     }
 
     /**

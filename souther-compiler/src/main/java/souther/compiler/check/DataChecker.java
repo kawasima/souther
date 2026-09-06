@@ -545,7 +545,39 @@ public final class DataChecker {
                      Emptiness.SetRequiresTooManyDistinctValues _,
                      Emptiness.NonEmptyCollectionWithNoElement _, Emptiness.AcrossEveryCase _,
                      Emptiness.TheNameHasNone _, Emptiness.NoBaseInComponent _,
-                     Emptiness.AtAField _, Emptiness.AtEqualPositions _ ->
+                     Emptiness.AtAField _, Emptiness.AtEqualPositions _,
+                     Emptiness.AtPositionsHeldApart _,
+                     Emptiness.NoDistinctValuesForPositionsHeldApart _,
+                     Emptiness.PositionsHeldAsOneAreHeldApart _ ->
+                        at.say(new DataMessage.ItsRulesCannotAllHold(data));
+            };
+            // The places together, the same way, and a sentence of its own: these positions are
+            // stated to differ and there is no way for them to. Said as what they cannot all
+            // differ in rather than as a value they cannot all hold, which is the rule turned
+            // round and is what the places beside them do hold.
+            case Emptiness.AtPositionsHeldApart it -> switch (it.under()) {
+                case Emptiness.NoDistinctValuesForPositionsHeldApart _ ->
+                        at.say(new DataMessage.NoValuesTheseCanAllDifferIn(
+                                data, written(it.where())));
+                // And the two rules where what refuses is reading them: one value is not two,
+                // whatever those positions may hold. An author told there were too few values
+                // would go looking for more, and there is no number of them that would do.
+                case Emptiness.PositionsHeldAsOneAreHeldApart _ ->
+                        at.say(new DataMessage.TheseAreHeldAsOneValueAndStatedToDiffer(
+                                data, written(it.where())));
+                // Every other proof, named rather than gathered under a default, for the reason
+                // the arm above gives. None of them reaches here today: this place is written
+                // only under the proof above it.
+                case Emptiness.ConflictingRules _, Emptiness.EmptyNumericInterval _,
+                     Emptiness.EmptyOrderedInterval _, Emptiness.NoAllowedCollectionSize _,
+                     Emptiness.SetRequiresTooManyDistinctValues _,
+                     Emptiness.NonEmptyCollectionWithNoElement _, Emptiness.AcrossEveryCase _,
+                     Emptiness.TheNameHasNone _, Emptiness.NoBaseInComponent _,
+                     Emptiness.NoAllowedValueInRange _,
+                     Emptiness.NoAllowedValueWithinRequiredBounds _,
+                     Emptiness.NoCommonValueForEqualPositions _,
+                     Emptiness.AtAField _, Emptiness.AtEqualPositions _,
+                     Emptiness.AtPositionsHeldApart _ ->
                         at.say(new DataMessage.ItsRulesCannotAllHold(data));
             };
             case Emptiness.NoBaseInComponent it -> {
@@ -556,7 +588,9 @@ public final class DataChecker {
             // made only inside the one that says which positions it is about, and where there is no
             // block to name, what is carried is the general form instead. Being exhaustive over the
             // proofs is what makes the next one a build that stops here.
-            case Emptiness.NoCommonValueForEqualPositions _ ->
+            case Emptiness.NoCommonValueForEqualPositions _,
+                 Emptiness.NoDistinctValuesForPositionsHeldApart _,
+                 Emptiness.PositionsHeldAsOneAreHeldApart _ ->
                     at.say(new DataMessage.ItsRulesCannotAllHold(data));
             case Emptiness.ConflictingRules _, Emptiness.EmptyNumericInterval _ ->
                     at.say(new DataMessage.ItsRulesCannotAllHold(data));

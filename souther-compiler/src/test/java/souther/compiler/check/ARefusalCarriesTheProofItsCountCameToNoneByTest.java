@@ -81,7 +81,14 @@ class ARefusalCarriesTheProofItsCountCameToNoneByTest {
             case Emptiness.NoAllowedValueInRange _ -> "no allowed value in the range";
             case Emptiness.NoAllowedValueWithinRequiredBounds _ ->
                     "no allowed value within the bounds required";
+            case Emptiness.AtPositionsHeldApart it -> it.where().stream().map(each -> switch (each) {
+                case Emptiness.AtAField.Where.TheValueItself _ -> "value";
+                case Emptiness.AtAField.Where.In(String spelled) -> spelled;
+            }).toList() + " " + shape(it.under());
             case Emptiness.NoCommonValueForEqualPositions _ -> "no value they can all hold";
+            case Emptiness.NoDistinctValuesForPositionsHeldApart _ ->
+                    "no values they can all differ in";
+            case Emptiness.PositionsHeldAsOneAreHeldApart _ -> "one value stated to differ";
             case Emptiness.SetRequiresTooManyDistinctValues it -> "a set over at most " + it.available();
             case Emptiness.NoAllowedCollectionSize _ -> "no size";
         };

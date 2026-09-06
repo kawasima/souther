@@ -242,18 +242,4 @@ class AnEqualityBetweenTwoPositionsIsHeldByTheValuesTest {
         assertEquals("`p`, `q`", named(source));
     }
 
-    /**
-     * A denial between two positions is not this and is not read.
-     *
-     * <p>An equality says the two are one side of the product. A denial takes the diagonal out of
-     * a product, which is not a product — so it reaches no reading here, and this model is one
-     * nothing refuses.
-     */
-    @Test
-    void aDenialBetweenTwoPositionsIsNotHeld() {
-        admits(STAGE + """
-                data Pair = { p: Stage, r: Stage }
-                    invariant no = p /= r && p == Ready && r == Ready
-                """);
-    }
 }

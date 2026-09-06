@@ -19,11 +19,13 @@ import souther.compiler.regex.Meter;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.ValueName;
+import souther.compiler.values.Admits;
 import souther.compiler.values.Emptiness;
 import souther.compiler.values.Value;
 import souther.compiler.values.ValueSet;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -837,6 +839,119 @@ public sealed interface Carrier {
                     ? Emptiness.NONEMPTY : somethingNotExcluded(it.excluded(), range);
             case ValueSet.Matching it -> this instanceof Text
                     ? stringsInside(it.language(), range, meter) : Emptiness.UNDECIDED;
+        };
+    }
+
+    /**
+     * Which values this order holds inside {@code range} that {@code set} admits.
+     *
+     * <p>{@link #meets} answering with the values rather than with whether there are any, for a
+     * reader relating one position to another. Whether a denial between two blocks leaves anything
+     * turns on which values each of them is left and not on whether it is left some, so the
+     * question a relation asks is this one — and it is here, beside the answer about one position,
+     * because a set and a range are put together in one place or in two that come to disagree.
+     *
+     * <p>Three answers, and the middle one is what keeps a relation cheap. A block left more values
+     * than a caller will count is one that never runs out for want of a value to take, so a reader
+     * relating a handful of blocks may stop counting rather than enumerate an order — and a block
+     * this cannot say the values of is a block a relation says nothing about, which is what every
+     * widening here is.
+     *
+     * @param atMost how many values a caller will count. Its own and not this order's: how many
+     *               there have to be before the answer stops mattering is a question about what the
+     *               caller is relating
+     */
+    default Admits valuesShared(ValueSet set, OrderedInterval range, int atMost) {
+        OrderedInterval held = extent().meet(range);
+        if (held.holdsNothing()) {
+            return new Admits.These(Set.of());
+        }
+        return switch (set) {
+            case ValueSet.Finite it -> named(it.values(), held, atMost);
+            case ValueSet.Cofinite it -> placed(held, it.excluded(), atMost);
+            // A language is a description of a machine rather than the set it comes to, and
+            // building one to relate two positions would spend a position's allowance on a question
+            // about a pair.
+            case ValueSet.Matching _ -> new Admits.NotKnown();
+        };
+    }
+
+    /**
+     * The same, of a block whose positions may be on no order at all.
+     *
+     * <p>Here rather than at the caller, because a block on no order is a case of the question and
+     * not a case of who is asking. Such a block has no range for its values to be met with, so a
+     * set naming them is the whole of what it holds; every other shape is one only an order can say
+     * the values of, since what a written set leaves out is every value there is. Answered where a
+     * caller happens to notice the absence, that caller would be deciding what a value and an order
+     * come to, which is what this type is for — and the second answer would count differently from
+     * this one the first time either changed.
+     */
+    static Admits leftAt(Carrier carrier, ValueSet set, OrderedInterval range, int atMost) {
+        if (carrier != null) {
+            return carrier.valuesShared(set, range, atMost);
+        }
+        return set instanceof ValueSet.Finite it ? Admits.of(it.values(), atMost)
+                : new Admits.NotKnown();
+    }
+
+    /** Which of {@code values} lie inside {@code range}, unknown where one of them is not a value
+     *  this order places at all. */
+    private Admits named(java.util.Set<Value> values, OrderedInterval range, int atMost) {
+        Set<Value> out = new LinkedHashSet<>();
+        for (Value each : values) {
+            Place at = placeOf(each);
+            if (at == null) {
+                return new Admits.NotKnown();
+            }
+            if (range.admits(at)) {
+                out.add(each);
+            }
+        }
+        return Admits.of(out, atMost);
+    }
+
+    /** Which values {@code range} holds that {@code excluded} does not name, where they are few
+     *  enough to write down. */
+    private Admits placed(OrderedInterval range, Set<Value> excluded, int atMost) {
+        List<Place> held = firstPlacesIn(range, atMost + excluded.size() + 1);
+        if (held == null) {
+            return new Admits.MoreThanCounted();
+        }
+        Set<Value> away = new LinkedHashSet<>();
+        for (Value each : excluded) {
+            Place at = placeOf(each);
+            if (at == null) {
+                return new Admits.NotKnown();
+            }
+            away.add(valueAt(at));
+        }
+        Set<Value> out = new LinkedHashSet<>();
+        for (Place at : held) {
+            Value value = valueAt(at);
+            if (value == null) {
+                return new Admits.NotKnown();
+            }
+            if (!away.contains(value)) {
+                out.add(value);
+            }
+        }
+        return Admits.of(out, atMost);
+    }
+
+    /**
+     * The value at a place on this order, or null where this order has no way of writing one down.
+     *
+     * <p>{@link #placeOf} the other way round, and here for the reason that one is: a value and
+     * where it sits are the same fact said twice, and the crossing between them is the carrier's.
+     * The temporal carriers place no written value, so nothing here writes one back.
+     */
+    private Value valueAt(Place at) {
+        return switch (this) {
+            case Whole _, Dense _ -> Value.number(Count.number(at).at());
+            case Text _ -> Value.text(((souther.compiler.numeric.Text) at).at());
+            case Ordinal it -> Value.of(it.caseAt(at));
+            case Days _, Seconds _, SecondsOfDay _, Nanos _ -> null;
         };
     }
 

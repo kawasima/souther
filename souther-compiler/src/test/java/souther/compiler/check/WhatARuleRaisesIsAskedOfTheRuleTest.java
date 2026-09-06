@@ -202,6 +202,32 @@ class WhatARuleRaisesIsAskedOfTheRuleTest {
     }
 
     /**
+     * And a denial between two positions raises nothing either, though a reading takes it in.
+     *
+     * <p>Two questions with one name between them. Whether a reading can hold what a rule says and
+     * whether a rule raises a question about one position are different things: the values now hold
+     * {@code p /= q} as a relation between two blocks, and it still divides neither of them, so
+     * there is nothing here for a measure of coverage to go and check.
+     *
+     * <p>Which is why the two are not kept in step. A capability gained on one side is not a reason
+     * to move the other, and this is what says so.
+     */
+    @Test
+    void andSoDoesADenialAReadingTakesIn() {
+        Required.Irrelevant said = assertInstanceOf(Required.Irrelevant.class,
+                only(raisedBy("""
+                        module example.booking
+
+                        data Pair = { p: Int, q: Int }
+                            invariant differ = p /= q
+                        """, "Pair"), "differ"),
+                "a rule about a pair raises no question about one position");
+
+        assertEquals(Set.of(Required.Because.IT_RELATES_TWO_POSITIONS), said.because());
+        assertEquals(Set.of(), said.obligations());
+    }
+
+    /**
      * A conjunction is one rule, and raises what its parts raise together.
      *
      * <p>The relational half takes nothing away. Written as a first-wins answer, whichever conjunct

@@ -39,7 +39,7 @@ class EveryPartAReadingStoppedOnSaysWhyTest {
             module demo
 
             data N = { a: String, b: String }
-                invariant both = a /= b && UNREAD_A
+                invariant both = a < b && UNREAD_A
             """.replace("UNREAD_A", UNREAD_A);
 
     /** The two written the other way round, which is the same clause. */
@@ -47,7 +47,7 @@ class EveryPartAReadingStoppedOnSaysWhyTest {
             module demo
 
             data N = { a: String, b: String }
-                invariant both = UNREAD_A && a /= b
+                invariant both = UNREAD_A && a < b
             """.replace("UNREAD_A", UNREAD_A);
 
     /**

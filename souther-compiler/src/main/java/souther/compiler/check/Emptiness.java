@@ -136,6 +136,32 @@ public sealed interface Emptiness {
     record NoCommonValueForEqualPositions() implements Emptiness {}
 
     /**
+     * Positions the rules state to hold different values are left no way of differing.
+     *
+     * <p>The other half of what a rule between two positions can say, and the same shape of lack:
+     * each of them is left values of its own, and what has nothing is an assignment to all of them
+     * at once. So it is said of the positions together, and a sentence naming one would send an
+     * author after a rule that place is fine with.
+     *
+     * <p><b>Not {@link NoCommonValueForEqualPositions} with the rule turned round.</b> That one is
+     * a lack at one place — the value several positions are — and this one is a lack at no place.
+     * A reader shown the first is shown where to look; a reader shown this is shown which rules
+     * cannot hold between them.
+     */
+    record NoDistinctValuesForPositionsHeldApart() implements Emptiness {}
+
+    /**
+     * Positions the rules hold as one value are also stated to differ.
+     *
+     * <p>Refused by reading the two rules and against no value: whatever those positions may hold,
+     * one value is not two. Beside {@link NoDistinctValuesForPositionsHeldApart} rather than said
+     * as it, because that one is about how many values there are and this one is about nothing of
+     * the kind — an author told there were too few would go looking for more, and there is no
+     * number of them that would do.
+     */
+    record PositionsHeldAsOneAreHeldApart() implements Emptiness {}
+
+    /**
      * A set is asked to hold more values that differ than there are of what it holds.
      *
      * <p>One number and not two. What was compared is whether the rules admit any size this small,
@@ -252,6 +278,28 @@ public sealed interface Emptiness {
     }
 
     /**
+     * Several positions of the declaration are stated to differ, and cannot all be told apart.
+     *
+     * <p>{@link AtEqualPositions} for the rule the other way round, and a different sentence rather
+     * than the same one about different places. Those positions hold one value between them and
+     * this value has none; these positions hold a value each and there are not enough values to go
+     * round. A reader shown the first goes to the value they share, and there is nowhere for a
+     * reader of this to go but to the rules between them.
+     *
+     * @param where the places, in the order the value declares them
+     */
+    record AtPositionsHeldApart(List<AtAField.Where> where, Emptiness under) implements Emptiness {
+
+        public AtPositionsHeldApart {
+            where = List.copyOf(where);
+            if (where.size() < 2) {
+                throw new IllegalArgumentException(
+                        "positions stated to differ are more than one position");
+            }
+        }
+    }
+
+    /**
      * Every case of a sum, or every member of a union, has no value.
      *
      * <p>All of them and not one of them. A sum has a value wherever any case does, so what proves it
@@ -317,12 +365,15 @@ public sealed interface Emptiness {
             // the rules contradicting, with the place and the reason filled in.
             case ConflictingRules _, EmptyOrderedInterval _, NoAllowedValueInRange _,
                  NoAllowedValueWithinRequiredBounds _,
-                 NoCommonValueForEqualPositions _ -> Nearness.DIRECT;
+                 NoCommonValueForEqualPositions _,
+                 NoDistinctValuesForPositionsHeldApart _,
+                 PositionsHeldAsOneAreHeldApart _ -> Nearness.DIRECT;
             case EmptyNumericInterval _, SetRequiresTooManyDistinctValues _,
                  NoAllowedCollectionSize _ -> Nearness.STRUCTURAL;
             case TheNameHasNone _, NoBaseInComponent _ -> Nearness.PROPAGATED;
             case AtAField at -> at.under().category();
             case AtEqualPositions at -> at.under().category();
+            case AtPositionsHeldApart at -> at.under().category();
             case NonEmptyCollectionWithNoElement held -> held.element().category();
             // As far off as its furthest case: the sum has none because all of them have none, so a
             // proof reaching another declaration is a proof this one reaches it too.

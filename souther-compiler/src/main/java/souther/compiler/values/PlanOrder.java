@@ -150,6 +150,10 @@ final class PlanOrder {
      *
      * <p>A set of boxes and not a sequence: the alternatives are a union, so each is written out and
      * the writings are sorted. What each box holds is written by position, for the same reason.
+     *
+     * <p>Both halves of an alternative, because both are what it says. Two alternatives whose sides
+     * agree and whose denials do not are two alternatives, and written by their sides alone they
+     * would come out alike — which puts the readings back in the order they happened to arrive in.
      */
     static void written(AdmissibleValues.Held<?> held, StringBuilder out) {
         switch (held) {
@@ -160,12 +164,27 @@ final class PlanOrder {
                         .map(box -> {
                             StringBuilder one = new StringBuilder();
                             written(box.at(), one);
+                            written(box.apart(), one);
                             return one.toString();
                         })
                         .sorted()
                         .forEach(each -> out.append(each).append(';'));
             }
         }
+    }
+
+    /**
+     * Which blocks an alternative states to differ, written out in one order whatever order they
+     * were stated in.
+     *
+     * <p>Sorted, for the reason the alternatives are: a relation is a set of pairs, so the same
+     * rules written two ways are one relation and have to come out as one writing.
+     */
+    private static void written(Apartness<?> apart, StringBuilder out) {
+        out.append(apart.edges().size()).append(';');
+        tellApart(apart.blocks());
+        apart.edges().stream().map(String::valueOf).sorted()
+                .forEach(each -> out.append(each).append(';'));
     }
 
     private static long states(java.util.Collection<ValueSet> sets) {
@@ -194,10 +213,7 @@ final class PlanOrder {
      */
     static void written(java.util.Map<?, ValueSet> at, StringBuilder out) {
         out.append(at.size()).append(';');
-        java.util.List<String> named = at.keySet().stream().map(String::valueOf).toList();
-        assert java.util.Set.copyOf(named).size() == at.size()
-                : "two positions of one reading are written alike, so an order over readings is not"
-                        + " one: " + named;
+        tellApart(at.keySet());
         at.entrySet().stream()
                 .map(each -> {
                     StringBuilder one = new StringBuilder(String.valueOf(each.getKey()));
@@ -207,6 +223,21 @@ final class PlanOrder {
                 })
                 .sorted()
                 .forEach(each -> out.append(each).append(';'));
+    }
+
+    /**
+     * That what a reading is filed under tells its subjects apart, wherever they are written out.
+     *
+     * <p>Here rather than at the map above, which is one of the places a reading's subjects are
+     * written and not the only one: a relation names blocks no side of the product holds, so a
+     * reading whose subjects collide there would be written out past the one check that exists to
+     * catch it. The rule is about writing subjects down, so it is asked wherever that happens.
+     */
+    private static void tellApart(java.util.Collection<?> these) {
+        java.util.List<String> named = these.stream().map(String::valueOf).toList();
+        assert java.util.Set.copyOf(named).size() == java.util.Set.copyOf(these).size()
+                : "two subjects of one reading are written alike, so an order over readings is not"
+                        + " one: " + named;
     }
 
     static void write(ValueSet set, StringBuilder out) {
