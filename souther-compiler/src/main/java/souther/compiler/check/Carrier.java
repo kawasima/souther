@@ -20,6 +20,8 @@ import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.ValueName;
 import souther.compiler.values.Admits;
+import souther.compiler.values.StringMachines;
+import souther.compiler.values.TextExtents;
 import souther.compiler.values.Value;
 import souther.compiler.values.ValueSet;
 
@@ -828,6 +830,17 @@ public sealed interface Carrier {
      * @param meter what may be built to answer, where answering takes a machine
      */
     default souther.compiler.values.Emptiness meets(ValueSet set, OrderedInterval range, Meter meter) {
+        return meets(set, range, meter, StringMachines.NONE);
+    }
+
+    /**
+     * The same, borrowing a machine {@code machines} has already made where one is needed.
+     *
+     * @param machines where an answer about the strings somebody has already worked out is lent
+     *                 from; what it lends costs {@code meter} nothing
+     */
+    default souther.compiler.values.Emptiness meets(ValueSet set, OrderedInterval range, Meter meter,
+                                                    StringMachines machines) {
         if (range.holdsNothing()) {
             return souther.compiler.values.Emptiness.EMPTY;
         }
@@ -837,7 +850,8 @@ public sealed interface Carrier {
             case ValueSet.Cofinite it -> it.excluded().isEmpty()
                     ? souther.compiler.values.Emptiness.NONEMPTY : somethingNotExcluded(it.excluded(), range);
             case ValueSet.Matching it -> this instanceof Text
-                    ? stringsInside(it.language(), range, meter) : souther.compiler.values.Emptiness.UNDECIDED;
+                    ? stringsInside(it.language(), range, meter, machines)
+                    : souther.compiler.values.Emptiness.UNDECIDED;
         };
     }
 
@@ -1051,32 +1065,14 @@ public sealed interface Carrier {
     /**
      * Whether any string {@code language} admits lies inside {@code range}.
      *
-     * <p>The range said as the strings it holds, which is what makes this an answer about the
-     * strings rather than about the ends: a language is its strings, and two of them share a value
-     * or they do not. Said as a projection of the language onto the ends instead, a rule whose
-     * strings are not one stretch of the order would have no ends to be compared with.
+     * <p>The range is met with what this order holds first, so what is asked about is a stretch
+     * whose ends are strings; the question itself is {@link TextExtents#inside}, asked of
+     * {@code machines} so that a pair somebody has already asked about is answered from what they
+     * made.
      */
-    private souther.compiler.values.Emptiness stringsInside(Language language, OrderedInterval range, Meter meter) {
-        OrderedInterval held = extent().meet(range);
-        Language inside = language;
-        if (held.high() != null) {
-            souther.compiler.numeric.Text at =
-                    (souther.compiler.numeric.Text) held.high().at();
-            Language below = Language.before(
-                    held.high().inclusive() ? at.justAbove().at() : at.at(), meter);
-            inside = below == null ? null : inside.and(below, meter);
-        }
-        if (inside != null && held.low() != null) {
-            souther.compiler.numeric.Text at = (souther.compiler.numeric.Text) held.low().at();
-            Language under = Language.before(
-                    held.low().inclusive() ? at.at() : at.justAbove().at(), meter);
-            Language above = under == null ? null : under.not(meter);
-            inside = above == null ? null : inside.and(above, meter);
-        }
-        if (inside == null) {
-            return souther.compiler.values.Emptiness.UNDECIDED;
-        }
-        return inside.isEmpty() ? souther.compiler.values.Emptiness.EMPTY : souther.compiler.values.Emptiness.NONEMPTY;
+    private souther.compiler.values.Emptiness stringsInside(Language language, OrderedInterval range,
+                                                            Meter meter, StringMachines machines) {
+        return machines.inside(language, extent().meet(range), meter);
     }
 
     /**

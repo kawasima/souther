@@ -1,8 +1,13 @@
 package souther.compiler.query;
 
 import souther.compiler.check.ReadingPolicy;
+import souther.compiler.numeric.OrderedInterval;
+import souther.compiler.regex.Language;
+import souther.compiler.regex.Meter;
+import souther.compiler.regex.PatternPlan;
 import souther.compiler.values.AdmittedPlan;
 import souther.compiler.values.Allowance;
+import souther.compiler.values.Emptiness;
 import souther.compiler.values.Realization;
 import souther.compiler.values.StringMachines;
 import souther.compiler.values.TextExtent;
@@ -12,12 +17,13 @@ import souther.compiler.values.ValueSet;
 /**
  * The machines a reading of the rules needs, answered once for the whole compilation.
  *
- * <p>A pattern's language and where a set of strings stops are facts about the plan and the set,
- * and about nothing else: not the declaration whose rule named the pattern, not the question that
- * reached the declaration, and not which module was asking. So they are questions of the store
- * keyed by the plan and by the set, with no module and no source of their own — an edit reaches
- * them through nothing, because nothing they read can change, and a second declaration whose rules
- * come to the same strings is answered with the first one's machine.
+ * <p>A pattern's language, where a set of strings stops, and whether a language has a string
+ * inside a stretch of the order are facts about the plan, the set and the pair, and about nothing
+ * else: not the declaration whose rule named the pattern, not the question that reached the
+ * declaration, and not which module was asking. So they are questions of the store keyed by those,
+ * with no module and no source of their own — an edit reaches them through nothing, because
+ * nothing they read can change, and a second declaration whose rules come to the same strings is
+ * answered with the first one's machine.
  *
  * <p>What a reading may spend is not what it is lent. A machine made here is made under the
  * allowance a position is given ({@link ReadingPolicy#allowanceForAdmittedValues}), out of a purse
@@ -58,6 +64,13 @@ public final class Machines {
         public TextExtent extentOf(ValueSet set) {
             return db.ask(new Extent(set)).value();
         }
+
+        @Override
+        public Emptiness inside(Language language, OrderedInterval held, Meter meter) {
+            // The asker's meter is not spent: the answer is made once under an allowance of the
+            // pair's own, and what it came to is a fact about the pair whoever asks.
+            return db.ask(new Inside(language, held)).value();
+        }
     }
 
     /**
@@ -87,6 +100,24 @@ public final class Machines {
         @Override
         public Answer<TextExtent> compute(Db db) {
             return Answer.of(TextExtents.of(set));
+        }
+    }
+
+    /**
+     * Whether any string {@code language} admits lies inside {@code held}, a stretch of the order
+     * whose ends are strings.
+     *
+     * <p>Under an allowance of the pair's own, the one deciding whether a set and a range share a
+     * value is given ({@link PatternPlan.Budget#OF_WHAT_A_SET_AND_A_RANGE_SHARE}): what a
+     * declaration is read to hold cannot turn on what the readings before it built, and it does not
+     * here either, since the pair is answered the same wherever it is first met.
+     */
+    public record Inside(Language language, OrderedInterval held) implements Key<Emptiness> {
+
+        @Override
+        public Answer<Emptiness> compute(Db db) {
+            return Answer.of(TextExtents.inside(language, held,
+                    PatternPlan.Budget.OF_WHAT_A_SET_AND_A_RANGE_SHARE.meter()));
         }
     }
 }

@@ -1,5 +1,6 @@
 package souther.compiler.values;
 
+import souther.compiler.numeric.OrderedInterval;
 import souther.compiler.numeric.Text;
 import souther.compiler.regex.Language;
 import souther.compiler.regex.Meter;
@@ -135,6 +136,39 @@ public final class TextExtents {
         return beyond.equals(left)
                 ? new TextExtent.One(Text.of(first), Text.of(after))
                 : new TextExtent.NoNamedRun();
+    }
+
+    /**
+     * Whether any string {@code language} admits lies inside {@code held}.
+     *
+     * <p>The range said as the strings it holds, which is what makes this an answer about the
+     * strings rather than about the ends: a language is its strings, and two of them share a value
+     * or they do not. Said as a projection of the language onto the ends instead, a rule whose
+     * strings are not one stretch of the order would have no ends to be compared with.
+     *
+     * <p>{@code held} is where the strings are on the order already met with what the order
+     * holds, so its ends are strings; {@link Emptiness#UNDECIDED} where {@code meter} refused a
+     * machine this needed.
+     */
+    public static Emptiness inside(Language language, OrderedInterval held, Meter meter) {
+        Language inside = language;
+        if (held.high() != null) {
+            Text at = (Text) held.high().at();
+            Language below = Language.before(
+                    held.high().inclusive() ? at.justAbove().at() : at.at(), meter);
+            inside = below == null ? null : inside.and(below, meter);
+        }
+        if (inside != null && held.low() != null) {
+            Text at = (Text) held.low().at();
+            Language under = Language.before(
+                    held.low().inclusive() ? at.at() : at.justAbove().at(), meter);
+            Language above = under == null ? null : under.not(meter);
+            inside = above == null ? null : inside.and(above, meter);
+        }
+        if (inside == null) {
+            return Emptiness.UNDECIDED;
+        }
+        return inside.isEmpty() ? Emptiness.EMPTY : Emptiness.NONEMPTY;
     }
 
     /** Every string from {@code from} upwards, or null past what {@code meter} allows. */

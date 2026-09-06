@@ -9,6 +9,7 @@ import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.Rel;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.values.AdmissibleSet;
+import souther.compiler.values.StringMachines;
 import souther.compiler.values.UnreadReason;
 import souther.compiler.values.ValueSet;
 
@@ -248,6 +249,11 @@ public final class FieldDomains {
      */
     public boolean infeasible() {
         return constraints.isBottom();
+    }
+
+    /** The same, borrowing what {@code machines} has already made where deciding takes one. */
+    public boolean infeasible(StringMachines machines) {
+        return constraints.isBottom(machines);
     }
 
     /**

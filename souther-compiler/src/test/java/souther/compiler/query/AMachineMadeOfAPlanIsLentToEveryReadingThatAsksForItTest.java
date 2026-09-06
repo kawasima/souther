@@ -29,7 +29,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class AMachineMadeOfAPlanIsLentToEveryReadingThatAsksForItTest {
 
-    /** One pattern-ruled declaration, constructed in two behaviors and taken as input by a third. */
+    /**
+     * One pattern-ruled declaration, constructed in two behaviors, taken as input by a third, and
+     * standing in a case of a fourth's input — which is where a row makes the reading ask whether
+     * the rule leaves a string where the case puts it.
+     */
     private static final String PATTERNED = """
             module example.lent
 
@@ -38,16 +42,31 @@ class AMachineMadeOfAPlanIsLentToEveryReadingThatAsksForItTest {
 
             data Tagged = { code: Code, n: Int }
 
+            data Wanted = { code: Code }
+            data Nothing
+            data Intent = Wanted | Nothing
+
+            data Request = { tag: Tagged, intent: Intent }
+
             behavior first : (n: Int) -> Tagged
-                constructs Tagged
+                constructs Tagged, Code
             let first (n) = Tagged { code = Code("AB123"), n = n }
 
             behavior second : (n: Int) -> Tagged
-                constructs Tagged
+                constructs Tagged, Code
             let second (n) = Tagged { code = Code("CD456"), n = n + 1 }
 
             behavior third : (t: Tagged) -> Int
             let third (t) = t.n
+
+            behavior fourth : (r: Request) -> Int
+            let fourth (r) = match r.intent with
+                | Wanted { code } -> 1
+                | Nothing -> 0
+
+            example fourth
+                | "wanted" : (Request { tag = Tagged { code = Code("AB123"), n = 1 },
+                                        intent = Wanted { code = Code("CD456") } }) -> 1
             """;
 
     /** The same shape with nothing said about a string, so no machine is ever asked for. */
@@ -58,17 +77,33 @@ class AMachineMadeOfAPlanIsLentToEveryReadingThatAsksForItTest {
 
             data Tagged = { code: Code, n: Int }
 
+            data Wanted = { code: Code }
+            data Nothing
+            data Intent = Wanted | Nothing
+
+            data Request = { tag: Tagged, intent: Intent }
+
             behavior first : (n: Int) -> Tagged
-                constructs Tagged
+                constructs Tagged, Code
             let first (n) = Tagged { code = Code("AB123"), n = n }
 
             behavior third : (t: Tagged) -> Int
             let third (t) = t.n
+
+            behavior fourth : (r: Request) -> Int
+            let fourth (r) = match r.intent with
+                | Wanted { code } -> 1
+                | Nothing -> 0
+
+            example fourth
+                | "wanted" : (Request { tag = Tagged { code = Code("AB123"), n = 1 },
+                                        intent = Wanted { code = Code("CD456") } }) -> 1
             """;
 
     @Test
     void thePatternsMachineIsOneAnswerOfTheStore() {
-        Compilation compilation = Compilation.ofSource(PATTERNED, "Main");
+        Compilation compilation = Compilation.ofSources(List.of(PATTERNED),
+                souther.compiler.meta.ModulePath.EMPTY);
         compilation.answerEverything();
         Db db = compilation.db();
 
@@ -80,19 +115,25 @@ class AMachineMadeOfAPlanIsLentToEveryReadingThatAsksForItTest {
         }
         assertFalse(extentsIn(db).isEmpty(),
                 "where the strings the rule admits stop is asked for, and answered once");
+        assertFalse(insideIn(db).isEmpty(),
+                "whether the rule leaves a string where the input's positions are is asked for,"
+                        + " and answered once for the language and the stretch");
     }
 
     @Test
     void aModelThatStatesNothingAboutAStringAsksForNoMachine() {
         // The control for the assertion above: the keys are found by walking the store, and a walk
         // that found a key for no reason would find one here as well.
-        Compilation compilation = Compilation.ofSource(UNPATTERNED, "Main");
+        Compilation compilation = Compilation.ofSources(List.of(UNPATTERNED),
+                souther.compiler.meta.ModulePath.EMPTY);
         compilation.answerEverything();
 
         assertEquals(List.of(), realizedIn(compilation.db()),
                 "nothing plans a machine where no rule names a pattern");
         assertEquals(List.of(), extentsIn(compilation.db()),
                 "and nothing asks where the strings of a set stop");
+        assertEquals(List.of(), insideIn(compilation.db()),
+                "and nothing asks whether a language has a string inside a stretch");
     }
 
     @Test
@@ -138,6 +179,13 @@ class AMachineMadeOfAPlanIsLentToEveryReadingThatAsksForItTest {
         return db.everyAnswer().keySet().stream()
                 .filter(Machines.Extent.class::isInstance)
                 .map(Machines.Extent.class::cast)
+                .toList();
+    }
+
+    private static List<Machines.Inside> insideIn(Db db) {
+        return db.everyAnswer().keySet().stream()
+                .filter(Machines.Inside.class::isInstance)
+                .map(Machines.Inside.class::cast)
                 .toList();
     }
 }

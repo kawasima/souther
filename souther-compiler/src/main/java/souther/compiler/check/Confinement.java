@@ -10,6 +10,7 @@ import souther.compiler.values.AskedOfEachBlock;
 import souther.compiler.values.ConjoinedAdmissibleValues;
 import souther.compiler.values.Admits;
 import souther.compiler.values.AskedOfARelation;
+import souther.compiler.values.StringMachines;
 import souther.compiler.values.PlannedValues;
 import souther.compiler.values.Realized;
 import souther.compiler.values.Refusal;
@@ -72,11 +73,21 @@ sealed interface Confinement<A> {
      * all of them is met against a value no alternative stands for, and every one of them has to be
      * asked whole.
      */
-    Admission<A> admission(PositionEnvelope.Restrictions<A> outside);
+    Admission<A> admission(PositionEnvelope.Restrictions<A> outside, StringMachines machines);
+
+    /** The same, paying for every machine the asking needs. */
+    default Admission<A> admission(PositionEnvelope.Restrictions<A> outside) {
+        return admission(outside, StringMachines.NONE);
+    }
 
     /** The same, with nothing placed from outside: what these two readings show on their own. */
     default Admission<A> admission() {
         return admission(PositionEnvelope.Restrictions.nothingSpokenOf());
+    }
+
+    /** The same with nothing placed from outside, borrowing what {@code machines} has made. */
+    default Admission<A> admission(StringMachines machines) {
+        return admission(PositionEnvelope.Restrictions.nothingSpokenOf(), machines);
     }
 
     /** Whether anything satisfies both readings. */
@@ -246,7 +257,7 @@ sealed interface Confinement<A> {
                                       PositionEnvelope.Restrictions<A> outside,
                                       Admitting<A> admitting,
                                       Refusing<A> refused,
-                                      Refusal<A> alreadyShown) {
+                                      Refusal<A> alreadyShown, StringMachines machines) {
         // The ends holding a position nothing, which is that reading's own answer whatever else
         // places the position: a reading left with no range at all names none, and where it names
         // one, that is where the lack is.
@@ -259,9 +270,9 @@ sealed interface Confinement<A> {
         // rules would then be decided differently depending on what the readings before them had
         // already built.
         Meter meter = PatternPlan.Budget.OF_WHAT_A_SET_AND_A_RANGE_SHARE.meter();
-        AskedOfEachBlock<A> byTheReadings = asking(carriers, ordered::at, meter);
+        AskedOfEachBlock<A> byTheReadings = asking(carriers, ordered::at, meter, machines);
         AskedOfEachBlock<A> narrowed = asking(carriers, position ->
-                ordered.at(position).meet(outside.at(position).interval()), meter);
+                ordered.at(position).meet(outside.at(position).interval()), meter, machines);
         // What a relation between two blocks comes to, which is settled against what each of them
         // is left once everything placing its positions has been met with it. Built here for the
         // same reason the question above is: the values and the ranges are put together in one
@@ -398,7 +409,8 @@ sealed interface Confinement<A> {
      *             met with what is required of it elsewhere
      */
     private static <A> AskedOfEachBlock<A> asking(Map<A, Carrier> carriers,
-                                                 Function<A, OrderedInterval> sits, Meter meter) {
+                                                 Function<A, OrderedInterval> sits, Meter meter,
+                                                 StringMachines machines) {
         // What each block this is asked about came to, so that it is worked out once. A question
         // put to a block is a machine built for it, and the walks that read an answer back ask
         // about the very blocks the walk that reached it did — by the set in hand and not by what
@@ -407,16 +419,17 @@ sealed interface Confinement<A> {
         Map<Sameness.Block<A>, Map<ValueSet, souther.compiler.values.Emptiness>> asked = new LinkedHashMap<>();
         return (block, set) -> asked
                 .computeIfAbsent(block, _ -> new IdentityHashMap<>())
-                .computeIfAbsent(set, it -> answered(carriers, sits, meter, block, it));
+                .computeIfAbsent(set, it -> answered(carriers, sits, meter, machines, block, it));
     }
 
     /** Whether {@code block} admits anything where {@code sits} puts its positions. */
     private static <A> souther.compiler.values.Emptiness answered(Map<A, Carrier> carriers,
                                           Function<A, OrderedInterval> sits, Meter meter,
+                                          StringMachines machines,
                                           Sameness.Block<A> block, ValueSet set) {
         Placed placed = placedAt(carriers, sits, block);
         return placed.carrier() == null ? souther.compiler.values.Emptiness.NONEMPTY
-                : placed.carrier().meets(set, placed.within(), meter);
+                : placed.carrier().meets(set, placed.within(), meter, machines);
     }
 
     /**
@@ -535,14 +548,15 @@ sealed interface Confinement<A> {
         }
 
         @Override
-        public Admission<A> admission(PositionEnvelope.Restrictions<A> outside) {
+        public Admission<A> admission(PositionEnvelope.Restrictions<A> outside,
+                                      StringMachines machines) {
             return shown != null ? shown : Confinement.admission(ordered, carriers, outside,
                     // The relation is not asked on this side: what a denial comes to is settled
                     // against the values its blocks are left, and those are descriptions here. The
                     // walk says so of each alternative that carries one.
                     (asked, _) -> values.anyAlternativeAdmits(asked),
                     (asked, _) -> values.refusedInEveryAlternativeAt(asked),
-                    values.refusedBy());
+                    values.refusedBy(), machines);
         }
 
         /**
@@ -686,14 +700,15 @@ sealed interface Confinement<A> {
         }
 
         @Override
-        public Admission<A> admission(PositionEnvelope.Restrictions<A> outside) {
+        public Admission<A> admission(PositionEnvelope.Restrictions<A> outside,
+                                      StringMachines machines) {
             if (shown != null) {
                 return shown;
             }
             Admission<A> said = Confinement.admission(ordered, carriers, outside,
                     made.values()::anyAlternativeAdmits,
                     made.values()::refusedInEveryAlternativeAt,
-                    made.values().refusedBy());
+                    made.values().refusedBy(), machines);
             // A position nobody could build is one what stands there is wider than the rules, so a
             // pair the ranges did not refuse may still hold nothing. Settled empty is settled all
             // the same: a narrower reading refuses no less.
@@ -755,10 +770,11 @@ sealed interface Confinement<A> {
         }
 
         @Override
-        public Admission<A> admission(PositionEnvelope.Restrictions<A> outside) {
+        public Admission<A> admission(PositionEnvelope.Restrictions<A> outside,
+                                      StringMachines machines) {
             return shown != null ? shown : Confinement.admission(ordered, carriers, outside,
                     values::anyAlternativeAdmits, values::refusedInEveryAlternativeAt,
-                    values.refusedBy());
+                    values.refusedBy(), machines);
         }
 
         /** The positions the order leaves no value at. */
