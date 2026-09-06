@@ -527,22 +527,49 @@ public sealed interface PlannedValues<A> {
     }
 
     /**
-     * Either reading holding, both branches being ones somebody can take.
+     * Either reading holding, the alternatives merged back into one product.
      *
-     * <p>Which branches those are is not decided here. What a choice leaves turns on whether either
-     * branch admits anything, and that is a question about the whole of what was read of the clause
-     * — the values and the order together — so it is asked a layer out and this is called with the
-     * answer already in hand ({@code StatedByClauses}). Asked here as well, the two would be two
-     * answers to one question, and the one made of values alone would drop a branch the order
-     * refused and keep one the values did.
+     * <p>Over the positions both spoke about, since a position one of them left open is one the two
+     * of them together leave open.
+     *
+     * <p>A choice between alternatives written at two positions is a union of two products, and no
+     * product holds it — so merging is where the relation goes. It goes unnoticed: the projections
+     * survive a union, because the projection of a union is the union of the projections, and it is
+     * the next conjunction that spends what was lost. Two such readings are met one position at a
+     * time, and a pair the two of them refuse between them is a pair neither intersection excludes.
+     *
+     * <p>What an alternative nothing could read left open is not said here, and cannot be. Which
+     * positions those are turns on which branches anybody can be in, and that is settled over the
+     * whole declaration — after this choice, out of what it and every other one came to. So it
+     * arrives afterwards ({@link AdmissibleValues#alsoOpenedAt}), from the one walk that knows both
+     * the alternatives an author wrote and what became of them.
+     *
+     * <p><b>Both branches are ones somebody can take.</b> Which branches those are is not decided
+     * here. What a choice leaves turns on whether either branch admits anything, and that is a
+     * question about the whole of what was read of the clause — the values and the order together —
+     * so it is asked a layer out and this is called with the answer already in hand
+     * ({@code StatedByClauses}). Asked here as well, the two would be two answers to one question,
+     * and the one made of values alone would drop a branch the order refused and keep one the
+     * values did.
      */
     default PlannedValues<A> joinLive(PlannedValues<A> other) {
         return joinedLive(other, false);
     }
 
-    /** Either reading holding, with the alternatives of the two held apart — see
-     *  {@link AdmissibleValues#joinApart}. Both branches are ones somebody can take, by the rule
-     *  {@link #joinLive} states. */
+    /**
+     * Either reading holding, with the alternatives of the two held apart.
+     *
+     * <p>The same choice, read without merging what it leaves back into one product. Held apart,
+     * the conjunction meets the alternatives pairwise, the pairs nothing stands in drop out, and
+     * what is left is what the rules leave. Which is why nothing is owed here: the union of two
+     * products is what it is, and this states it rather than approximating it.
+     *
+     * <p>How many may be held is not this reading's to decide. What bounds them is settled from the
+     * clauses before any of them is read ({@code ExpansionCost}), so that precision cannot turn on
+     * how a fold was bracketed.
+     *
+     * <p>Both branches are ones somebody can take, by the rule {@link #joinLive} states.
+     */
     default PlannedValues<A> joinLiveApart(PlannedValues<A> other) {
         return joinedLive(other, true);
     }
@@ -551,9 +578,13 @@ public sealed interface PlannedValues<A> {
      * A choice neither branch of which anybody can take.
      *
      * <p>No branch speaks for the other, so answering with either would settle the proof by the
-     * order the operands were written in. What is left is the positions both of them leave nothing
-     * at, which is an answer about the whole value — see {@link AdmissibleValues#joinApart}, whose
-     * reasoning this is.
+     * order the operands were written in. Nor may they be met: a meet is a conjunction and the
+     * alternatives were never stated together.
+     *
+     * <p>What is left is the positions both of them leave nothing at, which is an answer about the
+     * whole value. A block one branch was left nothing at is one the other may stand at, so what
+     * the choice is left nothing at is what neither of them has a value for; where there is no such
+     * position the choice still admits nothing, and says so of no position in particular.
      */
     default PlannedValues<A> bothDead(PlannedValues<A> other) {
         Settled<A> here = settled();
@@ -575,8 +606,8 @@ public sealed interface PlannedValues<A> {
     /**
      * A choice both branches of which stand, as one description.
      *
-     * <p>The rules are {@link AdmissibleValues#joinApart}'s and the reasoning is written there.
-     * What is here is the same arithmetic over descriptions rather than sets, which is why it costs
+     * <p>What {@link #joinLive} and {@link #joinLiveApart} come to, which is where the rules of
+     * each are written. Arithmetic over descriptions and not over sets, which is why it costs
      * nothing and can be done before anything is built.
      */
     private PlannedValues<A> joinedLive(PlannedValues<A> other, boolean apart) {
@@ -589,14 +620,31 @@ public sealed interface PlannedValues<A> {
         AdmittedPlan coveredElsewhere = AdmittedPlan.joining(
                 List.of(here.defaultGuaranteed(), there.defaultGuaranteed()));
         // What an alternative nothing could read left open is not said here — see
-        // {@link AdmissibleValues#join}, whose reasoning this is.
+        // {@link #joinLive}, which says where it arrives instead.
         Standing<A> spoiled = here.standing().and(there.standing());
+        // A union of two products alike everywhere but at one place is the product with that place
+        // widened, so the promise survives as one about whole values where the alternatives are
+        // written at no more than one position between them. Anywhere else the union holds a value
+        // from one alternative at one position beside a value from the other at another, which is a
+        // combination neither of them stands for.
+        //
+        // Sufficient and not necessary, and deliberately so. A union is also a product where one
+        // alternative promises everything the other does, and where the two differ at only one
+        // position however many they are written at — and both of those compare the two boxes a
+        // bracketing happened to put together, so a choice of three alternatives answers one way
+        // written to the left and another to the right. Measured: both were tried and both broke
+        // `AChoiceIsOneConnectiveAndNotATree`. Coarse and the same either way is the trade, and
+        // what it costs is a promise this could have kept rather than one it could not.
         Set<Sameness.Block<A>> shapedBy = mapped(promisedAt(here), heldAsOne);
         shapedBy.addAll(mapped(promisedAt(there), heldAsOne));
         return new Settled<>(held,
                 widenedBy(here.perPosition(), there.perPosition()), spoiled,
                 covered, coveredElsewhere,
                 here.guaranteedTogether() && there.guaranteedTogether() && shapedBy.size() <= 1,
+                // Merging a union back into one product loses a relation among the blocks the
+                // alternatives are written at, and outside those the two of them agree on
+                // everything by saying nothing. Read by the same sufficient condition as the
+                // promise above, so a choice at one block keeps both.
                 apart || shapedBy.size() <= 1
                         ? mapped(both(here.tangled(), there.tangled()), heldAsOne)
                         : both(mapped(both(here.tangled(), there.tangled()), heldAsOne), shapedBy),

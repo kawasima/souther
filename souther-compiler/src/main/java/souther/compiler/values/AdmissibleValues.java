@@ -14,9 +14,17 @@ import java.util.Set;
  * Which values each position may hold, over all the rules a reading took in.
  *
  * <p>A state and not a set. A rule is written about a whole value and may name several of its
- * positions, and the connectives join whole readings rather than the answer at one position — so
- * what a conjunction and a disjunction are applied to is this, and the arithmetic at one position
- * is {@link ValueSet}.
+ * positions, and a connective composes whole readings rather than the answer at one position — so
+ * what a conjunction is applied to is this, and the arithmetic at one position is {@link ValueSet}.
+ *
+ * <p><b>A choice is taken while a reading is a description.</b> Which alternatives anybody can be
+ * in is a question about the whole of what was read of a clause — the values and the order together
+ * — so it is settled a layer out, over {@link PlannedValues}, and what is worked out afterwards is
+ * worked out from a description a choice has already been taken in. This holds what that choice
+ * left, and is asked about it, and is conjoined with the readings of other declarations
+ * ({@link ConjoinedAdmissibleValues}); there is no operation here that composes two of these into
+ * another choice, and a reader looking for one is looking on the wrong side of {@link
+ * PlannedValues#resolve}.
  *
  * <h2>What is held</h2>
  *
@@ -39,18 +47,20 @@ import java.util.Set;
  * position read on its own, by the same connectives — and that is what a reading admitting nothing
  * answers from.
  *
- * <p><b>A position no box holds is at {@link ValueSet#ANY}.</b> That is what makes the two
- * connectives what they are below, and it is the one thing to hold on to while reading them.
+ * <p><b>A position no box holds is at {@link ValueSet#ANY}.</b> That is what makes a connective what
+ * it is, and it is the one thing to hold on to while reading {@link #meet} here or a choice over on
+ * the description side.
  *
  * <pre>
  *     meet             the keys of both, each side missing one standing at ANY
- *     join             the keys of both, each side missing one standing at ANY
+ *     a choice         the keys of both, each side missing one standing at ANY
  * </pre>
  *
- * <p>Which reads the same and is not: joining at a key one side does not hold is joining with ANY,
- * and that is ANY — so a join keeps only what both sides spoke about, and a meet keeps everything
- * either did. {@code value == "A" || something-this-cannot-read} has to come out saying nothing
- * about {@code value}, and a join written as a merge of the two maps says {@code "A"}.
+ * <p>Which reads the same and is not: composing a choice at a key one side does not hold is
+ * composing with ANY, and that is ANY — so a choice keeps only what both sides spoke about, and a
+ * meet keeps everything either did. {@code value == "A" || something-this-cannot-read} has to come
+ * out saying nothing about {@code value}, and a choice written as a merge of the two maps says
+ * {@code "A"}.
  *
  * <h2>What the reading knows about itself</h2>
  *
