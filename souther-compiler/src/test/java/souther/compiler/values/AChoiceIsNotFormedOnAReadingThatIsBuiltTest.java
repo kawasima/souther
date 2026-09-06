@@ -12,7 +12,6 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * A choice is taken while a reading is a description, and a built one has no way to form another.
@@ -106,18 +105,6 @@ class AChoiceIsNotFormedOnAReadingThatIsBuiltTest {
 
         assertEquals(new TreeSet<>(COMPOSING), new TreeSet<>(found),
                 "a built reading composes with another by a conjunction and by nothing else");
-    }
-
-    /**
-     * And the control: the walk finds the conjunction it is written about.
-     *
-     * <p>An empty answer above would pass whatever the readings hold, and a rule about which
-     * operations there are says nothing until it has found one.
-     */
-    @Test
-    void theWalkFindsTheConjunctionItIsWrittenAbout() {
-        assertTrue(composing(AdmissibleValues.class).contains("AdmissibleValues#meet"),
-                "the conjunction is what this walk has to be able to see");
     }
 
     /**

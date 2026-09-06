@@ -677,9 +677,9 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      *                left open
      * @param guaranteed which values each position is guaranteed to admit — read through
      *                {@link #guaranteedAt} rather than off this map, which holds a position whose
-     *                guarantee is the default as well. Held that way on purpose: the keys are
-     *                {@link #promisedAt}, the positions a rule of this reading reached, and
-     *                dropping the ones that came to the default would make that set turn on which
+     *                guarantee is the default as well. Held that way on purpose: the keys are the
+     *                positions a rule of this reading reached, and dropping the ones that came to
+     *                the default would make that set turn on which
      *                rules happened to leave a position where it started. A choice reads it twice
      *                over, and both readings would follow the brackets
      * @param defaultGuaranteed what a position this holds no guarantee for is guaranteed to admit.
@@ -1436,8 +1436,8 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      * <p>Where a side admits nothing the conjunction does, and what it is left holding is the pairs
      * it worked out all the same: a rule stated beside an impossible one is still a rule that was
      * stated, so the values it left a position are values the reading read and are answered with.
-     * That is what parts a conjunction from a choice here — see {@link #join}, where nothing an
-     * alternative said survives the alternative being one nobody can take.
+     * That is what parts a conjunction from a choice — see {@link PlannedValues#bothDead}, where
+     * nothing an alternative said survives the alternative being one nobody can take.
      */
     private Held<A> met(AdmissibleValues<A> other, Allowance<A> sets,
                         Set<Sameness.Block<A>> gaveUp) {
@@ -1551,8 +1551,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      * however the side that made it was holding those positions.
      *
      * <p>The keys are the footprint as well as the values — the blocks a rule of these readings
-     * reached ({@link #promisedAt}) — so a block either side named is a key here whatever the
-     * promise came to. Dropped for coming to the default, which blocks a rule reached would turn
+     * reached — so a block either side named is a key here whatever the promise came to. Dropped for coming to the default, which blocks a rule reached would turn
      * on which rules happened to leave one where it started.
      */
     private static <A> Map<Sameness.Block<A>, ValueSet> guaranteedBy(

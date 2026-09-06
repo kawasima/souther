@@ -222,11 +222,11 @@ public final class Allowance<A> {
     }
 
     /**
-     * The same two, where what comes out is a promise rather than a bound.
+     * The same two sets, where what comes out is a promise rather than a bound.
      *
      * <p>Giving up leaves nothing and not everything, which is the other direction. What
-     * {@link #meet} and {@link #join} answer is which values a position may hold, so an answer this
-     * did not build widens to every value and stays true. A promise says which values it certainly
+     * {@link #meet} answers is which values a position may hold, so an answer this did not build
+     * widens to every value and stays true. A promise says which values it certainly
      * may hold, and every value is the strongest thing that can be said rather than the weakest —
      * so an unbuilt one promises nothing, and a reader is short of a guarantee instead of holding
      * one nobody proved.

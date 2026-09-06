@@ -559,10 +559,11 @@ public sealed interface PlannedValues<A> {
     /**
      * Either reading holding, with the alternatives of the two held apart.
      *
-     * <p>The same choice, read without merging what it leaves back into one product. Held apart,
-     * the conjunction meets the alternatives pairwise, the pairs nothing stands in drop out, and
-     * what is left is what the rules leave. Which is why nothing is owed here: the union of two
-     * products is what it is, and this states it rather than approximating it.
+     * <p>The same choice, read without merging what it leaves back into one product. Held apart, a
+     * conjunction after it distributes over the alternatives pairwise ({@link #meet}), the pairs
+     * nothing stands in drop out where the values are worked out ({@link #resolve}), and what is
+     * left is what the rules leave. Which is why nothing is owed here: the union of two products is
+     * what it is, and this states it rather than approximating it.
      *
      * <p>How many may be held is not this reading's to decide. What bounds them is settled from the
      * clauses before any of them is read ({@code ExpansionCost}), so that precision cannot turn on
@@ -632,9 +633,9 @@ public sealed interface PlannedValues<A> {
         // alternative promises everything the other does, and where the two differ at only one
         // position however many they are written at — and both of those compare the two boxes a
         // bracketing happened to put together, so a choice of three alternatives answers one way
-        // written to the left and another to the right. Measured: both were tried and both broke
-        // `AChoiceIsOneConnectiveAndNotATree`. Coarse and the same either way is the trade, and
-        // what it costs is a promise this could have kept rather than one it could not.
+        // written to the left and another to the right. Both were tried, and both broke that a
+        // choice is one connective and not a tree. Coarse and the same either way is the trade,
+        // and what it costs is a promise this could have kept rather than one it could not.
         Set<Sameness.Block<A>> shapedBy = mapped(promisedAt(here), heldAsOne);
         shapedBy.addAll(mapped(promisedAt(there), heldAsOne));
         return new Settled<>(held,
