@@ -14,30 +14,48 @@
 # from, and what is distributed here is a single file copied onto a path. So the launcher makes one
 # where the JDK running it can use it, under a name that is this version's alone.
 #
-# Only a command that loads the compiler may write the archive. An archive holds the classes the
-# run that wrote it loaded, and nothing later extends it to hold more, so an archive written by
-# `souther doc` would stand and serve every later compile with the few classes that command
-# touched. Every command reads one, and a command not listed here reads without ever writing, which
-# is what an unlisted new command should do.
+# Only a run that loads the compiler may write the archive. An archive holds the classes the run
+# that wrote it loaded, and nothing later extends it to hold more, so one written by `souther doc`
+# would stand and serve every later compile with the few classes that command touched. Every
+# command reads one, and a command not listed here reads without ever writing, which is what an
+# unlisted new command should do.
+#
+# What can be asked here is the command line, and a command line says what was asked for, not what
+# the run reached. A command that compiles reaches the compiler when it is asked to do its work,
+# and does not when it is asked what it takes: usage is answered from the command line and returns.
+# So an invocation asking for usage writes nothing, wherever the word for it stands. The line
+# cannot be read further than that without a second reading of it here, and the two would drift; a
+# malformed line that is refused before the compiler is reached writes a thin archive, and the
+# archive is what the next run reads. Between the two mistakes, the one that costs a compile the
+# reuse is worse than the one that costs it the writing, so what is unclear here does not write.
 #
 # Writing is fatal to the run that writes it — a JVM told to write an archive where it cannot ends
 # in an initialization error, after the work it was asked for is done — so writing is offered only
 # where the directory to hold it exists and is writable. Reading is not fatal: an archive that is
 # absent, or that was written under another JDK or from another jar, leaves the run to load its own
 # classes. What it does do is say so, on the run's error output, which is the compiler's; the log
-# option turns that off, and covers the dynamic archive's own tag as well as the base one.
+# option turns that off, under the tag the dynamic archive writes as well as the base one. A file
+# that is not an archive at all is the one thing left: it is read as none, it is not written over,
+# and the JVM says so in a warning of its own that the log option does not reach — so the file
+# stays, and deleting it is what the next run needs.
 archive="${XDG_CACHE_HOME:-$HOME/.cache}/souther/@project.version@.jsa"
 cache="${archive%/*}"
 
+write=no
 case "$1" in
-    compile|run|examples|lsp)
-        if mkdir -p "$cache" 2>/dev/null && [ -w "$cache" ]; then
-            exec java -Xss4m "-Xlog:cds*=off" \
-                -XX:+AutoCreateSharedArchive "-XX:SharedArchiveFile=$archive" \
-                -jar "$0" "$@"
-        fi
-        ;;
+    compile|run|examples|lsp) write=yes ;;
 esac
+for word in "$@"; do
+    case "$word" in
+        -h|--help) write=no ;;
+    esac
+done
+
+if [ "$write" = yes ] && mkdir -p "$cache" 2>/dev/null && [ -w "$cache" ]; then
+    exec java -Xss4m "-Xlog:cds*=off" \
+        -XX:+AutoCreateSharedArchive "-XX:SharedArchiveFile=$archive" \
+        -jar "$0" "$@"
+fi
 
 if [ -r "$archive" ]; then
     exec java -Xss4m "-Xlog:cds*=off" -Xshare:auto "-XX:SharedArchiveFile=$archive" \

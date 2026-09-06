@@ -46,6 +46,13 @@ class AnArchiveIsWrittenByACompileAndReadByTheNextOneIT {
         assertTrue(archivesUnder(cache).isEmpty(),
                 "`doc` loads nothing a compile would reuse, so it writes no archive");
 
+        // The command that compiles, on a line that does not: usage is answered from the line and
+        // returns, so this run reaches the compiler no further than `doc` did, and an archive of
+        // what it loaded would be the one every compile after it read.
+        run(cache, Map.of(), "compile", "--help");
+        assertTrue(archivesUnder(cache).isEmpty(),
+                "a line asking what `compile` takes writes no archive either");
+
         run(cache, Map.of(), "compile", "-d", work.resolve("out").toString(), source.toString());
         // The name, and not only that there is one: a version reaches the script by being filtered
         // into it, and a filtering that stopped happening would leave every version one archive to
