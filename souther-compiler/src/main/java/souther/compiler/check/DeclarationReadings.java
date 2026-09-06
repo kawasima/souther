@@ -70,20 +70,6 @@ public interface DeclarationReadings {
     }
 
     /**
-     * The source a compilation reads {@code module}'s rules under, over the scope and the clauses it
-     * reads them with.
-     *
-     * <p>Stamped here because what it says — that a reading made from it is the declaration's own as
-     * this compilation reads it — is a thing only whatever lends the readings can say. A lender that
-     * lends none says nothing, and answers with a source of its own that nothing shares; so does
-     * this default, which is what a reading with no store to ask is given.
-     */
-    default RuleReadingSource theCompilationsOwn(String module, Symbols symbols,
-                                                 ExpandedClauseLookup clauses) {
-        return new RuleReadingSource(symbols, clauses);
-    }
-
-    /**
      * What a reading borrows while the answer about {@code named}'s machines is being made:
      * nothing, and what it makes is kept here afterwards.
      *

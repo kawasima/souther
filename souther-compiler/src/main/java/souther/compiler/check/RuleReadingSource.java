@@ -56,10 +56,10 @@ public record RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants
      *
      * <p>What it may say is written where a source is made and nowhere else. A source built by
      * whoever is reading is one of its own, which nothing shares; the one a compilation reads a
-     * module's rules under is stamped by what lends the readings ({@link
-     * DeclarationReadings#theCompilationsOwn}), which is the only thing that can say so. Left as a
-     * name anybody could write, a reader assembling a scope of its own could have said its source
-     * was the compilation's, and been lent a reading of rules it was not reading.
+     * module's rules under is made where its sources are ({@link TheCompilationsSources}), from
+     * what the compilation answers rather than from anything a reader brings. Left as a name
+     * anybody could write, a reader assembling a scope of its own could have said its source was
+     * the compilation's, and been handed a reading of rules it was not reading.
      */
     public sealed interface Origin permits AModulesRules, AReadingOfItsOwn {}
 }

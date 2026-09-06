@@ -55,12 +55,6 @@ public final class LentReadings implements DeclarationReadings {
     }
 
     @Override
-    public RuleReadingSource theCompilationsOwn(String module, Symbols symbols,
-                                                ExpandedClauseLookup clauses) {
-        return new RuleReadingSource(symbols, clauses, new AModulesRules(module));
-    }
-
-    @Override
     public StringMachineAnswers of(TypeKey declaration) {
         return machines.of(declaration);
     }

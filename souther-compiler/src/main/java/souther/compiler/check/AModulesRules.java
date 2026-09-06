@@ -6,9 +6,9 @@ package souther.compiler.check;
  *
  * <p>Not public and not written outside this package. What it says is that a reading made from a
  * source carrying it is the declaration's own as this compilation reads it, which is a thing only
- * whatever answers for the compilation can say — so {@link DeclarationReadings#theCompilationsOwn}
- * is where one is made, and a reader that could write one would be lending itself readings of
- * rules it was not reading.
+ * whatever answers for the compilation can say — so {@link TheCompilationsSources} is where one is
+ * made, from what the compilation answers and not from anything it is handed, and a reader that
+ * could write one would be handing itself readings of rules it was not reading.
  */
 record AModulesRules(String module) implements RuleReadingSource.Origin {
 

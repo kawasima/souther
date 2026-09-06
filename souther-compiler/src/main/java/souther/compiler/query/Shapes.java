@@ -582,8 +582,7 @@ public final class Shapes {
     public static Answer<RuleReadingSource> ruleReading(Db db, String name) {
         Answer<ResolvedSymbols> scope = Names.resolvedSymbols(db, name);
         return scope.present()
-                ? Answer.of(db.readings().theCompilationsOwn(name, scope.value(),
-                        expandedClauses(db)))
+                ? Answer.of(db.ruleReadingFor(name))
                 : Answer.absent();
     }
 

@@ -2,6 +2,8 @@ package souther.compiler.query;
 
 import souther.compiler.check.DeclarationReadings;
 import souther.compiler.check.LentReadings;
+import souther.compiler.check.RuleReadingSource;
+import souther.compiler.check.TheCompilationsSources;
 import souther.compiler.source.SourceId;
 import souther.compiler.types.TypeKey;
 import souther.compiler.values.StringFacts;
@@ -155,6 +157,26 @@ public final class Db implements souther.compiler.check.StoreWork {
     }
 
     private DeclarationReadings readings;
+
+    /**
+     * Where this store's modules' rules are read from.
+     *
+     * <p>Kept here because it is this compilation's, and made from what this compilation answers:
+     * a module's scope is read off the store when it is asked for, and the clauses are read from
+     * the one place a declaration's are answered. Nothing about a source is taken from whoever asks
+     * for one, so no reader can bring parts of its own and have them read as the compilation's.
+     */
+    RuleReadingSource ruleReadingFor(String module) {
+        if (sources == null) {
+            sources = new TheCompilationsSources(
+                    name -> Names.resolvedSymbols(this, name).present()
+                            ? Names.resolvedSymbols(this, name).value() : null,
+                    named -> ask(new Shapes.ClausesExpandedFor(named)).value());
+        }
+        return sources.of(module);
+    }
+
+    private TheCompilationsSources sources;
 
 
     /** What this store answers about {@code declaration}'s string machines, for a reading to

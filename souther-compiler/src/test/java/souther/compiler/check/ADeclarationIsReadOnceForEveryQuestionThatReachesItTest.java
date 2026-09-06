@@ -3,8 +3,6 @@ package souther.compiler.check;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Compilation;
 import souther.compiler.types.TypeKey;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Modifier;
 import java.util.Set;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.TypeSymbols;
@@ -168,33 +166,42 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
     }
 
     /**
-     * What says a source is the compilation's own cannot be said anywhere else.
+     * What says a source is the compilation's own is not something a reader can get said of a
+     * source of its own.
      *
-     * <p>A reading is lent to a reader whose source has the same origin, so an origin saying the
+     * <p>A reading is handed to a reader whose source has the same origin, so an origin saying the
      * source is the one a compilation reads a module's rules under is what admits a reader to
-     * another reader's work. Written where anybody could write it, a reader that assembled a scope
-     * of its own could say so of it and be lent a reading of rules it was not reading — and nothing
-     * about the compile would look wrong.
+     * another reader's work. A reader that could have it said of a pair it assembled — its own
+     * scope, or a lookup answering for no clause at all — would be handed a reading of rules it was
+     * not reading, and nothing about the compile would look wrong.
      *
-     * <p>So it is not a name anybody can write. What is held here is that: the one thing that can
-     * say it is what lends the readings, and the saying is not on offer outside the package that
-     * reads rules.
+     * <p>So there is nothing to ask. What a reader holds hands out what somebody has already made
+     * and nothing that makes a source; the sources are the compilation's, made from its own scope
+     * and its own clauses, and a reader that assembles a pair gets one nobody shares.
      */
     @Test
-    void onlyWhatLendsTheReadingsCanSayASourceIsTheCompilationsOwn() {
-        Class<?> theCompilationsOwn = new AModulesRules("demo").getClass();
+    void aReaderCannotHaveItSaidOfASourceOfItsOwn() {
+        assertEquals(List.of(), java.util.Arrays.stream(DeclarationReadings.class.getMethods())
+                        .filter(each -> each.getReturnType() == RuleReadingSource.class)
+                        .map(java.lang.reflect.Method::getName).toList(),
+                "what a reader holds makes a source, so a reader can have one made of its own parts");
 
-        assertFalse(Modifier.isPublic(theCompilationsOwn.getModifiers()),
-                "what says a source is the compilation's own is written outside this package");
-        for (Constructor<?> made : theCompilationsOwn.getDeclaredConstructors()) {
-            assertFalse(Modifier.isPublic(made.getModifiers()),
-                    "and is made outside it: " + made);
-        }
-        assertEquals(List.of(), java.util.Arrays.stream(RuleReadingSource.Origin.class
-                        .getPermittedSubclasses())
-                .filter(each -> Modifier.isPublic(each.getModifiers()))
-                .map(Class::getSimpleName).toList(),
-                "an origin a reader could write is an origin a reader could claim");
+        Compilation compilation = compiled();
+        DeclarationReadings readings = compilation.db().readings();
+        TypeSymbol.AtModule code = TypeSymbols.declared(new TypeKey("demo", "Code"));
+        RuleReadingSource asTheCompilationReads = RuleReadings.of(compilation, "demo");
+        InvariantChecker.seedFields(code, asTheCompilationReads, AS_THE_COMPILE_READS, readings);
+
+        // The nearest thing a reader can assemble: the compilation's own scope, and a lookup that
+        // answers for no clause anybody wrote.
+        RuleReadingSource ofItsOwn = new RuleReadingSource(asTheCompilationReads.symbols(),
+                RuleReadings.noClauseFiled());
+        long before = InvariantChecker.readingsMade();
+        InvariantChecker.seedFields(code, ofItsOwn, AS_THE_COMPILE_READS, readings);
+
+        assertEquals(before + 1, InvariantChecker.readingsMade(),
+                "a reader reading under a source of its own was handed the reading made under the"
+                        + " compilation's, which is a reading of clauses its own source has not got");
     }
 
     /** A second policy is a second reading, not the same one under other terms. */
