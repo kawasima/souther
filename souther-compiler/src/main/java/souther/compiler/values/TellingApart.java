@@ -2,10 +2,12 @@ package souther.compiler.values;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * Whether some way of giving these blocks values tells every stated pair of them apart.
@@ -43,28 +45,40 @@ final class TellingApart<A> {
     }
 
     /**
-     * The question over {@code mayHold}, where {@code apart} says which blocks a block is stated to
-     * differ from.
+     * The question over {@code mayHold}, where {@code apartFrom} says which blocks of the whole
+     * relation a block is stated to differ from.
+     *
+     * <p><b>The whole relation's neighbours, cut down here.</b> Which of them are part of this
+     * question is settled by which blocks it is over, and that is one fact — handed a relation
+     * already cut down to match, it would be two, and a caller that cut it somewhere else would be
+     * asking a question with a pair missing. A missing pair is not a question that fails: it is one
+     * that finds an assignment nothing stated forbids, which is the wrong answer in the direction
+     * nothing else here would catch.
      *
      * <p>The blocks are put in the order a value is easiest to run out of: fewest values first, and
      * among those the one stated to differ from most of the others. Which order they are taken in
-     * does not change the answer — the walk runs to the end either way — and it changes how much of
-     * the walk is reached before a branch is refused.
+     * does not change the answer — the search runs to the end either way — and it changes how much
+     * of it is reached before a branch is refused.
      */
     static <A> TellingApart<A> over(Map<Sameness.Block<A>, Set<Value>> mayHold,
-                                    Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart) {
+                                    Function<Sameness.Block<A>, Set<Sameness.Block<A>>> apartFrom) {
+        Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart = new LinkedHashMap<>();
+        for (Sameness.Block<A> block : mayHold.keySet()) {
+            Set<Sameness.Block<A>> theirs = new LinkedHashSet<>(apartFrom.apply(block));
+            theirs.retainAll(mayHold.keySet());
+            apart.put(block, theirs);
+        }
         List<Sameness.Block<A>> order = new ArrayList<>(mayHold.keySet());
         order.sort((one, other) -> {
             int fewest = Integer.compare(mayHold.get(one).size(), mayHold.get(other).size());
             return fewest != 0 ? fewest
-                    : Integer.compare(apart.getOrDefault(other, Set.of()).size(),
-                            apart.getOrDefault(one, Set.of()).size());
+                    : Integer.compare(apart.get(other).size(), apart.get(one).size());
         });
         List<List<Value>> values = new ArrayList<>();
         List<int[]> earlier = new ArrayList<>();
         for (int at = 0; at < order.size(); at++) {
             values.add(List.copyOf(mayHold.get(order.get(at))));
-            Set<Sameness.Block<A>> theirs = apart.getOrDefault(order.get(at), Set.of());
+            Set<Sameness.Block<A>> theirs = apart.get(order.get(at));
             List<Integer> before = new ArrayList<>();
             for (int other = 0; other < at; other++) {
                 if (theirs.contains(order.get(other))) {
@@ -85,28 +99,61 @@ final class TellingApart<A> {
         return Collections.unmodifiableSet(new LinkedHashSet<>(blocks));
     }
 
-    /** Whether there is nothing to look for, which is what no block at all leaves. */
-    boolean isNothingToAsk() {
-        return blocks.isEmpty();
-    }
+    /**
+     * How many assignments there may be for one of them to be looked for.
+     *
+     * <p>Every block's values against every other's, which the search reaches at most one of per
+     * branch it takes to the end.
+     */
+    private static final long MOST_ASSIGNMENTS = 1L << 20;
 
     /**
-     * How many assignments there are, which is how much walking this can be.
+     * And how many blocks a question may be over.
      *
-     * <p>Every block's values against every other's, which the walk reaches at most one of per
-     * branch it takes to the end. Counted up to {@code most} and no further: past there the answer
-     * is that it is more than that, and the product of enough sets of values is a number no
-     * {@code long} holds.
+     * <p>Beside the assignments and not instead of them, because the two bound different halves of
+     * what this does. A block is a step on every branch the search takes and a pair between two
+     * blocks is a thing checked at that step, so how many blocks there are decides what a branch
+     * costs where the assignments decide how many branches there are. Bounded by the assignments
+     * alone, a run of blocks each holding one value is a question of a single assignment and of as
+     * many blocks as anybody cares to write — which is a search that costs whatever the model
+     * costs, and the making of the question costs the square of it.
+     *
+     * <p>Which is the shape that showed the two were two. Nothing else here would have: a block
+     * holding one value is what the argument above this one leaves behind, and it multiplies the
+     * assignments by one.
      */
-    long assignments(long most) {
+    private static final int MOST_BLOCKS = 64;
+
+    /**
+     * Whether a question over {@code mayHold} is one worth looking through.
+     *
+     * <p>Asked of the values alone and before anything is built, which is what makes it a bound.
+     * Both figures are read off {@code mayHold} — how many blocks it has and what their values come
+     * to between them — so nothing has to be assembled to find out whether assembling it was
+     * allowed. Asked of a question already made, this would be a bound on the search and none at
+     * all on the making of it, and the making is the square of the blocks.
+     *
+     * <p>Counted and compared in one place, so the figures are named once. Answered as numbers for
+     * a caller to hold against its own bounds, each would be written twice — once to count up to
+     * and once to compare with — and two spellings of one figure that drift apart make a question
+     * looked through further than anything allowed.
+     *
+     * <p>A question over no blocks is within both, and is one an empty assignment answers.
+     */
+    static <A> boolean isWorthLookingThrough(Map<Sameness.Block<A>, Set<Value>> mayHold) {
+        if (mayHold.size() > MOST_BLOCKS) {
+            return false;
+        }
         long many = 1;
-        for (List<Value> these : mayHold) {
-            if (these.size() > most / Math.max(many, 1)) {
-                return most + 1;
+        for (Set<Value> these : mayHold.values()) {
+            // Counted no further than the bound, because the product of enough sets of values is a
+            // number no `long` holds and past the bound the answer is already settled.
+            if (these.size() > MOST_ASSIGNMENTS / Math.max(many, 1)) {
+                return false;
             }
             many *= these.size();
         }
-        return many;
+        return true;
     }
 
     /** Whether some assignment gives every block a value no block it is stated to differ from

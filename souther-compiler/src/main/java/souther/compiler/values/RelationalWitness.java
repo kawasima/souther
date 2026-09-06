@@ -136,11 +136,16 @@ public sealed interface RelationalWitness<A> {
      * fewer of them here.
      *
      * <p><b>The blocks and no values beside them.</b> What has nothing is an assignment to all of
-     * them, and which assignments there were is not something a count can stand for: the same
-     * blocks holding the same values are refused in a cycle and satisfied in a chain. Named as a
-     * shortage, the sentence would send an author looking for more values, and there is no number
-     * of them that would do — which is the same distinction {@code PositionsHeldAsOneAreHeldApart}
-     * is told from {@code NoDistinctValuesForPositionsHeldApart} by.
+     * them, and no set of values stands for which assignments there were: the same blocks holding
+     * the same values are refused in a ring of odd length and satisfied in a ring of even length,
+     * so a reader handed the values could not tell the two apart. {@link TooFewValuesBetweenThem}
+     * carries them because a shortage is a fact about how many there are; this is not, and carrying
+     * them would be carrying what a count was not taken of.
+     *
+     * <p><b>Read as the same sentence as a shortage, and rightly.</b> What a report says of either
+     * is that these positions are left no way of differing, and an author is sent to the same
+     * rules. The two are told apart here because a proof is not a sentence — a reduction learned
+     * later reads which argument refused — and not because the words would have to differ.
      *
      * <p>Several of them wherever the block each is left something on its own, which is what a
      * relation is asked about: a lack at one block is that block's own answer and is reached before

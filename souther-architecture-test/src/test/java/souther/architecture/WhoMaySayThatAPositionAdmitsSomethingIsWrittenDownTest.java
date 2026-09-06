@@ -13,14 +13,16 @@ import java.lang.classfile.CodeElement;
 import java.lang.classfile.CodeModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.FieldInstruction;
+import java.lang.classfile.instruction.InvokeDynamicInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.DirectMethodHandleDesc;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Predicate;
@@ -218,16 +220,53 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
     }
 
     /**
-     * And the walk sees classes at all.
+     * And it reads a saying that is written as a reference to one.
      *
-     * <p>Matched against a name nothing has, every list above would be empty and equal to an empty
-     * expectation. So the same walk is asked for something it must find.
+     * <p>{@code Emptiness::isEmpty} puts no call to the word in the code that wrote it: what it
+     * names is a handle among a bootstrap's arguments. A walk over calls alone would read a nest
+     * observing a settled answer as one saying nothing, and nothing in production is written that
+     * way today — so what holds the walk to it is a body beside this test that is.
      */
     @Test
-    void andTheWalkSeesTheReadingThatOwnsThePair() {
+    void andItReadsASayingWrittenAsAReference() {
+        assertFalse(Referring.OBSERVES.test(Emptiness.NONEMPTY), "the fixture observes by handle");
+        assertTrue(saidHere().stream().anyMatch(use -> use.said().equals("isEmpty")),
+                "the fixture beside this test observes a settled answer through a reference, so a"
+                        + " walk that cannot find it there is one that would let one past");
+    }
+
+    /**
+     * And the walk sees classes at all, in every module the repository has.
+     *
+     * <p>Matched against a name nothing has, every list above would be empty and equal to an empty
+     * expectation. And a module whose classes are not there is one the walk reads nothing of while
+     * the lists still match — so what is asserted is that every module the reactor names was read,
+     * and not only that something was.
+     */
+    @Test
+    void andEveryModuleTheRepositoryHoldsWasRead() {
+        List<String> unbuilt = new ArrayList<>();
+        int read = 0;
+        for (Path module : REPOSITORY.modules()) {
+            Path where = classesOf(module);
+            if (!classesUnder(where).isEmpty()) {
+                read++;
+            } else if (Files.isDirectory(module.resolve("src").resolve("main").resolve("java"))) {
+                // A module holding only tests or only a pom leaves no classes and is not one this
+                // walk is missing.
+                unbuilt.add(module.getFileName().toString());
+            }
+        }
+
+        assertEquals(List.of(), unbuilt,
+                "a module whose classes are not built is one this walk passes over, and a walk that"
+                        + " passes over a module answers about the rest while saying it answers"
+                        + " about all of them");
+        assertTrue(read > 1, "the classes this reads are in more than the one module that declares"
+                + " the word");
         assertTrue(nestsSaying(saidInProduction(), _ -> true)
                         .contains("souther/compiler/check/Confinement"),
-                "the pair's own reading says the word, so a walk that cannot find it there is"
+                "and the pair's own reading says the word, so a walk that cannot find it there is"
                         + " finding nothing at all");
     }
 
@@ -249,6 +288,20 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
         }
     }
 
+    /**
+     * A body that observes a settled answer through a reference to the observation, for the same
+     * reason.
+     *
+     * <p>Nothing in production is written this way today, so a walk that could not read it would go
+     * on reporting the same owner sets — and the day something is, it would pass the rules without
+     * being one of the nests they name.
+     */
+    private enum Referring {
+        ;
+
+        static final Predicate<Emptiness> OBSERVES = Emptiness::isEmpty;
+    }
+
     /** The nests of the sayings {@code which} keeps, each once and in one order. */
     private static List<String> nestsSaying(List<Use> said, Predicate<Use> which) {
         Set<String> out = new TreeSet<>();
@@ -256,11 +309,15 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
         return new ArrayList<>(out);
     }
 
+    private static Path classesOf(Path module) {
+        return module.resolve("target").resolve("classes");
+    }
+
     /** Every saying of the word in the reactor's own compiled classes. */
     private static List<Use> saidInProduction() {
         List<Path> where = new ArrayList<>();
         for (Path module : REPOSITORY.modules()) {
-            where.add(module.resolve("target").resolve("classes"));
+            where.add(classesOf(module));
         }
         List<Use> found = saidUnder(where);
         assertFalse(found.isEmpty(), "no saying of the word was read at all");
@@ -310,7 +367,9 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                     }
                     String where = method.methodName().stringValue();
                     for (CodeElement element : code) {
-                        saidBy(element).ifPresent(what -> found.add(new Use(nest, where, what)));
+                        for (String what : saidBy(element)) {
+                            found.add(new Use(nest, where, what));
+                        }
                     }
                 }
             }
@@ -318,21 +377,46 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
         return found;
     }
 
-    /** What one instruction says of the word, where it says anything. */
-    private static Optional<String> saidBy(CodeElement element) {
+    /**
+     * What one instruction says of the word, where it says anything.
+     *
+     * <p>A reference is the call it stands for. {@code Emptiness::isEmpty} puts no call to the word
+     * in the code that wrote it — what it names is a handle among a bootstrap's arguments — so a
+     * walk over calls alone reads a nest that observes a settled answer as one that says nothing.
+     */
+    private static List<String> saidBy(CodeElement element) {
         if (element instanceof FieldInstruction field) {
             String named = field.name().stringValue();
             if (named.equals(TAKEN_APART)) {
-                return Optional.of(TAKEN_APART);
+                return List.of(TAKEN_APART);
             }
             return field.owner().asInternalName().equals(EMPTINESS)
-                    ? Optional.of(named) : Optional.empty();
+                    ? List.of(named) : List.of();
         }
-        if (element instanceof InvokeInstruction call
-                && call.owner().asInternalName().equals(EMPTINESS)) {
-            return Optional.of(call.name().stringValue());
+        if (element instanceof InvokeInstruction call) {
+            return call.owner().asInternalName().equals(EMPTINESS)
+                    ? List.of(call.name().stringValue()) : List.of();
         }
-        return Optional.empty();
+        if (element instanceof InvokeDynamicInstruction lambda) {
+            List<String> out = new ArrayList<>();
+            for (var argument : lambda.bootstrapArgs()) {
+                if (argument instanceof DirectMethodHandleDesc handle
+                        && named(handle.owner()).equals(EMPTINESS)) {
+                    // Whichever kind of handle it is, what it names is what the code would have
+                    // said had it been written out: a field for a constant, a method for the rest.
+                    out.add(handle.methodName());
+                }
+            }
+            return out;
+        }
+        return List.of();
+    }
+
+    /** What a descriptor names, as a class is named in a class file. */
+    private static String named(ClassDesc owner) {
+        String descriptor = owner.descriptorString();
+        return descriptor.startsWith("L") && descriptor.endsWith(";")
+                ? descriptor.substring(1, descriptor.length() - 1) : descriptor;
     }
 
     /** Whether the bytes name the word anywhere at all. */

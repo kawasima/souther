@@ -59,16 +59,31 @@ public final class Apartness<A> {
     private static final int MOST_BLOCKS_WALKED = 30;
 
     /**
+     * How many pairs a relation may leave out for its blocks to be walked however many there are.
+     *
+     * <p>The other way a walk over the sets is cheap, and it is not the bound above with a
+     * different figure. Each pair a relation leaves out can double how many sets of blocks all
+     * stated to differ it has — a relation leaving none has one — so what this bounds is the sets
+     * rather than the blocks, and a relation of many blocks leaving few pairs out has as few sets
+     * as a small one.
+     *
+     * <p>Measured on the shape that reaches that doubling, a relation leaving this many pairs out
+     * is walked in about a fiftieth of a second, and every four more of them is sixteen times as
+     * much.
+     */
+    private static final int MOST_PAIRS_LEFT_OUT = 12;
+
+    /**
      * And how large a relation may be for its shape to be looked at at all.
      *
      * <p>What the relation itself comes to as an adjacency and what each level of the walk costs,
-     * which the bound above does not reach: a relation whose blocks are all stated to differ is
-     * walked in one path however many blocks it has, so it is admitted past that bound and would
-     * otherwise be admitted with no bound at all.
+     * which neither bound above reaches: a relation leaving few pairs out is walked in nearly one
+     * path however many blocks it has, so it is admitted past the first and would otherwise be
+     * admitted with no bound at all.
      *
-     * <p>Measured: a relation of this many pairs whose blocks are all stated to differ is walked in
-     * about a fiftieth of a second. A relation the general bound admits has at most a few hundred
-     * pairs, so this is the one that reaches such a relation's shape.
+     * <p>Measured: a relation of this many pairs all of which are stated is walked in about a
+     * fiftieth of a second. A relation the block bound admits has at most a few hundred pairs, so
+     * this is the one that reaches a relation admitted the other way.
      */
     private static final int MOST_EDGES_HELD = 5000;
 
@@ -166,7 +181,7 @@ public final class Apartness<A> {
     }
 
     /** How much walking this relation is, before any of it is walked. */
-    public Extent extent() {
+    Extent extent() {
         return new Extent(blocks().size(), edges.size());
     }
 
@@ -181,32 +196,44 @@ public final class Apartness<A> {
      * @param blocks how many blocks some pair names
      * @param edges how many pairs are stated
      */
-    public record Extent(int blocks, int edges) {
+    record Extent(int blocks, int edges) {
 
         /**
-         * Whether every block is stated to differ from every other.
+         * How many pairs of blocks are not stated to differ.
          *
-         * <p>Its own case because the walk is a different walk on it. {@link #grow} pivots on the
-         * block stated to differ from most of what may still be added, and where that is every
-         * other block, each level has one way in and the whole relation is one path — so a relation
-         * of this shape is walked in as many steps as it has blocks, however many that is, and the
-         * bound the general case needs is a bound it does not.
+         * <p>What decides the walk on a relation nearly all of whose pairs are stated, which the
+         * count of blocks does not. {@link #grow} pivots on the block stated to differ from most of
+         * what may still be added, so where a block is stated to differ from every other, each
+         * level has one way in and the whole relation is one path however many blocks it has. Each
+         * pair left out can double how many sets there are, and the walk with them: measured, a
+         * relation of this many pairs left out is walked in a fiftieth of a second and every four
+         * more of them is sixteen times as much.
+         *
+         * <p>The property and not the shape that has none of them. A relation all of whose pairs
+         * are stated is this at nothing, and one pair short of it is a relation the walk is as
+         * cheap on — so an admission that named the first would be about an example rather than
+         * about what makes it cheap, and would say nothing of the relation beside it.
          */
-        public boolean isComplete() {
-            return edges == (long) blocks * (blocks - 1) / 2;
+        long pairsLeftOut() {
+            return (long) blocks * (blocks - 1) / 2 - edges;
         }
 
         /**
          * Whether every set of blocks all stated to differ can be found.
          *
-         * <p>Two bounds and not one, because they are about two different things. How many blocks
-         * there are bounds the walk, and how many pairs there are bounds the relation itself — what
-         * it comes to as an adjacency and what one level of the walk costs. The second is what
-         * reaches a relation admitted past the first.
+         * <p>Two ways in, because two different things make this walk cheap and neither covers the
+         * other. A relation of few blocks is cheap because there are few sets to find at all; a
+         * relation of few pairs left out is cheap however many blocks it has, because the pivot
+         * leaves almost no way in at each level. A relation of many blocks nearly all of whose
+         * pairs are stated is the second and not the first.
+         *
+         * <p>And a bound on the relation itself beside them, which neither reaches: what it comes
+         * to as an adjacency and what one level of the walk costs are set by how many pairs there
+         * are, and a relation of few pairs left out has as many pairs as blocks allow.
          */
         boolean admitsCounting() {
             return edges <= MOST_EDGES_HELD
-                    && (isComplete() || blocks <= MOST_BLOCKS_WALKED);
+                    && (blocks <= MOST_BLOCKS_WALKED || pairsLeftOut() <= MOST_PAIRS_LEFT_OUT);
         }
     }
 
@@ -356,13 +383,17 @@ public final class Apartness<A> {
      * apiece for every part of it. So the parts are covered by the whole and emitting them as well
      * is the same question asked again — once per subset, which is as many as there are subsets.
      *
-     * <p>Walked to the end or not walked at all. Whoever asks decides whether the shape is one
-     * worth walking ({@link Extent#admitsCounting}), which is read off the relation before there is
-     * a walk; stopped part-way instead, this would answer with the sets one order of the pairs
-     * happened to reach first, and a relation written the other way round would be answered
-     * differently.
+     * <p>Walked to the end or not walked at all. Whether the shape is one worth walking is read off
+     * the relation before there is a walk ({@link Extent#admitsCounting}); stopped part-way
+     * instead, this would answer with the sets one order of the pairs happened to reach first, and
+     * a relation written the other way round would be answered differently.
+     *
+     * <p>Which is why this is not something a reader outside can call. What it costs is bounded by
+     * the shape and by nothing it does itself, so a caller that had not asked the shape would be
+     * walking a relation nobody had agreed to spend that much on — and the agreement is
+     * {@link #counting}, which asks before it walks.
      */
-    public List<Set<Sameness.Block<A>>> everyPairwiseApartSet() {
+    List<Set<Sameness.Block<A>>> everyPairwiseApartSet() {
         Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart = new LinkedHashMap<>();
         for (Edge<A> edge : edges) {
             if (edge.isOfOneBlock()) {
@@ -522,8 +553,10 @@ public final class Apartness<A> {
             return new Reduction.Nothing<>(why);
         }
         return switch (projection(left)) {
-            case Projection.TheWholeOfIt<A> it -> lookedFor(it.over(), new Reduction.Standing<>());
-            case Projection.APartOfIt<A> it -> lookedFor(it.over(), new Reduction.NotKnown<>());
+            case Projection.TheWholeOfIt<A> it ->
+                    lookedFor(it.mayHold(), new Reduction.Standing<>());
+            case Projection.APartOfIt<A> it ->
+                    lookedFor(it.mayHold(), new Reduction.NotKnown<>());
         };
     }
 
@@ -536,16 +569,19 @@ public final class Apartness<A> {
      * what the caller passed in, which is what the two arms of a {@link Projection} differ about. A
      * shape the search is not admitted for is neither.
      */
-    private Reduction<A> lookedFor(TellingApart<A> over, Reduction<A> found) {
-        if (over.isNothingToAsk()) {
-            return found;
-        }
-        if (over.assignments(MOST_ASSIGNMENTS) > MOST_ASSIGNMENTS) {
+    private Reduction<A> lookedFor(Map<Sameness.Block<A>, Set<Value>> mayHold, Reduction<A> found) {
+        // Before the question is made and not after. Both figures the search is bounded by are
+        // read off the values — how many blocks there are and what their values come to between
+        // them — and making the question out of them costs the square of the blocks, so an
+        // admission asked of the made question would be a bound on the looking and none at all on
+        // the making.
+        if (!TellingApart.isWorthLookingThrough(mayHold)) {
             return new Reduction.NotKnown<>();
         }
+        TellingApart<A> over = TellingApart.over(mayHold, this::apartFrom);
         return over.isSatisfiable() ? found
                 : new Reduction.Nothing<>(
-                        new RelationalWitness.NoAssignmentTellsThemApart<>(over.blocks()));
+                        new RelationalWitness.NoAssignmentTellsThemApart<>(mayHold.keySet()));
     }
 
     /**
@@ -578,14 +614,7 @@ public final class Apartness<A> {
                 case Admits.NotKnown _ -> whole = false;
             }
         }
-        Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart = new LinkedHashMap<>();
-        mayHold.keySet().forEach(block -> {
-            Set<Sameness.Block<A>> theirs = new LinkedHashSet<>(apartFrom(block));
-            theirs.retainAll(mayHold.keySet());
-            apart.put(block, theirs);
-        });
-        TellingApart<A> over = TellingApart.over(mayHold, apart);
-        return whole ? new Projection.TheWholeOfIt<>(over) : new Projection.APartOfIt<>(over);
+        return whole ? new Projection.TheWholeOfIt<>(mayHold) : new Projection.APartOfIt<>(mayHold);
     }
 
     /**
@@ -602,11 +631,11 @@ public final class Apartness<A> {
 
         /** The whole relation: what is left out was going to be given a value whatever the rest
          *  held, so an assignment found here is an assignment to all of it. */
-        record TheWholeOfIt<A>(TellingApart<A> over) implements Projection<A> {}
+        record TheWholeOfIt<A>(Map<Sameness.Block<A>, Set<Value>> mayHold) implements Projection<A> {}
 
         /** A part of it: some block's values are not written down, so an assignment found here is
          *  one for the blocks it covers and says nothing about the block left out. */
-        record APartOfIt<A>(TellingApart<A> over) implements Projection<A> {}
+        record APartOfIt<A>(Map<Sameness.Block<A>, Set<Value>> mayHold) implements Projection<A> {}
     }
 
     /**
