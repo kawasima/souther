@@ -1,7 +1,7 @@
 // What the generated code costs to run, rather than to produce. Every behavior here is driven
 // directly through `Behavior.apply` from the benchmark, so each measures one shape of work:
 // accumulating over a list, building a list, and constructing a value that carries an invariant.
-module bench.runtime exposing ( sumAll, evensDoubled, tally, flipped, kept, held, keyed, modded, amountOf )
+module bench.runtime exposing ( sumAll, evensDoubled, tally, flipped, kept, held, keyed, modded, priced, amountOf )
 
 data Amount = Int
     invariant value >= 0
@@ -61,6 +61,14 @@ let keyed (xs) = Map.size(keying(xs))
 behavior modded : (xs: List<Int>) -> Int
 let modded (xs) = List.fold((acc, x) -> acc + Int.floorMod(x, 16), 0, xs)
 
+// The same accumulation as `sumAll`, over Decimals: a product and a sum per element, and a literal
+// in the step. What it measures is what a Decimal operation costs over what the number underneath
+// it costs, so the input is already Decimal and no conversion is in the loop. Against `sumAll`,
+// the distance is the two operations and the literal; against the same loop over BigDecimal in
+// Java, it is what the run time puts around them.
+behavior priced : (xs: List<Decimal>) -> Decimal
+let priced (xs) = List.fold((acc, x) -> acc + x * 1.1m, 0.0m, xs)
+
 // Accumulating into a tuple: `partition` carries a pair of lists and writes one of them per element,
 // which is the shape `take`, `drop`, `indexedMap` and `distinct` all fold. A tuple is a value, so
 // one is built per element, and this is where that costs what it costs. It answers a size for the
@@ -93,6 +101,8 @@ example keyed
     | ([1, 2, 17, 33]) -> 2
 example modded
     | ([1, 2, 17, 33]) -> 5
+example priced
+    | ([1.0m, 2.0m, 3.0m]) -> 6.6m
 example parted
     | ([1, 2, 3, 4]) -> 2
 example amountOf

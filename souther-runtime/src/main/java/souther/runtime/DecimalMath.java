@@ -2,7 +2,6 @@ package souther.runtime;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
-import java.util.function.Supplier;
 
 /**
  * Every Decimal operation the language has (spec §stdlib-decimal), and the one place
@@ -19,8 +18,8 @@ import java.util.function.Supplier;
  * {@code int}: the narrowing is {@link #scale}, and it is exact or it aborts, so no division runs at
  * a scale other than the one written. And every one of these operations is partial — a sum, a
  * difference, a product or a quotient whose scale leaves what a {@code BigDecimal} holds raises
- * {@code ArithmeticException} — so each runs through {@link #aborting}, which reports it the way an
- * {@code Int} overflow is reported (spec §jvm-abort). Neither is a business result.
+ * {@code ArithmeticException} — so each catches that and reports it as {@link #outOfRange}, the way
+ * an {@code Int} overflow is reported (spec §jvm-abort). Neither is a business result.
  */
 public final class DecimalMath {
 
@@ -30,7 +29,7 @@ public final class DecimalMath {
     private static final MathContext DIVIDE = new MathContext(29, java.math.RoundingMode.HALF_UP);
 
     /**
-     * Runs a {@code BigDecimal} operation and reports the way it refuses as the abort it is.
+     * The abort a {@code BigDecimal} operation's refusal is reported as.
      *
      * <p>{@code BigDecimal} answers on a range and not on every pair: a result whose scale leaves
      * the 32 bits a scale is kept in raises {@code ArithmeticException} — "Overflow", "Underflow",
@@ -38,13 +37,15 @@ public final class DecimalMath {
      * the product included. Left alone it arrives at a boundary as a {@code java.math} exception
      * from a program that has no such type. It is the same kind of thing an {@code Int} overflow is
      * ({@link IntMath}): a model bug rather than a business result, so it aborts.
+     *
+     * <p>Each operation catches the exception itself and builds {@code what} in the {@code catch}.
+     * The message names both operands through {@link #describe}, which walks their digits, and an
+     * operation that answers — which is every one in a loop that runs — must not pay for the
+     * message of the one that does not. So the operation is written where it stands, as a call and
+     * a return, and only this is shared.
      */
-    private static <T> T aborting(Supplier<T> operation, String what) {
-        try {
-            return operation.get();
-        } catch (ArithmeticException _) {
-            throw new ConstraintViolation(what + " is outside the range a Decimal holds");
-        }
+    private static ConstraintViolation outOfRange(String what) {
+        return new ConstraintViolation(what + " is outside the range a Decimal holds");
     }
 
     /**
@@ -70,7 +71,7 @@ public final class DecimalMath {
      * or it is nothing.
      *
      * <p>This answers whether the number can be handed over unchanged, and nothing else. Whether the
-     * operation asked for at that scale has an answer is {@link #aborting}'s question: a scale of
+     * operation asked for at that scale has an answer is {@link #outOfRange}'s question: a scale of
      * {@code 2147483647} passes here — an {@code int} holds it exactly — and a division at it still
      * has no result a {@code BigDecimal} can hold. The two are separate because they fail for
      * separate reasons, and a message calling the second one a scale out of range would be wrong
@@ -104,20 +105,30 @@ public final class DecimalMath {
 
     /** {@code Decimal.add(a, b)}, and the {@code +} operator. */
     public static BigDecimal add(BigDecimal a, BigDecimal b) {
-        return aborting(() -> a.add(b), "the sum of " + describe(a) + " and " + describe(b));
+        try {
+            return a.add(b);
+        } catch (ArithmeticException _) {
+            throw outOfRange("the sum of " + describe(a) + " and " + describe(b));
+        }
     }
 
     /** {@code Decimal.subtract(a, b)}, and the {@code -} operator. */
     public static BigDecimal subtract(BigDecimal a, BigDecimal b) {
-        return aborting(() -> a.subtract(b),
-                "the difference of " + describe(a) + " and " + describe(b));
+        try {
+            return a.subtract(b);
+        } catch (ArithmeticException _) {
+            throw outOfRange("the difference of " + describe(a) + " and " + describe(b));
+        }
     }
 
     /** {@code Decimal.multiply(a, b)}, and the {@code *} operator. A product's scale is the sum of
      *  its factors' scales, so this is the operation that reaches the end of the range first. */
     public static BigDecimal multiply(BigDecimal a, BigDecimal b) {
-        return aborting(() -> a.multiply(b),
-                "the product of " + describe(a) + " and " + describe(b));
+        try {
+            return a.multiply(b);
+        } catch (ArithmeticException _) {
+            throw outOfRange("the product of " + describe(a) + " and " + describe(b));
+        }
     }
 
     /**
@@ -135,7 +146,11 @@ public final class DecimalMath {
         if (b.signum() == 0) {
             throw new ConstraintViolation("division by zero: " + describe(a) + " / 0");
         }
-        return aborting(() -> a.divide(b, DIVIDE), "the quotient of " + describe(a) + " and " + describe(b));
+        try {
+            return a.divide(b, DIVIDE);
+        } catch (ArithmeticException _) {
+            throw outOfRange("the quotient of " + describe(a) + " and " + describe(b));
+        }
     }
 
     /**
@@ -160,9 +175,12 @@ public final class DecimalMath {
             return DivisionByZero.INSTANCE;
         }
         int places = scale(scale, "Decimal.divide");
-        return aborting(() -> dividend.divide(divisor, places, toJava(mode)),
-                "the quotient of " + describe(dividend) + " and " + describe(divisor)
-                        + " at scale " + scale);
+        try {
+            return dividend.divide(divisor, places, toJava(mode));
+        } catch (ArithmeticException _) {
+            throw outOfRange("the quotient of " + describe(dividend) + " and " + describe(divisor)
+                    + " at scale " + scale);
+        }
     }
 
     /**
@@ -206,8 +224,12 @@ public final class DecimalMath {
      * be taken of at all, which is a different failure of the same operation and says so.
      */
     public static long toInt(RoundingMode mode, BigDecimal d) {
-        BigDecimal whole = aborting(() -> d.setScale(0, toJava(mode)),
-                "the whole number " + describe(d) + " rounds to");
+        BigDecimal whole;
+        try {
+            whole = d.setScale(0, toJava(mode));
+        } catch (ArithmeticException _) {
+            throw outOfRange("the whole number " + describe(d) + " rounds to");
+        }
         try {
             return whole.longValueExact();
         } catch (ArithmeticException _) {
@@ -220,7 +242,10 @@ public final class DecimalMath {
      *  descriptor is derived from that declaration, so the two cannot drift apart. */
     public static BigDecimal round(long scale, RoundingMode mode, BigDecimal d) {
         int places = scale(scale, "Decimal.round");
-        return aborting(() -> d.setScale(places, toJava(mode)),
-                describe(d) + " rounded to scale " + scale);
+        try {
+            return d.setScale(places, toJava(mode));
+        } catch (ArithmeticException _) {
+            throw outOfRange(describe(d) + " rounded to scale " + scale);
+        }
     }
 }

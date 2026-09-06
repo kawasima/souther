@@ -30,6 +30,8 @@ import java.lang.classfile.CodeBuilder;
 import java.lang.classfile.Label;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDescs;
+import java.lang.constant.DynamicConstantDesc;
+import java.lang.constant.MethodHandleDesc;
 import java.lang.constant.MethodTypeDesc;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -670,13 +672,15 @@ final class BodyGen {
                 // emits from keeps none, and one arriving means it was handed another tree.
                 case Core.PreservedCall p -> throw p.unexpectedIn("the emitter");
                 case Core.Int x -> code.loadConstant(x.value());
-                case Core.Decimal x -> {
-                    code.new_(CD_BigDecimal);
-                    code.dup();
-                    code.loadConstant(x.value().toString());
-                    code.invokespecial(CD_BigDecimal, "<init>",
-                            MethodTypeDesc.of(ConstantDescs.CD_void, CD_String));
-                }
+                // A literal is a constant of the class it is written in, and is loaded as one: a
+                // dynamic constant the JVM resolves once, by running the BigDecimal constructor
+                // on the spelling, and answers from the constant pool thereafter. Constructing it
+                // where it stands would parse the spelling on every evaluation, and a literal in
+                // the step of a fold is evaluated once per element.
+                case Core.Decimal x -> code.ldc(DynamicConstantDesc.ofNamed(
+                        ConstantDescs.BSM_INVOKE, "decimal", CD_BigDecimal,
+                        MethodHandleDesc.ofConstructor(CD_BigDecimal, CD_String),
+                        x.value().toString()));
                 case Core.Str x -> code.loadConstant(x.value());
                 case Core.Bool x -> {
                     if (x.value()) code.iconst_1(); else code.iconst_0();
