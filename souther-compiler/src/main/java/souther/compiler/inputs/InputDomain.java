@@ -1320,7 +1320,7 @@ public final class InputDomain {
         // decided once. Every reader below reads this answer rather than working the question out
         // again from what it happens to hold.
         MeasuredCoordinate measured =
-                MeasuredCoordinate.of(ownRules.writtenAbout(), stated, taken, carried);
+                MeasuredCoordinate.of(ownRules.writtenAbout(), stated, taken);
         // And what became of every end placed here, against that one answer. Said from the lists
         // that still hold the rules, because this is the one place that knows which rules they
         // were — recovered afterwards from a position with no axis, a finding could name the

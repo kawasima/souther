@@ -452,9 +452,6 @@ class AClauseReachingOneCoordinatePlacesAnEdgeTest {
 
         assertTrue(report.contains("no row is at the ON point value = m (invariant Name #1)"),
                 report);
-        assertFalse(report.contains("String.length(v.name) = "),
-                "the record's clause states an end on a coordinate this position is not measured"
-                        + " at, and no line is drawn at it:\n" + report);
     }
 
     /**

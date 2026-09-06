@@ -1,6 +1,5 @@
 package souther.compiler.inputs;
 
-import souther.compiler.check.Carrier;
 import souther.compiler.check.FieldDomains;
 import souther.compiler.check.NumberAt;
 import souther.compiler.types.ValueName;
@@ -79,18 +78,18 @@ sealed interface MeasuredCoordinate {
      *
      * <p>The rules that reached the position are read as their ends, because that is the whole of
      * what one of them says here: it names no coordinate for the position and states where one
-     * stops.
+     * stops. Whether such an end could be read at all is settled where it was placed — a value with
+     * an end on its own order is a value something compared — so there is no case to rule out
+     * again here, and one written would be this reading deciding a second time what an end is.
      *
      * @param writtenAbout which numbers the position's own type wrote about
      * @param reaching     the ends the value this position sits in places on it
      * @param taken        the operation this type's values are counted by, or null where none
      *                     counts them
-     * @param carried      what the position's own values are compared on, or null where nothing
-     *                     here compares them
      */
     static MeasuredCoordinate of(Set<NumberAt.OfWhatNumber> writtenAbout,
                                  List<FieldDomains.Placed> reaching,
-                                 ValueName.Stdlib taken, Carrier carried) {
+                                 ValueName.Stdlib taken) {
         Set<NumberAt.OfWhatNumber> eligible = eligible(taken);
         MeasuredCoordinate own = settledBy(intersect(writtenAbout, eligible));
         if (own != null) {
@@ -98,16 +97,9 @@ sealed interface MeasuredCoordinate {
         }
         Set<NumberAt.OfWhatNumber> outside = new LinkedHashSet<>();
         for (FieldDomains.Placed each : reaching) {
-            // An end on the value's own order, where nothing here compares those values, is not an
-            // end this can read as one. The eligibility above says which numbers the position has;
-            // this says what an end placed on one of them amounts to, and the two are asked apart
-            // because a rule naming a coordinate and a rule this could read an end from are not
-            // the same rules.
-            if (!eligible.contains(each.at().of())
-                    || (carried == null && ITS_OWN_VALUE.equals(each.at().of()))) {
-                continue;
+            if (eligible.contains(each.at().of())) {
+                outside.add(each.at().of());
             }
-            outside.add(each.at().of());
         }
         MeasuredCoordinate reached = settledBy(outside);
         // Where neither standing spoke, the position is measured on its own values. Not a coordinate
