@@ -8,6 +8,7 @@ import souther.compiler.numeric.Count;
 import souther.compiler.numeric.Place;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.ReachName;
+import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.TypeReachName;
 import souther.compiler.types.ValueName;
 
@@ -230,7 +231,8 @@ public record FixtureTemplate(String text, Hir.Expr value) {
             written.add(each.text());
         }
         return new FixtureTemplate("[" + String.join(", ", written) + "]",
-                new Hir.ListLit(List.copyOf(values), NOWHERE, NO_SOURCE));
+                new Hir.ListLit(List.copyOf(values), SourceConstructOrigin.unwritten(), NOWHERE,
+                        NO_SOURCE));
     }
 
     /** One entry of a map: the pair a fixture writes a key and its value as. */

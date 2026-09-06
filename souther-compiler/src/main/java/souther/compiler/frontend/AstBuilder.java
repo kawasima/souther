@@ -928,7 +928,8 @@ public final class AstBuilder {
             // the expression inside them, written over the whole of what the author bracketed.
             case PAREN_EXPR -> Ast.withRegion(expr(onlyExpr(n)), region(n));
             case TUPLE_EXPR -> new Ast.Tuple(exprList(n), pos(n), region(n));
-            case LIST_EXPR -> new Ast.ListLit(exprList(n), pos(n), region(n));
+            case LIST_EXPR -> new Ast.ListLit(exprList(n), construct(SourceConstruct.COLLECTION_LITERAL),
+                    pos(n), region(n));
             case LIST_COMP -> listComp(n);
             case IF_EXPR -> ifExpr(n);
             case MATCH_EXPR -> matchExpr(n);

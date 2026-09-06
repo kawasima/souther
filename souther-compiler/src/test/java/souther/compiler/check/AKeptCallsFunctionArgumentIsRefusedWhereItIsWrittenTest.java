@@ -11,6 +11,7 @@ import souther.compiler.diag.SourcePos;
 import souther.compiler.diag.msg.TypeMessage;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.ReachName;
+import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.ValueName;
 
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,9 @@ class AKeptCallsFunctionArgumentIsRefusedWhereItIsWrittenTest {
      *  to whichever text the caller said it was reading. */
     private static final SourceId SOURCE = new SourceId("0");
     private static final SourcePos CALL = new SourcePos(1, 1, SOURCE);
+
+    /** The list here is this test's own: no source spells the brackets. */
+    private static final SourceConstructOrigin COMPOSED = SourceConstructOrigin.unwritten();
     private static final SourcePos ARGUMENT = new SourcePos(3, 5, SOURCE);
 
     /**
@@ -52,7 +56,7 @@ class AKeptCallsFunctionArgumentIsRefusedWhereItIsWrittenTest {
                 new Hir.IntLit(1, ARGUMENT, null), souther.compiler.types.RuleOrigin.unwritten(), ARGUMENT, null);
         Hir.Expr call = Hir.Apply.synthetic("List.flatMap",
                 new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "flatMap")),
-                List.of(answersAnInt, new Hir.ListLit(List.of(new Hir.IntLit(2, CALL, null)), CALL, null)),
+                List.of(answersAnInt, new Hir.ListLit(List.of(new Hir.IntLit(2, CALL, null)), COMPOSED, CALL, null)),
                 CALL, null);
 
         CompileException e = assertThrows(CompileException.class,
@@ -75,7 +79,7 @@ class AKeptCallsFunctionArgumentIsRefusedWhereItIsWrittenTest {
                 new Hir.IntLit(1, ARGUMENT, null), souther.compiler.types.RuleOrigin.unwritten(), ARGUMENT, null);
         Hir.Expr call = Hir.Apply.synthetic("List.flatMap",
                 new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "flatMap")),
-                List.of(answersAnInt, new Hir.ListLit(List.of(new Hir.IntLit(2, CALL, null)), CALL, null)),
+                List.of(answersAnInt, new Hir.ListLit(List.of(new Hir.IntLit(2, CALL, null)), COMPOSED, CALL, null)),
                 CALL, null);
 
         CompileException e = assertThrows(CompileException.class,

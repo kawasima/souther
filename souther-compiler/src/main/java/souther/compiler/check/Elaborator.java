@@ -392,7 +392,10 @@ public final class Elaborator {
             // Whether the value belongs at the position is a different question, and one an input is
             // held to while an expectation is not ({@link RowPosition}), so it is not asked here.
             case Hir.RowCollection row -> {
-                Hir.Expr written = new Hir.ListLit(row.elements(), row.pos(), row.region());
+                // The same brackets the author wrote, read as the list they are: one collection of
+                // the source and not a second one made here.
+                Hir.Expr written = new Hir.ListLit(row.elements(), row.origin(), row.pos(),
+                        row.region());
                 Brackets brackets = contextualCollection(expected);
                 // `[ ]` at a set or a map is the empty one, which is the value a body names rather
                 // than a conversion of an empty list: what it holds has no element to say, and the

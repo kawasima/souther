@@ -1144,8 +1144,9 @@ public final class Resolve {
             case Ast.If x -> new Hir.If(expr(x.cond(), bound), expr(x.then(), bound),
                     expr(x.els(), bound), x.origin(), x.pos(), x.region());
             case Ast.ListLit x -> bound.readingAFixture()
-                    ? new Hir.RowCollection(exprs(x.elements(), bound), x.pos(), x.region())
-                    : new Hir.ListLit(exprs(x.elements(), bound), x.pos(), x.region());
+                    ? new Hir.RowCollection(exprs(x.elements(), bound), x.origin(), x.pos(),
+                            x.region())
+                    : new Hir.ListLit(exprs(x.elements(), bound), x.origin(), x.pos(), x.region());
             case Ast.ListComp x -> new Hir.ListComp(expr(x.element(), bound),
                     exprs(x.guards(), bound), x.origin(), x.pos(), x.region());
             case Ast.Tuple x -> new Hir.Tuple(exprs(x.elements(), bound), x.pos(), x.region());

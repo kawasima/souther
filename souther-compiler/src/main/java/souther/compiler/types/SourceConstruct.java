@@ -69,6 +69,23 @@ public enum SourceConstruct {
     CALL,
 
     /**
+     * A collection written in brackets — {@code [a, b]}, and the empty {@code []}.
+     *
+     * <p>What was written, and not which collection it turned out to be. The same brackets are a
+     * list in a body and the rows of a table in a fixture, and which library operations stand for
+     * them is settled long after the source is gone — a reader here has neither the type nor the
+     * elaboration that decides it. Named for either, this value would be one the builder could not
+     * hand out.
+     *
+     * <p>Written down at all because what the brackets stand for is named by something: the
+     * operations a body holds where the author wrote a collection are references no source wrote,
+     * and each of them is a reference derived from this construct. Without an identity here they
+     * would have only the place to be told apart by, and one helper expanded at two calls puts two
+     * of them at one place.
+     */
+    COLLECTION_LITERAL,
+
+    /**
      * No source wrote it.
      *
      * <p>What {@link SourceConstructOrigin#unwritten} carries. A comparison rebuilt for an analysis is a
@@ -93,7 +110,7 @@ public enum SourceConstruct {
             case IF -> souther.compiler.diag.Localizable.of("construct.if");
             case GUARD -> souther.compiler.diag.Localizable.of("construct.guard");
             case COMPREHENSION -> souther.compiler.diag.Localizable.of("construct.comprehension");
-            case MATCH, BINARY, CALL, NOT_WRITTEN -> throw new IllegalStateException(
+            case MATCH, BINARY, CALL, COLLECTION_LITERAL, NOT_WRITTEN -> throw new IllegalStateException(
                     "not a fork of a body: " + this);
         };
     }

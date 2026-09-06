@@ -6,6 +6,7 @@ import souther.compiler.ast.Hir;
 import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingOwner;
+import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.Type;
 import souther.compiler.types.ReachName;
 import souther.compiler.types.ValueName;
@@ -32,6 +33,9 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 class OneCallSettlesOneSignatureTest {
 
     private static final SourcePos POS = new SourcePos(1, 1);
+
+    /** The lists here are this test's own: no source spells the brackets. */
+    private static final SourceConstructOrigin COMPOSED = SourceConstructOrigin.unwritten();
     private static final Preserved KEPT = Preserved.byTheLanguagesOwnOperations();
     private static final Hir.Binders BINDERS = new Hir.Binders(new BindingOwner.OfValue("demo", "t"));
 
@@ -41,7 +45,7 @@ class OneCallSettlesOneSignatureTest {
                 new Hir.BoolLit(true, POS, null), souther.compiler.types.RuleOrigin.unwritten(), POS, null);
         return Hir.Apply.synthetic("List.filter",
                 new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "filter")),
-                List.of(predicate, new Hir.ListLit(List.of(), POS, null)), POS, null);
+                List.of(predicate, new Hir.ListLit(List.of(), COMPOSED, POS, null)), POS, null);
     }
 
     @Test
@@ -129,13 +133,13 @@ class OneCallSettlesOneSignatureTest {
         // element type of nothing.
         Hir.Expr call = Hir.Apply.synthetic("Option.withDefault",
                 new ReachName.OfLibrary(ValueName.Stdlib.operation("Option", "withDefault")),
-                List.of(new Hir.ListLit(List.of(), POS, null),
+                List.of(new Hir.ListLit(List.of(), COMPOSED, POS, null),
                         Hir.Apply.synthetic("List.get",
                 new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "get")),
                                 List.of(new Hir.IntLit(0, POS, null),
                                         new Hir.ListLit(List.of(new Hir.ListLit(
-                                                List.of(new Hir.IntLit(1, POS, null)), POS, null)),
-                                                POS, null)),
+                                                List.of(new Hir.IntLit(1, POS, null)), COMPOSED,
+                                                POS, null)), COMPOSED, POS, null)),
                                 POS, null)),
                 POS, null);
 

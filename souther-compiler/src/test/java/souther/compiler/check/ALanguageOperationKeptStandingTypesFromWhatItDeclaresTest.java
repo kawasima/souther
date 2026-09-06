@@ -5,6 +5,7 @@ import souther.compiler.ast.Hir;
 import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingOwner;
+import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.Type;
 import souther.compiler.types.ReachName;
 import souther.compiler.types.ValueName;
@@ -28,6 +29,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ALanguageOperationKeptStandingTypesFromWhatItDeclaresTest {
 
     private static final SourcePos POS = new SourcePos(1, 1);
+
+    /** The lists here are this test's own: no source spells the brackets. */
+    private static final SourceConstructOrigin COMPOSED = SourceConstructOrigin.unwritten();
     private static final Preserved KEPT = Preserved.byTheLanguagesOwnOperations();
 
     @Test
@@ -35,7 +39,7 @@ class ALanguageOperationKeptStandingTypesFromWhatItDeclaresTest {
         // List.length : (List<'a>) -> Int — the argument decides 'a, and the result is not a variable
         Hir.Expr call = Hir.Apply.synthetic("List.length",
                 new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "length")),
-                List.of(new Hir.ListLit(List.of(new Hir.IntLit(1, POS, null)), POS, null)),
+                List.of(new Hir.ListLit(List.of(new Hir.IntLit(1, POS, null)), COMPOSED, POS, null)),
                 POS, null);
 
         Core typed = Elaborator.elaborate(call, Scope.NONE,
@@ -55,10 +59,10 @@ class ALanguageOperationKeptStandingTypesFromWhatItDeclaresTest {
         // answered.
         Hir.Binders binders = new Hir.Binders(new BindingOwner.OfValue("demo", "test"));
         Hir.Block step = new Hir.Block(List.of(binders.binder("x", POS)),
-                new Hir.ListLit(List.of(new Hir.IntLit(1, POS, null)), POS, null), souther.compiler.types.RuleOrigin.unwritten(), POS, null);
+                new Hir.ListLit(List.of(new Hir.IntLit(1, POS, null)), COMPOSED, POS, null), souther.compiler.types.RuleOrigin.unwritten(), POS, null);
         Hir.Expr call = Hir.Apply.synthetic("List.flatMap",
                 new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "flatMap")),
-                List.of(step, new Hir.ListLit(List.of(new Hir.IntLit(2, POS, null)), POS, null)),
+                List.of(step, new Hir.ListLit(List.of(new Hir.IntLit(2, POS, null)), COMPOSED, POS, null)),
                 POS, null);
 
         Core typed = Elaborator.elaborate(call, Scope.NONE,

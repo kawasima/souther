@@ -1311,9 +1311,10 @@ public final class HelperInliner {
                                 li.opens(), body, li.pos(), li.region())
                         : body;
             }
-            case Hir.ListLit lit -> new Hir.ListLit(inlineList(lit.elements()), lit.pos(), lit.region());
-            case Hir.RowCollection row -> new Hir.RowCollection(inlineList(row.elements()), row.pos(),
-                    row.region());
+            case Hir.ListLit lit -> new Hir.ListLit(inlineList(lit.elements()), lit.origin(),
+                    lit.pos(), lit.region());
+            case Hir.RowCollection row -> new Hir.RowCollection(inlineList(row.elements()),
+                    row.origin(), row.pos(), row.region());
             case Hir.Tuple tup -> new Hir.Tuple(inlineList(tup.elements()), tup.pos(), tup.region());
             case Hir.TupleGet tg -> new Hir.TupleGet(inline(tg.tuple()), tg.index(), tg.arity(), tg.pos(),
                     tg.region());
@@ -2314,9 +2315,9 @@ public final class HelperInliner {
                         renaming.at(ex.pos()), renaming.over(ex.region()));
             }
             case Hir.ListLit lit -> new Hir.ListLit(renameList(lit.elements(), renaming),
-                    renaming.at(lit.pos()), renaming.over(lit.region()));
+                    lit.origin(), renaming.at(lit.pos()), renaming.over(lit.region()));
             case Hir.RowCollection row -> new Hir.RowCollection(renameList(row.elements(), renaming),
-                    renaming.at(row.pos()), renaming.over(row.region()));
+                    row.origin(), renaming.at(row.pos()), renaming.over(row.region()));
             case Hir.Tuple tup -> new Hir.Tuple(renameList(tup.elements(), renaming),
                     renaming.at(tup.pos()), renaming.over(tup.region()));
             case Hir.TupleGet tg -> new Hir.TupleGet(rename(tg.tuple(), renaming), tg.index(), tg.arity(),

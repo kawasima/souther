@@ -1453,8 +1453,14 @@ public interface Hir {
      */
     record Given(RetType declaredType, Expr value, boolean applied, RetType arrivesAs) {}
 
-    /** A list literal {@code [e1, e2, ...]} (one or more elements of the same type). */
-    record ListLit(List<Expr> elements, SourcePos pos, Region region) implements Expr {}
+    /** A list literal {@code [e1, e2, ...]} (one or more elements of the same type).
+     *
+     * <p>{@code origin} is the collection the author wrote, carried from where the source was read.
+     * The operations a body ends up holding for it are references derived from that construct, and
+     * a helper holding one is expanded at each of its calls — so the identity is the source's and
+     * not the place's. */
+    record ListLit(List<Expr> elements, SourceConstructOrigin origin, SourcePos pos, Region region)
+            implements Expr {}
 
     /**
      * {@code [ … ]} written in an {@code example} or {@code fake} row, where the brackets are the
@@ -1471,7 +1477,8 @@ public interface Hir {
      * are is the notation's question; whether the value that comes out belongs at the position is a
      * separate one, asked of an input and not of an expectation ({@link RowPosition}).
      */
-    record RowCollection(List<Expr> elements, SourcePos pos, Region region) implements Expr {}
+    record RowCollection(List<Expr> elements, SourceConstructOrigin origin, SourcePos pos,
+                         Region region) implements Expr {}
 
     /** A guard-only comprehension {@code [element | guard, ...]}: the element is included when
      * every guard holds, giving a 0-or-1 element list (spec §stdlib-list, conditional accumulation).
@@ -2454,8 +2461,8 @@ public interface Hir {
             case Expansion x -> new Expansion(x.callee(), x.application(), x.bound(), x.given(),
                     x.declaredReturn(), x.body(), x.pos(), region);
             case Block x -> new Block(x.params(), x.body(), x.rule(), x.pos(), region);
-            case ListLit x -> new ListLit(x.elements(), x.pos(), region);
-            case RowCollection x -> new RowCollection(x.elements(), x.pos(), region);
+            case ListLit x -> new ListLit(x.elements(), x.origin(), x.pos(), region);
+            case RowCollection x -> new RowCollection(x.elements(), x.origin(), x.pos(), region);
             case ListComp x -> new ListComp(x.element(), x.guards(), x.origin(), x.pos(), region);
             case Tuple x -> new Tuple(x.elements(), x.pos(), region);
             case TupleGet x -> new TupleGet(x.tuple(), x.index(), x.arity(), x.pos(), region);
@@ -2557,12 +2564,13 @@ public interface Hir {
             }
             case ListLit l -> {
                 List<Expr> elements = each(l.elements(), atExpr);
-                yield elements == l.elements() ? l : new ListLit(elements, l.pos(), l.region());
+                yield elements == l.elements() ? l
+                        : new ListLit(elements, l.origin(), l.pos(), l.region());
             }
             case RowCollection l -> {
                 List<Expr> elements = each(l.elements(), atExpr);
                 yield elements == l.elements() ? l
-                        : new RowCollection(elements, l.pos(), l.region());
+                        : new RowCollection(elements, l.origin(), l.pos(), l.region());
             }
             case ListComp comp -> {
                 Expr element = atExpr.apply(comp.element());

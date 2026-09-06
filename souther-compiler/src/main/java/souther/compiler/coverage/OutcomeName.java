@@ -73,29 +73,31 @@ public enum OutcomeName {
                 case IF -> THEN;
                 case GUARD -> CONTINUED;
                 case COMPREHENSION -> KEPT;
-                case MATCH, BINARY, CALL, NOT_WRITTEN -> refuse(construct, outcome);
+                case MATCH, BINARY, CALL, COLLECTION_LITERAL, NOT_WRITTEN ->
+                        refuse(construct, outcome);
             };
             case SourceOutcome.Failed(SourceOutcome.FailedBy.Condition _) -> switch (construct) {
                 case IF, GUARD -> ELSE;
                 case COMPREHENSION -> DROPPED;
-                case MATCH, BINARY, CALL, NOT_WRITTEN -> refuse(construct, outcome);
+                case MATCH, BINARY, CALL, COLLECTION_LITERAL, NOT_WRITTEN ->
+                        refuse(construct, outcome);
             };
             // An attempted construction is a shape either of the two conditionals may be written in,
             // and no other construct has one. What the value was attempted under is said by the
             // construct beside this rather than by a second word here.
             case SourceOutcome.Held(SourceOutcome.HeldBy.Construction _) -> switch (construct) {
                 case IF, GUARD -> CONSTRUCTED;
-                case COMPREHENSION, MATCH, BINARY, CALL, NOT_WRITTEN ->
+                case COMPREHENSION, MATCH, BINARY, CALL, COLLECTION_LITERAL, NOT_WRITTEN ->
                         refuse(construct, outcome);
             };
             case SourceOutcome.Failed(SourceOutcome.FailedBy.Construction _) -> switch (construct) {
                 case IF, GUARD -> DEPARTURE;
-                case COMPREHENSION, MATCH, BINARY, CALL, NOT_WRITTEN ->
+                case COMPREHENSION, MATCH, BINARY, CALL, COLLECTION_LITERAL, NOT_WRITTEN ->
                         refuse(construct, outcome);
             };
             case SourceOutcome.Matched _ -> switch (construct) {
                 case MATCH -> CASE;
-                case IF, GUARD, COMPREHENSION, BINARY, CALL, NOT_WRITTEN ->
+                case IF, GUARD, COMPREHENSION, BINARY, CALL, COLLECTION_LITERAL, NOT_WRITTEN ->
                         refuse(construct, outcome);
             };
             // The one place the two axes meet without naming each other: what was written is a
@@ -105,7 +107,7 @@ public enum OutcomeName {
             // and leaves no run to record.
             case SourceOutcome.Compared _ -> switch (construct) {
                 case BINARY -> COMPARISON;
-                case IF, GUARD, COMPREHENSION, MATCH, CALL, NOT_WRITTEN ->
+                case IF, GUARD, COMPREHENSION, MATCH, CALL, COLLECTION_LITERAL, NOT_WRITTEN ->
                         refuse(construct, outcome);
             };
         };

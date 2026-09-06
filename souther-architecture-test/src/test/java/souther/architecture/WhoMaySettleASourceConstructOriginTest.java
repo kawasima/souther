@@ -32,8 +32,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * several in the tree that runs, and what says those copies are one obligation is that they carry
  * one origin. An origin made after that expansion gives two copies of one construct two, which is
  * the thing the type exists to prevent. Its own account says where one may be made: at the reading
- * of a source construct, at a rewrite that reads a call back as the comparison it means and has no
- * source to answer for, and at the derivation of the forks a lowering makes.
+ * of a source construct, and at the derivation of the forks a lowering makes.
+ *
+ * <p>Which is a narrower question than where the type is answered with. A pass may also say that no
+ * source wrote the construct in hand, and that is not asked here: it hands out no construct of the
+ * author's, so there is nothing in it for a copy to be given twice. Anywhere a pass composes a form
+ * the language has no syntax for, it may say so.
  *
  * <p>Nothing held that. The record's constructor is public and takes every component, as a record's
  * is, so a pass reaching for one makes whatever it likes. So the account is read off the compiled
@@ -78,23 +82,20 @@ class WhoMaySettleASourceConstructOriginTest {
     private static final List<String> MAKERS = List.of(
             OWNER + "#<init>(" + AN_OWNER + "II" + A_CONSTRUCT + ")V",
             OWNER + "#lowered(I)" + AN_ORIGIN,
-            OWNER + "#unwritten()" + AN_ORIGIN,
             OWNER + "#written(" + AN_OWNER + "I" + A_CONSTRUCT + ")" + AN_ORIGIN);
 
     /**
      * Every class that names one of the makers, with the maker it names.
      *
-     * <p>A source construct is read in one place. {@code TheOtherCase}, {@code Terms} and
-     * {@code Conditions} read a preserved call back as the comparison it means, and a preserved call
-     * holds no origin, so there is none to carry and each says which it is answering. The fork of a
-     * comprehension's guard is derived where the comprehension is, so that the lowering and the
-     * reading that runs before it cannot number the guards differently.
+     * <p>A source construct is read in one place, and the fork of a comprehension's guard is derived
+     * where the comprehension is — so that the lowering and the reading that runs before it cannot
+     * number the guards differently.
      *
-     * <p>{@code Hir.Apply} and {@code Elaborator} are the two places an application stands where no
-     * source wrote one. A pass composing an application is writing one into a body, and a name read
-     * where a value goes is built as a call of no arguments — an author wrote a name there, not an
-     * application. Each says so rather than taking the number of a construct somebody wrote, which
-     * after an expansion is this compiler's own work standing among the model's.
+     * <p>Saying that no source wrote one is not here and is nobody's permission. A pass composing a
+     * form the language has no syntax for — an application where an author wrote a name, the two
+     * lists a comprehension lowers to, a value a fixture composes — says so, and says it wherever
+     * such a pass is written. What it gains by saying it is nothing: there is no construct of the
+     * author's in the answer for a copy to take twice, which is what the rows below are about.
      *
      * <p>The constructor is named only from inside {@code SourceConstructOrigin}. A row naming it elsewhere
      * is a pass making an origin of its own, which after an expansion is two obligations where the
@@ -106,13 +107,7 @@ class WhoMaySettleASourceConstructOriginTest {
      * number to give. A row here naming the builder would be a count over everything a file wrote.
      */
     private static final List<String> NAMING_A_MAKER = List.of(
-            "souther/compiler/ast/Hir$Apply -> " + OWNER + "#unwritten()" + AN_ORIGIN,
             "souther/compiler/ast/Hir$ListComp -> " + OWNER + "#lowered(I)" + AN_ORIGIN,
-            "souther/compiler/check/Conditions -> " + OWNER + "#unwritten()" + AN_ORIGIN,
-            "souther/compiler/check/Conditions$AsPolar -> " + OWNER + "#unwritten()" + AN_ORIGIN,
-            "souther/compiler/check/Elaborator -> " + OWNER + "#unwritten()" + AN_ORIGIN,
-            "souther/compiler/check/Terms -> " + OWNER + "#unwritten()" + AN_ORIGIN,
-            "souther/compiler/check/TheOtherCase -> " + OWNER + "#unwritten()" + AN_ORIGIN,
             "souther/compiler/frontend/AstBuilder$Reading -> " + OWNER
                     + "#written(" + AN_OWNER + "I" + A_CONSTRUCT + ")" + AN_ORIGIN,
             OWNER + " -> " + OWNER + "#<init>(" + AN_OWNER + "II" + A_CONSTRUCT + ")V");
@@ -127,9 +122,9 @@ class WhoMaySettleASourceConstructOriginTest {
     @Test
     void andEveryClassThatNamesOneIsWrittenDownWithWhatItNames() {
         assertEquals(NAMING_A_MAKER, new ArrayList<>(namingAMaker()),
-                "an origin is made where a source is read and where a rewrite has no source to"
-                        + " answer for, and derived where a lowering forks one construct into"
-                        + " several: a row that is neither is a copy given an obligation of its own");
+                "an origin is made where a source is read, and derived where a lowering forks one"
+                        + " construct into several: a row that is neither is a copy given an"
+                        + " obligation of its own");
     }
 
     /**
@@ -162,7 +157,7 @@ class WhoMaySettleASourceConstructOriginTest {
     private static Set<String> makers() {
         Set<String> members = new TreeSet<>();
         for (Method each : SourceConstructOrigin.class.getDeclaredMethods()) {
-            if (each.getReturnType() == SourceConstructOrigin.class) {
+            if (each.getReturnType() == SourceConstructOrigin.class && !statesAnAbsence(each)) {
                 members.add(OWNER + "#" + each.getName()
                         + descriptorOf(each.getParameterTypes(), each.getReturnType()));
             }
@@ -171,6 +166,34 @@ class WhoMaySettleASourceConstructOriginTest {
             members.add(OWNER + "#<init>" + descriptorOf(each.getParameterTypes(), void.class));
         }
         return members;
+    }
+
+    /**
+     * Whether {@code member} answers that no source wrote the construct, rather than saying which
+     * construct a source wrote.
+     *
+     * <p>Two operations wear one shape here. Settling an identity says which construct of a source
+     * this is, and two copies of one construct carrying two of them is the thing this walk exists to
+     * stop. Saying there is none says the opposite — that nothing was written, so there is no
+     * identity for a copy to take twice — and a pass that says it gains no construct of the
+     * author's. So the second is not a permission, and a pass composing a form the language has no
+     * syntax for is not made a source authority by admitting it wrote one.
+     *
+     * <p>Read by asking the answer rather than by its name. A member named for what it does today
+     * is renamed tomorrow, and a walk keyed to the spelling passes over the renamed one and
+     * reports nothing.
+     */
+    private static boolean statesAnAbsence(Method member) {
+        if (member.getParameterCount() != 0 || !java.lang.reflect.Modifier.isStatic(
+                member.getModifiers())) {
+            return false;
+        }
+        try {
+            return !((SourceConstructOrigin) member.invoke(null)).isWritten();
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("a way of making an origin could not be asked what it"
+                    + " answers: " + member, e);
+        }
     }
 
     /** Every class naming a maker, as the class and the maker — the maker by the whole of what it

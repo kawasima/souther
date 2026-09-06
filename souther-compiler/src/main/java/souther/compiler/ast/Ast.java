@@ -939,8 +939,20 @@ public interface Ast {
         }
     }
 
-    /** A list literal {@code [e1, e2, ...]} (one or more elements of the same type). */
-    record ListLit(List<Expr> elements, SourcePos pos, Region region) implements Expr {}
+    /**
+     * A collection written in brackets — {@code [a, b]}, and the empty {@code []}.
+     *
+     * <p>{@code origin} is which collection of this source it is. Carried rather than worked out
+     * below, for the reason every construct's is: a helper holding one is expanded at each call, so
+     * one pair of brackets becomes several nodes at one place, and what says those are one
+     * collection is that they carry one origin.
+     *
+     * <p>What the brackets stand for is decided further down — a list in a body, the rows of a
+     * table in a fixture, and in either case library operations no source wrote. Each of those
+     * operations is a reference derived from this, which is what the identity is here for.
+     */
+    record ListLit(List<Expr> elements, SourceConstructOrigin origin, SourcePos pos, Region region)
+            implements Expr {}
 
     /** A guard-only comprehension {@code [element | guard, ...]}: the element is included when
      * every guard holds, giving a 0-or-1 element list (spec §stdlib-list, conditional accumulation).
@@ -1267,7 +1279,7 @@ public interface Ast {
             case LetIn x -> new LetIn(x.binder(), x.value(), x.declaredType(), x.annotated(),
                     x.opens(), x.body(), x.pos(), region);
             case Block x -> new Block(x.params(), x.body(), x.rule(), x.pos(), region);
-            case ListLit x -> new ListLit(x.elements(), x.pos(), region);
+            case ListLit x -> new ListLit(x.elements(), x.origin(), x.pos(), region);
             case ListComp x -> new ListComp(x.element(), x.guards(), x.origin(), x.pos(), region);
             case Tuple x -> new Tuple(x.elements(), x.pos(), region);
             case TupleGet x -> new TupleGet(x.tuple(), x.index(), x.arity(), x.pos(), region);
