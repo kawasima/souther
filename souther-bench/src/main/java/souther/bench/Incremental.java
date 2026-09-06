@@ -47,7 +47,7 @@ final class Incremental {
             compilation.diagnostics();
         });
         Timing comment = Timing.ofRounds(40, 40, round ->
-                apply(compilation, byId, imported, byId.get(imported) + "\n-- round " + round + "\n"));
+                apply(compilation, byId, imported, byId.get(imported) + "\n// round " + round + "\n"));
         Timing atImported = Timing.ofRounds(40, 40, round ->
                 apply(compilation, byId, imported, added(byId.get(imported), round)));
         Timing atLeaf = Timing.ofRounds(40, 40, round ->
