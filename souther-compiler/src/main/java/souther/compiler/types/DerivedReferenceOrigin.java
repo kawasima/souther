@@ -25,7 +25,8 @@ package souther.compiler.types;
  * identity has to be. The empty collection at one pair of brackets is the first thing that pair
  * derived, whatever the body around it holds.
  *
- * @param cause    what the source wrote that made a pass write this reference
+ * @param cause    what made a pass write this reference, which is something that can be told from
+ *                 every other of its kind rather than a construct of a source in particular
  * @param ordinal  which of the references that cause derived this is, by the producer's own count
  */
 public record DerivedReferenceOrigin(ReferenceDerivationCause cause, int ordinal)

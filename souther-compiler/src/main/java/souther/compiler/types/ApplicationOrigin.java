@@ -122,19 +122,23 @@ public sealed interface ApplicationOrigin {
     }
 
     /**
-     * An application a pass wrote because of something a source wrote.
+     * An application a pass wrote because of something it can name.
      *
      * <p>The library operation a collection written in brackets stands for, the operation a checked
-     * value is written back as. The author wrote something there, and that is what names this — the
-     * cause, and the producer's own count over what it derived from that cause, because one construct
+     * value is written back as, the call a name read where a value goes is built as. What names this
+     * is that cause, and the producer's own count over what it derived from it, because one cause
      * may make a pass write more than one thing.
+     *
+     * <p>The cause is not always a construct the author wrote. What it has to be is something that
+     * can be told from every other of its kind — a construct, an application, a reference a run
+     * composed — because that is what this is derived from.
      */
     record Derived(ApplicationDerivationCause cause, int ordinal) implements Identified {
 
         public Derived {
             if (cause == null) {
                 throw new IllegalArgumentException(
-                        "an application a pass wrote was written because a source wrote something");
+                        "an application a pass wrote was written because of something it can name");
             }
             if (ordinal < 0) {
                 throw new IllegalArgumentException(

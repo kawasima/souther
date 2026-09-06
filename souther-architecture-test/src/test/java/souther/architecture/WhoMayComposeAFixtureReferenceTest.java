@@ -9,8 +9,14 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassModel;
+import java.lang.classfile.CodeElement;
+import java.lang.classfile.CodeModel;
+import java.lang.classfile.MethodModel;
+import java.lang.classfile.Opcode;
 import java.lang.classfile.constantpool.MemberRefEntry;
 import java.lang.classfile.constantpool.PoolEntry;
+import java.lang.classfile.instruction.InvokeInstruction;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -48,6 +54,8 @@ class WhoMayComposeAFixtureReferenceTest {
 
     private static final String ORIGIN = internalNameOf(FixtureReferenceOrigin.class);
 
+    private static final String GENERATOR = "souther/compiler/partition/Generator";
+
     private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
 
     /**
@@ -60,6 +68,25 @@ class WhoMayComposeAFixtureReferenceTest {
     private static final List<String> NAMING_A_MAKER = List.of(
             "souther/compiler/partition/FixtureReferences -> " + ORIGIN + "#<init>(I)V",
             "souther/compiler/partition/Generator -> " + MINTER + "#<init>()V");
+
+    /**
+     * And the run makes one of them.
+     *
+     * <p>Which is the fact this is here for, and not one the rows above reach: a class naming the
+     * minter's constructor names it once in the constant pool however many times it writes the
+     * call, so a second minter beside the first is a second numbering that the rows cannot see. So
+     * the calls are counted where they are made.
+     *
+     * <p>Counted over the class and not over one method, because the run is the class's: a minter
+     * made in a second method is handed round a second walk, and the references of the two runs
+     * begin again at nought.
+     */
+    @Test
+    void andTheRunMakesOneOfThem() {
+        assertEquals(1, timesGeneratorMakesAMinter(),
+                "a run hands one minter round: a second is a second numbering, and the references"
+                        + " of the two begin again at nought while naming different values");
+    }
 
     @Test
     void everyClassThatComposesOrNumbersOneIsWrittenDown() {
@@ -93,6 +120,42 @@ class WhoMayComposeAFixtureReferenceTest {
                 "the classes this reads are in more than the one module that declares a minter");
     }
 
+    /**
+     * How many times the generator writes the call that makes a minter.
+     *
+     * <p>Read off the instructions rather than the constant pool, which is where the rows above
+     * stop: a pool says the class names a member and never how often it calls it, so counting there
+     * would answer one for any number of them.
+     */
+    private static int timesGeneratorMakesAMinter() {
+        int made = 0;
+        for (Path module : REPOSITORY.modules()) {
+            for (Path each : classesUnder(module)) {
+                if (!internalName(module, each).equals(GENERATOR)) {
+                    continue;
+                }
+                for (MethodModel method : classOf(each).methods()) {
+                    made += method.code().map(WhoMayComposeAFixtureReferenceTest::minters).orElse(0);
+                }
+            }
+        }
+        return made;
+    }
+
+    /** The calls in one method's code that make a minter. */
+    private static int minters(CodeModel code) {
+        int made = 0;
+        for (CodeElement element : code) {
+            if (element instanceof InvokeInstruction call
+                    && call.opcode() == Opcode.INVOKESPECIAL
+                    && call.owner().name().stringValue().equals(MINTER)
+                    && call.name().stringValue().equals("<init>")) {
+                made++;
+            }
+        }
+        return made;
+    }
+
     /** Every class naming one of the two makers, as the class and the maker it names. */
     private static Set<String> namingAMaker() {
         Set<String> makers = Set.of(ORIGIN + "#<init>(I)V", MINTER + "#<init>()V");
@@ -124,8 +187,12 @@ class WhoMayComposeAFixtureReferenceTest {
     }
 
     private static Iterable<PoolEntry> constantPoolOf(Path compiled) {
+        return classOf(compiled).constantPool();
+    }
+
+    private static ClassModel classOf(Path compiled) {
         try {
-            return ClassFile.of().parse(Files.readAllBytes(compiled)).constantPool();
+            return ClassFile.of().parse(Files.readAllBytes(compiled));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
