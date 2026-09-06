@@ -72,6 +72,22 @@ public final class Apartness<A> {
      */
     private static final int MOST_EDGES_HELD = 5000;
 
+    /**
+     * And how many assignments a relation may have for one of them to be looked for.
+     *
+     * <p>Every block's values against every other's, which is what a search for an assignment
+     * reaches at most one of per branch it takes to the end. Read off the values before any of them
+     * are tried, so that whether a relation is answered is a fact about the relation and not about
+     * where the search happened to start — the same reason the two figures above are about the
+     * shape rather than about a walk.
+     *
+     * <p>Bounding the assignments and not the blocks, because that is what the work is. A relation
+     * of many blocks each holding a handful of values is a large search and one of two blocks
+     * holding many values is not, and how many blocks there are tells the two apart the wrong way
+     * round.
+     */
+    private static final long MOST_ASSIGNMENTS = 1L << 20;
+
     /** In the order they were stated, so that what is written out of a reading comes out the same
      *  on two compiles of one model. */
     private final Set<Edge<A>> edges;
@@ -426,18 +442,25 @@ public final class Apartness<A> {
      * {@link Reduction.NotKnown}, which says that this reduction did not settle it and never that
      * something stands.
      *
-     * <p><b>What it can refuse, in the order it tries.</b> A block stated to differ from itself is
+     * <p><b>Four arguments, in the order it tries them.</b> A block stated to differ from itself is
      * read off the rule. A block whose neighbours each hold one value loses those values, and where
      * that leaves it none, nothing stands — run to a fixpoint, because a block cut down to one
-     * value cuts down its own neighbours. And a set of blocks each stated to differ from every
-     * other needs a value apiece, so where there are fewer values between them than there are
-     * blocks, nothing stands.
+     * value cuts down its own neighbours. A set of blocks each stated to differ from every other
+     * needs a value apiece, so where there are fewer values between them than there are blocks,
+     * nothing stands. And what none of those reaches is looked for: whether some way of giving the
+     * blocks values tells every stated pair apart.
      *
-     * <p><b>What it cannot.</b> Which values a general relation leaves is a colouring, and this is
-     * not one: {@code a /= b && b /= c && c /= d && d /= e && e /= a} over two values is refused by
-     * no pair and by no set of blocks that are all apart, and this says nothing about it. That is a
-     * widening like every other here — the relation is carried whole, and what a later reduction
-     * shows is shown of what is already held.
+     * <p><b>Why the first three stay, once the fourth decides.</b> Refusing by reading the rule and
+     * by taking values away is what says which blocks the lack is about — one pair, or a chain of
+     * four — where looking for an assignment can only name the blocks it looked over. The first is
+     * also what the fourth rests on: a block holding more values than the relation has blocks is
+     * left out of the search because it can be given one after every other block has, and a block
+     * stated to differ from itself is a block no such argument holds for.
+     *
+     * <p><b>What it still cannot.</b> A relation whose shape is past what either search is admitted
+     * by, and a relation naming a block whose values nothing wrote down. Both are
+     * {@link Reduction.NotKnown}, which says that this did not settle it and never that something
+     * stands.
      *
      * @param admitting what each block is left, which is a question about a block and a range and
      *                  belongs to whoever holds both
@@ -466,7 +489,92 @@ public final class Apartness<A> {
         if (why != null) {
             return new Reduction.Nothing<>(why);
         }
-        return assignable(left, atMost) ? new Reduction.Standing<>() : new Reduction.NotKnown<>();
+        return switch (projection(left)) {
+            case Projection.TheWholeOfIt<A> it -> lookedFor(it.over(), new Reduction.Standing<>());
+            case Projection.APartOfIt<A> it -> lookedFor(it.over(), new Reduction.NotKnown<>());
+        };
+    }
+
+    /**
+     * What looking for an assignment over {@code over} comes to, where finding one leaves
+     * {@code found}.
+     *
+     * <p>Two answers from the search and three from here. Running out says nothing satisfies the
+     * denials, which is true of the relation whichever part of it was searched; finding one says
+     * what the caller passed in, which is what the two arms of a {@link Projection} differ about. A
+     * shape the search is not admitted for is neither.
+     */
+    private Reduction<A> lookedFor(TellingApart<A> over, Reduction<A> found) {
+        if (over.isNothingToAsk()) {
+            return found;
+        }
+        if (over.assignments(MOST_ASSIGNMENTS) > MOST_ASSIGNMENTS) {
+            return new Reduction.NotKnown<>();
+        }
+        return over.isSatisfiable() ? found
+                : new Reduction.Nothing<>(
+                        new RelationalWitness.NoAssignmentTellsThemApart<>(over.blocks()));
+    }
+
+    /**
+     * The blocks an assignment is looked for over, and whether finding one answers for the whole
+     * relation.
+     *
+     * <p>Two blocks are left out, for reasons that are not each other's. A block holding more
+     * values than the relation has blocks can be given one after every other block has — it has
+     * more values than it has neighbours, so one of them is always free — which makes leaving it
+     * out cost nothing in either direction. A block whose values nothing wrote down is left out
+     * because there is nothing to search; and that is sound one way only, since such a block may
+     * hold no value at all.
+     *
+     * <p>So the two are told apart by being two arms rather than by a condition somebody has to
+     * remember to ask. Refusing carries from a part of the relation to the whole of it in both,
+     * because an assignment to all the blocks is an assignment to some of them; standing carries
+     * only from {@link Projection.TheWholeOfIt}.
+     *
+     * <p>The first of them is the argument {@link #reduce} refuses a block stated to differ from
+     * itself before reaching: such a block has no free value however many it holds, and reading it
+     * as one that can be given a value last is what leaving it out would be.
+     */
+    private Projection<A> projection(Map<Sameness.Block<A>, Admits> left) {
+        Map<Sameness.Block<A>, Set<Value>> mayHold = new LinkedHashMap<>();
+        boolean whole = true;
+        for (Map.Entry<Sameness.Block<A>, Admits> each : left.entrySet()) {
+            switch (each.getValue()) {
+                case Admits.These it -> mayHold.put(each.getKey(), it.values());
+                case Admits.MoreThanCounted _ -> { }
+                case Admits.NotKnown _ -> whole = false;
+            }
+        }
+        Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart = new LinkedHashMap<>();
+        mayHold.keySet().forEach(block -> {
+            Set<Sameness.Block<A>> theirs = new LinkedHashSet<>(apartFrom(block));
+            theirs.retainAll(mayHold.keySet());
+            apart.put(block, theirs);
+        });
+        TellingApart<A> over = TellingApart.over(mayHold, apart);
+        return whole ? new Projection.TheWholeOfIt<>(over) : new Projection.APartOfIt<>(over);
+    }
+
+    /**
+     * What of a relation an assignment is looked for over, and what finding one there shows.
+     *
+     * <p>Held as two arms and not as a set with a flag beside it, so that a reader is made to say
+     * which of the two it has before it can read the blocks. Written as one, the condition that
+     * tells them apart would be asked once for refusing and once for standing, and the two are not
+     * the same condition.
+     *
+     * @param <A> what a position is called
+     */
+    private sealed interface Projection<A> {
+
+        /** The whole relation: what is left out was going to be given a value whatever the rest
+         *  held, so an assignment found here is an assignment to all of it. */
+        record TheWholeOfIt<A>(TellingApart<A> over) implements Projection<A> {}
+
+        /** A part of it: some block's values are not written down, so an assignment found here is
+         *  one for the blocks it covers and says nothing about the block left out. */
+        record APartOfIt<A>(TellingApart<A> over) implements Projection<A> {}
     }
 
     /**
@@ -601,31 +709,6 @@ public final class Apartness<A> {
             }
         }
         return false;
-    }
-
-    /**
-     * Whether every block can be given a value no block it is stated to differ from takes, shown by
-     * an argument that does not depend on which block is taken first.
-     *
-     * <p><b>And by no other.</b> An assignment found by taking the blocks in some order is an
-     * assignment, but which orders find one is not a fact about the relation: two writings of one
-     * rule are one relation, and a reading that stood on the order they were stated in would answer
-     * a model one way written this way round and another written the other. So what is claimed here
-     * is the one thing every order shows.
-     *
-     * <p>What that leaves is a relation whose blocks each hold more values than the relation has
-     * blocks. Anything else is {@link Reduction.NotKnown}, which is what this says of every relation
-     * it has no argument for — a satisfiable one included.
-     */
-    private boolean assignable(Map<Sameness.Block<A>, Admits> left, int atMost) {
-        // Every block holding more values than there are blocks, so each of them can be given one
-        // no other took whatever order they are taken in. Which is the whole of what is claimed
-        // here: taking them in an order and giving each the first value its neighbours have not
-        // taken finds an assignment for some relations and not for others, and which it is turns on
-        // the order the denials were stated in — so a relation would stand written one way and be
-        // undecided written the other, and the two are one relation.
-        return atMost >= left.size()
-                && left.values().stream().allMatch(each -> each instanceof Admits.MoreThanCounted);
     }
 
     /**
