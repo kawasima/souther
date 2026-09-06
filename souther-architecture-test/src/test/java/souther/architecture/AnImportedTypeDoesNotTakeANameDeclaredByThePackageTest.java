@@ -13,6 +13,7 @@ import com.sun.source.util.Trees;
 
 import org.junit.jupiter.api.Test;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
 import javax.tools.JavaCompiler;
@@ -83,6 +84,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * source can see it, so it declares nothing a bare name in a main source could otherwise have
  * meant. So the main sources answer for every source, and a test source's own root answers for it
  * besides.
+ *
+ * <p>Every module's main sources, and not the ones a module is built against. Which of them a
+ * compilation actually sees is its dependencies' business, and this does not read them — so a
+ * package split across two modules that do not depend on each other would be answered here as one
+ * package. What that costs is a name reported as taken where a compilation could not have taken
+ * it, which is a thing to look at rather than one to pass over, and the packages this repository
+ * splits are all along one chain of dependencies.
+ *
+ * <p><b>What this cannot answer, it says.</b> The question is written as a source in the package
+ * and read against the classes this test runs against, which are the modules' main classes. An
+ * owner that is not among them — a test class of another module, a library another module keeps to
+ * itself — leaves the question unanswered, and a source in no package leaves it unasked; both are
+ * listed. Neither is a rebinding and neither is the absence of one.
  */
 class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
 
@@ -117,6 +131,22 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
                 "a static import whose simple name a package here declares, taken from an owner"
                         + " this repository does not declare: whether it binds a member type is"
                         + " that owner's answer and nothing here has it");
+    }
+
+    /**
+     * And nothing this repository declares is called what the question's own source is called.
+     *
+     * <p>The question is written as a class in the package it is about, so a package declaring a
+     * type of that name would have the two collide and the question would not compile. Held here
+     * rather than left to whoever reads a failure about a source that looks nothing like the rule.
+     */
+    @Test
+    void nothingIsCalledWhatTheQuestionsOwnSourceIsCalled() {
+        assertEquals(List.of(), repositorySources().stream()
+                        .filter(each -> each.declares().contains(ASKED))
+                        .map(Unit::where).toList(),
+                "a type called `" + ASKED + "`, which is what the source written to ask what a name"
+                        + " means is called: rename either");
     }
 
     /**
@@ -273,6 +303,23 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
     }
 
     /**
+     * And the compiler this asks is reading this repository's own classes.
+     *
+     * <p>The one thing a run over the sources cannot show. Every static import it has to ask about
+     * is one whose name a package here declares, and there are none — so a reading that resolved
+     * nothing at all would report no rebinding and no unanswered import, and pass. This asks about
+     * a type this repository declares and nothing else does, so a classpath that had gone empty
+     * says so here rather than in a silence somewhere else.
+     */
+    @Test
+    void theCompilerThisAsksIsReadingThisRepositorysClasses() {
+        assertEquals("souther.compiler.partition.RuleEvidence.Divides",
+                repositoryMeanings().meaningOf("souther.architecture", "Divides",
+                        new Import("souther.compiler.partition.RuleEvidence.Divides", true)),
+                "a member type of this repository, reached through the classes this runs against");
+    }
+
+    /**
      * And what a name comes to mean is the compiler's answer, over types nothing here wrote.
      *
      * <p>Beside the fixtures, which pin what the rule does with each answer. This pins the answer
@@ -296,6 +343,35 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
         assertNull(meanings.meaningOf("p", "SimpleEntry",
                         new Import("nothing.declares.This.SimpleEntry", true)),
                 "and an owner nothing resolves is neither of those");
+    }
+
+    /**
+     * A name the package declares where only its tests do is answered like any other.
+     *
+     * <p>The question is asked by writing a source, and what that source is read against is the
+     * classes this test runs against — which hold a module's main classes and not its tests. So the
+     * package's own type is written into the question rather than looked for: the caller has
+     * already established there is one, and what the question needs of it is that the name has
+     * something to mean where the import does not take it.
+     *
+     * <p>Left to be found, a test class importing a field of the same name as a type beside it
+     * would come back unanswered, and the rule would be asking that the type be visible to this
+     * check as well as declared — which is not the rule.
+     */
+    @Test
+    void aTypeOnlyATestRootDeclaresIsStillWhatTheNameMeans() {
+        Map<String, String> owner = Map.of("q/Outer.java",
+                "package q; public class Outer { public static int A = 1; }");
+        Map<String, String> beside = Map.of("p/A.java", "package p; class A {}",
+                "p/C.java", "package p; import static q.Outer.A; class C { A type; int value = A; }");
+
+        Found found = read(inRoots(Map.of("main", owner), Map.of("test", beside)),
+                meaningsIn(owner));
+
+        assertEquals(List.of(), found.rebindings(),
+                "the field takes no type name, and the package's own type is what `A` means");
+        assertEquals(List.of(), found.unanswered(),
+                "and nothing about it went unanswered for the type being a test class");
     }
 
     /** And an owner nothing here declares is one the check says it cannot answer about. */
@@ -432,6 +508,14 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
                 // formed. A static import names whichever member the owner has by that name, and
                 // only an accessible static member type of them binds a type name, so what the
                 // bare name comes to mean is asked rather than worked out.
+                if (each.isStatic() && unit.pkg().isEmpty()) {
+                    // Nothing can be asked about a source in no package: the question is written as
+                    // a source in the package, and there is none to write it in. Said rather than
+                    // decided, for the reason an owner nothing resolves is.
+                    unanswered.add(unit.where() + " imports `" + each.name()
+                            + "` and is in no package, which nothing here can ask about");
+                    continue;
+                }
                 String means = each.isStatic()
                         ? meanings.meaningOf(unit.pkg(), each.name(), each) : each.spelled();
                 if (means == null) {
@@ -621,11 +705,22 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
      * source would be given, arrived at by the same resolution.
      */
     private static NameMeanings meaningsOver(List<JavaFileObject> also) {
+        Set<String> alreadyWritten = declaredIn(also);
         return (pkg, name, importing) -> {
             List<JavaFileObject> sources = new ArrayList<>(also);
-            sources.add(new Written("probe", "Probe.java", "package " + pkg + "; "
+            // The package's own type, where these sources do not already hold one. The caller has
+            // established that the package declares this name, and the probe needs it declared to
+            // have something to mean where the import does not take it. What it is declared as does
+            // not matter: the answer is its qualified name either way, and a real one on the
+            // classpath is the same name as this. Added where a source here already declares it,
+            // the two would be one type declared twice.
+            if (!alreadyWritten.contains(pkg + "." + name)) {
+                sources.add(new Written("asking", pkg.replace('.', '/') + "/" + name + ".java",
+                        "package " + pkg + "; class " + name + " {}"));
+            }
+            sources.add(new Written("asking", ASKED + ".java", "package " + pkg + "; "
                     + (importing.isStatic() ? "import static " : "import ") + importing.spelled()
-                    + "; class Probe { " + name + " field; }"));
+                    + "; class " + ASKED + " { " + name + " field; }"));
             JavacTask task = (JavacTask) compiler().getTask(null, null, diagnostic -> { },
                     List.of("-proc:none"), null, sources);
             List<CompilationUnitTree> units = new ArrayList<>();
@@ -640,20 +735,58 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
             }
             Trees trees = Trees.instance(task);
             for (CompilationUnitTree unit : units) {
-                if (!unit.getSourceFile().toUri().toString().endsWith("/Probe.java")) {
+                if (!unit.getSourceFile().toUri().toString().endsWith("/" + ASKED + ".java")) {
                     continue;
                 }
-                ClassTree probe = (ClassTree) unit.getTypeDecls().getFirst();
-                Tree written = probe.getMembers().stream()
+                ClassTree asked = (ClassTree) unit.getTypeDecls().getFirst();
+                Tree written = asked.getMembers().stream()
                         .filter(VariableTree.class::isInstance).map(VariableTree.class::cast)
                         .findFirst().orElseThrow().getType();
-                return trees.getElement(TreePath.getPath(unit, written))
-                        instanceof TypeElement it ? it.getQualifiedName().toString() : null;
+                Element means = trees.getElement(TreePath.getPath(unit, written));
+                if (!(means instanceof TypeElement it)) {
+                    throw new IllegalStateException("the source written to ask what `" + name
+                            + "` means in " + pkg + " left it meaning " + means
+                            + ", though the package declares a type by that name");
+                }
+                return it.getQualifiedName().toString();
             }
             throw new IllegalStateException("the source written to ask what `" + name
                     + "` means in " + pkg + " did not come back");
         };
     }
+
+    /**
+     * What the sources handed to a probe declare, as qualified names.
+     *
+     * <p>Read rather than worked out from where a source sits, because that is the question: the
+     * probe declares the package's own type only where these do not, and a name matched on a path
+     * would be this deciding it by how a file happens to be called.
+     */
+    private static Set<String> declaredIn(List<JavaFileObject> sources) {
+        if (sources.isEmpty()) {
+            return Set.of();
+        }
+        JavacTask task = (JavacTask) compiler().getTask(null, null, diagnostic -> { },
+                List.of("-proc:none"), null, sources);
+        Set<String> out = new LinkedHashSet<>();
+        try {
+            for (CompilationUnitTree unit : task.parse()) {
+                String pkg = unit.getPackageName() == null ? "" : unit.getPackageName() + ".";
+                for (Tree declared : unit.getTypeDecls()) {
+                    if (declared instanceof ClassTree it) {
+                        out.add(pkg + it.getSimpleName());
+                    }
+                }
+            }
+        } catch (IOException unreadable) {
+            throw new UncheckedIOException(unreadable);
+        }
+        return Set.copyOf(out);
+    }
+
+    /** What the source written to ask the question is called. Not a name any package here declares
+     *  — one that did would have the question's own class collide with the type it asks about. */
+    private static final String ASKED = "WhatTheNameMeansHere";
 
     /** What the names of this repository's compiled classes mean, which is what its sources are
      *  read against. */
