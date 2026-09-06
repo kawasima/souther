@@ -2,10 +2,13 @@ package souther.compiler.query;
 
 import souther.compiler.check.StoreWork;
 import souther.compiler.meta.ModulePath;
+import souther.compiler.source.SourceId;
 
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -33,6 +36,10 @@ class WorkOneQuestionIsHandedIsReadForItTest {
             let twice (n) = n * 2
             """;
 
+    /** The one question the work below asks, so that what a question read is a set with one thing
+     *  in it and there is no reading anything else could stand for. */
+    private static final Front.Parsed THE_SOURCE = new Front.Parsed(new SourceId("demo.sou"));
+
     /** A question that does a piece of work the store watches, and answers with nothing of its
      *  own: what it is for is the reads the work leaves behind. */
     private record WhoeverDoesTheWork(String name) implements Key<Boolean> {
@@ -44,8 +51,7 @@ class WorkOneQuestionIsHandedIsReadForItTest {
 
         @Override
         public Answer<Boolean> compute(Db db) {
-            return Answer.of(db.watching(() -> db.ask(new Front.Parsed(
-                    new souther.compiler.source.SourceId("demo.sou"))).present()).value());
+            return Answer.of(db.watching(() -> db.ask(THE_SOURCE).present()).value());
         }
     }
 
@@ -66,31 +72,27 @@ class WorkOneQuestionIsHandedIsReadForItTest {
 
     @Test
     void theQuestionThatDidTheWorkReadWhatItRead() {
-        Compilation compilation =
-                Compilation.ofDocuments(java.util.Map.of("demo.sou", MODULE),
-                        java.util.Set.of(), ModulePath.EMPTY);
-        Db db = compilation.db();
+        Db db = compiled().db();
         db.ask(new WhoeverDoesTheWork("demo"));
 
-        assertTrue(db.dependenciesOf(new WhoeverDoesTheWork("demo"))
-                        .contains(new Front.Parsed(new souther.compiler.source.SourceId("demo.sou"))),
+        assertTrue(db.dependenciesOf(new WhoeverDoesTheWork("demo")).contains(THE_SOURCE),
                 "the question that did the work read what the work read");
     }
 
     @Test
     void andSoDoesWhoeverIsHandedIt() {
-        Compilation compilation =
-                Compilation.ofDocuments(java.util.Map.of("demo.sou", MODULE),
-                        java.util.Set.of(), ModulePath.EMPTY);
-        Db db = compilation.db();
-        StoreWork.Made<Boolean> made = db.watching(() -> db.ask(new Front.Parsed(
-                new souther.compiler.source.SourceId("demo.sou"))).present());
+        Db db = compiled().db();
+        StoreWork.Made<Boolean> made = db.watching(() -> db.ask(THE_SOURCE).present());
         assertEquals(true, made.value(), "the work was done and answered");
 
         db.ask(new WhoeverIsHandedIt("demo", made.reads()));
 
-        assertEquals(List.of(new Front.Parsed(new souther.compiler.source.SourceId("demo.sou"))),
+        assertEquals(List.of(THE_SOURCE),
                 List.copyOf(db.dependenciesOf(new WhoeverIsHandedIt("demo", made.reads()))),
                 "a question handed the work read what making it read, and it read nothing else");
+    }
+
+    private static Compilation compiled() {
+        return Compilation.ofDocuments(Map.of("demo.sou", MODULE), Set.of(), ModulePath.EMPTY);
     }
 }

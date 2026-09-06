@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -610,8 +611,8 @@ public final class InvariantChecker {
          * holding it would read the declaration again for want of a way to ask. So what is supposed
          * is handed over as what it is, and an empty one is {@link #EVERYTHING}.
          */
-        static Reach stoppingAt(java.util.Set<TypeSymbol> these) {
-            java.util.Set<TypeSymbol> supposed = java.util.Set.copyOf(these);
+        static Reach stoppingAt(Set<TypeSymbol> these) {
+            Set<TypeSymbol> supposed = Set.copyOf(these);
             return supposed.isEmpty() ? EVERYTHING
                     : new Reach(RulesLeftOut.NONE, PartsLeftOut.NONE, supposed::contains);
         }
@@ -708,8 +709,7 @@ public final class InvariantChecker {
         return READINGS.get();
     }
 
-    private static final java.util.concurrent.atomic.AtomicLong READINGS =
-            new java.util.concurrent.atomic.AtomicLong();
+    private static final AtomicLong READINGS = new AtomicLong();
 
     /**
      * The reading itself, made here and nowhere else.

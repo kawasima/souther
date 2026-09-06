@@ -358,7 +358,7 @@ public final class FieldDomains {
      */
     static FieldDomains granting(TypeSymbol.AtModule named, Hir.Data data, RuleReadingSource source,
                                  ReadingPolicy policy,
-                                 java.util.Set<TypeSymbol> granted,
+                                 Set<TypeSymbol> granted,
                                  DeclarationReadings machines) {
         return of(named, data, source, policy, Map.of(),
                 InvariantChecker.Reach.stoppingAt(granted), machines);

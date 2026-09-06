@@ -2,7 +2,10 @@ package souther.compiler.query;
 
 import souther.compiler.check.DeclarationReadings;
 import souther.compiler.check.LentReadings;
+import souther.compiler.check.ResolvedSymbols;
 import souther.compiler.check.RuleReadingSource;
+import souther.compiler.check.StoreWork;
+import souther.compiler.check.Symbols;
 import souther.compiler.check.TheCompilationsSources;
 import souther.compiler.source.SourceId;
 import souther.compiler.types.TypeKey;
@@ -24,6 +27,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * The store a compilation's questions are asked of: it answers a {@link Key} by running it once,
@@ -108,7 +112,7 @@ import java.util.Set;
  * <p>One store is one workspace over time, not one compile. It is not thread-safe and does not need
  * to be: the work inside a compile is a graph walk, not a set of independent jobs.
  */
-public final class Db implements souther.compiler.check.StoreWork {
+public final class Db implements StoreWork {
 
     /**
      * What is known about one key.
@@ -168,15 +172,20 @@ public final class Db implements souther.compiler.check.StoreWork {
      */
     RuleReadingSource ruleReadingFor(String module) {
         if (sources == null) {
-            sources = new TheCompilationsSources(
-                    name -> Names.resolvedSymbols(this, name).present()
-                            ? Names.resolvedSymbols(this, name).value() : null,
+            sources = new TheCompilationsSources(this::scopeOf,
                     named -> ask(new Shapes.ClausesExpandedFor(named)).value());
         }
         return sources.of(module);
     }
 
     private TheCompilationsSources sources;
+
+    /** The scope {@code module}'s names resolve in, or null where this compilation resolves no such
+     *  module. Asked once: what it answers is assembled where it is asked for. */
+    private Symbols scopeOf(String module) {
+        Answer<ResolvedSymbols> scope = Names.resolvedSymbols(this, module);
+        return scope.present() ? scope.value() : null;
+    }
 
 
     /** What this store answers about {@code declaration}'s string machines, for a reading to
@@ -499,8 +508,7 @@ public final class Db implements souther.compiler.check.StoreWork {
      * two questions would leave the second kept over an edit to what doing it read.
      */
     @Override
-    public <T> souther.compiler.check.StoreWork.Made<T> watching(
-            java.util.function.Supplier<T> work) {
+    public <T> Made<T> watching(Supplier<T> work) {
         frames.push(new LinkedHashSet<>());
         Set<Key<?>> read;
         T made;
@@ -510,7 +518,7 @@ public final class Db implements souther.compiler.check.StoreWork {
             read = Set.copyOf(frames.pop());
         }
         read.forEach(this::recordRead);
-        return new souther.compiler.check.StoreWork.Made<>(made, () -> read.forEach(this::recordRead));
+        return new Made<>(made, () -> read.forEach(this::recordRead));
     }
 
     private void recordRead(Key<?> key) {

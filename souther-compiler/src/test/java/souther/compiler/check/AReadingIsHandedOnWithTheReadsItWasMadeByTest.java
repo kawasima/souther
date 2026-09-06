@@ -2,6 +2,7 @@ package souther.compiler.check;
 
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Compilation;
+import souther.compiler.regex.PatternPlan;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.TypeSymbols;
@@ -79,6 +80,5 @@ class AReadingIsHandedOnWithTheReadsItWasMadeByTest {
     /** The terms the compilation reads under, said again here: what a reading is made under is
      *  handed to it, and a reader that could pick one up is a reader two readings can differ by. */
     private static final ReadingPolicy AS_THE_COMPILE_READS = new ReadingPolicy(64, 1000,
-            souther.compiler.regex.PatternPlan.Budget.OF_ADMITTED_VALUES,
-            souther.compiler.regex.PatternPlan.Budget.OF_WHAT_A_RULE_LEAVES);
+            PatternPlan.Budget.OF_ADMITTED_VALUES, PatternPlan.Budget.OF_WHAT_A_RULE_LEAVES);
 }

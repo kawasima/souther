@@ -2,14 +2,17 @@ package souther.compiler.check;
 
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Compilation;
+import souther.compiler.regex.PatternPlan;
 import souther.compiler.types.TypeKey;
-import java.util.Set;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.TypeSymbols;
 
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -181,9 +184,9 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
      */
     @Test
     void aReaderCannotHaveItSaidOfASourceOfItsOwn() {
-        assertEquals(List.of(), java.util.Arrays.stream(DeclarationReadings.class.getMethods())
+        assertEquals(List.of(), Arrays.stream(DeclarationReadings.class.getMethods())
                         .filter(each -> each.getReturnType() == RuleReadingSource.class)
-                        .map(java.lang.reflect.Method::getName).toList(),
+                        .map(Method::getName).toList(),
                 "what a reader holds makes a source, so a reader can have one made of its own parts");
 
         Compilation compilation = compiled();
@@ -196,12 +199,24 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
         // answers for no clause anybody wrote.
         RuleReadingSource ofItsOwn = new RuleReadingSource(asTheCompilationReads.symbols(),
                 RuleReadings.noClauseFiled());
-        long before = InvariantChecker.readingsMade();
+        long beforeItsOwn = InvariantChecker.readingsMade();
         InvariantChecker.seedFields(code, ofItsOwn, AS_THE_COMPILE_READS, readings);
 
-        assertEquals(before + 1, InvariantChecker.readingsMade(),
+        assertEquals(beforeItsOwn + 1, InvariantChecker.readingsMade(),
                 "a reader reading under a source of its own was handed the reading made under the"
                         + " compilation's, which is a reading of clauses its own source has not got");
+
+        // And the same, minted: sources of its own over the compilation's scope and a lookup that
+        // answers for nothing, saying of what they make the name the compilation writes.
+        RuleReadingSource minted = new TheCompilationsSources(
+                _ -> asTheCompilationReads.symbols(), RuleReadings.noClauseFiled()).of("demo");
+        long beforeMinted = InvariantChecker.readingsMade();
+        InvariantChecker.seedFields(code, minted, AS_THE_COMPILE_READS, readings);
+
+        assertEquals(beforeMinted + 1, InvariantChecker.readingsMade(),
+                "a reader that built sources of its own was handed the reading the compilation's"
+                        + " own sources made: writing the module's name is enough to be read as"
+                        + " the compilation");
     }
 
     /** A second policy is a second reading, not the same one under other terms. */
@@ -249,14 +264,14 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
      * made under it the one the compile made.
      */
     private static final ReadingPolicy AS_THE_COMPILE_READS = new ReadingPolicy(64, 1000,
-            souther.compiler.regex.PatternPlan.Budget.OF_ADMITTED_VALUES,
-            souther.compiler.regex.PatternPlan.Budget.OF_WHAT_A_RULE_LEAVES);
+            PatternPlan.Budget.OF_ADMITTED_VALUES,
+            PatternPlan.Budget.OF_WHAT_A_RULE_LEAVES);
 
     /** Terms a reading of the same declaration comes to something else under: what a rule may
      *  spend building a machine is far less than the reading above allows. */
     private static final ReadingPolicy OTHER_TERMS = new ReadingPolicy(64, 12,
-            new souther.compiler.regex.PatternPlan.Budget(1, 1),
-            new souther.compiler.regex.PatternPlan.Budget(1, 1));
+            new PatternPlan.Budget(1, 1),
+            new PatternPlan.Budget(1, 1));
 
     /**
      * What was read of one world is not lent into the next.

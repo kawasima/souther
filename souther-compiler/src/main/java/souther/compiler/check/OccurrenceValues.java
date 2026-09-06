@@ -6,6 +6,7 @@ import souther.compiler.numeric.NumericDomain;
 import souther.compiler.types.TypeSymbol;
 
 import java.math.BigDecimal;
+import java.util.Set;
 
 /**
  * How many values the value at a name may take, which is not how much it holds.
@@ -41,7 +42,7 @@ public final class OccurrenceValues {
     /** What the declaration {@code named} is leaves the values at each of its names. */
     public static OccurrenceValues of(TypeSymbol.AtModule named,
                                       RuleReadingSource source, ReadingPolicy policy) {
-        return of(named, source, policy, java.util.Set.of(), DeclarationReadings.NONE);
+        return of(named, source, policy, Set.of(), DeclarationReadings.NONE);
     }
 
     /**
@@ -53,14 +54,14 @@ public final class OccurrenceValues {
      */
     static OccurrenceValues of(TypeSymbol.AtModule named, RuleReadingSource source,
                                  ReadingPolicy policy,
-                                 java.util.Set<TypeSymbol> granted) {
+                                 Set<TypeSymbol> granted) {
         return of(named, source, policy, granted, DeclarationReadings.NONE);
     }
 
     /** The same, asking {@code machines} first. */
     static OccurrenceValues of(TypeSymbol.AtModule named, RuleReadingSource source,
                                  ReadingPolicy policy,
-                                 java.util.Set<TypeSymbol> granted,
+                                 Set<TypeSymbol> granted,
                                  DeclarationReadings machines) {
         return new OccurrenceValues(
                 InvariantChecker.seedFields(named, source, policy, java.util.Map.of(),

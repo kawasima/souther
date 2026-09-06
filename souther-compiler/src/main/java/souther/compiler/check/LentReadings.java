@@ -6,6 +6,7 @@ import souther.compiler.values.StringMachineAnswers;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 
 /**
  * A lender of canonical readings, over whatever answers a reading's other question.
@@ -62,7 +63,7 @@ public final class LentReadings implements DeclarationReadings {
     @Override
     public InvariantChecker.Seeded reading(TypeKey declaration, RuleReadingSource source,
                                            ReadingPolicy policy,
-                                           java.util.function.Supplier<InvariantChecker.Seeded> read) {
+                                           Supplier<InvariantChecker.Seeded> read) {
         Shared held = current().get(new OfDeclarationUnder(declaration, source.origin(), policy));
         if (held == null) {
             return readingForAnAnswer(declaration, source, policy, read);
@@ -76,7 +77,7 @@ public final class LentReadings implements DeclarationReadings {
     @Override
     public InvariantChecker.Seeded readingForAnAnswer(TypeKey declaration, RuleReadingSource source,
                                                       ReadingPolicy policy,
-                                                      java.util.function.Supplier<InvariantChecker.Seeded> read) {
+                                                      Supplier<InvariantChecker.Seeded> read) {
         StoreWork.Made<InvariantChecker.Seeded> made = work.watching(read);
         current().put(new OfDeclarationUnder(declaration, source.origin(), policy),
                 new Shared(made.value(), made.reads()));
