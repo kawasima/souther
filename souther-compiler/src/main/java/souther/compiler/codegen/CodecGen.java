@@ -680,9 +680,10 @@ final class CodecGen {
             boolean refine = true;
             if (!refining) {
                 refine = false;
-                for (Hir.Expr conjunct : ClauseHelpers.conjunctsOf(declared.get(i).expr())) {
+                for (ClauseHelpers.AuthoredPart conjunct
+                        : ClauseHelpers.conjunctsOf(declared.get(i).expr())) {
                     Optional<InvariantConstraints.Constraint> c =
-                            InvariantConstraints.against(symbols).of(conjunct, base);
+                            InvariantConstraints.against(symbols).of(conjunct.written(), base);
                     if (c.isPresent()) {
                         mapped.add(c.get());
                     } else {

@@ -236,13 +236,57 @@ public final class ClauseHelpers {
         return a.line() != b.line() ? a.line() < b.line() : a.column() < b.column();
     }
 
+    /**
+     * One part of a clause as its author wrote it, with the place it holds among that clause's
+     * parts.
+     *
+     * <p>What a reader of one needs is the tree and the identity, and the identity is the rule it is
+     * a part of together with this place ({@link #idFor}). The place is assigned where the clause is
+     * split and nowhere else, which is why nobody outside {@link ClauseHelpers} can make one of
+     * these: a second walk that numbered the parts for itself would agree with this one until either
+     * changed its mind about what a part is.
+     *
+     * <p>The number is not offered on its own. Read off here, it would be a number a caller could
+     * put beside whichever rule it happened to be holding, which is the pair this exists to keep
+     * from being assembled by hand.
+     */
+    public static final class AuthoredPart {
+
+        private final int ordinal;
+        private final Hir.Expr written;
+
+        private AuthoredPart(int ordinal, Hir.Expr written) {
+            this.ordinal = ordinal;
+            this.written = written;
+        }
+
+        /** The part itself, as the author wrote it and before anything is expanded into it. */
+        public Hir.Expr written() {
+            return written;
+        }
+
+        /** What this part is called as a part of {@code rule}. */
+        public PartId idFor(RuleRef rule) {
+            return new PartId(rule, ordinal);
+        }
+    }
+
     /** The conjuncts of a clause, flattened, in the order they are written — what a reader sees as
-     * separate clauses. */
-    public static List<Hir.Expr> conjunctsOf(Hir.Expr e) {
+     * separate clauses, each with the place it holds among them. */
+    public static List<AuthoredPart> conjunctsOf(Hir.Expr e) {
+        List<AuthoredPart> out = new ArrayList<>();
+        for (Hir.Expr each : flattened(e)) {
+            out.add(new AuthoredPart(out.size(), each));
+        }
+        return List.copyOf(out);
+    }
+
+    /** The conjuncts themselves, in the order they are written. */
+    private static List<Hir.Expr> flattened(Hir.Expr e) {
         if (e instanceof Hir.Binary b
                 && ConditionJoin.of(b.op()).orElse(null) == ConditionJoin.BOTH) {
-            List<Hir.Expr> out = new ArrayList<>(conjunctsOf(b.left()));
-            out.addAll(conjunctsOf(b.right()));
+            List<Hir.Expr> out = new ArrayList<>(flattened(b.left()));
+            out.addAll(flattened(b.right()));
             return out;
         }
         return List.of(e);

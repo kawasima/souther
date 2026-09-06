@@ -95,6 +95,25 @@ class AnAuthoredPartThatStatesTwoRulesIsReadAsOnePartTest {
     }
 
     /**
+     * Which ends the two rules place, as the ends themselves.
+     *
+     * <p>A count says two ends were placed and not which two, so a reading that came to the same
+     * number by another route would answer alike. What the rules state is one end at each side of
+     * the run, and that is what the named spelling has to come to as well if it is the same rules
+     * being read.
+     */
+    @Test
+    void theEndsTheTwoRulesPlaceAreTheSidesOfTheRunTheyState() {
+        assertEquals(List.of("true Endpoint[at=1, inclusive=true]",
+                        "false Endpoint[at=9, inclusive=true]"), writtenOut().placed().stream()
+                        .map(each -> each.lower() + " " + each.end()).toList(),
+                "each end written out, as the side it is on and where it sits");
+        assertEquals(List.of(), named().placed().stream()
+                        .map(each -> each.lower() + " " + each.end()).toList(),
+                "and the same where the rules were named");
+    }
+
+    /**
      * And the part that placed neither end is not recorded as having placed none.
      *
      * <p>What such a record is for is a sentence to an author about a conjunct that drew no line,

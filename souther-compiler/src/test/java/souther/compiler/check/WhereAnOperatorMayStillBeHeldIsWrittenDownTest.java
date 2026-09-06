@@ -247,8 +247,10 @@ class WhereAnOperatorMayStillBeHeldIsWrittenDownTest {
             new Held("souther.compiler.check.ClauseExpr.of",
                     "the composition under the polarity the tree is read with, which the shape it"
                             + " makes carries so that nothing below it holds the operator"),
-            new Held("souther.compiler.check.ClauseHelpers.conjunctsOf",
-                    "the conjuncts of a clause, which is walking into what composes both halves"),
+            new Held("souther.compiler.check.ClauseHelpers.flattened",
+                    "the conjuncts of a clause, which is walking into what composes both halves."
+                            + " Beside the numbering that makes them parts, so that what a part is"
+                            + " and where it stands among the parts are settled in one walk"),
             new Held("souther.compiler.check.Conditions.stating",
                     "the same under a polarity, for what a condition states on its own"),
             new Held("souther.compiler.check.FieldDomains.lambda$projection$2",

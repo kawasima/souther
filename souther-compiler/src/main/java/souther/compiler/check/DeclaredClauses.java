@@ -107,10 +107,9 @@ public final class DeclaredClauses {
         for (TypeOps.Declared declared : TypeOps.expandedInvariants(
                 named, source.symbols(), source.invariants()).reached()) {
             RuleRef.Invariant rule = new RuleRef.Invariant(Clause.Ref.of(declared));
-            int conjunct = -1;
-            for (Hir.Expr each : ClauseHelpers.conjunctsOf(declared.clause().expr())) {
-                conjunct++;
-                out.add(new Conjunct(rule, conjunct, each));
+            for (ClauseHelpers.AuthoredPart each
+                    : ClauseHelpers.conjunctsOf(declared.clause().expr())) {
+                out.add(new Conjunct(rule, each.idFor(rule).ordinal(), each.written()));
             }
         }
         return out;
