@@ -66,12 +66,12 @@ class AnOperatorIsAskedWhatItComposesInOnePlaceTest {
             new Licence("souther.compiler.check.Predicates.read", 1,
                     "the same, for the clauses a rule owes"),
 
-            new Licence("souther.compiler.check.ClauseHelpers.flattened", 1,
-                    "the conjuncts of a clause as a reader sees them, which is walking into what"
-                            + " composes both halves. The one place an authored part is recognised,"
-                            + " and beside the numbering that gives each of them its place"),
-            new Licence("souther.compiler.check.InvariantChecker.direct", 1,
-                    "the clauses an invariant states, numbered as that same walk numbers them"),
+            new Licence("souther.compiler.check.ClauseHelpers.shaped", 1,
+                    "the shape an author wrote a clause in, which is walking into what composes"
+                            + " both halves. The one place an authored part is recognised: which"
+                            + " parts there are, where each stands among them, the clause with each"
+                            + " expanded where it stands, and which subtree of a reading each of"
+                            + " them became are all answers over that one shape"),
             new Licence("souther.compiler.check.FieldDomains.lambda$projection$2", 1,
                     "the clause that bounds a field, whose halves are answered beside it"),
             new Licence("souther.compiler.partition.ClauseStatements.walk", 1,

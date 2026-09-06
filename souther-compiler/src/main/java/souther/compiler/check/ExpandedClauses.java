@@ -49,13 +49,19 @@ public final class ExpandedClauses {
      * is run over one tree and leaves calls standing in that one. Held at the declaration's grain,
      * a clause would be told that a call standing in a sibling stands in it — which is the same
      * mistake as reading it off the inliner, one level down.
+     *
+     * <p>And the shape its author wrote it in, with each part expanded where it stands, so that
+     * which parts a clause has comes from the text and not from the tree the expansion left
+     * ({@link AuthoredShape}).
      */
-    public record Expanded(Hir.InvariantClause clause, CallsLeftStanding standing) {
+    public record Expanded(Hir.InvariantClause clause, CallsLeftStanding standing,
+                           AuthoredShape shape) {
 
         public Expanded {
-            if (clause == null || standing == null) {
+            if (clause == null || standing == null || shape == null) {
                 throw new IllegalArgumentException(
-                        "an expanded clause is a tree and what its expansion left standing");
+                        "an expanded clause is a tree, what its expansion left standing, and the"
+                                + " shape its author wrote it in");
             }
         }
     }

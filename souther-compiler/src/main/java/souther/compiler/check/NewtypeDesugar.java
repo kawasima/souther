@@ -77,10 +77,23 @@ public final class NewtypeDesugar {
     public static Hir.Def rewriteInvariantsOf(Hir.Def def, Symbols symbols) {
         if (def instanceof Hir.Data d && !d.invariants().isEmpty()) {
             return new Hir.Data(d.written(), d.declares(), d.newtype(), d.includes(), d.fields(),
-                    Hir.mapClauses(d.invariants(), inv -> go(inv, symbols)),
+                    Hir.mapClauses(d.invariants(), inv -> rewriteInvariant(inv, symbols)),
                     d.pos());
         }
         return def;
+    }
+
+    /**
+     * One rule written in an invariant, rewritten the same way whether it is the whole clause or one
+     * part of it.
+     *
+     * <p>Named rather than reached through a declaration, because a part of a clause is read
+     * alongside the clause it is a part of and the two have to say the same thing about the same
+     * text. Sent through the declaration instead, a part would have to be carried on a declaration
+     * built to hold it, and would then take whatever else rewriting a declaration comes to mean.
+     */
+    public static Hir.Expr rewriteInvariant(Hir.Expr invariant, Symbols symbols) {
+        return go(invariant, symbols);
     }
 
     private static Hir.Expr go(Hir.Expr e, Symbols symbols) {

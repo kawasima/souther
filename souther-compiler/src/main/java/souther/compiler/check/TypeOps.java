@@ -1302,11 +1302,16 @@ public final class TypeOps {
      * same thing in each.
      */
     public record Declared(TypeSymbol.AtModule declaredOn, int ordinal,
-                           Hir.InvariantClause clause, CallsLeftStanding standing) {
+                           Hir.InvariantClause clause, CallsLeftStanding standing,
+                           AuthoredShape shape) {
 
         public Declared {
             if (standing == null) {
                 throw new IllegalArgumentException("a clause says what its expansion left standing");
+            }
+            if (shape == null) {
+                throw new IllegalArgumentException(
+                        "a clause is written in the shape its author wrote it in");
             }
         }
 
@@ -1379,7 +1384,8 @@ public final class TypeOps {
                 List<Declared> out = new ArrayList<>();
                 for (int ordinal = 0; ordinal < clauses.clauses().size(); ordinal++) {
                     ExpandedClauses.Expanded each = clauses.clauses().get(ordinal);
-                    out.add(new Declared(named, ordinal, each.clause(), each.standing()));
+                    out.add(new Declared(named, ordinal, each.clause(), each.standing(),
+                            each.shape()));
                 }
                 yield new ExpandedRules(out, true);
             }

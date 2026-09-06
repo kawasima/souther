@@ -24,6 +24,8 @@ import java.util.List;
  *                  InvariantChecker.Gathering}) reads this
  * @param clause    the clause as it stands at this position, with the declaration's fields rebased
  *                  onto the value they are about
+ * @param written   the parts the clause was written in, each a subtree of {@code clause} and each
+ *                  carrying which part of the rule it is
  * @param owed      what reading that clause came to: a relation, a fact, both, or that it could not
  *                  be read at all. Not narrowed to a numeric constraint — a clause states what it
  *                  states, and a reader wanting only the numbers can ask {@link Predicates.Owed}
@@ -34,10 +36,11 @@ import java.util.List;
  *                   about that conjunct — kept here because asking it again afterwards is a second
  *                   reader, and the two agree only until somebody changes one of them
  */
-record TypeGuarantee(RuleRef.Invariant rule, Core clause, Predicates.Owed owed,
-                     List<Quantified> quantified, List<Part> parts) {
+record TypeGuarantee(RuleRef.Invariant rule, Core clause, List<Clauses.StatedPart> written,
+                     Predicates.Owed owed, List<Quantified> quantified, List<Part> parts) {
 
     TypeGuarantee {
+        written = List.copyOf(written);
         quantified = List.copyOf(quantified);
         parts = List.copyOf(parts);
     }

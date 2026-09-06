@@ -13,6 +13,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * The invariants of the declarations the discharge check reads: each clause typed once, over the
@@ -117,14 +118,19 @@ final class Clauses {
      */
     TypedClause typed(ClauseAsExpanded clause, TypeSymbol.AtModule named) {
         return typed.computeIfAbsent(named, _ -> new IdentityHashMap<>())
-                .computeIfAbsent(clause.read(), _ -> SecondaryClauseReading.of(clause,
-                        () -> {
-                            Hir.Data data = declarationOf(named);
-                            return new SecondaryClauseReading.Over(
-                                    DataChecker.fieldScope(named, data, symbols),
-                                    CheckContext.of(symbols).forData(data).forDischarge());
-                        },
+                .computeIfAbsent(clause.read(), _ -> SecondaryClauseReading.of(clause, over(named),
                         "typing a clause of " + named));
+    }
+
+    /** What a clause of {@code named} is read over, worked out inside the reading for the reason
+     *  {@link SecondaryClauseReading.Over} gives. */
+    private Supplier<SecondaryClauseReading.Over> over(TypeSymbol.AtModule named) {
+        return () -> {
+            Hir.Data data = declarationOf(named);
+            return new SecondaryClauseReading.Over(
+                    DataChecker.fieldScope(named, data, symbols),
+                    CheckContext.of(symbols).forData(data).forDischarge());
+        };
     }
 
     /**
@@ -160,15 +166,21 @@ final class Clauses {
         List<Stated> stated = new ArrayList<>();
         List<RuleRef.Invariant> lost = new ArrayList<>();
         for (TypeOps.Declared inv : declared(named)) {
+            Clause clause = Clause.of(inv);
             Core one = statedAt(inv.asExpanded(), named, given);
             if (one != null) {
-                stated.add(new Stated(Clause.of(inv), one));
+                // The clause as one reading, and the parts its author wrote as subtrees of that
+                // very reading. Read apart instead, a conjunct would be read without the conjunct
+                // beside it, and a branch one of them rules out would stand.
+                stated.add(new Stated(clause, one,
+                        inv.shape().onto(one, new RuleRef.Invariant(clause.ref()))));
             } else {
-                lost.add(new RuleRef.Invariant(Clause.of(inv).ref()));
+                lost.add(new RuleRef.Invariant(clause.ref()));
             }
         }
         return new StatedClauses(List.copyOf(stated), List.copyOf(lost));
     }
+
 
     /**
      * The clauses of one declaration as they read here, and whether they are all of them.
@@ -202,14 +214,41 @@ final class Clauses {
     }
 
     /**
-     * One clause as it reads at a construction, beside the clause it is a reading of.
+     * One clause as it reads at a construction, beside the clause it is a reading of, and the parts
+     * its author wrote it in.
      *
      * <p>A check that judges the clauses one at a time has something to say about the one it could
      * not settle, and what it says it by is what {@link Clause} holds — which the clauses were
      * flattened out of before reaching here, leaving every unproven clause reported as "the
      * invariant".
+     *
+     * <p>The parts are two views of one reading and not two readings. What a clause states is read
+     * as one thing — its conjuncts meet there, and a branch one of them rules out is ruled out
+     * there — and what an author is answerable for is a part; each part is a subtree of
+     * {@code expr} and not a tree read beside it.
      */
-    record Stated(Clause clause, Core expr) {}
+    record Stated(Clause clause, Core expr, List<StatedPart> parts) {
+
+        public Stated {
+            parts = List.copyOf(parts);
+        }
+    }
+
+    /**
+     * One part of a clause as it reads here, with what it is called as a part of the rule.
+     *
+     * <p>The identity comes from the split that wrote the parts down and is carried rather than
+     * worked out here: which part of a clause a tree is is not something a reader of the tree can
+     * answer, and a reader that counted them would be a second walk deciding which parts there are.
+     */
+    record StatedPart(PartId id, Core expr) {
+
+        public StatedPart {
+            if (id == null || expr == null) {
+                throw new IllegalArgumentException("a part read here is some rule's part and a form");
+            }
+        }
+    }
 
     /** Every clause of {@code named}, each with the declaration that wrote it. */
     List<TypeOps.Declared> declared(TypeSymbol.AtModule named) {
