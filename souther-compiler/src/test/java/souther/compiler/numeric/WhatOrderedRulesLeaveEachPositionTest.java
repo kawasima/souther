@@ -141,14 +141,4 @@ class WhatOrderedRulesLeaveEachPositionTest {
         assertFalse(left.bothDead(right).holdingNothing().contains(B));
         assertFalse(right.bothDead(left).holdingNothing().contains(B));
     }
-
-    /** A side shown impossible by something outside this holds nothing and names no position. */
-    @Test
-    void aSideShownImpossibleFromOutsideNamesNoPosition() {
-        OrderedIntervals<String> outside = OrderedIntervals.at(A, from(5, 9)).leavingNothing();
-
-        assertTrue(outside.isBottom());
-        assertEquals(Set.of(), outside.holdingNothing(),
-                "what is known is about the whole and not about `a`");
-    }
 }

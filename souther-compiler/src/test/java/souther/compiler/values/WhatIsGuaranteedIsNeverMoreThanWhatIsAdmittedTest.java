@@ -75,7 +75,6 @@ class WhatIsGuaranteedIsNeverMoreThanWhatIsAdmittedTest {
                 made("at", says(VALUE, A)),
                 made("unreadable naming a position", unreadable(Set.of(VALUE))),
                 made("unreadable naming none", unreadable(Set.of())),
-                made("leavingNothing", says(VALUE, A).leavingNothing()),
                 made("meet of two read", says(VALUE, A).meet(says(OTHER, B), SETS)),
                 made("meet with an unread", says(VALUE, A).meet(unreadable(Set.of(OTHER)), SETS)),
                 made("meet leaving nothing", says(VALUE, A).meet(says(VALUE, B), SETS)),
@@ -90,9 +89,8 @@ class WhatIsGuaranteedIsNeverMoreThanWhatIsAdmittedTest {
                 // settlement and not a join — the operation is the one a caller reaches for once
                 // both branches are known dead.
                 made("a choice neither branch of which stands",
-                        built(plans(VALUE, A).meet(plans(VALUE, B)).leavingNothing()
-                                .bothDead(plans(OTHER, A).meet(plans(OTHER, B))
-                                        .leavingNothing()))),
+                        built(plans(VALUE, A).meet(plans(VALUE, B))
+                                .bothDead(plans(OTHER, A).meet(plans(OTHER, B))))),
                 made("join of a meet and an unread",
                         built(plans(VALUE, A).meet(plansUnreadable(Set.of()))
                                 .joinLive(plans(VALUE, B))).alsoOpenedAt(Set.of(VALUE))),
@@ -167,13 +165,11 @@ class WhatIsGuaranteedIsNeverMoreThanWhatIsAdmittedTest {
         return Stream.of(
                 made("a position left no value", AdmissibleValues.at(VALUE, ValueSet.NONE)),
                 made("two rules leaving nothing", says(VALUE, A).meet(says(VALUE, B), SETS)),
-                made("shown impossible from outside", says(VALUE, A).leavingNothing()),
                 made("a meet under a wider one",
                         says(OTHER, A).meet(says(VALUE, A), SETS).meet(says(VALUE, B), SETS)),
                 made("two alternatives neither of which can be taken",
-                        built(plans(VALUE, A).meet(plans(VALUE, B)).leavingNothing()
-                                .bothDead(plans(OTHER, A).meet(plans(OTHER, B))
-                                        .leavingNothing()))));
+                        built(plans(VALUE, A).meet(plans(VALUE, B))
+                                .bothDead(plans(OTHER, A).meet(plans(OTHER, B))))));
     }
 
     /**

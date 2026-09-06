@@ -49,10 +49,6 @@ class ADeadBranchIsSettledTheSameHoweverTheChoiceWasBracketedTest {
     private static final Value A = Value.text("A");
     private static final Value B = Value.text("B");
 
-    /** What every dead branch here was shown dead by, which is not what is under test. */
-    private static final Confinement.Admission<String> SHOWN =
-            Confinement.Admission.left(souther.compiler.values.Emptiness.EMPTY);
-
     private final Allowance<String> sets = AsACompilationAllows.forAdmittedValues();
 
     private static PlannedValues<String> says(String atom, Value value) {
@@ -89,7 +85,11 @@ class ADeadBranchIsSettledTheSameHoweverTheChoiceWasBracketedTest {
 
         Branch or(Branch other) {
             if (dead && other.dead) {
-                return new Branch(reading.bothDead(other.reading, SHOWN), true);
+                // What showed the choice dead is what showed both of its branches dead, which is
+                // where the holder of both languages takes it from as well.
+                return new Branch(reading.bothDead(other.reading,
+                        Confinement.Admission.bothShown(reading.admission(),
+                                other.reading.admission())), true);
             }
             // Neither language is asked what a choice with one dead branch leaves: what it leaves
             // is the standing branch, which the holder has in hand. Composed instead, the choice
@@ -118,10 +118,10 @@ class ADeadBranchIsSettledTheSameHoweverTheChoiceWasBracketedTest {
         out.put("x == A", new Branch(reading(says(X, A), 1, 2), false));
         out.put("y == B", new Branch(reading(says(Y, B), 3, 4), false));
         out.put("x == A && x == B", new Branch(
-                reading(says(X, A).meet(says(X, B)).leavingNothing(), 100, 200), true));
+                reading(says(X, A).meet(says(X, B)), 100, 200), true));
         out.put("x == y && x /= y", new Branch(
                 reading(PlannedValues.<String>holdingAsOne(X, Y)
-                        .meet(PlannedValues.heldApart(X, Y)).leavingNothing(), 300, 400), true));
+                        .meet(PlannedValues.heldApart(X, Y)), 300, 400), true));
         return out;
     }
 

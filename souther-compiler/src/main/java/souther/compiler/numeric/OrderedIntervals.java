@@ -55,17 +55,6 @@ public record OrderedIntervals<A>(Map<A, OrderedInterval> ranges, boolean nothin
         return new OrderedIntervals<>(Map.of(position, range), false);
     }
 
-    /**
-     * This where it already holds nothing, and a state holding nothing where it does not.
-     *
-     * <p>What a caller says when something outside this showed that nothing satisfies the rules —
-     * another domain reading the same clause, say. Nothing is claimed about any position: what is
-     * known is about the whole, and writing it at a position would name one the rules are fine with.
-     */
-    public OrderedIntervals<A> leavingNothing() {
-        return isBottom() ? this : new OrderedIntervals<>(Map.of(), true);
-    }
-
     /** What {@code position} is left, every value of its order where nothing was said. */
     public OrderedInterval at(A position) {
         return ranges.getOrDefault(position, OrderedInterval.OPEN);

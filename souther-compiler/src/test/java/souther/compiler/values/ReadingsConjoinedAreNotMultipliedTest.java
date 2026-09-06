@@ -194,11 +194,10 @@ class ReadingsConjoinedAreNotMultipliedTest {
      */
     @Test
     void aPositionAChoiceOpenedIsOneTheReadingIsAbout() {
-        AdmissibleValues<String> opened = PlannedValues.at("x", AdmittedPlan.of(just("A")))
-                .joinLive(PlannedValues.unreadable(Set.of(), UnreadReason.FORM_NOT_READ))
+        AdmissibleValues<String> opened = pair("y", "A", "y", "B")
+                .bothDead(pair("z", "A", "z", "B"))
                 .resolve(SETS).values()
-                .alsoOpenedAt(Set.of("x"))
-                .leavingNothing();
+                .alsoOpenedAt(Set.of("x"));
 
         assertEquals(Set.of("x"), opened.subjects(),
                 "the reading holds `x` nowhere but among the positions a choice opened, and it is"

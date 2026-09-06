@@ -75,7 +75,7 @@ class WhatACountTakenBeforeReadingPromisesAboutWhatIsBuiltTest {
     private PlannedValues<String> either(PlannedValues<String> one, PlannedValues<String> other,
                                          boolean apart) {
         if (dead(one) && dead(other)) {
-            return one.leavingNothing().bothDead(other.leavingNothing());
+            return one.bothDead(other);
         }
         if (dead(one)) {
             return other;
