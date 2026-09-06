@@ -9,6 +9,7 @@ import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.ExpansionLineage;
+import souther.compiler.types.ModelOccurrence;
 import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
@@ -17,7 +18,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -83,41 +83,6 @@ class WhereTheTwoReadingsOfABodyPartIsAnOperationOfTheLanguageTest {
                                 Set<ConstructOccurrence> analysis) {}
 
     /**
-     * The copies the emitted reading has and the analysis reading does not are the ones an operation
-     * of the language began.
-     *
-     * <p>The classification, asked apart from what it is later used for. Where this holds, the two
-     * readings differ by exactly the copies made inside the operations one of them keeps standing,
-     * and a projection that stops at the first of those is describing the difference rather than
-     * approximating it.
-     */
-    @Test
-    void theCopiesOneReadingHasAndTheOtherDoesNotBeginAtAnOperation() {
-        Map<String, Integer> byArm = new TreeMap<>();
-        int[] dropped = new int[1];
-        for (BothReadings both : everyBodyBothWays()) {
-            for (ConstructOccurrence which : both.emitted()) {
-                ConstructOccurrence stopped = new ConstructOccurrence(which.origin(),
-                        upToTheFirstOperation(which.lineage()));
-                if (stopped.equals(which)) {
-                    // The two readings hold it alike: nothing was dropped, and there is no boundary
-                    // to classify.
-                    continue;
-                }
-                dropped[0]++;
-                byArm.merge(armOf(stepsOf(which.lineage())
-                        .get(stepsOf(stopped.lineage()).size()).expanded()), 1, Integer::sum);
-            }
-        }
-
-        assertTrue(dropped[0] > 0,
-                "no comparison stands inside a copy an operation began, so this says nothing");
-        assertEquals(List.of("Stdlib.Operation"), List.copyOf(byArm.keySet()),
-                () -> "the copies one reading has and the other does not begin at something other"
-                        + " than an operation of the language: " + byArm);
-    }
-
-    /**
      * Every comparison the analysis reads is reached by exactly one of the emitted reading.
      *
      * <p>The direction a reader wants, and the cardinality of it. A rule is read where the
@@ -137,17 +102,18 @@ class WhereTheTwoReadingsOfABodyPartIsAnOperationOfTheLanguageTest {
         int[] reached = new int[1];
         int[] onlyEmitted = new int[1];
         for (BothReadings both : everyBodyBothWays()) {
-            Map<ConstructOccurrence, List<ConstructOccurrence>> arriving = new LinkedHashMap<>();
+            Map<ModelOccurrence, List<ConstructOccurrence>> arriving = new LinkedHashMap<>();
+            Set<ModelOccurrence> stated = new LinkedHashSet<>();
+            both.analysis().forEach(each -> stated.add(ModelOccurrence.of(each)));
             for (ConstructOccurrence which : both.emitted()) {
-                ConstructOccurrence stopped = new ConstructOccurrence(which.origin(),
-                        upToTheFirstOperation(which.lineage()));
-                if (both.analysis().contains(stopped)) {
-                    arriving.computeIfAbsent(stopped, _ -> new ArrayList<>()).add(which);
+                ModelOccurrence states = ModelOccurrence.of(which);
+                if (stated.contains(states)) {
+                    arriving.computeIfAbsent(states, _ -> new ArrayList<>()).add(which);
                 } else {
                     onlyEmitted[0]++;
                 }
             }
-            for (ConstructOccurrence read : both.analysis()) {
+            for (ModelOccurrence read : stated) {
                 List<ConstructOccurrence> from = arriving.get(read);
                 if (from == null) {
                     unreached.add(both.behavior() + " " + read);
@@ -202,20 +168,6 @@ class WhereTheTwoReadingsOfABodyPartIsAnOperationOfTheLanguageTest {
         assertEquals(List.of("OfValue", "OfValue"), owners,
                 () -> "the block the author bound belongs to the body that bound it, in both"
                         + " readings: " + owners);
-    }
-
-    /** The lineage with everything from the first operation of the language inward taken off. */
-    private static ExpansionLineage upToTheFirstOperation(ExpansionLineage lineage) {
-        ExpansionLineage out = ExpansionLineage.ORIGINAL;
-        for (ExpansionLineage.Expansion step : stepsOf(lineage)) {
-            // Stopped and not filtered: what is inside an operation's body is inside it, so the
-            // copies below the one it began are copies the analysis never reads either.
-            if (step.expanded() instanceof ValueName.Stdlib.Operation) {
-                return out;
-            }
-            out = out.copiedInto(step.expanded(), step.at());
-        }
-        return out;
     }
 
     /** The copies of {@code lineage}, outermost first. */

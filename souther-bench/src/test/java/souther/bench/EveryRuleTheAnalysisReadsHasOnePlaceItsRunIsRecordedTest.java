@@ -9,6 +9,7 @@ import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.ExpansionLineage;
+import souther.compiler.types.ModelOccurrence;
 import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
@@ -54,16 +55,18 @@ class EveryRuleTheAnalysisReadsHasOnePlaceItsRunIsRecordedTest {
         int[] reached = new int[1];
         int[] onlyEmitted = new int[1];
         for (BothReadings both : everyBodyBothWays()) {
-            Map<ConstructOccurrence, List<ConstructOccurrence>> arriving = new LinkedHashMap<>();
+            Map<ModelOccurrence, List<ConstructOccurrence>> arriving = new LinkedHashMap<>();
+            Set<ModelOccurrence> stated = new LinkedHashSet<>();
+            both.analysis().forEach(each -> stated.add(ModelOccurrence.of(each)));
             for (ConstructOccurrence which : both.emitted()) {
-                ConstructOccurrence stopped = upToTheFirstOperation(which);
-                if (both.analysis().contains(stopped)) {
-                    arriving.computeIfAbsent(stopped, _ -> new ArrayList<>()).add(which);
+                ModelOccurrence states = ModelOccurrence.of(which);
+                if (stated.contains(states)) {
+                    arriving.computeIfAbsent(states, _ -> new ArrayList<>()).add(which);
                 } else {
                     onlyEmitted[0]++;
                 }
             }
-            for (ConstructOccurrence read : both.analysis()) {
+            for (ModelOccurrence read : stated) {
                 List<ConstructOccurrence> from = arriving.get(read);
                 if (from == null) {
                     unreached.add(both.behavior() + "\n  analysis: " + read + "\n  emitted:  "
@@ -88,30 +91,6 @@ class EveryRuleTheAnalysisReadsHasOnePlaceItsRunIsRecordedTest {
                 () -> "two comparisons of the emitted tree reach one the analysis reads, over "
                         + reached[0] + " reached and " + onlyEmitted[0]
                         + " standing only where the operations are expanded");
-    }
-
-    /** And the copies the emitted tree has and the analysis does not are the ones an operation of
-     *  the language began. */
-    @Test
-    void theCopiesOnlyTheEmittedTreeHasBeginAtAnOperation() {
-        Map<String, Integer> byArm = new TreeMap<>();
-        for (BothReadings both : everyBodyBothWays()) {
-            for (ConstructOccurrence which : both.emitted()) {
-                ConstructOccurrence stopped = upToTheFirstOperation(which);
-                if (stopped.equals(which)) {
-                    continue;
-                }
-                byArm.merge(armOf(stepsOf(which.lineage())
-                        .get(stepsOf(stopped.lineage()).size()).expanded()), 1, Integer::sum);
-            }
-        }
-
-        assertTrue(!byArm.isEmpty(),
-                "no comparison of these models stands inside a copy an operation began, so this"
-                        + " says nothing about where the two readings part");
-        assertEquals(List.of("Stdlib.Operation"), List.copyOf(byArm.keySet()),
-                () -> "the copies one reading has and the other does not begin at something other"
-                        + " than an operation of the language: " + byArm);
     }
 
     /**
@@ -180,9 +159,23 @@ class EveryRuleTheAnalysisReadsHasOnePlaceItsRunIsRecordedTest {
         assertEquals(List.of(), notASubsequence,
                 () -> "what the analysis reads is not what the emitted tree reads with copies"
                         + " inserted, so the two are not one reading with an envelope in it");
-        assertEquals(Map.of(), Map.of("gapLengths", gapLengths, "heads", heads, "tails", tails,
-                        "tailOwners", tailOwners, "keptLocals", keptLocals),
-                () -> "aligned " + aligned[0] + ", gaps longer than a pair: " + longGaps);
+        assertTrue(!heads.isEmpty(),
+                "the two readings held every comparison alike, so nothing here says what parts them");
+        assertEquals(List.of("Stdlib.Operation"), List.copyOf(heads.keySet()),
+                () -> "a run of copies only the emitted tree has begins at something other than an"
+                        + " operation of the language: " + heads);
+        assertEquals(List.of("Local"), List.copyOf(tails.keySet()),
+                () -> "such a run ends at something other than a block: " + tails);
+        assertEquals(List.of("the copy the run begins with"), List.copyOf(tailOwners.keySet()),
+                () -> "the block such a run ends at belongs to something other than the copy the"
+                        + " run begins with: " + tailOwners);
+        // The lengths are the corpora's and not the rule's: a run is as long as the operation's own
+        // body is deep, and pinning it would make this a test of the models. What it must not become
+        // is a run of one, because then the block that closes it is the operation itself and there
+        // is nothing here about where a run ends.
+        assertTrue(gapLengths.keySet().stream().anyMatch(each -> Integer.parseInt(each) > 2),
+                () -> "no operation's copies nest, so nothing here says a run ends at the block the"
+                        + " caller handed the outermost of them: " + gapLengths + " " + longGaps);
     }
 
     /**
@@ -233,19 +226,8 @@ class EveryRuleTheAnalysisReadsHasOnePlaceItsRunIsRecordedTest {
             return "owned by " + local.id().owner().getClass().getSimpleName();
         }
         return owner.expanded().equals(head.expanded())
-                ? "the copy the gap begins with, parameter " + local.id().ordinal()
+                ? "the copy the run begins with"
                 : "another copy: " + owner.expanded();
-    }
-
-    private static ConstructOccurrence upToTheFirstOperation(ConstructOccurrence which) {
-        ExpansionLineage out = ExpansionLineage.ORIGINAL;
-        for (ExpansionLineage.Expansion step : stepsOf(which.lineage())) {
-            if (step.expanded() instanceof ValueName.Stdlib.Operation) {
-                return new ConstructOccurrence(which.origin(), out);
-            }
-            out = out.copiedInto(step.expanded(), step.at());
-        }
-        return new ConstructOccurrence(which.origin(), out);
     }
 
     /** The copies of {@code lineage}, outermost first. */
