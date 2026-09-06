@@ -68,6 +68,24 @@ class WhereTheTwoReadingsOfABodyPartIsAnOperationOfTheLanguageTest {
             }
             """;
 
+    /**
+     * A helper called from inside the block handed to an operation.
+     *
+     * <p>What says an envelope is left rather than run to the end of the lineage. The comparison
+     * stands in a copy the caller made — {@code over240} is the module's own helper — and that copy
+     * is made after the operation's body has reached the block it was handed. A projection that
+     * never left the envelope would drop it, and the comparison would come out standing where it was
+     * written while the reading that keeps the operation standing has it inside the helper.
+     */
+    private static final String THROUGH_A_BLOCK = """
+            module through
+
+            let over240 (n: Int): Bool = n >= 240
+
+            behavior over : (xs: List<Int>) -> Bool
+            let over (xs) = List.all(x -> over240(x), xs)
+            """;
+
     /** One module helper called twice, which both readings expand. */
     private static final String SPLICED = """
             module demo
@@ -198,6 +216,7 @@ class WhereTheTwoReadingsOfABodyPartIsAnOperationOfTheLanguageTest {
         sources.add(List.of(COMBINATOR));
         sources.add(List.of(SPLICED));
         sources.add(List.of(BLOCKS));
+        sources.add(List.of(THROUGH_A_BLOCK));
         return bodiesBothWays(sources);
     }
 
