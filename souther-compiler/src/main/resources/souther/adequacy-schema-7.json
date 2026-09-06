@@ -354,7 +354,7 @@
             "additionalProperties": false,
             "properties": {
               "axis": { "type": "string" },
-              "origin": { "type": "string", "description": "The rule that drew this line — a type's invariant, a behavior's `ensures`, or the fork of a body a condition was written in, named by the construct the author wrote it as (`if`, `guard` or `comprehension`) and where. Prose rather than a word list: which rules there are is the model's question, not this document's." },
+              "origin": { "type": "string", "description": "The rule that drew this line — a type's invariant, a behavior's `ensures`, or a comparison a body wrote, named by what the rule is and where. Prose rather than a word list: which rules there are is the model's question, not this document's." },
               "kind": {
                 "enum": ["at_value", "between_positions", "over_a_form"],
                 "description": "What this line is a line at. `at_value` is a place of the position `axis` names, which is what an invariant's bound and a guard against a constant draw. `between_positions` is a guard comparing one position against another: the line is where the two hold the same place, `axis` names the left of it and `value` the other position rather than a value. `over_a_form` is a rule over an arithmetic form across several positions: the line is where the form comes to `value`, `axis` names the form as an author would write it and `value` is a number the form takes rather than a value any position holds. Reading `value` without reading this reads a position's name as a value. Absent in a document written before this key existed, where every line was at a value."
@@ -474,7 +474,7 @@
             "additionalProperties": false,
             "properties": {
               "at": { "type": "string", "description": "The position the rule is written about, as a report names it." },
-              "rule": { "type": "string", "description": "How a reader finds the rule: the name the author gave it where there is one — `invariant Length (even)` — and where it is written where there is none, as `if@<source>:<line>:<column>`. A comparison in a body is written rather than named, so a document that spelled every rule as a name would send an author looking for a clause called `if`. The same handle a `boundaries` entry writes for a line the same rule drew. Not what tells one rule from another: two arms of one `ensures` clause may name the same case, and `ruleId` beside this is what says they are two." },
+              "rule": { "type": "string", "description": "How a reader finds the rule: the name the author gave it where there is one — `invariant Length (even)` — and where it is written where there is none, as `comparison@<source>:<line>:<column>`. A comparison in a body is written rather than named, so a document that spelled every rule as a name would send an author looking for a clause that was never given one. The same handle a `boundaries` entry writes for a line the same rule drew. Not what tells one rule from another: two arms of one `ensures` clause may name the same case, and `ruleId` beside this is what says they are two." },
               "ruleId": { "$ref": "#/$defs/ruleId" },
               "question": { "$ref": "#/$defs/coverageQuestion" },
               "subject": {
@@ -530,7 +530,7 @@
             "properties": {
               "position": { "type": "string" },
               "reason": { "$ref": "#/$defs/notReadReason" },
-              "rule": { "type": "string", "description": "How a reader finds the rule this could not turn into a line: the name the author gave it where there is one — `invariant Length (even)` — and where it is written where there is none, as `if@<source>:<line>:<column>`. The same handle an `unanswered` entry and a `boundaries` entry write for the same rule. Present exactly where the entry is about a rule; a position the reading never reached has none, and a placeholder here would say a rule had been looked at that nothing saw. Not what tells one rule from another: `ruleId` beside this is." },
+              "rule": { "type": "string", "description": "How a reader finds the rule this could not turn into a line: the name the author gave it where there is one — `invariant Length (even)` — and where it is written where there is none, as `comparison@<source>:<line>:<column>`. The same handle an `unanswered` entry and a `boundaries` entry write for the same rule. Present exactly where the entry is about a rule; a position the reading never reached has none, and a placeholder here would say a rule had been looked at that nothing saw. Not what tells one rule from another: `ruleId` beside this is." },
               "ruleId": { "$ref": "#/$defs/ruleId", "description": "Which rule the entry is about, present exactly with `rule`. A key within this document: a consumer groups by it and shows `rule`. Two rules stopped by one limit at one position are two entries and differ here — keyed on the position and the reason alone, they were one." }
             }
           }

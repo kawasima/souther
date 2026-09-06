@@ -2,6 +2,7 @@ package souther.bench;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.publish.DocumentPart;
 import souther.compiler.publish.PublicationOrders;
 
 import java.util.ArrayList;
@@ -36,6 +37,8 @@ class AFieldWhoseOrderIsThisCompilersIsWrittenThroughACrossingTest {
 
     private static final String STARTS_AN_ARRAY = "putArray";
 
+    private static final String NAMES_A_PART = "souther.compiler.publish.DocumentPart";
+
     private static final Set<String> CROSSINGS = Set.of(
             "souther.compiler.publish.CanonicalArrangement",
             "souther.compiler.publish.CanonicalSelection",
@@ -55,7 +58,12 @@ class AFieldWhoseOrderIsThisCompilersIsWrittenThroughACrossingTest {
         for (Compiled.Invocation each : called()) {
             if (each.site().member().equals(STARTS_AN_ARRAY)
                     && each.site().from().startsWith("souther.compiler.report.")
-                    && each.said().isEmpty()) {
+                    && each.said().isEmpty()
+                    // The call and not the method it is in. A method that starts one array by
+                    // naming a part of the document says nothing about the arrays beside it, and
+                    // excusing it as a whole is how a check written to keep a population from
+                    // shrinking lets one shrink.
+                    && !each.site().owner().equals(NAMES_A_PART)) {
                 unread.add(each.site().at());
             }
         }
@@ -131,14 +139,51 @@ class AFieldWhoseOrderIsThisCompilersIsWrittenThroughACrossingTest {
                 out.addAll(each.said());
             }
         }
+        out.addAll(namesStartedThrough(method));
         return out;
     }
 
-    /** The methods that start an array under {@code field}, read off the name written at the call. */
+    /**
+     * The arrays {@code method} starts by naming a part of the document rather than a string.
+     *
+     * <p>The five parts that carry a rule handle are started through {@link DocumentPart}, which is
+     * what makes a part's name and the place the schema declares it one value instead of two
+     * literals a writer could disagree about. The name is still written down and still read here —
+     * it moved from the call into a constant the call reads, and the set of them is closed by the
+     * enum, so an array started this way cannot leave the population in silence either.
+     */
+    private static Set<String> namesStartedThrough(String method) throws Exception {
+        Set<String> out = new LinkedHashSet<>();
+        boolean starts = false;
+        for (Compiled.Invocation each : called()) {
+            starts |= each.site().at().equals(method)
+                    && each.site().member().equals(STARTS_AN_ARRAY)
+                    && each.site().owner().equals(NAMES_A_PART);
+        }
+        if (!starts) {
+            return out;
+        }
+        for (Compiled.Site each : compiled()) {
+            if (each.at().equals(method) && each.how() == Compiled.How.READS
+                    && each.owner().equals(NAMES_A_PART)) {
+                out.add(DocumentPart.valueOf(each.member()).key());
+            }
+        }
+        return out;
+    }
+
+    /** The methods that start an array under {@code field}, read off the name written at the call
+     *  or off the part the call names. */
     private static Set<String> whereTheArrayIsStarted(String field) throws Exception {
         Set<String> out = new LinkedHashSet<>();
         for (Compiled.Invocation each : called()) {
             if (each.site().member().equals(STARTS_AN_ARRAY) && each.said().contains(field)) {
+                out.add(each.site().at());
+            }
+        }
+        for (Compiled.Invocation each : called()) {
+            if (each.site().member().equals(STARTS_AN_ARRAY)
+                    && namesStartedThrough(each.site().at()).contains(field)) {
                 out.add(each.site().at());
             }
         }

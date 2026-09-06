@@ -1,12 +1,12 @@
 package souther.compiler.partition;
 
-import souther.compiler.source.SourceId;
 
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.RuleRef;
 import souther.compiler.diag.Citation;
-import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.numeric.Endpoint;
+import souther.compiler.publish.PublishedRuleHandle;
+import souther.compiler.publish.PublishedSentence;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.List;
@@ -392,34 +392,27 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
     }
 
     /**
-     * Where this came from, as a report writes it, with the sources under the names {@code names}
-     * gives them and the section it is printed under being about {@code sectionSource}.
+     * Where this came from, as what a report writes rather than as the words themselves.
      *
-     * <p>A comparison has no name, so what identifies it is where it is written — and that is a
-     * place, so it is said the way every other place a report names is said. Its own file where that
-     * is not the section's, and the declaration it is written in where this compile has no source for
-     * it. Built from the place instead, one compile reported a comparison of {@code Int.abs} as
-     * {@code comparison@7:22} two lines under an arm of that same body saying where it was.
+     * <p>The handle of the rule this line came from, and no words of this reading's own about it. How
+     * a reader is sent to a rule is one question with one answer
+     * ({@link souther.compiler.publish.PublishedRuleHandle}), and a line saying it a second way here
+     * is a second spelling that can come apart from the one a question about the same rule writes.
      *
-     * <p>One word goes in front of the place, and it says what the rule is. It was the construct the
-     * comparison stood in — three of them draw a line this way and one is spelled {@code guard} — and
-     * a word for the thing around a rule is a word the rule can lose: a comparison given a name a
-     * line above the fork stands in no construct that draws anything.
-     *
-     * <p>A type and an invariant have names, and a name is the same wherever it is read, so they take
-     * no resolver and are given one only because this is one question.
+     * <p>What this adds is what is true of the line rather than of the rule: the declarations that
+     * took an end of it in. A bound narrowed by another declaration is not the line that bound would
+     * have drawn alone, and the rule is the same rule either way — so those words go around the
+     * handle rather than into it.
      */
-    default String describe(SourceNameResolver names, SourceId sectionSource) {
+    default PublishedSentence describe() {
+        PublishedRuleHandle handle = PublishedRuleHandle.of(cited());
         return switch (this) {
-            case InvariantOrigin i -> i.rule().citedName();
-            case EnsuresOrigin e -> e.rule().citedName();
-            // The same word and the same join a question about this rule is written with. A rule
-            // and a line it drew are found the same way, and two spellings of one place read as two
-            // places.
-            case ComparisonOrigin g -> g.read().written().said(names, sectionSource);
-            // The declarations that took the end in, said the way the line itself says them.
-            case NarrowedOrigin n ->
-                    n.authoredLine().said(n.bound().describe(names, sectionSource));
+            case InvariantOrigin _, EnsuresOrigin _, ComparisonOrigin _ ->
+                    PublishedSentence.AroundAHandle.alone(handle);
+            // The declarations that took the end in, said the way the line itself says them. The
+            // handle underneath is the bound's, which is what this origin cites.
+            case NarrowedOrigin n -> new PublishedSentence.AroundAHandle(
+                    "", handle, n.authoredLine().narrowing());
         };
     }
 
