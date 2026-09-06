@@ -2,6 +2,7 @@ package souther.compiler.values;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -306,19 +307,20 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
      *
      * <p>A set inside one of these is refused only where the whole is, so emitting the parts as
      * well is the same question asked once per subset — and a set reached by taking its blocks in
-     * another order is that same set again. Both show up as a count taken more often than there are
-     * answers, which is what the bound on how many sets this will look at then runs into.
+     * another order is that same set again. Both are a count taken more often than there are
+     * answers, and how much walking a relation is worth is settled by how many blocks it has rather
+     * than by how many roads to one set the walk chose to take.
      */
     @Test
     void theSetsCountedAreTheOnesNothingCanBeAddedTo() {
         Apartness<String> triangle = Apartness.of("p", "q")
                 .and(Apartness.of("q", "r")).and(Apartness.of("r", "p"));
 
-        assertEquals(List.of(Set.of(P, Q, R)), triangle.everyPairwiseApartSet(64),
+        assertEquals(List.of(Set.of(P, Q, R)), triangle.everyPairwiseApartSet(),
                 "one set, and not every part of it nor every order its blocks come in");
 
         Apartness<String> chain = Apartness.of("p", "q").and(Apartness.of("q", "r"));
-        assertEquals(List.of(Set.of(P, Q), Set.of(Q, R)), chain.everyPairwiseApartSet(64),
+        assertEquals(List.of(Set.of(P, Q), Set.of(Q, R)), chain.everyPairwiseApartSet(),
                 "and a chain is two of them, neither of which the other holds");
     }
 
@@ -327,9 +329,9 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
      *
      * <p>Beside the cycle below, and the two together are what part the incompleteness this reading
      * means from one it would have by accident. Seven blocks all apart is the same argument three
-     * of them are refused by and nothing harder; a reading that reached it by walking every part of
-     * the set, or the set once per order its blocks come in, would run out of what it allows itself
-     * to look at and say nothing — and the shape it went quiet on would be the easy one.
+     * of them are refused by and nothing harder, and it is the shape the walk is cheapest on: the
+     * pivot leaves one way in at every level, so the whole relation is one path however many blocks
+     * it has.
      */
     @Test
     void andSevenBlocksAllStatedToDifferOverTwoValuesAreRefusedLikeThree() {
@@ -341,10 +343,85 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
             }
         }
 
-        assertEquals(1, all.everyPairwiseApartSet(64).size(),
+        assertEquals(1, all.everyPairwiseApartSet().size(),
                 "one set, and not every part of it nor every order its blocks come in");
         assertInstanceOf(RelationalWitness.TooFewValuesBetweenThem.class,
                 refusedBy(all.reduce(holding(java.util.Map.of()))));
+    }
+
+    /**
+     * And blocks all stated to differ are counted however many of them there are.
+     *
+     * <p>Past the bound a general relation is admitted by, and refused all the same. What that
+     * bound is about is a walk that may reach one set by many roads; here the pivot leaves one way
+     * in at every level, so the shape says the walk is a single path and the relation is admitted
+     * on that.
+     *
+     * <p>Which is the whole reason the shape is asked two questions rather than one. Admitted by
+     * how many blocks it has alone, this relation would be the easy one the reading went quiet on.
+     */
+    @Test
+    void andBlocksAllStatedToDifferAreCountedHoweverManyOfThemThereAre() {
+        Apartness<String> all = allApart(everyOneOf(34));
+
+        assertTrue(all.extent().isComplete(), "every block is stated to differ from every other");
+        assertInstanceOf(RelationalWitness.TooFewValuesBetweenThem.class,
+                refusedBy(all.reduce(holding(java.util.Map.of()))));
+    }
+
+    /**
+     * And a relation neither of those admits is one this says nothing about.
+     *
+     * <p>All apart but for one pair, which is a shape the count refuses — thirty-three of its
+     * blocks are stated to differ from each other and two values are not enough for them. It is not
+     * every block against every other, so the shape it is admitted by is how many blocks it has,
+     * and it has more than that allows.
+     *
+     * <p>Written down as the boundary rather than as a gap. The same shape one block smaller is
+     * refused, so what is asserted here is where this stops and not that it cannot count: a bound
+     * nothing shows the far side of is a bound nobody can tell from an accident.
+     */
+    @Test
+    void andARelationPastBothOfThoseIsOneThisSaysNothingAbout() {
+        List<String> named = everyOneOf(31);
+        Apartness<String> past = allApartBut(named, named.get(0), named.get(1));
+        List<String> fewer = everyOneOf(30);
+        Apartness<String> within = allApartBut(fewer, fewer.get(0), fewer.get(1));
+
+        assertFalse(past.extent().isComplete(), "one pair is not stated to differ");
+        assertInstanceOf(Apartness.Reduction.NotKnown.class, past.reduce(holding(
+                java.util.Map.of())), "past what either question admits, and so unanswered");
+
+        assertFalse(within.extent().isComplete(), "the same shape, one block smaller");
+        assertInstanceOf(RelationalWitness.TooFewValuesBetweenThem.class,
+                refusedBy(within.reduce(holding(java.util.Map.of()))),
+                "and inside the bound the same count refuses it");
+    }
+
+    private static List<String> everyOneOf(int many) {
+        List<String> named = new ArrayList<>();
+        for (int each = 0; each < many; each++) {
+            named.add("p" + each);
+        }
+        return named;
+    }
+
+    private static Apartness<String> allApart(List<String> named) {
+        return allApartBut(named, null, null);
+    }
+
+    /** Every pair of {@code named} stated to differ, less the one pair {@code but} names. */
+    private static Apartness<String> allApartBut(List<String> named, String one, String other) {
+        Apartness<String> all = Apartness.nothing();
+        for (int first = 0; first < named.size(); first++) {
+            for (int second = first + 1; second < named.size(); second++) {
+                if (named.get(first).equals(one) && named.get(second).equals(other)) {
+                    continue;
+                }
+                all = all.and(Apartness.of(named.get(first), named.get(second)));
+            }
+        }
+        return all;
     }
 
     /**

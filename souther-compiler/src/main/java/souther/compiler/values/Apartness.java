@@ -35,20 +35,42 @@ import java.util.function.Function;
 public final class Apartness<A> {
 
     /**
-     * How many sets of blocks this will look at before it stops.
+     * How many blocks a relation may have for the sets of them all stated to differ to be looked
+     * for.
      *
-     * <p>Looked at and not found. How many sets a relation has does not say how much work finding
-     * them is: a relation whose blocks are all stated to differ has one such set and as many ways
-     * of reaching it as anyone likes, so a bound on the answers is no bound on the walk. What is
-     * counted is every set the walk stands on, whether or not it turns out to be one nothing can be
-     * added to.
+     * <p>A bound on the shape and never on a walk part-way through one. How far a walk gets by some
+     * number of steps depends on which block it started from, and two writings of one relation are
+     * one relation ({@link #equals}) that would then be decided one way written this way round and
+     * another written the other. Read off the shape before anything is walked, the answer is a fact
+     * about the relation.
      *
-     * <p>A stated limit and not a figure anything derives. How much work a relation is worth is not
-     * bounded by how many rules were written, and a reduction that walked all of it would make what
-     * a declaration costs turn on a shape nothing else here charges for. Reaching it is this saying
-     * nothing, which is what it says of every relation it has no argument for.
+     * <p>Which is what gives this figure something to be derived from. {@link #grow} takes as its
+     * pivot the block stated to differ from most of what may still be added, and the exponential
+     * part of a maximal-clique walk that pivots this way is {@code 3^(n/3)} in the number of blocks
+     * — the same figure as the most sets of pairwise-apart blocks that {@code n} blocks can have.
+     * What is left to measure is how much a step of this walk costs, and on the shape that reaches
+     * that bound thirty blocks is a tenth of a second, with every three blocks after it three times
+     * as much.
+     *
+     * <p><b>So the pivot is part of this bound and not a way of going faster.</b> Taking the first
+     * block still in play instead leaves the walk reaching one set once for every order its blocks
+     * come in, and this figure would be a bound on nothing.
      */
-    private static final int SETS_LOOKED_AT = 4096;
+    private static final int MOST_BLOCKS_WALKED = 30;
+
+    /**
+     * And how large a relation may be for its shape to be looked at at all.
+     *
+     * <p>What the relation itself comes to as an adjacency and what each level of the walk costs,
+     * which the bound above does not reach: a relation whose blocks are all stated to differ is
+     * walked in one path however many blocks it has, so it is admitted past that bound and would
+     * otherwise be admitted with no bound at all.
+     *
+     * <p>Measured: a relation of this many pairs whose blocks are all stated to differ is walked in
+     * about a fiftieth of a second. A relation the general bound admits has at most a few hundred
+     * pairs, so this is the one that reaches such a relation's shape.
+     */
+    private static final int MOST_EDGES_HELD = 5000;
 
     /** In the order they were stated, so that what is written out of a reading comes out the same
      *  on two compiles of one model. */
@@ -105,6 +127,51 @@ public final class Apartness<A> {
     /** Whether some pair states a block differs from itself, which nothing satisfies. */
     public boolean holdsABlockApartFromItself() {
         return edges.stream().anyMatch(Edge::isOfOneBlock);
+    }
+
+    /** How much walking this relation is, before any of it is walked. */
+    public Extent extent() {
+        return new Extent(blocks().size(), edges.size());
+    }
+
+    /**
+     * How large a relation is, as the numbers a reduction over it can be admitted by.
+     *
+     * <p>Read off the relation and not off a walk of it, which is what lets an admission be a fact
+     * about the relation: a walk stopped part-way through has got as far as the order its pairs
+     * were stated in took it, and one relation written two ways round would be decided one way and
+     * not the other. So how much walking a shape is, is settled before there is a walk to stop.
+     *
+     * @param blocks how many blocks some pair names
+     * @param edges how many pairs are stated
+     */
+    public record Extent(int blocks, int edges) {
+
+        /**
+         * Whether every block is stated to differ from every other.
+         *
+         * <p>Its own case because the walk is a different walk on it. {@link #grow} pivots on the
+         * block stated to differ from most of what may still be added, and where that is every
+         * other block, each level has one way in and the whole relation is one path — so a relation
+         * of this shape is walked in as many steps as it has blocks, however many that is, and the
+         * bound the general case needs is a bound it does not.
+         */
+        public boolean isComplete() {
+            return edges == (long) blocks * (blocks - 1) / 2;
+        }
+
+        /**
+         * Whether every set of blocks all stated to differ can be found.
+         *
+         * <p>Two bounds and not one, because they are about two different things. How many blocks
+         * there are bounds the walk, and how many pairs there are bounds the relation itself — what
+         * it comes to as an adjacency and what one level of the walk costs. The second is what
+         * reaches a relation admitted past the first.
+         */
+        boolean admitsCounting() {
+            return edges <= MOST_EDGES_HELD
+                    && (isComplete() || blocks <= MOST_BLOCKS_WALKED);
+        }
     }
 
     /**
@@ -253,12 +320,13 @@ public final class Apartness<A> {
      * apiece for every part of it. So the parts are covered by the whole and emitting them as well
      * is the same question asked again — once per subset, which is as many as there are subsets.
      *
-     * <p>Bounded by {@code most}, and by refusing rather than by answering with less: how many of
-     * these there are is not something the rules bound, and a reading that stopped partway would
-     * decide a declaration by how far it happened to get. A relation too large to walk is one this
-     * says nothing about, which is what it says about every relation it has no reduction for.
+     * <p>Walked to the end or not walked at all. Whoever asks decides whether the shape is one
+     * worth walking ({@link Extent#admitsCounting}), which is read off the relation before there is
+     * a walk; stopped part-way instead, this would answer with the sets one order of the pairs
+     * happened to reach first, and a relation written the other way round would be answered
+     * differently.
      */
-    public List<Set<Sameness.Block<A>>> everyPairwiseApartSet(int most) {
+    public List<Set<Sameness.Block<A>>> everyPairwiseApartSet() {
         Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart = new LinkedHashMap<>();
         for (Edge<A> edge : edges) {
             if (edge.isOfOneBlock()) {
@@ -267,53 +335,11 @@ public final class Apartness<A> {
             apart.computeIfAbsent(edge.one(), _ -> new LinkedHashSet<>()).add(edge.other());
             apart.computeIfAbsent(edge.other(), _ -> new LinkedHashSet<>()).add(edge.one());
         }
-        Walk<A> walk = new Walk<>(most);
+        List<Set<Sameness.Block<A>>> found = new ArrayList<>();
         grow(new LinkedHashSet<>(), new LinkedHashSet<>(apart.keySet()), new LinkedHashSet<>(),
-                apart, walk);
-        if (walk.spent()) {
-            return List.of();
-        }
-        walk.found().sort(
-                Comparator.comparingInt((Set<Sameness.Block<A>> each) -> each.size()).reversed());
-        return walk.found();
-    }
-
-    /**
-     * What a walk over the sets has found and what it has spent finding it.
-     *
-     * <p>Both, because the second is what the bound is on. How many sets there are does not say how
-     * much work finding them is — a relation whose blocks are all stated to differ has one set and
-     * a search that looks at every way to reach it — so a bound on the answers is no bound at all,
-     * and the walk that ran into it would be the walk nobody was counting.
-     */
-    private static final class Walk<A> {
-
-        private final List<Set<Sameness.Block<A>>> found = new ArrayList<>();
-        private final int most;
-        private int steps;
-
-        private Walk(int most) {
-            this.most = most;
-        }
-
-        List<Set<Sameness.Block<A>>> found() {
-            return found;
-        }
-
-        /** Whether this has looked at as much as it is allowed to. */
-        boolean spent() {
-            return steps > most || found.size() > most;
-        }
-
-        /** One more set looked at, whether or not it turned out to be one nothing can be added
-         *  to. */
-        void looked() {
-            steps++;
-        }
-
-        void add(Set<Sameness.Block<A>> these) {
-            found.add(Collections.unmodifiableSet(new LinkedHashSet<>(these)));
-        }
+                apart, found);
+        found.sort(Comparator.comparingInt((Set<Sameness.Block<A>> each) -> each.size()).reversed());
+        return found;
     }
 
     /**
@@ -332,14 +358,11 @@ public final class Apartness<A> {
      */
     private void grow(Set<Sameness.Block<A>> sofar, Set<Sameness.Block<A>> may,
                       Set<Sameness.Block<A>> taken,
-                      Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart, Walk<A> walk) {
-        walk.looked();
-        if (walk.spent()) {
-            return;
-        }
+                      Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart,
+                      List<Set<Sameness.Block<A>>> found) {
         if (may.isEmpty()) {
             if (taken.isEmpty() && sofar.size() > 1) {
-                walk.add(sofar);
+                found.add(Collections.unmodifiableSet(new LinkedHashSet<>(sofar)));
             }
             return;
         }
@@ -364,10 +387,7 @@ public final class Apartness<A> {
             still.retainAll(apartFromNext);
             Set<Sameness.Block<A>> covered = new LinkedHashSet<>(aside);
             covered.retainAll(apartFromNext);
-            grow(grown, still, covered, apart, walk);
-            if (walk.spent()) {
-                return;
-            }
+            grow(grown, still, covered, apart, found);
             left.remove(next);
             aside.add(next);
         }
@@ -517,9 +537,16 @@ public final class Apartness<A> {
      * values than a caller counted never runs out, and a block this cannot say the values of is one
      * nothing is known about — dropped from the set either way, which leaves a smaller set, and a
      * shortage shown of fewer blocks is a shortage.
+     *
+     * <p>And asked only of a relation whose shape says the sets can all be found. A relation past
+     * that is one this argument says nothing about, which is what it says of every relation whose
+     * sets hold enough values.
      */
     private RelationalWitness<A> counting(Map<Sameness.Block<A>, Admits> left) {
-        for (Set<Sameness.Block<A>> apart : everyPairwiseApartSet(SETS_LOOKED_AT)) {
+        if (!extent().admitsCounting()) {
+            return null;
+        }
+        for (Set<Sameness.Block<A>> apart : everyPairwiseApartSet()) {
             Map<Sameness.Block<A>, Set<Value>> counted = new LinkedHashMap<>();
             apart.forEach(block -> {
                 if (left.get(block) instanceof Admits.These it) {
