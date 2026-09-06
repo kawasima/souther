@@ -643,14 +643,23 @@ public sealed interface BlockReason {
     record ValueRulesNotReachedPastDepthLimit() implements AboutThePosition {}
 
     /**
-     * Each of two rules is read, and they are about different coordinates of one position, so
-     * neither can be the one it is measured at.
+     * The rule's end has nowhere to go, because the position it is at is measured at no number.
      *
-     * <p>Nothing is wrong with either rule. A {@code String} is the one thing that can be measured
-     * two ways — its own order, and the length of it — and which of them a position is measured at
-     * is settled by whichever the model wrote about. Where the position's own type chose neither
-     * and the value it sits in states an end on each, choosing either would put a line the author
-     * can read beside one they cannot see, so both go unread and each says so.
+     * <p>A {@code String} is the one thing that can be measured two ways — its own order, and the
+     * length of it — and which of them a position is measured at is settled by whichever number
+     * the model wrote about. Where more than one is written about at the standing that answers,
+     * choosing either would put a line the author can read beside one they cannot see, so the
+     * position is measured at neither.
+     *
+     * <p><b>Said of the rule and not of the pair that left the question open.</b> What is true of
+     * every rule this is filed for is that its end could not be placed here; being one of the two
+     * the choice was between is true of some of them and not of the rest. A rule of the value a
+     * position sits in arrives at one already undecided, and it is neither the cause nor free of
+     * the consequence — an author reading that their clause competes with one other would go
+     * looking for a pair that is not there.
+     *
+     * <p>Nothing is wrong with any of them, and none is a rule to rewrite on its own: what an
+     * author acts on is that this position's rules leave more than one number in play.
      *
      * <p>Its own case and not {@link UnreadComparisonForm}. The forms were read: what is missing is
      * not a reader for an expression but a rule for which coordinate wins, and an author told the

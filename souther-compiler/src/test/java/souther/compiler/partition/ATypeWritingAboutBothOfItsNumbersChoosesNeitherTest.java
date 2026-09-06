@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
+import souther.compiler.query.PartitionEvidence;
 import souther.compiler.report.AdequacyReport;
 
 import java.util.List;
@@ -92,11 +93,12 @@ class ATypeWritingAboutBothOfItsNumbersChoosesNeitherTest {
      */
     @Test
     void aRuleFromOutsideNeitherChoosesNorGoesQuiet() {
-        assertEquals(List.of("v.c: COMPETING_COORDINATES",
-                        "String.length(v.c): COMPETING_COORDINATES",
-                        "String.length(v.c): COMPETING_COORDINATES"),
-                notReadIn(BOTH, "onHolder"),
-                "the record's clause is named beside the type's own, and none of them chose");
+        assertEquals(List.of(
+                        "Invariant[clause=Code#0] at v.c: COMPETING_COORDINATES",
+                        "Invariant[clause=Code#1] at String.length(v.c): COMPETING_COORDINATES",
+                        "Invariant[clause=Holder#0] at String.length(v.c): COMPETING_COORDINATES"),
+                namedIn(BOTH, "onHolder"),
+                "each authored clause is named once, the record's beside the type's two");
     }
 
     /**
@@ -186,6 +188,25 @@ class ATypeWritingAboutBothOfItsNumbersChoosesNeitherTest {
                 "the length rule is named as one nothing could choose between");
         assertFalse(report(source).contains("String.length(v) = 2"),
                 "and no line is drawn at the length");
+    }
+
+    /**
+     * The same, with the rule each finding is about.
+     *
+     * <p>Which authored clause a finding names is what {@code #1317} is about: a rule that went out
+     * with nothing saying so is a rule an author cannot find. Held to the coordinate and the word
+     * alone, a reading that named one clause twice and dropped another would pass.
+     */
+    private static List<String> namedIn(String source, String behavior) {
+        Compilation compilation = Compilation.ofSource(source, "Main");
+        compilation.measure(Adequacy.Asked.fullReport());
+        compilation.answerEverything();
+        return AdequacyReport.of(compilation).modules().get(0).behaviors().stream()
+                .filter(each -> each.name().equals(behavior))
+                .flatMap(each -> each.partition().notRead().stream())
+                .map(each -> ((PartitionEvidence.NotRead.ARule) each).rule() + " at " + each.at()
+                        + ": " + each.reason())
+                .toList();
     }
 
     /** The numbers {@code behavior} divides some position along, as a document names them. */

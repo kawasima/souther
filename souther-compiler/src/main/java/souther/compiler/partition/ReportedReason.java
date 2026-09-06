@@ -181,9 +181,9 @@ public final class ReportedReason {
             // Its own word beside the one above, and the two are the opposite halves of one
             // question. That one is a position no number could be chosen for; this one is a
             // position measured at a number, holding a rule about a different one. A reader of the
-            // first goes looking for the clause competing with theirs, and a reader of this one has
-            // nothing to look for — their rule states what it states, at a number this position is
-            // not divided along.
+            // first is looking at a position whose rules leave more than one number in play, and a
+            // reader of this one has nothing to look for — their rule states what it states, at a
+            // number this position is not divided along.
             case BlockReason.RuleAboutAnotherCoordinate _ ->
                     UndividedPosition.Reason.RULE_ABOUT_ANOTHER_COORDINATE;
             // Its own word, and not the shape one below. Both sides of this line are read and

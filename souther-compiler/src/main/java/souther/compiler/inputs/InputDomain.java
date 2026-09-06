@@ -1554,9 +1554,10 @@ public final class InputDomain {
             FilingCoordinate at = filedAt(path, each.at(), type, source);
             RuleCitation cited = RuleCitation.named(each.from());
             switch (measured) {
-                // Nothing chose, so what each of these leaves undecided is the end it places.
-                // Which values may stand there is what the rules say, and nothing about the choice
-                // of number touches it.
+                // No number answers for the position, so none of these ends has anywhere to go —
+                // the ones the choice was between and the ones that arrived at a position already
+                // undecided alike. Which values may stand there is what the rules say, and nothing
+                // about the choice of number touches it.
                 case MeasuredCoordinate.Undetermined _ -> out.boundaryUndetermined(each.from(),
                         cited, at, new BlockReason.CompetingCoordinates());
                 case MeasuredCoordinate.At it -> {
