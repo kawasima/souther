@@ -24,7 +24,7 @@ import java.util.List;
  * <p>The parts are not discovered, numbered, merged or split here. They were issued where the clause
  * was split, and this recovers what each of them was read into.
  */
-sealed interface AuthoredShape {
+public sealed interface AuthoredShape {
 
     /** Two rules, written as one clause — with the node they were joined at, which is what a
      *  reading of the clause is written back into. */
@@ -58,13 +58,60 @@ sealed interface AuthoredShape {
      * ruled out there), and what an author is answerable for is the parts; both come out of the one
      * reading, which is why this recovers them from it rather than reading them apart.
      */
-    default List<Clauses.StatedPart> onto(Core read, RuleRef rule) {
+    default List<Clauses.StatedPart> onto(Core read, RuleRef.Invariant rule) {
         List<Clauses.StatedPart> out = new ArrayList<>();
         found(read, rule, out);
         return List.copyOf(out);
     }
 
-    private void found(Core read, RuleRef rule, List<Clauses.StatedPart> out) {
+    /**
+     * One part of a clause with the tree an expansion made of it.
+     *
+     * <p>What a reader of an expanded clause wants of a part: the name it was issued under, and the
+     * tree to read. Both come from the shape, so a reader has nothing to split and nothing to
+     * number.
+     */
+    record Written(PartId id, Hir.Expr read) {
+
+        public Written {
+            if (id == null || read == null) {
+                throw new IllegalArgumentException("a part of an expanded clause is named and is a"
+                        + " tree");
+            }
+        }
+    }
+
+    /**
+     * Each part of the clause with the subtree of the expanded {@code read} it became, as a part of
+     * {@code rule}.
+     *
+     * <p>The same recovery {@link #onto(Core, RuleRef.Invariant)} does of a reading, done of the
+     * tree an expansion left. What a helper's body joined stands under a binding there, so a reader
+     * splitting that tree for itself would find parts this shape never issued — which is why the
+     * shape drives the descent here as well.
+     */
+    default List<Written> onto(Hir.Expr read, RuleRef.Invariant rule) {
+        List<Written> out = new ArrayList<>();
+        wrote(read, rule, out);
+        return List.copyOf(out);
+    }
+
+    private void wrote(Hir.Expr read, RuleRef.Invariant rule, List<Written> out) {
+        switch (this) {
+            case One it -> out.add(new Written(it.part().idFor(rule), read));
+            case Both it -> {
+                if (!(read instanceof Hir.Binary bin)) {
+                    throw new IllegalStateException("an author wrote two rules where the expansion"
+                            + " left one " + read.getClass().getSimpleName() + ", so the clause was"
+                            + " written into a shape it was not read in");
+                }
+                it.left().wrote(bin.left(), rule, out);
+                it.right().wrote(bin.right(), rule, out);
+            }
+        }
+    }
+
+    private void found(Core read, RuleRef.Invariant rule, List<Clauses.StatedPart> out) {
         switch (this) {
             case One it -> out.add(new Clauses.StatedPart(it.part().idFor(rule), read));
             case Both it -> {

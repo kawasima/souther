@@ -1247,24 +1247,10 @@ public final class FieldDomains {
      */
     private static java.util.Comparator<AboutOneCoordinate> inWrittenOrder() {
         return java.util.Comparator
-                .comparing((AboutOneCoordinate each) -> clauseOf(each.part()).id().declaredOn())
-                .thenComparingInt(each -> clauseOf(each.part()).id().ordinal())
+                .comparing((AboutOneCoordinate each) -> each.part().rule().clause().id()
+                        .declaredOn())
+                .thenComparingInt(each -> each.part().rule().clause().id().ordinal())
                 .thenComparingInt(each -> each.part().ordinal());
-    }
-
-    /**
-     * The clause {@code part} is a part of.
-     *
-     * <p>Every part these readings hold is a part of a clause a declaration wrote — that is what
-     * this file reads — so a part of anything else arriving here is this compiler disagreeing with
-     * itself rather than a case to answer.
-     */
-    private static Clause.Ref clauseOf(PartId part) {
-        if (part.rule() instanceof RuleRef.Invariant it) {
-            return it.clause();
-        }
-        throw new IllegalStateException("the ends a declaration's rules place are read here, and "
-                + part.rule() + " is not one of its clauses");
     }
 
     /** The ends the rules place on the coordinates at {@code path}, in the order they were read. */

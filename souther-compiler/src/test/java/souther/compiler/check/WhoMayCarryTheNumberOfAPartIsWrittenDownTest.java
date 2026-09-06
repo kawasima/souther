@@ -40,20 +40,17 @@ class WhoMayCarryTheNumberOfAPartIsWrittenDownTest {
     private record Held(String who, String why) { }
 
     private static final List<Held> MAY_HOLD = List.of(
-            new Held("souther.compiler.check.DeclaredBorders.Key.conjunct",
-                    "which line of a declaration's clause a report reads its own words for. What"
-                            + " reaches it from the report side is a line of the model, which"
-                            + " carries a number rather than a part's name, so a key built from"
-                            + " the part that drew the line and one built from a line have to be"
-                            + " one key"),
-            new Held("souther.compiler.partition.AuthoredLine.conjunct",
-                    "which line of a rule this is, counted over the conjuncts an author wrote for a"
-                            + " declaration's clause and over the comparisons a body's rule states."
-                            + " One field for two questions, which is why it is a number here and"
-                            + " not a part's name"),
+            new Held("souther.compiler.check.PartId.ordinal",
+                    "the pair itself, made where a clause is split and carried from there. This is"
+                            + " the name everything downstream holds instead of a number, so it is"
+                            + " the one place the two stand together"),
+            new Held("souther.compiler.partition.WhichLine.OfAComparison.line",
+                    "which of the comparisons a rule written in a body states this line is. Not a"
+                            + " part of anything: such a rule is one rule and is not written in the"
+                            + " parts an author joined, so what counts its lines is the reading of"
+                            + " comparisons and there is no name to carry"),
             new Held("souther.compiler.partition.LineOrigin.EnsuresOrigin.conjunct",
-                    "which line of the clause a behavior's rule drew, counted over the comparisons"
-                            + " it states rather than over the parts its author wrote"));
+                    "the same count, where a behavior's clause drew the line"));
 
     @Test
     void aNumberBesideARuleIsWrittenDownWithWhatItCounts() throws IOException {
@@ -75,7 +72,13 @@ class WhoMayCarryTheNumberOfAPartIsWrittenDownTest {
         return out;
     }
 
-    /** Every field of the compiler named for a clause's conjunct that holds a number. */
+    /**
+     * Every number this compiler holds beside a rule.
+     *
+     * <p>Asked of what a state holds and not of what a field is called. A number beside a rule is
+     * the pair whatever it is named, and a check that looked for the word would be satisfied by
+     * renaming the field.
+     */
     private static Map<String, String> numbersHeldBesideARule() throws IOException {
         Map<String, String> found = new TreeMap<>();
         int read = 0;
@@ -83,10 +86,17 @@ class WhoMayCarryTheNumberOfAPartIsWrittenDownTest {
             ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
             read++;
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
+            boolean holdsARule = false;
             for (FieldModel field : model.fields()) {
-                if (field.fieldName().stringValue().equals("conjunct")
-                        && field.fieldType().stringValue().equals("I")) {
-                    found.put(from + ".conjunct", "");
+                holdsARule |= field.fieldType().stringValue()
+                        .startsWith("Lsouther/compiler/check/RuleRef");
+            }
+            if (!holdsARule) {
+                continue;
+            }
+            for (FieldModel field : model.fields()) {
+                if (field.fieldType().stringValue().equals("I")) {
+                    found.put(from + "." + field.fieldName().stringValue(), "");
                 }
             }
         }

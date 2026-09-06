@@ -34,15 +34,8 @@ import java.util.Map;
 public record DeclaredBorders(souther.compiler.diag.Citation at,
                               Map<Key, NumberAt<RuleKey>> forms) {
 
-    /**
-     * Which authored line: the clause, and which of its parts placed the end.
-     *
-     * <p>The number and not the name the split issued. What reaches this key from the report side
-     * is a line of the model, and a line carries a number rather than a part's name — so a key
-     * built from the part that drew the line and a key built from a line have to be one key, and a
-     * number is what both of them have.
-     */
-    public record Key(RuleRef.Invariant rule, int conjunct) {}
+    /** Which authored line: the part of the clause that placed the end. */
+    public record Key(PartId part) {}
 
     public DeclaredBorders {
         if (at == null) {
@@ -74,9 +67,8 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
             // A clause reaching this declaration through a spread is written on another one and is
             // that one's to name, the way a line is named by the rule that drew it (ADR-0090). Its
             // own reading answers for it.
-            if (placed.part().rule() instanceof RuleRef.Invariant rule
-                    && rule.clause().id().declaredOn().equals(declaredOn)) {
-                forms.put(new Key(rule, placed.part().ordinal()), placed.at());
+            if (placed.part().rule().clause().id().declaredOn().equals(declaredOn)) {
+                forms.put(new Key(placed.part()), placed.at());
             }
         }
         return new DeclaredBorders(at, forms);
@@ -90,17 +82,7 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
      * line but the rule's own name.
      */
     public NumberAt<RuleKey> at(PartId part) {
-        return at(keyOf(part));
-    }
-
-    /** The key {@code part} names, for a caller holding the name the split issued rather than a
-     *  line of the model. */
-    private static Key keyOf(PartId part) {
-        if (part.rule() instanceof RuleRef.Invariant it) {
-            return new Key(it, part.ordinal());
-        }
-        throw new IllegalStateException("a declaration's own clause names a line here, and "
-                + part.rule() + " is not one");
+        return at(new Key(part));
     }
 
     /** The same, for a caller holding the key the rule handed it
@@ -132,6 +114,6 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
 
     /** The same, for a caller holding the part that drew the line. */
     public String nameOf(PartId part) {
-        return nameOf(keyOf(part));
+        return nameOf(new Key(part));
     }
 }

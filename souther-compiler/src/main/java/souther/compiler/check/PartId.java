@@ -19,10 +19,17 @@ package souther.compiler.check;
  * it stands among the parts of that clause and nothing else, so it means something only beside the
  * rule — two clauses each have a part numbered nought, and they are two parts.
  *
+ * <p><b>A clause of a declaration's invariant, and not any rule of the model.</b> Those are the
+ * clauses that are split into parts: a rule written in a body is a rule apiece, and the lines a
+ * behavior's rule draws are counted over the comparisons it states rather than over anything an
+ * author wrote as several. Written wider, every reader of a part had to narrow it again and say
+ * what it would do with a rule that cannot arrive — one decision, made in as many places as hold a
+ * part.
+ *
  * @param rule    the clause this is a part of, as a report names it
  * @param ordinal which of that clause's parts it is, counted from zero over all of them
  */
-public record PartId(RuleRef rule, int ordinal) {
+public record PartId(RuleRef.Invariant rule, int ordinal) {
 
     public PartId {
         if (rule == null) {

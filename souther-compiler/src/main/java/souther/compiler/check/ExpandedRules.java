@@ -1,6 +1,5 @@
 package souther.compiler.check;
 
-import souther.compiler.ast.Hir;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,16 +36,13 @@ public record ExpandedRules(List<TypeOps.Declared> reached, boolean everyRuleRea
      * <p>There is deliberately no accessor that hands over the clauses alone. Every way to them
      * says which obligation the reader is meeting: this one, or {@link #reached()} for a reader
      * that has already recorded what it did not get.
+     *
+     * <p>And the clauses as what was reached rather than as their trees, so that a reader holding
+     * one holds the shape its author wrote it in beside it. Handed the trees alone, a reader
+     * wanting the parts had to split one, and what a helper's body joined is a conjunction there.
      */
-    public Optional<List<Hir.InvariantClause>> whole() {
-        if (!everyRuleReached) {
-            return Optional.empty();
-        }
-        List<Hir.InvariantClause> out = new ArrayList<>();
-        for (TypeOps.Declared each : reached) {
-            out.add(each.clause());
-        }
-        return Optional.of(List.copyOf(out));
+    public Optional<List<TypeOps.Declared>> whole() {
+        return everyRuleReached ? Optional.of(reached) : Optional.empty();
     }
 
     /** These and {@code other}'s together, reaching everything only where both did. */

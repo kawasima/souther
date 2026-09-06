@@ -43,18 +43,8 @@ public record ClauseWithoutAnEnd(PartId part, Core read, TermPath at,
         }
     }
 
-    /**
-     * Which clause of which declaration this is a part of.
-     *
-     * <p>What is handed over here is a declaration's own clause, which is what this reading reads;
-     * a part of anything else arriving would be this compiler disagreeing with itself rather than a
-     * case to answer.
-     */
+    /** Which clause of which declaration this is a part of. */
     public RuleRef.Invariant rule() {
-        if (part.rule() instanceof RuleRef.Invariant it) {
-            return it;
-        }
-        throw new IllegalStateException("a declaration's own clause is handed over here, and "
-                + part.rule() + " is not one");
+        return part.rule();
     }
 }

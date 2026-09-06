@@ -56,11 +56,7 @@ record TypeGuarantee(Core clause, List<Clauses.StatedPart> written,
      * two.
      */
     RuleRef.Invariant rule() {
-        if (written.get(0).id().rule() instanceof RuleRef.Invariant it) {
-            return it;
-        }
-        throw new IllegalStateException("a declaration's own clause guarantees this, and "
-                + written.get(0).id().rule() + " is not one");
+        return written.get(0).id().rule();
     }
 
     /** What one part of a clause came to, beside the part it was read from. */

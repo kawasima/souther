@@ -50,6 +50,18 @@ sealed interface ClauseExpr {
      */
     List<Core> spelled();
 
+    /**
+     * Whether what this stands for is stated, or denied where it is not.
+     *
+     * <p>On every shape and not on the leaves alone. A denial is carried to the leaves, so a reader
+     * that walks down to them is never asked to work it out — but a reader that stops at a node and
+     * takes what is under it whole is asked exactly that, and the answer is here. Worked out from
+     * what a shape was spelled as instead, a reader would be reading the polarity off the nodes a
+     * restatement left, and a restatement that denies nothing looks the same there as one that
+     * does.
+     */
+    boolean positive();
+
     /** One part of no connective, stated where {@code positive} and denied where it is not. */
     record Leaf(List<Core> spelled, boolean positive) implements ClauseExpr {
 
@@ -68,10 +80,12 @@ sealed interface ClauseExpr {
      *
      * @param how what the connective composes, with the denial the tree was read under already
      *            applied: what is left holds no {@code not}, so a reader below asks this and never
-     *            the operator the clause was written with
+     *            the operator the clause was written with. What it composes and how the whole
+     *            stands are two answers: a choice denied composes both of its parts denied, so
+     *            {@code BOTH} beside {@code positive} being false is a choice and not a conjunction
      */
-    record Joined(List<Core> spelled, ConditionJoin how, ClauseExpr left, ClauseExpr right)
-            implements ClauseExpr {
+    record Joined(List<Core> spelled, boolean positive, ConditionJoin how, ClauseExpr left,
+                  ClauseExpr right) implements ClauseExpr {
 
         public Joined {
             spelled = named(spelled);
@@ -100,7 +114,8 @@ sealed interface ClauseExpr {
      * @param binding the binding as the tree holds it, which the fold hands to {@link ClauseScope}
      *                — the shape says a binding stands here, and what it means is settled elsewhere
      */
-    record Scoped(List<Core> spelled, Core.LetIn binding, ClauseExpr body) implements ClauseExpr {
+    record Scoped(List<Core> spelled, boolean positive, Core.LetIn binding, ClauseExpr body)
+            implements ClauseExpr {
 
         public Scoped {
             spelled = named(spelled);
@@ -132,7 +147,7 @@ sealed interface ClauseExpr {
         // something in. Everything below — a denial, a connective, a leaf — is then the same rule
         // written out, and a helper whose body denies or joins is this one rule and not another.
         if (clause instanceof Core.LetIn let) {
-            return new Scoped(spelled, let, of(let.body(), positive, List.of()));
+            return new Scoped(spelled, positive, let, of(let.body(), positive, List.of()));
         }
         Conditions.Restated under = Conditions.restated(clause);
         if (under != null) {
@@ -145,7 +160,7 @@ sealed interface ClauseExpr {
             ConditionJoin joined = ConditionJoin.of(bin.op()).map(one -> one.under(positive))
                     .orElse(null);
             if (joined != null) {
-                return new Joined(spelled, joined, of(bin.left(), positive, List.of()),
+                return new Joined(spelled, positive, joined, of(bin.left(), positive, List.of()),
                         of(bin.right(), positive, List.of()));
             }
         }

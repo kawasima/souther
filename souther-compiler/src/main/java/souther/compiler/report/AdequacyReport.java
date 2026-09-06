@@ -2545,11 +2545,22 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         }
     }
 
-    /** One line of the model, by the rule that drew it and which of that rule's lines it is. */
+    /**
+     * One line of the model, by the rule that drew it and which of that rule's lines it is.
+     *
+     * <p>Which of the rule's lines is written under one word and counted two ways, because that is
+     * what it is: a part its author wrote where a declaration drew it, and one of the comparisons
+     * the rule states where a body did. Written as two words instead, a reader of the document
+     * would be told which counting was used by which key is present, and every reader of a line
+     * would have to know both.
+     */
     private static void authoredLineId(ObjectNode into,
                                        AuthoredLine line) {
-        ruleId(into.putObject("rule"), line.rule());
-        into.put("conjunct", line.conjunct());
+        ruleId(into.putObject("rule"), line.which().rule());
+        into.put("conjunct", switch (line.which()) {
+            case souther.compiler.partition.WhichLine.OfAPart it -> it.part().ordinal();
+            case souther.compiler.partition.WhichLine.OfAComparison it -> it.line();
+        });
         ObjectNode facts = into.putObject("facts");
         // Which side of the line the value it wrote belongs to is an order's own answer. A rule
         // that names a value orders nothing either side of it, so a document writing a side there

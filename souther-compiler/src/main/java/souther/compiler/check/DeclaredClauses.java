@@ -101,10 +101,12 @@ public final class DeclaredClauses {
         // spread it, and two clauses of one declaration were one rule.
         for (TypeOps.Declared declared : TypeOps.expandedInvariants(
                 named, source.symbols(), source.invariants()).reached()) {
-            RuleRef.Invariant rule = new RuleRef.Invariant(Clause.Ref.of(declared));
-            for (ClauseHelpers.AuthoredPart each
-                    : ClauseHelpers.conjunctsOf(declared.clause().expr())) {
-                out.add(new Conjunct(each.idFor(rule), each.written()));
+            // The parts the clause was split into, with the tree the expansion made of each. Split
+            // again here, this would be a second answer to which parts a clause has — taken off a
+            // tree an expansion left, where what a helper's body joined is as much a conjunction as
+            // what the author wrote.
+            for (AuthoredShape.Written each : declared.parts()) {
+                out.add(new Conjunct(each.id(), each.read()));
             }
         }
         return out;

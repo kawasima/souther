@@ -73,7 +73,7 @@ public record BorderObligationId(AuthoredLine line, Level at) {
      * line does not reach past this into the line and come back holding something that groups.
      */
     public souther.compiler.check.RuleRef provenance() {
-        return line.rule();
+        return line.which().rule();
     }
 
     /** What a report calls this line — the author's word for the rule where they wrote one and what

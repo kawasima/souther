@@ -96,12 +96,9 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
         }
 
         /** Which clause of which declaration drew it. */
+        @Override
         public RuleRef.Invariant rule() {
-            if (part.rule() instanceof RuleRef.Invariant it) {
-                return it;
-            }
-            throw new IllegalStateException("a declaration's own clause draws this line, and "
-                    + part.rule() + " is not one");
+            return part.rule();
         }
     }
 
@@ -463,20 +460,24 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      */
     default AuthoredLine authoredLine() {
         return switch (this) {
+            // The part that drew it, which is what named the line where a declaration wrote it.
             case InvariantOrigin i ->
-                    new AuthoredLine(i.rule(), i.part().ordinal(), lineFacts(), List.of());
+                    new AuthoredLine(new WhichLine.OfAPart(i.part()), lineFacts(), List.of());
             // One line, so the zeroth of the one. A comparison is a rule apiece — a condition
             // holding three comparisons is three rules — so there is no second line of it to tell
             // this one from.
-            case ComparisonOrigin g -> new AuthoredLine(g.rule(), 0, lineFacts(), List.of());
+            case ComparisonOrigin g ->
+                    new AuthoredLine(new WhichLine.OfAComparison(g.rule(), 0), lineFacts(),
+                            List.of());
             case EnsuresOrigin e ->
-                    new AuthoredLine(e.rule(), e.conjunct(), lineFacts(), List.of());
+                    new AuthoredLine(new WhichLine.OfAComparison(e.rule(), e.conjunct()),
+                            lineFacts(), List.of());
             // The bound's line, said to have been taken in. What the narrowing adds is about the
             // end and not about the rule, so the rule comes back the same and this is kept beside
             // it.
             case NarrowedOrigin n -> {
                 AuthoredLine bound = n.bound().authoredLine();
-                yield new AuthoredLine(bound.rule(), bound.conjunct(), bound.facts(), n.within());
+                yield new AuthoredLine(bound.which(), bound.facts(), n.within());
             }
         };
     }

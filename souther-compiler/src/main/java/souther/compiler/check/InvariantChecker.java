@@ -1194,11 +1194,7 @@ public final class InvariantChecker {
          * about two.
          */
         RuleRef.Invariant from() {
-            if (parts.get(0).id().rule() instanceof RuleRef.Invariant it) {
-                return it;
-            }
-            throw new IllegalStateException("a declaration's own clause reaches a value here, and "
-                    + parts.get(0).id().rule() + " is not one");
+            return parts.get(0).id().rule();
         }
     }
 
@@ -1700,10 +1696,15 @@ public final class InvariantChecker {
         // worth — the parts are the author's and the rules under one of them are the language's.
         //
         // Asked of the shape and never of the operator, so that what a connective composes is
-        // recognised in one place ({@link ClauseExpr}). A denial is left alone: what is under one
-        // states the opposite of what it reads as, and the reading below has no word for that.
+        // recognised in one place ({@link ClauseExpr}).
+        //
+        // Stated, and composing both. What a connective composes and how the whole of it stands are
+        // two answers, and both are wanted here: a choice denied composes both of its parts denied,
+        // so a conjunction is what is left when the shape says both and says it is stated. What is
+        // under a denial states the opposite of what it reads as, and the reading below has no word
+        // for that.
         if (ClauseExpr.of(clause, true) instanceof ClauseExpr.Joined joined
-                && joined.how() == ConditionJoin.BOTH && joined.spelled().size() == 1) {
+                && joined.how() == ConditionJoin.BOTH && joined.positive()) {
             statedIn(joined.left(), from, part, at, byName, out, noLines, withoutAnEnd, naming,
                     namingTheStrings, narrowers, raised, took, typeAt, parts, raisedByPart,
                     standing, withoutParts);

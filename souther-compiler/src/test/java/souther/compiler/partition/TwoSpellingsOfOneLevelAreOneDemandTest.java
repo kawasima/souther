@@ -142,10 +142,12 @@ class TwoSpellingsOfOneLevelAreOneDemandTest {
     /** One clause of one declaration, which is only an identity here. */
     private static AuthoredLine aLine() {
         return new AuthoredLine(
-                new RuleRef.Invariant(new Clause.Ref(
-                        new Clause.Id(TypeSymbols.declared(new TypeKey("example.probe", "Amount")),
-                                0),
-                        Optional.of(new ClauseName("floor")))),
-                0, new LineFacts(new ComparisonClaim.Cut(Towards.ABOVE, true)), List.of());
+                new WhichLine.OfAPart(new souther.compiler.check.PartId(
+                        new RuleRef.Invariant(new Clause.Ref(
+                                new Clause.Id(
+                                        TypeSymbols.declared(
+                                                new TypeKey("example.probe", "Amount")), 0),
+                                Optional.of(new ClauseName("floor")))), 0)),
+                new LineFacts(new ComparisonClaim.Cut(Towards.ABOVE, true)), List.of());
     }
 }

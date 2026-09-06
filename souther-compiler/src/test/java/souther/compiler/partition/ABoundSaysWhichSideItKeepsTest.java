@@ -82,7 +82,7 @@ class ABoundSaysWhichSideItKeepsTest {
                 "which side of the line the value it stops at is on is what the two disagree about");
         assertNotEquals(least.authoredLine(), most.authoredLine(),
                 "so they are two lines of the model, and two rows to write");
-        assertEquals(least.authoredLine().rule(), most.authoredLine().rule(),
+        assertEquals(least.authoredLine().which().rule(), most.authoredLine().which().rule(),
                 "one clause placed both, which is what provenance answers");
     }
 

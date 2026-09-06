@@ -1,11 +1,11 @@
 package souther.compiler.codegen;
 
+import souther.compiler.check.AuthoredShape;
 import souther.compiler.check.Boundary;
 import souther.compiler.check.Elaborator;
 import souther.compiler.check.Lower;
 import souther.compiler.check.Derived;
 import souther.compiler.check.DerivedSymbols;
-import souther.compiler.check.ClauseHelpers;
 import souther.compiler.ast.Hir;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.MapKeyRepresentation;
@@ -668,7 +668,7 @@ final class CodecGen {
         if (!data.newtype()) {
             return Invariants.NONE;   // an object's invariant has no single value to constrain
         }
-        List<Hir.InvariantClause> declared = dischargeForm(data);
+        List<TypeOps.Declared> declared = dischargeForm(data);
         if (declared.isEmpty()) {
             return Invariants.NONE;
         }
@@ -680,10 +680,12 @@ final class CodecGen {
             boolean refine = true;
             if (!refining) {
                 refine = false;
-                for (ClauseHelpers.AuthoredPart conjunct
-                        : ClauseHelpers.conjunctsOf(declared.get(i).expr())) {
+                // The parts the clause was split into, with the tree the expansion made of each.
+                // Split again here, this would be a second answer to which parts a clause has,
+                // taken off a tree an expansion left.
+                for (AuthoredShape.Written conjunct : declared.get(i).parts()) {
                     Optional<InvariantConstraints.Constraint> c =
-                            InvariantConstraints.against(symbols).of(conjunct.written(), base);
+                            InvariantConstraints.against(symbols).of(conjunct.read(), base);
                     if (c.isPresent()) {
                         mapped.add(c.get());
                     } else {
@@ -692,7 +694,8 @@ final class CodecGen {
                 }
             }
             refining |= refine;
-            out.add(new ClauseEmit(i, declared.get(i).name(), List.copyOf(mapped), refine));
+            out.add(new ClauseEmit(i, declared.get(i).clause().name(), List.copyOf(mapped),
+                    refine));
         }
         return new Invariants(out);
     }
@@ -719,7 +722,7 @@ final class CodecGen {
      * is the emitter having run past its own precondition, and the answer at it is the difference
      * between a boundary that holds and one that quietly does not.
      */
-    private List<Hir.InvariantClause> dischargeForm(Hir.Data data) {
+    private List<TypeOps.Declared> dischargeForm(Hir.Data data) {
         return TypeOps.expandedInvariants(data.declares(), symbols,
                 ctx.dischargeInvariants()).whole()
                 .orElseThrow(() -> new RulesWereNotAllRead(data.declares().name()));

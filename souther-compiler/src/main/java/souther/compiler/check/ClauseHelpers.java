@@ -283,7 +283,7 @@ public final class ClauseHelpers {
         }
 
         /** What this part is called as a part of {@code rule}. */
-        public PartId idFor(RuleRef rule) {
+        public PartId idFor(RuleRef.Invariant rule) {
             return new PartId(rule, ordinal);
         }
 
@@ -313,9 +313,17 @@ public final class ClauseHelpers {
         }
     }
 
-    /** The conjuncts of a clause, in the order they are written — what a reader sees as separate
-     * clauses, each with the place it holds among them. */
-    public static List<AuthoredPart> conjunctsOf(Hir.Expr e) {
+    /**
+     * The conjuncts of a clause, in the order they are written — what a reader sees as separate
+     * clauses, each with the place it holds among them.
+     *
+     * <p>For the expansions that split a clause before expanding it, and for nobody else. A reader
+     * that wants the parts of a clause asks the clause ({@code TypeOps.Declared.parts}): splitting
+     * a tree is how the parts are made, and a tree an expansion has already been over holds
+     * conjunctions the author did not write, so a second split of one is a second answer to which
+     * parts there are.
+     */
+    static List<AuthoredPart> conjunctsOf(Hir.Expr e) {
         List<AuthoredPart> out = new ArrayList<>();
         parts(shapeOf(e), out);
         return List.copyOf(out);

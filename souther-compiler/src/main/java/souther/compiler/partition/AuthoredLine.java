@@ -36,11 +36,9 @@ import java.util.Set;
  * of the model, so an identity read off it would be worked back out of what the rules happened to
  * leave rather than read from what this rule says.
  *
- * @param rule           which rule of the model drew it
- * @param conjunct       which of that rule's lines this is, counted over the conjuncts the author
- *                       wrote. Zero for a comparison, which is a rule apiece: a condition holding
- *                       three of them is three rules, so there is no second line of one to tell
- *                       this from
+ * @param which          which of that rule's lines this is, said as what counts them: a part of a
+ *                       declaration's clause, or one of the comparisons a rule written in a body
+ *                       states ({@link WhichLine})
  * @param facts          what the rule says about its own line
  * @param narrowedWithin the declarations that took a bound's end in, kept so that a narrowed line
  *                       stays apart from the bare one it narrows: {@code MinuteOfDay}'s maximum is
@@ -49,27 +47,23 @@ import java.util.Set;
  *                       drawn alone. These are also who owes the line, which the bound is not once
  *                       something took its end in ({@link #obligationOwners})
  */
-public record AuthoredLine(RuleRef rule, int conjunct, LineFacts facts,
+public record AuthoredLine(WhichLine which, LineFacts facts,
                            List<TypeSymbol.AtModule> narrowedWithin) {
 
     public AuthoredLine {
-        if (rule == null || facts == null) {
+        if (which == null || facts == null) {
             throw new IllegalArgumentException("a line of the model is some rule's, and says what it"
-                    + " is: " + rule + " " + facts);
-        }
-        if (conjunct < 0) {
-            throw new IllegalArgumentException(
-                    "a conjunct of a rule is counted from zero: " + conjunct);
+                    + " is: " + which + " " + facts);
         }
         narrowedWithin = List.copyOf(narrowedWithin);
         // An end is something a clause of a `data` places, so those are the only lines a declaration
         // can take in. Said here rather than left to whoever reads the pair: a line answering that
         // a body's rule was narrowed has an owner that owes a row for a comparison, and every reader
         // of it would be deciding what to do about a line the language cannot write.
-        if (!narrowedWithin.isEmpty() && !(rule instanceof RuleRef.Invariant)) {
+        if (!narrowedWithin.isEmpty() && !(which.rule() instanceof RuleRef.Invariant)) {
             throw new IllegalArgumentException(
-                    "a rule written in a body places no end for a declaration to take in: " + rule
-                            + " within " + narrowedWithin);
+                    "a rule written in a body places no end for a declaration to take in: "
+                            + which.rule() + " within " + narrowedWithin);
         }
         // One entry per declaration. Several of these are one answer about one end, so a
         // declaration written twice would be one owner counted twice — and what counts them is what
@@ -99,7 +93,7 @@ public record AuthoredLine(RuleRef rule, int conjunct, LineFacts facts,
      * word for a question only a caller writing a sentence has.
      */
     public String saidWithoutAPlace() {
-        return said(switch (rule) {
+        return said(switch (which.rule()) {
             case RuleRef.Named it -> it.citedName();
             case RuleRef.Written it -> "the " + it.whatItIs();
         });
@@ -147,7 +141,7 @@ public record AuthoredLine(RuleRef rule, int conjunct, LineFacts facts,
      * they are the ones who owe a row at it — which is {@link #obligationOwners} and not this.
      */
     public Optional<TypeSymbol> owedToTheDeclaration() {
-        return rule instanceof RuleRef.Invariant i
+        return which.rule() instanceof RuleRef.Invariant i
                 ? Optional.of(i.clause().id().declaredOn())
                 : Optional.empty();
     }
@@ -155,13 +149,14 @@ public record AuthoredLine(RuleRef rule, int conjunct, LineFacts facts,
     /**
      * Which authored line of a declaration this is, where it is a declaration's line.
      *
-     * <p>The clause and the number of the line, which together name one line the author wrote —
-     * what a report reads the declaration's own words for the line by
-     * ({@link souther.compiler.check.DeclaredBorders}).
+     * <p>The part that drew it, which is what a report reads the declaration's own words for the
+     * line by ({@link souther.compiler.check.DeclaredBorders}). Taken off the line rather than put
+     * together from a rule and a number: the part carries both, and a caller assembling the pair
+     * would be naming a part nobody issued.
      */
     public Optional<souther.compiler.check.DeclaredBorders.Key> declaredLine() {
-        return rule instanceof RuleRef.Invariant i
-                ? Optional.of(new souther.compiler.check.DeclaredBorders.Key(i, conjunct))
+        return which instanceof WhichLine.OfAPart it
+                ? Optional.of(new souther.compiler.check.DeclaredBorders.Key(it.part()))
                 : Optional.empty();
     }
 
@@ -190,7 +185,7 @@ public record AuthoredLine(RuleRef rule, int conjunct, LineFacts facts,
         if (!narrowedWithin.isEmpty()) {
             return narrowedWithin;
         }
-        return rule instanceof RuleRef.Invariant i
+        return which.rule() instanceof RuleRef.Invariant i
                 ? List.of(i.clause().id().declaredOn())
                 : List.of();
     }

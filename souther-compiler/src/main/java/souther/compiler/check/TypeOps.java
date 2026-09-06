@@ -1321,6 +1321,18 @@ public final class TypeOps {
         ClauseAsExpanded asExpanded() {
             return new ClauseAsExpanded(clause.expr(), standing);
         }
+
+        /**
+         * The parts its author wrote it in, each with the tree the expansion made of it.
+         *
+         * <p>Asked of the clause and not worked out from its tree. Which parts a clause has was
+         * settled where it was split, and the tree an expansion left holds conjunctions the author
+         * did not write — so a reader splitting it would be answering a question this already has
+         * an answer to, with a different answer.
+         */
+        public List<AuthoredShape.Written> parts() {
+            return shape.onto(clause.expr(), new RuleRef.Invariant(Clause.Ref.of(this)));
+        }
     }
 
     /**
