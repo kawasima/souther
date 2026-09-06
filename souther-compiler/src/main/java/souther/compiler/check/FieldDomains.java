@@ -9,7 +9,6 @@ import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.Rel;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.values.AdmissibleSet;
-import souther.compiler.values.ConjoinedAdmissibleValues;
 import souther.compiler.values.UnreadReason;
 import souther.compiler.values.ValueSet;
 
@@ -379,68 +378,14 @@ public final class FieldDomains {
                 out.put(field, bounds);
             }
         });
-        // Which values may stand at each name, resolved onto names for the same reason the bounds
-        // are. Every one of them and not only the fields: what a name wraps is at no name of its
-        // own, and it is what a reader of a newtype asks about.
-        Map<RuleKey, ValueSet> admitted = new LinkedHashMap<>();
-        Map<RuleKey, List<UnreadReason>> unread = new LinkedHashMap<>();
-        Set<RuleKey> notSeparated = new LinkedHashSet<>();
-        // Every name that answers to either subject. A number is called one thing by the interval
-        // algebra and another by everything else, and the two are filed as they are found — so a
-        // reading keyed by one of the maps would leave a name held only by the other answering
-        // from a default, which is the widest thing there is to say and is said about a place a
-        // clause may well have narrowed.
-        Set<RuleKey> written = new LinkedHashSet<>(seeded.keys().keySet());
-        written.addAll(seeded.atoms().keySet());
-        written.forEach(field -> {
-            ConjoinedAdmissibleValues<FactSubject> values = seeded.constraints().values();
-            // Both subjects the name answers to, since a number has one of each and a clause
-            // reaching it is filed under whichever the reading recognised. Both are about the same
-            // values, so what holds of it is what both leave.
-            ValueSet here = ValueSet.ANY;
-            List<UnreadReason> why = new ArrayList<>();
-            // Asked of each subject the name answers to, as the values are. What the reading could
-            // not hold together is a fact about the subjects a choice reached across, and a name
-            // outside them is left where it was.
-            //
-            // Not asked at all where the reading admits nothing. What it holds there is not the
-            // relation's projections — those are empty wherever the relation is — but where the
-            // arithmetic had got to when it learned that no value of this type exists, so whether
-            // it is exact is a question about a projection nobody is being shown. And the answer
-            // owed about such a declaration is that it has no values, which is said elsewhere and
-            // is not made truer by a note about how the values were held.
-            boolean separated = true;
-            for (FactSubject name : named(seeded, field)) {
-                // Put together by what put the reading together, since that is the answer being
-                // built: the two subjects are two ways one name's rules were filed, and what they
-                // leave between them is the machine that name pays for. Where it could not be
-                // built, the set widens and says so in the same breath — which is the list below.
-                souther.compiler.values.Allowance.Composed made =
-                        values.sets().meet(values.blockOf(name), here, values.at(name));
-                here = made.set();
-                if (made.gaveUp()) {
-                    why.add(UnreadReason.EXACT_VALUES_TOO_COSTLY);
-                }
-                separated = separated && values.projectionExactAt(name);
-                // Every one of them. Two subjects of one name are two ways the same rules were
-                // filed, and a rule filed under one of them is not the rule filed under the other:
-                // an ordering the interval algebra knows the place by and a pattern the values
-                // reading knows it by stop this reading in two ways, and each is a rule of the
-                // author's to act on. Said once here — a limit met under both names is one limit.
-                values.whyUnread(name).forEach(each -> {
-                    if (!why.contains(each)) {
-                        why.add(each);
-                    }
-                });
-            }
-            admitted.put(field, here);
-            if (!why.isEmpty()) {
-                unread.put(field, List.copyOf(why));
-            }
-            if (!separated) {
-                notSeparated.add(field);
-            }
-        });
+        // Which values may stand at each name is read off the reading and not worked out here. What
+        // a name admits is the sets of the subjects it is filed under met, which takes a machine —
+        // and the purse that pays for it is the one the clauses were read under, which is the
+        // reading's and stays there.
+        //
+        // Every one of them and not only the fields: what a name wraps is at no name of its own,
+        // and it is what a reader of a newtype asks about.
+        //
         // Resolved here rather than handed over as atoms. An atom is a name the seeding gave a shape
         // and means nothing once the reading that named it is gone, so a caller holding one could
         // only ask the domain it came from — which is this one, while it is still here.
@@ -459,16 +404,12 @@ public final class FieldDomains {
         // Every subject a name answers to, filed under the name, in the order the value declares
         // them. A proof that names a place is settled by this order: read off a domain's own map,
         // the place named would be the one whose clause was read first.
-        //
-        // The order is the walk's, and the walk's is the declaration's. `written` is the keys
-        // followed by the atoms, and that is the keys: an atom is named from a body key, so a
-        // name with an atom has a key and the second pass adds nothing. A size has no key and
-        // is not one of these — it is a number taken of what stands at a name.
         SequencedMap<FactSubject, RuleKey> placeOf = new LinkedHashMap<>();
-        written.forEach(field ->
-                named(seeded, field).forEach(term -> placeOf.putIfAbsent(term, field)));
-        return new FieldDomains(Map.copyOf(out), Map.copyOf(holds), Map.copyOf(admitted),
-                Map.copyOf(unread), Set.copyOf(notSeparated), seeded.reading().directs(), seeded.reading().noLines(),
+        seeded.written().forEach(field ->
+                seeded.named(field).forEach(term -> placeOf.putIfAbsent(term, field)));
+        return new FieldDomains(Map.copyOf(out), Map.copyOf(holds), Map.copyOf(seeded.admitted()),
+                Map.copyOf(seeded.unreadAt()), Set.copyOf(seeded.notSeparated()),
+                seeded.reading().directs(), seeded.reading().noLines(),
                 seeded.reading().withoutAnEnd(), seeded.reading().aboutOneCoordinate(),
                 seeded.reading().aboutTheStrings(),
                 reach.withoutParts(),
@@ -1665,21 +1606,6 @@ public final class FieldDomains {
             }
         }
         return true;
-    }
-
-    /** Both subjects the name {@code path} answers to. A number has one of each and everything
-     * else has the second, and a clause is filed under whichever the reading recognised. */
-    private static List<FactSubject> named(InvariantChecker.Seeded seeded, RuleKey path) {
-        List<FactSubject> names = new ArrayList<>();
-        FactSubject atom = seeded.atoms().get(path);
-        if (atom != null) {
-            names.add(atom);
-        }
-        FactSubject key = seeded.keys().get(path);
-        if (key != null) {
-            names.add(key);
-        }
-        return names;
     }
 
     /**
