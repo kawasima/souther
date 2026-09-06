@@ -1,6 +1,11 @@
 package souther.compiler.query;
 
+import souther.compiler.check.DeclarationReadings;
+import souther.compiler.check.LentReadings;
 import souther.compiler.source.SourceId;
+import souther.compiler.types.TypeKey;
+import souther.compiler.values.StringFacts;
+import souther.compiler.values.StringMachineAnswers;
 
 import java.util.ArrayDeque;
 import souther.compiler.diag.Diagnostic;
@@ -114,6 +119,44 @@ public final class Db {
 
     /** Bumped by every input that is given a value it did not already have. */
     private long revision;
+
+    /**
+     * Which world the answers in hand are of. What it counts is not how much has been asked but
+     * how often the outside changed, so two questions answered at one revision were answered of
+     * one world — which is what {@link #readings()} lends work across and nothing else here needs.
+     */
+    long revision() {
+        return revision;
+    }
+
+    /**
+     * What a reading of a declaration borrows from, for this store.
+     *
+     * <p>Beside the memos, as what runs the programs is, and for the same reason: it is not a value
+     * and this store never compares it. What it holds is work that has been done — the reading of a
+     * declaration that a question of this store already made — and handing that to the next reader
+     * is not an answer being kept. Which questions are recomputed is settled by the memos and by
+     * them alone, before this is asked anything.
+     *
+     * <p>One per store, made when it is first asked for, because sharing among readers is the whole
+     * of what it does and two of them would share nothing.
+     */
+    DeclarationReadings readings() {
+        if (readings == null) {
+            readings = new LentReadings(this::machinesOf, this::revision);
+        }
+        return readings;
+    }
+
+    private DeclarationReadings readings;
+
+    /** What this store answers about {@code declaration}'s string machines, for a reading to
+     *  borrow — nothing, where it has no answer for the declaration at all. */
+    private StringMachineAnswers machinesOf(TypeKey declaration) {
+        Answer<StringFacts> facts = ask(new Machines.OfDeclaration(declaration));
+        return facts.present()
+                ? StringMachineAnswers.borrowing(facts.value()) : StringMachineAnswers.NONE;
+    }
 
     private final Map<Key<?>, Memo> memos = new HashMap<>();
     /** The keys being answered right now, outermost first — the chain a cycle is found on. */

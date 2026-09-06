@@ -146,13 +146,13 @@ public sealed interface Rules {
      * @param named the declaration the value is read under, or null where the type names none
      */
     static Rules of(TypeSymbol named, RuleReadingSource source, ReadingPolicy policy) {
-        return of(named, source, policy, StringMachineLookup.NONE);
+        return of(named, source, policy, DeclarationReadings.NONE);
     }
 
     /** The same, asking {@code machines} for what somebody has already made of the string rules
      *  before building any of it. */
     static Rules of(TypeSymbol named, RuleReadingSource source, ReadingPolicy policy,
-                    StringMachineLookup machines) {
+                    DeclarationReadings machines) {
         if (named == null) {
             return new NoneWritten();
         }
@@ -182,12 +182,12 @@ public sealed interface Rules {
 
     /** The same, for a value whose type may name no declaration at all. */
     static Rules of(Type type, RuleReadingSource source, ReadingPolicy policy) {
-        return of(type, source, policy, StringMachineLookup.NONE);
+        return of(type, source, policy, DeclarationReadings.NONE);
     }
 
     /** The same, asking {@code machines} first. */
     static Rules of(Type type, RuleReadingSource source, ReadingPolicy policy,
-                    StringMachineLookup machines) {
+                    DeclarationReadings machines) {
         return of(type instanceof Type.Ref ref ? ref.name() : null, source, policy, machines);
     }
 }

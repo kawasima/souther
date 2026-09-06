@@ -221,7 +221,7 @@ public final class InvariantChecker {
      * declaration with no rules, which is the same empty list and the opposite fact.
      */
     public record Source(Hir.Expr body, ExpandedClauseLookup invariants,
-                         StringMachineLookup machines,
+                         DeclarationReadings machines,
                          Map<ValueName.Behavior, StatedContract> contracts) {
 
         public Source {
@@ -270,13 +270,13 @@ public final class InvariantChecker {
     private final List<Diagnostic> warnings = new ArrayList<>();
 
     private InvariantChecker(Symbols symbols,
-                             ExpandedClauseLookup dischargeInvariants, StringMachineLookup machines,
+                             ExpandedClauseLookup dischargeInvariants, DeclarationReadings machines,
                              ReadingPolicy policy) {
         this(symbols, dischargeInvariants, machines, Map.of(), policy);
     }
 
     private InvariantChecker(Symbols symbols,
-                             ExpandedClauseLookup dischargeInvariants, StringMachineLookup machines,
+                             ExpandedClauseLookup dischargeInvariants, DeclarationReadings machines,
                              Map<ValueName.Behavior, StatedContract> contracts,
                              ReadingPolicy policy) {
         // Where the answers about a declaration's string machines are asked for, for every
@@ -302,7 +302,7 @@ public final class InvariantChecker {
                                                TypeSymbol.AtModule named,
                                                RuleReadingSource source, ReadingPolicy policy) {
         InvariantChecker c = new InvariantChecker(source.symbols(), source.invariants(),
-                StringMachineLookup.NONE, policy);
+                DeclarationReadings.NONE, policy);
         // Read over the declaration's own fields, each standing for itself: a construction hands one
         // value per field, so a clause naming a field names something wherever it is built. These
         // stand for a value rather than holding one, so they are entered as locations and nothing is
@@ -351,7 +351,7 @@ public final class InvariantChecker {
                                         Denotations locations, RuleReadingSource source,
                                         ReadingPolicy policy, String describing) {
         return new InvariantChecker(source.symbols(), source.invariants(),
-                StringMachineLookup.NONE, policy)
+                DeclarationReadings.NONE, policy)
                 .capabilityOf(conjunct.stated(), conjunct.at(), locations, describing);
     }
 
@@ -566,6 +566,19 @@ public final class InvariantChecker {
         static final Reach EVERYTHING =
                 new Reach(RulesLeftOut.NONE, PartsLeftOut.NONE, _ -> false);
 
+        /**
+         * Whether this reads the declaration whole: every rule it wrote, at every name it reaches.
+         *
+         * <p>Asked here rather than compared where it matters, because what a reader wants to know
+         * is whether the reading it is about to ask for is the declaration's own — and a reader
+         * that wrote the comparison out would be deciding what that means again wherever it wrote
+         * it. {@link #stoppingAt} is what keeps the answer true of a reach built from an empty set,
+         * which is a reading that stops at nobody however it was asked for.
+         */
+        boolean everything() {
+            return this == EVERYTHING;
+        }
+
         /** Every rule but the ones {@code these} names wrote. */
         static Reach withoutClausesOf(java.util.function.Predicate<TypeSymbol> these) {
             return new Reach(RulesLeftOut.writtenOn(these), PartsLeftOut.NONE, _ -> false);
@@ -583,10 +596,19 @@ public final class InvariantChecker {
             return new Reach(RulesLeftOut.NONE, PartsLeftOut.without(parts), _ -> false);
         }
 
-        /** Every rule that is not reached through one of {@code these}, they being supposed to hold
-         * values whatever is written under them. */
-        static Reach stoppingAt(java.util.function.Predicate<TypeSymbol> these) {
-            return new Reach(RulesLeftOut.NONE, PartsLeftOut.NONE, these);
+        /**
+         * Every rule that is not reached through one of {@code these}, they being supposed to hold
+         * values whatever is written under them.
+         *
+         * <p>A set and not a test of one. Supposing nothing is reading the declaration whole, and
+         * said as a test that answers no it is a reading nobody can see is that one: a caller
+         * holding it would read the declaration again for want of a way to ask. So what is supposed
+         * is handed over as what it is, and an empty one is {@link #EVERYTHING}.
+         */
+        static Reach stoppingAt(java.util.Set<TypeSymbol> these) {
+            java.util.Set<TypeSymbol> supposed = java.util.Set.copyOf(these);
+            return supposed.isEmpty() ? EVERYTHING
+                    : new Reach(RulesLeftOut.NONE, PartsLeftOut.NONE, supposed::contains);
         }
     }
 
@@ -602,7 +624,7 @@ public final class InvariantChecker {
     /** The same, asking {@code machines} for what somebody has already made of the declaration's
      *  string rules before building any of it. */
     static Seeded seedFields(TypeSymbol.AtModule named, RuleReadingSource source,
-                             ReadingPolicy policy, StringMachineLookup machines) {
+                             ReadingPolicy policy, DeclarationReadings machines) {
         return seedFields(named, source, policy, Map.of(), Reach.EVERYTHING, machines);
     }
 
@@ -631,17 +653,81 @@ public final class InvariantChecker {
     static Seeded seedFields(TypeSymbol.AtModule named, RuleReadingSource source,
                              ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled,
                              Reach reach) {
-        return seedFields(named, source, policy, settled, reach, StringMachineLookup.NONE);
+        return seedFields(named, source, policy, settled, reach, DeclarationReadings.NONE);
     }
 
-    /** The same, asking {@code machines} first. */
+    /**
+     * The same, asking {@code readings} first — for the canonical reading of the declaration where
+     * this is one, and for its string machines in any case.
+     *
+     * <p>The canonical reading is the declaration's rules read whole: nothing settled at a value,
+     * nothing left out at any name it reaches. Every question that reaches the declaration and has
+     * nothing of its own to suppose asks for that one reading, and there is nothing to tell two of
+     * them apart — the same declaration, the same world, the same terms. So the first is made and
+     * the rest are lent it, for as long as the world it was read from is the one it was read from,
+     * which is what {@code readings} is answering for.
+     *
+     * <p>A reading with something settled or something left out is not that reading and is made
+     * here every time. There is no lending to arrange: a counterfactual is asked for by one reader
+     * about one end, and the next reader's counterfactual is about another.
+     */
     static Seeded seedFields(TypeSymbol.AtModule named, RuleReadingSource source,
                              ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled,
-                             Reach reach, StringMachineLookup machines) {
+                             Reach reach, DeclarationReadings readings) {
+        // What the declaration's string rules came to, asked for before anything else. Where a store
+        // is answering, making that answer is what makes the declaration's canonical reading — so a
+        // borrower asks for the machines and then looks for the reading, rather than reading for
+        // itself and standing a second reading beside the answer's.
+        StringMachineAnswers answers = readings.of(named.key());
+        if (!settled.isEmpty() || !reach.everything()) {
+            return seedFieldsFresh(named, source, policy, settled, reach, readings, answers);
+        }
+        Seeded lent = readings.seeded(named.key(), policy);
+        if (lent != null) {
+            return lent;
+        }
+        Seeded made = seedFieldsFresh(named, source, policy, settled, reach, readings, answers);
+        readings.made(named.key(), policy, made);
+        return made;
+    }
+
+    /**
+     * How many readings of a declaration have been made, for a test holding a reader to when it
+     * reads.
+     *
+     * <p>Counted rather than timed. What a caller is held to is that fixing a number reads nothing,
+     * that asking a question reads once, and that a second asker of the same declaration reads not
+     * at all — which is a shape and not a speed, and a measurement of the speed would pass on an
+     * implementation that had the shape wrong.
+     *
+     * <p>Counted where a reading is made and not where one is asked for. The two parted when a
+     * reading came to be lendable: a borrower asks and does not read, and a count taken at the
+     * asking would say the sharing never happened.
+     */
+    public static long readingsMade() {
+        return READINGS.get();
+    }
+
+    private static final java.util.concurrent.atomic.AtomicLong READINGS =
+            new java.util.concurrent.atomic.AtomicLong();
+
+    /**
+     * The reading itself, made here and nowhere else.
+     *
+     * <p>What {@link #seedFields} does when it has nothing to lend. Separate from it so that a
+     * lender making the canonical reading of a declaration — which is a reader like any other —
+     * does not arrive back at the borrowing entry it is answering for, and so that what counts as a
+     * reading made is where the reading is made.
+     */
+    private static Seeded seedFieldsFresh(TypeSymbol.AtModule named, RuleReadingSource source,
+                             ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled,
+                             Reach reach, DeclarationReadings machines,
+                             StringMachineAnswers answers) {
+        READINGS.incrementAndGet();
         Symbols symbols = source.symbols();
         InvariantChecker c =
                 new InvariantChecker(symbols, source.invariants(), machines, policy);
-        c.answers = machines.of(named.key());
+        c.answers = answers;
         // A newtype's value is the same location as the newtype, so it is at no name of its own and
         // its fields are the first step there is. Read from the world rather than off a node handed
         // in, and turned into a name here, where the names a rule may write are decided.
@@ -2783,7 +2869,7 @@ public final class InvariantChecker {
      * analysis representation could not be built or typed for, and is not analyzed at all, which is
      * the {@code ABANDONED} this answers with.
      */
-    static Findings analyze(Core body, ExpandedClauseLookup invariants, StringMachineLookup machines,
+    static Findings analyze(Core body, ExpandedClauseLookup invariants, DeclarationReadings machines,
                             Map<ValueName.Behavior, StatedContract> contracts,
                             Scope params, Symbols symbols, ReadingPolicy policy) {
         InvariantChecker c =

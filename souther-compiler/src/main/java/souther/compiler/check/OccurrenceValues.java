@@ -41,7 +41,7 @@ public final class OccurrenceValues {
     /** What the declaration {@code named} is leaves the values at each of its names. */
     public static OccurrenceValues of(TypeSymbol.AtModule named,
                                       RuleReadingSource source, ReadingPolicy policy) {
-        return of(named, source, policy, _ -> false, StringMachineLookup.NONE);
+        return of(named, source, policy, java.util.Set.of(), DeclarationReadings.NONE);
     }
 
     /**
@@ -53,15 +53,15 @@ public final class OccurrenceValues {
      */
     static OccurrenceValues of(TypeSymbol.AtModule named, RuleReadingSource source,
                                  ReadingPolicy policy,
-                                 java.util.function.Predicate<TypeSymbol> granted) {
-        return of(named, source, policy, granted, StringMachineLookup.NONE);
+                                 java.util.Set<TypeSymbol> granted) {
+        return of(named, source, policy, granted, DeclarationReadings.NONE);
     }
 
     /** The same, asking {@code machines} first. */
     static OccurrenceValues of(TypeSymbol.AtModule named, RuleReadingSource source,
                                  ReadingPolicy policy,
-                                 java.util.function.Predicate<TypeSymbol> granted,
-                                 StringMachineLookup machines) {
+                                 java.util.Set<TypeSymbol> granted,
+                                 DeclarationReadings machines) {
         return new OccurrenceValues(
                 InvariantChecker.seedFields(named, source, policy, java.util.Map.of(),
                         InvariantChecker.Reach.stoppingAt(granted), machines));

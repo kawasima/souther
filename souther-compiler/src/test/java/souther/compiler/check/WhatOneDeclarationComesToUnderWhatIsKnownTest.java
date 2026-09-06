@@ -66,7 +66,7 @@ class WhatOneDeclarationComesToUnderWhatIsKnownTest {
                         TypeSymbols.declared(new TypeKey(symbols.module(), name)), as.apply(def),
                         RuleReadings.of(compilation, "demo"),
                         souther.compiler.query.ReadAs.THE_COMPILATION_DOES,
-                        Answers.settled(solution), _ -> false);
+                        Answers.settled(solution), java.util.Set.of());
             }
         }
         throw new IllegalArgumentException("no such declaration: " + name);

@@ -50,7 +50,7 @@ public final class OccurrenceCounts {
      */
     public static OccurrenceCounts of(TypeSymbol.AtModule named, RuleReadingSource source,
                                        ReadingPolicy policy) {
-        return of(named, source, policy, _ -> false, StringMachineLookup.NONE);
+        return of(named, source, policy, java.util.Set.of(), DeclarationReadings.NONE);
     }
 
     /**
@@ -62,15 +62,15 @@ public final class OccurrenceCounts {
      */
     static OccurrenceCounts of(TypeSymbol.AtModule named, RuleReadingSource source,
                                  ReadingPolicy policy,
-                                 java.util.function.Predicate<TypeSymbol> granted) {
-        return of(named, source, policy, granted, StringMachineLookup.NONE);
+                                 java.util.Set<TypeSymbol> granted) {
+        return of(named, source, policy, granted, DeclarationReadings.NONE);
     }
 
     /** The same, asking {@code machines} first. */
     static OccurrenceCounts of(TypeSymbol.AtModule named, RuleReadingSource source,
                                  ReadingPolicy policy,
-                                 java.util.function.Predicate<TypeSymbol> granted,
-                                 StringMachineLookup machines) {
+                                 java.util.Set<TypeSymbol> granted,
+                                 DeclarationReadings machines) {
         return new OccurrenceCounts(
                 InvariantChecker.seedFields(named, source, policy, java.util.Map.of(),
                         InvariantChecker.Reach.stoppingAt(granted), machines));

@@ -294,16 +294,12 @@ public final class FieldDomains {
     /**
      * How many readings of a declaration have been made, for a test holding this to when it reads.
      *
-     * <p>Counted rather than timed. What a caller is held to is that fixing a number reads
-     * nothing and asking a question reads once, which is a shape and not a speed — and a
-     * measurement of the second would pass on an implementation that had the first wrong.
+     * <p>What the reader that makes them counts, which is {@link InvariantChecker}: a reading
+     * borrowed rather than made is a reading nobody made, and a count kept here would say
+     * otherwise from the moment one could be borrowed.
      */
-    private static final java.util.concurrent.atomic.AtomicLong READINGS =
-            new java.util.concurrent.atomic.AtomicLong();
-
-    /** How many times a declaration has been read into one of these. */
     public static long readingsMade() {
-        return READINGS.get();
+        return InvariantChecker.readingsMade();
     }
 
     /**
@@ -322,7 +318,7 @@ public final class FieldDomains {
     /** The same, asking {@code machines} for what somebody has already made of the declaration's
      *  string rules before building any of it. */
     public static FieldDomains of(TypeSymbol.AtModule named, RuleReadingSource source,
-                                  ReadingPolicy policy, StringMachineLookup machines) {
+                                  ReadingPolicy policy, DeclarationReadings machines) {
         return of(named, source, policy, Map.of(), machines);
     }
 
@@ -337,13 +333,13 @@ public final class FieldDomains {
      */
     public static FieldDomains of(TypeSymbol.AtModule named, RuleReadingSource source,
                                   ReadingPolicy policy, Map<RuleKey, Count> settled) {
-        return of(named, source, policy, settled, StringMachineLookup.NONE);
+        return of(named, source, policy, settled, DeclarationReadings.NONE);
     }
 
     /** The same, asking {@code machines} first. */
     public static FieldDomains of(TypeSymbol.AtModule named, RuleReadingSource source,
                                   ReadingPolicy policy, Map<RuleKey, Count> settled,
-                                  StringMachineLookup machines) {
+                                  DeclarationReadings machines) {
         // A name declaring no record leaves nothing about fields it has not got, which is what
         // nothing written comes to here. The same answer the other readers of a declaration give
         // when handed such a name, because it is the same fact about the name rather than three
@@ -373,8 +369,8 @@ public final class FieldDomains {
      */
     static FieldDomains granting(TypeSymbol.AtModule named, Hir.Data data, RuleReadingSource source,
                                  ReadingPolicy policy,
-                                 java.util.function.Predicate<TypeSymbol> granted,
-                                 StringMachineLookup machines) {
+                                 java.util.Set<TypeSymbol> granted,
+                                 DeclarationReadings machines) {
         return of(named, data, source, policy, Map.of(),
                 InvariantChecker.Reach.stoppingAt(granted), machines);
     }
@@ -382,12 +378,11 @@ public final class FieldDomains {
     /** The same, reading only as far as {@code reach} says — see {@link #narrowedBy}. */
     private static FieldDomains of(TypeSymbol.AtModule named, Hir.Data data, RuleReadingSource source,
                                    ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled,
-                                   InvariantChecker.Reach reach, StringMachineLookup machines) {
+                                   InvariantChecker.Reach reach, DeclarationReadings machines) {
         // A newtype is read the same way, and only its bounds are not worth handing back: its value
         // is the value it is, so there are no siblings to relate. Everything else is the same
         // question — its own rules can hold a hole no range keeps, and they can contradict, and both
         // answers were being given away by treating it as a value with nothing to say.
-        READINGS.incrementAndGet();
         InvariantChecker.Seeded seeded =
                 InvariantChecker.seedFields(named, source, policy, settled, reach, machines);
         Map<RuleKey, NumericDomain.Bounds> out = new LinkedHashMap<>();
@@ -697,7 +692,7 @@ public final class FieldDomains {
     /** This value read again without the clauses of the declarations {@code skip} names. */
     private FieldDomains without(java.util.function.Predicate<TypeSymbol> skip) {
         return of(named, data, source, policy, settled,
-                InvariantChecker.Reach.withoutClausesOf(skip), StringMachineLookup.NONE);
+                InvariantChecker.Reach.withoutClausesOf(skip), DeclarationReadings.NONE);
     }
 
     /**
@@ -1372,7 +1367,7 @@ public final class FieldDomains {
                 InvariantChecker.Reach.withoutParts(removed.stream()
                         .map(AboutOneCoordinate::part)
                         .collect(java.util.stream.Collectors.toSet())),
-                StringMachineLookup.NONE);
+                DeclarationReadings.NONE);
     }
 
     /**

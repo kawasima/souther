@@ -65,13 +65,13 @@ public final class DeclaredCoordinates {
      * position whose one rule is that came back measured on the string's own order.
      */
     public static Reading of(Type type, RuleReadingSource source, ReadingPolicy policy) {
-        return of(type, source, policy, StringMachineLookup.NONE);
+        return of(type, source, policy, DeclarationReadings.NONE);
     }
 
     /** The same, asking {@code machines} for what somebody has already made of the declaration's
      *  string rules before building any of it. */
     public static Reading of(Type type, RuleReadingSource source, ReadingPolicy policy,
-                             StringMachineLookup machines) {
+                             DeclarationReadings machines) {
         FieldDomains domains = Rules.of(type, source, policy, machines).bounds();
         Set<NumberAt.OfWhatNumber> about = new LinkedHashSet<>();
         for (NumberAt<RuleKey> each : domains.writtenAbout()) {
