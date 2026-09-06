@@ -3,6 +3,7 @@ package souther.compiler.check;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Compilation;
 import souther.compiler.types.TypeKey;
+import java.util.Set;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.TypeSymbols;
 
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -154,6 +156,24 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
         InvariantChecker.seedFields(code, source, OTHER_TERMS, readings);
         assertEquals(afterTheFirst + 1, InvariantChecker.readingsMade(),
                 "and read again under terms the reading in hand was not made under");
+    }
+
+    /**
+     * Supposing nothing is reading the declaration whole, and is that reading rather than one that
+     * happens to leave nothing out.
+     *
+     * <p>What a reader supposes arrives as a set, and four of the readers that reach a declaration
+     * suppose nothing. Said as a reach that stops at nobody, each of those would be asking for a
+     * reading no lender could see is the declaration's own, and each would read it again for want
+     * of a way to ask.
+     */
+    @Test
+    void supposingNothingIsReadingTheDeclarationWhole() {
+        assertTrue(InvariantChecker.Reach.stoppingAt(Set.of()).everything(),
+                "a reader that supposes nothing is reading the declaration whole");
+        assertFalse(InvariantChecker.Reach.stoppingAt(
+                        Set.of(TypeSymbols.declared(new TypeKey("demo", "Code")))).everything(),
+                "and one that supposes a declaration has values is not");
     }
 
     /**
