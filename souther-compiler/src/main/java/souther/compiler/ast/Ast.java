@@ -1100,8 +1100,20 @@ public interface Ast {
         // references, a pass may respell one, and where a name is written is where a complaint
         // about it belongs. So which occurrence this is is minted where the source is read and
         // carried from there, the way the constructs a source writes already are.
+        //
+        // Every name in this tree has one. This tree is what reading a source produces, so a name
+        // in it is a name a source wrote — the desugarings that run while it is being built write
+        // names of their own, and each of those is a reference of the source that made it
+        // necessary, counted with the rest. A reader here is told by the type that there is one to
+        // read, and a build that forgot one is refused where the name was made rather than
+        // wherever it is first asked for. What a name a pass writes downstream carries is
+        // `Hir.Var`'s to say, and is not this: no source wrote one of those.
 
         public Var {
+            if (origin == null) {
+                throw new IllegalArgumentException("`" + written.canonical()
+                        + "` is a name a source wrote, so it is one this source counted");
+            }
             if (written.region() != null && region == null) {
                 throw new IllegalArgumentException("`" + written.canonical()
                         + "` is written somewhere and the expression it is was written nowhere");
