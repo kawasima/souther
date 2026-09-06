@@ -149,7 +149,8 @@ class APathDescendingThroughASumStandsAtNoPositionTest {
     private static NumericDomain.Bounds reachAt(InputDomain read, String spelled) {
         Position at = positionAt(read, spelled);
         assertNotNull(at, () -> "no position at " + spelled);
-        NumericDomain.Bounds runs = at.numericDomain();
+        NumericDomain.Bounds runs =
+                at.boundsFor(new NumericTerm.ValueOf(at.path())).admissible();
         assertNotNull(runs, () -> spelled + " is a number this reading bounds");
         return runs;
     }

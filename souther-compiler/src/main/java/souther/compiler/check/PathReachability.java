@@ -9,8 +9,10 @@ import souther.compiler.coverage.ControlPointId;
 import souther.compiler.inputs.Admits;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.inputs.InputReads;
+import souther.compiler.inputs.NumericTerm;
 import souther.compiler.inputs.PathResolution;
 import souther.compiler.inputs.Position;
+import souther.compiler.inputs.PositionBounds;
 import souther.compiler.inputs.TermPath;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.coverage.CoverageSites;
@@ -561,7 +563,7 @@ public final class PathReachability {
                       List<PathDecision> under, InputReads reads) {
         if (engine.assuming(cond, entry, entered, holds).known().reachesNothing()) {
             TermPath position = comparedPositionIn(cond, reads);
-            NumericDomain.Bounds admits = position == null ? null : boundsAt(position);
+            NumericDomain.Bounds admits = position == null ? null : valueBoundsAt(position);
             if (admits != null && !under.isEmpty()) {
                 return Proof.outsideInputDomain(position, admits, under.get(under.size() - 1));
             }
@@ -603,11 +605,25 @@ public final class PathReachability {
         };
     }
 
-    /** What the rules leave {@code position}, where they leave it numbers at all. */
-    private NumericDomain.Bounds boundsAt(TermPath position) {
+    /**
+     * What the rules leave the value standing at {@code position}, where they leave it a range at
+     * all.
+     *
+     * <p>That number and never another of the place. What the caller has is a comparison one side of
+     * which is this position, and what it goes on to say is that the branch asks for values the
+     * position cannot hold — so the range wanted is the range of what stands there. A count taken of
+     * the position is a number of its own with a range of its own, and offered here it would prove a
+     * branch unreachable by where a length falls.
+     *
+     * <p>No falling back to whatever range the position happens to have. A position with no answer
+     * about the values standing at it is one this says nothing about, which is what the caller does
+     * where it is handed null.
+     */
+    private NumericDomain.Bounds valueBoundsAt(TermPath position) {
         Position at = read.at(position);
-        return at == null || at.numericDomain() == null || at.numericDomain().saysNothing()
-                ? null : at.numericDomain();
+        PositionBounds bounds = at == null ? null : at.boundsFor(new NumericTerm.ValueOf(position));
+        NumericDomain.Bounds admits = bounds == null ? null : bounds.admissible();
+        return admits == null || admits.saysNothing() ? null : admits;
     }
 
     /**

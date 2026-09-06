@@ -1150,17 +1150,17 @@ final class ReadQuantities implements Quantities {
     }
 
     /**
-     * What the position measured at this term was read to hold, or null where no position is
-     * measured at it.
+     * What the rules were read to leave this term, or null where no position has such a number.
      *
-     * <p>Which number a position is measured at is settled by the reading that made it, and a count
-     * taken of a position the reading measured by its own value is a different quantity — answered
-     * with the position's, a body measuring the length of a string would be told where the string
-     * stops.
+     * <p>Asked of the number and answered by the position that has it. A count taken of a place and
+     * what stands at that place are different quantities, and the position holds an answer about
+     * each — so a body measuring the length of a string is told where the length stops rather than
+     * where the string does.
      */
     private NumericDomain.Bounds ownOf(NumericTerm.FromOnePosition term) {
         Position at = byPath.get(term.position());
-        return at != null && term.equals(at.term()) ? at.numericDomain() : null;
+        PositionBounds bounds = at == null ? null : at.boundsFor(term);
+        return bounds == null ? null : bounds.admissible();
     }
 
     /**

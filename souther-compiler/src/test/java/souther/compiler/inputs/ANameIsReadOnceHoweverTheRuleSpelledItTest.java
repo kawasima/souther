@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -71,10 +70,11 @@ class ANameIsReadOnceHoweverTheRuleSpelledItTest {
      */
     @Test
     void aNumberTakenOfALocationIsWrittenWhereTheLocationIs() {
-        NumericTerm taken = termAt(TWO_WAYS, "byLength", "h", "name");
-        NumericTerm own = termAt(TWO_WAYS, "byValue", "h", "name");
-        assertInstanceOf(NumericTerm.TakenOf.class, taken, "this one is bounded on its length");
-        assertInstanceOf(NumericTerm.ValueOf.class, own, "and this one on its own values");
+        List<NumericTerm.FromOnePosition> both = numbersAt(TWO_WAYS, "byLength", "h", "name");
+        NumericTerm taken = only(both, NumericTerm.TakenOf.class);
+        NumericTerm own = only(both, NumericTerm.ValueOf.class);
+        assertNotNull(taken, "a string is counted by its length");
+        assertNotNull(own, "and holds its own values besides");
 
         TermPath root = TermPath.of("h");
         souther.compiler.check.RuleRef.Invariant rule = someRule(measuredIn(TWO_WAYS));
@@ -151,12 +151,18 @@ class ANameIsReadOnceHoweverTheRuleSpelledItTest {
                 "and the same rule about its own value does place something");
     }
 
-    /** The term the reading measures one position at. */
-    private static NumericTerm termAt(String source, String behavior, String parameter,
-                                      String field) {
+    /** The numbers the reading gives one position. */
+    private static List<NumericTerm.FromOnePosition> numbersAt(String source, String behavior,
+                                                               String parameter, String field) {
         Position at = reading(source, behavior).at(TermPath.of(parameter).then(field));
         assertNotNull(at, "the field is a position of the input");
-        return at.term();
+        return at.numbers();
+    }
+
+    /** The one of {@code numbers} of that kind, or null where there is none. */
+    private static NumericTerm only(List<NumericTerm.FromOnePosition> numbers,
+                                    Class<? extends NumericTerm> kind) {
+        return numbers.stream().filter(kind::isInstance).findFirst().orElse(null);
     }
 
     /** The case's own name, taken off the reading that holds it. */

@@ -1,10 +1,7 @@
 package souther.compiler.inputs;
 
-import souther.compiler.check.DeclaredBounds;
-import souther.compiler.check.NarrowedBounds;
 import souther.compiler.check.ProjectionEvidence;
 import souther.compiler.check.TypeView;
-import souther.compiler.numeric.NumericDomain;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.values.AdmissibleSet;
@@ -41,38 +38,40 @@ public sealed interface Position permits ReadPosition {
      *  writes it as. */
     TypeView view();
 
-    /** Which number this position is measured at: what it holds, or what its rules take of it.
-     *  Answered by this position, since that is where the reading found it. */
-    NumericTerm.FromOnePosition term();
-
-    /** What every rule reaching the position leaves its numbers, or null where nothing bounds them.
-     *  Not where it is divided: a cap the record alone imposes stops the values without drawing a
-     *  line through them. */
-    NumericDomain.Bounds numericDomain();
-
-    /** Where the position's own type says its values stop, with the declarations that said so. */
-    DeclaredBounds.Bounds ownEnds();
-
     /**
-     * What the value the position sits in projects onto it, and which declarations hold each end.
+     * What the rules leave each of the position's numbers, one entry per number.
      *
-     * <p>One answer. Which declarations hold an end is worked out against that end by taking their
-     * clauses away, so it is true of that number and of no other — and a position under a case is
-     * read by two values whose ends are met here. Answered apart, the names came back from a reading
-     * whose end lies further out than the one the position stops at.
+     * <p><b>There is no number that stands for the position.</b> A {@code String} has its own order
+     * and the length of it, and a rule about either is a rule about that one — so which of them a
+     * class divides, which of them a line lies on and which of them a range is a range of are
+     * answered by the number, never by the position. Answered with one chosen number, a rule about
+     * the other has to be either mislabelled or thrown away, and both were done here.
+     *
+     * <p>Which numbers there are is the type's answer and not the rules'. What stands at the
+     * position is always one of them; the second is there where the type declares an operation that
+     * counts its values. A rule mentioning some other number of the place — what an absolute value
+     * comes to, say — is a rule about a number the position has not, and it gets no entry here.
+     *
+     * <p>An entry exists wherever a number does, whatever the rules said about it. A number nobody
+     * bounded has an entry saying so, because "no rule wrote about this" and "this position has no
+     * such number" are different answers and only the second is about the model.
      */
-    NarrowedBounds narrowedEnds();
+    List<PositionBounds> bounds();
 
-    /**
-     * Where this position stops once every rule reaching the value it sits in has been taken in.
-     *
-     * <p>Beside {@link #narrowedEnds} and not the same question. That one is what the value this
-     * sits in projects onto it, which a newtype's own value has nobody to be projected onto it by;
-     * this is where the position starts and stops, whatever placed the ends and whatever moved them
-     * afterwards. A caller deciding where a line actually falls wants this, because a clause placing
-     * an end is not a clause that read the ones written beside it.
-     */
-    NumericDomain.Bounds rangeLeft();
+    /** The numbers this position has, which is what {@link #bounds()} is keyed by. */
+    default List<NumericTerm.FromOnePosition> numbers() {
+        return bounds().stream().map(PositionBounds::term).toList();
+    }
+
+    /** What the rules leave {@code term}, or null where the position has no such number. */
+    default PositionBounds boundsFor(NumericTerm.FromOnePosition term) {
+        for (PositionBounds each : bounds()) {
+            if (each.term().equals(term)) {
+                return each;
+            }
+        }
+        return null;
+    }
 
     /** Whether the rules of the value this position sits in contradict, so that no value of it
      *  exists to have positions at all. */

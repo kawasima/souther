@@ -186,12 +186,12 @@ public sealed interface BlockReason {
                 // same rule.
                 case PatternTooCostly _, PatternTooDeeplyNested _,
                      OrderedExtentTooCostly _ -> RunSensitivity.MAY_CHANGE;
-                // And seven where nothing was compared against anything. A form nothing takes
-                // apart, values no line can be drawn on, a rule about a value made from this one, a
-                // relation between two positions, two rules about two coordinates and a pairing
-                // nothing worked out are all met again by a run allowed more of everything.
+                // And six where nothing was compared against anything. A form nothing takes apart,
+                // values no line can be drawn on, a rule about a value made from this one, a
+                // relation between two positions and a pairing nothing worked out are all met again
+                // by a run allowed more of everything.
                 case UnreadComparisonForm _, UnreadComparisonDomain _, RuleAboutADerivedValue _,
-                     UnreadValueRule _, ValueRuleRelatingTwoPositions _, CompetingCoordinates _,
+                     UnreadValueRule _, ValueRuleRelatingTwoPositions _,
                      CasePairingNotDetermined _ -> RunSensitivity.UNAFFECTED;
             };
         }
@@ -643,31 +643,6 @@ public sealed interface BlockReason {
     record ValueRulesNotReachedPastDepthLimit() implements AboutThePosition {}
 
     /**
-     * The rule's end has nowhere to go, because the position it is at is measured at no number.
-     *
-     * <p>A {@code String} is the one thing that can be measured two ways — its own order, and the
-     * length of it — and which of them a position is measured at is settled by whichever number
-     * the model wrote about. Where more than one is written about at the standing that answers,
-     * choosing either would put a line the author can read beside one they cannot see, so the
-     * position is measured at neither.
-     *
-     * <p><b>Said of the rule and not of the pair that left the question open.</b> What is true of
-     * every rule this is filed for is that its end could not be placed here; being one of the two
-     * the choice was between is true of some of them and not of the rest. A rule of the value a
-     * position sits in arrives at one already undecided, and it is neither the cause nor free of
-     * the consequence — an author reading that their clause competes with one other would go
-     * looking for a pair that is not there.
-     *
-     * <p>Nothing is wrong with any of them, and none is a rule to rewrite on its own: what an
-     * author acts on is that this position's rules leave more than one number in play.
-     *
-     * <p>Its own case and not {@link UnreadComparisonForm}. The forms were read: what is missing is
-     * not a reader for an expression but a rule for which coordinate wins, and an author told the
-     * first would go looking for a syntax this compiler handles perfectly well.
-     */
-    record CompetingCoordinates() implements RuleReadingStopped {}
-
-    /**
      * The rule was read, it draws a line, and where each of the names it is between stands is known
      * — and which of those positions go together is not.
      *
@@ -751,25 +726,24 @@ public sealed interface BlockReason {
     record ComparisonOverARun() implements ReadToEndWithoutLine {}
 
     /**
-     * The rule states where one of the position's numbers stops, and the position is measured at
-     * another of them.
+     * The rule states where a number stops, and the position has no such number.
      *
      * <p>Read to the end, and nothing about it is undecided: which number it is about is what the
-     * rule says, and the end it places is placed. What it is not is a line on this position's axis
-     * — a position has one, a {@code String} has two numbers to have chosen it from, and a cap on
-     * the length of one measured on its own order stops values without ordering them.
+     * rule says, and the end it places is placed. Which numbers the position has is its type's
+     * answer — what stands there, and what an operation counts of it where the type declares one
+     * that counts its values — and a rule about some further number of the place, what an absolute
+     * value comes to among them, states where that number stops without measuring this position at
+     * all.
      *
-     * <p><b>Its own word beside {@link CompetingCoordinates}, which is the other thing two
-     * coordinates can come to.</b> There nothing chose, and every rule about either number is one
-     * an author would have to rewrite; here the choice was made, the rules at the chosen number
-     * draw their lines, and this one is beside the axis rather than in the way of it. Said as the
-     * other, an author would go looking for the second clause that was competing with this one.
+     * <p><b>Not a rule beside a number that won.</b> Every number the position has is measured, so
+     * there is no other rule this one lost to and no clause an author could rewrite to make it
+     * count. What is true of it is that the number it is about is not one of this place's.
      *
      * <p>And not silence, which is what it was. A rule an author wrote that reaches a position and
      * leaves no line there is a rule they can see no effect of, and a position with one of them
      * came back looking like a position it had never been written about.
      */
-    record RuleAboutAnotherCoordinate() implements ReadToEndWithoutLine {}
+    record RuleAboutANumberThePositionHasNot() implements ReadToEndWithoutLine {}
 
     /**
      * The rule holds this position to the values it admits, and places no end on them.

@@ -118,14 +118,11 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
         // its reader which kind of thing stopped a derivation rather than which reader stopped.
         table.put("ValueRuleRelatingTwoPositions",
                 "UNSUPPORTED_PARTITION_SHAPE/UNAFFECTED");
-        table.put("CompetingCoordinates", "COMPETING_COORDINATES/UNAFFECTED");
-        // Its own word beside the one above, and read to the end where that one is a stop. Both are
-        // what two coordinates at one place can come to and they are opposite answers: there no
-        // number could be chosen and every rule about either is one to rewrite; here one was
-        // chosen, the rules about it draw their lines, and this rule states where a different
-        // number of the same place stops. Nothing is owed of it — the end it places is placed, at a
-        // number the position is not divided along.
-        table.put("RuleAboutAnotherCoordinate", "RULE_ABOUT_ANOTHER_COORDINATE/-");
+        // Read to the end, and nothing is owed of it: the end it places is placed, on a number this
+        // place has not. Every number a position does have is measured, so there is no rule this
+        // one lost to and nothing for an author to rewrite in favour of it.
+        table.put("RuleAboutANumberThePositionHasNot",
+                "RULE_ABOUT_A_NUMBER_THE_POSITION_HAS_NOT/-");
         // Read to the end, and placed nowhere. Its own word beside the two above: the comparison
         // was taken apart, a line came out of it and every name it is between reached positions —
         // what was not reached is which of those positions the line runs between. Both measures are
@@ -406,14 +403,13 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
                 new BlockReason.BehaviorDistinctionsTooCostly(),
                 new BlockReason.RulesNotHandedOnAsSets(),
                 new BlockReason.ValueRuleRelatingTwoPositions(),
-                new BlockReason.CompetingCoordinates(),
                 new BlockReason.CasePairingNotDetermined(),
                 new BlockReason.ComparisonCuttingNothing(),
                 new BlockReason.ComparisonCuttingOutsideDomain(),
                 new BlockReason.ComparisonNothingArrivesAtItsLine(),
                 new BlockReason.ComparisonBetweenPositions(),
                 new BlockReason.ComparisonOverARun(),
-                new BlockReason.RuleAboutAnotherCoordinate(),
+                new BlockReason.RuleAboutANumberThePositionHasNot(),
                 new BlockReason.RuleRestrictingToAdmittedValues(),
                 new BlockReason.PredicateTellingNothingApart(),
                 new BlockReason.ClassesNotComposed(),

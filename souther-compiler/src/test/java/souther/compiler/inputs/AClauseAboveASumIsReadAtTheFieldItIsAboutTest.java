@@ -62,12 +62,12 @@ class AClauseAboveASumIsReadAtTheFieldItIsAboutTest {
         InputDomain record = reading(THROUGH_A_RECORD);
 
         String underTheRecord = String.valueOf(
-                record.at(TermPath.of("h").then("q").then("limit")).ownEnds());
+                valuesAt(record.at(TermPath.of("h").then("q").then("limit"))).ownEnds());
         for (String each : List.of("A", "B")) {
             Position at = sum.at(TermPath.of("h").then("q").refine(caseNamed(sum,each)).then("limit"));
             assertNotNull(at, "the shared field is a position under the case");
             assertEquals(underTheRecord.replace("h.q.limit", "h.q@" + each + ".limit"),
-                    String.valueOf(at.ownEnds()),
+                    String.valueOf(valuesAt(at).ownEnds()),
                     "the clause draws the end it draws, wherever the reading came through");
         }
     }
@@ -144,7 +144,7 @@ class AClauseAboveASumIsReadAtTheFieldItIsAboutTest {
 
         Position underA = sum.at(TermPath.of("h").then("q")
                 .refine(caseNamed(sum, "A")).then("limit"));
-        assertEquals("3", String.valueOf(underA.narrowedEnds().bounds().max().at()),
+        assertEquals("3", String.valueOf(valuesAt(underA).narrowedEnds().bounds().max().at()),
                 "`A` stops the field at three and `Holder` at ten");
         assertEquals(List.of("A"), holdingTheCeiling(underA),
                 "so `A` is holding it, and `Holder` moved this end nowhere");
@@ -158,7 +158,8 @@ class AClauseAboveASumIsReadAtTheFieldItIsAboutTest {
     /** The declarations whose clauses are holding this position's ceiling, named. */
     private static List<String> holdingTheCeiling(Position at) {
         return souther.compiler.check.AReadingOfAPosition
-                .holding(at.narrowedEnds(), souther.compiler.numeric.EndSide.UPPER).stream()
+                .holding(valuesAt(at).narrowedEnds(), souther.compiler.numeric.EndSide.UPPER)
+                .stream()
                 .map(TypeSymbol::name).toList();
     }
 
@@ -175,7 +176,7 @@ class AClauseAboveASumIsReadAtTheFieldItIsAboutTest {
         Position own = sum.at(TermPath.of("h").then("q").refine(caseNamed(sum,"A")).then("x"));
 
         assertNotNull(own, "the case's own field is a position");
-        assertNull(own.ownEnds() == null ? null : own.ownEnds().min(),
+        assertNull(valuesAt(own).ownEnds() == null ? null : valuesAt(own).ownEnds().min(),
                 "and nothing above bounds it");
     }
 
@@ -452,10 +453,17 @@ class AClauseAboveASumIsReadAtTheFieldItIsAboutTest {
         throw new IllegalStateException("no case named " + name);
     }
 
+    /** What the rules leave the value standing at {@code at}, which is the number the clauses
+     *  read here place their ends on. */
+    private static PositionBounds valuesAt(Position at) {
+        return at.boundsFor(new NumericTerm.ValueOf(at.path()));
+    }
+
     /** Every position something puts a ceiling on, spelled the way a report names it. */
     private static List<String> boundedIn(InputDomain read) {
         return read.positions().stream()
-                .filter(each -> each.ownEnds() != null && each.ownEnds().max() != null)
+                .filter(each -> valuesAt(each).ownEnds() != null
+                        && valuesAt(each).ownEnds().max() != null)
                 .map(each -> each.path().toString()).toList();
     }
 

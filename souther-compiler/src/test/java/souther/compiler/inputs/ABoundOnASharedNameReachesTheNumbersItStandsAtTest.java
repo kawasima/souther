@@ -102,7 +102,8 @@ class ABoundOnASharedNameReachesTheNumbersItStandsAtTest {
             InputDomain read = reading(SHARED, "read");
             NumericDomain.Bounds position = read.positions().stream()
                     .filter(each -> each.path().toString().equals(at))
-                    .map(Position::numericDomain).findFirst().orElseThrow();
+                    .map(each -> each.boundsFor(new NumericTerm.ValueOf(each.path())).admissible())
+                    .findFirst().orElseThrow();
 
             assertEquals(position, runsAt(SHARED, at),
                     at + " stops where it stops, whichever reading is asked");

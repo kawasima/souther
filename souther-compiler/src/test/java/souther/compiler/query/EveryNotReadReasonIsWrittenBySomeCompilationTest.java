@@ -224,24 +224,7 @@ class EveryNotReadReasonIsWrittenBySomeCompilationTest {
                 behavior f : (a: Bool, b: Bool) -> Answer
                 let f (a, b) = if a == b then Yes else No
                 """.formatted(ANSWER)));
-        // A string is the one thing two numbers can be taken of — its own order and its length —
-        // and a declaration placing an end on each leaves neither able to be the one the position
-        // is measured at.
-        out.put(UndividedPosition.Reason.COMPETING_COORDINATES, of("""
-                module m
-                %s
-                data Parcel = { label: String }
-                    invariant lower = label >= "m"
-                    invariant long = String.length(label) >= 3
-
-                behavior f : (parcel: Parcel) -> Answer
-                let f (parcel) = Yes
-                """.formatted(ANSWER)));
-        // The other half of that, where the choice was made. The name's own clause is about the
-        // string's own order, so that is what the position is measured at, and the record's clause
-        // states where a length stops — read to the end, at a number this position is not divided
-        // along.
-        out.put(UndividedPosition.Reason.RULE_ABOUT_ANOTHER_COORDINATE, of("""
+        out.put(UndividedPosition.Reason.RULE_ABOUT_A_NUMBER_THE_POSITION_HAS_NOT, of("""
                 module m
                 %s
                 data Label = String invariant lower = value >= "m"
