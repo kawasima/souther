@@ -31,6 +31,10 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
     private static final Sameness.Block<String> Q = Sameness.Block.of("q");
     private static final Sameness.Block<String> R = Sameness.Block.of("r");
 
+    /** The first block of a run or a ring these tests build, for giving one of them a value the
+     *  rest do not have. */
+    private static final Sameness.Block<String> P0 = Sameness.Block.of("p0");
+
     private static final Value A = Value.text("A");
     private static final Value B = Value.text("B");
     private static final Value C = Value.text("C");
@@ -657,10 +661,12 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
      */
     @Test
     void andARelationOfOneAssignmentOverManyBlocksIsUnanswered() {
-        assertInstanceOf(Apartness.Reduction.NotKnown.class, runOf(100).reduce(this::alternating),
-                "one assignment, and more blocks than are stepped through");
-        assertInstanceOf(Apartness.Reduction.Standing.class, runOf(60).reduce(this::alternating),
-                "and the same run inside the bound is answered");
+        // One block between the two, and their assignments are the same number: each block holds
+        // one value, so what the answer turns on is how many blocks there are and nothing else.
+        assertInstanceOf(Apartness.Reduction.NotKnown.class, runOf(65).reduce(this::alternating),
+                "one assignment, and one block more than are stepped through");
+        assertInstanceOf(Apartness.Reduction.Standing.class, runOf(64).reduce(this::alternating),
+                "and one block fewer is answered");
     }
 
     /** A run of {@code many} blocks, each stated to differ from the next. */
@@ -694,51 +700,71 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
      */
     @Test
     void andHowLargeTheRelationIsReachesTheSearchAsWellAsTheCount() {
-        assertFalse(new Apartness.Extent(101, 5050).isSmallEnoughToRead(),
-                "a relation of this many pairs is past what may be read at all");
-        assertTrue(new Apartness.Extent(100, 4950).isSmallEnoughToRead(),
-                "and one pair fewer is inside it");
-        assertFalse(new Apartness.Extent(101, 5050).admitsCounting(),
-                "so the count is not taken of it either, which is the reader it was written for");
+        // One pair between the two, and nothing else between them: the same blocks, so what the
+        // answer turns on is how many pairs there are and not how many blocks. Compared against a
+        // shape of another block count, this would pass just as well against a bound on the blocks,
+        // which is a different rule that happens to answer these two the same way.
+        Apartness.Extent within = new Apartness.Extent(101, 5000);
+        Apartness.Extent past = new Apartness.Extent(101, 5001);
 
-        // And the search is not made of it, asked at the seam the relation's size arrives through.
-        // Two blocks holding two values apiece is a question inside every figure of its own, so
-        // what is left to refuse it is how large the relation those blocks are part of is.
+        assertTrue(within.isSmallEnoughToRead(), "as many pairs as may be read");
+        assertFalse(past.isSmallEnoughToRead(), "and one more than that");
+
+        // And the search is not made of the second, asked at the seam the relation's size arrives
+        // through. Two blocks holding two values apiece is a question inside every figure of its
+        // own, so what is left to refuse it is how large the relation those blocks are part of is.
         java.util.Map<Sameness.Block<String>, Set<Value>> two =
                 java.util.Map.of(P, Set.of(A, B), Q, Set.of(A, B));
-        assertTrue(TellingApart.lookingThrough(new Apartness.Extent(101, 5050), two,
-                        _ -> Set.of()).isEmpty(),
-                "a search over two blocks is a small question, and the relation holding them is"
-                        + " read once to make it however small the question is");
-        assertTrue(TellingApart.lookingThrough(new Apartness.Extent(100, 4950), two,
-                        _ -> Set.of()).isPresent(),
-                "and one pair fewer leaves a question to ask");
+        assertTrue(TellingApart.lookingThrough(within, two, _ -> Set.of()).isPresent(),
+                "a search over two blocks is a small question and there is one to ask");
+        assertTrue(TellingApart.lookingThrough(past, two, _ -> Set.of()).isEmpty(),
+                "and one pair more in the relation holding them leaves none, because making the"
+                        + " question reads every pair however small the question is");
+    }
+
+    /**
+     * And what a relation all of whose pairs are stated may be, which is where that figure bites.
+     *
+     * <p>Not one pair apart, because there is no such pair to compare against: at this many blocks
+     * every relation leaving few enough pairs out to be counted for that reason has more pairs than
+     * may be read, and every relation with few enough pairs to be read leaves too many out. What
+     * the two figures come to together is a size of relation all of whose pairs are stated, and
+     * that is what is asserted rather than an isolation there is none of.
+     */
+    @Test
+    void andTheLargestRelationAllOfWhosePairsAreStatedThatIsCounted() {
+        assertTrue(new Apartness.Extent(100, 100 * 99 / 2).admitsCounting(),
+                "every block against every other, and few enough pairs to read");
+        assertFalse(new Apartness.Extent(101, 101 * 100 / 2).admitsCounting(),
+                "and one block more is more pairs than may be read");
     }
 
     /**
      * And a relation with more assignments than are looked through is one this says nothing about.
      *
-     * <p>A cycle of odd length again, so that what changes between the two halves is how many
-     * values its blocks hold and nothing else: the same relation is refused where its assignments
-     * can be looked through and unanswered where they cannot.
+     * <p>One relation and one value between the two halves. Every block holds two values, which is
+     * as many assignments as are looked through; then one block holds a third, which is more.
+     * Nothing else moves — the same blocks, the same pairs — so what the answer turns on is the
+     * assignments and not how many blocks there are or how large the relation is.
      *
-     * <p>Which is what makes the bound a bound and not an accident. Asserted only past it, the case
-     * would pass just as well if the search had stopped working — and asserted only inside it,
-     * nothing would say where the reading stops.
+     * <p>And they are one value apart, which is what holds the figure to what it is. A third value
+     * given to every block would be past the bound too, and so would a relation of twice the
+     * blocks; asserted that way, the case would pass for any figure between the two, and what it
+     * says is that there is one somewhere.
      */
     @Test
     void andARelationWithMoreAssignmentsThanAreLookedThroughIsUnanswered() {
-        Apartness<String> odd = cycleOf(everyOneOf(19));
+        Apartness<String> even = cycleOf(everyOneOf(20));
         Set<Value> two = Set.of(A, B);
         Set<Value> three = new LinkedHashSet<>(two);
-        three.add(Value.text("C"));
+        three.add(C);
 
-        assertInstanceOf(RelationalWitness.NoAssignmentTellsThemApart.class,
-                refusedBy(odd.reduce((_, _) -> new Admits.These(two))),
-                "two values apiece over these blocks is a search this is allowed to make");
+        assertInstanceOf(Apartness.Reduction.Standing.class,
+                even.reduce((_, _) -> new Admits.These(two)),
+                "two values apiece over these blocks is as many assignments as are looked through");
         assertInstanceOf(Apartness.Reduction.NotKnown.class,
-                odd.reduce((_, _) -> new Admits.These(three)),
-                "and three apiece is more assignments than it looks through");
+                even.reduce((block, _) -> new Admits.These(block.equals(P0) ? three : two)),
+                "and one value more at one block is one assignment too many");
     }
 
     /** A relation nothing stated is one nothing refuses. */
