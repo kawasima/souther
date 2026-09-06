@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.core.Core;
+import souther.compiler.coverage.ComparisonEmissionSite;
+import souther.compiler.coverage.CoverageSites;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
@@ -91,6 +93,107 @@ class EveryRuleTheAnalysisReadsHasOnePlaceItsRunIsRecordedTest {
                 () -> "two comparisons of the emitted tree reach one the analysis reads, over "
                         + reached[0] + " reached and " + onlyEmitted[0]
                         + " standing only where the operations are expanded");
+    }
+
+    /**
+     * Each construct of the model the analysis reads has one place a run through it is recorded.
+     *
+     * <p>The whole crossing, measured end to end: what the analysis states, through the comparisons
+     * the backend emits, to the numbers a probe writes. Two places and nothing says which of them a
+     * row was owed for; none and a rule the model states could not be measured at all.
+     *
+     * <p>The addresses are read through the numbering as it stands, which is keyed by the walk of
+     * the emitted bodies. That is the arrangement being measured against, not the one being checked:
+     * nothing here concludes that two constructs are one because the walk gave them one number. What
+     * says they are one is the model occurrence, and the number is only how a run is found.
+     */
+    @Test
+    void eachConstructTheModelStatesHasOnePlaceItsRunIsRecorded() {
+        Map<String, Integer> sitesPerModel = new TreeMap<>();
+        Map<String, Integer> sitesPerEmitted = new TreeMap<>();
+        List<String> statedButUnplaced = new ArrayList<>();
+        int[] onlyEmitted = new int[1];
+        for (Corpus corpus : Corpus.all()) {
+            Compilation compilation = Compilation.ofSources(corpus.sources(), ModulePath.EMPTY);
+            compilation.answerEverything();
+            for (String module : compilation.modules()) {
+                Bodies.Elaborated checked =
+                        compilation.db().ask(new Bodies.Checked(module)).value();
+                if (checked == null) {
+                    continue;
+                }
+                CoverageSites.Plan plan = checked.plan();
+                for (Map.Entry<String, Core> body : checked.behaviorBodies().entrySet()) {
+                    var read = checked.analysisBodies().get(body.getKey());
+                    if (read == null) {
+                        continue;
+                    }
+                    Set<ModelOccurrence> stated = new LinkedHashSet<>();
+                    comparisonsIn(read.core()).forEach(each -> stated.add(ModelOccurrence.of(each)));
+
+                    Map<ModelOccurrence, Set<ComparisonEmissionSite>> placed =
+                            new LinkedHashMap<>();
+                    Map<ModelOccurrence, Set<ConstructOccurrence>> uninstrumented =
+                            new LinkedHashMap<>();
+                    for (Map.Entry<ConstructOccurrence, Core.Binary> at
+                            : comparisonNodesIn(body.getValue()).entrySet()) {
+                        ModelOccurrence states = ModelOccurrence.of(at.getKey());
+                        if (!stated.contains(states)) {
+                            onlyEmitted[0]++;
+                            continue;
+                        }
+                        var site = plan.comparisons().at(at.getValue())
+                                .flatMap(one -> plan.emissionSiteOf(one.which()));
+                        // A comparison behind an abort is one no run reaches, so the plan numbers
+                        // none — which is a fact about what is measured and not about the join.
+                        if (site.isEmpty()) {
+                            uninstrumented.computeIfAbsent(states, _ -> new LinkedHashSet<>())
+                                    .add(at.getKey());
+                        } else {
+                            placed.computeIfAbsent(states, _ -> new LinkedHashSet<>())
+                                    .add(site.get());
+                        }
+                        sitesPerEmitted.merge(site.isEmpty() ? "0" : "1", 1, Integer::sum);
+                    }
+
+                    for (ModelOccurrence states : stated) {
+                        Set<ComparisonEmissionSite> sites =
+                                placed.getOrDefault(states, Set.of());
+                        sitesPerModel.merge(String.valueOf(sites.size()), 1, Integer::sum);
+                        if (sites.isEmpty() && !uninstrumented.containsKey(states)) {
+                            statedButUnplaced.add(module + "." + body.getKey() + " " + states);
+                        }
+                    }
+                }
+            }
+        }
+
+        assertTrue(!sitesPerModel.isEmpty(), "nothing the model states was met at all");
+        assertEquals(List.of(), statedButUnplaced,
+                () -> "the model states a construct that reaches no comparison of the emitted tree"
+                        + " at all: " + sitesPerModel);
+        assertEquals(List.of("0", "1"), List.copyOf(sitesPerModel.keySet()),
+                () -> "a construct the model states has more than one place a run through it is"
+                        + " recorded: " + sitesPerModel + ", emitted " + sitesPerEmitted
+                        + ", only in the emitted tree " + onlyEmitted[0]);
+        assertEquals(List.of("0", "1"), List.copyOf(sitesPerEmitted.keySet()),
+                () -> "a comparison of the emitted tree has more than one address: "
+                        + sitesPerEmitted);
+    }
+
+    /** Every written comparison of {@code body}, by occurrence, with the node it stands at. */
+    private static Map<ConstructOccurrence, Core.Binary> comparisonNodesIn(Core body) {
+        Map<ConstructOccurrence, Core.Binary> out = new LinkedHashMap<>();
+        nodes(body, out);
+        return out;
+    }
+
+    private static void nodes(Core e, Map<ConstructOccurrence, Core.Binary> out) {
+        if (e instanceof Core.Binary binary && binary.origin() != null
+                && binary.origin().isWritten()) {
+            out.put(binary.occurrence(), binary);
+        }
+        Core.forEachChild(e, child -> nodes(child, out));
     }
 
     /**
