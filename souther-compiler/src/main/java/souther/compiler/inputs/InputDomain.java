@@ -1329,20 +1329,18 @@ public final class InputDomain {
         // The type's own ends are accounted for and not gathered: what they come to is what the
         // reading of the names this position wears leaves, below.
         fateOf(measured, ownRules.placed(), path, type, source, found);
-        // And the ends a conjunct that placed none moved, which the reading of the clauses as they
-        // are written cannot see: no comparison places them, and where they are is in what the
-        // other rules leave.
+        // And the ends the value's own conjuncts state, which the reading of the clauses as they
+        // are written cannot see: a rule about the strings places no comparison, and a conjunct
+        // that placed no end can still move one.
         //
         // Every list of ends this position's bounds are built from, and each through the one
-        // classification. What the value's own clauses state is the same rules read a second way
-        // where this position is the value they are written on, so a finding about one of them is
-        // one fact whichever list it was met in, and the gathering folds it. Left out because the
-        // rules were named from the other list, the ends went on being taken in — the answer was
-        // said and not acted on, which is the shape this change is about.
-        List<FieldDomains.Placed> atTheValue =
-                fateOf(measured, placed.statedAtTheValue(), path, type, source, found);
-        List<FieldDomains.Placed> moved =
-                fateOf(measured, placed.movedAtTheValue(), path, type, source, found);
+        // classification. Those are the same rules read a second way where this position is the
+        // value they are written on, so a finding about one of them is one fact whichever list it
+        // was met in, and the gathering folds it. Left out because the rules were named from the
+        // other list, the ends went on being taken in — the answer was said and not acted on, which
+        // is the shape this change is about.
+        List<FieldDomains.Placed> ownEnds =
+                fateOf(measured, placed.ownEndsAt(path), path, type, source, found);
         List<FieldDomains.Placed> adopted =
                 fateOf(measured, stated, path, type, source, found);
         // The number this position is measured at, as the readers below spell it. Undetermined, it
@@ -1360,17 +1358,15 @@ public final class InputDomain {
                     "this reading decided " + path + " is measured by " + taken
                             + ", which is not what its type is measured by: " + Type.show(type));
         }
-        // Four sources and not two: what the type's own comparisons wrote, what its conjuncts state
-        // that no comparison says — a rule about the strings at a position leaves them running
-        // between two places and orders nothing — what a conjunct of them moved, and what the value
-        // this position sits in placed. Each is ends of one coordinate and they are intersected,
-        // every rule that put an end where it is kept.
+        // Three sources and not one: what the type's own comparisons wrote, what its conjuncts
+        // state or moved that no comparison says — a rule about the strings at a position leaves
+        // them running between two places and orders nothing — and what the value this position
+        // sits in placed. Each is ends of one coordinate and they are intersected, every rule that
+        // put an end where it is kept.
         DeclaredBounds.Bounds own = on == null ? null
                 : DeclaredBounds.and(
-                        DeclaredBounds.and(
-                                DeclaredBounds.and(ofTheType(measured, kind, on, view, source),
-                                        DeclaredBounds.placed(atTheValue, kind, on)),
-                                DeclaredBounds.placed(moved, kind, on)),
+                        DeclaredBounds.and(ofTheType(measured, kind, on, view, source),
+                                DeclaredBounds.placed(ownEnds, kind, on)),
                         DeclaredBounds.placed(adopted, kind, on));
         // A value whose rules contradict has no positions to cover: every edge of every field of it
         // is a row nobody can write, which is not the same answer as a field nothing bounds.
