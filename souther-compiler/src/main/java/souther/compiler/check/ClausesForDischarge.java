@@ -97,9 +97,10 @@ public final class ClausesForDischarge {
      */
     public List<ClauseReading> conjunctsOf(Hir.Expr written, BindingOwner owner) {
         List<ClauseReading> out = new ArrayList<>();
-        for (Hir.Expr each : ClauseHelpers.conjunctsOf(written)) {
-            Expansion<Hir.Expr> read = expansion.expanding(each, owner);
-            out.add(new ClauseReading(each, read.value(), CallsLeftStanding.of(read.standing())));
+        for (ClauseHelpers.AuthoredPart each : ClauseHelpers.conjunctsOf(written)) {
+            Expansion<Hir.Expr> read = expansion.expanding(each.written(), owner);
+            out.add(new ClauseReading(each.written(), read.value(),
+                    CallsLeftStanding.of(read.standing())));
         }
         return out;
     }

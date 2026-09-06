@@ -1577,7 +1577,7 @@ public final class InputDomain {
             // one rule — each rule chose a number for itself, and this reading answers for the
             // position.
             FilingCoordinate at = filedAt(path, each.at(), type, source);
-            RuleCitation cited = new RuleCitation.Named(each.from());
+            RuleCitation cited = new RuleCitation.Named(each.part().rule());
             switch (measured) {
                 // No number answers for the position, so none of these ends has anywhere to go —
                 // the ones the choice was between and the ones that arrived at a position already
@@ -1759,9 +1759,10 @@ public final class InputDomain {
             // At the number that rule is about, which the rule itself says. Nothing is missing here
             // for the position to stand in for: a clause was read far enough to be about one number
             // or the other, and it is only the line that nothing came of.
-            out.add(new RuleCitation.Named(each.from()),
+            out.add(new RuleCitation.Named(each.part().rule()),
                     filedAt(path, each.at(), type, source),
                     each.why());
         }
     }
+
 }

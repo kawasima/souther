@@ -48,17 +48,19 @@ class AskingForOneNumbersEndsDoesNotAnswerWithAnothersTest {
     /** The clauses an end names, which is what these assertions are about: which conjunct of each
      *  drew it is beside that and is not what a reader is sent to look at. */
     private static List<RuleRef.Invariant> rulesOf(DeclaredBounds.End end) {
-        return end.from().stream().map(DeclaredBounds.Drawn::rule).toList();
+        return end.from().stream().map(each -> each.part().rule()).toList();
     }
 
     /** An end above one number of `names`, placed by the clause at {@code by}. */
     private static FieldDomains.Placed upTo(NumberAt<RuleKey> on, int by, int at) {
-        return new FieldDomains.Placed(on, rule(by), false, Endpoint.inclusive(Count.of(at)), 0);
+        return new FieldDomains.Placed(on, new PartId(rule(by), 0), false,
+                Endpoint.inclusive(Count.of(at)));
     }
 
     /** And one below it. */
     private static FieldDomains.Placed from(NumberAt<RuleKey> on, int by, int at) {
-        return new FieldDomains.Placed(on, rule(by), true, Endpoint.inclusive(Count.of(at)), 0);
+        return new FieldDomains.Placed(on, new PartId(rule(by), 0), true,
+                Endpoint.inclusive(Count.of(at)));
     }
 
     private static final NumberAt<RuleKey> HOW_LONG =

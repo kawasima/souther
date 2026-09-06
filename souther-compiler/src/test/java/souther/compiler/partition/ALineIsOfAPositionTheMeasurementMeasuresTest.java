@@ -89,9 +89,11 @@ class ALineIsOfAPositionTheMeasurementMeasuresTest {
     }
 
     private static LineOrigin aBound() {
-        return new LineOrigin.InvariantOrigin(new RuleRef.Invariant(new Clause.Ref(
-                new Clause.Id(TypeSymbols.declared(new TypeKey("example.fee", "Amount")), 0),
-                Optional.of(new ClauseName("cap")))), 0, EndSide.LOWER, true);
+        return new LineOrigin.InvariantOrigin(
+                new souther.compiler.check.PartId(new RuleRef.Invariant(new Clause.Ref(
+                        new Clause.Id(TypeSymbols.declared(new TypeKey("example.fee", "Amount")), 0),
+                        Optional.of(new ClauseName("cap")))), 0),
+                EndSide.LOWER, true);
     }
 
     /** A measurement that bounds {@code days} and read the line at that bound. */

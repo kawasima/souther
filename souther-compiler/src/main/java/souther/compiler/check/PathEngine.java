@@ -671,7 +671,7 @@ final class PathEngine {
                 gathering.constrained(guarantee.rule(), part.part(),
                         InvariantChecker.partRead(part.owed()));
             }
-            gathering.gathered(guarantee.rule(), guarantee.clause(),
+            gathering.gathered(guarantee.rule(), guarantee.clause(), guarantee.written(),
                     Predicates.subjectsIn(guarantee.owed()));
         }
         return predicates.assume(guarantee.owed(), k, Known.Held.OF_THE_VALUE)

@@ -117,8 +117,8 @@ class NoRuleIsPlacedWhereNothingAccountsForItTest {
             java.util.Set<souther.compiler.check.RuleRef.Invariant> counted =
                     rules.bounds().accounting().keySet();
             for (souther.compiler.check.FieldDomains.Placed each : rules.bounds().placed()) {
-                assertTrue(counted.contains(each.from()),
-                        () -> "`" + each.from() + "` placed an end at " + each.path()
+                assertTrue(counted.contains(each.part().rule()),
+                        () -> "`" + each.part().rule() + "` placed an end at " + each.path()
                                 + " and is not among the rules this build accounts for");
             }
         }

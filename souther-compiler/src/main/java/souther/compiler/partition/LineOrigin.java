@@ -50,7 +50,7 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      * value are two rules, and a cut keeps every rule that drew it; named by the declaration and the
      * word, they are one.
      *
-     * @param conjunct        which conjunct of the clause drew this end. What tells one line of a
+     * @param part            which part of which clause drew this end. What tells one line of a
      *                        clause from another where the clause drew several: {@code
      *                        String.length(name) >= 1 && String.length(code) >= 1} is one clause and
      *                        two lines at one value, and a row at either says nothing about the
@@ -81,22 +81,24 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      *                        derivation gets and not one about the end, and reading the end is what
      *                        keeps the two from being confused if it ever does get further
      */
-    record InvariantOrigin(RuleRef.Invariant rule, int conjunct,
+    record InvariantOrigin(souther.compiler.check.PartId part,
                            souther.compiler.numeric.EndSide keeps, boolean holdsAtTheValue)
             implements LineOrigin {
 
         public InvariantOrigin {
-            if (rule == null) {
+            if (part == null) {
                 throw new IllegalArgumentException("a bound drawn by no clause");
             }
             if (keeps == null) {
                 throw new IllegalArgumentException(
-                        "a bound places one of a range's two ends: " + rule.citedName());
+                        "a bound places one of a range's two ends: " + part);
             }
-            if (conjunct < 0) {
-                throw new IllegalArgumentException(
-                        "a conjunct of a clause is counted from zero: " + conjunct);
-            }
+        }
+
+        /** Which clause of which declaration drew it. */
+        @Override
+        public RuleRef.Invariant rule() {
+            return part.rule();
         }
     }
 
@@ -458,20 +460,24 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      */
     default AuthoredLine authoredLine() {
         return switch (this) {
+            // The part that drew it, which is what named the line where a declaration wrote it.
             case InvariantOrigin i ->
-                    new AuthoredLine(i.rule(), i.conjunct(), lineFacts(), List.of());
+                    new AuthoredLine(new WhichLine.OfAPart(i.part()), lineFacts(), List.of());
             // One line, so the zeroth of the one. A comparison is a rule apiece — a condition
             // holding three comparisons is three rules — so there is no second line of it to tell
             // this one from.
-            case ComparisonOrigin g -> new AuthoredLine(g.rule(), 0, lineFacts(), List.of());
+            case ComparisonOrigin g ->
+                    new AuthoredLine(new WhichLine.OfAComparison(g.rule(), 0), lineFacts(),
+                            List.of());
             case EnsuresOrigin e ->
-                    new AuthoredLine(e.rule(), e.conjunct(), lineFacts(), List.of());
+                    new AuthoredLine(new WhichLine.OfAComparison(e.rule(), e.conjunct()),
+                            lineFacts(), List.of());
             // The bound's line, said to have been taken in. What the narrowing adds is about the
             // end and not about the rule, so the rule comes back the same and this is kept beside
             // it.
             case NarrowedOrigin n -> {
                 AuthoredLine bound = n.bound().authoredLine();
-                yield new AuthoredLine(bound.rule(), bound.conjunct(), bound.facts(), n.within());
+                yield new AuthoredLine(bound.which(), bound.facts(), n.within());
             }
         };
     }

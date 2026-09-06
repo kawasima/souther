@@ -17,13 +17,10 @@ import java.util.List;
  * pairing them by index somewhere downstream is an account of the pairing that can come apart from
  * the reading that made it.
  *
- * @param rule      which rule of the model this is — the clause of the declaration's invariant, and
- *                  not where this reading met it ({@link RuleRef}). Beside the answer rather than
- *                  inside it: what a type guarantees is the same whether or not anybody is filing
- *                  questions under rules, and only a consumer that does ({@link
- *                  InvariantChecker.Gathering}) reads this
  * @param clause    the clause as it stands at this position, with the declaration's fields rebased
  *                  onto the value they are about
+ * @param written   the parts the clause was written in, each a subtree of {@code clause} and each
+ *                  carrying which part of the rule it is
  * @param owed      what reading that clause came to: a relation, a fact, both, or that it could not
  *                  be read at all. Not narrowed to a numeric constraint — a clause states what it
  *                  states, and a reader wanting only the numbers can ask {@link Predicates.Owed}
@@ -34,12 +31,27 @@ import java.util.List;
  *                   about that conjunct — kept here because asking it again afterwards is a second
  *                   reader, and the two agree only until somebody changes one of them
  */
-record TypeGuarantee(RuleRef.Invariant rule, Core clause, Predicates.Owed owed,
-                     List<Quantified> quantified, List<Part> parts) {
+record TypeGuarantee(Core clause, List<Clauses.StatedPart> written,
+                     Predicates.Owed owed, List<Quantified> quantified, List<Part> parts) {
 
     TypeGuarantee {
+        if (written.isEmpty()) {
+            throw new IllegalArgumentException("a clause guarantees what its parts guarantee");
+        }
+        written = List.copyOf(written);
         quantified = List.copyOf(quantified);
         parts = List.copyOf(parts);
+    }
+
+    /**
+     * Which rule of the model this is, read off the parts the clause was written in.
+     *
+     * <p>Every part of a clause is a part of that clause, so the rule is the parts' answer and not
+     * a second thing to carry: held beside them, a guarantee about one rule could be built about
+     * two.
+     */
+    RuleRef.Invariant rule() {
+        return written.get(0).id().rule();
     }
 
     /** What one part of a clause came to, beside the part it was read from. */

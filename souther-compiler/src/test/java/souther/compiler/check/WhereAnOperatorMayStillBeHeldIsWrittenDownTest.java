@@ -247,14 +247,19 @@ class WhereAnOperatorMayStillBeHeldIsWrittenDownTest {
             new Held("souther.compiler.check.ClauseExpr.of",
                     "the composition under the polarity the tree is read with, which the shape it"
                             + " makes carries so that nothing below it holds the operator"),
-            new Held("souther.compiler.check.ClauseHelpers.conjunctsOf",
-                    "the conjuncts of a clause, which is walking into what composes both halves"),
+            new Held("souther.compiler.check.ClauseHelpers.expandedOver",
+                    "writes a clause back into the nodes its author joined its parts with, which is"
+                            + " the operator copied out of the node it was written at. Nothing here"
+                            + " asks what it means: the shape being walked already said these two"
+                            + " are parts of one clause"),
+            new Held("souther.compiler.check.ClauseHelpers.shaped",
+                    "the shape an author wrote a clause in, which is walking into what composes"
+                            + " both halves. The one walk that says what the parts are; everything"
+                            + " else about them is read off the shape it leaves"),
             new Held("souther.compiler.check.Conditions.stating",
                     "the same under a polarity, for what a condition states on its own"),
             new Held("souther.compiler.check.FieldDomains.lambda$projection$2",
                     "walks into both halves for the clause that bounds a field"),
-            new Held("souther.compiler.check.InvariantChecker.direct",
-                    "walks into both halves for the clauses an invariant states"),
             new Held("souther.compiler.check.Predicates.assumeCond",
                     "walks into both halves under the polarity in force, for what a condition"
                             + " taken in makes known"),

@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 
 /**
  * The clauses a module declares — a data's {@code invariant} and a behavior's {@code ensures} — with
@@ -103,11 +104,11 @@ public final class ClauseHelpers {
             // inliner's own answer is about every tree it was driven over, and a clause told that a
             // call standing in a sibling stands in it would be read as one this cannot follow when
             // nothing in it is.
-            List<CallsLeftStanding> standing = new ArrayList<>();
-            Hir.Def expanded = withInlinedInvariants(inliner, def, standing::add);
+            List<Made> made = new ArrayList<>();
+            Hir.Def expanded = withInlinedInvariants(inliner, def, made::add);
             out.put(declares,
                     NewtypeDesugar.rewriteInvariantsOf(expanded, symbols) instanceof Hir.Data d
-                            ? new ExpandedClauses(declares, paired(d.invariants(), standing))
+                            ? new ExpandedClauses(declares, paired(d.invariants(), made))
                             : ExpandedClauses.nothingToExpand(declares));
         }
         return Map.copyOf(out);
@@ -131,14 +132,15 @@ public final class ClauseHelpers {
      * hand, so that nothing below holds a clause beside a set that is not its own.
      */
     private static List<ExpandedClauses.Expanded> paired(List<Hir.InvariantClause> clauses,
-                                                         List<CallsLeftStanding> standing) {
-        if (clauses.size() != standing.size()) {
-            throw new IllegalStateException("this compiler expanded " + standing.size()
+                                                         List<Made> made) {
+        if (clauses.size() != made.size()) {
+            throw new IllegalStateException("this compiler expanded " + made.size()
                     + " clauses and wrote down " + clauses.size());
         }
         List<ExpandedClauses.Expanded> out = new ArrayList<>();
         for (int each = 0; each < clauses.size(); each++) {
-            out.add(new ExpandedClauses.Expanded(clauses.get(each), standing.get(each)));
+            out.add(new ExpandedClauses.Expanded(clauses.get(each), made.get(each).standing(),
+                    made.get(each).shape()));
         }
         return out;
     }
@@ -177,19 +179,34 @@ public final class ClauseHelpers {
      * apart by something other than {@link InliningPolicy}.
      */
     private static Hir.Def withInlinedInvariants(HelperInliner inliner, Hir.Def def,
-                                                java.util.function.Consumer<CallsLeftStanding> met) {
+                                                java.util.function.Consumer<Made> met) {
         if (!(def instanceof Hir.Data d) || d.invariants().isEmpty()) {
             return def;
         }
         BindingOwner declared = new BindingOwner.OfData(d.declares());
         return new Hir.Data(d.written(), d.declares(), d.newtype(), d.includes(), d.fields(),
                 Hir.mapClauses(d.invariants(), clause -> {
-                    Expansion<Hir.Expr> one = inliner.expanding(clause, declared);
-                    met.accept(CallsLeftStanding.of(one.standing()));
+                    // The shape its author wrote it in, and the parts expanded where they stand —
+                    // so the clause is what those parts compose, and a reading of it holds each of
+                    // them where the shape says to look.
+                    AuthoredShape shape = shapeOf(clause);
+                    Expansion<Hir.Expr> one = inliner.expanding(() ->
+                            expandedOver(shape, part -> inliner.inline(part, declared)));
+                    met.accept(new Made(CallsLeftStanding.of(one.standing()), shape));
                     return one.value();
                 }),
                 d.pos());
     }
+
+    /**
+     * What expanding one clause produced beside its tree: what the expansion left standing, and the
+     * parts its author wrote as the expansion made them.
+     *
+     * <p>What is left standing is the clause's and is the same answer for every part of it. A part
+     * of its own would be a finer answer than the reading that takes it asks for, and giving it one
+     * now would change what a clause that stopped stops on.
+     */
+    private record Made(CallsLeftStanding standing, AuthoredShape shape) {}
 
     /** {@code spec} with the helper calls in its {@code ensures} expanded as {@code inliner} expands
      * them — which representation that leaves is the inliner's to say, and the same walk gives
@@ -236,15 +253,123 @@ public final class ClauseHelpers {
         return a.line() != b.line() ? a.line() < b.line() : a.column() < b.column();
     }
 
-    /** The conjuncts of a clause, flattened, in the order they are written — what a reader sees as
-     * separate clauses. */
-    public static List<Hir.Expr> conjunctsOf(Hir.Expr e) {
+    /**
+     * One part of a clause as its author wrote it, with the place it holds among that clause's
+     * parts.
+     *
+     * <p>What a reader of one needs is the tree and the identity, and the identity is the rule it is
+     * a part of together with this place ({@link #idFor}). The place is assigned where the clause is
+     * split and nowhere else, which is why nobody outside {@link ClauseHelpers} can make one of
+     * these: a second walk that numbered the parts for itself would agree with this one until either
+     * changed its mind about what a part is.
+     *
+     * <p>The number is not offered on its own. Read off here, it would be a number a caller could
+     * put beside whichever rule it happened to be holding, which is the pair this exists to keep
+     * from being assembled by hand.
+     */
+    public static final class AuthoredPart {
+
+        private final int ordinal;
+        private final Hir.Expr written;
+
+        private AuthoredPart(int ordinal, Hir.Expr written) {
+            this.ordinal = ordinal;
+            this.written = written;
+        }
+
+        /** The part itself, as the author wrote it and before anything is expanded into it. */
+        public Hir.Expr written() {
+            return written;
+        }
+
+        /** What this part is called as a part of {@code rule}. */
+        public PartId idFor(RuleRef.Invariant rule) {
+            return new PartId(rule, ordinal);
+        }
+
+        /**
+         * Two of these are one where they are the same text in the same place among the parts.
+         *
+         * <p>Written out because this is not a record, and it is not a record so that only the split
+         * that numbers the parts can make one. What it travels inside is an answer a query keeps
+         * ({@link ExpandedClauses}), and an answer is a value: compared by identity, a declaration
+         * whose clauses are what they were would come back unequal every time it was worked out, and
+         * everything that reads them would be done again.
+         */
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof AuthoredPart each
+                    && ordinal == each.ordinal && written.equals(each.written);
+        }
+
+        @Override
+        public int hashCode() {
+            return ordinal * 31 + written.hashCode();
+        }
+
+        @Override
+        public String toString() {
+            return "part " + ordinal;
+        }
+    }
+
+    /**
+     * The conjuncts of a clause, in the order they are written — what a reader sees as separate
+     * clauses, each with the place it holds among them.
+     *
+     * <p>For the expansions that split a clause before expanding it, and for nobody else. A reader
+     * that wants the parts of a clause asks the clause ({@code TypeOps.Declared.parts}): splitting
+     * a tree is how the parts are made, and a tree an expansion has already been over holds
+     * conjunctions the author did not write, so a second split of one is a second answer to which
+     * parts there are.
+     */
+    static List<AuthoredPart> conjunctsOf(Hir.Expr e) {
+        List<AuthoredPart> out = new ArrayList<>();
+        parts(shapeOf(e), out);
+        return List.copyOf(out);
+    }
+
+    private static void parts(AuthoredShape shape, List<AuthoredPart> out) {
+        switch (shape) {
+            case AuthoredShape.One it -> out.add(it.part());
+            case AuthoredShape.Both it -> {
+                parts(it.left(), out);
+                parts(it.right(), out);
+            }
+        }
+    }
+
+    /**
+     * The shape {@code e} was written in, with each part numbered where it stands among them.
+     *
+     * <p>The one place a clause is read for the several rules an author wrote it as. Everything
+     * anybody asks of that reading is an answer over this shape — which parts there are, the clause
+     * with each of them expanded where it stands, and which subtree of a reading each of them
+     * became — so there is one answer to what a clause is made of and the rest are walks over it.
+     */
+    private static AuthoredShape shapeOf(Hir.Expr e) {
+        return shaped(e, new int[1]);
+    }
+
+    private static AuthoredShape shaped(Hir.Expr e, int[] numbered) {
         if (e instanceof Hir.Binary b
                 && ConditionJoin.of(b.op()).orElse(null) == ConditionJoin.BOTH) {
-            List<Hir.Expr> out = new ArrayList<>(conjunctsOf(b.left()));
-            out.addAll(conjunctsOf(b.right()));
-            return out;
+            // Left before right, which is the order the clause is written in and the order the
+            // parts are numbered in.
+            AuthoredShape left = shaped(b.left(), numbered);
+            return new AuthoredShape.Both(b, left, shaped(b.right(), numbered));
         }
-        return List.of(e);
+        return new AuthoredShape.One(new AuthoredPart(numbered[0]++, e));
+    }
+
+    /** {@code shape} with each of the parts its author wrote replaced by what {@code onPart} makes
+     *  of it, written back into the nodes the author joined them with. */
+    private static Hir.Expr expandedOver(AuthoredShape shape, UnaryOperator<Hir.Expr> onPart) {
+        return switch (shape) {
+            case AuthoredShape.One it -> onPart.apply(it.part().written());
+            case AuthoredShape.Both it -> new Hir.Binary(it.written().op(),
+                    expandedOver(it.left(), onPart), expandedOver(it.right(), onPart),
+                    it.written().origin(), it.written().pos(), it.written().region());
+        };
     }
 }

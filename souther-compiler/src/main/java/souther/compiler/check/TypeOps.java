@@ -1302,11 +1302,16 @@ public final class TypeOps {
      * same thing in each.
      */
     public record Declared(TypeSymbol.AtModule declaredOn, int ordinal,
-                           Hir.InvariantClause clause, CallsLeftStanding standing) {
+                           Hir.InvariantClause clause, CallsLeftStanding standing,
+                           AuthoredShape shape) {
 
         public Declared {
             if (standing == null) {
                 throw new IllegalArgumentException("a clause says what its expansion left standing");
+            }
+            if (shape == null) {
+                throw new IllegalArgumentException(
+                        "a clause is written in the shape its author wrote it in");
             }
         }
 
@@ -1315,6 +1320,18 @@ public final class TypeOps {
          *  a reader given them apart can be given them mismatched. */
         ClauseAsExpanded asExpanded() {
             return new ClauseAsExpanded(clause.expr(), standing);
+        }
+
+        /**
+         * The parts its author wrote it in, each with the tree the expansion made of it.
+         *
+         * <p>Asked of the clause and not worked out from its tree. Which parts a clause has was
+         * settled where it was split, and the tree an expansion left holds conjunctions the author
+         * did not write — so a reader splitting it would be answering a question this already has
+         * an answer to, with a different answer.
+         */
+        public List<AuthoredShape.Written> parts() {
+            return shape.onto(clause.expr(), new RuleRef.Invariant(Clause.Ref.of(this)));
         }
     }
 
@@ -1379,7 +1396,8 @@ public final class TypeOps {
                 List<Declared> out = new ArrayList<>();
                 for (int ordinal = 0; ordinal < clauses.clauses().size(); ordinal++) {
                     ExpandedClauses.Expanded each = clauses.clauses().get(ordinal);
-                    out.add(new Declared(named, ordinal, each.clause(), each.standing()));
+                    out.add(new Declared(named, ordinal, each.clause(), each.standing(),
+                            each.shape()));
                 }
                 yield new ExpandedRules(out, true);
             }

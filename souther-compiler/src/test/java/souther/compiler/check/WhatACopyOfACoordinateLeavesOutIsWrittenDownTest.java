@@ -67,11 +67,11 @@ class WhatACopyOfACoordinateLeavesOutIsWrittenDownTest {
         Set<String> added = new LinkedHashSet<>(componentsOf(FieldDomains.NoLine.class));
         added.removeAll(componentsOf(coordinate()));
 
-        assertEquals(Set.of("from", "part", "conjunct", "why"), added,
-                "the rule, the conjunct of it this is, that conjunct's own expression, and what"
-                        + " stopped it. The number beside the expression because two identical"
-                        + " conjuncts of one clause are two lines, and nothing about the expression"
-                        + " tells them apart");
+        assertEquals(Set.of("part", "read", "why"), added,
+                "which part of which rule this is, that part's own expression, and what stopped"
+                        + " it. The name beside the expression because two identical parts of one"
+                        + " clause are two lines, and nothing about the expression tells them"
+                        + " apart");
         assertTrue(componentsOf(FieldDomains.NoLine.class).contains("at"),
                 "beside the one of the coordinate that a reader downstream turned out to need:"
                         + " which number of which position the end was to have been on. One"

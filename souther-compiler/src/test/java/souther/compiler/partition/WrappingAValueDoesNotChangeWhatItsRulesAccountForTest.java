@@ -97,7 +97,7 @@ class WrappingAValueDoesNotChangeWhatItsRulesAccountForTest {
         if (!(border.origin() instanceof LineOrigin.InvariantOrigin invariant)) {
             throw new AssertionError("this line was not drawn by an invariant: " + border.origin());
         }
-        return invariant.rule().clause().name().orElseThrow() + "#" + invariant.conjunct()
+        return invariant.rule().clause().name().orElseThrow() + "#" + invariant.part().ordinal()
                 + " " + invariant.keeps() + " at " + border.value();
     }
 

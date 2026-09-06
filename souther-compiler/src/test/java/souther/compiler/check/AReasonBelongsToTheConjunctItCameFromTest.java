@@ -52,9 +52,9 @@ class AReasonBelongsToTheConjunctItCameFromTest {
                 .findFirst().orElseThrow(() -> new AssertionError("the line was answered"));
     }
 
-    /** The parts of the clause standing behind that answer. */
+    /** The parts of the clause standing behind that answer, by where each stands among them. */
     private static List<Integer> partsBehindTheLine(String clause) {
-        return standing(clause).conjuncts();
+        return standing(clause).conjuncts().stream().map(PartId::ordinal).toList();
     }
 
     /**

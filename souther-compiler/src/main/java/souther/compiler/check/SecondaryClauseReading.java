@@ -55,6 +55,7 @@ final class SecondaryClauseReading {
         }
     }
 
+
     /** Records the limit and answers with the stop it authorizes, which is one act and is written
      *  as one. */
     private static TypedClause stoppedOn(String describing, WhatTheCheckCannotRead met) {

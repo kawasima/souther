@@ -1,5 +1,6 @@
 package souther.compiler.inputs;
 
+import souther.compiler.check.PartId;
 import souther.compiler.check.RuleRef;
 import souther.compiler.core.Core;
 import souther.compiler.types.TypeSymbol;
@@ -18,11 +19,10 @@ import souther.compiler.types.TypeSymbol;
  * why it placed none is no part of the question: the two read one clause with different atoms, and a
  * clause over a number one of them has no atom for is one the other names two positions in.
  *
- * @param rule     which clause of which declaration
- * @param conjunct where in that clause this conjunct is, counted from zero over every conjunct the
- *                 clause has. What tells one authored line from another is the pair, and a reader
- *                 holding the expression alone cannot tell two identical conjuncts apart
- * @param part     the conjunct itself
+ * @param part     which part of which rule this is, as the split that wrote the parts down named
+ *                 it. What tells one authored line from another is this name, and a reader holding
+ *                 the expression alone cannot tell two identical conjuncts apart
+ * @param read     the conjunct itself
  * @param at       where the value the clause is written about stands. The clause binds each field of
  *                 the declaration that wrote it, and a field an include brought in keeps that
  *                 declaration's binding, so the names under this path are what the clause reads
@@ -33,17 +33,18 @@ import souther.compiler.types.TypeSymbol;
  *                 is that name's — matched against the writing declaration's bindings alone, a
  *                 clause under a name names no position at all
  */
-public record ClauseWithoutAnEnd(RuleRef.Invariant rule, int conjunct, Core part, TermPath at,
+public record ClauseWithoutAnEnd(PartId part, Core read, TermPath at,
                                  TypeSymbol.AtModule readUnder) {
 
     public ClauseWithoutAnEnd {
-        if (rule == null || part == null || at == null || readUnder == null) {
+        if (part == null || read == null || at == null || readUnder == null) {
             throw new IllegalArgumentException(
                     "a clause is one of a declaration's, is written, and is about a value somewhere");
         }
-        if (conjunct < 0) {
-            throw new IllegalArgumentException(
-                    "a conjunct of a clause is counted from zero: " + conjunct);
-        }
+    }
+
+    /** Which clause of which declaration this is a part of. */
+    public RuleRef.Invariant rule() {
+        return part.rule();
     }
 }

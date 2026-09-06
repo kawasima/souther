@@ -42,19 +42,14 @@ public final class DeclaredClauses {
     /**
      * One conjunct of one rule of a declaration.
      *
-     * @param rule     the clause it is a conjunct of, as a report names it
-     * @param conjunct which of that clause's conjuncts it is, counted from zero over all of them
-     * @param expr     the conjunct itself
+     * @param part which part of which rule it is, as the split that wrote the parts down named it
+     * @param expr the conjunct itself
      */
-    public record Conjunct(RuleRef.Invariant rule, int conjunct, Hir.Expr expr) {
+    public record Conjunct(PartId part, Hir.Expr expr) {
 
         public Conjunct {
-            if (rule == null || expr == null) {
+            if (part == null || expr == null) {
                 throw new IllegalArgumentException("a conjunct is some clause's text");
-            }
-            if (conjunct < 0) {
-                throw new IllegalArgumentException(
-                        "a conjunct of a clause is counted from zero: " + conjunct);
             }
         }
     }
@@ -106,11 +101,12 @@ public final class DeclaredClauses {
         // spread it, and two clauses of one declaration were one rule.
         for (TypeOps.Declared declared : TypeOps.expandedInvariants(
                 named, source.symbols(), source.invariants()).reached()) {
-            RuleRef.Invariant rule = new RuleRef.Invariant(Clause.Ref.of(declared));
-            int conjunct = -1;
-            for (Hir.Expr each : ClauseHelpers.conjunctsOf(declared.clause().expr())) {
-                conjunct++;
-                out.add(new Conjunct(rule, conjunct, each));
+            // The parts the clause was split into, with the tree the expansion made of each. Split
+            // again here, this would be a second answer to which parts a clause has — taken off a
+            // tree an expansion left, where what a helper's body joined is as much a conjunction as
+            // what the author wrote.
+            for (AuthoredShape.Written each : declared.parts()) {
+                out.add(new Conjunct(each.id(), each.read()));
             }
         }
         return out;

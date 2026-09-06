@@ -136,14 +136,16 @@ class WhatTheRulesTogetherLeaveAQuantityTest {
 
     /** One clause of one declaration, told from the next by which clause of it this is. */
     static AuthoredLine aLine(int clause) {
-        return new AuthoredLine(new souther.compiler.check.RuleRef.Invariant(
-                new souther.compiler.check.Clause.Ref(
-                        new souther.compiler.check.Clause.Id(
-                                souther.compiler.types.TypeSymbols.declared(
-                                        new souther.compiler.types.TypeKey("example.runs", "N")),
-                                clause),
-                        java.util.Optional.empty())),
-                0, new LineFacts(new ComparisonClaim.Cut(Towards.ABOVE, true)), List.of());
+        return new AuthoredLine(new WhichLine.OfAPart(new souther.compiler.check.PartId(
+                new souther.compiler.check.RuleRef.Invariant(
+                        new souther.compiler.check.Clause.Ref(
+                                new souther.compiler.check.Clause.Id(
+                                        souther.compiler.types.TypeSymbols.declared(
+                                                new souther.compiler.types.TypeKey(
+                                                        "example.runs", "N")),
+                                        clause),
+                                java.util.Optional.empty())), 0)),
+                new LineFacts(new ComparisonClaim.Cut(Towards.ABOVE, true)), List.of());
     }
 
     /**
