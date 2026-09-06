@@ -438,6 +438,13 @@ public sealed interface Core {
         // author wrote: a library operation used as a value is expanded into a block, and the
         // application inside that block is kept in the same way. Held as a construct, those arrived
         // saying no source wrote them and nothing said what they were instead.
+        //
+        // Both are null exactly where the term has had its places taken out
+        // ({@link #withoutItsPlace}), and they go together: what that walk makes is a value two
+        // readings of one term compare equal, and either of these left in would move with an edit
+        // the term cannot see. So a reader wanting them asks for the pair — one of them answering
+        // alone would be half a call — and what it has then is a key for comparing rather than a
+        // term to write back out.
 
         public PreservedCall {
             // Taken over rather than borrowed. Checking a list the caller goes on holding says what

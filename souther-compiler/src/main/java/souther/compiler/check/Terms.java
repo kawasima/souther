@@ -2686,12 +2686,10 @@ final class Terms {
                     new ApplicationOrigin.Derived(
                             new ApplicationDerivationCause.ApplicationWrittenBack(identified), 0);
             case ApplicationOrigin.ComposedFixture _ -> new ApplicationOrigin.ComposedFixture();
-            // A term with its places taken out, which is a comparison key and not a term to write
-            // back: `Core.withoutItsPlace` says it is for comparing two readings of one term and
-            // for nothing else, and drops every origin because they move with edits the term
-            // cannot see. Answering with a composed one would say a fixture made this, which
-            // nothing did; answering with a derivation would derive it from an absence. So what is
-            // said is that a key arrived where a term was wanted.
+            // A term with its places taken out says nothing about where it came from, and what is
+            // written out of one is reached only where every part of it could be written — which is
+            // where the call still carries what it applies. Said rather than left to a reader
+            // meeting a bare absence further down.
             case null -> throw new IllegalStateException(
                     "a term with its places taken out was written back out as a construction");
         };
