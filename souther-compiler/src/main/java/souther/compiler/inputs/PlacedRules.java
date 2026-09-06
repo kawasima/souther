@@ -148,9 +148,9 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
         // Rule by rule, and every question each of them raised. What a reading holds afterwards is
         // what the rules came to together — a field two clauses narrow is one narrowed field — so an
         // account taken from there is one either clause can go missing from with nothing to see.
-        bounds().accounting().forEach((rule, accounting) ->
+        bounds().accounting().values().forEach(accounting ->
                 accounting.answers().keySet().forEach(owed ->
-                        out.add(PlacementSeed.of(root, owed, rule, accounting.cited()))));
+                        out.add(PlacementSeed.of(root, owed, accounting.cited()))));
         return List.copyOf(out);
     }
 
@@ -326,11 +326,11 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
             return List.of();
         }
         List<RuleUnclassifiedAt> out = new ArrayList<>();
-        bounds().accounting().forEach((rule, accounting) ->
+        bounds().accounting().values().forEach(accounting ->
                 accounting.undetermined().stream()
                         .filter(each -> each.at().equals(where))
-                        .forEach(each -> out.add(new RuleUnclassifiedAt(rule, accounting.cited(),
-                                each))));
+                        .forEach(each ->
+                                out.add(new RuleUnclassifiedAt(accounting.cited(), each))));
         TermPath above = alsoAt(path);
         if (above != null) {
             out.addAll(alsoReaching.outer().unclassified(above));
@@ -338,9 +338,15 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
         return List.copyOf(out);
     }
 
-    /** One rule, how a reader finds it, and one place its classification did not come out. */
-    record RuleUnclassifiedAt(RuleRef rule, RuleCitation cited,
-                              Requirement.BoundaryUndetermined at) {}
+    /** How a reader finds the rule, which says which rule it is, and one place its classification
+     *  did not come out. */
+    record RuleUnclassifiedAt(RuleCitation cited, Requirement.BoundaryUndetermined at) {
+
+        /** Which rule of the model, which the handle for it carries. */
+        RuleRef rule() {
+            return cited.rule();
+        }
+    }
 
     /**
      * How much of what the rules say the bounds at {@code path} are able to state.

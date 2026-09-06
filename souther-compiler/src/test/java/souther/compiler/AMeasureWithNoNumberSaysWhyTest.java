@@ -438,7 +438,7 @@ class AMeasureWithNoNumberSaysWhyTest {
         assertFalse(lines.isEmpty(), "the invariant draws two");
         for (BorderAssessment.Point line : lines) {
             assertEquals(ItemAssessment.Coverage.NotAsked.NO_ROWS, line.item().weakeningSource().why(),
-                    line.border().origin().named() + " at " + line.asked());
+                    line.border().origin().saidWithoutAPlace() + " at " + line.asked());
         }
     }
 
@@ -535,9 +535,9 @@ class AMeasureWithNoNumberSaysWhyTest {
                 continue;   // nothing was measured there and nothing was waiting on a row
             }
             assertNotEquals(ItemAssessment.Coverage.NotAsked.NO_ROWS, line.item().weakeningSource().why(),
-                    line.border().origin().named() + " at " + line.asked());
+                    line.border().origin().saidWithoutAPlace() + " at " + line.asked());
             assertEquals(MeasurementStatus.PARTIAL, AdequacyReport.statusOf(line.item().weakeningSource()),
-                    line.border().origin().named() + " at " + line.asked());
+                    line.border().origin().saidWithoutAPlace() + " at " + line.asked());
         }
     }
 

@@ -199,9 +199,9 @@ class AComparisonThisDoesNotReadIsStillNoticedTest {
                 read("p: Pair", "Int.multiply(p.x, p.x) < 10").noLine().unclassified().getFirst();
 
         assertInstanceOf(RuleRef.Comparison.class, said.rule());
-        RuleCitation.WrittenAt cited = said.cited().stream()
+        RuleCitation.WrittenAt<?> cited = said.cited().stream()
                 .filter(RuleCitation.WrittenAt.class::isInstance)
-                .map(RuleCitation.WrittenAt.class::cast).findFirst()
+                .map(each -> (RuleCitation.WrittenAt<?>) each).findFirst()
                 .orElseThrow(() -> new AssertionError(
                         "a rule with no name is found by where it is: " + said.cited()));
         souther.compiler.diag.Citation.Written where = assertInstanceOf(

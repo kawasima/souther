@@ -192,14 +192,16 @@ class AClauseOfATypeDoesNotPartItsValuesTest {
     private static final ComparisonEmissionSite WHERE = Numberings.comparison(1, 0);
 
     private static LineOrigin aComparison() {
-        return new LineOrigin.ComparisonOrigin(new RuleRef.Comparison("weigh",
-                new souther.compiler.types.SourceConstructOrigin(
-                        new WrittenOwner.Body("example.weigh", "weigh"), 2, 0,
-                        souther.compiler.types.SourceConstruct.BINARY)),
+        return new LineOrigin.ComparisonOrigin(
                 new LineOrigin.ComparisonOrigin.Read(
                         new souther.compiler.coverage.ComparisonOccurrence(
                                 "example.weigh", "weigh", 0),
-                        new souther.compiler.check.RuleCitation.WrittenAt(
+                        new souther.compiler.check.RuleCitation.WrittenAt<>(
+                                new RuleRef.Comparison("weigh",
+                                        new souther.compiler.types.SourceConstructOrigin(
+                                                new WrittenOwner.Body("example.weigh", "weigh"),
+                                                2, 0,
+                                                souther.compiler.types.SourceConstruct.BINARY)),
                                 souther.compiler.diag.Citation.of(
                                         new souther.compiler.diag.SourcePos(3, 5))),
                         WHERE),

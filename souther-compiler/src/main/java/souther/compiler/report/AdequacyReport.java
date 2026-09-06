@@ -597,7 +597,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                     // and a point beside it names a run, and a sentence that wrote `=` for both said
                     // a run was one value.
                     out.append(String.format("      %s no row is at the %s%n",
-                            mark(f), pointOf(owed, owed.debt().id().named())));
+                            mark(f), pointOf(owed, owed.debt().id().saidWithoutAPlace())));
                 }
             }
         });

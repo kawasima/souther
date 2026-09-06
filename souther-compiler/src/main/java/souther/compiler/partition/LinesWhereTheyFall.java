@@ -197,7 +197,7 @@ public final class LinesWhereTheyFall {
             // nobody meant. What an author is owed is the pairing, and it is said here.
             // The line is what has nowhere to go: the rule was read, an end came out of it, and
             // which of the positions it runs between is what nothing worked out.
-            notPlaced.boundaryUndetermined(line.by().rule(), line.by().cited(),
+            notPlaced.boundaryUndetermined(line.by().cited(),
                     new FilingCoordinate.OfTerm(filed.getFirst().name()),
                     new BlockReason.CasePairingNotDetermined());
             return;
@@ -264,7 +264,7 @@ public final class LinesWhereTheyFall {
             return new WhereTheNameStands.AsWritten(term);
         }
         PlacementFiling filing = inputs.file(
-                PlacementSeed.of(address, term, origin.rule(), origin.cited()));
+                PlacementSeed.of(address, term, origin.cited()));
         List<NumericTerm> filed = new ArrayList<>();
         for (souther.compiler.inputs.PlacementOutcome outcome : filing.outcomes()) {
             switch (outcome) {

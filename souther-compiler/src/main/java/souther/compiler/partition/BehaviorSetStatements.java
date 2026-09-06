@@ -160,7 +160,7 @@ public final class BehaviorSetStatements {
                 case Outcome.NotGot(var at, var why) ->
                         blocked.add(new ClassingBlocker(at, each.origin(), why));
                 case Outcome.SayingNothing(var at, var why) -> saying.add(
-                        RuleWithoutALine.of(each.origin().rule(), each.origin().cited(), at, why));
+                        RuleWithoutALine.of(each.origin().cited(), at, why));
                 // Nothing places it, so there is nobody to say it to. Which is the answer the
                 // reading of a comparison gives the same shape, and not this walk being quiet.
                 case Outcome.Nowhere _ -> { }

@@ -109,7 +109,7 @@ class ARuleNoAlternativeNeededIsStillOneNobodyReadTest {
     @Test
     void theAccountingIsNotReadOffTheCompleteness() {
         FieldDomains read = read(LEFT_ASSOCIATED);
-        Map<RuleRef, RuleAccounting> accounting = read.accounting();
+        Map<RuleRef.Invariant, RuleAccounting> accounting = read.accounting();
 
         assertEquals(1, accounting.size(), "one clause, so one rule to account for");
         assertEquals(AdmissibleSet.READ_IN_FULL, read.admits(RuleKey.of("n")).completeness());

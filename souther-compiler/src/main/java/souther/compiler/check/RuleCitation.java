@@ -4,6 +4,8 @@ import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.source.SourceId;
 
+import java.util.Set;
+
 /**
  * How a reader finds the rule a question is about.
  *
@@ -12,10 +14,21 @@ import souther.compiler.source.SourceId;
  * on, which is not the same thing and must not become a key — a rule written once and read twice is
  * one rule, and a rule and the handle for it are not in step wherever a name is absent.
  *
- * <p>Two answers, because rules are found two ways. An author names a clause of an invariant and
- * looks it up by that name; a comparison in a body has no name and is found where it is written. A
- * single string over both would have to spell a place as a name, and {@link RuleRef#named} says why
- * that is wrong for the one that has none: a comparison is written rather than named.
+ * <p><b>A projection that holds what it is a projection of.</b> {@link #rule} is the rule this is
+ * the handle for, and it is here rather than beside this in whoever is holding both. A state
+ * carrying a rule and a handle built apart from it can be built with the two disagreeing, and
+ * nothing about such a state is wrong until a document writes both — where the rule says one thing
+ * and the sentence beside it says another. So there is one path from a piece of evidence to the rule
+ * it is about, and it runs through here.
+ *
+ * <p>Holding the rule does not make this an identity. What a reader is shown is
+ * {@link souther.compiler.publish.PublishedRuleHandle}, which is what an order over handles is taken
+ * over, and two of these that a document writes alike come to one value there.
+ *
+ * <p>Two answers, because rules are found two ways, and which of the two a rule is found by is the
+ * rule's own answer rather than a choice a caller makes ({@link RuleRef.Named},
+ * {@link RuleRef.Written}). An author names a clause of an invariant and looks it up by that name; a
+ * comparison in a body has no name and is found where it is written.
  *
  * <p><b>Not {@link souther.compiler.partition.LineOrigin}.</b> That says where a rule was read, and
  * one rule read in two calls of a helper has two of them — so putting it here would make a document
@@ -25,30 +38,19 @@ import souther.compiler.source.SourceId;
 public sealed interface RuleCitation {
 
     /**
-     * How a reader finds a rule the author wrote a name beside.
+     * Which rule of the model this is the handle for.
      *
-     * <p>Two overloads and no {@code RuleRef} one, which is the point. {@link RuleRef#named} answers
-     * for a comparison too — with what it is rather than what it is called — and a total factory
-     * over {@code RuleRef} would hand that back as a name, sending an author to look for a clause
-     * called {@code the comparison}. Nothing in {@link Named} would refuse it: the string is not
-     * empty. A comparison is found by {@link WrittenAt}, from where it is written, which is a place
-     * this could not invent.
+     * <p>The one way from a handle to the rule. A reader holding a piece of evidence asks it for the
+     * citation and the citation for the rule, so the two cannot be about different rules.
      */
-    static Named named(RuleRef.Invariant rule) {
-        return new Named(rule.named());
-    }
+    RuleRef rule();
 
-    /** The same, of a clause of an {@code ensures}. */
-    static Named named(RuleRef.Ensures rule) {
-        return new Named(rule.named());
-    }
-
-    /** The name the author gave it, as a report writes the rule. */
-    record Named(String name) implements RuleCitation {
+    /** How a reader finds a rule the author wrote a name beside. */
+    record Named(RuleRef.Named rule) implements RuleCitation {
 
         public Named {
-            if (name == null || name.isEmpty()) {
-                throw new IllegalArgumentException("a rule called nothing is cited by where it is");
+            if (rule == null) {
+                throw new IllegalArgumentException("a citation is of some rule");
             }
         }
     }
@@ -59,12 +61,21 @@ public sealed interface RuleCitation {
      * <p>{@link Citation} and not a bare position, because where a rule is written and where a
      * reader is standing are not always the same file: a comparison inside a helper is written
      * there and reached from the call, and the same type says both.
+     *
+     * <p>Which kind of written rule, kept in the type. A reading that draws a line is a comparison's
+     * and a reading that tells a set of values from the rest is a predicate's, and a holder of one
+     * says which it is ({@link souther.compiler.partition.RuleEvidenceOrigin}). Erased to
+     * {@link RuleRef.Written} here, a holder wanting the kind back would either narrow it at a cast
+     * or keep the rule a second time, and the second is what this type exists to have removed.
+     *
+     * @param <R> which kind of written rule this is the handle for
      */
-    record WrittenAt(Citation at) implements RuleCitation {
+    record WrittenAt<R extends RuleRef.Written>(R rule, Citation at) implements RuleCitation {
 
         public WrittenAt {
-            if (at == null) {
-                throw new IllegalArgumentException("a rule with no name is found by where it is");
+            if (rule == null || at == null) {
+                throw new IllegalArgumentException(
+                        "a rule with no name is found by where it is: " + rule + " at " + at);
             }
         }
     }
@@ -77,15 +88,64 @@ public sealed interface RuleCitation {
      * What is not shared is an identity: where a rule was read is
      * {@link souther.compiler.partition.LineOrigin}'s and one rule has as many of those as it has
      * readings.
+     *
+     * <p>Every word here is read off {@link #rule}. What goes in front of a place is what that rule
+     * is, so a kind of rule added to the seal is one this sentence has words for or one that stops
+     * the compile.
      */
     default String said(SourceNameResolver names, SourceId sectionSource) {
         return switch (this) {
-            case Named named -> named.name();
+            case Named it -> it.rule().citedName();
             // Written here, and reached from somewhere else: a comparison inside a helper is one
             // rule and a reader is sent to two places, which the citation already tells apart.
-            case WrittenAt written -> WHAT_IT_IS
-                    + joining(written.at()) + written.at().said(names, sectionSource);
+            case WrittenAt<?> it -> it.rule().whatItIs()
+                    + joining(it.at()) + it.at().said(names, sectionSource);
         };
+    }
+
+    /**
+     * Where a handle reaches its rule, which is nothing for a rule the author named.
+     *
+     * <p>The one place a handle is taken apart. What a fold over these keeps is the rule once and
+     * the places beside it, so that no state holds a second answer to which rule it is about, and
+     * this is how a reader's handle becomes a place to keep.
+     */
+    static Set<Citation> placeOf(RuleCitation cited) {
+        return switch (cited) {
+            case Named _ -> Set.of();
+            case WrittenAt<?> it -> Set.of(it.at());
+        };
+    }
+
+    /**
+     * Every handle for {@code rule} that the places in {@code reachedAt} offer.
+     *
+     * <p>The inverse of {@link #placeOf}, and the one place a handle is put back together. A rule
+     * the author named is found by that name from anywhere, so it has one handle however many
+     * readers offered it; one written rather than named has a handle per place it was reached at.
+     */
+    static Set<RuleCitation> handlesFor(RuleRef rule, Set<Citation> reachedAt) {
+        requireReached(rule, reachedAt);
+        return switch (rule) {
+            case RuleRef.Named it -> Set.of(new Named(it));
+            case RuleRef.Written it -> reachedAt.stream()
+                    .map(each -> (RuleCitation) new WrittenAt<>(it, each))
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        };
+    }
+
+    /**
+     * That {@code rule} was reached in the way rules of its kind are reached.
+     *
+     * <p>A rule with no name is found by where it is, so one of those with no place is something
+     * nobody can be sent to look at; and a place beside a rule the author named is a second way to
+     * say one thing, which two readers could spell two ways.
+     */
+    static void requireReached(RuleRef rule, Set<Citation> reachedAt) {
+        if (rule instanceof RuleRef.Written == reachedAt.isEmpty()) {
+            throw new IllegalArgumentException("a rule with no name is reached at a place and a rule"
+                    + " with one is reached by it: " + rule + " at " + reachedAt);
+        }
     }
 
     /**
@@ -97,17 +157,4 @@ public sealed interface RuleCitation {
     static String joining(Citation at) {
         return at instanceof Citation.Elsewhere ? " in " : "@";
     }
-
-    /**
-     * What a report calls a rule that has no name, which is one word.
-     *
-     * <p>One word because there is one thing to say. This was the construct the comparison stood
-     * in, which is not the rule: a condition holds as many rules as it holds comparisons, so
-     * {@code guard} was one word for all of them — and a comparison given a name a line above the
-     * fork that tests it is the same rule with no fork over it to take a word from.
-     *
-     * <p>English, like every other word a report writes from a rule. What a diagnostic says instead
-     * is chosen in the reader's language, from the same fact.
-     */
-    String WHAT_IT_IS = "comparison";
 }

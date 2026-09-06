@@ -108,7 +108,7 @@ public final class FieldDomains {
      *  {@link #movedEnds}. */
     private volatile List<Placed> moved;
     /** What each clause reaching this value raises, keyed on the rule it is. */
-    private final Map<RuleRef, Required> raised;
+    private final Map<RuleRef.Invariant, Required> raised;
     /** The same per part of each clause. A reader that found one conjunct wanting names what that
      *  conjunct is about, and not what the conjunct written beside it raised. */
     private final Map<RuleRef, Map<Core, Required>> raisedByPart;
@@ -118,7 +118,7 @@ public final class FieldDomains {
     /** Which readings took each clause in, as each of them said so. */
     private final ReadingEvidence took;
     /** The accounting, worked out once. Every name of a value asks the same question of it. */
-    private volatile Map<RuleRef, RuleAccounting> accounting;
+    private volatile Map<RuleRef.Invariant, RuleAccounting> accounting;
     /** Which declarations relate each coordinate to something else, and so could have moved where it
      * stops — see {@link #narrowedBy}. */
     private final Map<RuleKey, List<TypeSymbol.AtModule>> narrowers;
@@ -188,7 +188,7 @@ public final class FieldDomains {
                          List<WithoutAnEnd> withoutAnEnd, List<AboutOneCoordinate> aboutOneCoordinate,
                          List<AboutOneCoordinate> aboutTheStrings,
                          PartsLeftOut withoutParts,
-                         Map<RuleRef, Required> raised,
+                         Map<RuleRef.Invariant, Required> raised,
                          Map<RuleRef, Map<Core, Required>> raisedByPart,
                          Map<BoundaryQuestion, BoundaryStanding> standing, ReadingEvidence took,
                          Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
@@ -846,7 +846,7 @@ public final class FieldDomains {
      * managed — the second is what a completeness written per reader amounts to, and it says the
      * model was read in full for exactly as long as nobody adds a reader.
      */
-    public Map<RuleRef, Required> required() {
+    public Map<RuleRef.Invariant, Required> required() {
         return raised;
     }
 
@@ -876,12 +876,12 @@ public final class FieldDomains {
      * first case and by the reading of values in the second — so a completeness read off either
      * reading alone reports a model that was read in full as one this compiler could not read.
      */
-    public Map<RuleRef, RuleAccounting> accounting() {
-        Map<RuleRef, RuleAccounting> had = accounting;
+    public Map<RuleRef.Invariant, RuleAccounting> accounting() {
+        Map<RuleRef.Invariant, RuleAccounting> had = accounting;
         if (had != null) {
             return had;
         }
-        Map<RuleRef, RuleAccounting> out = new LinkedHashMap<>();
+        Map<RuleRef.Invariant, RuleAccounting> out = new LinkedHashMap<>();
         raised.forEach((rule, required) ->
                 out.put(rule,
                         RuleAccounting.of(rule, required, owed -> answered(rule, owed))));
@@ -1647,14 +1647,28 @@ public final class FieldDomains {
                 : "the algebra proved no rule of its own and this reading names none";
     }
 
+    /**
+     * A rule as a sort key, which is the author's word for it or what it is where they wrote none.
+     *
+     * <p>Spelled here because what it is for is here. Nobody is shown this: what a reader is sent to
+     * a rule by is a citation, which carries a place for the rules that have no name, and an order
+     * has no place to put one.
+     */
+    private static String orderOf(RuleRef rule) {
+        return switch (rule) {
+            case RuleRef.Named it -> it.citedName();
+            case RuleRef.Written it -> "the " + it.whatItIs();
+        };
+    }
+
     /** What a cause is filed under, so that two runs print them the same way round. */
     private static String orderOf(ProjectionEvidence.Cause cause) {
         return switch (cause) {
             case ProjectionEvidence.Cause.Unavailable it -> "1 " + it.path();
             case ProjectionEvidence.Cause.Unrepresented it ->
-                    "2 " + it.rule().named() + " " + it.path();
+                    "2 " + orderOf(it.rule()) + " " + it.path();
             case ProjectionEvidence.Cause.Lossy it ->
-                    "3 " + it.rule().named() + " " + it.atom() + " " + it.unstated();
+                    "3 " + orderOf(it.rule()) + " " + it.atom() + " " + it.unstated();
             case ProjectionEvidence.Cause.Rounded it -> "4 " + it.atom();
             case ProjectionEvidence.Cause.NothingIsLeft _ -> "5";
             case ProjectionEvidence.Cause.PositionsSpacedDifferently _ -> "6";

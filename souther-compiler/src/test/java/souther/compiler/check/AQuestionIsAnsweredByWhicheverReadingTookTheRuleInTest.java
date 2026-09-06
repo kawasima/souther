@@ -44,7 +44,7 @@ class AQuestionIsAnsweredByWhicheverReadingTookTheRuleInTest {
                 """.formatted(clause);
     }
 
-    private static Map<RuleRef, RuleAccounting> accountingOf(String source, String type) {
+    private static Map<RuleRef.Invariant, RuleAccounting> accountingOf(String source, String type) {
         Compilation compilation = Compilation.ofSource(source, "Main");
         compilation.answerEverything();
         String module = compilation.modules().get(0);
@@ -62,7 +62,7 @@ class AQuestionIsAnsweredByWhicheverReadingTookTheRuleInTest {
                 ? invariant.clause().name().map(ClauseName::value) : java.util.Optional.empty();
     }
 
-    private static RuleAccounting rule(Map<RuleRef, RuleAccounting> accounting, String clause) {
+    private static RuleAccounting rule(Map<RuleRef.Invariant, RuleAccounting> accounting, String clause) {
         return accounting.entrySet().stream()
                 .filter(e -> nameOf(e.getKey()).filter(clause::equals).isPresent())
                 .map(Map.Entry::getValue).findFirst()
@@ -147,7 +147,7 @@ class AQuestionIsAnsweredByWhicheverReadingTookTheRuleInTest {
      */
     @Test
     void aFailureAtAPositionIsNotTheAccountOfTheClausesBesideIt() {
-        Map<RuleRef, RuleAccounting> accounting = accountingOf("""
+        Map<RuleRef.Invariant, RuleAccounting> accounting = accountingOf("""
                 module example.rooms
 
                 data Length = Int

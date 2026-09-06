@@ -995,7 +995,7 @@ public record Border(BoundaryTarget cut, LineOrigin origin, Map<DomainPoint, Poi
         Level leaves = Seam.of(space, cut, valueBelongs(origin)).leaving(kept);
         if (end == null || !end.at().sameAs(placeOf(leaves))) {
             throw new IllegalStateException(
-                    "a bound whose line is not where what it leaves stops: " + origin.named());
+                    "a bound whose line is not where what it leaves stops: " + origin.saidWithoutAPlace());
         }
     }
 
@@ -1043,7 +1043,7 @@ public record Border(BoundaryTarget cut, LineOrigin origin, Map<DomainPoint, Poi
             return order;
         }
         throw new IllegalStateException("which way a rule is satisfied from its line, asked of one"
-                + " that names a value and orders nothing: " + origin.named());
+                + " that names a value and orders nothing: " + origin.saidWithoutAPlace());
     }
 
     /**

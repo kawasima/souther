@@ -117,7 +117,10 @@ class APositionMeasuredTwoWaysNamesBothRulesTest {
 
     private static Set<String> named(Set<RuleRef> rules) {
         Set<String> out = new LinkedHashSet<>();
-        rules.forEach(each -> out.add(each.named()));
+        rules.forEach(each -> out.add(switch (each) {
+            case RuleRef.Named it -> it.citedName();
+            case RuleRef.Written it -> "the " + it.whatItIs();
+        }));
         return out;
     }
 

@@ -91,7 +91,7 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
             }
             if (keeps == null) {
                 throw new IllegalArgumentException(
-                        "a bound places one of a range's two ends: " + rule.named());
+                        "a bound places one of a range's two ends: " + rule.citedName());
             }
             if (conjunct < 0) {
                 throw new IllegalArgumentException(
@@ -118,22 +118,33 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      *              ComparisonClaim}), which decides which neighbour is the other class's edge:
      *              {@code <= 3000} leaves 3001 over there, {@code < 3000} leaves 2999
      */
-    record ComparisonOrigin(RuleRef.Comparison rule, Read read, LineFacts facts)
-            implements LineOrigin {
+    record ComparisonOrigin(Read read, LineFacts facts) implements LineOrigin {
 
         public ComparisonOrigin {
-            if (facts == null) {
+            if (read == null || facts == null) {
                 throw new IllegalArgumentException("a line is what some comparison placed");
             }
         }
 
         /**
-         * Which reading of the comparison this is, and where that reading was.
+         * Which comparison of the model this reads.
          *
-         * <p>None of it tells one rule from another. A comparison inside a non-recursive helper is
-         * read once per call of that helper, so one comparison the author wrote arrives as several
-         * of these — each a real occurrence, each measured on its own, and all of them the same
-         * rule.
+         * <p>Through the handle the reading holds and not beside it. A rule and how a reader is sent
+         * to it are one answer, and kept as two they could be built about two comparisons — which
+         * would put an identity and a sentence about different rules in one entry of a document
+         * ({@link souther.compiler.check.RuleCitation}).
+         */
+        public RuleRef.Comparison rule() {
+            return read.written().rule();
+        }
+
+        /**
+         * Which comparison this reads, which reading of it this is, and where that reading was.
+         *
+         * <p>Only the handle tells one rule from another. A comparison inside a non-recursive helper
+         * is read once per call of that helper, so one comparison the author wrote arrives as
+         * several of these — each a real occurrence, each measured on its own, and all of them the
+         * same rule, which is the one {@code written} names.
          *
          * <p>No fork. What a row met the line by is getting the comparison to answer, and the
          * comparison is where that is recorded — so the arms of the {@code if} standing round it
@@ -147,10 +158,10 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
          *              {@code B} false and rows that never reached {@code B}. The comparison and not
          *              the number it is instrumented under — two readers agreeing that they mean one
          *              place should not come down to their having been handed the same int
-         * @param written how a reader finds the rule, which is where it is written. The
-         *              comparison's own place and not the fork's — a condition holding three
-         *              comparisons is three rules, and a reader sent to the {@code if} is given one
-         *              handle for all of them
+         * @param written which comparison of the model this is, and how a reader finds it, which is
+         *              where it is written. The comparison's own place and not the fork's — a
+         *              condition holding three comparisons is three rules, and a reader sent to the
+         *              {@code if} is given one handle for all of them
          * @param recordedAt where a run through that comparison is written down. Beside the
          *              comparison and not instead of it: which comparison this reads is what
          *              everything about the rule is said of, and this is only how a run is asked
@@ -158,7 +169,7 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
          *              that numbered it, so the two cannot come from different builds
          */
         public record Read(souther.compiler.coverage.ComparisonOccurrence comparison,
-                           souther.compiler.check.RuleCitation.WrittenAt written,
+                           souther.compiler.check.RuleCitation.WrittenAt<RuleRef.Comparison> written,
                            souther.compiler.coverage.ComparisonEmissionSite recordedAt) {
 
             public Read {
@@ -356,9 +367,9 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
     @Override
     default souther.compiler.check.RuleCitation cited() {
         return switch (this) {
-            case InvariantOrigin i -> souther.compiler.check.RuleCitation.named(i.rule());
+            case InvariantOrigin i -> new souther.compiler.check.RuleCitation.Named(i.rule());
             case ComparisonOrigin g -> g.read().written();
-            case EnsuresOrigin e -> souther.compiler.check.RuleCitation.named(e.rule());
+            case EnsuresOrigin e -> new souther.compiler.check.RuleCitation.Named(e.rule());
             case NarrowedOrigin n -> n.bound().cited();
         };
     }
@@ -383,8 +394,8 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      */
     default String describe(SourceNameResolver names, SourceId sectionSource) {
         return switch (this) {
-            case InvariantOrigin i -> i.rule().named();
-            case EnsuresOrigin e -> e.rule().named();
+            case InvariantOrigin i -> i.rule().citedName();
+            case EnsuresOrigin e -> e.rule().citedName();
             // The same word and the same join a question about this rule is written with. A rule
             // and a line it drew are found the same way, and two spellings of one place read as two
             // places.
@@ -451,15 +462,15 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
     }
 
     /**
-     * The same rule, named without a place.
+     * The same rule, said without a place.
      *
      * <p>What a diagnostic's own sentence says. A diagnostic is built where no reader is — nothing
      * there knows what to call a source — so a place written into its text would be a line and a
      * column with no file, read against whichever file the report happens to be about. Where the rule
-     * is a guard, the place is pointed at instead, by {@link #citation}.
+     * has no name, the place is pointed at instead, by {@link #citation}.
      */
-    default String named() {
-        return authoredLine().named();
+    default String saidWithoutAPlace() {
+        return authoredLine().saidWithoutAPlace();
     }
 
     /**

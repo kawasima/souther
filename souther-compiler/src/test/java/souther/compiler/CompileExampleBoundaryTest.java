@@ -118,8 +118,8 @@ class CompileExampleBoundaryTest {
         BorderAssessment.Point zero = at(away, "0").get(0);
         assertFalse(zero.owed().hasRowWitness());
         assertEquals(MeasurementStatus.COMPLETE, AdequacyReport.statusOf(zero.item().weakeningSource()));
-        assertTrue(zero.border().origin().named().startsWith("invariant"),
-                zero.border().origin().named());
+        assertTrue(zero.border().origin().saidWithoutAPlace().startsWith("invariant"),
+                zero.border().origin().saidWithoutAPlace());
 
         List<BorderAssessment> edge = lines(MODEL + """
 
@@ -144,7 +144,7 @@ class CompileExampleBoundaryTest {
         assertTrue(hundred.owed().hasRowWitness(),
                 "the row wrote 100 and the guard compared it");
         assertTrue(hundred.border().origin().isWrittenRatherThanNamed(),
-                hundred.border().origin().named());
+                hundred.border().origin().saidWithoutAPlace());
     }
 
     /**

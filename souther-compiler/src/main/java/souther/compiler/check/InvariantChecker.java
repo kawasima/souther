@@ -1431,7 +1431,7 @@ public final class InvariantChecker {
                    List<FieldDomains.AboutOneCoordinate> aboutOneCoordinate,
                    List<FieldDomains.AboutOneCoordinate> aboutTheStrings,
                    Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
-                   Map<RuleRef, Required> raised,
+                   Map<RuleRef.Invariant, Required> raised,
                    Map<RuleRef, Map<Core, Required>> raisedByPart,
                    Map<FieldDomains.BoundaryQuestion, FieldDomains.BoundaryStanding> standing) {}
 
@@ -1468,7 +1468,7 @@ public final class InvariantChecker {
         // put among them it would set every other conjunct about the number to be read again.
         List<FieldDomains.AboutOneCoordinate> aboutTheStrings = new ArrayList<>();
         Map<RuleKey, List<TypeSymbol.AtModule>> narrowers = new LinkedHashMap<>();
-        Map<RuleRef, Required> raised = new LinkedHashMap<>();
+        Map<RuleRef.Invariant, Required> raised = new LinkedHashMap<>();
         Map<RuleRef, Map<Core, Required>> raisedByPart = new LinkedHashMap<>();
         Map<FieldDomains.BoundaryQuestion, FieldDomains.BoundaryStanding> standing =
                 new LinkedHashMap<>();
@@ -1487,7 +1487,7 @@ public final class InvariantChecker {
     }
 
     /** What {@code clause} raises, taken together with whatever its other conjuncts raised. */
-    private static void raises(Map<RuleRef, Required> into, RuleRef.Invariant rule,
+    private static void raises(Map<RuleRef.Invariant, Required> into, RuleRef.Invariant rule,
                                ClauseStates states) {
         into.merge(rule, Required.ofInvariant(states), Required::and);
     }
@@ -1503,7 +1503,7 @@ public final class InvariantChecker {
      */
     private void settle(Core part, RuleRef.Invariant rule, ClauseStates states,
                         InvariantBound.Read placed,
-                        Map<FactSubject, Coordinate> byName, Map<RuleRef, Required> raised,
+                        Map<FactSubject, Coordinate> byName, Map<RuleRef.Invariant, Required> raised,
                         ReadingEvidence took,
                         PartsRead parts,
                         Map<RuleRef, Map<Core, Required>> raisedByPart) {
@@ -1581,7 +1581,7 @@ public final class InvariantChecker {
                         List<FieldDomains.AboutOneCoordinate> naming,
                         List<FieldDomains.AboutOneCoordinate> namingTheStrings,
                         Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
-                        Map<RuleRef, Required> raised, ReadingEvidence took,
+                        Map<RuleRef.Invariant, Required> raised, ReadingEvidence took,
                         Map<RuleKey, Type> typeAt,
                         PartsRead parts,
                         Map<RuleRef, Map<Core, Required>> raisedByPart,
@@ -1639,7 +1639,7 @@ public final class InvariantChecker {
                         List<FieldDomains.AboutOneCoordinate> naming,
                         List<FieldDomains.AboutOneCoordinate> namingTheStrings,
                         Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
-                        Map<RuleRef, Required> raised, ReadingEvidence took,
+                        Map<RuleRef.Invariant, Required> raised, ReadingEvidence took,
                         Map<RuleKey, Type> typeAt,
                         PartsRead parts,
                         Map<RuleRef, Map<Core, Required>> raisedByPart,

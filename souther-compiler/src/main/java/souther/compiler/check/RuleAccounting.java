@@ -38,14 +38,12 @@ import java.util.function.Function;
  */
 public final class RuleAccounting {
 
-    private final RuleRef rule;
-    private final RuleCitation cited;
+    private final RuleCitation.Named cited;
     private final Required required;
     private final Map<Owed, Outcome> answers;
 
-    private RuleAccounting(RuleRef rule, RuleCitation cited, Required required,
+    private RuleAccounting(RuleCitation.Named cited, Required required,
                            Map<Owed, Outcome> answers) {
-        this.rule = rule;
         this.cited = cited;
         this.required = required;
         this.answers = Collections.unmodifiableMap(answers);
@@ -61,9 +59,9 @@ public final class RuleAccounting {
      * caller hold a genuine {@link Required} beside answers it wrote itself. A reader outside wants
      * a finished accounting, never a way to make one.
      */
-    static RuleAccounting of(RuleRef rule, Required required,
+    static RuleAccounting of(RuleRef.Named rule, Required required,
                              Function<Owed, Outcome> answered) {
-        return new RuleAccounting(rule, citedAsAClause(rule), required,
+        return new RuleAccounting(new RuleCitation.Named(rule), required,
                 answers(rule, required, answered));
     }
 
@@ -89,32 +87,19 @@ public final class RuleAccounting {
     }
 
     /**
-     * How a reader finds a rule this way in can be about.
+     * Which rule of the model, as everything that names a rule names it.
      *
-     * <p>A clause, either kind, and never a comparison. What comes this way is a rule an author
-     * wrote a name beside, and a comparison raises nothing this is made of.
+     * <p>Asked of the handle, which is what holds it. A clause, either kind, and never a rule
+     * written rather than named: what those raise is answered by the reading that raised it, so
+     * there is no accounting of one for anybody to build, and {@link #of} is where the language
+     * refuses it.
      */
-    private static RuleCitation citedAsAClause(RuleRef rule) {
-        return switch (rule) {
-            case RuleRef.Invariant it -> RuleCitation.named(it);
-            case RuleRef.Ensures it -> RuleCitation.named(it);
-            // A comparison and a predicate are written rather than named, and neither comes this
-            // way at all: what they raise is answered by the reading that raised it, so there is no
-            // accounting of one for anybody to build. What such a rule leaves is a finding about
-            // the position.
-            case RuleRef.Comparison _, RuleRef.Predicate _ -> throw new IllegalArgumentException(
-                    "a rule written rather than named raises nothing an accounting is made of: "
-                            + rule);
-        };
-    }
-
-    /** Which rule of the model, as everything that names a rule names it. */
-    public RuleRef rule() {
-        return rule;
+    public RuleRef.Named rule() {
+        return cited.rule();
     }
 
     /** How a reader finds it, which is not what tells it from another rule. */
-    public RuleCitation cited() {
+    public RuleCitation.Named cited() {
         return cited;
     }
 
@@ -158,7 +143,7 @@ public final class RuleAccounting {
     public List<Unanswered> unansweredQuestions() {
         return answers.entrySet().stream()
                 .filter(e -> e.getValue() instanceof Outcome.Unaccounted)
-                .map(e -> new Unanswered(rule, cited, e.getKey(),
+                .map(e -> new Unanswered(cited, e.getKey(),
                         ((Outcome.Unaccounted) e.getValue()).why()))
                 .toList();
     }
@@ -176,18 +161,24 @@ public final class RuleAccounting {
      * last moment — right while only invariants raise a question, and a decision about what a rule
      * is taken by whoever consumed one.
      */
-    public record Unanswered(RuleRef rule, RuleCitation cited, Owed owed, Why why) {
+    public record Unanswered(RuleCitation.Named cited, Owed owed, Why why) {
 
         public Unanswered {
-            if (why == null) {
-                throw new IllegalArgumentException("a question nothing answered stands for a reason");
+            if (cited == null || why == null) {
+                throw new IllegalArgumentException("a question nothing answered is of some rule and"
+                        + " stands for a reason");
             }
+        }
+
+        /** Which rule raised it, which the handle for it carries. */
+        public RuleRef.Named rule() {
+            return cited.rule();
         }
     }
 
     @Override
     public String toString() {
-        return rule + " " + answers;
+        return rule() + " " + answers;
     }
 
     /** What became of one question. */

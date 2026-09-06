@@ -25,16 +25,21 @@ import souther.compiler.check.RuleRef;
  * its cases, so one of these becomes a filing at each of them. Nothing here says where, and nothing
  * here says a name reached nowhere.
  */
-public record PlacementSeed(RuleAddress address, Placed placed, RuleRef by, RuleCitation cited) {
+public record PlacementSeed(RuleAddress address, Placed placed, RuleCitation cited) {
 
     public PlacementSeed {
         if (address == null || placed == null) {
             throw new IllegalArgumentException("a rule placed something somewhere");
         }
-        if (by == null || cited == null) {
+        if (cited == null) {
             throw new IllegalArgumentException(
                     "and it was some rule that placed it, which a reader can be sent to look at");
         }
+    }
+
+    /** Which rule placed it, which the handle for it carries. */
+    public RuleRef by() {
+        return cited.rule();
     }
 
     /**
@@ -76,7 +81,7 @@ public record PlacementSeed(RuleAddress address, Placed placed, RuleRef by, Rule
      * <p>Exhaustive over {@link NumericTerm}, with no {@code default}: a term of a third kind is a
      * name this would have to read, and stopping the compile is what says so.
      */
-    public static PlacementSeed of(RuleAddress address, NumericTerm term, RuleRef by,
+    public static PlacementSeed of(RuleAddress address, NumericTerm term,
                                    RuleCitation cited) {
         return new PlacementSeed(address, new Placed.ANumberOfIt(switch (term) {
             case NumericTerm.ValueOf _ -> new NumberAt.OfWhatNumber.OfItsOwnValue();
@@ -88,7 +93,7 @@ public record PlacementSeed(RuleAddress address, Placed placed, RuleRef by, Rule
             // written about what its elements come to.
             case NumericTerm.TakenOver over ->
                     new NumberAt.OfWhatNumber.OfWhatAnOperationAnswers(over.operation());
-        }), by, cited);
+        }), cited);
     }
 
     /**
@@ -102,14 +107,14 @@ public record PlacementSeed(RuleAddress address, Placed placed, RuleRef by, Rule
      * other standing, so an account keyed on the field is one a rule can go missing from without
      * anything to see. What tells them apart is the rule, so the rule is carried.
      */
-    public static PlacementSeed of(TermPath root, Owed owed, RuleRef by, RuleCitation cited) {
+    public static PlacementSeed of(TermPath root, Owed owed, RuleCitation cited) {
         return switch (owed) {
             case Owed.AdmittedValues values ->
                     new PlacementSeed(new RuleAddress(root, values.path()),
-                            new Placed.TheValuesThere(), by, cited);
+                            new Placed.TheValuesThere(), cited);
             case Owed.Boundary boundary ->
                     new PlacementSeed(new RuleAddress(root, boundary.on().position()),
-                            new Placed.ANumberOfIt(boundary.on().of()), by, cited);
+                            new Placed.ANumberOfIt(boundary.on().of()), cited);
         };
     }
 }

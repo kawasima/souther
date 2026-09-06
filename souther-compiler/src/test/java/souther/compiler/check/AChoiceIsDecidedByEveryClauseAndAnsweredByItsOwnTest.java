@@ -366,7 +366,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
                     if (outcome instanceof RuleAccounting.Outcome.Unaccounted unaccounted
                             && unaccounted.why()
                                     instanceof RuleAccounting.Why.TheValueReadingSays says) {
-                        out.put(((RuleCitation.Named) accounting.cited()).name() + " at " + owed,
+                        out.put(accounting.cited().rule().citedName() + " at " + owed,
                                 says.why());
                     }
                 }));
