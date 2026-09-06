@@ -6,6 +6,7 @@ import souther.compiler.regex.Meter;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * What a reading of one declaration asks about its string machines, answered from what somebody
@@ -63,6 +64,7 @@ public final class StringMachineAnswers {
         if (known != null) {
             return known;
         }
+        MADE.incrementAndGet();
         TextExtent made = TextExtents.of(set);
         if (recording && !(made instanceof TextExtent.NotBuilt)) {
             extents.put(set, made);
@@ -82,6 +84,7 @@ public final class StringMachineAnswers {
         if (known != null) {
             return known;
         }
+        MADE.incrementAndGet();
         Emptiness made = TextExtents.inside(language, held, meter);
         if (recording && made != Emptiness.UNDECIDED) {
             inside.put(stretch, made);
@@ -116,8 +119,28 @@ public final class StringMachineAnswers {
         };
     }
 
+    /**
+     * How many machines have been made rather than answered from the facts, for a test holding a
+     * reading to what it borrows.
+     *
+     * <p>Counted where the answer is not there to be had, which is the one place a machine is
+     * built. What a caller is held to is that a second reading of a declaration asks the same
+     * string questions and is answered from what the first came to — a shape, and not a speed.
+     */
+    public static long machinesMade() {
+        return MADE.get();
+    }
+
+    private static final AtomicLong MADE = new AtomicLong();
+
     /** Everything this answered from and everything it made, as the value a store keeps. */
     public StringFacts facts() {
+        if (realized.isEmpty() && extents.isEmpty() && inside.isEmpty()) {
+            // Nothing was made beside what was borrowed, and what was borrowed is already this
+            // value. A reading that only answered from the facts asks for them as often as it is
+            // read again, and a copy each time is a copy of everything the declaration came to.
+            return borrowed;
+        }
         Map<AdmittedPlan, ValueSet> plans = new LinkedHashMap<>(borrowed.realized());
         plans.putAll(realized);
         Map<ValueSet, TextExtent> stops = new LinkedHashMap<>(borrowed.extents());
