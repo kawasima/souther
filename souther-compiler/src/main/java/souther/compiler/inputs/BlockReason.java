@@ -726,26 +726,6 @@ public sealed interface BlockReason {
     record ComparisonOverARun() implements ReadToEndWithoutLine {}
 
     /**
-     * The rule states where a number stops, and the position has no such number.
-     *
-     * <p>Read to the end, and nothing about it is undecided: which number it is about is what the
-     * rule says, and the end it places is placed. Which numbers the position has is its type's
-     * answer — what stands there, and what an operation counts of it where the type declares one
-     * that counts its values — and a rule about some further number of the place, what an absolute
-     * value comes to among them, states where that number stops without measuring this position at
-     * all.
-     *
-     * <p><b>Not a rule beside a number that won.</b> Every number the position has is measured, so
-     * there is no other rule this one lost to and no clause an author could rewrite to make it
-     * count. What is true of it is that the number it is about is not one of this place's.
-     *
-     * <p>And not silence, which is what it was. A rule an author wrote that reaches a position and
-     * leaves no line there is a rule they can see no effect of, and a position with one of them
-     * came back looking like a position it had never been written about.
-     */
-    record RuleAboutANumberThePositionHasNot() implements ReadToEndWithoutLine {}
-
-    /**
      * The rule holds this position to the values it admits, and places no end on them.
      *
      * <p>What a reader is owed, and it is a fact they act on: the value written here has to be one

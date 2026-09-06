@@ -1331,27 +1331,20 @@ public final class InputDomain {
         // each of them was worked out. A second reader recognising the number off the spelling of a
         // side answers nothing for `String.length(value) * 2 >= 4`, whose sides are neither a name
         // nor a measure of one.
-        DeclaredCoordinates.Reading ownRules =
-                DeclaredCoordinates.of(type, source, policy, placed.machines());
+        List<FieldDomains.Placed> ownRules =
+                DeclaredCoordinates.placedOnItsOwnValue(type, source, policy, placed.machines());
+        // And the ends the value's own conjuncts state that no comparison says: a rule about the
+        // strings places no comparison, and a conjunct that placed no end can still move one.
+        List<FieldDomains.Placed> movedHere = placed.ownEndsAt(path);
         RulesWithNoLine.Gathered found = new RulesWithNoLine.Gathered();
         // The numbers this position has, which its type settles and no rule votes on.
         List<NumberAt.OfWhatNumber> kinds = numbersOf(taken);
-        // And what became of every end placed here: each is on one of those numbers or on none of
-        // them, and the second is the only thing there is to say. Said from the lists that still
-        // hold the rules, because this is the one place that knows which rules they were —
-        // recovered afterwards from the bounds, a finding could name the position and nothing else.
-        //
-        // Once per end and not once per number. A rule placing an end is one rule and one finding,
-        // and a reader walking the numbers to ask each of them about every end would tell an author
-        // about their clause as many times as the position has numbers.
-        //
-        // Every list of ends this position's bounds are built from goes through it. Those are the
-        // same rules read a second way where this position is the value they are written on, so a
-        // finding about one of them is one fact whichever list it was met in, and the gathering
-        // folds it.
-        fateOf(kinds, ownRules.placed(), path, type, source, found);
-        fateOf(kinds, placed.ownEndsAt(path), path, type, source, found);
-        fateOf(kinds, stated, path, type, source, found);
+        // And every end placed here is on one of them, whichever list it arrived in. Nothing is
+        // filed out: an end names the number it was placed on, and each of the bounds below takes
+        // the ends that name its own.
+        everyEndIsOnANumberOfThisPosition(kinds, ownRules, path);
+        everyEndIsOnANumberOfThisPosition(kinds, movedHere, path);
+        everyEndIsOnANumberOfThisPosition(kinds, stated, path);
         // A value whose rules contradict has no positions to cover: every edge of every field of it
         // is a row nobody can write, which is not the same answer as a field nothing bounds.
         boolean nothingExists = placed.bounds().infeasible(placed.answers());
@@ -1363,7 +1356,7 @@ public final class InputDomain {
         List<PositionBounds> bounds = new ArrayList<>();
         for (NumberAt.OfWhatNumber kind : kinds) {
             bounds.add(boundsOn(kind, path, type, taken, view, source, carried, placed,
-                    ownRules, stated, nothingExists));
+                    ownRules, movedHere, stated, nothingExists));
         }
         rulesWithoutALineAt(placed, path, type, source, found);
         // Everything left open about the rules of this position: what the accounting of the
@@ -1497,7 +1490,8 @@ public final class InputDomain {
                                            ValueName.Stdlib taken, TypeView view,
                                            RuleReadingSource source, Carrier carried,
                                            PlacedRules placed,
-                                           DeclaredCoordinates.Reading ownRules,
+                                           List<FieldDomains.Placed> ownRules,
+                                           List<FieldDomains.Placed> movedHere,
                                            List<FieldDomains.Placed> stated,
                                            boolean nothingExists) {
         NumericTerm.FromOnePosition term = switch (kind) {
@@ -1514,9 +1508,9 @@ public final class InputDomain {
         DeclaredBounds.Bounds own = on == null ? null
                 : DeclaredBounds.and(
                         DeclaredBounds.and(ofTheType(kind, on, view, source),
-                                DeclaredBounds.placed(ownRules.placed(), kind, on)),
+                                DeclaredBounds.placed(ownRules, kind, on)),
                         DeclaredBounds.and(
-                                DeclaredBounds.placed(placed.ownEndsAt(path), kind, on),
+                                DeclaredBounds.placed(movedHere, kind, on),
                                 DeclaredBounds.placed(stated, kind, on)));
         // A record's rule relates the numbers its fields hold, so it reaches the term that is one of
         // them and no other: a cap on a field says nothing about how long the string beside it is.
@@ -1567,38 +1561,26 @@ public final class InputDomain {
     }
 
     /**
-     * What became of each end placed here, which is the ends on no number of this position.
+     * That every end placed here is on a number this position has.
      *
-     * <p>An end names the number it was placed on, so every end on one of the position's own goes
-     * to that number's bounds and there is nothing to say about it. What is left is an end on a
-     * number the position has not — the rule says where something of this place stops, and it is
-     * nothing the place is divided along.
-     *
-     * <p><b>One classification for every rule that placed an end at this position, wherever it was
-     * written.</b> A rule about a number this position has not is the same news to its author
-     * whether their record or their newtype is where they wrote it. Kept apart, this was two
-     * mechanisms answering one question, and a rule met by the one that had not been taught to say
-     * anything went out in silence.
-     *
-     * <p>Per rule and not per number. Telling an author the position was short of something leaves
-     * them to work out which of their clauses is in the way, and a reader asking each of the
-     * position's numbers about every end would name one clause once per number. A rule placing two
-     * ends is one rule and one finding, which is what the key settles.
+     * <p>Not a fact about the model and nothing an author can act on: the two sides are one
+     * question asked twice of the same type. Which numbers a position has is
+     * {@link NumericMeasures#takenOf} of the type at the path, and the operation an end names is
+     * that same answer, recorded where the clause was read. So an end on some other number is the
+     * two readings having parted, and there is nothing to report about it because no model reaches
+     * it — checked here, where both are in hand, rather than left as an end that quietly bounds
+     * nothing.
      */
-    private static void fateOf(List<NumberAt.OfWhatNumber> numbers,
-                               List<FieldDomains.Placed> ends,
-                               TermPath path, Type type,
-                               RuleReadingSource source,
-                               RulesWithNoLine.Gathered out) {
+    private static void everyEndIsOnANumberOfThisPosition(List<NumberAt.OfWhatNumber> numbers,
+                                                          List<FieldDomains.Placed> ends,
+                                                          TermPath path) {
         for (FieldDomains.Placed each : ends) {
-            if (numbers.contains(each.at().of())) {
-                continue;
+            if (!numbers.contains(each.at().of())) {
+                throw new IllegalStateException(path + " has the numbers " + numbers
+                        + ", and a rule placed an end on " + each.at().of()
+                        + "; the reading of what a position is counted by and the reading of what a"
+                        + " clause counted disagree");
             }
-            // Filed at the number the rule is about, which is what makes two of them two. Read off
-            // the position instead, two rules about two numbers of one place would be one finding.
-            out.add(new RuleCitation.Named(each.part().rule()),
-                    filedAt(path, each.at(), type, source),
-                    new BlockReason.RuleAboutANumberThePositionHasNot());
         }
     }
 

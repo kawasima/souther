@@ -189,23 +189,6 @@ public record UndividedPosition(TermPath at, Why why) {
         /** The values the comparison is against are not ones a line can be drawn on here. */
         UNSUPPORTED_DOMAIN,
         /**
-         * The rule states where a number stops, and the position has no such number.
-         *
-         * <p>Which numbers a position has is its type's answer: what stands there, and what an
-         * operation counts of its values where the type declares one that counts them. A rule can
-         * state where some further number of the same place stops — what an absolute value comes to
-         * among them — and such a rule measures the position at nothing.
-         *
-         * <p>Not {@link #UNSUPPORTED_SYNTAX}, which is where a rule was read and could not be used:
-         * this one was read and used perfectly well. Said as the first, an author was sent looking
-         * for a form this compiler reads.
-         *
-         * <p>And not a rule that lost to another. Every number the position has is measured and the
-         * rules about each draw their own lines, so there is no competing clause to go looking for:
-         * what a reader acts on is that the number their rule is about is not one of this place's.
-         */
-        RULE_ABOUT_A_NUMBER_THE_POSITION_HAS_NOT,
-        /**
          * The line reaches positions under the cases each side of it, and which of them go together
          * is not worked out.
          *

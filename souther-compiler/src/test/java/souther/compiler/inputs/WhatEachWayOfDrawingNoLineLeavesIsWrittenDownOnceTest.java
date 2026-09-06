@@ -118,11 +118,6 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
         // its reader which kind of thing stopped a derivation rather than which reader stopped.
         table.put("ValueRuleRelatingTwoPositions",
                 "UNSUPPORTED_PARTITION_SHAPE/UNAFFECTED");
-        // Read to the end, and nothing is owed of it: the end it places is placed, on a number this
-        // place has not. Every number a position does have is measured, so there is no rule this
-        // one lost to and nothing for an author to rewrite in favour of it.
-        table.put("RuleAboutANumberThePositionHasNot",
-                "RULE_ABOUT_A_NUMBER_THE_POSITION_HAS_NOT/-");
         // Read to the end, and placed nowhere. Its own word beside the two above: the comparison
         // was taken apart, a line came out of it and every name it is between reached positions —
         // what was not reached is which of those positions the line runs between. Both measures are
@@ -409,7 +404,6 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
                 new BlockReason.ComparisonNothingArrivesAtItsLine(),
                 new BlockReason.ComparisonBetweenPositions(),
                 new BlockReason.ComparisonOverARun(),
-                new BlockReason.RuleAboutANumberThePositionHasNot(),
                 new BlockReason.RuleRestrictingToAdmittedValues(),
                 new BlockReason.PredicateTellingNothingApart(),
                 new BlockReason.ClassesNotComposed(),

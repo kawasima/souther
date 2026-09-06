@@ -176,11 +176,6 @@ public final class ReportedReason {
                     UndividedPosition.Reason.RULES_NOT_READ_AT_ALL;
             case BlockReason.UnreadComparisonDomain _ ->
                     UndividedPosition.Reason.UNSUPPORTED_DOMAIN;
-            // A rule that states where a number stops, at a number the position has not. Every
-            // number a position does have is measured, so there is nothing here for a reader to
-            // look for — their rule states what it states, about a number this place is not one of.
-            case BlockReason.RuleAboutANumberThePositionHasNot _ ->
-                    UndividedPosition.Reason.RULE_ABOUT_A_NUMBER_THE_POSITION_HAS_NOT;
             // Its own word, and not the shape one below. Both sides of this line are read and
             // ordered and a line is drawn on them; what is missing is which positions the line runs
             // between, which is a question about the model and not about the form it was written in.

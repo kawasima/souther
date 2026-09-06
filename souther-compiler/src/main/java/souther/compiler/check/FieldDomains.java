@@ -1303,35 +1303,6 @@ public final class FieldDomains {
     }
 
     /**
-     * Which numbers of the value its own rules are about, whatever each of them came to.
-     *
-     * <p>Off the canonical quantity, which is the one thing that says what a rule is about.
-     * {@code String.length(value) * 2 >= 4} is about the length of the string; a reader looking for
-     * a bare name or a bare measure on one side finds neither, and answers that the model writes
-     * about no number of the value at all — which is how a position with a rule about its length
-     * came to be measured on the string's own order.
-     *
-     * <p>Both the conjuncts an end was read from and the ones none was. Whether a clause came to an
-     * end is a fact about the clauses beside it and about this compiler's arithmetic; which number
-     * it is about is neither, and a reader choosing what a position is measured on wants the second.
-     *
-     * <p>A set and not a choice. Two numbers of one value can both be written about, which is a
-     * model with nothing here to pick between — said as a set, the reader that has to choose is the
-     * one that knows what it does where there is no choice to make.
-     */
-    public Set<NumberAt<RuleKey>> writtenAbout() {
-        Set<NumberAt<RuleKey>> out = new java.util.LinkedHashSet<>();
-        directs.forEach(each -> out.add(each.at()));
-        aboutOneCoordinate.forEach(each -> out.add(each.at()));
-        // And the numbers a rule about the strings is written about. Which number such a rule is
-        // about is settled by the call it is written as, so it is here whatever the reading made of
-        // the strings — a reader choosing which of a position's numbers it is measured at wants
-        // every rule written about one, and a rule read no further than the call is one of them.
-        aboutTheStrings.forEach(each -> out.add(each.at()));
-        return java.util.Collections.unmodifiableSet(out);
-    }
-
-    /**
      * The conjuncts whose quantity is over one number, in the order they were read.
      *
      * <p>Every shape of rule alike, whatever the reading of ends made of it. Which of them accounts

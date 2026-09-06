@@ -224,16 +224,6 @@ class EveryNotReadReasonIsWrittenBySomeCompilationTest {
                 behavior f : (a: Bool, b: Bool) -> Answer
                 let f (a, b) = if a == b then Yes else No
                 """.formatted(ANSWER)));
-        out.put(UndividedPosition.Reason.RULE_ABOUT_A_NUMBER_THE_POSITION_HAS_NOT, of("""
-                module m
-                %s
-                data Label = String invariant lower = value >= "m"
-                data Parcel = { label: Label }
-                    invariant long = String.length(label.value) >= 3
-
-                behavior f : (parcel: Parcel) -> Answer
-                let f (parcel) = Yes
-                """.formatted(ANSWER)));
         // Each name of the line stands at a position under every case of the sum, and which of
         // those pair off is what nothing worked out. The record both cases spread is what puts one
         // name at more than one position while leaving the field writable without a match.

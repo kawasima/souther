@@ -455,44 +455,22 @@ class AClauseReachingOneCoordinatePlacesAnEdgeTest {
     }
 
     /**
-     * And the rule it states that end with is named, rather than going out in silence.
+     * A rule about the length of a name draws its line on the length, beside the name's own.
      *
-     * <p>The author wrote a clause about this position and this reading draws no line from it. Told
-     * nothing, they are looking at a report of a model that bounds the length of a name and at a
-     * position with no sign of it — so what a report says is which number the rule is about, beside
-     * the number the position turned out to be measured at.
-     *
-     * <p>Not the word two competing rules get. Nothing here is undecided: `Name`'s own clause chose
-     * the coordinate, the line at `m` is drawn, and a reader sent looking for the clause competing
-     * with this one would find the choice already made.
+     * <p>`Name`'s clause is about the order its values sit on and the record's is about how long
+     * one is. Two numbers of one place, and neither rule is in the other's way — so both are read
+     * and both leave a line, and nothing is reported as unread.
      */
     @Test
-    void aRuleAtTheOtherCoordinateIsNamedRatherThanDropped() {
-        assertEquals(List.of("String.length(v.name): RULE_ABOUT_ANOTHER_COORDINATE"),
-                notReadIn(TWO_WAYS, "onPerson"),
-                "the record's clause is named at the number it is about");
+    void aRuleAboutTheLengthDrawsItsLineBesideTheOneAboutTheOrder() {
+        assertEquals(List.of(), notReadIn(TWO_WAYS, "onPerson"),
+                "each clause is about a number of the position, and each draws its own line");
     }
 
-    /**
-     * And where the type chose nothing, two such rules choose nothing either.
-     *
-     * <p>Both coordinates of `s` are bounded and neither by `s`'s own type, so which of them this
-     * position is measured at is a question with no answer here (ADR-0090). Nothing is divided and
-     * nothing is claimed about the model either: two rules are written about this position and what
-     * a report says is that they were not read, which sends the author to a limit of this compiler
-     * rather than to a distinction their model does not draw. Taking whichever was looked at first
-     * would put a line the author can read beside one they cannot see.
-     *
-     * <p>Both clauses are named, since both are rules the author would have to rewrite. One line
-     * said the position was short of something and left them to find which two of their clauses
-     * were in the way — and said it in the words of a form this compiler cannot read, which is a
-     * cause it was never observed to have.
-     */
+    /** And where a record bounds both numbers of a bare string, both are measured too. */
     @Test
-    void rulesAboutBothCoordinatesLeaveThePositionUndivided() {
-        assertEquals(List.of("v.s: COMPETING_COORDINATES", "String.length(v.s): COMPETING_COORDINATES"),
-                notReadIn(TWO_WAYS, "onR"),
-                "both rules are named, each at the coordinate it is about");
+    void rulesAboutBothNumbersAreBothRead() {
+        assertEquals(List.of(), notReadIn(TWO_WAYS, "onR"));
     }
 
     /**

@@ -382,12 +382,14 @@ final class AnswerClosure {
             narrowedEnd(Q + "Adequacy$Inputs", walked(Scenario.VALID_CORPUS),
                     m(ANSWER, "value"), VALUE,
                     m("souther.compiler.inputs.InputDomain", "byPath"), VALUE,
-                    m("souther.compiler.inputs.ReadPosition", "narrowedEnds"),
+                    m("souther.compiler.inputs.ReadPosition", "bounds"), ELEMENT,
+                    m("souther.compiler.inputs.PositionBounds", "narrowedEnds"),
                     m("souther.compiler.check.NarrowedBounds$Reading", "lower")),
             narrowedEnd(Q + "Adequacy$Inputs", walked(Scenario.VALID_CORPUS),
                     m(ANSWER, "value"), VALUE,
                     m("souther.compiler.inputs.InputDomain", "positions"), ELEMENT,
-                    m("souther.compiler.inputs.ReadPosition", "narrowedEnds"),
+                    m("souther.compiler.inputs.ReadPosition", "bounds"), ELEMENT,
+                    m("souther.compiler.inputs.PositionBounds", "narrowedEnds"),
                     m("souther.compiler.check.NarrowedBounds$Reading", "lower")),
             // The partition's own copy. An axis carries what the reading left the position rather
             // than the names it came to, so that a border can ask whether they are about the end it
@@ -597,7 +599,8 @@ final class AnswerClosure {
         // exposes it.
         for (TypePath.Step[] positions : List.of(EVERY_POSITION, BY_PATH)) {
             bothEndsOfARange(out, Q + "Adequacy$Inputs",
-                    then(positions, part("souther.compiler.inputs.ReadPosition", "narrowedEnds")));
+                    then(positions, part("souther.compiler.inputs.ReadPosition", "bounds"), HELD,
+                            part("souther.compiler.inputs.PositionBounds", "narrowedEnds")));
             whatATermHolds(out, positions);
             // What the position's own rules leave it, which travels with the position because it is
             // what a behavior's rules have left to divide.

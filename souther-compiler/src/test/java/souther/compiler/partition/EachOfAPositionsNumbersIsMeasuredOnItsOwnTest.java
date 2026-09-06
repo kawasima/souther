@@ -106,6 +106,50 @@ class EachOfAPositionsNumbersIsMeasuredOnItsOwnTest {
     }
 
     /**
+     * What each shape of declaration comes to, over the shapes a string position can be in.
+     *
+     * <p>One place to read the whole answer from, because what is being held is how the evidence is
+     * filed rather than any one case of it. A number nothing said anything about is not a measure
+     * and is absent; a number two kinds of evidence reached is one measure carrying both.
+     */
+    @Test
+    void whatEachShapeOfDeclarationComesTo() {
+        assertEquals(List.of("v: \"AB\", \"CD\""), measuredIn(codeOf("""
+                    invariant named = value == "AB" || value == "CD"
+                """), "Code"), "values named on the order, and nothing about the length");
+        assertEquals(List.of("v: -"), measuredIn(codeOf("""
+                    invariant low = value >= "m"
+                """), "Code"), "a line on the order, and nothing about the length");
+        assertEquals(List.of("String.length(v): -"), measuredIn(codeOf("""
+                    invariant long = String.length(value) >= 2
+                """), "Code"), "a line on the length, and nothing about the order");
+        assertEquals(List.of("v: \"AB\", \"CD\""), measuredIn(codeOf("""
+                    invariant named = value == "AB" || value == "CD"
+                    invariant low = value >= "A"
+                """), "Code"), "both about the order, so one measure carries them");
+        assertEquals(List.of("v: \"AB\", \"CD\"", "String.length(v): -"), measuredIn(codeOf("""
+                    invariant named = value == "AB" || value == "CD"
+                    invariant low = value >= "A"
+                    invariant long = String.length(value) >= 2
+                """), "Code"), "and a rule about the length is a measure beside them");
+    }
+
+    /** A {@code Code} declared with {@code rules}, in a module a behavior takes one of. */
+    private static String codeOf(String rules) {
+        return """
+                module m
+
+                data Code = String
+                %s
+                data Ok = { size: Int }
+
+                behavior onCode : (v: Code) -> Ok
+                    constructs Ok
+                let onCode (v) = Ok { size = String.length(v) }
+                """.formatted(rules);
+    }
+
+    /**
      * Neither rule is reported as one nothing could read.
      *
      * <p>Both were read to the end and each drew its line. A report naming one of them sends an
