@@ -86,11 +86,12 @@ interface ClauseReading<S, E> {
      */
     default S read(Core e, boolean positive, E at, ClauseScope<E> scope,
                    java.util.function.BiConsumer<Core, S> per) {
-        S out = from(e, over(ClauseExpr.of(e, positive), at, scope, per));
-        if (per != null) {
-            per.accept(e, out);
-        }
-        return out;
+        // The clause is named once more here, on the outside of everything its shape was written
+        // as, which is where a caller holding the clause and nothing under it looks. What it came
+        // to is not told to {@code per} a second time: the walk below has already said it of the
+        // very same node, and a reader counting what it was told would count the whole clause
+        // twice and every part of it once.
+        return from(e, over(ClauseExpr.of(e, positive), at, scope, per));
     }
 
     /**

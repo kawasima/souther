@@ -30,6 +30,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * ({@code PerPart}), rather than on what any of them came to. What a conjunct owes is the reader of
  * comparisons' answer and is held elsewhere; how far the walk went is this reading's own, and it is
  * the thing that moves when a clause's shape is recognised somewhere else.
+ *
+ * <p>What it is told is keyed by the node, and the order below is the order the shape is walked in:
+ * what a part came to before what the connective composing it came to, and a node a restatement was
+ * written as before the node under it. A caller reads what it was told by the node it holds, so the
+ * order is not what any of them takes from it.
  */
 class HowFarTheReadingOfWhatAClauseOwesDescendsTest {
 
@@ -95,8 +100,8 @@ class HowFarTheReadingOfWhatAClauseOwesDescendsTest {
         Core.Binary either = joined(BinOp.OR, atLeastOne(), atMostNine());
         Core.Binary neither = denied(either);
 
-        assertEquals(List.of(atLeastOne(), atMostNine(), either, neither), read(neither),
-                "each part denied, the choice they were written as, and the denial of it");
+        assertEquals(List.of(atLeastOne(), atMostNine(), neither, either), read(neither),
+                "each part denied, and the two nodes the choice and its denial were written as");
     }
 
     /**
@@ -121,8 +126,8 @@ class HowFarTheReadingOfWhatAClauseOwesDescendsTest {
         Core.Binary both = joined(BinOp.AND, atLeastOne(), atMostNine());
         Core.Binary neither = denied(both);
 
-        assertEquals(List.of(both, neither), read(neither),
-                "the conjunction as the choice its denial makes of it, and the denial");
+        assertEquals(List.of(neither, both), read(neither),
+                "the two nodes the conjunction and its denial were written as, and neither half");
     }
 
     /**

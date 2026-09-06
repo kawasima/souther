@@ -39,7 +39,10 @@ class OnlyAFoldOverAWholeClauseTreeIsOneTest {
      * is why it is this and not a walk of its own. {@code Conditions.Stating} says what a condition
      * states as relations: it composes a conjunction and takes a choice whole, since one part of a
      * choice holds and it cannot say which — which is answering for the connectives rather than
-     * leaving them owed.
+     * leaving them owed. {@code Predicates.Owing} says what a clause owes and {@code
+     * Predicates.Quantifiers} says which quantifiers it states: two answers about one clause, each
+     * reading it to the depth its own answer composes to, and both meeting the connectives the
+     * shape already recognised rather than either recognising them again.
      *
      * <p>A row for a reading of one language — the values, the ranges, or whatever is written next
      * — is the edge this exists to refuse. Those interpret leaves, and the fold that composes them
@@ -48,10 +51,12 @@ class OnlyAFoldOverAWholeClauseTreeIsOneTest {
     private static final Set<String> FOLDS = Set.of(
             "souther.compiler.check.Conditions$Stating",
             "souther.compiler.check.ExpansionCost",
+            "souther.compiler.check.Predicates$Owing",
+            "souther.compiler.check.Predicates$Quantifiers",
             "souther.compiler.check.StatedByClauses$Reading");
 
     @Test
-    void theOnlyAlgebrasOverAClauseTreeAreTheTwoThatReadOne() {
+    void theOnlyAlgebrasOverAClauseTreeAreTheOnesThatReadOne() {
         assertEquals(FOLDS, WhatWasCompiled.implementing(ClauseReading.class));
     }
 }
