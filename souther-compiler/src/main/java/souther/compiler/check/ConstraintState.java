@@ -144,10 +144,6 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
      * <p>So the envelope here is never {@link PositionEnvelope.NothingIsLeft}: the one component
      * that says so is the numbers, and their own answer was asked above.
      */
-    private Confinement.Admission<A> admitted() {
-        return admitted(StringMachineAnswers.NONE);
-    }
-
     private Confinement.Admission<A> admitted(StringMachineAnswers machines) {
         if (shownByAnother()) {
             return confinement.admission(machines);

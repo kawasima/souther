@@ -256,11 +256,6 @@ public final class InvariantChecker {
     /** Whether an evaluation can answer, which is what decides that a continuation is reached. */
     private final PathCompletion completion;
     /**
-     * Where the answers about a declaration's string machines are asked for, for every declaration
-     * this check reads. A capability handed to this check and kept by nothing it answers with.
-     */
-    private final StringMachineLookup machines;
-    /**
      * The answers for the one declaration this check is seeding, where it is seeding one: what a
      * plan of it admits where somebody made that already, and where the strings a set holds stop.
      *
@@ -284,7 +279,9 @@ public final class InvariantChecker {
                              ExpandedClauseLookup dischargeInvariants, StringMachineLookup machines,
                              Map<ValueName.Behavior, StatedContract> contracts,
                              ReadingPolicy policy) {
-        this.machines = machines;
+        // Where the answers about a declaration's string machines are asked for, for every
+        // declaration this check reads: a capability handed on to the engine, which hands it to
+        // every reading made through it, and kept by nothing any of them answers with.
         this.engine = new PathEngine(symbols, dischargeInvariants, machines, contracts, policy);
         // Named here because this check reads them directly and often. They are the engine's, not a
         // second copy: one engine builds them once and everything below sees those.
