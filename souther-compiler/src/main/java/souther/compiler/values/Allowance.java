@@ -86,6 +86,32 @@ public final class Allowance<A> {
     }
 
     /**
+     * The same, borrowing what {@code lent} has already made of a plan.
+     *
+     * <p>As {@link #besides}, with the lender named rather than being another allowance: what it
+     * hands over was made somewhere else under somebody else's allowance, is read wherever a plan
+     * of it comes up here, and costs this one nothing.
+     */
+    public static <A> Allowance<A> of(PatternPlan.Budget budget, Known<A> lent) {
+        if (budget == null || lent == null) {
+            throw new IllegalArgumentException("an allowance allows something, and names what it"
+                    + " may borrow");
+        }
+        return new Allowance<>(budget, lent);
+    }
+
+    /**
+     * What {@code plan} admits, worked out on its own under this allowance.
+     *
+     * <p>For an answer about the plan and not about any position: what is built is charged to the
+     * part of this allowance that belongs to no block ({@link #elsewhere}), and what a part of the
+     * plan comes to is borrowed where somebody has made it already.
+     */
+    public Realization realized(AdmittedPlan plan) {
+        return elsewhere().of(plan);
+    }
+
+    /**
      * The same, beside another question of the same positions whose machines this one may use.
      *
      * <p>A machine exists or it does not, and one that does is not made twice: what {@code answers}
@@ -120,6 +146,11 @@ public final class Allowance<A> {
         /** What {@code plan} was worked out to admit at {@code block}, or null where nothing
          *  was. */
         ValueSet of(Sameness.Block<A> block, AdmittedPlan plan);
+
+        /** Told what the allowance built of {@code plan} at {@code block} where this had nothing
+         *  to lend, for a lender that keeps what is made; one that does not keeps nothing. */
+        default void made(Sameness.Block<A> block, AdmittedPlan plan, Realization made) {
+        }
 
         /** Nothing has been built anywhere, which is what one allowance on its own knows. */
         static <A> Known<A> nothing() {
@@ -256,7 +287,8 @@ public final class Allowance<A> {
      */
     Realizer realizer(Sameness.Block<A> block) {
         return realizers.computeIfAbsent(block,
-                _ -> new Realizer(meter(block), plan -> borrowed.of(block, plan)));
+                _ -> new Realizer(meter(block), plan -> borrowed.of(block, plan),
+                        (plan, made) -> borrowed.made(block, plan, made)));
     }
 
     /**
@@ -318,7 +350,8 @@ public final class Allowance<A> {
     public Realizer elsewhere() {
         if (nowhere == null) {
             nowhereMeter = budget.meter();
-            nowhere = new Realizer(nowhereMeter, plan -> borrowed.of(null, plan));
+            nowhere = new Realizer(nowhereMeter, plan -> borrowed.of(null, plan),
+                    (plan, made) -> borrowed.made(null, plan, made));
         }
         return nowhere;
     }

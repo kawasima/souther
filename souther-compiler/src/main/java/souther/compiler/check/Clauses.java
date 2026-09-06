@@ -33,6 +33,7 @@ final class Clauses {
 
     private final Symbols symbols;
     private final ExpandedClauseLookup expandedClauses;
+    private final StringMachineLookup machines;
     private final Map<TypeSymbol.AtModule, Map<String, Type>> fields = new HashMap<>();
     private final Map<TypeSymbol.AtModule, Map<String, BindingId>> bindings =
             new HashMap<>();
@@ -51,17 +52,27 @@ final class Clauses {
      *        that was: a type this module declares and one it imports are read alike, because what
      *        a clause is read as is what its own module expanded (spec
      *        §invariant-discharge-representation).
+     * @param machines where the answers about a declaration's string machines are asked for,
+     *        handed on to every reading of a declaration made through here and kept by none of
+     *        what those readings answer with.
      */
     Clauses(Symbols symbols,
-            ExpandedClauseLookup expandedClauses) {
+            ExpandedClauseLookup expandedClauses, StringMachineLookup machines) {
         this.symbols = symbols;
         this.expandedClauses = expandedClauses;
+        this.machines = machines;
     }
 
     /** The representation this reads a declaration's clauses in, for a reader that has to hand it
      *  on rather than ask for one of its own. */
     ExpandedClauseLookup expandedClauses() {
         return expandedClauses;
+    }
+
+    /** Where the answers about a declaration's string machines are asked for, for the same
+     *  reader. */
+    StringMachineLookup machines() {
+        return machines;
     }
 
     /** Every rule that applies to {@code named}, in the expanded representation, with whether every

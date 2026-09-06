@@ -53,6 +53,13 @@ public final class TypeCardinality {
     /** How many values each declaration {@code declarations} reaches has at most. */
     public static Cardinalities solve(List<Hir.Def> declarations, RuleReadingSource source,
                                       ReadingPolicy policy) {
+        return solve(declarations, source, policy, StringMachineLookup.NONE);
+    }
+
+    /** The same, asking {@code machines} for what somebody has already made of each declaration's
+     *  string rules before building any of it. */
+    public static Cardinalities solve(List<Hir.Def> declarations, RuleReadingSource source,
+                                      ReadingPolicy policy, StringMachineLookup machines) {
         Symbols symbols = source.symbols();
         // What this count is short of is worked out from the clauses it actually asked for, which
         // is why the reading it runs against is wrapped rather than the declarations it walked
@@ -66,10 +73,11 @@ public final class TypeCardinality {
         declared.forEach((name, def) -> edges.put(name, read(def, symbols, declared.keySet())));
         // Fixed before the rising starts. What makes it stop is that there are finitely many answers
         // to rise through, and a count discovered part way would give it somewhere new to go.
-        CardinalityCuts cuts = CardinalityCuts.keeping(asked(declared, source, policy));
+        CardinalityCuts cuts = CardinalityCuts.keeping(asked(declared, source, policy, machines));
         List<List<TypeSymbol>> components = TypeComponents.of(edges);
         return new Cardinalities(
-                Map.copyOf(pass(components, declared, edges, cuts, source, policy, Set.of())),
+                Map.copyOf(pass(components, declared, edges, cuts, source, policy, Set.of(),
+                        machines)),
                 components, declared, edges, cuts, source, policy, asked.everyRuleReached());
     }
 
@@ -191,7 +199,10 @@ public final class TypeCardinality {
          * was shown by under another.
          */
         Map<TypeSymbol, Cardinality> granting(Set<TypeSymbol> granted) {
-            return pass(components, declared, edges, cuts, source, policy, granted);
+            // Read afresh with nothing lent: what is asked here is what a declaration would hold
+            // if another had values, and that reading is made once for the asking.
+            return pass(components, declared, edges, cuts, source, policy, granted,
+                    StringMachineLookup.NONE);
         }
     }
 
@@ -209,7 +220,8 @@ public final class TypeCardinality {
                                                    Map<TypeSymbol, Set<TypeSymbol>> edges,
                                                    CardinalityCuts cuts, RuleReadingSource source,
                                                    ReadingPolicy policy,
-                                                   Set<TypeSymbol> granted) {
+                                                   Set<TypeSymbol> granted,
+                                                   StringMachineLookup machines) {
         Answers answers = Answers.empty();
         for (List<TypeSymbol> component : components) {
             List<TypeSymbol> asked = new ArrayList<>();
@@ -226,10 +238,11 @@ public final class TypeCardinality {
             if (asked.size() == 1 && !TypeComponents.recurses(component, edges)) {
                 TypeSymbol one = asked.get(0);
                 answers.settle(one, CardinalityTransfer.upperOf(
-                        one, declared.get(one), source, policy, answers, granted::contains));
+                        one, declared.get(one), source, policy, answers, granted::contains,
+                        machines));
                 continue;
             }
-            rise(asked, declared, policy, source, cuts, answers, granted);
+            rise(asked, declared, policy, source, cuts, answers, granted, machines);
         }
         return answers.everySettled();
     }
@@ -244,7 +257,8 @@ public final class TypeCardinality {
     private static void rise(List<TypeSymbol> component, Map<TypeSymbol, Hir.Def> declared,
                              ReadingPolicy policy,
                              RuleReadingSource source, CardinalityCuts cuts,
-                             Answers answers, Set<TypeSymbol> granted) {
+                             Answers answers, Set<TypeSymbol> granted,
+                             StringMachineLookup machines) {
         component.forEach(answers::atBottom);
         boolean moved = true;
         while (moved) {
@@ -252,7 +266,8 @@ public final class TypeCardinality {
             for (TypeSymbol each : component) {
                 Cardinality before = answers.settledAt(each);
                 Cardinality next = round(cuts, CardinalityTransfer.upperOf(
-                        each, declared.get(each), source, policy, answers, granted::contains));
+                        each, declared.get(each), source, policy, answers, granted::contains,
+                        machines));
                 // Written every round, and the rising is over the counts alone. Two readings that
                 // come to none are the same answer to rise through however they were shown, so
                 // comparing the proofs would keep a settled rising moving; and taking the earlier
@@ -415,7 +430,7 @@ public final class TypeCardinality {
      * answers still tell apart everything the questions found.
      */
     private static Set<Long> asked(Map<TypeSymbol, Hir.Def> declared, RuleReadingSource source,
-                                   ReadingPolicy policy) {
+                                   ReadingPolicy policy, StringMachineLookup machines) {
         Symbols symbols = source.symbols();
         Set<Long> counts = new HashSet<>();
         declared.forEach((name, def) -> {
@@ -424,7 +439,7 @@ public final class TypeCardinality {
             if (!(def instanceof Hir.Data data) || !(name instanceof TypeSymbol.AtModule at)) {
                 return;
             }
-            OccurrenceCounts held = OccurrenceCounts.of(at, source, policy);
+            OccurrenceCounts held = OccurrenceCounts.of(at, source, policy, _ -> false, machines);
             for (RuleKey path : data.newtype() ? Set.of(RuleKey.THE_VALUE)
                     : TypeOps.fieldTypes(data, symbols).keySet().stream()
                             .map(RuleKey::of).collect(java.util.stream.Collectors.toSet())) {

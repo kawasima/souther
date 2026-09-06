@@ -128,6 +128,15 @@ class EveryAnswerAboutAPositionSaysWhatItDoesAboutTheValueAboveTest {
                 "the value above is a reading of its own, and what it constrains is taken under its "
                         + "own root; asked here as well, one rule would be given twice",
                 null));
+        table.put("machines", new Decided(Above.NOT_ASKED,
+                "where the answers about a declaration's string machines are asked for — a "
+                        + "capability this reading was handed and hands on, not an answer about any "
+                        + "position; the value above was handed the same one",
+                null));
+        table.put("answers", new Decided(Above.NOT_ASKED,
+                "the answers about this value's own string machines, which `bounds` is asked "
+                        + "with; the value above has its own, filed under its own declaration",
+                null));
         return table;
     }
 

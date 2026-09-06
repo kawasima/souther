@@ -175,6 +175,20 @@ public final class ReadingPolicy {
     }
 
     /**
+     * The same, borrowing what {@code lent} has already made.
+     *
+     * <p>What is borrowed is not spent: a machine somebody made of a plan is that plan's machine,
+     * and an answer that finds one ready pays nothing for it and builds the rest under this
+     * allowance as before.
+     *
+     * @param <A> what a position is called
+     */
+    public <A> souther.compiler.values.Allowance<A> allowanceForAdmittedValues(
+            souther.compiler.values.Allowance.Known<A> lent) {
+        return souther.compiler.values.Allowance.of(admittedValues, lent);
+    }
+
+    /**
      * And one for handing each of a position's rules on as the set it leaves, beside the answer it
      * is a projection of.
      *

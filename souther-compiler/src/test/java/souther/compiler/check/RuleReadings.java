@@ -78,6 +78,6 @@ public final class RuleReadings {
      *  and never by handing over a scope alone. */
     static Terms termsOfNoClauseFiled(Symbols symbols, ReadingPolicy policy) {
         return new Terms(symbols, Terms.Of.THE_DISCHARGE_TREE, policy,
-                new Clauses(symbols, noClauseFiled()));
+                new Clauses(symbols, noClauseFiled(), StringMachineLookup.NONE));
     }
 }
