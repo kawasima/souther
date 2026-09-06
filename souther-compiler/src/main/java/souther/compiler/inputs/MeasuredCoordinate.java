@@ -66,8 +66,8 @@ sealed interface MeasuredCoordinate {
      * first: a rule reaching the position from the value it sits in states an end on a coordinate,
      * and it does not say which coordinate the position is — letting it say so takes an axis away,
      * and a {@code Name} measured on its own order would stop being so the day a record bounded the
-     * length of it. So a type that answers once is answered for, and what reached it is not a tie
-     * breaker. A type that answers twice is not answered for either: the rules beside it are at the
+     * length of it. So a type that answers once is answered for, and the ends at the position are
+     * not a tie breaker. A type that answers twice is not answered for either: the ends are at the
      * standing below and cannot settle a question the standing above left open.
      *
      * <p><b>What the rules are about, and not which of them placed an end.</b> Whether a clause came
@@ -76,19 +76,27 @@ sealed interface MeasuredCoordinate {
      * {@code String.length(value) /= 0} was measured on the string's own order — the length was no
      * number of the model at all.
      *
-     * <p>The rules that reached the position are read as their ends, because that is the whole of
-     * what one of them says here: it names no coordinate for the position and states where one
-     * stops. Whether such an end could be read at all is settled where it was placed — a value with
-     * an end on its own order is a value something compared — so there is no case to rule out
-     * again here, and one written would be this reading deciding a second time what an end is.
+     * <p>The ends are read as ends, because that is the whole of what one of them says here: it
+     * names no coordinate for the position and states where one stops. Whether such an end could be
+     * read at all is settled where it was placed — a value with an end on its own order is a value
+     * something compared — so there is no case to rule out again here, and one written would be
+     * this reading deciding a second time what an end is.
+     *
+     * <p><b>The ends are every end at the position, and the standings are still two.</b> A reading
+     * of the value a position sits in holds the clauses of the position's own type as well, rebased
+     * under the name it reached them by, so the list below is not the rules of one declaration and
+     * no subtraction makes it so. It does not have to be: the standing below is read only where the
+     * one above named nothing, and a type that named no number of its value wrote no rule to place
+     * an end on one. So what is left there is what reached the position from elsewhere, and it is
+     * left there by the answer above rather than by a filter here.
      *
      * @param writtenAbout which numbers the position's own type wrote about
-     * @param reaching     the ends the value this position sits in places on it
+     * @param ends         every end placed at the position, whichever declaration wrote it
      * @param taken        the operation this type's values are counted by, or null where none
      *                     counts them
      */
     static MeasuredCoordinate of(Set<NumberAt.OfWhatNumber> writtenAbout,
-                                 List<FieldDomains.Placed> reaching,
+                                 List<FieldDomains.Placed> ends,
                                  ValueName.Stdlib taken) {
         Set<NumberAt.OfWhatNumber> eligible = eligible(taken);
         MeasuredCoordinate own = settledBy(intersect(writtenAbout, eligible));
@@ -96,7 +104,7 @@ sealed interface MeasuredCoordinate {
             return own;
         }
         Set<NumberAt.OfWhatNumber> outside = new LinkedHashSet<>();
-        for (FieldDomains.Placed each : reaching) {
+        for (FieldDomains.Placed each : ends) {
             if (eligible.contains(each.at().of())) {
                 outside.add(each.at().of());
             }
