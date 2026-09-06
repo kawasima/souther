@@ -188,22 +188,47 @@
                 </executions>
             </plugin>
 
-            <!-- Prepend a `#!/bin/sh … exec java -jar $0 "$@"` launcher to the shaded jar so the
-                 output `target/souther` runs directly (chmod already applied). -->
+            <!-- The launcher names an archive under this version's own name, so the version has to
+                 reach the script. `@` rather than `${...}`, which the script itself uses for shell
+                 parameter expansion. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>launcher</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/launcher</outputDirectory>
+                            <useDefaultDelimiters>false</useDefaultDelimiters>
+                            <delimiters>
+                                <delimiter>@</delimiter>
+                            </delimiters>
+                            <resources>
+                                <resource>
+                                    <directory>src/main/launcher</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Prepend the launcher to the shaded jar so the output `target/souther` runs directly
+                 (chmod already applied). What it passes to the JVM, and why, is written in the
+                 script itself. -->
             <plugin>
                 <groupId>org.skife.maven</groupId>
                 <artifactId>really-executable-jar-maven-plugin</artifactId>
                 <version>2.1.1</version>
                 <configuration>
                     <programFile>souther</programFile>
-                    <!-- The stack this compiler is supported on. What a definition may say is
-                         bounded ([#source-structural-complexity-is-bounded]), and holding that
-                         bound is what this is for: every phase descends what it builds by
-                         recursion, and a source at the bound needs about a megabyte. The default
-                         is a platform's rather than this compiler's — a megabyte on Linux x64, two
-                         on aarch64 — so a source that compiles here would depend on where it was
-                         compiled if this were left unsaid. -->
-                    <flags>-Xss4m</flags>
+                    <scriptFile>${project.build.directory}/launcher/souther</scriptFile>
                 </configuration>
                 <executions>
                     <execution>

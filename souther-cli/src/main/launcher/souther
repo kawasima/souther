@@ -1,0 +1,43 @@
+#!/bin/sh
+# Prepended to the shaded jar, so `$0` is both this script and the jar it runs.
+#
+# -Xss4m is the stack this compiler is supported on. What a definition may say is bounded
+# ([#source-structural-complexity-is-bounded]), and holding that bound is what the flag is for:
+# every phase descends what it builds by recursion, and a source at the bound needs about a
+# megabyte. The default is a platform's rather than this compiler's — a megabyte on Linux x64, two
+# on aarch64 — so a source that compiles here would depend on where it was compiled without it.
+#
+# The rest is a class-data archive. Compiling a small source costs several times what the same
+# compile costs once the JVM is warm, and almost none of that is the compile: it is loading the
+# compiler's classes and verifying them. An archive of them takes a large part of that away, and it
+# cannot be shipped — one is bound to the JDK build that wrote it and to the jar it was written
+# from, and what is distributed here is a single file copied onto a path. So the launcher makes one
+# where the JDK running it can use it, under a name that is this version's alone.
+#
+# Only a command that loads the compiler may write the archive. An archive holds the classes the
+# run that wrote it loaded, and is rewritten only when it cannot be read at all, so an archive
+# written by `souther doc` would serve every later compile with the few classes that command
+# touched. Every command reads one, and a command not listed here reads without ever writing, which
+# is what an unlisted new command should do.
+#
+# Reading is never fatal: an archive that is absent, stale or unreadable leaves the run to load its
+# classes itself. Writing one is fatal to the run that writes it, so it is offered only where the
+# directory to hold it exists and is writable.
+archive="${XDG_CACHE_HOME:-$HOME/.cache}/souther/@project.version@.jsa"
+cache="${archive%/*}"
+
+case "$1" in
+    compile|run|examples|lsp)
+        if mkdir -p "$cache" 2>/dev/null && [ -w "$cache" ]; then
+            exec java -Xss4m -Xlog:cds=off \
+                -XX:+AutoCreateSharedArchive "-XX:SharedArchiveFile=$archive" \
+                -jar "$0" "$@"
+        fi
+        ;;
+esac
+
+if [ -r "$archive" ]; then
+    exec java -Xss4m -Xlog:cds=off -Xshare:auto "-XX:SharedArchiveFile=$archive" -jar "$0" "$@"
+fi
+
+exec java -Xss4m -jar "$0" "$@"
