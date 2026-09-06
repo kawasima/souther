@@ -62,7 +62,7 @@ class AQuestionAboutANumberNamesTheNumberTest {
                 | "one" : (Tags { names = [] }) -> 1
             """;
 
-    /** The same rules, with a body drawing a line on the length, which re-points the axis at it. */
+    /** The same rules, with a body drawing a line on the length, which is a measure of its own. */
     private static final String THE_SAME_UNDER_A_GUARD = """
             module m
 
@@ -116,10 +116,10 @@ class AQuestionAboutANumberNamesTheNumberTest {
     /**
      * And it does not move when a body draws on the same position.
      *
-     * <p>{@code Axis.measuredAt} re-points one axis at another number rather than adding a second,
-     * and it carried the questions across while doing it. A question is the model's and is about the
-     * number its own rule names, so what a body compares changes neither which questions stand nor
-     * which number each is about.
+     * <p>A body comparing another number of the position adds a measure of that number beside the
+     * ones the declarations made; it does not take a question with it. A question is the model's
+     * and is about the number its own rule names, so what a body compares changes neither which
+     * questions stand nor which number each is about.
      *
      * <p>These two documents disagreed. One rule, one question, and
      * {@code boundary at t.names on t.names} with no guard against

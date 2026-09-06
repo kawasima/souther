@@ -5,12 +5,15 @@ import souther.compiler.check.DeclaredBounds;
 import souther.compiler.check.MatchedEndAttribution;
 import souther.compiler.check.NarrowedBounds;
 import souther.compiler.check.RuleReadingSource;
+import souther.compiler.inputs.NumericTerm;
 import souther.compiler.inputs.Position;
+import souther.compiler.inputs.PositionBounds;
 import souther.compiler.numeric.EndSide;
 import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.Place;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,20 +42,39 @@ final class LocalInspection {
      */
     static LocalPartition of(Position position, RuleReadingSource ruleSource,
                              souther.compiler.check.ReadingPolicy policy) {
-        // Said to be classes of this position's own measure as they are built. What a class means is
-        // the same wherever it stands; which number's values it divides is this reading's answer,
-        // and a reader working it back out of the meaning would be answering it again.
+        // What stands at the position, which is the number the type's own distinctions divide. Said
+        // here because here is where it is known: the cases come from the reading of what may stand
+        // at this place, so a class made from one of them is a class of that value and of nothing
+        // taken of it. Read back off the class's meaning, or taken from a number the position was
+        // said to be measured at, this is the same answer arrived at by guessing.
+        NumericTerm.FromOnePosition standing = new NumericTerm.ValueOf(position.path());
         // Nothing is being built here: a position is being inspected, so no value's own name is
         // already open.
         List<PartitionClass> classes =
                 PartitionClasses.of(position.obligationCases(), position.view(), ruleSource, policy,
                                 java.util.Set.of())
-                        .stream().map(each -> each.ofTheNumber(position.term())).toList();
-        DeclaredBounds.Bounds axis = position.nothingExists() ? null
-                : axisBounds(position.ownEnds(), position.rangeLeft());
-        List<Cut> cuts = position.nothingExists() ? List.of()
-                : cutsOf(axis, position.ownEnds(), position.narrowedEnds());
-        if (classes.isEmpty() && cuts.isEmpty()) {
+                        .stream().map(each -> each.ofTheNumber(standing)).toList();
+        List<DeclaredMeasure> measures = new ArrayList<>();
+        // One measure per number, each built from the evidence that names that number. A number the
+        // classes are not about and no rule drew a line on is a number nothing measured, and it is
+        // left out rather than published as a measure of nothing.
+        for (PositionBounds at : position.bounds()) {
+            List<PartitionClass> here = at.term().equals(standing) ? classes : List.of();
+            List<Cut> cuts = position.nothingExists() ? List.of()
+                    : cutsOf(axisBounds(at.ownEnds(), at.rangeLeft()), at.ownEnds(),
+                            at.narrowedEnds());
+            if (here.isEmpty() && cuts.isEmpty()) {
+                continue;
+            }
+            // Whether a row can be written at an edge is a question about the whole value the
+            // position sits in, so it is answered once for the parameter. A rule this could not
+            // read is a way that value can be refused, wherever in it the rule is written.
+            measures.add(new DeclaredMeasure(at.term(), here,
+                    cuts.isEmpty() ? new CutEvidence.None()
+                            : new CutEvidence.Present(cuts, position.projection()),
+                    at.narrowedEnds()));
+        }
+        if (measures.isEmpty()) {
             // Nothing this reading found divides the position, which is all this says. Whether an
             // absence follows is answered where the position's standing questions and the body's
             // rules are, and a widening this reading recorded about its own set is no part of it —
@@ -60,15 +82,10 @@ final class LocalInspection {
             // as the position being one nothing could read.
             return new LocalPartition.Open();
         }
-        // Whether a row can be written at an edge is a question about the whole value the position
-        // sits in, so it is answered once for the parameter. A rule this could not read is a way
-        // that value can be refused, wherever in it the rule is written.
-        CutEvidence drawn = cuts.isEmpty() ? new CutEvidence.None()
-                : new CutEvidence.Present(cuts, position.projection());
         // What the reading was short of is not restated here. It is the position's own answer and
         // travels as one value from there (`ReadingResidue`), so a local inspection copying half of
         // it would be a second place the pair could come apart.
-        return new LocalPartition.Divided(classes, drawn);
+        return new LocalPartition.Divided(measures);
     }
 
     /**

@@ -1,10 +1,7 @@
 package souther.compiler.inputs;
 
-import souther.compiler.check.DeclaredBounds;
-import souther.compiler.check.NarrowedBounds;
 import souther.compiler.check.ProjectionEvidence;
 import souther.compiler.check.TypeView;
-import souther.compiler.numeric.NumericDomain;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.values.AdmissibleSet;
@@ -23,16 +20,14 @@ import java.util.Set;
  *
  * <p>The fields are what the reading saw on the way; {@link #reading} and {@link #obligations} are
  * what follows from them. Held together because they are one reading: copied apart, the day
- * somebody works out {@link #numericDomain} differently for a position that has distinctions is a
- * day the compiler contradicts itself about where the same values stop.
+ * somebody works out {@link #bounds} differently for a position that has distinctions is a day the
+ * compiler contradicts itself about where the same values stop.
  *
  * @param declared what the position's type states before any rule was crossed with it, kept so that
  *                 a widening can hand it back and so that a distinction this position does not have
  *                 can be told from one the rules refused
  */
-record ReadPosition(TermPath path, TypeView view, NumericTerm.FromOnePosition term,
-                    NumericDomain.Bounds numericDomain, DeclaredBounds.Bounds ownEnds,
-                    NarrowedBounds narrowedEnds, NumericDomain.Bounds rangeLeft,
+record ReadPosition(TermPath path, TypeView view, List<PositionBounds> bounds,
                     boolean nothingExists,
                     ProjectionEvidence projection, List<Case> declared, ReadingResult reading,
                     ObligationDomain obligations, AdmissibleSet admitted,
@@ -42,6 +37,22 @@ record ReadPosition(TermPath path, TypeView view, NumericTerm.FromOnePosition te
                     StructuralInspection structure) implements Position {
 
     ReadPosition {
+        bounds = List.copyOf(bounds);
+        // The numbers are what a reader looks these up by, so two of them under one name is one
+        // silently standing for the other. And every one of them is a number of this position:
+        // bounds of somewhere else held here would answer a question about this place with a range
+        // read off another.
+        Set<NumericTerm.FromOnePosition> named = new LinkedHashSet<>();
+        for (PositionBounds each : bounds) {
+            if (!each.term().position().equals(path)) {
+                throw new IllegalArgumentException(each.term() + " is a number of "
+                        + each.term().position() + ", and is held under " + path);
+            }
+            if (!named.add(each.term())) {
+                throw new IllegalArgumentException(
+                        path + " has two answers about " + each.term());
+            }
+        }
         declared = List.copyOf(declared);
         rulesWithoutALine = List.copyOf(rulesWithoutALine);
         unansweredQuestions = List.copyOf(unansweredQuestions);

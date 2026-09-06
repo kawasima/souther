@@ -149,7 +149,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         return ReportMeasurement.statusOf(weakenedBy);
     }
 
-    public static final int SCHEMA_VERSION = 13;
+    public static final int SCHEMA_VERSION = 14;
 
     /**
      * Where the schema this writes documents ships.
@@ -1696,12 +1696,6 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case UNSUPPORTED_DOMAIN -> "compared against values no line can be drawn on here";
             case UNRESOLVED_CASE_PAIRING -> "it reaches case-specific positions on both sides, and "
                     + "how those positions pair up is not worked out";
-            case COMPETING_COORDINATES ->
-                    "the rules of this position are about more than one of its numbers, so it is"
-                            + " measured at none of them and this end has nowhere to go";
-            case RULE_ABOUT_ANOTHER_COORDINATE ->
-                    "it says where another of this position's numbers stops, and the position is"
-                            + " measured at the one its own rules are about";
             case UNSUPPORTED_PARTITION_SHAPE ->
                     "it relates two positions rather than dividing one";
             case RULE_ABOUT_A_RUN ->

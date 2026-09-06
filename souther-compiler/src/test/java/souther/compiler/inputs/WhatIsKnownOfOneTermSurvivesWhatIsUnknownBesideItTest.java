@@ -86,8 +86,9 @@ class WhatIsKnownOfOneTermSurvivesWhatIsUnknownBesideItTest {
         Read read = read(TEXT);
         Position c = read.inputs().at(TermPath.of("p").then("c"));
 
-        assertEquals(c.numericDomain(),
-                read.quantities().runsBetween(c.term()),
+        NumericTerm.FromOnePosition values = new NumericTerm.ValueOf(c.path());
+        assertEquals(c.boundsFor(values).admissible(),
+                read.quantities().runsBetween(values),
                 "the position's own answer and the quantity's are about the same values");
     }
 
@@ -105,7 +106,7 @@ class WhatIsKnownOfOneTermSurvivesWhatIsUnknownBesideItTest {
     void aFormKeepsWhatIsKnownOfTheTermsBesideAnUnknownOne() {
         Read read = read(UNCOUNTED);
         NumericTerm size = size(read, "xs");
-        NumericTerm n = read.inputs().at(TermPath.of("p").then("n")).term();
+        NumericTerm n = new NumericTerm.ValueOf(TermPath.of("p").then("n"));
         Map<NumericTerm, BigDecimal> coefs = new LinkedHashMap<>();
         coefs.put(n, BigDecimal.ONE);
         coefs.put(size, BigDecimal.ONE);
@@ -159,7 +160,7 @@ class WhatIsKnownOfOneTermSurvivesWhatIsUnknownBesideItTest {
                 souther.compiler.check.NumericMeasures.takenOf(there, read.rules().symbols()),
                 deep, there, read.rules().symbols());
         assertNotNull(buried, "the term is one the operation may be taken of");
-        NumericTerm n = read.inputs().at(TermPath.of("p").then("n")).term();
+        NumericTerm n = new NumericTerm.ValueOf(TermPath.of("p").then("n"));
         Map<NumericTerm, BigDecimal> coefs = new LinkedHashMap<>();
         coefs.put(n, BigDecimal.ONE);
         coefs.put(buried, BigDecimal.ONE);
@@ -275,8 +276,8 @@ class WhatIsKnownOfOneTermSurvivesWhatIsUnknownBesideItTest {
     void aRuleRelatingTwoTermsSurvivesAThirdThatCannotBeNamed() {
         Read read = read(RELATED_BESIDE_AN_UNCOUNTED);
         NumericTerm size = size(read, "xs");
-        NumericTerm x = read.inputs().at(TermPath.of("p").then("x")).term();
-        NumericTerm y = read.inputs().at(TermPath.of("p").then("y")).term();
+        NumericTerm x = new NumericTerm.ValueOf(TermPath.of("p").then("x"));
+        NumericTerm y = new NumericTerm.ValueOf(TermPath.of("p").then("y"));
         Map<NumericTerm, BigDecimal> coefs = new LinkedHashMap<>();
         coefs.put(size, BigDecimal.ONE);
         coefs.put(x, BigDecimal.ONE);

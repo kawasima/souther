@@ -1580,7 +1580,6 @@ public final class InvariantChecker {
     record Reading(List<Direct> directs, List<FieldDomains.NoLine> noLines,
                    List<FieldDomains.WithoutAnEnd> withoutAnEnd,
                    List<FieldDomains.AboutOneCoordinate> aboutOneCoordinate,
-                   List<FieldDomains.AboutOneCoordinate> aboutTheStrings,
                    Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
                    Map<RuleRef.Invariant, Required> raised,
                    Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
@@ -1612,12 +1611,6 @@ public final class InvariantChecker {
         List<FieldDomains.NoLine> noLines = new ArrayList<>();
         List<FieldDomains.WithoutAnEnd> withoutAnEnd = new ArrayList<>();
         List<FieldDomains.AboutOneCoordinate> aboutOneCoordinate = new ArrayList<>();
-        // Beside them and not among them. Both say which number a conjunct is written about; only
-        // the first are candidates for working out which conjuncts account for where the values
-        // stop, and a candidate that placed no end turns that working out on for the whole number.
-        // A conjunct that states a run states its own ends, so it needs no such attribution — and
-        // put among them it would set every other conjunct about the number to be read again.
-        List<FieldDomains.AboutOneCoordinate> aboutTheStrings = new ArrayList<>();
         Map<RuleKey, List<TypeSymbol.AtModule>> narrowers = new LinkedHashMap<>();
         Map<RuleRef.Invariant, Required> raised = new LinkedHashMap<>();
         Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart = new LinkedHashMap<>();
@@ -1630,12 +1623,12 @@ public final class InvariantChecker {
                 .filter(part -> !withoutParts.excludes(part.id()))
                 .forEach(part ->
                         direct(part.expr(), each.from(), part.id(), at, byName, out, noLines,
-                                withoutAnEnd, aboutOneCoordinate, aboutTheStrings, narrowers,
+                                withoutAnEnd, aboutOneCoordinate, narrowers,
                                 raised, took, typeAt, parts, raisedByPart, standing)));
         // Insertion order, kept: `Map.copyOf` iterates in an order salted once per JVM run, and
         // what a report prints for a position is these in the order the declaration writes them.
         return new Reading(List.copyOf(out), List.copyOf(noLines), List.copyOf(withoutAnEnd),
-                List.copyOf(aboutOneCoordinate), List.copyOf(aboutTheStrings),
+                List.copyOf(aboutOneCoordinate),
                 Map.copyOf(narrowers),
                 Collections.unmodifiableMap(new LinkedHashMap<>(raised)),
                 Collections.unmodifiableMap(new LinkedHashMap<>(raisedByPart)),
@@ -1654,7 +1647,6 @@ public final class InvariantChecker {
                           List<FieldDomains.NoLine> noLines,
                           List<FieldDomains.WithoutAnEnd> withoutAnEnd,
                           List<FieldDomains.AboutOneCoordinate> naming,
-                          List<FieldDomains.AboutOneCoordinate> namingTheStrings,
                           Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
                           Map<RuleRef.Invariant, Required> raised, ReadingEvidence took,
                           Map<RuleKey, Type> typeAt,
@@ -1663,7 +1655,7 @@ public final class InvariantChecker {
                           Map<FieldDomains.BoundaryQuestion,
                                   FieldDomains.BoundaryStanding> standing) {
         direct(stated.spelled().get(0), from, part, at, byName, out, noLines, withoutAnEnd, naming,
-                namingTheStrings, narrowers, raised, took, typeAt, parts, raisedByPart, standing);
+                narrowers, raised, took, typeAt, parts, raisedByPart, standing);
     }
 
     /** What {@code clause} raises, taken together with whatever its other conjuncts raised. */
@@ -1768,7 +1760,6 @@ public final class InvariantChecker {
                         List<FieldDomains.NoLine> noLines,
                         List<FieldDomains.WithoutAnEnd> withoutAnEnd,
                         List<FieldDomains.AboutOneCoordinate> naming,
-                        List<FieldDomains.AboutOneCoordinate> namingTheStrings,
                         Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
                         Map<RuleRef.Invariant, Required> raised, ReadingEvidence took,
                         Map<RuleKey, Type> typeAt,
@@ -1778,7 +1769,7 @@ public final class InvariantChecker {
                                 FieldDomains.BoundaryStanding> standing) {
         if (clause instanceof Core.LetIn li) {
             direct(li.body(), from, part, terms.inside(li, at), byName, out, noLines,
-                    withoutAnEnd, naming, namingTheStrings, narrowers, raised, took, typeAt, parts,
+                    withoutAnEnd, naming, narrowers, raised, took, typeAt, parts,
                     raisedByPart, standing);
             return;
         }
@@ -1798,11 +1789,9 @@ public final class InvariantChecker {
         if (ClauseExpr.of(clause, true) instanceof ClauseExpr.Joined joined
                 && joined.how() == ConditionJoin.BOTH && joined.positive()) {
             statedIn(joined.left(), from, part, at, byName, out, noLines, withoutAnEnd, naming,
-                    namingTheStrings, narrowers, raised, took, typeAt, parts, raisedByPart,
-                    standing);
+                    narrowers, raised, took, typeAt, parts, raisedByPart, standing);
             statedIn(joined.right(), from, part, at, byName, out, noLines, withoutAnEnd, naming,
-                    namingTheStrings, narrowers, raised, took, typeAt, parts, raisedByPart,
-                    standing);
+                    narrowers, raised, took, typeAt, parts, raisedByPart, standing);
             return;
         }
         // What a rule about the strings at a position says about where they stop, which is a rule
@@ -1812,7 +1801,7 @@ public final class InvariantChecker {
         //
         // Before the reading below, which needs to know: a conjunct that stated where the values
         // stop has a line, and is not one an author is owed a sentence about for having drawn none.
-        RunsRead runs = runsOf(clause, from, part, byName, parts, namingTheStrings, out);
+        RunsRead runs = runsOf(clause, from, part, byName, parts, out);
         restricting(clause, from, part, byName, parts, noLines, runs);
         if (!(clause instanceof Core.Binary bin)) {
             // Nothing but a binary is written as a comparison, so there is no reading of one for
@@ -2394,8 +2383,7 @@ public final class InvariantChecker {
      * where whole numbers are.
      */
     private RunsRead runsOf(Core clause, RuleRef.Invariant from, PartId part,
-                        Map<FactSubject, Coordinate> byName, PartsRead parts,
-                        List<FieldDomains.AboutOneCoordinate> naming, List<Direct> out) {
+                        Map<FactSubject, Coordinate> byName, PartsRead parts, List<Direct> out) {
         ReadByClauses.OfAPart account = parts.accountIn(from, clause);
         if (account == null) {
             return RunsRead.NOTHING;
@@ -2410,7 +2398,6 @@ public final class InvariantChecker {
             // position measured by a count of itself has one of those, and a rule about the strings
             // is about neither that count nor whichever of the two this map happens to hold.
             NumberAt<RuleKey> value = NumberAt.valueOf(found.path());
-            aboutOneCoordinate(value, part, naming);
             // And the strings only where the rule was read to them. What a rule this could not read
             // admits is not every string; it is not known, and a run read off what the reading left
             // would be a run of a set the rule does not have. Whether it states where the values

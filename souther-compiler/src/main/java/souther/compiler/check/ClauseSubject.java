@@ -9,12 +9,11 @@ import java.util.function.Predicate;
  * Which number of a value a comparison names on one of its sides, with that side read as the left
  * one.
  *
- * <p><b>What a rule is about is not this.</b> That is the canonical quantity its arithmetic came to
- * ({@link FieldDomains#writtenAbout}), and this is the narrower thing the reading of ends needs: an
- * end is read off a comparison of a number against something, so what that reading has to recognise
- * is a side that is the number. {@code String.length(value) * 2 >= 4} is about the length and this
- * answers nothing for it, which is why nothing choosing what a position is measured on may ask
- * here.
+ * <p><b>What a rule is about is not this.</b> That is the canonical quantity its arithmetic came
+ * to, and this is the narrower thing the reading of ends needs: an end is read off a comparison of
+ * a number against something, so what that reading has to recognise is a side that is the number.
+ * {@code String.length(value) * 2 >= 4} is about the length and this answers nothing for it, so a
+ * reader wanting what a rule is about may not ask here.
  *
  * <p>Above the reading of ends and not a step of it, which is what it is for. Whether a comparison
  * places an end and which number it names are two questions: {@code String.length(value) /= 0}

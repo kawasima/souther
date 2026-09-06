@@ -35,7 +35,7 @@ import java.util.List;
  * {@link ClauseSubject}'s and where it leaves the values is {@link InvariantBound}'s, and both are
  * projections of the same text rather than steps of one reading. What a conjunct is <em>about</em>
  * is neither of those: it is the canonical quantity its arithmetic came to, which the reading that
- * turns clauses into constraints works out ({@link FieldDomains#writtenAbout}).
+ * turns clauses into constraints works out.
  */
 public final class DeclaredClauses {
 

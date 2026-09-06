@@ -67,7 +67,7 @@ public final class FieldDomains {
      */
     public static final FieldDomains NONE =
             new FieldDomains(Map.of(), Map.of(), Map.of(), Map.of(), Set.of(), List.of(), List.of(),
-                    List.of(), List.of(), List.of(), PartsLeftOut.NONE, Map.of(),
+                    List.of(), List.of(), PartsLeftOut.NONE, Map.of(),
                     Map.of(), Map.of(), new ReadingEvidence(), Map.of(),
                     Map.of(RuleKey.THE_VALUE, Set.of(new RulesMissed.NoReadingWasMade())), Set.of(),
                     NOTHING_NAMED,
@@ -87,16 +87,6 @@ public final class FieldDomains {
     private final List<WithoutAnEnd> withoutAnEnd;
     /** The conjuncts whose quantity is over one number — see {@link #aboutOneCoordinate}. */
     private final List<AboutOneCoordinate> aboutOneCoordinate;
-    /**
-     * The conjuncts stating a rule about the strings at one number.
-     *
-     * <p>Beside the list above and read by one question of the two that one answers. Both say which
-     * number a conjunct is written about, and only the first are candidates for working out which
-     * conjuncts account for where the values stop — a candidate that placed no end turns that
-     * working out on for every conjunct about the number, and each of those readings reads the
-     * declaration again. A conjunct stating a run states its own ends and needs no such attribution.
-     */
-    private final List<AboutOneCoordinate> aboutTheStrings;
     /**
      * Which conjunct this reading was asked to leave out, so that a reading standing in for a
      * counterfactual is not asked one of its own.
@@ -197,7 +187,6 @@ public final class FieldDomains {
                          Set<RuleKey> notSeparatedByName,
                          List<InvariantChecker.Direct> directs, List<NoLine> noLines,
                          List<WithoutAnEnd> withoutAnEnd, List<AboutOneCoordinate> aboutOneCoordinate,
-                         List<AboutOneCoordinate> aboutTheStrings,
                          PartsLeftOut withoutParts,
                          Map<RuleRef.Invariant, Required> raised,
                          Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
@@ -221,7 +210,6 @@ public final class FieldDomains {
         this.noLines = noLines;
         this.withoutAnEnd = List.copyOf(withoutAnEnd);
         this.aboutOneCoordinate = List.copyOf(aboutOneCoordinate);
-        this.aboutTheStrings = List.copyOf(aboutTheStrings);
         this.withoutParts = withoutParts;
         this.raised = raised;
         this.raisedByPart = raisedByPart;
@@ -431,7 +419,6 @@ public final class FieldDomains {
                 Map.copyOf(seeded.unreadAt()), Set.copyOf(seeded.notSeparated()),
                 seeded.reading().directs(), seeded.reading().noLines(),
                 seeded.reading().withoutAnEnd(), seeded.reading().aboutOneCoordinate(),
-                seeded.reading().aboutTheStrings(),
                 reach.withoutParts(),
                 seeded.reading().raised(), seeded.reading().raisedByPart(),
                 seeded.reading().standing(), seeded.took(),
@@ -1354,35 +1341,6 @@ public final class FieldDomains {
      */
     public List<WithoutAnEnd> withoutAnEnd() {
         return withoutAnEnd;
-    }
-
-    /**
-     * Which numbers of the value its own rules are about, whatever each of them came to.
-     *
-     * <p>Off the canonical quantity, which is the one thing that says what a rule is about.
-     * {@code String.length(value) * 2 >= 4} is about the length of the string; a reader looking for
-     * a bare name or a bare measure on one side finds neither, and answers that the model writes
-     * about no number of the value at all — which is how a position with a rule about its length
-     * came to be measured on the string's own order.
-     *
-     * <p>Both the conjuncts an end was read from and the ones none was. Whether a clause came to an
-     * end is a fact about the clauses beside it and about this compiler's arithmetic; which number
-     * it is about is neither, and a reader choosing what a position is measured on wants the second.
-     *
-     * <p>A set and not a choice. Two numbers of one value can both be written about, which is a
-     * model with nothing here to pick between — said as a set, the reader that has to choose is the
-     * one that knows what it does where there is no choice to make.
-     */
-    public Set<NumberAt<RuleKey>> writtenAbout() {
-        Set<NumberAt<RuleKey>> out = new java.util.LinkedHashSet<>();
-        directs.forEach(each -> out.add(each.at()));
-        aboutOneCoordinate.forEach(each -> out.add(each.at()));
-        // And the numbers a rule about the strings is written about. Which number such a rule is
-        // about is settled by the call it is written as, so it is here whatever the reading made of
-        // the strings — a reader choosing which of a position's numbers it is measured at wants
-        // every rule written about one, and a rule read no further than the call is one of them.
-        aboutTheStrings.forEach(each -> out.add(each.at()));
-        return java.util.Collections.unmodifiableSet(out);
     }
 
     /**

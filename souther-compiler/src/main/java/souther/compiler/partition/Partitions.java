@@ -140,7 +140,8 @@ public final class Partitions {
         }
 
         /**
-         * The measures made of those locations, in the order the rules name the numbers.
+         * The measures made of those locations, location by location and in the order each of them
+         * settled.
          *
          * <p>For a reader whose question is about a number. Which location a measure is of is
          * where the measure sits, so a reader that needs the location asks {@link #measurements()}
@@ -1349,7 +1350,6 @@ public final class Partitions {
                                java.util.Set<NumericTerm> uncertain,
                                RulesWithNoLine.Gathered rulesWithoutALine) {
         rulesWithoutALine.addAll(position.rulesWithoutALine());
-        NumericTerm.FromOnePosition term = position.term();
         switch (LocalInspection.of(position, ruleSource, policy)) {
             case LocalPartition.Divided divided -> {
                 if (position.structure() instanceof StructuralInspection.Decomposed) {
@@ -1358,8 +1358,16 @@ public final class Partitions {
                                     + " reading of an input and the axes drawn from it disagree"
                                     + " about which positions there are");
                 }
-                if (divided.cuts() instanceof CutEvidence.Present cut && cut.uncertain()) {
-                    uncertain.add(term);
+                // One axis per measure the declarations made, and nothing decided here. Which
+                // number each of them is of is the reading's answer and arrives as it was given;
+                // what this adds is the behavior the measure is named after.
+                List<Axis> axes = new ArrayList<>();
+                for (DeclaredMeasure each : divided.measures()) {
+                    if (each.cuts() instanceof CutEvidence.Present cut && cut.uncertain()) {
+                        uncertain.add(each.term());
+                    }
+                    axes.add(Axis.of(behavior, each.term(), each.classes(), List.of(),
+                            each.cuts().cuts(), List.of(), each.narrowed()));
                 }
                 // No continuation, because something answered for the position and a fallback is
                 // what a position with no answer is left with. What the reading came to is carried
@@ -1367,9 +1375,7 @@ public final class Partitions {
                 // and taking that off the axis with the fallback is how the stop went unreported
                 // (issue #1084).
                 PositionAccount at = PositionAccount.of(behavior, position, null);
-                drawn.add(new Drawn(at,
-                        List.of(Axis.of(behavior, term, divided.classes(), List.of(),
-                                divided.cuts().cuts(), List.of(), position.narrowedEnds()))));
+                drawn.add(new Drawn(at, List.copyOf(axes)));
             }
             // Nothing local divides the position, which is what licenses asking what it is made of.
             // What its rules still raise is carried rather than acted on here: a position made of
