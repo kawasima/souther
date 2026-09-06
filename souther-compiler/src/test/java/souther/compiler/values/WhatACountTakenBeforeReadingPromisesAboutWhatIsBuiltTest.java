@@ -44,29 +44,60 @@ class WhatACountTakenBeforeReadingPromisesAboutWhatIsBuiltTest {
     }
 
     /** What a clause of no connective is read into, whichever of them it is. */
-    private static List<AdmissibleValues<String>> leaves() {
+    private static List<PlannedValues<String>> leaves() {
         return List.of(
-                AdmissibleValues.top(),
-                AdmissibleValues.at(A, ValueSet.just(FIVE)),
-                AdmissibleValues.at(A, ValueSet.allBut(FIVE)),
-                AdmissibleValues.at(B, ValueSet.just(ZERO)),
-                AdmissibleValues.at(A, ValueSet.NONE),
-                AdmissibleValues.unreadable(Set.of(A), UnreadReason.FORM_NOT_READ),
-                AdmissibleValues.unreadable(Set.of(), UnreadReason.FORM_NOT_READ));
+                PlannedValues.top(),
+                PlannedValues.at(A, AdmittedPlan.of(ValueSet.just(FIVE))),
+                PlannedValues.at(A, AdmittedPlan.of(ValueSet.allBut(FIVE))),
+                PlannedValues.at(B, AdmittedPlan.of(ValueSet.just(ZERO))),
+                PlannedValues.at(A, AdmittedPlan.NONE),
+                PlannedValues.unreadable(Set.of(A), UnreadReason.FORM_NOT_READ),
+                PlannedValues.unreadable(Set.of(), UnreadReason.FORM_NOT_READ));
     }
 
     /** What puts the sets of one reading together. Every set here is written out, so nothing is
      *  built and no allowance is spent. */
     private final Allowance<String> sets = AsACompilationAllows.forAdmittedValues();
 
+    /** A description worked out, which is where the alternatives are counted. */
+    private AdmissibleValues<String> built(PlannedValues<String> planned) {
+        return planned.resolve(sets).values();
+    }
+
+    /**
+     * Either reading holding, as the holder of both languages settles it.
+     *
+     * <p>A branch nobody can be in is not composed — what the choice leaves is the branch that
+     * stands — and where neither can be there is nothing to compose and the settlement says so.
+     * The induction is over what the fold does, so it is over these four cases and not over an
+     * operation the fold never reaches for.
+     */
+    private PlannedValues<String> either(PlannedValues<String> one, PlannedValues<String> other,
+                                         boolean apart) {
+        if (dead(one) && dead(other)) {
+            return one.leavingNothing().bothDead(other.leavingNothing());
+        }
+        if (dead(one)) {
+            return other;
+        }
+        if (dead(other)) {
+            return one;
+        }
+        return apart ? one.joinLiveApart(other) : one.joinLive(other);
+    }
+
+    private boolean dead(PlannedValues<String> planned) {
+        return planned.holdsNothingAsBuilt(sets);
+    }
+
     /** The same, and everything one connective reaches from them. */
-    private List<AdmissibleValues<String>> readings() {
-        List<AdmissibleValues<String>> out = new ArrayList<>(leaves());
-        for (AdmissibleValues<String> one : leaves()) {
-            for (AdmissibleValues<String> other : leaves()) {
-                out.add(one.meet(other, sets));
-                out.add(one.joinApart(other, sets));
-                out.add(one.join(other, sets));
+    private List<PlannedValues<String>> readings() {
+        List<PlannedValues<String>> out = new ArrayList<>(leaves());
+        for (PlannedValues<String> one : leaves()) {
+            for (PlannedValues<String> other : leaves()) {
+                out.add(one.meet(other));
+                out.add(either(one, other, true));
+                out.add(either(one, other, false));
             }
         }
         return out;
@@ -76,21 +107,22 @@ class WhatACountTakenBeforeReadingPromisesAboutWhatIsBuiltTest {
      *  what a rule with no word for it leaves is every value, which is a product like any other. */
     @Test
     void aLeafIsOneAlternative() {
-        for (AdmissibleValues<String> each : leaves()) {
-            assertTrue(held(each) <= 1, each + " is more than one alternative");
+        for (PlannedValues<String> each : leaves()) {
+            assertTrue(held(built(each)) <= 1, each + " is more than one alternative");
         }
-        assertEquals(1, held(AdmissibleValues.at(A, ValueSet.just(FIVE))));
-        assertEquals(1, held(AdmissibleValues.unreadable(Set.of(A), UnreadReason.FORM_NOT_READ)));
+        assertEquals(1, held(built(PlannedValues.at(A, AdmittedPlan.of(ValueSet.just(FIVE))))));
+        assertEquals(1, held(built(
+                PlannedValues.unreadable(Set.of(A), UnreadReason.FORM_NOT_READ))));
     }
 
     /** A choice holds at most the sum, which is what the count adds for one. */
     @Test
     void aChoiceHoldsAtMostTheSum() {
-        for (AdmissibleValues<String> one : readings()) {
-            for (AdmissibleValues<String> other : readings()) {
-                assertTrue(held(one.joinApart(other, sets)) <= held(one) + held(other),
-                        one + " || " + other);
-                assertTrue(held(one.join(other, sets)) <= held(one) + held(other),
+        for (PlannedValues<String> one : readings()) {
+            for (PlannedValues<String> other : readings()) {
+                int apart = held(built(one)) + held(built(other));
+                assertTrue(held(built(either(one, other, true))) <= apart, one + " || " + other);
+                assertTrue(held(built(either(one, other, false))) <= apart,
                         "and merged it holds no more than that: " + one + " || " + other);
             }
         }
@@ -99,9 +131,9 @@ class WhatACountTakenBeforeReadingPromisesAboutWhatIsBuiltTest {
     /** And a conjunction at most the product, which is what the count multiplies for one. */
     @Test
     void aConjunctionHoldsAtMostTheProduct() {
-        for (AdmissibleValues<String> one : readings()) {
-            for (AdmissibleValues<String> other : readings()) {
-                assertTrue(held(one.meet(other, sets)) <= held(one) * held(other),
+        for (PlannedValues<String> one : readings()) {
+            for (PlannedValues<String> other : readings()) {
+                assertTrue(held(built(one.meet(other))) <= held(built(one)) * held(built(other)),
                         one + " && " + other);
             }
         }
@@ -114,13 +146,13 @@ class WhatACountTakenBeforeReadingPromisesAboutWhatIsBuiltTest {
      */
     @Test
     void andBothBoundsAreReached() {
-        AdmissibleValues<String> here = AdmissibleValues.at(A, ValueSet.just(FIVE))
-                .joinApart(AdmissibleValues.at(A, ValueSet.just(SIX)), sets);
-        AdmissibleValues<String> there = AdmissibleValues.at(B, ValueSet.just(ZERO))
-                .joinApart(AdmissibleValues.at(B, ValueSet.just(ONE)), sets);
+        PlannedValues<String> here = PlannedValues.at(A, AdmittedPlan.of(ValueSet.just(FIVE)))
+                .joinLiveApart(PlannedValues.at(A, AdmittedPlan.of(ValueSet.just(SIX))));
+        PlannedValues<String> there = PlannedValues.at(B, AdmittedPlan.of(ValueSet.just(ZERO)))
+                .joinLiveApart(PlannedValues.at(B, AdmittedPlan.of(ValueSet.just(ONE))));
 
-        assertEquals(2, held(here), "a choice of two, and the sum of one and one is two");
-        assertEquals(4, held(here.meet(there, sets)),
+        assertEquals(2, held(built(here)), "a choice of two, and the sum of one and one is two");
+        assertEquals(4, held(built(here.meet(there))),
                 "and a conjunction of two by two, none of whose pairs is empty, is four");
     }
 }

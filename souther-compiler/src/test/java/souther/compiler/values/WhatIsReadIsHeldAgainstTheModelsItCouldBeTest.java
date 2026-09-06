@@ -63,6 +63,14 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
     /**
      * A reading of some rules, beside every set of records those rules could leave.
      *
+     * <p>The two are worked out apart. What the models say is put together out of the sets of
+     * records above by {@code &} and {@code |}; what this compiler says is put together by the
+     * connectives it composes descriptions with. A reading taken from either side to make the
+     * other would leave this asking whether the compiler agrees with itself.
+     *
+     * @param planned what this compiler read the rules into, before any of it is worked out
+     * @param opened what the alternatives nothing could read left open, gathered up the clause and
+     *                  told to the answer once
      * @param readAbout the positions the rules this could read are about
      * @param choicesOverOnePosition whether every choice in it is between alternatives the reading
      *                  took in about no more than one position between them. Where it is not, what
@@ -74,9 +82,16 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
      *                  fact about the clause as it is written here, so it is decided here and
      *                  handed to the join rather than worked out from what the readings hold
      */
-    private record Rule(String wrote, AdmissibleValues<String> read, List<Integer> leaves,
-                        Set<String> readAbout, boolean choicesOverOnePosition,
-                        boolean holdsSomethingUnread) {}
+    private record Rule(String wrote, PlannedValues<String> planned, Set<String> opened,
+                        List<Integer> leaves, Set<String> readAbout,
+                        boolean choicesOverOnePosition, boolean holdsSomethingUnread) {
+
+        /** What a reader is handed: the description worked out, and told what the alternatives
+         *  nothing could read left open. Said once, over the whole of what the clauses came to. */
+        AdmissibleValues<String> answer() {
+            return planned.resolve(SETS).values().alsoOpenedAt(opened);
+        }
+    }
 
     /** Which values stand at {@code atom} in {@code records}, as a pair of bits. */
     private static int standingAt(String atom, int records) {
@@ -106,9 +121,9 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
     }
 
     /** A rule read in full: one set of records and no doubt about it. */
-    private static Rule read(String wrote, AdmissibleValues<String> read, String about,
-                             int records) {
-        return new Rule(wrote, read, List.of(records), Set.of(about), true, false);
+    private static Rule read(String wrote, ValueSet leaves, String about, int records) {
+        return new Rule(wrote, PlannedValues.at(about, AdmittedPlan.of(leaves)), Set.of(),
+                List.of(records), Set.of(about), true, false);
     }
 
     /**
@@ -122,7 +137,8 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
                 could.add(records);
             }
         }
-        return new Rule(wrote, AdmissibleValues.unreadable(names, why), could, Set.of(), true, true);
+        return new Rule(wrote, PlannedValues.unreadable(names, why), Set.of(), could, Set.of(),
+                true, true);
     }
 
     /** Whether {@code records} is settled by the named positions alone. */
@@ -142,10 +158,10 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
 
     private static List<Rule> rules() {
         return List.of(
-                read("value == A", AdmissibleValues.at(VALUE, ValueSet.just(A)), VALUE, 0b0011),
-                read("value == B", AdmissibleValues.at(VALUE, ValueSet.just(B)), VALUE, 0b1100),
-                read("other == A", AdmissibleValues.at(OTHER, ValueSet.just(A)), OTHER, 0b0101),
-                read("value /= A", AdmissibleValues.at(VALUE, ValueSet.allBut(A)), VALUE, 0b1100),
+                read("value == A", ValueSet.just(A), VALUE, 0b0011),
+                read("value == B", ValueSet.just(B), VALUE, 0b1100),
+                read("other == A", ValueSet.just(A), OTHER, 0b0101),
+                read("value /= A", ValueSet.allBut(A), VALUE, 0b1100),
                 unread("f(value)", Set.of(VALUE), UnreadReason.FORM_NOT_READ),
                 unread("f(other)", Set.of(OTHER), UnreadReason.FORM_NOT_READ),
                 unread("value /= other", Set.of(VALUE, OTHER), UnreadReason.RELATES_TWO_POSITIONS),
@@ -191,10 +207,14 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
                 opened.addAll(promisedBy(left));
             }
         }
+        // What either side already had opened travels up with it: the positions are told to the
+        // answer once, where the whole of what the clauses came to is in hand.
+        opened.addAll(left.opened());
+        opened.addAll(right.opened());
         return new Rule("(" + left.wrote() + " " + by + " " + right.wrote() + ")",
-                by.equals("&&") ? left.read().meet(right.read(), SETS)
-                        : left.read().join(right.read(), SETS).alsoOpenedAt(opened),
-                List.copyOf(could), about, overOne,
+                by.equals("&&") ? left.planned().meet(right.planned())
+                        : left.planned().joinLive(right.planned()),
+                opened, List.copyOf(could), about, overOne,
                 left.holdsSomethingUnread() || right.holdsSomethingUnread());
     }
 
@@ -219,15 +239,15 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
             }
             for (String atom : List.of(VALUE, OTHER)) {
                 int stands = standingAt(atom, records);
-                int holds = read(rule.read().at(atom));
-                int promised = read(rule.read().guaranteedAt(atom));
+                int holds = read(rule.answer().at(atom));
+                int promised = read(rule.answer().guaranteedAt(atom));
                 assertTrue((stands & ~holds) == 0, () -> rule.wrote()
                         + ": at " + atom + " the model leaves " + stands + " and the reading holds "
                         + holds + ", which is short of it");
                 assertTrue((promised & ~stands) == 0, () -> rule.wrote()
                         + ": at " + atom + " the reading promises " + promised
                         + " and the model leaves " + stands + ", which is less than promised");
-                assertTrue(!rule.choicesOverOnePosition() || !rule.read().speaksFor(atom)
+                assertTrue(!rule.choicesOverOnePosition() || !rule.answer().speaksFor(atom)
                                 || holds == stands,
                         () -> rule.wrote() + ": at " + atom + " the reading speaks for " + holds
                                 + " and the model leaves " + stands);

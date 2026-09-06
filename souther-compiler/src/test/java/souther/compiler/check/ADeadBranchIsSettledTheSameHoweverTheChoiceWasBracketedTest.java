@@ -93,7 +93,10 @@ class ADeadBranchIsSettledTheSameHoweverTheChoiceWasBracketedTest {
                 return new Branch(reading.bothDead(other.reading, SHOWN), true);
             }
             // Neither language is asked what a choice with one dead branch leaves: what it leaves
-            // is the standing branch, which the holder has in hand.
+            // is the standing branch, which the holder has in hand. Composed instead, the choice
+            // would keep only what both sides spoke about — and a side nobody can be in spoke
+            // about positions the other did not, so the whole would come back saying nothing at
+            // all about them.
             if (dead) {
                 return other;
             }
