@@ -88,6 +88,26 @@
     }
   },
   "$defs": {
+    "ruleHandle": {
+      "type": "string",
+      "description": "How a reader finds a rule, written once here for every field that carries one. A rule the author named is found by that name: a clause of an invariant they called something is `invariant Amount (cap)`, one they named nothing is counted from the top of the declaration as `invariant Amount #2`, a clause of an `ensures` is `ensures charge (refunded)`, and a clause stating one rule over every answer is `ensures charge`. A rule they wrote rather than named has no name to look up and is found by where it is: `comparison@billing.sou:14:22` in a source this document's `sources` table names, and `comparison@7:3` where the file is the reader's to know. Code this compile reads from somewhere it holds no file for is said by what reaches it — `comparison in `Money`, reached at billing.sou:14:22`, or `comparison in `Money`, reached at 7:3`, or `comparison in `Money`` where there was no position to give. The word in front of a place says what kind of rule it is, and is one of the words `ruleId.kind` uses for a rule with no name: `predicate@billing.sou:14:22`, `predicate@7:3`, `predicate in `Money`, reached at billing.sou:14:22`, `predicate in `Money`, reached at 7:3`, `predicate in `Money``. These words are how an author acts on a rule and never what tells one rule from another — two arms of one `ensures` clause may name the same case — which is `ruleId`.",
+      "examples": [
+        "invariant Amount (cap)",
+        "invariant Amount #2",
+        "ensures charge (refunded)",
+        "ensures charge",
+        "comparison@billing.sou:14:22",
+        "comparison@7:3",
+        "comparison in `Money`, reached at billing.sou:14:22",
+        "comparison in `Money`, reached at 7:3",
+        "comparison in `Money`",
+        "predicate@billing.sou:14:22",
+        "predicate@7:3",
+        "predicate in `Money`, reached at billing.sou:14:22",
+        "predicate in `Money`, reached at 7:3",
+        "predicate in `Money`"
+      ]
+    },
     "runSensitivity": {
       "enum": [
         "may_change",
@@ -783,8 +803,8 @@
             ]
           },
           "rule": {
-            "type": "string",
-            "description": "The rule that drew the line, as `boundaries[].origin` writes it."
+            "$ref": "#/$defs/ruleHandle",
+            "description": "The rule that drew the line this point is owed for. The handle and nothing else, where the `boundaries` entry for the same line writes the declarations that took its ends in beside it."
           },
           "ruleId": {
             "$ref": "#/$defs/ruleId"
@@ -1603,7 +1623,8 @@
           },
           "subject": {
             "type": "string",
-            "description": "What the finding is about, written to name what is already in this document: a class name is one of an axis's `classes`, an arm's label one in `branch.obligations`, `axis = value` names the point of a declaration's line the way the declaration wrote it, and `ON point of comparison@14:22` says which of the four points a boundary finding is about and which rule drew the line — a line a body drew is owed once wherever it is read and has no one quantity to be named by, so what a row there has to do is under the obligation's `readings`. These words are a presentation and never a key: which obligation such a finding is about is `obligationId`. An input's case carries its position — `C (in #1)` — because two parameters of one type give two findings a class name alone cannot tell apart."
+            "x-souther-contains": "#/$defs/ruleHandle",
+            "description": "What the finding is about, written to name what is already in this document: a class name is one of an axis's `classes`, an arm's label one in `branch.obligations`, `axis = value` names the point of a declaration's line the way the declaration wrote it, and `ON point of comparison@billing.sou:14:22` says which of the four points a boundary finding is about and which rule drew the line — the rule as a `ruleHandle`, and a line a body drew is owed once wherever it is read and has no one quantity to be named by, so what a row there has to do is under the obligation's `readings`. A finding about a question nothing answered leads with the same handle and says what was asked after it. These words are a presentation and never a key: which obligation such a finding is about is `obligationId`. An input's case carries its position — `C (in #1)` — because two parameters of one type give two findings a class name alone cannot tell apart."
           },
           "code": {
             "type": "string",
@@ -2185,7 +2206,8 @@
               },
               "origin": {
                 "type": "string",
-                "description": "The rule that drew this line — a type's invariant, a behavior's `ensures`, or the fork of a body a condition was written in, named by the construct the author wrote it as (`if`, `guard` or `comprehension`) and where. Prose rather than a word list: which rules there are is the model's question, not this document's."
+                "x-souther-contains": "#/$defs/ruleHandle",
+                "description": "The rule that drew this line, as a `ruleHandle`, and after it the declarations that took an end of the line in where any did. The handle alone where none did, which is what the `obligations` entry for a point of this line carries. Not itself a handle, because those words are about the line rather than about the rule; what a consumer keys on is the `ruleId` under that entry."
               },
               "kind": {
                 "enum": [
@@ -2515,8 +2537,8 @@
                 "$ref": "#/$defs/answerRealizationStoppedReason"
               },
               "rule": {
-                "type": "string",
-                "description": "How a reader finds the rule: the name the author gave it where there is one — `invariant Length (even)` — and where it is written where there is none, as `if@<source>:<line>:<column>`. A comparison in a body is written rather than named, so a document that spelled every rule as a name would send an author looking for a clause called `if`. The same handle a `boundaries` entry writes for a line the same rule drew. Not what tells one rule from another: two arms of one `ensures` clause may name the same case, and `ruleId` beside this is what says they are two."
+                "$ref": "#/$defs/ruleHandle",
+                "description": "How a reader finds the rule this question is about. The same handle the `boundaries` entry for a line the same rule drew carries, and the same one a `notRead` entry carries for a rule it could not read. What the forms are is `ruleHandle`; what tells one rule from another is `ruleId` beside this, because two arms of one `ensures` clause may name the same case and a handle is what an author acts on rather than what a consumer groups by."
               },
               "ruleId": {
                 "$ref": "#/$defs/ruleId"
@@ -2680,8 +2702,8 @@
                 "$ref": "#/$defs/notReadReason"
               },
               "rule": {
-                "type": "string",
-                "description": "How a reader finds the rule this could not turn into a line: the name the author gave it where there is one — `invariant Length (even)` — and where it is written where there is none, as `if@<source>:<line>:<column>`. The same handle an `unanswered` entry and a `boundaries` entry write for the same rule. Present exactly where the entry is about a rule; a position the reading never reached has none, and a placeholder here would say a rule had been looked at that nothing saw. Not what tells one rule from another: `ruleId` beside this is."
+                "$ref": "#/$defs/ruleHandle",
+                "description": "How a reader finds the rule this could not turn into a line. The same handle an `unanswered` entry and a `boundaries` entry carry for the same rule, and its forms are `ruleHandle`. Present exactly where the entry is about a rule; a position the reading never reached has none, and a placeholder here would say a rule had been looked at that nothing saw. Not what tells one rule from another: `ruleId` beside this is."
               },
               "ruleId": {
                 "$ref": "#/$defs/ruleId",
