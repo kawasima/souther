@@ -8,12 +8,10 @@ import souther.compiler.types.TypeSymbols;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -143,24 +141,31 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
             new souther.compiler.regex.PatternPlan.Budget(1, 1));
 
     /**
-     * An edit is a new world, and nothing read in the old one is lent into it. Held by what is read
-     * rather than by looking at what is kept: a reading lent across an edit would answer about
-     * rules the author has since changed.
+     * What was read of one world is not lent into the next.
+     *
+     * <p>Asked of the lender directly, and with the world moved by hand, because that is the only
+     * place the question is settled: a compile that edits a source recomputes the answers about
+     * what it edited, so a reading made again for that reason would come out fresh whether or not
+     * anything was dropped, and a test watching a compile would say nothing about the dropping.
+     *
+     * <p>What is lent is sound because within a revision there is one world for a reading to be a
+     * reading of. When the revision moves that is no longer so, and this is what makes it not so.
      */
     @Test
-    void whatWasReadBeforeAnEditIsNotLentAfterIt() {
-        Map<String, String> byId = new LinkedHashMap<>();
-        byId.put("demo.sou", MODULE);
-        Compilation compilation = Compilation.ofDocuments(byId, Set.of(), ModulePath.EMPTY);
-        compilation.answerEverything();
+    void whatWasReadOfOneWorldIsNotLentIntoTheNext() {
+        Compilation compilation = compiled();
+        RuleReadingSource source = RuleReadings.of(compilation, "demo");
+        TypeSymbol.AtModule code = TypeSymbols.declared(new TypeKey("demo", "Code"));
+        long[] world = { 7 };
+        LentReadings lender = new LentReadings(DeclarationReadings.NONE, () -> world[0]);
 
-        Map<String, String> edited = new LinkedHashMap<>(byId);
-        edited.put("demo.sou", MODULE.replace("value <= 1000", "value <= 2000"));
-        long before = InvariantChecker.readingsMade();
-        compilation.update(edited, Set.of());
-        compilation.answerEverything();
+        InvariantChecker.Seeded read =
+                InvariantChecker.seedFields(code, source, AS_THE_COMPILE_READS, lender);
+        assertSame(read, lender.seeded(code.key(), AS_THE_COMPILE_READS),
+                "what was read of this world is lent while it is this world");
 
-        assertTrue(InvariantChecker.readingsMade() > before,
-                "the edited declarations are read again rather than lent what the old world left");
+        world[0]++;
+        assertNull(lender.seeded(code.key(), AS_THE_COMPILE_READS),
+                "and is not lent into the next, which it is not a reading of");
     }
 }
