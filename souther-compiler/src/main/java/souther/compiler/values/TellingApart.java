@@ -27,8 +27,8 @@ import java.util.function.Function;
  */
 final class TellingApart<A> {
 
-    /** The blocks, in the order the relation stated them, so that two runs over one relation take
-     *  them the same way round. */
+    /** The blocks, in the order the search gives values out in, which {@link #over} settles from
+     *  what each of them holds and not from the order the relation stated them. */
     private final List<Sameness.Block<A>> blocks;
 
     /** What each of them may hold, indexed as the blocks are. */

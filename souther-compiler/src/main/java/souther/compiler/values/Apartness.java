@@ -63,13 +63,15 @@ public final class Apartness<A> {
      *
      * <p>The other way a walk over the sets is cheap, and it is not the bound above with a
      * different figure. Each pair a relation leaves out can double how many sets of blocks all
-     * stated to differ it has — a relation leaving none has one — so what this bounds is the sets
-     * rather than the blocks, and a relation of many blocks leaving few pairs out has as few sets
-     * as a small one.
+     * stated to differ it has — a relation leaving none has one — so a relation of many blocks
+     * leaving few pairs out has as few of them to find as a small relation.
      *
-     * <p>Measured on the shape that reaches that doubling, a relation leaving this many pairs out
-     * is walked in about a fiftieth of a second, and every four more of them is sixteen times as
-     * much.
+     * <p><b>Which is what the figure is derived from, and not what it is.</b> How many sets there
+     * are is not how much walking finding them is: this walk is not one whose steps a count of its
+     * answers bounds, and a bound read off the first alone would be a bound on nothing. What the
+     * left-out pairs give is the axis the work runs along; where on that axis to stop is measured,
+     * on the shape that reaches the doubling — a relation leaving this many pairs out is walked in
+     * about a fiftieth of a second, and every four more of them is sixteen times as much.
      */
     private static final int MOST_PAIRS_LEFT_OUT = 12;
 
@@ -169,9 +171,9 @@ public final class Apartness<A> {
          * count of blocks does not. {@link #grow} pivots on the block stated to differ from most of
          * what may still be added, so where a block is stated to differ from every other, each
          * level has one way in and the whole relation is one path however many blocks it has. Each
-         * pair left out can double how many sets there are, and the walk with them: measured, a
-         * relation of this many pairs left out is walked in a fiftieth of a second and every four
-         * more of them is sixteen times as much.
+         * pair left out is a level with a way in beside that one, and can double how many sets
+         * there are to find. How much walking that comes to is measured rather than read off the
+         * doubling — how many answers a walk has is not how many steps it takes.
          *
          * <p>The property and not the shape that has none of them. A relation all of whose pairs
          * are stated is this at nothing, and one pair short of it is a relation the walk is as
