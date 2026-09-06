@@ -76,6 +76,33 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
     /** One way, which is the shape everything is held to. */
     record OneWayToOneRule(souther.compiler.check.RuleCitation cited) { }
 
+    /**
+     * The same pair, with the rule reached through a type variable.
+     *
+     * <p>What a variable is instantiated with is settled where the state is built, and this walk is
+     * not asking that. It is asking whether the state can hold a rule of its own, and a variable
+     * bounded by one says statically that it can — so a walk that passed over it would let the pair
+     * through under the one spelling nobody would think to look at.
+     */
+    record TwoWaysThroughAVariable<R extends souther.compiler.check.RuleRef>(
+            R rule, souther.compiler.check.RuleCitation cited) { }
+
+    /** A state that holds a rule, for the pair below to inherit. */
+    static class HoldsARule {
+        souther.compiler.check.RuleRef rule;
+    }
+
+    /**
+     * And the same pair, with one half inherited.
+     *
+     * <p>What a state carries is what an instance of it holds, which is its own fields and the ones
+     * above it. Read off the class's own declarations, a pair split over a hierarchy is two states
+     * with one way each and one instance with two.
+     */
+    static class TwoWaysThroughASuperclass extends HoldsARule {
+        souther.compiler.check.RuleCitation cited;
+    }
+
     @Test
     void nothingThisRepositoryPublishesHoldsARuleAndAHandleBesideIt() {
         Carried carried = Carried.ofWhatThisRepositoryPublishes();
@@ -104,8 +131,16 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
 
         assertEquals(2, carried.waysToARuleFrom(fixture("TwoWaysToOneRule")),
                 "a rule and a handle beside it are two ways to one rule");
+        assertEquals(2, carried.waysToARuleFrom(fixture("TwoWaysThroughAVariable")),
+                "a variable bounded by a rule is a way to one, whatever it is instantiated with");
+        assertEquals(2, carried.waysToARuleFrom(fixture("TwoWaysThroughASuperclass")),
+                "and what a state carries is what an instance of it holds, the fields above it"
+                        + " among them");
         assertEquals(1, carried.waysToARuleFrom(fixture("OneWayToOneRule")),
                 "and a handle alone is one, since the rule it carries is not a second way");
+        assertEquals(1, carried.waysToARuleFrom(fixture("HoldsARule")),
+                "and the half that holds only the rule is one way, so the pair above is the"
+                        + " hierarchy's and not either half's");
     }
 
     /**
@@ -179,7 +214,7 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
          */
         int waysToARuleFrom(String owner) {
             int ways = 0;
-            for (Signature each : carriedBy(modelOf(owner))) {
+            for (Carries each : carriedBy(modelOf(owner))) {
                 if (reachesARule(each, Through.ANYTHING)) {
                     ways++;
                 }
@@ -201,7 +236,7 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
          * that keeps rules keeps a collection of them, and what is inside carries its own handle.
          */
         boolean isAboutOneRule(String owner) {
-            for (Signature each : carriedBy(modelOf(owner))) {
+            for (Carries each : carriedBy(modelOf(owner))) {
                 if (reachesARule(each, Through.ONE_VALUE_AT_A_TIME)) {
                     return true;
                 }
@@ -218,26 +253,53 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
             return model;
         }
 
-        /** What one class keeps: a record's components, or the instance fields of anything else. */
-        private static List<Signature> carriedBy(ClassModel model) {
-            Optional<RecordAttribute> record = model.findAttribute(Attributes.record());
-            List<Signature> out = new ArrayList<>();
-            if (record.isPresent()) {
-                for (RecordComponentInfo component : record.get().components()) {
-                    out.add(WhatASignatureReaches.componentSignature(component));
-                }
-                return out;
-            }
-            for (FieldModel field : model.fields()) {
-                if (field.flags().has(AccessFlag.STATIC)) {
+        /**
+         * What one class keeps: a record's components, or the instance fields of anything else,
+         * with the state it inherits among them.
+         *
+         * <p>What a state carries is what an instance of it holds. Read off the class's own
+         * declarations alone, a pair split over a hierarchy is two classes with one way each while
+         * every instance of the lower one has both.
+         *
+         * <p>Each carried thing keeps the class that declared it beside it, because a signature is
+         * read in the frame of whoever wrote it: a variable named in a superclass's field is that
+         * superclass's, and looked up in the wrong frame it is a name with no bound.
+         */
+        private List<Carries> carriedBy(ClassModel model) {
+            List<Carries> out = new ArrayList<>();
+            for (ClassModel each = model; each != null; each = superclassOf(each)) {
+                Optional<RecordAttribute> record = each.findAttribute(Attributes.record());
+                if (record.isPresent()) {
+                    for (RecordComponentInfo component : record.get().components()) {
+                        out.add(new Carries(WhatASignatureReaches.componentSignature(component),
+                                each));
+                    }
                     continue;
                 }
-                out.add(field.findAttribute(Attributes.signature())
-                        .map(SignatureAttribute::asTypeSignature)
-                        .orElseGet(() -> Signature.of(field.fieldTypeSymbol())));
+                for (FieldModel field : each.fields()) {
+                    if (field.flags().has(AccessFlag.STATIC)) {
+                        continue;
+                    }
+                    ClassModel owner = each;
+                    out.add(new Carries(field.findAttribute(Attributes.signature())
+                            .map(SignatureAttribute::asTypeSignature)
+                            .orElseGet(() -> Signature.of(field.fieldTypeSymbol())), owner));
+                }
             }
             return out;
         }
+
+        /** The class above this one, where this repository built it. A class whose parent it did
+         *  not build carries nothing this walk can read, which is where the walk stops. */
+        private ClassModel superclassOf(ClassModel model) {
+            return model.superclass()
+                    .map(each -> classes.get(each.name().stringValue()))
+                    .orElse(null);
+        }
+
+        /** One thing a state carries, and the class whose type parameters its signature is read
+         *  against. */
+        private record Carries(Signature type, ClassModel declaredBy) { }
 
         /** How much of what a state carries a walk is allowed through. */
         private enum Through {
@@ -251,8 +313,8 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
         }
 
         /** Whether one thing a class carries reaches the rule it is about. */
-        private boolean reachesARule(Signature type, Through through) {
-            for (String named : namesIn(type, through)) {
+        private boolean reachesARule(Carries carried, Through through) {
+            for (String named : namesIn(carried.type(), through, carried.declaredBy())) {
                 if (reachesARule(named, through)) {
                     return true;
                 }
@@ -276,7 +338,7 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
                 return false;
             }
             boolean found = false;
-            for (Signature each : carriedBy(model)) {
+            for (Carries each : carriedBy(model)) {
                 if (reachesARule(each, through)) {
                     found = true;
                     break;
@@ -332,26 +394,46 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
             }
         }
 
-        /** Every class a signature names, its type arguments among them: a set of handles reaches
-         *  what a handle does, except where the walk is asked for one value at a time. */
-        private static Set<String> namesIn(Signature type, Through through) {
+        /**
+         * Every class a signature names, its type arguments among them: a set of handles reaches
+         * what a handle does, except where the walk is asked for one value at a time.
+         *
+         * <p>{@code declaredBy} is the class whose type parameters a variable in the signature is
+         * looked up in, which is whoever wrote the field.
+         */
+        private static Set<String> namesIn(Signature type, Through through,
+                                           ClassModel declaredBy) {
             Set<String> out = new LinkedHashSet<>();
-            collect(type, through, out);
+            collect(type, through, declaredBy, out);
             return out;
         }
 
-        private static void collect(Signature type, Through through, Set<String> into) {
+        private static void collect(Signature type, Through through, ClassModel declaredBy,
+                                    Set<String> into) {
             switch (type) {
                 case Signature.BaseTypeSig _ -> { }
                 case Signature.ArrayTypeSig array -> {
                     if (through == Through.ANYTHING) {
-                        collect(array.componentSignature(), through, into);
+                        collect(array.componentSignature(), through, declaredBy, into);
                     }
                 }
-                // A variable's bound is not walked. What a state carries under one is settled where
-                // the state is built, and this is about what a class keeps rather than about what
-                // some instantiation of it could hold.
-                case Signature.TypeVarSig _ -> { }
+                // Through the bound its declaration gives it. What a variable is instantiated with
+                // is settled where the state is built and is not what is being asked: the question
+                // is whether the state can hold a rule of its own, and a variable bounded by one
+                // says so wherever it is instantiated.
+                case Signature.TypeVarSig variable -> {
+                    for (Signature.TypeParam declared
+                            : WhatASignatureReaches.typeParametersOf(declaredBy)) {
+                        if (!declared.identifier().equals(variable.identifier())) {
+                            continue;
+                        }
+                        declared.classBound()
+                                .ifPresent(each -> collect(each, through, declaredBy, into));
+                        for (Signature.RefTypeSig each : declared.interfaceBounds()) {
+                            collect(each, through, declaredBy, into);
+                        }
+                    }
+                }
                 case Signature.ClassTypeSig named -> {
                     String owner = named.classDesc().descriptorString().replaceAll("^L|;$", "");
                     into.add(owner);
@@ -360,7 +442,7 @@ class OneWayFromAStateToTheRuleItIsAboutTest {
                     }
                     for (Signature.TypeArg argument : named.typeArgs()) {
                         if (argument instanceof Signature.TypeArg.Bounded bounded) {
-                            collect(bounded.boundType(), through, into);
+                            collect(bounded.boundType(), through, declaredBy, into);
                         }
                     }
                 }

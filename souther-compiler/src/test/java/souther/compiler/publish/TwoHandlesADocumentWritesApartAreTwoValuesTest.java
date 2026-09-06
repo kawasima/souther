@@ -9,6 +9,11 @@ import souther.compiler.check.RuleRef;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.diag.SourcePos;
+import souther.compiler.query.Adequacy;
+import souther.compiler.query.BehaviorEvidence;
+import souther.compiler.query.BorderAssessment;
+import souther.compiler.query.Compilation;
+import souther.compiler.report.AdequacyReport;
 import souther.compiler.source.SourceId;
 import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
@@ -16,8 +21,10 @@ import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbols;
 import souther.compiler.types.WrittenOwner;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -122,10 +129,11 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
      * these that a document writes alike are the pair either of which may be chosen, and every
      * other pair is one it has to tell apart.
      *
-     * <p>Code out of sight is not among them, and it is not being passed over: a citation of it is
-     * made where a source is placed and there is no way to write one from out here. What such a
-     * handle says is held over a compilation instead, where one arises
-     * ({@code ARuleWithoutALineIsNamedByTheRule}).
+     * <p>Code reached from here is among them, taken from a compilation rather than written. A
+     * citation of it is made where a source is placed and that is the one way there is, on purpose —
+     * so what this needs is one of the real ones, and a handle is then made of it and each kind of
+     * rule. Left out because it could not be written, the arm this type has for it would be the one
+     * arm whose reason for existing nothing checks.
      */
     private static List<RuleCitation> everyShapeOfSentence() {
         RuleRef.Named named = new RuleRef.Invariant(new Clause.Ref(
@@ -134,7 +142,7 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
         RuleRef.Named alsoNamed = new RuleRef.Invariant(new Clause.Ref(
                 new Clause.Id(TypeSymbols.declared(new TypeKey("m", "Amount")), 1),
                 Optional.of(new ClauseName("floor"))));
-        return List.of(
+        List<RuleCitation> out = new ArrayList<>(List.of(
                 new RuleCitation.Named(named),
                 new RuleCitation.Named(alsoNamed),
                 new RuleCitation.WrittenAt(COMPARISON, AT),
@@ -142,21 +150,83 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
                 new RuleCitation.WrittenAt(COMPARISON,
                         Citation.of(new SourcePos(10, 1, WHERE))),
                 new RuleCitation.WrittenAt(COMPARISON,
-                        Citation.of(new SourcePos(9, 1))));
+                        Citation.of(new SourcePos(9, 1)))));
+        for (Citation each : reachedFromHere()) {
+            out.add(new RuleCitation.WrittenAt(COMPARISON, each));
+            out.add(new RuleCitation.WrittenAt(PREDICATE, each));
+        }
+        return List.copyOf(out);
+    }
+
+    /**
+     * The citations of code this compile reaches rather than holds, taken from a compilation.
+     *
+     * <p>Made where a source is placed, and only there. So this reads a model whose rules are in a
+     * library the compile did not open, and keeps what the readings offered — which is the one way
+     * to have such a citation out here, and is what makes the arm this type has for one something
+     * the property below is asked over.
+     */
+    private static List<Citation> reachedFromHere() {
+        String model = """
+                module m
+
+                data Low
+                data Accepted = { at: Int }
+
+                behavior classify : (n: Int) -> Accepted | Low
+                    constructs Accepted
+
+                let classify (n) = {
+                    guard Int.clamp(0, 100, n) > 70 else Low
+                    Accepted { at = n }
+                }
+                """;
+        Compilation compilation = Compilation.ofSource(model, "Main");
+        compilation.measure(Adequacy.Asked.fullReport());
+        compilation.answerEverything();
+        BehaviorEvidence behavior =
+                AdequacyReport.of(compilation).modules().get(0).behaviors().get(0).evidence();
+        List<Citation> out = new ArrayList<>();
+        for (BorderAssessment each
+                : behavior.boundaryReadings().made().orElse(List.of())) {
+            Citation where = each.border().origin().citation().orElse(null);
+            if (where instanceof Citation.Elsewhere && !out.contains(where)) {
+                out.add(where);
+            }
+        }
+        return out;
     }
 
     private static String said(RuleCitation cited) {
         return cited.said(SourceNameResolver.identity(), null);
     }
 
-    /** That the population above is one a document writes more than one sentence for, so the pairs
-     *  it is asked about are pairs. */
+    /**
+     * That the population above is one a document writes more than one sentence for, and that every
+     * kind of sentence it has is in it.
+     *
+     * <p>Both, because the property is over pairs and a population of one shape is a population of
+     * one pair. An arm missing here is an arm whose reason for existing nothing asks about, which is
+     * how the third one came to be left out the first time.
+     */
     @Test
-    void thePopulationHoldsSentencesADocumentWritesApart() {
+    void thePopulationHoldsEveryKindOfSentenceADocumentWrites() {
+        List<PublishedRuleHandle> handles = everyShapeOfSentence().stream()
+                .map(PublishedRuleHandle::of).toList();
+
         assertTrue(everyShapeOfSentence().stream().map(
                         TwoHandlesADocumentWritesApartAreTwoValuesTest::said)
                 .distinct().count() > 1,
                 "a population a document writes one sentence for says nothing about telling two"
                         + " apart");
+        assertEquals(
+                Set.of(PublishedRuleHandle.Named.class, PublishedRuleHandle.Written.class,
+                        PublishedRuleHandle.Reached.class),
+                Set.of(PublishedRuleHandle.class.getPermittedSubclasses()),
+                "the three kinds of sentence this type has");
+        for (Class<?> each : PublishedRuleHandle.class.getPermittedSubclasses()) {
+            assertTrue(handles.stream().anyMatch(each::isInstance),
+                    () -> "and each of them is in what the property above is asked over: " + each);
+        }
     }
 }
