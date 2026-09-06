@@ -1,6 +1,9 @@
 package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.numeric.Count;
+import souther.compiler.numeric.Endpoint;
+import souther.compiler.numeric.OrderedInterval;
 import souther.compiler.numeric.OrderedIntervals;
 import souther.compiler.values.AdmissibleValues;
 import souther.compiler.values.AdmittedPlan;
@@ -42,6 +45,8 @@ class ADeadBranchIsSettledTheSameHoweverTheChoiceWasBracketedTest {
 
     private static final String X = "x";
     private static final String Y = "y";
+    /** The position every branch's ranges speak about, which no branch's values do. */
+    private static final String COUNTED = "counted";
     private static final Value A = Value.text("A");
     private static final Value B = Value.text("B");
 
@@ -55,8 +60,22 @@ class ADeadBranchIsSettledTheSameHoweverTheChoiceWasBracketedTest {
         return PlannedValues.at(atom, AdmittedPlan.of(ValueSet.just(value)));
     }
 
-    private static Confinement.Planned<String> reading(PlannedValues<String> values) {
-        return new Confinement.Planned<>(values, OrderedIntervals.top(), Map.of());
+    /**
+     * A branch, whose ranges are ends somebody could be at whether or not its values leave
+     * anything.
+     *
+     * <p>The ranges are what a settlement has to be told about. A branch the values refused is one
+     * the order found nothing wrong with, so a choice that let the standing ends of a dead branch
+     * through would go on ruling things out on their strength — and with every branch at
+     * {@link OrderedIntervals#top} the two ways of composing two dead ones leave the same answer
+     * and nothing here would tell them apart.
+     */
+    private static Confinement.Planned<String> reading(PlannedValues<String> values,
+                                                       int low, int high) {
+        return new Confinement.Planned<>(values,
+                OrderedIntervals.at(COUNTED, new OrderedInterval(
+                        Endpoint.inclusive(Count.of(low)), Endpoint.inclusive(Count.of(high)))),
+                Map.of(COUNTED, Carrier.WHOLE));
     }
 
     /**
@@ -88,16 +107,33 @@ class ADeadBranchIsSettledTheSameHoweverTheChoiceWasBracketedTest {
     /** A branch somebody can be in, and one nobody can. */
     private Map<String, Branch> branches() {
         Map<String, Branch> out = new LinkedHashMap<>();
-        out.put("x == A", new Branch(reading(says(X, A)), false));
-        out.put("y == B", new Branch(reading(says(Y, B)), false));
+        out.put("x == A", new Branch(reading(says(X, A), 1, 2), false));
+        out.put("y == B", new Branch(reading(says(Y, B), 3, 4), false));
         out.put("x == A && x == B", new Branch(
-                reading(says(X, A).meet(says(X, B)).leavingNothing()), true));
+                reading(says(X, A).meet(says(X, B)).leavingNothing(), 100, 200), true));
         out.put("y == A && y == B", new Branch(
-                reading(says(Y, A).meet(says(Y, B)).leavingNothing()), true));
+                reading(says(Y, A).meet(says(Y, B)).leavingNothing(), 300, 400), true));
         return out;
     }
 
-    /** What a caller reads off the values a choice left, as one comparable value. */
+    /** A rule about the position the ranges above speak about, which the ends of a dead branch
+     *  would rule out and the ends of a standing one do. */
+    private Confinement.Planned<String> afterwards() {
+        return new Confinement.Planned<>(PlannedValues.top(),
+                OrderedIntervals.at(COUNTED, new OrderedInterval(
+                        Endpoint.inclusive(Count.of(1)), Endpoint.inclusive(Count.of(2)))),
+                Map.of(COUNTED, Carrier.WHOLE));
+    }
+
+    /**
+     * What a caller reads off what a choice left, as one comparable value.
+     *
+     * <p>The values, what already showed the reading empty, and what a rule met after the choice
+     * comes to. What is held of them is that the two sides of an equation agree, so what widening
+     * this buys is a bracketing or an ordering that tells them apart in any of the three — not a
+     * claim that one operation is being told from another, which no equation between two
+     * compositions can make.
+     */
     private List<Object> answers(Branch branch) {
         AdmissibleValues<String> values = branch.reading().resolve(sets).values();
         List<Object> out = new ArrayList<>();
@@ -107,6 +143,10 @@ class ADeadBranchIsSettledTheSameHoweverTheChoiceWasBracketedTest {
             out.add(values.guaranteedAt(position));
         }
         out.add(values.isBottom());
+        out.add(branch.reading().admission());
+        // And what the choice leaves a rule met after it, which is where ends left answering for a
+        // branch nobody can be in would rule something out on their own strength.
+        out.add(branch.reading().meet(afterwards()).resolve(sets).holdingNothing());
         return out;
     }
 
