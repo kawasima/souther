@@ -134,7 +134,7 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
                 "the choice states it, so an equality read beside it refuses");
 
         PlannedValues<String> planned = PlannedValues.<String>heldApart("p", "r")
-                .join(PlannedValues.heldApart("p", "r"));
+                .joinLive(PlannedValues.heldApart("p", "r"));
         assertTrue(planned.meet(PlannedValues.holdingAsOne("p", "r"))
                         .anyAlternativeAdmits((_, _) -> Emptiness.NONEMPTY) == Emptiness.EMPTY,
                 "and the same of a reading whose values are still descriptions");
