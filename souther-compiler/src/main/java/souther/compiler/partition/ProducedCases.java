@@ -188,10 +188,10 @@ public final class ProducedCases {
             case IF, GUARD, COMPREHENSION -> true;
             case MATCH, NOT_WRITTEN -> false;
             // Not an arm of anything. Every arm is one of a fork, and no fork is written as a
-            // comparison or as an application — so a value arriving here as one was built by
-            // nothing that makes arms, and either answer about it would be an answer about the
-            // author's body made out of that.
-            case BINARY, CALL -> throw new IllegalStateException(
+            // comparison, an application or a collection — so a value arriving here as one was
+            // built by nothing that makes arms, and either answer about it would be an answer about
+            // the author's body made out of that.
+            case BINARY, CALL, COLLECTION_LITERAL -> throw new IllegalStateException(
                     "an arm of " + origin.kind() + " at " + arm.at()
                             + "; an arm is one of a fork the author wrote");
         };

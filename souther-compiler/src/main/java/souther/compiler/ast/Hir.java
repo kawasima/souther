@@ -10,7 +10,8 @@ import souther.compiler.types.MapKeyRepresentation;
 import souther.compiler.types.LeafScalar;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.ReachName;
-import souther.compiler.types.SourceReferenceOrigin;
+import souther.compiler.types.ApplicationOrigin;
+import souther.compiler.types.ReferenceOrigin;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
@@ -1453,8 +1454,14 @@ public interface Hir {
      */
     record Given(RetType declaredType, Expr value, boolean applied, RetType arrivesAs) {}
 
-    /** A list literal {@code [e1, e2, ...]} (one or more elements of the same type). */
-    record ListLit(List<Expr> elements, SourcePos pos, Region region) implements Expr {}
+    /** A list literal {@code [e1, e2, ...]} (one or more elements of the same type).
+     *
+     * <p>{@code origin} is the collection the author wrote, carried from where the source was read.
+     * The operations a body ends up holding for it are references derived from that construct, and
+     * a helper holding one is expanded at each of its calls — so the identity is the source's and
+     * not the place's. */
+    record ListLit(List<Expr> elements, SourceConstructOrigin origin, SourcePos pos, Region region)
+            implements Expr {}
 
     /**
      * {@code [ … ]} written in an {@code example} or {@code fake} row, where the brackets are the
@@ -1471,7 +1478,8 @@ public interface Hir {
      * are is the notation's question; whether the value that comes out belongs at the position is a
      * separate one, asked of an input and not of an expectation ({@link RowPosition}).
      */
-    record RowCollection(List<Expr> elements, SourcePos pos, Region region) implements Expr {}
+    record RowCollection(List<Expr> elements, SourceConstructOrigin origin, SourcePos pos,
+                         Region region) implements Expr {}
 
     /** A guard-only comprehension {@code [element | guard, ...]}: the element is included when
      * every guard holds, giving a 0-or-1 element list (spec §stdlib-list, conditional accumulation).
@@ -1800,22 +1808,29 @@ public interface Hir {
         WrittenName written();
 
         /**
-         * Which reference of the source this is, or null where no source wrote one.
+         * Which reference this is, or null where the name reaches no declaration and there is none
+         * to be.
          *
          * <p>Not the name and not the place. A pass may respell a reference — a helper written bare
          * becomes qualified in a body carried out of its module — so what the name is spelled as
          * says nothing about which occurrence it is; two occurrences of one name reach the same
          * declaration, so what it reaches says nothing either; and where the characters are is
          * where a complaint belongs. So a reader that has to tell one occurrence from another reads
-         * this ({@link SourceReferenceOrigin}).
+         * this ({@link ReferenceOrigin}).
          *
-         * <p>Null is "no source wrote this reference" and never "it is not known which". A pass
-         * writing a reference of its own — the empty collection a literal stands for, a name a
-         * fixture composes — wrote it, and a reference given the number of one an author wrote
-         * would be this compiler's work passing for the model's. What a reader owed a source
-         * reference does where there is none is refuse, not guess.
+         * <p>Whoever wrote it. An author's is one this source counted; a pass writing a name of its
+         * own — the operation an empty collection stands for — wrote a reference too, and it is
+         * said by what made the pass write it. A pass's given the number of one an author wrote
+         * would be this compiler's work passing for the model's, so the two are told apart by which
+         * they are rather than by one of them being absent.
+         *
+         * <p>Null only where the name reaches no declaration: a read of a binding, a namespace, a
+         * name that denotes nothing. What such a name is, is what it reaches — a binding is already
+         * a thing this compiler tells from every other — so there is no occurrence to number and
+         * none is wanted. A name that does reach a declaration carries one, which
+         * {@link Denoting} refuses to be built without.
          */
-        SourceReferenceOrigin origin();
+        ReferenceOrigin origin();
 
         /** The stretch of source the expression was written over. */
         @Override
@@ -1840,12 +1855,17 @@ public interface Hir {
         }
 
         /**
-         * A name a pass already knows the meaning of, written where the source writes it.
+         * A name a pass already knows the meaning of, reaching something that is not a declaration:
+         * a case of a sum, a value the language names, a binding.
          *
          * <p>The reach name is given rather than worked out here. A pass writing a name into a body
          * either has one in hand — it is rewriting a name that already carried it — or knows which
          * module's body it is writing into, and neither is something this factory can see. Worked
          * out from the spelling it would be the very derivation the carried value exists to remove.
+         *
+         * <p>Not for a name that reaches a declaration. Such a name is some reference of it, and
+         * which one is the writer's to say ({@link #respelled}); nothing here could work it out, so
+         * this hands over none and {@link Denoting} refuses the pairing.
          */
         static Var denoting(String spelling, ReachName reachedAs, SourcePos pos) {
             return denoting(WrittenName.of(spelling, pos), reachedAs);
@@ -1854,9 +1874,9 @@ public interface Hir {
         /** The same, off an occurrence already read: a name standing as an expression over exactly
          * the characters that spell it — every one but a name the author parenthesized.
          *
-         * <p>No source wrote it. A pass writing a name of its own into a body wrote that reference,
-         * and giving it the number of one an author wrote would be this compiler's work standing
-         * among the model's. */
+         * <p>What such a name is, is what it reaches — a binding is already a thing this compiler
+         * tells from every other — so there is no occurrence of it to number and none is handed
+         * over. A name reaching a declaration is the other case and is not written here. */
         static Var denoting(WrittenName written, ReachName reachedAs) {
             return new Var.Denoting(written, reachedAs, null, written.region());
         }
@@ -1876,7 +1896,7 @@ public interface Hir {
          * ones. So {@code origin} is carried in from the name being replaced — see
          * {@link #respelledAs}, which is the way in for a caller that has that name.
          */
-        static Var respelled(String spelling, ReachName reachedAs, SourceReferenceOrigin origin,
+        static Var respelled(String spelling, ReachName reachedAs, ReferenceOrigin origin,
                              SourcePos pos, Region region) {
             return new Var.Denoting(WrittenName.synthetic(spelling, pos), reachedAs, origin, region);
         }
@@ -1979,7 +1999,7 @@ public interface Hir {
          * was reached by. A denotation is changed by replacing the reference, which is
          * {@link #denoting(WrittenName, ReachName)}.
          */
-        record Denoting(WrittenName written, ReachName reachedAs, SourceReferenceOrigin origin,
+        record Denoting(WrittenName written, ReachName reachedAs, ReferenceOrigin origin,
                         Region region) implements Var {
 
             public Denoting {
@@ -1987,6 +2007,22 @@ public interface Hir {
                     throw new IllegalArgumentException("`" + written.canonical()
                             + "` is answered by what it reaches and how it reaches it;"
                             + " nothing here says either");
+                }
+                // A name that reaches a declaration says which reference of it this is. Two
+                // occurrences of one name reach one declaration and are two references, and a
+                // reader telling them apart — the block each of them expands to is its own — has
+                // nothing else to do it by: the spelling is a pass's to change and the place is
+                // shared by every copy of a helper that was expanded. Whoever wrote the name owes
+                // one, so a pass writing its own says what made it write one rather than leaving
+                // the slot empty for a reader to find.
+                //
+                // Asked of what it reaches and not of who spelled it. A pass respelling an
+                // author's name carries the author's reference through, and a name reaching a
+                // binding or a namespace has nothing to number — what such a name is, is what it
+                // reaches.
+                if (reachedAs instanceof ReachName.Declaration && origin == null) {
+                    throw new IllegalArgumentException("`" + written.canonical()
+                            + "` reaches a declaration, so it is some reference of it");
                 }
                 heldBy(written, region);
             }
@@ -2045,7 +2081,7 @@ public interface Hir {
          * makes it so. The order the passes run in makes nothing so: a compilation goes on
          * answering after an error, so only a producer that leaves them out can be named.
          */
-        record Unanswered(WrittenName written, SourceReferenceOrigin origin, Region region)
+        record Unanswered(WrittenName written, ReferenceOrigin origin, Region region)
                 implements Var {
 
             public Unanswered {
@@ -2195,13 +2231,29 @@ public interface Hir {
      * binding, or the type a newtype construction wraps — answered once during resolution.
      */
     record Apply(Expr function, List<Expr> args, ConstructionOrigin origin, AppliedCallee applied,
-                 SourceConstructOrigin construct, SourcePos pos, Region region) implements Expr {
+                 ApplicationOrigin application, SourcePos pos, Region region) implements Expr {
 
-        // `construct` and not `origin`, because the slot beside it is already an answer to a
+        // `application` and not `origin`, because the slot beside it is already an answer to a
         // different question: that one says how the construction this application stands for
-        // reached the body, and this one says which application of which source it is. A pass
+        // reached the body, and this one says why this application is here at all. A pass
         // rewriting the first has nothing to say about the second, and one name for both would be
         // two facts a reader could take for one.
+        //
+        // Said by whoever writes the application and never read back off its shape. An application
+        // no source wrote looks the same whether a name was expanded into it, a library operation
+        // was reached for, or a row was composed — so a reader working it out from the shape gets
+        // the common case right and answers the rest with what the common case says.
+
+        public Apply {
+            // Every application in this tree answers it, which is what lets a reader below take the
+            // answer rather than work one out. Held by the factories alone, the rule would be one
+            // the record itself did not keep, and a pass reaching for the constructor could leave a
+            // reader nothing — which is the state this exists to remove.
+            if (application == null) {
+                throw new IllegalArgumentException(
+                        "an application is here for some reason: " + function);
+            }
+        }
 
         /**
          * The application {@code surface} spells, of whatever {@code function} is — the one way an
@@ -2215,8 +2267,9 @@ public interface Hir {
          */
         public static Apply read(Ast.Apply surface, AppliedCallee applied, Expr function,
                                  List<Expr> args) {
-            return new Apply(function, args, Origins.Own.IT_IS, applied, surface.origin(),
-                    surface.pos(), surface.region());
+            return new Apply(function, args, Origins.Own.IT_IS, applied,
+                    new ApplicationOrigin.Written(surface.origin()), surface.pos(),
+                    surface.region());
         }
 
         /**
@@ -2237,14 +2290,15 @@ public interface Hir {
          * a name here either: which of those spells one is the source reading's answer, and a pass
          * holding a resolved expression is not reading a source.
          *
-         * <p>And no source wrote it, which is what it carries as its construct. An application a
-         * pass composed is not one an author can be shown or owed rows for, and giving it the
+         * <p>{@code application} is why this one is here, which the composer says because only the
+         * composer knows. An application no source wrote looks the same whichever pass wrote it and
+         * for whatever reason, so there is nothing here to work it out from — and giving it the
          * number of a construct somebody wrote would be this pass's work passing for the model's.
          */
-        public static Apply synthetic(Expr function, List<Expr> args, SourcePos pos,
-                                      Region region) {
+        public static Apply synthetic(Expr function, List<Expr> args,
+                                      ApplicationOrigin application, SourcePos pos, Region region) {
             return new Apply(function, args, Origins.Own.IT_IS, appliedCallee(function, pos),
-                    SourceConstructOrigin.unwritten(), pos, region);
+                    application, pos, region);
         }
 
         /** What {@code function} answers as the applied callee, anchored at {@code where} it stands
@@ -2276,13 +2330,20 @@ public interface Hir {
          * covers is its own — a rewrite that puts another name in a call leaves the arguments where
          * they are, so a report about what is applied would otherwise underline them too. A caller
          * that has the callee's extent builds the {@link Var} itself and passes it.
+         *
+         * <p>{@code origin} is which reference the name is, which the caller says because only the
+         * caller knows: a name reaching a declaration is some reference of it, and what made this
+         * pass write one is the caller's business and not a thing to be worked out from the
+         * spelling. Null where the name reaches no declaration — a namespace, a case of a sum —
+         * and {@link Var.Denoting} refuses it where it does.
          */
-        public static Apply synthetic(String fn, ReachName reachedAs, List<Expr> args,
-                                      SourcePos pos, Region region) {
+        public static Apply synthetic(String fn, ReachName reachedAs, ReferenceOrigin origin,
+                                      ApplicationOrigin application, List<Expr> args, SourcePos pos,
+                                      Region region) {
             return synthetic(
-                    Var.respelled(fn, Objects.requireNonNull(reachedAs, unanswered(fn)), null, pos,
+                    Var.respelled(fn, Objects.requireNonNull(reachedAs, unanswered(fn)), origin, pos,
                             null),
-                    args, pos, region);
+                    args, application, pos, region);
         }
 
         /** Why a pass may not apply a name it has not answered for. */
@@ -2354,7 +2415,7 @@ public interface Hir {
          * where its constructions would otherwise stand, and it is what has to say where it came
          * from. */
         public Apply carriedByValue() {
-            return new Apply(function, args, Origins.carriedByValue(origin), applied, construct,
+            return new Apply(function, args, Origins.carriedByValue(origin), applied, application,
                     pos, region);
         }
 
@@ -2362,7 +2423,7 @@ public interface Hir {
          *  says so here rather than listing the slots it is not changing, which is how what the
          *  author applied would be dropped by a rewrite that has no opinion about it. */
         public Apply withArgs(List<Expr> args) {
-            return new Apply(function, args, origin, applied, construct, pos, region);
+            return new Apply(function, args, origin, applied, application, pos, region);
         }
 
         /**
@@ -2386,7 +2447,7 @@ public interface Hir {
         /** The same application, of something else and over rewritten arguments — the rewrite above,
          *  where what is supplied to the new callee is not what was supplied to the old one. */
         public Apply replacedBy(Expr function, List<Expr> args) {
-            return new Apply(function, args, origin, applied, construct, pos, region);
+            return new Apply(function, args, origin, applied, application, pos, region);
         }
 
         /**
@@ -2402,7 +2463,7 @@ public interface Hir {
          */
         public Apply with(AppliedCallee applied, Expr function, List<Expr> args, SourcePos pos,
                           Region region) {
-            return new Apply(function, args, origin, applied, construct, pos, region);
+            return new Apply(function, args, origin, applied, application, pos, region);
         }
 
         /** Whether a value this body named is what carried the construction this stands for in —
@@ -2444,7 +2505,7 @@ public interface Hir {
             case FieldAccess x -> new FieldAccess(x.target(), x.name(), x.pos(), region);
             case Binary x -> new Binary(x.op(), x.left(), x.right(), x.origin(), x.pos(), region);
             case Apply x -> new Apply(x.function(), x.args(), x.origin(), x.applied(),
-                    x.construct(), x.pos(), region);
+                    x.application(), x.pos(), region);
             case If x -> new If(x.cond(), x.then(), x.els(), x.origin(), x.pos(), region);
             case IfConstructed x ->
                     new IfConstructed(x.construct(), x.binder(), x.then(), x.els(), x.origin(), x.pos(),
@@ -2454,8 +2515,8 @@ public interface Hir {
             case Expansion x -> new Expansion(x.callee(), x.application(), x.bound(), x.given(),
                     x.declaredReturn(), x.body(), x.pos(), region);
             case Block x -> new Block(x.params(), x.body(), x.rule(), x.pos(), region);
-            case ListLit x -> new ListLit(x.elements(), x.pos(), region);
-            case RowCollection x -> new RowCollection(x.elements(), x.pos(), region);
+            case ListLit x -> new ListLit(x.elements(), x.origin(), x.pos(), region);
+            case RowCollection x -> new RowCollection(x.elements(), x.origin(), x.pos(), region);
             case ListComp x -> new ListComp(x.element(), x.guards(), x.origin(), x.pos(), region);
             case Tuple x -> new Tuple(x.elements(), x.pos(), region);
             case TupleGet x -> new TupleGet(x.tuple(), x.index(), x.arity(), x.pos(), region);
@@ -2507,7 +2568,7 @@ public interface Hir {
                 Expr function = atExpr.apply(a.function());
                 List<Expr> args = each(a.args(), atExpr);
                 yield function == a.function() && args == a.args() ? a
-                        : new Apply(function, args, a.origin(), a.applied(), a.construct(), a.pos(),
+                        : new Apply(function, args, a.origin(), a.applied(), a.application(), a.pos(),
                                 a.region());
             }
             case If iff -> {
@@ -2557,12 +2618,13 @@ public interface Hir {
             }
             case ListLit l -> {
                 List<Expr> elements = each(l.elements(), atExpr);
-                yield elements == l.elements() ? l : new ListLit(elements, l.pos(), l.region());
+                yield elements == l.elements() ? l
+                        : new ListLit(elements, l.origin(), l.pos(), l.region());
             }
             case RowCollection l -> {
                 List<Expr> elements = each(l.elements(), atExpr);
                 yield elements == l.elements() ? l
-                        : new RowCollection(elements, l.pos(), l.region());
+                        : new RowCollection(elements, l.origin(), l.pos(), l.region());
             }
             case ListComp comp -> {
                 Expr element = atExpr.apply(comp.element());

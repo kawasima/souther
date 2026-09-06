@@ -3,6 +3,8 @@ package souther.compiler.core;
 import souther.compiler.types.BinOp;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.CaseSelector;
+import souther.compiler.types.ApplicationOrigin;
+import souther.compiler.types.ReferenceOrigin;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.Refinement;
 import souther.compiler.types.ReachName;
@@ -72,7 +74,24 @@ public sealed interface Core {
      * — the backend parses it, a boundary reads its place — and the parse the checker already did is
      * what says the text is good.
      */
-    record Temporal(Type.Prim kind, String text, SourcePos pos) implements Core {
+    record Temporal(Type.Prim kind, String text, ApplicationOrigin application, SourcePos pos)
+            implements Core {
+
+        // `application` is the construction this was written as, kept because the fold is where a
+        // root goes missing. A temporal reaches here as the value it denotes rather than as the
+        // construction it was spelled with, and what is folded away is the application — not which
+        // one it was. A reader below writing the construction back out has this to write it from,
+        // and the place could not answer for it: one helper is expanded at several of its calls.
+        //
+        // The application and not the name inside it. What a temporal's construction names is a
+        // namespace rather than a declaration, and a namespace is not a thing to be a reference of,
+        // so there is no second occurrence here to keep.
+        //
+        // Null where the term has had its places taken out ({@link #withoutItsPlace}), as every
+        // other origin in that walk is. What it holds is a module and a count of the constructs
+        // before it, so it moves whenever anything above the declaration is edited — and what that
+        // walk makes is a value two readings of one term compare equal, which an unrelated edit
+        // must not reach. Kept here, a temporal would be the one node that broke it.
 
         public Temporal {
             if (kind == null || !kind.temporal()) {
@@ -404,16 +423,39 @@ public sealed interface Core {
      * from different declarations — what may say that a name has been read against a declaration is
      * {@link CompleteSignature} and nothing else.
      */
-    record PreservedCall(DeclaredOperation declared, List<Core> args, SourceConstructOrigin origin,
-                         Type type, SourcePos pos) implements Core {
+    record PreservedCall(DeclaredOperation declared, List<Core> args, ReferenceOrigin reference,
+                         ApplicationOrigin application, Type type, SourcePos pos) implements Core {
 
-        // `origin` says which application of which source this is, and it is here for the reason a
-        // comparison's is: a rule read off a call is the same rule wherever the call was expanded
-        // to, and the readings of it are several. Nothing about a probe follows from carrying one
-        // — an application leaves no run to record, and a rule read off it owes rows for the
-        // classes it divides a position into.
+        // `application` says why this application is here and `reference` which occurrence of the
+        // operation's name it applies, and they are two questions: the block a name used as a value
+        // was expanded into holds an application this pass wrote applying a name the author wrote.
+        // Kept for the reason a comparison's is — a rule read off a call is the same rule wherever
+        // the call was expanded to, and the readings of it are several — and kept as two, because a
+        // reader writing the call back out has to name a name and compose an application, and
+        // working either out from the other is the derivation this exists to remove.
+        //
+        // Not a construct of the source. A call kept for a reader to quote is not always one an
+        // author wrote: a library operation used as a value is expanded into a block, and the
+        // application inside that block is kept in the same way. Held as a construct, those arrived
+        // saying no source wrote them and nothing said what they were instead.
+        //
+        // Both are null exactly where the term has had its places taken out
+        // ({@link #withoutItsPlace}), and they go together: what that walk makes is a value two
+        // readings of one term compare equal, and either of these left in would move with an edit
+        // the term cannot see. So a reader wanting them asks for the pair — one of them answering
+        // alone would be half a call — and what it has then is a key for comparing rather than a
+        // term to write back out.
 
         public PreservedCall {
+            // One state or the other and never half of one. What a call applies and why it is here
+            // are dropped together where a term's places are taken out, and are wanted together by
+            // every reader that composes something out of this — so a call carrying one of them
+            // alone is a call no producer makes and no reader can read, and the first reader to
+            // meet one would be reporting somebody else's mistake.
+            if ((reference == null) != (application == null)) {
+                throw new IllegalArgumentException(
+                        "a call carries what it applies and why it is here together: " + declared);
+            }
             // Taken over rather than borrowed. Checking a list the caller goes on holding says what
             // was true when the call was built, and every reader below reads the call afterwards —
             // a pass that kept the list it handed over could put another argument in it and leave a
@@ -781,7 +823,8 @@ public sealed interface Core {
             case PreservedCall p -> {
                 List<Core> args = each(p.args(), atExpr);
                 yield args == p.args() ? p
-                        : new PreservedCall(p.declared(), args, p.origin(), p.type(), p.pos());
+                        : new PreservedCall(p.declared(), args, p.reference(), p.application(),
+                                p.type(), p.pos());
             }
             // what is applied is a binding holding a function, which the backend loads: a name slot
             case Apply a -> {
@@ -876,7 +919,7 @@ public sealed interface Core {
             case Decimal x -> new Decimal(x.value(), x.type(), null);
             case Str x -> new Str(x.value(), x.type(), null);
             case Bool x -> new Bool(x.value(), x.type(), null);
-            case Temporal x -> new Temporal(x.kind(), x.text(), null);
+            case Temporal x -> new Temporal(x.kind(), x.text(), null, null);
             case Read x -> readWithoutItsPlace(x);
             case UnitValue x -> new UnitValue(x.data(), x.type(), null);
             case OptionNone x -> new OptionNone(x.type(), null);
@@ -893,7 +936,7 @@ public sealed interface Core {
             // which an unrelated edit must not reach. Not `unwritten`: a source did write this
             // call, and what is gone is where.
             case PreservedCall p ->
-                    new PreservedCall(p.declared(), allWithoutTheirPlace(p.args()), null,
+                    new PreservedCall(p.declared(), allWithoutTheirPlace(p.args()), null, null,
                             p.type(), null);
             case Apply a -> new Apply(readWithoutItsPlace(a.fn()), allWithoutTheirPlace(a.args()), a.type(), null);
             case If iff -> new If(withoutItsPlace(iff.cond()), withoutItsPlace(iff.then()),

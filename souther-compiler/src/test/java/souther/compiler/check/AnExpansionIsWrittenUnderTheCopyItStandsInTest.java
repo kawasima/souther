@@ -6,7 +6,7 @@ import souther.compiler.ast.DefinitionName;
 import souther.compiler.ast.Hir;
 import souther.compiler.frontend.CstFrontend;
 import souther.compiler.types.BindingOwner;
-import souther.compiler.types.ExpansionSite;
+import souther.compiler.types.ApplicationOrigin;
 
 import org.junit.jupiter.api.Test;
 
@@ -129,7 +129,7 @@ class AnExpansionIsWrittenUnderTheCopyItStandsInTest {
     @Test
     void andTheModelUnderTestWritesTheShapeThisIsAbout() {
         assertTrue(expansionsOf("bump").stream().map(BindingOwner.Expansion::at)
-                        .allMatch(ExpansionSite.Written.class::isInstance),
+                        .allMatch(ApplicationOrigin.Written.class::isInstance),
                 "the calls under test are ones the source wrote");
     }
 

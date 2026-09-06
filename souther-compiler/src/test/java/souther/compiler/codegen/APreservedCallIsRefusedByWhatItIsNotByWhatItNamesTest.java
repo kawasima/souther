@@ -3,7 +3,8 @@ package souther.compiler.codegen;
 import souther.compiler.KeptCalls;
 import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
-import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.ApplicationOrigin;
+import souther.compiler.types.FixtureReferenceOrigin;
 import souther.compiler.types.Type;
 import souther.compiler.types.ValueName;
 
@@ -46,7 +47,8 @@ class APreservedCallIsRefusedByWhatItIsNotByWhatItNamesTest {
         // A value the representation kept standing rather than a call: it declares no parameters,
         // and reaching the emitter is the same thing having gone wrong.
         assertRefused(helper, new Core.PreservedCall(KeptCalls.settledValue(helper, Type.INT),
-                List.of(), SourceConstructOrigin.unwritten(), Type.INT, POS));
+                List.of(), new FixtureReferenceOrigin(0),
+                new ApplicationOrigin.ComposedFixture(), Type.INT, POS));
     }
 
     private static void assertRefused(ValueName.Stdlib.Operation operation) {

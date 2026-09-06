@@ -3,7 +3,7 @@ package souther.compiler.query;
 import souther.compiler.core.Core;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
-import souther.compiler.types.ExpansionSite;
+import souther.compiler.types.ApplicationOrigin;
 
 import org.junit.jupiter.api.Test;
 
@@ -146,13 +146,13 @@ class WhatABodyIsReadAsDoesNotMoveWithWhatWasExpandedTest {
 
     /** Those of an application the author wrote. */
     private static Set<BindingOwner.Expansion> written(Set<BindingOwner.Expansion> these) {
-        return these.stream().filter(each -> each.at() instanceof ExpansionSite.Written)
+        return these.stream().filter(each -> each.at() instanceof ApplicationOrigin.Written)
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
     }
 
     /** And those of a name handed over as a value. */
     private static Set<BindingOwner.Expansion> eta(Set<BindingOwner.Expansion> these) {
-        return these.stream().filter(each -> each.at() instanceof ExpansionSite.Eta)
+        return these.stream().filter(each -> each.at() instanceof ApplicationOrigin.Eta)
                 .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
     }
 

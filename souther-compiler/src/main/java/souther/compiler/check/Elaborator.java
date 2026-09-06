@@ -17,7 +17,11 @@ import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
-import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.ApplicationDerivationCause;
+import souther.compiler.types.ApplicationOrigin;
+import souther.compiler.types.DerivedReferenceOrigin;
+import souther.compiler.types.ReferenceDerivationCause;
+import souther.compiler.types.ReferenceOrigin;
 import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
@@ -234,7 +238,7 @@ public final class Elaborator {
                 // the reference where the reference is written, so nothing downstream of this has
                 // to learn that a name can stand for one.
                 case ValueName.Helper _ when ctx.preserved().valueKept(v.denotes()) != null ->
-                        keptValue(ctx.preserved().valueKept(v.denotes()), v.pos());
+                        keptValue(ctx.preserved().valueKept(v.denotes()), v.origin(), v.pos());
                 default -> throw notAValue(v, env);
             };
             case Hir.FieldAccess fa -> elaborateFieldAccess(fa, env, ctx);
@@ -392,7 +396,10 @@ public final class Elaborator {
             // Whether the value belongs at the position is a different question, and one an input is
             // held to while an expectation is not ({@link RowPosition}), so it is not asked here.
             case Hir.RowCollection row -> {
-                Hir.Expr written = new Hir.ListLit(row.elements(), row.pos(), row.region());
+                // The same brackets the author wrote, read as the list they are: one collection of
+                // the source and not a second one made here.
+                Hir.Expr written = new Hir.ListLit(row.elements(), row.origin(), row.pos(),
+                        row.region());
                 Brackets brackets = contextualCollection(expected);
                 // `[ ]` at a set or a map is the empty one, which is the value a body names rather
                 // than a conversion of an empty list: what it holds has no element to say, and the
@@ -446,9 +453,17 @@ public final class Elaborator {
     private static Hir.Expr fromList(String collection, Hir.Expr written, Hir.RowCollection row) {
         souther.compiler.types.ValueName.Stdlib.Operation fromList =
                 souther.compiler.types.ValueName.Stdlib.operation(collection, "fromList");
+        // The operation is this pass's and the collection is the author's, so which reference of it
+        // this is comes from the brackets they wrote. A row writes one collection and the value it
+        // stands for is one operation, so it is the first thing that collection derived — and the
+        // empty one below is the same first thing, the two being the two ways one row is read.
         return Hir.Apply.synthetic(collection + ".fromList",
-                new souther.compiler.types.ReachName.OfLibrary(fromList), List.of(written),
-                row.pos(), row.region());
+                new souther.compiler.types.ReachName.OfLibrary(fromList),
+                new DerivedReferenceOrigin(
+                        new ReferenceDerivationCause.CollectionLiteral(row.origin()), 0),
+                new ApplicationOrigin.Derived(
+                        new ApplicationDerivationCause.CollectionLiteral(row.origin()), 0),
+                List.of(written), row.pos(), row.region());
     }
 
     /** {@code <collection>.empty} — the value a body names for the empty collection a row writes
@@ -457,10 +472,13 @@ public final class Elaborator {
         souther.compiler.types.ValueName.Stdlib.Operation empty =
                 souther.compiler.types.ValueName.Stdlib.operation(collection, "empty");
         // No source wrote this reference: the author wrote an empty collection, and the operation
-        // it stands for is this pass's.
+        // it stands for is this pass's. Which reference it is comes from the brackets they did
+        // write — the first thing that collection derived, as the filled one is.
         return Hir.Var.respelled(collection + ".empty",
-                new souther.compiler.types.ReachName.OfLibrary(empty), null, row.pos(),
-                row.region());
+                new souther.compiler.types.ReachName.OfLibrary(empty),
+                new DerivedReferenceOrigin(
+                        new ReferenceDerivationCause.CollectionLiteral(row.origin()), 0),
+                row.pos(), row.region());
     }
 
     /** Elaborates {@code e} and checks it against {@code expected}, returning its Core. The check is
@@ -1499,12 +1517,16 @@ public final class Elaborator {
      * and is held to it the same way. Nothing about this node says it came from a name rather than
      * from a call, because nothing downstream asks.
      */
-    private static Core keptValue(CompleteSignature settled, SourcePos pos) {
+    private static Core keptValue(CompleteSignature settled, ReferenceOrigin reference,
+                                  SourcePos pos) {
         // A name read where a value goes, and no application was written over it. What it is built
-        // as is a call; what an author wrote there is a name, so there is no application of this
-        // source for it to be.
-        return new Core.PreservedCall(settled.declaring(), List.of(),
-                SourceConstructOrigin.unwritten(), settled.result(), pos);
+        // as is a call, and that call is this reading's: nobody applied anything there, so it is
+        // derived from the name that was written rather than being an application of a source. The
+        // reference is that name's and is carried, not made again.
+        return new Core.PreservedCall(settled.declaring(), List.of(), reference,
+                new ApplicationOrigin.Derived(
+                        new ApplicationDerivationCause.NameReadAsAValue(reference), 0),
+                settled.result(), pos);
     }
 
     /**

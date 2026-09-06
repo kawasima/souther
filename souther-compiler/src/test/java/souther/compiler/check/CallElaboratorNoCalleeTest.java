@@ -10,8 +10,13 @@ import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbols;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
+import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.ReachName;
+import souther.compiler.types.SourceConstruct;
+import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.SourceReferenceOrigin;
 import souther.compiler.types.ValueName;
+import souther.compiler.types.WrittenOwner;
 
 import org.junit.jupiter.api.Test;
 
@@ -34,6 +39,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class CallElaboratorNoCalleeTest {
 
+    /** The applications are a body's: this test stands where an author's call stands. */
+    private static final ApplicationOrigin WROTE = new ApplicationOrigin.Written(
+            SourceConstructOrigin.written(new WrittenOwner.Body("m", "b"), 0, SourceConstruct.CALL));
+
     private static final SourcePos AT = new SourcePos(7, 3);
 
     private static RuntimeException answerFor(ValueName denotes) {
@@ -44,6 +53,7 @@ class CallElaboratorNoCalleeTest {
         // is not what any of these is.
         return CallElaborator.noCallee(
                 Hir.Apply.synthetic("f", ReachName.of(denotes, "f", "m"),
+                        new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0), WROTE,
                         List.of(new Hir.IntLit(1, AT, null)), AT, null),
                 ResolvedSymbols.none(souther.compiler.DefaultStdlib.get()));
     }
@@ -127,7 +137,7 @@ class CallElaboratorNoCalleeTest {
     void anApplicationOfSomethingThatIsNotANameIsAnInternalError() {
         Hir.Expr block = new Hir.Block(List.of(), new Hir.IntLit(1, AT, null), souther.compiler.types.RuleOrigin.unwritten(), AT, null);
         RuntimeException e = CallElaborator.noCallee(Hir.Apply.synthetic(block,
-                List.of(new Hir.IntLit(1, AT, null)), AT, null),
+                List.of(new Hir.IntLit(1, AT, null)), WROTE, AT, null),
                 ResolvedSymbols.none(souther.compiler.DefaultStdlib.get()));
 
         assertInstanceOf(IllegalStateException.class, e);

@@ -133,9 +133,9 @@ public final class NewtypeDesugar {
                             bin.origin(), bin.pos(), bin.region());
             case Hir.FieldAccess fa -> fa.withTarget(go(fa.target(), symbols));
             case Hir.RowCollection row -> new Hir.RowCollection(mapExprs(row.elements(), symbols),
-                    row.pos(), row.region());
-            case Hir.ListLit lit -> new Hir.ListLit(mapExprs(lit.elements(), symbols), lit.pos(),
-                    lit.region());
+                    row.origin(), row.pos(), row.region());
+            case Hir.ListLit lit -> new Hir.ListLit(mapExprs(lit.elements(), symbols), lit.origin(),
+                    lit.pos(), lit.region());
             case Hir.ListComp comp ->
                     new Hir.ListComp(go(comp.element(), symbols), mapExprs(comp.guards(), symbols),
                             comp.origin(), comp.pos(),

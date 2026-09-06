@@ -9,8 +9,8 @@ import souther.compiler.ast.StructuralCost;
 import souther.compiler.ast.WrittenName;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
+import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.EtaOrigin;
-import souther.compiler.types.ExpansionSite;
 import souther.compiler.types.Type;
 import souther.compiler.types.ReachName;
 import souther.compiler.types.ValueName;
@@ -708,11 +708,14 @@ public final class HelperInliner {
         // The library name this reaches for is the pass's; the application is the author's, and so
         // is what they applied there — a report about this call quotes the sugar they wrote and not
         // the operation it stands for, which is private to the library and takes another argument.
+        //
+        // The reference is the one the sugar was written as. There is one to take: a rewrite is
+        // found only for a call whose callee is answered ({@link #rewriteTaken}), which is a name.
+        Hir.Var.Denoting sugar = call.answered();
         return call.replacedBy(
                 Hir.Var.respelled(rewrite.target().qualified(),
-                        new ReachName.OfLibrary(rewrite.target()),
-                        call.function() instanceof Hir.Var named ? named.origin() : null,
-                        call.function().pos(), call.function().region()),
+                        new ReachName.OfLibrary(rewrite.target()), sugar.origin(),
+                        sugar.pos(), sugar.region()),
                 args);
     }
 
@@ -1311,9 +1314,10 @@ public final class HelperInliner {
                                 li.opens(), body, li.pos(), li.region())
                         : body;
             }
-            case Hir.ListLit lit -> new Hir.ListLit(inlineList(lit.elements()), lit.pos(), lit.region());
-            case Hir.RowCollection row -> new Hir.RowCollection(inlineList(row.elements()), row.pos(),
-                    row.region());
+            case Hir.ListLit lit -> new Hir.ListLit(inlineList(lit.elements()), lit.origin(),
+                    lit.pos(), lit.region());
+            case Hir.RowCollection row -> new Hir.RowCollection(inlineList(row.elements()),
+                    row.origin(), row.pos(), row.region());
             case Hir.Tuple tup -> new Hir.Tuple(inlineList(tup.elements()), tup.pos(), tup.region());
             case Hir.TupleGet tg -> new Hir.TupleGet(inline(tg.tuple()), tg.index(), tg.arity(), tg.pos(),
                     tg.region());
@@ -1395,8 +1399,18 @@ public final class HelperInliner {
         // declared return is carried on, and every binding copied out of the callee's body.
         // One minter, so no two of them are the same binding, and a reader can ask of any of
         // them which call it came from.
+        // An expansion is what its bindings belong to, so two of them have to be two — and what
+        // says so is that the application it is of can be told from every other of its kind. Asked
+        // here, after what is expanded has been decided, because the two are separate questions:
+        // whether a call is expanded is about the callee, and this is about what the expansion can
+        // be named by. A call reaching here with no such application is not a call to leave
+        // standing — nothing composes one — and saying so is what this is.
+        if (!(call.application() instanceof ApplicationOrigin.Identified at)) {
+            throw new IllegalStateException(
+                    "a helper expanded at an application that says only why it is here: " + call);
+        }
         BindingOwner mine =
-                new BindingOwner.Expansion(writing.enclosing(), callee.denotes(), siteOf(call));
+                new BindingOwner.Expansion(writing.enclosing(), callee.denotes(), at);
         Hir.Binders ours = new Hir.Binders(mine);
         // What the callee's signature leaves open, this call decides. Its variables are
         // instantiated once, here, over the whole signature at once — so a variable it wrote
@@ -1664,30 +1678,6 @@ public final class HelperInliner {
     }
 
     /**
-     * Which application {@code call} is, as what its bindings belong to is named by.
-     *
-     * <p>Two answers, because an application here is one of two things. The source wrote one, and it
-     * carries which one it is. Or this pass wrote it, expanding a name used as a value into the
-     * block that applies it — and then it is named by the reference that made it necessary, which
-     * was there before the block was.
-     *
-     * <p><b>Exhaustive, and a shape it does not answer for stops the run.</b> Every application this
-     * expands is one of the two; a third would be an application some pass composed and handed here
-     * without saying what caused it, which is an expansion nothing could tell from its neighbour.
-     * Answered with a count of what came before it instead, the answer would be a fact about the
-     * walk — and the walk differs between the tree a backend emits and the tree an analysis reads.
-     */
-    private static ExpansionSite siteOf(Hir.Apply call) {
-        if (call.construct().isWritten()) {
-            return new ExpansionSite.Written(call.construct());
-        }
-        if (call.function() instanceof Hir.Var function) {
-            return new ExpansionSite.Eta(etaOf(function));
-        }
-        throw new IllegalStateException(
-                "an application no source wrote and no name was expanded into: " + call);
-    }
-
     /**
      * What made the block a name used as a value stands for necessary.
      *
@@ -1695,17 +1685,16 @@ public final class HelperInliner {
      * the author wrote — a helper of another module is written qualified in a body carried out of
      * it — so a spelling that is the pass's says nothing about whose reference it is, and asking
      * that question is what would put the two respelled ones on the wrong side.
+     *
+     * <p>Total, because a name has one of the two answers by the time it is here. A name reading a
+     * binding is told by the binding; a name reaching a declaration is some reference of it and
+     * carries which, whoever wrote it ({@link Hir.Var.Denoting}). There is nothing left to refuse.
      */
     private static EtaOrigin etaOf(Hir.Var function) {
         if (function instanceof Hir.Var.Denoting named
                 && named.reachedAs() instanceof ReachName.InScope in
                 && in.denotes() instanceof ValueName.Local local) {
             return new EtaOrigin.Bound(local.id());
-        }
-        if (function.origin() == null) {
-            throw new IllegalStateException(
-                    "a name no source wrote, reaching a declaration, expanded as a value: "
-                            + function.name());
         }
         return new EtaOrigin.Declaration(function.origin());
     }
@@ -1728,9 +1717,12 @@ public final class HelperInliner {
             args.add(Hir.Var.local(p, function.pos()));
         }
         // The block and the application in it are this pass's: what the author wrote there is a
-        // name, and these are the parameters and the call it stands for.
+        // name, and these are the parameters and the call it stands for. Which expansion it is, is
+        // said here, where the name that made it necessary is still in hand — a reader below has
+        // only the shape, and the shape is one every composed application wears.
         return new Hir.Block(params,
-                Hir.Apply.synthetic(function, args, function.pos(), null),
+                Hir.Apply.synthetic(function, args, new ApplicationOrigin.Eta(etaOf(function)),
+                        function.pos(), null),
                 souther.compiler.types.RuleOrigin.unwritten(), function.pos(), null);
     }
 
@@ -2314,9 +2306,9 @@ public final class HelperInliner {
                         renaming.at(ex.pos()), renaming.over(ex.region()));
             }
             case Hir.ListLit lit -> new Hir.ListLit(renameList(lit.elements(), renaming),
-                    renaming.at(lit.pos()), renaming.over(lit.region()));
+                    lit.origin(), renaming.at(lit.pos()), renaming.over(lit.region()));
             case Hir.RowCollection row -> new Hir.RowCollection(renameList(row.elements(), renaming),
-                    renaming.at(row.pos()), renaming.over(row.region()));
+                    row.origin(), renaming.at(row.pos()), renaming.over(row.region()));
             case Hir.Tuple tup -> new Hir.Tuple(renameList(tup.elements(), renaming),
                     renaming.at(tup.pos()), renaming.over(tup.region()));
             case Hir.TupleGet tg -> new Hir.TupleGet(rename(tg.tuple(), renaming), tg.index(), tg.arity(),

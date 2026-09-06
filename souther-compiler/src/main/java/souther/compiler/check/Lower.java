@@ -2,6 +2,7 @@ package souther.compiler.check;
 
 import souther.compiler.ast.Hir;
 import souther.compiler.types.BindingId;
+import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.ValueName;
 
 import java.util.HashSet;
@@ -127,13 +128,15 @@ public final class Lower {
     private static Hir.Expr listCompToIf(Hir.ListComp comp) {
         // The `if` stands where the comprehension was written; the two lists are this lowering's
         // own — no run of characters in the file spells either of them.
-        Hir.Expr result = new Hir.ListLit(List.of(comp.element()), comp.pos(), null);
+        Hir.Expr result = new Hir.ListLit(List.of(comp.element()),
+                SourceConstructOrigin.unwritten(), comp.pos(), null);
         List<Hir.Expr> guards = comp.guards();
         for (int i = guards.size() - 1; i >= 0; i--) {
             // The fork is the comprehension's answer rather than one minted here, so a
             // comprehension a helper holds answers the same in every body that expanded it, and the
             // reading that runs before this lowering names the fork this builds.
-            result = new Hir.If(guards.get(i), result, new Hir.ListLit(List.of(), comp.pos(), null),
+            result = new Hir.If(guards.get(i), result,
+                    new Hir.ListLit(List.of(), SourceConstructOrigin.unwritten(), comp.pos(), null),
                     comp.forkOfGuard(i), comp.pos(), comp.region());
         }
         return result;
