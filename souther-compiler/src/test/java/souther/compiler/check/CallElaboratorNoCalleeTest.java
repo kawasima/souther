@@ -11,7 +11,9 @@ import souther.compiler.types.TypeSymbols;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.ReachName;
+import souther.compiler.types.SourceReferenceOrigin;
 import souther.compiler.types.ValueName;
+import souther.compiler.types.WrittenOwner;
 
 import org.junit.jupiter.api.Test;
 
@@ -44,6 +46,7 @@ class CallElaboratorNoCalleeTest {
         // is not what any of these is.
         return CallElaborator.noCallee(
                 Hir.Apply.synthetic("f", ReachName.of(denotes, "f", "m"),
+                        new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0),
                         List.of(new Hir.IntLit(1, AT, null)), AT, null),
                 ResolvedSymbols.none(souther.compiler.DefaultStdlib.get()));
     }

@@ -86,15 +86,16 @@ class ANameAnsweredHalfwayIsRefusedTest {
     @Test
     void anApplicationAPassWritesCannotLeaveItsNameUnanswered() {
         assertThrows(NullPointerException.class,
-                () -> Hir.Apply.synthetic("spin", null, List.of(), POS, null));
+                () -> Hir.Apply.synthetic("spin", null, null, List.of(), POS, null));
     }
 
     /** Answered, it says both. */
     @Test
     void aResolvedNameSaysWhatItDenotesAndHowItIsReached() {
         WrittenName spin = WrittenName.of("spin", POS);
-        Hir.Var resolved = new Hir.Var.Denoting(spin,
-                new ReachName.OfModule(DECLARED), null, spin.region());
+        Hir.Var resolved = new Hir.Var.Denoting(spin, new ReachName.OfModule(DECLARED),
+                new SourceReferenceOrigin(new souther.compiler.types.WrittenOwner.Body("demo", "b"), 0),
+                spin.region());
 
         assertEquals("spin", resolved.answered().denotes().name());
         assertEquals("demo.spin", resolved.answered().reaches());

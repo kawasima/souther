@@ -317,7 +317,10 @@ class CompilePostfixApplicationTest {
         souther.compiler.types.ValueName.Stdlib.Operation map =
                 souther.compiler.types.ValueName.Stdlib.operation("List", "map");
         Hir.Apply named = Hir.Apply.synthetic("List.map",
-                new ReachName.OfLibrary(map), java.util.List.of(), at, null);
+                new ReachName.OfLibrary(map),
+                new souther.compiler.types.SourceReferenceOrigin(
+                        new souther.compiler.types.WrittenOwner.Body("m", "b"), 0),
+                java.util.List.of(), at, null);
         Hir.Apply nameless = Hir.Apply.synthetic(new Hir.Block(java.util.List.of(),
                 new Hir.IntLit(1, at, null), souther.compiler.types.RuleOrigin.unwritten(), at, null),
                 java.util.List.of(), at, null);

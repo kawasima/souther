@@ -186,7 +186,7 @@ public final class HelperNames {
                     call.replacedBy(
                             Hir.Var.respelled(qualifiedName(call.answered().denotes()),
                                     ofModule(call.answered().denotes()),
-                                    referenceOf(call.function()), call.function().pos(),
+                                    call.answered().origin(), call.function().pos(),
                                     call.function().region()));
             case Hir.Var v -> qualified(v, which);
             default -> rebuilt;
@@ -199,17 +199,6 @@ public final class HelperNames {
                 && foreign(named.denotes(), which)
                 ? name.respelledAs(qualifiedName(named.denotes()), ofModule(named.denotes()))
                 : name;
-    }
-
-    /**
-     * Which reference of the source {@code callee} is, or null where it is not a name.
-     *
-     * <p>Writing a name qualified does not make it another reference: the author wrote one, and
-     * this changes how a reader reaches what it names. So what is respelled keeps what the name it
-     * replaces carried.
-     */
-    private static souther.compiler.types.SourceReferenceOrigin referenceOf(Hir.Expr callee) {
-        return callee instanceof Hir.Var named ? named.origin() : null;
     }
 
     /**

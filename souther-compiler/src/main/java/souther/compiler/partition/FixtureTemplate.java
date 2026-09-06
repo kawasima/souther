@@ -7,6 +7,7 @@ import souther.compiler.diag.Region;
 import souther.compiler.numeric.Count;
 import souther.compiler.numeric.Place;
 import souther.compiler.diag.SourcePos;
+import souther.compiler.types.FixtureReferenceOrigin;
 import souther.compiler.types.ReachName;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.TypeReachName;
@@ -126,7 +127,7 @@ public record FixtureTemplate(String text, Hir.Expr value) {
         // the reference says namespace, and no reader that emits calls can be handed it.
         ValueName.Stdlib.Namespace namespace = ValueName.Stdlib.namespace(type);
         return new FixtureTemplate(type + "(\"" + iso + "\")",
-                Hir.Apply.synthetic(type, new ReachName.TheNamespace(namespace),
+                Hir.Apply.synthetic(type, new ReachName.TheNamespace(namespace), null,
                         List.of(new Hir.StringLit(iso, NOWHERE, NO_SOURCE)), NOWHERE, NO_SOURCE));
     }
 
@@ -206,8 +207,8 @@ public record FixtureTemplate(String text, Hir.Expr value) {
         String written = type.rendered();
         ValueName.OfType named = new ValueName.OfType(written, type.denotes());
         return new FixtureTemplate(written + "(" + inner.text() + ")",
-                Hir.Apply.synthetic(written, new ReachName.InScope(named), List.of(inner.value()),
-                        NOWHERE, NO_SOURCE));
+                Hir.Apply.synthetic(written, new ReachName.InScope(named), null,
+                        List.of(inner.value()), NOWHERE, NO_SOURCE));
     }
 
     /** No elements. A list, a set and a map are all written this way in a fixture: what the position
@@ -248,14 +249,22 @@ public record FixtureTemplate(String text, Hir.Expr value) {
      * module-level {@code let} is a row an author writes today — the value is expanded where the
      * row is read — and this is that same row, composed.
      *
-     * @param module what the name belongs to, which is what a reader of the name resolves it through
-     * @param name   the name as this module writes it
+     * <p>{@code occurrence} is which reference of the helper this is, and the run that composed it
+     * says so. The name reaches a declaration, so it is some reference of one; no source wrote it
+     * and no construct a source wrote is behind it, so nothing here could work one out — which is
+     * why it is taken and not minted. What the name reaches is {@code module} and {@code name}'s to
+     * answer, and the occurrence does not repeat it.
+     *
+     * @param module     what the name belongs to, which is what a reader of the name resolves it
+     *                   through
+     * @param name       the name as this module writes it
+     * @param occurrence which reference this run composed, from {@link FixtureReferences}
      */
-    public static FixtureTemplate named(String module, String name) {
+    public static FixtureTemplate named(String module, String name,
+                                        FixtureReferenceOrigin occurrence) {
         ValueName.Helper helper = new ValueName.Helper(module, name);
         return new FixtureTemplate(name,
-                Hir.Var.denoting(WrittenName.synthetic(name, NOWHERE),
-                        new ReachName.Own(helper)));
+                Hir.Var.respelled(name, new ReachName.Own(helper), occurrence, NOWHERE, NO_SOURCE));
     }
 
     /**

@@ -5,7 +5,9 @@ import souther.compiler.ast.Hir;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.ReachName;
+import souther.compiler.types.SourceReferenceOrigin;
 import souther.compiler.types.ValueName;
+import souther.compiler.types.WrittenOwner;
 
 import org.junit.jupiter.api.Test;
 
@@ -49,7 +51,8 @@ class WhetherAWrongLibraryCallIsTheAuthorsIsTheLibrarysToSayTest {
         for (int i = 0; i < args; i++) {
             given.add(new Hir.IntLit(i, POS, null));
         }
-        return Hir.Apply.synthetic(name.qualified(), new ReachName.OfLibrary(name), given, POS, null);
+        return Hir.Apply.synthetic(name.qualified(), new ReachName.OfLibrary(name),
+                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0), given, POS, null);
     }
 
     private static RuntimeException refusing(Hir.Expr call) {

@@ -32,7 +32,7 @@ package souther.compiler.types;
  *                 source's rows for a behavior or its stand-in
  * @param ordinal  which reference of that owner it is, by the builder's own count over it
  */
-public record SourceReferenceOrigin(WrittenOwner owner, int ordinal) {
+public record SourceReferenceOrigin(WrittenOwner owner, int ordinal) implements ReferenceOrigin {
 
     public SourceReferenceOrigin {
         if (owner == null) {

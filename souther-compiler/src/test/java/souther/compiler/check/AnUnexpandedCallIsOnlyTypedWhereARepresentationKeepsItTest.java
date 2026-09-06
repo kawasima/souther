@@ -4,7 +4,9 @@ import souther.compiler.DefaultStdlib;
 import souther.compiler.ast.Hir;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.ReachName;
+import souther.compiler.types.SourceReferenceOrigin;
 import souther.compiler.types.ValueName;
+import souther.compiler.types.WrittenOwner;
 
 import org.junit.jupiter.api.Test;
 
@@ -27,6 +29,7 @@ class AnUnexpandedCallIsOnlyTypedWhereARepresentationKeepsItTest {
     void aStandardLibraryCallLeftStandingIsNotSomethingToType() {
         Hir.Expr call = Hir.Apply.synthetic("List.map",
                 new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "map")),
+                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0),
                 List.of(new Hir.IntLit(1, POS, null)), POS, null);
 
         assertThrows(RuntimeException.class, () -> Elaborator.elaborate(call, Scope.NONE,
@@ -40,7 +43,8 @@ class AnUnexpandedCallIsOnlyTypedWhereARepresentationKeepsItTest {
         // namespace the name was in
         ValueName.Helper half = new ValueName.Helper("demo", "half");
         Hir.Expr call = Hir.Apply.synthetic("half",
-                new ReachName.Own(half), List.of(new Hir.IntLit(1, POS, null)), POS, null);
+                new ReachName.Own(half), new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0),
+                List.of(new Hir.IntLit(1, POS, null)), POS, null);
 
         assertThrows(RuntimeException.class, () -> Elaborator.elaborate(call, Scope.NONE,
                 CheckContext.of(Symbols.none(DefaultStdlib.get()))));

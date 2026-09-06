@@ -21,13 +21,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * <p>Two invariants and not one. {@link Ast} is what reading a source leaves, so every name in it
  * is one the source wrote — the desugarings that run while it is being built write names of their
  * own, and each of those is a reference of the source that made it necessary. {@link Hir} is what
- * the passes below rewrite, and a name one of them writes is nothing a source wrote: there is no
- * occurrence to count it among, and numbering it with the author's would put this compiler's work
- * among the model's.
+ * the passes below rewrite, and what a name there owes is settled by what it reaches rather than by
+ * who wrote it: a read of a binding carries no reference of the source, because a binding is
+ * already a thing this compiler tells from every other.
  *
  * <p>Which is why neither invariant is derived from the other. A reader below that needs to tell one
  * reference from another is told so by what the name it has in hand carries, and not by an argument
- * that runs back to how the tree above was built.
+ * that runs back to how the tree above was built. What a name reaching a declaration carries is
+ * {@code ANameReachingADeclarationIsSomeReferenceOfItTest}'s to say.
  */
 class ANameInTheAuthoredTreeIsOneTheSourceCountedTest {
 
@@ -70,8 +71,9 @@ class ANameInTheAuthoredTreeIsOneTheSourceCountedTest {
 
     /**
      * And the same invariant is not asked of the tree below. A pass reading a binding it put there
-     * wrote that name, so there is no reference of the source to carry — and this is a name the
-     * passes hand around, not one refused for the lack of it.
+     * wrote that name, and the binding is what tells it from every other read — so there is no
+     * reference of the source to carry, and this is a name the passes hand around rather than one
+     * refused for the lack of it.
      */
     @Test
     void aNameAPassWroteBelowCarriesNoReferenceOfTheSource() {
@@ -87,10 +89,10 @@ class ANameInTheAuthoredTreeIsOneTheSourceCountedTest {
     /** The one a pass writes still says what it reaches, which is what a reader below asks it. */
     @Test
     void aNameAPassWroteBelowStillSaysWhatItReaches() {
-        ValueName.Helper helper = new ValueName.Helper("demo", "spin");
+        ValueName.Builtin none = new ValueName.Builtin("None");
 
-        Hir.Var written = Hir.Var.denoting("demo.spin", new ReachName.Own(helper), POS);
+        Hir.Var written = Hir.Var.denoting("None", new ReachName.InScope(none), POS);
 
-        assertEquals(helper, written.answered().denotes());
+        assertEquals(none, written.answered().denotes());
     }
 }

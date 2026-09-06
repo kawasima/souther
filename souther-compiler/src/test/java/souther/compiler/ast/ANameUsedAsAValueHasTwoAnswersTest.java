@@ -3,7 +3,9 @@ package souther.compiler.ast;
 import souther.compiler.diag.Region;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.ReachName;
+import souther.compiler.types.SourceReferenceOrigin;
 import souther.compiler.types.ValueName;
+import souther.compiler.types.WrittenOwner;
 
 import org.junit.jupiter.api.Test;
 
@@ -41,8 +43,13 @@ class ANameUsedAsAValueHasTwoAnswersTest {
 
     private static final ReachName REACHED = new ReachName.OfModule(DECLARED);
 
+    /** The name reaches a declaration, so it is some reference of it: this test is the body that
+     *  wrote it. */
+    private static final SourceReferenceOrigin REF =
+            new SourceReferenceOrigin(new WrittenOwner.Body("demo", "b"), 0);
+
     private static Hir.Var.Denoting denoting(WrittenName name) {
-        return new Hir.Var.Denoting(name, REACHED, null, name.region());
+        return new Hir.Var.Denoting(name, REACHED, REF, name.region());
     }
 
     private static Hir.Var unanswered(WrittenName name) {

@@ -12,6 +12,8 @@ import souther.compiler.diag.msg.TypeMessage;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.ReachName;
 import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.SourceReferenceOrigin;
+import souther.compiler.types.WrittenOwner;
 import souther.compiler.types.ValueName;
 
 import org.junit.jupiter.api.Test;
@@ -56,6 +58,7 @@ class AKeptCallsFunctionArgumentIsRefusedWhereItIsWrittenTest {
                 new Hir.IntLit(1, ARGUMENT, null), souther.compiler.types.RuleOrigin.unwritten(), ARGUMENT, null);
         Hir.Expr call = Hir.Apply.synthetic("List.flatMap",
                 new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "flatMap")),
+                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0),
                 List.of(answersAnInt, new Hir.ListLit(List.of(new Hir.IntLit(2, CALL, null)), COMPOSED, CALL, null)),
                 CALL, null);
 
@@ -79,6 +82,7 @@ class AKeptCallsFunctionArgumentIsRefusedWhereItIsWrittenTest {
                 new Hir.IntLit(1, ARGUMENT, null), souther.compiler.types.RuleOrigin.unwritten(), ARGUMENT, null);
         Hir.Expr call = Hir.Apply.synthetic("List.flatMap",
                 new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "flatMap")),
+                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0),
                 List.of(answersAnInt, new Hir.ListLit(List.of(new Hir.IntLit(2, CALL, null)), COMPOSED, CALL, null)),
                 CALL, null);
 

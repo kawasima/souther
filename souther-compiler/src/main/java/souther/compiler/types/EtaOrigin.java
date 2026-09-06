@@ -19,20 +19,27 @@ package souther.compiler.types;
 public sealed interface EtaOrigin {
 
     /**
-     * A reference the author wrote to something a module declares.
+     * A reference to something a module declares.
      *
      * <p>Told by the reference and not by how it is spelled: a helper written bare and the same
      * helper written qualified are one reference, and a pass may have respelled it on the way here.
      * Told by the reference and not by what it reaches, either — two occurrences of one name reach
      * the same declaration and are two references, and expanding each of them writes a block of its
      * own.
+     *
+     * <p>Whoever wrote the reference. An author's is one this source counted; a pass writing a name
+     * of its own where the language has no syntax for what it means wrote a reference too, and
+     * expanding that one as a value writes a block just the same. Held as the author's alone, this
+     * would be a slot a pass's name could not be put in — and what stood in for the missing arm was
+     * a reader refusing halfway down, which says nothing about whether such a name is impossible or
+     * merely has not turned up.
      */
-    record Declaration(SourceReferenceOrigin reference) implements EtaOrigin {
+    record Declaration(ReferenceOrigin reference) implements EtaOrigin {
 
         public Declaration {
             if (reference == null) {
                 throw new IllegalArgumentException(
-                        "a reference the author wrote is one this source counted");
+                        "a name reaching a declaration is some reference of it");
             }
         }
     }

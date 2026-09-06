@@ -129,7 +129,8 @@ class EveryPlaceAnAnswerAboutAConstructionIsNamedTest {
                             + "Lsouther/compiler/diag/SourcePos;Lsouther/compiler/diag/Region;)"
                             + "Lsouther/compiler/ast/Hir$Apply;"),
             new Settler("Apply.synthetic(String)", "souther/compiler/ast/Hir$Apply", "synthetic",
-                    "(Ljava/lang/String;Lsouther/compiler/types/ReachName;Ljava/util/List;"
+                    "(Ljava/lang/String;Lsouther/compiler/types/ReachName;"
+                            + "Lsouther/compiler/types/ReferenceOrigin;Ljava/util/List;"
                             + "Lsouther/compiler/diag/SourcePos;Lsouther/compiler/diag/Region;)"
                             + "Lsouther/compiler/ast/Hir$Apply;"),
             new Settler("Apply.carriedByValue", "souther/compiler/ast/Hir$Apply", "carriedByValue",
@@ -208,7 +209,7 @@ class EveryPlaceAnAnswerAboutAConstructionIsNamedTest {
      * move for it.
      */
     private static final List<String> SETTLING = List.of(
-            "souther/compiler/ast/Hir$Apply#synthetic(Ljava/lang/String;Lsouther/compiler/types/ReachName;Ljava/util/List;Lsouther/compiler/diag/SourcePos;Lsouther/compiler/diag/Region;)Lsouther/compiler/ast/Hir$Apply; -> Apply.synthetic(Expr) x1",
+            "souther/compiler/ast/Hir$Apply#synthetic(Ljava/lang/String;Lsouther/compiler/types/ReachName;Lsouther/compiler/types/ReferenceOrigin;Ljava/util/List;Lsouther/compiler/diag/SourcePos;Lsouther/compiler/diag/Region;)Lsouther/compiler/ast/Hir$Apply; -> Apply.synthetic(Expr) x1",
             "souther/compiler/check/Elaborator#fromList(Ljava/lang/String;Lsouther/compiler/ast/Hir$Expr;Lsouther/compiler/ast/Hir$RowCollection;)Lsouther/compiler/ast/Hir$Expr; -> Apply.synthetic(String) x1",
             "souther/compiler/check/HelperInliner#etaExpand(Lsouther/compiler/ast/Hir$Var;ILjava/util/function/IntFunction;)Lsouther/compiler/ast/Hir$Block; -> Apply.synthetic(Expr) x1",
             "souther/compiler/check/HelperInliner#rename(Lsouther/compiler/ast/Hir$Expr;Lsouther/compiler/check/HelperInliner$Renaming;)Lsouther/compiler/ast/Hir$Expr; -> Apply.with x1",

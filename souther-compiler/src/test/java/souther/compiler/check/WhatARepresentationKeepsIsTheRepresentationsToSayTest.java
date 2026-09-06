@@ -7,7 +7,9 @@ import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.Type;
 import souther.compiler.types.ReachName;
+import souther.compiler.types.SourceReferenceOrigin;
 import souther.compiler.types.ValueName;
+import souther.compiler.types.WrittenOwner;
 
 import org.junit.jupiter.api.Test;
 
@@ -59,6 +61,7 @@ class WhatARepresentationKeepsIsTheRepresentationsToSayTest {
     @Test
     void aKeptCallAppliedToTheWrongNumberOfArgumentsIsSaidAsThat() {
         Hir.Expr twoArgs = Hir.Apply.synthetic("List.map", new ReachName.OfLibrary(MAP),
+                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0),
                 List.of(new Hir.IntLit(1, POS, null), new Hir.IntLit(2, POS, null)), POS, null);
 
         assertThrows(RuntimeException.class, () -> elaborate(twoArgs, keeping(MAP, SIGNATURE)));
@@ -92,6 +95,7 @@ class WhatARepresentationKeepsIsTheRepresentationsToSayTest {
 
     private static Hir.Expr callTo(ValueName.Stdlib.Operation operation) {
         return Hir.Apply.synthetic(operation.qualified(), new ReachName.OfLibrary(operation),
+                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0),
                 List.of(new Hir.IntLit(1, POS, null)), POS, null);
     }
 

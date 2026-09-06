@@ -3,6 +3,8 @@ package souther.compiler.check;
 import souther.compiler.semantics.Accumulation;
 import souther.compiler.semantics.NumericResult;
 import souther.compiler.types.BinOp;
+import souther.compiler.types.DerivationCause;
+import souther.compiler.types.DerivedReferenceOrigin;
 import souther.compiler.ast.Hir;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.numeric.Endpoint;
@@ -2700,9 +2702,13 @@ final class Terms {
             }
             case Core.PreservedCall call -> {
                 List<Hir.Expr> args = written(call.args(), at, given);
+                // The operation is named again here because the name the author wrote is gone by
+                // now, and the application they wrote is what made that necessary.
                 yield args == null ? null
-                        : Hir.Apply.synthetic(call.operation().name(), reachOf(call.operation()), args,
-                                call.pos(), null);
+                        : Hir.Apply.synthetic(call.operation().name(), reachOf(call.operation()),
+                                new DerivedReferenceOrigin(
+                                        new DerivationCause.ApplicationWrittenBack(call.origin()), 0),
+                                args, call.pos(), null);
             }
             // A temporal is written as a literal with its text spelled out (spec
             // §a-temporal-value-is-written-as-a-literal). Rendered here for the same reason every
@@ -2717,8 +2723,9 @@ final class Terms {
             case Core.Temporal t -> {
                 ValueName.Stdlib.Namespace namespace =
                         ValueName.Stdlib.namespace(t.kind().shown());
+                // A namespace is not a declaration, so there is no reference of one to be.
                 yield Hir.Apply.synthetic(namespace.qualified(),
-                        new ReachName.TheNamespace(namespace),
+                        new ReachName.TheNamespace(namespace), null,
                         List.of(new Hir.StringLit(t.text(), t.pos(), null)), t.pos(), null);
             }
             // A case of an enumeration is written by naming it, so the value is the name.

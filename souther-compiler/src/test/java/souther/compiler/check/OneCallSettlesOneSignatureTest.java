@@ -7,7 +7,9 @@ import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.SourceReferenceOrigin;
 import souther.compiler.types.Type;
+import souther.compiler.types.WrittenOwner;
 import souther.compiler.types.ReachName;
 import souther.compiler.types.ValueName;
 
@@ -36,6 +38,10 @@ class OneCallSettlesOneSignatureTest {
 
     /** The lists here are this test's own: no source spells the brackets. */
     private static final SourceConstructOrigin COMPOSED = SourceConstructOrigin.unwritten();
+
+    /** This test stands in for a body, so the names it applies are that body's references. */
+    private static final SourceReferenceOrigin REF =
+            new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0);
     private static final Preserved KEPT = Preserved.byTheLanguagesOwnOperations();
     private static final Hir.Binders BINDERS = new Hir.Binders(new BindingOwner.OfValue("demo", "t"));
 
@@ -44,7 +50,7 @@ class OneCallSettlesOneSignatureTest {
         Hir.Block predicate = new Hir.Block(List.of(BINDERS.binder("x", POS)),
                 new Hir.BoolLit(true, POS, null), souther.compiler.types.RuleOrigin.unwritten(), POS, null);
         return Hir.Apply.synthetic("List.filter",
-                new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "filter")),
+                new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "filter")), REF,
                 List.of(predicate, new Hir.ListLit(List.of(), COMPOSED, POS, null)), POS, null);
     }
 
@@ -132,10 +138,11 @@ class OneCallSettlesOneSignatureTest {
         // holds, so the option beside it is what decides — the other order holds the option to the
         // element type of nothing.
         Hir.Expr call = Hir.Apply.synthetic("Option.withDefault",
-                new ReachName.OfLibrary(ValueName.Stdlib.operation("Option", "withDefault")),
+                new ReachName.OfLibrary(ValueName.Stdlib.operation("Option", "withDefault")), REF,
                 List.of(new Hir.ListLit(List.of(), COMPOSED, POS, null),
                         Hir.Apply.synthetic("List.get",
                 new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "get")),
+                                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 1),
                                 List.of(new Hir.IntLit(0, POS, null),
                                         new Hir.ListLit(List.of(new Hir.ListLit(
                                                 List.of(new Hir.IntLit(1, POS, null)), COMPOSED,

@@ -17,6 +17,8 @@ import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
+import souther.compiler.types.DerivationCause;
+import souther.compiler.types.DerivedReferenceOrigin;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.ValueName;
 
@@ -449,9 +451,14 @@ public final class Elaborator {
     private static Hir.Expr fromList(String collection, Hir.Expr written, Hir.RowCollection row) {
         souther.compiler.types.ValueName.Stdlib.Operation fromList =
                 souther.compiler.types.ValueName.Stdlib.operation(collection, "fromList");
+        // The operation is this pass's and the collection is the author's, so which reference of it
+        // this is comes from the brackets they wrote. A row writes one collection and the value it
+        // stands for is one operation, so it is the first thing that collection derived — and the
+        // empty one below is the same first thing, the two being the two ways one row is read.
         return Hir.Apply.synthetic(collection + ".fromList",
-                new souther.compiler.types.ReachName.OfLibrary(fromList), List.of(written),
-                row.pos(), row.region());
+                new souther.compiler.types.ReachName.OfLibrary(fromList),
+                new DerivedReferenceOrigin(new DerivationCause.CollectionLiteral(row.origin()), 0),
+                List.of(written), row.pos(), row.region());
     }
 
     /** {@code <collection>.empty} — the value a body names for the empty collection a row writes
@@ -460,10 +467,12 @@ public final class Elaborator {
         souther.compiler.types.ValueName.Stdlib.Operation empty =
                 souther.compiler.types.ValueName.Stdlib.operation(collection, "empty");
         // No source wrote this reference: the author wrote an empty collection, and the operation
-        // it stands for is this pass's.
+        // it stands for is this pass's. Which reference it is comes from the brackets they did
+        // write — the first thing that collection derived, as the filled one is.
         return Hir.Var.respelled(collection + ".empty",
-                new souther.compiler.types.ReachName.OfLibrary(empty), null, row.pos(),
-                row.region());
+                new souther.compiler.types.ReachName.OfLibrary(empty),
+                new DerivedReferenceOrigin(new DerivationCause.CollectionLiteral(row.origin()), 0),
+                row.pos(), row.region());
     }
 
     /** Elaborates {@code e} and checks it against {@code expected}, returning its Core. The check is
