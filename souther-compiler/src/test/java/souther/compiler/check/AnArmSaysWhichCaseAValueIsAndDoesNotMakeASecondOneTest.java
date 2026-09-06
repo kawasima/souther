@@ -17,7 +17,6 @@ import souther.compiler.types.TypeSymbols;
 import souther.compiler.types.ValueName;
 import souther.compiler.core.Contract.Guard;
 import souther.compiler.check.BehaviorContract.RuleId;
-import souther.compiler.values.StringMachines;
 
 import org.junit.jupiter.api.Test;
 
@@ -58,7 +57,7 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
     private final Hir.Binders binders = new Hir.Binders(OWNER);
     private final PathEngine engine =
             new PathEngine(Symbols.none(DefaultStdlib.get()),
-                RuleReadings.noClauseFiled(), StringMachines.NONE, Terms.Of.THE_DISCHARGE_TREE,
+                RuleReadings.noClauseFiled(), StringMachineLookup.NONE, Terms.Of.THE_DISCHARGE_TREE,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
 
     @Test
@@ -190,7 +189,7 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
         Core.Binder x = CoreBinders.of(binders.binder("x", POS));
         Core.Binder y = CoreBinders.of(binders.binder("y", POS));
         PathEngine reading = new PathEngine(Symbols.none(DefaultStdlib.get()),
-                RuleReadings.noClauseFiled(), StringMachines.NONE,
+                RuleReadings.noClauseFiled(), StringMachineLookup.NONE,
                 Map.of(FIND, statesThatTheIntIsPositive()), Terms.Of.THE_DISCHARGE_TREE,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
 
@@ -279,7 +278,7 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
     void aRuleHoldsOfAnArmWhoseValuesAreAllOnesItIsAbout() {
         Symbols symbols = symbolsOf(NESTED);
         PathEngine reading = new PathEngine(symbols, RuleReadings.noClauseFiled(),
-                StringMachines.NONE, Terms.Of.THE_DISCHARGE_TREE,
+                StringMachineLookup.NONE, Terms.Of.THE_DISCHARGE_TREE,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
         TypeSymbol once = named(symbols, "OnceKind");
         TypeSymbol station = named(symbols, "Station");
@@ -299,7 +298,7 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
     void anArmNamingSeveralTakesARuleThatIsAboutAllOfThem() {
         Symbols symbols = symbolsOf(NESTED);
         PathEngine reading = new PathEngine(symbols, RuleReadings.noClauseFiled(),
-                StringMachines.NONE, Terms.Of.THE_DISCHARGE_TREE,
+                StringMachineLookup.NONE, Terms.Of.THE_DISCHARGE_TREE,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
         TypeSymbol once = named(symbols, "OnceKind");
         TypeSymbol station = named(symbols, "Station");

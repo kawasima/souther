@@ -16,7 +16,6 @@ import souther.compiler.types.BindingOwner;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbols;
 import souther.compiler.types.TypeSymbol;
-import souther.compiler.values.StringMachines;
 
 import java.util.Collections;
 import java.util.List;
@@ -97,7 +96,7 @@ class AFieldIsBoundByTheDeclarationThatWroteItTest {
     /** The clauses as the module named {@code reading} reads them. */
     private static Clauses readBy(Compilation c, String reading) {
         return new Clauses(Scopes.resolved(c.db(), reading).value(),
-                RuleReadings.declaredBy(c.db(), reading), StringMachines.NONE);
+                RuleReadings.declaredBy(c.db(), reading), StringMachineLookup.NONE);
     }
 
     /**

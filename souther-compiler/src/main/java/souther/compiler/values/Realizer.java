@@ -4,6 +4,7 @@ import souther.compiler.regex.Language;
 import souther.compiler.regex.Meter;
 
 import java.util.ArrayList;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -43,11 +44,16 @@ final class Realizer {
      * machines that exist.
      */
     private final Function<AdmittedPlan, ValueSet> borrowed;
+    /** Told what was built here where the lender had nothing, so a lender that keeps machines
+     *  has this one's. */
+    private final BiConsumer<AdmittedPlan, Realization> noting;
     private final Map<AdmittedPlan, Realization> done = new LinkedHashMap<>();
 
-    Realizer(Meter meter, Function<AdmittedPlan, ValueSet> borrowed) {
+    Realizer(Meter meter, Function<AdmittedPlan, ValueSet> borrowed,
+             BiConsumer<AdmittedPlan, Realization> noting) {
         this.meter = meter;
         this.borrowed = borrowed;
+        this.noting = noting;
     }
 
     /**
@@ -75,7 +81,13 @@ final class Realizer {
         // everything else, so the lending question is asked once and the second asking is this
         // one's own answer.
         ValueSet lent = borrowed.apply(plan);
-        Realization made = lent == null ? built(plan) : new Realization.Exact(lent);
+        Realization made;
+        if (lent == null) {
+            made = built(plan);
+            noting.accept(plan, made);
+        } else {
+            made = new Realization.Exact(lent);
+        }
         done.put(plan, made);
         return made;
     }

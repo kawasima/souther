@@ -2,7 +2,7 @@ package souther.compiler.check;
 
 import souther.compiler.semantics.ConditionJoin;
 import souther.compiler.values.AdmissibleValues;
-import souther.compiler.values.StringMachines;
+import souther.compiler.values.StringMachineAnswers;
 import souther.compiler.values.Allowance;
 import souther.compiler.values.ConjoinedAdmissibleValues;
 import souther.compiler.values.UnreadReason;
@@ -220,7 +220,8 @@ public final class InvariantChecker {
      * That is a rule this check did not reach and is recorded as one; it is never read as a
      * declaration with no rules, which is the same empty list and the opposite fact.
      */
-    public record Source(Hir.Expr body, ExpandedClauseLookup invariants, StringMachines machines,
+    public record Source(Hir.Expr body, ExpandedClauseLookup invariants,
+                         StringMachineLookup machines,
                          Map<ValueName.Behavior, StatedContract> contracts) {
 
         public Source {
@@ -255,25 +256,32 @@ public final class InvariantChecker {
     /** Whether an evaluation can answer, which is what decides that a continuation is reached. */
     private final PathCompletion completion;
     /**
-     * Where a machine already made is lent from, and where the strings a set holds stop.
+     * Where the answers about a declaration's string machines are asked for, for every declaration
+     * this check reads. A capability handed to this check and kept by nothing it answers with.
+     */
+    private final StringMachineLookup machines;
+    /**
+     * The answers for the one declaration this check is seeding, where it is seeding one: what a
+     * plan of it admits where somebody made that already, and where the strings a set holds stop.
      *
      * <p>A declaration is read again for every conjunct whose contribution to an end has to be
      * worked out by asking what the rules leave without it, and each of those readings meets the
      * same sets. Where a set stops does not turn on which reading is asking, so it is not this
-     * reading's to keep: it is asked of the one place every reading asks, and answered once there.
+     * reading's to keep: it is asked of these, which answer from what the store keeps for the
+     * declaration and work out the rest.
      */
-    private final StringMachines machines;
+    private StringMachineAnswers answers = StringMachineAnswers.NONE;
     private final List<CompileException> errors = new ArrayList<>();
     private final List<Diagnostic> warnings = new ArrayList<>();
 
     private InvariantChecker(Symbols symbols,
-                             ExpandedClauseLookup dischargeInvariants, StringMachines machines,
+                             ExpandedClauseLookup dischargeInvariants, StringMachineLookup machines,
                              ReadingPolicy policy) {
         this(symbols, dischargeInvariants, machines, Map.of(), policy);
     }
 
     private InvariantChecker(Symbols symbols,
-                             ExpandedClauseLookup dischargeInvariants, StringMachines machines,
+                             ExpandedClauseLookup dischargeInvariants, StringMachineLookup machines,
                              Map<ValueName.Behavior, StatedContract> contracts,
                              ReadingPolicy policy) {
         this.machines = machines;
@@ -297,7 +305,7 @@ public final class InvariantChecker {
                                                TypeSymbol.AtModule named,
                                                RuleReadingSource source, ReadingPolicy policy) {
         InvariantChecker c = new InvariantChecker(source.symbols(), source.invariants(),
-                source.machines(), policy);
+                StringMachineLookup.NONE, policy);
         // Read over the declaration's own fields, each standing for itself: a construction hands one
         // value per field, so a clause naming a field names something wherever it is built. These
         // stand for a value rather than holding one, so they are entered as locations and nothing is
@@ -345,8 +353,8 @@ public final class InvariantChecker {
     static ClauseDischarge capabilityOf(StatedContract.Conjunct conjunct,
                                         Denotations locations, RuleReadingSource source,
                                         ReadingPolicy policy, String describing) {
-        return new InvariantChecker(source.symbols(), source.invariants(), source.machines(),
-                policy)
+        return new InvariantChecker(source.symbols(), source.invariants(),
+                StringMachineLookup.NONE, policy)
                 .capabilityOf(conjunct.stated(), conjunct.at(), locations, describing);
     }
 
@@ -594,6 +602,13 @@ public final class InvariantChecker {
         return seedFields(named, source, policy, Map.of());
     }
 
+    /** The same, asking {@code machines} for what somebody has already made of the declaration's
+     *  string rules before building any of it. */
+    static Seeded seedFields(TypeSymbol.AtModule named, RuleReadingSource source,
+                             ReadingPolicy policy, StringMachineLookup machines) {
+        return seedFields(named, source, policy, Map.of(), Reach.EVERYTHING, machines);
+    }
+
     /**
      * {@link Seeded} with some of the fields already settled at a value.
      *
@@ -619,9 +634,17 @@ public final class InvariantChecker {
     static Seeded seedFields(TypeSymbol.AtModule named, RuleReadingSource source,
                              ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled,
                              Reach reach) {
+        return seedFields(named, source, policy, settled, reach, StringMachineLookup.NONE);
+    }
+
+    /** The same, asking {@code machines} first. */
+    static Seeded seedFields(TypeSymbol.AtModule named, RuleReadingSource source,
+                             ReadingPolicy policy, Map<NumberAt<RuleKey>, Count> settled,
+                             Reach reach, StringMachineLookup machines) {
         Symbols symbols = source.symbols();
         InvariantChecker c =
-                new InvariantChecker(symbols, source.invariants(), source.machines(), policy);
+                new InvariantChecker(symbols, source.invariants(), machines, policy);
+        c.answers = machines.of(named.key());
         // A newtype's value is the same location as the newtype, so it is at no name of its own and
         // its fields are the first step there is. Read from the world rather than off a node handed
         // in, and turned into a name here, where the names a rule may write are decided.
@@ -790,7 +813,7 @@ public final class InvariantChecker {
         // one position may not spend what a plain one at another was going to need, or which of
         // the two went unanswered would turn on the order they were written in.
         Allowance<FactSubject> allowed =
-                policy.allowanceForAdmittedValues(c.machines.lending());
+                policy.allowanceForAdmittedValues(c.answers.lending());
         Map<RuleRef, Map<Core, ReadByClauses.OfAPart>> adoptedBy = new LinkedHashMap<>();
         Map<RuleRef, ReadByClauses.OfARule> narrowedBy = new LinkedHashMap<>();
         // One reader for this value's positions, used over however many clauses reach it, and
@@ -2356,7 +2379,7 @@ public final class InvariantChecker {
      * answer would depend on something no reader can see.
      */
     private TextExtent extentOf(ValueSet set) {
-        return machines.extentOf(set);
+        return answers.extentOf(set);
     }
 
     /**
@@ -2724,7 +2747,7 @@ public final class InvariantChecker {
      * analysis representation could not be built or typed for, and is not analyzed at all, which is
      * the {@code ABANDONED} this answers with.
      */
-    static Findings analyze(Core body, ExpandedClauseLookup invariants, StringMachines machines,
+    static Findings analyze(Core body, ExpandedClauseLookup invariants, StringMachineLookup machines,
                             Map<ValueName.Behavior, StatedContract> contracts,
                             Scope params, Symbols symbols, ReadingPolicy policy) {
         InvariantChecker c =

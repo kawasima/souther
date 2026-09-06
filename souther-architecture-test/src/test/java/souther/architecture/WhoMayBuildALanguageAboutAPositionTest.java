@@ -116,17 +116,12 @@ class WhoMayBuildALanguageAboutAPositionTest {
      * reach the constant pool once, so a walk over the names it mentions sees the same row for one
      * asking and for two — and two askings inside one reading is exactly the thing being refused. So
      * the invocations are counted where they are written, which is the only place they differ.
-     *
-     * <p>The store's answer for one plan is a reading of its own and asks once: what a plan
-     * admits, worked out under an allowance that is that answer's and nobody else's, so that a
-     * reading which borrows the machine has not spent its own on it.
      */
     private static final List<String> ASKING_FOR_AN_ALLOWANCE = List.of(
             "souther/compiler/check/InvariantChecker allowanceForAdmittedValues x1",
             "souther/compiler/check/InvariantChecker allowanceForWhatARuleLeaves x1",
             "souther/compiler/inputs/PlacedRules allowanceForAdmittedValues x1",
-            "souther/compiler/inputs/ReadQuantities allowanceForAdmittedValues x1",
-            "souther/compiler/query/Machines$Realized allowanceForAdmittedValues x1");
+            "souther/compiler/inputs/ReadQuantities allowanceForAdmittedValues x1");
 
     /**
      * Who may make an allowance at all, which is the way round the rows above do not close.

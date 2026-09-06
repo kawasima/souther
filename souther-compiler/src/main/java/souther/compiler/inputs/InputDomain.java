@@ -3,6 +3,7 @@ package souther.compiler.inputs;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.NumberAt;
 import souther.compiler.check.RuleReadingSource;
+import souther.compiler.check.StringMachineLookup;
 import souther.compiler.check.Carrier;
 import souther.compiler.check.DeclaredBounds;
 import souther.compiler.check.DeclaredCoordinates;
@@ -251,6 +252,19 @@ public final class InputDomain {
      */
     public static InputDomain of(List<Parameter> parameters, RuleReadingSource source,
                                  ReadingPolicy policy, InputDemand demand) {
+        return of(parameters, source, policy, demand, StringMachineLookup.NONE);
+    }
+
+    /**
+     * The same, asking {@code machines} for what somebody has already made of each declaration's
+     * string rules before building any of it.
+     *
+     * <p>A capability and not a part of the reading: handed to every reading this walk opens,
+     * and kept by nothing the walk answers with.
+     */
+    public static InputDomain of(List<Parameter> parameters, RuleReadingSource source,
+                                 ReadingPolicy policy, InputDemand demand,
+                                 StringMachineLookup machines) {
         List<Position> found = new ArrayList<>();
         List<RuleRoot> roots = new ArrayList<>();
         Map<BindingId, String> read = new LinkedHashMap<>();
@@ -271,7 +285,7 @@ public final class InputDomain {
             }
             TermPath at = TermPath.of(parameter.name());
             roots.add(new RuleRoot(at, parameter.type(), new RootOpening.Taken()));
-            PlacedRules rules = PlacedRules.of(at, parameter.type(), source, policy);
+            PlacedRules rules = PlacedRules.of(at, parameter.type(), source, policy, machines);
             account.from(rules);
             // One walk, carrying the paths the measurement named under this parameter. Walked once
             // per demand instead, two paths sharing a prefix would open that prefix's declaration
@@ -343,6 +357,13 @@ public final class InputDomain {
     /** The same, closed over the finite paths this behavior's measurement names as well. */
     public static InputDomain of(Hir.SpecBehavior behavior, Hir.FnDef fn, Sig sig,
                                  RuleReadingSource source, ReadingPolicy policy, InputDemand demand) {
+        return of(behavior, fn, sig, source, policy, demand, StringMachineLookup.NONE);
+    }
+
+    /** The same, asking {@code machines} first. */
+    public static InputDomain of(Hir.SpecBehavior behavior, Hir.FnDef fn, Sig sig,
+                                 RuleReadingSource source, ReadingPolicy policy, InputDemand demand,
+                                 StringMachineLookup machines) {
         List<Parameter> parameters = new ArrayList<>();
         for (int i = 0; i < sig.inputTypes().size() && i < behavior.params().size(); i++) {
             BindingId binding = fn != null && i < fn.params().size()
@@ -350,7 +371,7 @@ public final class InputDomain {
             parameters.add(new Parameter(behavior.params().get(i).name(), binding,
                     sig.inputTypes().get(i)));
         }
-        return of(parameters, source, policy, demand);
+        return of(parameters, source, policy, demand, machines);
     }
 
     /**
@@ -1053,7 +1074,8 @@ public final class InputDomain {
                 // of its own.
                 takeTheRulesOver(placed.root(), path, at, elements.element(), ancestry, source,
                         policy, found, roots, java.util.Set.of(), handoffs, observed, null,
-                        new RootOpening.Inside(placed.root(), path), account, on);
+                        new RootOpening.Inside(placed.root(), path), account, on,
+                        placed.machines());
             }
             case StructuralInspection.Continuation.Branches branches -> {
                 // Asked where the branches are, which is the only place a name can cross one.
@@ -1113,7 +1135,8 @@ public final class InputDomain {
                     walkBranch(branch, placed.root(), path, ancestry, source, policy, found, roots,
                             visited, handoffs, observed, reaching,
                             new RootOpening.Refined(placed.root(), crossing), account,
-                            reach.into(path.refine(branch.refinement()), stopped));
+                            reach.into(path.refine(branch.refinement()), stopped),
+                            placed.machines());
                     crossed(observed, crossing, found, before);
                 }
             }
@@ -1200,7 +1223,8 @@ public final class InputDomain {
                                          java.util.Set<Type> visited, RuleHandoffs handoffs,
                                          NameReach.Observed observed,
                                          PlacedRules.Reaching crossing, RootOpening opening,
-                                         Gathered account, Reach reach) {
+                                         Gathered account, Reach reach,
+                                         StringMachineLookup machines) {
         roots.add(new RuleRoot(opened, type, opening));
         // Said where a reading is actually opened, so that a case recorded as opened is one there
         // is somewhere to ask about. Said where the branch was chosen instead, a descent that turns
@@ -1212,7 +1236,7 @@ public final class InputDomain {
         if (reach.handedOn()) {
             handoffs.accepts(by, at, opened);
         }
-        PlacedRules rules = PlacedRules.of(opened, type, source, policy, crossing);
+        PlacedRules rules = PlacedRules.of(opened, type, source, policy, crossing, machines);
         // Said as the reading of this value is opened, so that what a build has to account for is
         // what the rules of the values it read actually placed.
         account.from(rules);
@@ -1238,7 +1262,7 @@ public final class InputDomain {
                                    java.util.Set<Type> visited, RuleHandoffs handoffs,
                                    NameReach.Observed observed, PlacedRules.Reaching crossing,
                                    RootOpening opening,
-                                   Gathered account, Reach reach) {
+                                   Gathered account, Reach reach, StringMachineLookup machines) {
         // <b>A descent that costs no level stops only where it returns to a value it has already
         // been at without a step into one.</b> That is the whole of the rule, and what it is keyed
         // on is the value reached and never the narrowing taken: a narrowing is an edge and the
@@ -1264,7 +1288,7 @@ public final class InputDomain {
         deeper.add(branch.under());
         takeTheRulesOver(by, path, path.refine(branch.refinement()), branch.under(), ancestry,
                 source, policy, found, roots, deeper, handoffs, observed, crossing, opening,
-                account, reach);
+                account, reach, machines);
     }
 
     /**
@@ -1370,7 +1394,7 @@ public final class InputDomain {
                         DeclaredBounds.placed(adopted, kind, on));
         // A value whose rules contradict has no positions to cover: every edge of every field of it
         // is a row nobody can write, which is not the same answer as a field nothing bounds.
-        boolean nothingExists = placed.bounds().infeasible(source.machines());
+        boolean nothingExists = placed.bounds().infeasible(placed.answersAt(type, source.symbols()));
         // Which values the position may hold, and how much of what its rules say was read. The same
         // reading the numbers come from and a separate question of it: a rule can name the values a
         // position holds without stating where they stop, and one that states where they stop

@@ -5,7 +5,6 @@ import souther.compiler.core.Core;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
-import souther.compiler.values.StringMachines;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,7 +32,7 @@ final class Clauses {
 
     private final Symbols symbols;
     private final ExpandedClauseLookup expandedClauses;
-    private final StringMachines machines;
+    private final StringMachineLookup machines;
     private final Map<TypeSymbol.AtModule, Map<String, Type>> fields = new HashMap<>();
     private final Map<TypeSymbol.AtModule, Map<String, BindingId>> bindings =
             new HashMap<>();
@@ -52,11 +51,12 @@ final class Clauses {
      *        that was: a type this module declares and one it imports are read alike, because what
      *        a clause is read as is what its own module expanded (spec
      *        §invariant-discharge-representation).
-     * @param machines where a machine already made of a plan is lent from, handed on to every
-     *        reading of a declaration made through here.
+     * @param machines where the answers about a declaration's string machines are asked for,
+     *        handed on to every reading of a declaration made through here and kept by none of
+     *        what those readings answer with.
      */
     Clauses(Symbols symbols,
-            ExpandedClauseLookup expandedClauses, StringMachines machines) {
+            ExpandedClauseLookup expandedClauses, StringMachineLookup machines) {
         this.symbols = symbols;
         this.expandedClauses = expandedClauses;
         this.machines = machines;
@@ -68,8 +68,9 @@ final class Clauses {
         return expandedClauses;
     }
 
-    /** Where a machine already made is lent from, for the same reader. */
-    StringMachines machines() {
+    /** Where the answers about a declaration's string machines are asked for, for the same
+     *  reader. */
+    StringMachineLookup machines() {
         return machines;
     }
 

@@ -20,7 +20,7 @@ import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.ValueName;
 import souther.compiler.values.Admits;
-import souther.compiler.values.StringMachines;
+import souther.compiler.values.StringMachineAnswers;
 import souther.compiler.values.TextExtents;
 import souther.compiler.values.Value;
 import souther.compiler.values.ValueSet;
@@ -830,7 +830,7 @@ public sealed interface Carrier {
      * @param meter what may be built to answer, where answering takes a machine
      */
     default souther.compiler.values.Emptiness meets(ValueSet set, OrderedInterval range, Meter meter) {
-        return meets(set, range, meter, StringMachines.NONE);
+        return meets(set, range, meter, StringMachineAnswers.NONE);
     }
 
     /**
@@ -840,7 +840,7 @@ public sealed interface Carrier {
      *                 from; what it lends costs {@code meter} nothing
      */
     default souther.compiler.values.Emptiness meets(ValueSet set, OrderedInterval range, Meter meter,
-                                                    StringMachines machines) {
+                                                    StringMachineAnswers machines) {
         if (range.holdsNothing()) {
             return souther.compiler.values.Emptiness.EMPTY;
         }
@@ -1071,7 +1071,7 @@ public sealed interface Carrier {
      * made.
      */
     private souther.compiler.values.Emptiness stringsInside(Language language, OrderedInterval range,
-                                                            Meter meter, StringMachines machines) {
+                                                            Meter meter, StringMachineAnswers machines) {
         return machines.inside(language, extent().meet(range), meter);
     }
 

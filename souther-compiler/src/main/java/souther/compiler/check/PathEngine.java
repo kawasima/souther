@@ -8,7 +8,6 @@ import souther.compiler.types.BindingId;
 import souther.compiler.types.CaseSelector;
 import souther.compiler.types.ResolvedCase;
 import souther.compiler.types.Type;
-import souther.compiler.values.StringMachines;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.ValueName;
 
@@ -72,13 +71,13 @@ final class PathEngine {
     private final Map<ValueName.Behavior, StatedContract> contracts;
 
     PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants,
-               StringMachines machines, ReadingPolicy policy) {
+               StringMachineLookup machines, ReadingPolicy policy) {
         this(symbols, dischargeInvariants, machines, Map.of(), Terms.Of.THE_DISCHARGE_TREE,
                 policy);
     }
 
     PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants,
-               StringMachines machines, Map<ValueName.Behavior, StatedContract> contracts,
+               StringMachineLookup machines, Map<ValueName.Behavior, StatedContract> contracts,
                ReadingPolicy policy) {
         this(symbols, dischargeInvariants, machines, contracts, Terms.Of.THE_DISCHARGE_TREE,
                 policy);
@@ -93,12 +92,12 @@ final class PathEngine {
      * representation under the name of a gap.
      */
     PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants,
-               StringMachines machines, Terms.Of reading, ReadingPolicy policy) {
+               StringMachineLookup machines, Terms.Of reading, ReadingPolicy policy) {
         this(symbols, dischargeInvariants, machines, Map.of(), reading, policy);
     }
 
     PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants,
-               StringMachines machines, Map<ValueName.Behavior, StatedContract> contracts,
+               StringMachineLookup machines, Map<ValueName.Behavior, StatedContract> contracts,
                Terms.Of reading, ReadingPolicy policy) {
         this.symbols = symbols;
         this.clauses = new Clauses(symbols, dischargeInvariants, machines);

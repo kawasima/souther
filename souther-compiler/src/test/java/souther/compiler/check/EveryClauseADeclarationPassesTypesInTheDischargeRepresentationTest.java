@@ -8,7 +8,6 @@ import souther.compiler.query.Shapes;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbols;
 import souther.compiler.types.TypeSymbol;
-import souther.compiler.values.StringMachines;
 
 import org.junit.jupiter.api.Test;
 
@@ -113,7 +112,7 @@ class EveryClauseADeclarationPassesTypesInTheDischargeRepresentationTest {
             assertNotNull(declared);
             assertNotNull(prepared);
 
-            Clauses clauses = new Clauses(symbols, declared, StringMachines.NONE);
+            Clauses clauses = new Clauses(symbols, declared, StringMachineLookup.NONE);
             int read = 0;
             for (Hir.Def def : prepared.defs().stream().map(each -> each.declaration().node()).toList()) {
                 if (!(def instanceof Hir.Data data)) {

@@ -265,10 +265,9 @@ final class AnswerClosure {
     private static final Reading GENERATION_READERS = new Reading("GENERATION_READERS", CAPABILITY,
             "the subject a row would be written for carries the means to ask further questions — "
                     + "the symbols a name is read against, where a declaration's expanded clauses "
-                    + "are answered from, where a machine already made of a plan is lent from, "
-                    + "and the reading a quantity over several positions is asked of. Each is "
-                    + "built where it is used and none of them is what a plan says, so what "
-                    + "belongs in the subject is what the row is about");
+                    + "are answered from, and the reading a quantity over several positions is "
+                    + "asked of. Each is built where it is used and none of them is what a plan "
+                    + "says, so what belongs in the subject is what the row is about");
 
     /**
      * What was raised where a name resolved to nothing.
@@ -430,6 +429,7 @@ final class AnswerClosure {
     /** What a container the JDK declares was written to hold. */
     private static final TypePath.Step HELD = new TypePath.Step.Argument("held");
     private static final TypePath.Step MAP_VALUE = new TypePath.Step.Argument("value");
+    private static final TypePath.Step MAP_KEY = new TypePath.Step.Argument("key");
 
     /** One arm of a sum, which a walk of types takes all of. */
     private static TypePath.Step arm(String named) {
@@ -579,13 +579,6 @@ final class AnswerClosure {
                     part("souther.compiler.partition.MeasuredInput", "written"),
                     part("souther.compiler.partition.BehaviorInputs", "rules"),
                     part("souther.compiler.check.RuleReadingSource", "invariants")),
-            // And where a machine already made of a plan is lent from, beside those. The same
-            // kind of thing: a plan is the only input, and what is held is the asking.
-            generationReader("souther.compiler.values.StringMachines",
-                    Traversal.Why.NOTHING_CLOSES_IT,
-                    part("souther.compiler.partition.MeasuredInput", "written"),
-                    part("souther.compiler.partition.BehaviorInputs", "rules"),
-                    part("souther.compiler.check.RuleReadingSource", "machines")),
             generationReader("souther.compiler.inputs.ReadQuantities",
                     part("souther.compiler.partition.MeasuredInput", "quantities"),
                     arm("souther.compiler.inputs.ReadQuantities")),
@@ -623,10 +616,24 @@ final class AnswerClosure {
                 then(then(A_SUBJECT, A_MEASUREMENT), HELD,
                         part("souther.compiler.partition.Axis", "classes"), HELD,
                         part("souther.compiler.partition.PartitionClass", "denotes")));
-        // The machine a plan comes to, which is the whole of what that question answers with.
-        theMachineUnderALanguage(out, Q + "Machines$Realized",
-                arm("souther.compiler.values.Realization$Exact"),
-                part("souther.compiler.values.Realization$Exact", "set"));
+        // The machines a declaration's rules come to, filed under what each is a fact about: the
+        // plan it realized, both where the plan is a set written out and where the set is what it
+        // came to; the set whose extent was taken; and the language met with a stretch.
+        String facts = "souther.compiler.values.StringFacts";
+        theMachineUnderALanguage(out, Q + "Machines$OfDeclaration",
+                part(facts, "realized"), MAP_KEY,
+                arm("souther.compiler.values.AdmittedPlan$Of"),
+                part("souther.compiler.values.AdmittedPlan$Of", "set"));
+        theMachineUnderALanguage(out, Q + "Machines$OfDeclaration",
+                part(facts, "realized"), MAP_VALUE);
+        theMachineUnderALanguage(out, Q + "Machines$OfDeclaration",
+                part(facts, "extents"), MAP_KEY);
+        out.add(new KnownDeclared(declared(Q + "Machines$OfDeclaration",
+                "souther.compiler.regex.Automaton",
+                part(facts, "inside"), MAP_KEY,
+                part(facts + "$Stretch", "language"),
+                part("souther.compiler.regex.Language", "machine")),
+                A_MACHINE_UNDER_A_LANGUAGE, Traversal.Why.SAYS_NOTHING_OF_ITSELF));
         // And the same machine reached through what the class means rather than through what it
         // writes out. A class whose meaning is a set of values holds one, so the strings are on the
         // meaning as well as on the denotation — two routes to one machine and not a second one,

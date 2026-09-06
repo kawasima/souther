@@ -8,7 +8,6 @@ import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.Type;
-import souther.compiler.values.StringMachines;
 
 import org.junit.jupiter.api.Test;
 
@@ -52,7 +51,7 @@ class FollowingWhatANameWasGivenCostsTheChainOnceTest {
      * link is a name for the one before it and the first is arithmetic. */
     private static long followedOver(int links) {
         PathEngine engine = new PathEngine(Symbols.none(DefaultStdlib.get()),
-                RuleReadings.noClauseFiled(), StringMachines.NONE,
+                RuleReadings.noClauseFiled(), StringMachineLookup.NONE,
                 Terms.Of.THE_DISCHARGE_TREE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
         Hir.Binders binders = new Hir.Binders(OWNER);
         Core.Binder first = CoreBinders.of(binders.binder("x0", POS));

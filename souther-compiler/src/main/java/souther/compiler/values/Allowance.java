@@ -147,6 +147,11 @@ public final class Allowance<A> {
          *  was. */
         ValueSet of(Sameness.Block<A> block, AdmittedPlan plan);
 
+        /** Told what the allowance built of {@code plan} at {@code block} where this had nothing
+         *  to lend, for a lender that keeps what is made; one that does not keeps nothing. */
+        default void made(Sameness.Block<A> block, AdmittedPlan plan, Realization made) {
+        }
+
         /** Nothing has been built anywhere, which is what one allowance on its own knows. */
         static <A> Known<A> nothing() {
             return (_, _) -> null;
@@ -282,7 +287,8 @@ public final class Allowance<A> {
      */
     Realizer realizer(Sameness.Block<A> block) {
         return realizers.computeIfAbsent(block,
-                _ -> new Realizer(meter(block), plan -> borrowed.of(block, plan)));
+                _ -> new Realizer(meter(block), plan -> borrowed.of(block, plan),
+                        (plan, made) -> borrowed.made(block, plan, made)));
     }
 
     /**
@@ -344,7 +350,8 @@ public final class Allowance<A> {
     public Realizer elsewhere() {
         if (nowhere == null) {
             nowhereMeter = budget.meter();
-            nowhere = new Realizer(nowhereMeter, plan -> borrowed.of(null, plan));
+            nowhere = new Realizer(nowhereMeter, plan -> borrowed.of(null, plan),
+                    (plan, made) -> borrowed.made(null, plan, made));
         }
         return nowhere;
     }

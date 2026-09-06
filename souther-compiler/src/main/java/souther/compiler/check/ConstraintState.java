@@ -8,7 +8,7 @@ import souther.compiler.numeric.Rel;
 import souther.compiler.values.AdmissibleValues;
 import souther.compiler.values.Allowance;
 import souther.compiler.values.ConjoinedAdmissibleValues;
-import souther.compiler.values.StringMachines;
+import souther.compiler.values.StringMachineAnswers;
 import souther.compiler.values.Refusal;
 import souther.compiler.values.RelationalWitness;
 
@@ -111,12 +111,12 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
      * first domain added without touching the second would put them out of agreement.
      */
     public boolean isBottom() {
-        return isBottom(StringMachines.NONE);
+        return isBottom(StringMachineAnswers.NONE);
     }
 
     /** The same, borrowing what {@code machines} has already made where the pair's answer needs
      *  a machine. */
-    public boolean isBottom(StringMachines machines) {
+    public boolean isBottom(StringMachineAnswers machines) {
         return shownByAnother() || admitted(machines).holdsNothing();
     }
 
@@ -145,10 +145,10 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
      * that says so is the numbers, and their own answer was asked above.
      */
     private Confinement.Admission<A> admitted() {
-        return admitted(StringMachines.NONE);
+        return admitted(StringMachineAnswers.NONE);
     }
 
-    private Confinement.Admission<A> admitted(StringMachines machines) {
+    private Confinement.Admission<A> admitted(StringMachineAnswers machines) {
         if (shownByAnother()) {
             return confinement.admission(machines);
         }

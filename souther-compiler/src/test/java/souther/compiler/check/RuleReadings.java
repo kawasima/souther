@@ -4,7 +4,6 @@ import souther.compiler.query.Compilation;
 import souther.compiler.query.Db;
 import souther.compiler.query.Shapes;
 import souther.compiler.types.TypeSymbol;
-import souther.compiler.values.StringMachines;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -43,7 +42,7 @@ public final class RuleReadings {
      *  about a declaration is asking for a reading this never had, and it answers that nothing
      *  declares one rather than the tree the declaration happens to carry. */
     public static RuleReadingSource ofNoClauseFiled(Symbols symbols) {
-        return new RuleReadingSource(symbols, noClauseFiled(), StringMachines.NONE);
+        return new RuleReadingSource(symbols, noClauseFiled());
     }
 
     /** Where a reading with nothing expanded anywhere gets its clauses. */
@@ -79,6 +78,6 @@ public final class RuleReadings {
      *  and never by handing over a scope alone. */
     static Terms termsOfNoClauseFiled(Symbols symbols, ReadingPolicy policy) {
         return new Terms(symbols, Terms.Of.THE_DISCHARGE_TREE, policy,
-                new Clauses(symbols, noClauseFiled(), StringMachines.NONE));
+                new Clauses(symbols, noClauseFiled(), StringMachineLookup.NONE));
     }
 }

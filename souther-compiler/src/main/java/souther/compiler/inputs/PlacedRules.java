@@ -3,6 +3,7 @@ package souther.compiler.inputs;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.NumberAt;
 import souther.compiler.check.RuleReadingSource;
+import souther.compiler.check.StringMachineLookup;
 import souther.compiler.check.FieldDomains;
 import souther.compiler.check.NarrowedBounds;
 import souther.compiler.check.RuleKey;
@@ -21,6 +22,7 @@ import souther.compiler.check.ReadingPolicy;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.values.AdmissibleSet;
+import souther.compiler.values.StringMachineAnswers;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +36,8 @@ import java.util.List;
  * how {@code interval.startsAt < cap} stopped reaching {@code interval.startsAt}.
  */
 record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoReaching,
-                   souther.compiler.values.Allowance<TermPath> sets) {
+                   souther.compiler.values.Allowance<TermPath> sets,
+                   StringMachineLookup machines) {
 
     /**
      * The value this case was narrowed out of, whose rules name some of the same positions.
@@ -82,20 +85,40 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
      */
     static PlacedRules of(TermPath root, Type type, RuleReadingSource source,
                           ReadingPolicy policy) {
-        return of(root, type, source, policy, null);
+        return of(root, type, source, policy, null, StringMachineLookup.NONE);
+    }
+
+    /** The same, asking {@code machines} for what somebody has already made of the value's string
+     *  rules before building any of it. */
+    static PlacedRules of(TermPath root, Type type, RuleReadingSource source,
+                          ReadingPolicy policy, StringMachineLookup machines) {
+        return of(root, type, source, policy, null, machines);
     }
 
     /** The same, of a value narrowed out of another whose rules name some of the same positions. */
     static PlacedRules of(TermPath root, Type type, RuleReadingSource source, ReadingPolicy policy,
-                          Reaching alsoReaching) {
+                          Reaching alsoReaching, StringMachineLookup machines) {
         TypeSymbol read = readAs(type, source.symbols());
         // One composer for this reading, made where the reading is. What {@link #admits} builds is
         // the set a position of this value finally admits, met out of the rules here and the rules
         // of the value this was narrowed from — one answer, however many paths are asked about it.
         // Made per call instead, every ask would get its own allowance and the whole of what a
         // reading costs would be bounded by nothing.
-        return new PlacedRules(root, read, Rules.of(read, source, policy), alsoReaching,
-                policy.allowanceForAdmittedValues(source.machines().lending()));
+        return new PlacedRules(root, read, Rules.of(read, source, policy, machines), alsoReaching,
+                policy.allowanceForAdmittedValues(answersFor(read, machines).lending()),
+                machines);
+    }
+
+    /** The answers about the string machines of the declaration {@code read} names, or none
+     *  where it names no declaration of a module. */
+    private static StringMachineAnswers answersFor(TypeSymbol read, StringMachineLookup machines) {
+        return read instanceof TypeSymbol.AtModule at
+                ? machines.of(at.key()) : StringMachineAnswers.NONE;
+    }
+
+    /** The same for the declaration a position of {@code type} is read as. */
+    StringMachineAnswers answersAt(Type type, Symbols symbols) {
+        return answersFor(readAs(type, symbols), machines);
     }
 
     /**

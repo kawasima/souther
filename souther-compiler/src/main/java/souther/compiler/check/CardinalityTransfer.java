@@ -70,6 +70,14 @@ final class CardinalityTransfer {
     static Cardinality upperOf(TypeSymbol named, Hir.Def def, RuleReadingSource source,
                                ReadingPolicy policy, Answers answers,
                                Predicate<TypeSymbol> granted) {
+        return upperOf(named, def, source, policy, answers, granted, StringMachineLookup.NONE);
+    }
+
+    /** The same, asking {@code machines} for what somebody has already made of the declaration's
+     *  string rules before building any of it. */
+    static Cardinality upperOf(TypeSymbol named, Hir.Def def, RuleReadingSource source,
+                               ReadingPolicy policy, Answers answers,
+                               Predicate<TypeSymbol> granted, StringMachineLookup machines) {
         return switch (def) {
             case Hir.UnitData _ -> Cardinality.atMost(1);
             case Hir.SumData sum -> ofCases(namedCases(sum), answers);
@@ -77,7 +85,7 @@ final class CardinalityTransfer {
             // one, so a name reaching here that is not a module's is a declaration world and a
             // graph of names that have stopped agreeing.
             case Hir.Data data -> named instanceof TypeSymbol.AtModule at
-                    ? ofData(at, data, source, policy, answers, granted)
+                    ? ofData(at, data, source, policy, answers, granted, machines)
                     : Declared.notAModules(named, data);
         };
     }
@@ -125,17 +133,18 @@ final class CardinalityTransfer {
 
     private static Cardinality ofData(TypeSymbol.AtModule named, Hir.Data data, RuleReadingSource source,
                                       ReadingPolicy policy, Answers answers,
-                                      Predicate<TypeSymbol> granted) {
+                                      Predicate<TypeSymbol> granted, StringMachineLookup machines) {
         // Rules that cannot all hold leave nothing to count, and the ends they would have been
         // counted between are gone with them. Asked before the positions, which have nothing to say
         // about a value the declaration as a whole refuses, and nearer than anything they could say.
         Optional<Emptiness> contradiction =
-                FieldDomains.granting(named, data, source, policy, granted).holdsNothing();
+                FieldDomains.granting(named, data, source, policy, granted, machines)
+                        .holdsNothing();
         if (contradiction.isPresent()) {
             return Cardinality.none(contradiction.get());
         }
-        OccurrenceCounts counts = OccurrenceCounts.of(named, source, policy, granted);
-        OccurrenceValues values = OccurrenceValues.of(named, source, policy, granted);
+        OccurrenceCounts counts = OccurrenceCounts.of(named, source, policy, granted, machines);
+        OccurrenceValues values = OccurrenceValues.of(named, source, policy, granted, machines);
         Map<String, Type> fields = TypeOps.fieldTypes(data, source.symbols());
         if (data.newtype()) {
             // A newtype is one value under a name, so its value sits where it sits: the rules written

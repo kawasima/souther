@@ -11,7 +11,6 @@ import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.ReachName;
 import souther.compiler.types.Type;
 import souther.compiler.types.ValueName;
-import souther.compiler.values.StringMachines;
 
 import org.junit.jupiter.api.Test;
 
@@ -44,7 +43,7 @@ class WhatANameIsAboutIsWhatItWasGivenIsAboutTest {
     private final Hir.Binders binders = new Hir.Binders(OWNER);
     private final PathEngine engine =
             new PathEngine(Symbols.none(DefaultStdlib.get()),
-                RuleReadings.noClauseFiled(), StringMachines.NONE,
+                RuleReadings.noClauseFiled(), StringMachineLookup.NONE,
                 Terms.Of.THE_DISCHARGE_TREE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
 
     @Test

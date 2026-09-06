@@ -324,7 +324,7 @@ final class Terms {
      */
     Terms(Symbols symbols, Of reading, ReadingPolicy policy, Clauses clauses) {
         this.symbols = symbols;
-        this.rules = new RuleReadingSource(symbols, clauses.expandedClauses(), clauses.machines());
+        this.rules = new RuleReadingSource(symbols, clauses.expandedClauses());
         this.reading = reading;
         this.policy = policy;
         this.predicates = new Predicates(this);

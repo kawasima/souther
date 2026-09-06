@@ -146,6 +146,13 @@ public sealed interface Rules {
      * @param named the declaration the value is read under, or null where the type names none
      */
     static Rules of(TypeSymbol named, RuleReadingSource source, ReadingPolicy policy) {
+        return of(named, source, policy, StringMachineLookup.NONE);
+    }
+
+    /** The same, asking {@code machines} for what somebody has already made of the string rules
+     *  before building any of it. */
+    static Rules of(TypeSymbol named, RuleReadingSource source, ReadingPolicy policy,
+                    StringMachineLookup machines) {
         if (named == null) {
             return new NoneWritten();
         }
@@ -154,7 +161,7 @@ public sealed interface Rules {
             // the identity to get one, so the test below never decides anything. It is how the
             // name says which kind it is rather than a reader assuming it.
             case Hir.Data data -> named instanceof TypeSymbol.AtModule at
-                    ? new Read(FieldDomains.of(at, source, policy))
+                    ? new Read(FieldDomains.of(at, source, policy, machines))
                     : Declared.notAModules(named, data);
             // A sum names which cases a value can be and carries no clause of its own; a unit data
             // has one value and may write no rule about it (spec §unit-data). Both are declarations
