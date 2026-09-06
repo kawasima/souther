@@ -488,7 +488,9 @@ sealed interface StatedByClauses {
          * than one.
          */
         @Override
-        public StatedByClauses whole(Core e, boolean positive, Denotations at) {
+        public StatedByClauses whole(ClauseExpr.Part part, Denotations at) {
+            Core e = part.of();
+            boolean positive = part.positive();
             PlannedValues<FactSubject> said = values.leaf(e, positive, at);
             OrderedIntervals<FactSubject> range = ordered.leaf(e, positive, at);
             Set<FactSubject> mentions = mentioned(e, at);
