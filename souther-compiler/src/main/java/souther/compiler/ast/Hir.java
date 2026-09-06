@@ -10,6 +10,7 @@ import souther.compiler.types.MapKeyRepresentation;
 import souther.compiler.types.LeafScalar;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.ReachName;
+import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.ReferenceOrigin;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeKey;
@@ -2230,13 +2231,18 @@ public interface Hir {
      * binding, or the type a newtype construction wraps — answered once during resolution.
      */
     record Apply(Expr function, List<Expr> args, ConstructionOrigin origin, AppliedCallee applied,
-                 SourceConstructOrigin construct, SourcePos pos, Region region) implements Expr {
+                 ApplicationOrigin application, SourcePos pos, Region region) implements Expr {
 
-        // `construct` and not `origin`, because the slot beside it is already an answer to a
+        // `application` and not `origin`, because the slot beside it is already an answer to a
         // different question: that one says how the construction this application stands for
-        // reached the body, and this one says which application of which source it is. A pass
+        // reached the body, and this one says why this application is here at all. A pass
         // rewriting the first has nothing to say about the second, and one name for both would be
         // two facts a reader could take for one.
+        //
+        // Said by whoever writes the application and never read back off its shape. An application
+        // no source wrote looks the same whether a name was expanded into it, a library operation
+        // was reached for, or a row was composed — so a reader working it out from the shape gets
+        // the common case right and answers the rest with what the common case says.
 
         /**
          * The application {@code surface} spells, of whatever {@code function} is — the one way an
@@ -2250,8 +2256,9 @@ public interface Hir {
          */
         public static Apply read(Ast.Apply surface, AppliedCallee applied, Expr function,
                                  List<Expr> args) {
-            return new Apply(function, args, Origins.Own.IT_IS, applied, surface.origin(),
-                    surface.pos(), surface.region());
+            return new Apply(function, args, Origins.Own.IT_IS, applied,
+                    new ApplicationOrigin.Written(surface.origin()), surface.pos(),
+                    surface.region());
         }
 
         /**
@@ -2272,14 +2279,15 @@ public interface Hir {
          * a name here either: which of those spells one is the source reading's answer, and a pass
          * holding a resolved expression is not reading a source.
          *
-         * <p>And no source wrote it, which is what it carries as its construct. An application a
-         * pass composed is not one an author can be shown or owed rows for, and giving it the
+         * <p>{@code application} is why this one is here, which the composer says because only the
+         * composer knows. An application no source wrote looks the same whichever pass wrote it and
+         * for whatever reason, so there is nothing here to work it out from — and giving it the
          * number of a construct somebody wrote would be this pass's work passing for the model's.
          */
-        public static Apply synthetic(Expr function, List<Expr> args, SourcePos pos,
-                                      Region region) {
+        public static Apply synthetic(Expr function, List<Expr> args,
+                                      ApplicationOrigin application, SourcePos pos, Region region) {
             return new Apply(function, args, Origins.Own.IT_IS, appliedCallee(function, pos),
-                    SourceConstructOrigin.unwritten(), pos, region);
+                    application, pos, region);
         }
 
         /** What {@code function} answers as the applied callee, anchored at {@code where} it stands
@@ -2319,11 +2327,12 @@ public interface Hir {
          * and {@link Var.Denoting} refuses it where it does.
          */
         public static Apply synthetic(String fn, ReachName reachedAs, ReferenceOrigin origin,
-                                      List<Expr> args, SourcePos pos, Region region) {
+                                      ApplicationOrigin application, List<Expr> args, SourcePos pos,
+                                      Region region) {
             return synthetic(
                     Var.respelled(fn, Objects.requireNonNull(reachedAs, unanswered(fn)), origin, pos,
                             null),
-                    args, pos, region);
+                    args, application, pos, region);
         }
 
         /** Why a pass may not apply a name it has not answered for. */
@@ -2395,7 +2404,7 @@ public interface Hir {
          * where its constructions would otherwise stand, and it is what has to say where it came
          * from. */
         public Apply carriedByValue() {
-            return new Apply(function, args, Origins.carriedByValue(origin), applied, construct,
+            return new Apply(function, args, Origins.carriedByValue(origin), applied, application,
                     pos, region);
         }
 
@@ -2403,7 +2412,7 @@ public interface Hir {
          *  says so here rather than listing the slots it is not changing, which is how what the
          *  author applied would be dropped by a rewrite that has no opinion about it. */
         public Apply withArgs(List<Expr> args) {
-            return new Apply(function, args, origin, applied, construct, pos, region);
+            return new Apply(function, args, origin, applied, application, pos, region);
         }
 
         /**
@@ -2427,7 +2436,7 @@ public interface Hir {
         /** The same application, of something else and over rewritten arguments — the rewrite above,
          *  where what is supplied to the new callee is not what was supplied to the old one. */
         public Apply replacedBy(Expr function, List<Expr> args) {
-            return new Apply(function, args, origin, applied, construct, pos, region);
+            return new Apply(function, args, origin, applied, application, pos, region);
         }
 
         /**
@@ -2443,7 +2452,7 @@ public interface Hir {
          */
         public Apply with(AppliedCallee applied, Expr function, List<Expr> args, SourcePos pos,
                           Region region) {
-            return new Apply(function, args, origin, applied, construct, pos, region);
+            return new Apply(function, args, origin, applied, application, pos, region);
         }
 
         /** Whether a value this body named is what carried the construction this stands for in —
@@ -2485,7 +2494,7 @@ public interface Hir {
             case FieldAccess x -> new FieldAccess(x.target(), x.name(), x.pos(), region);
             case Binary x -> new Binary(x.op(), x.left(), x.right(), x.origin(), x.pos(), region);
             case Apply x -> new Apply(x.function(), x.args(), x.origin(), x.applied(),
-                    x.construct(), x.pos(), region);
+                    x.application(), x.pos(), region);
             case If x -> new If(x.cond(), x.then(), x.els(), x.origin(), x.pos(), region);
             case IfConstructed x ->
                     new IfConstructed(x.construct(), x.binder(), x.then(), x.els(), x.origin(), x.pos(),
@@ -2548,7 +2557,7 @@ public interface Hir {
                 Expr function = atExpr.apply(a.function());
                 List<Expr> args = each(a.args(), atExpr);
                 yield function == a.function() && args == a.args() ? a
-                        : new Apply(function, args, a.origin(), a.applied(), a.construct(), a.pos(),
+                        : new Apply(function, args, a.origin(), a.applied(), a.application(), a.pos(),
                                 a.region());
             }
             case If iff -> {

@@ -50,4 +50,26 @@ public sealed interface ExpansionSite {
             }
         }
     }
+
+    /**
+     * An application a pass wrote because of something a source wrote.
+     *
+     * <p>The library operation a collection written in brackets stands for, the operation a checked
+     * value is written back as. No source wrote the application, so there is none to name it by, and
+     * what names it is the construct that made the pass write one — with the pass's own count over
+     * what it derived from that construct, one construct being able to make it write more than one.
+     */
+    record Derived(ApplicationDerivationCause cause, int ordinal) implements ExpansionSite {
+
+        public Derived {
+            if (cause == null) {
+                throw new IllegalArgumentException(
+                        "an application a pass wrote was written because a source wrote something");
+            }
+            if (ordinal < 0) {
+                throw new IllegalArgumentException(
+                        "what a cause derived is counted from zero: " + ordinal);
+            }
+        }
+    }
 }

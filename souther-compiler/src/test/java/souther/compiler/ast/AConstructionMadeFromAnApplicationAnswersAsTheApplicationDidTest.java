@@ -69,6 +69,7 @@ class AConstructionMadeFromAnApplicationAnswersAsTheApplicationDidTest {
     }
 
     private static Hir.Apply anApplication() {
-        return Hir.Apply.synthetic(new Hir.IntLit(1, SOMEWHERE, null), List.of(), SOMEWHERE, null);
+        return Hir.Apply.synthetic(new Hir.IntLit(1, SOMEWHERE, null), List.of(),
+                new souther.compiler.types.ApplicationOrigin.ComposedFixture(), SOMEWHERE, null);
     }
 }

@@ -7,6 +7,9 @@ import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.Type;
 import souther.compiler.types.ReachName;
+import souther.compiler.types.ApplicationOrigin;
+import souther.compiler.types.SourceConstruct;
+import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.SourceReferenceOrigin;
 import souther.compiler.types.ValueName;
 import souther.compiler.types.WrittenOwner;
@@ -26,6 +29,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * states nothing, and typing a call never waits on someone having a rule for it.
  */
 class WhatARepresentationKeepsIsTheRepresentationsToSayTest {
+
+    /** The applications are a body's: this test stands where an author's call stands. */
+    private static final ApplicationOrigin WROTE = new ApplicationOrigin.Written(
+            SourceConstructOrigin.written(new WrittenOwner.Body("m", "b"), 0, SourceConstruct.CALL));
 
     private static final SourcePos POS = new SourcePos(1, 1);
     private static final ValueName.Stdlib.Operation MAP =
@@ -61,7 +68,7 @@ class WhatARepresentationKeepsIsTheRepresentationsToSayTest {
     @Test
     void aKeptCallAppliedToTheWrongNumberOfArgumentsIsSaidAsThat() {
         Hir.Expr twoArgs = Hir.Apply.synthetic("List.map", new ReachName.OfLibrary(MAP),
-                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0),
+                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0), WROTE,
                 List.of(new Hir.IntLit(1, POS, null), new Hir.IntLit(2, POS, null)), POS, null);
 
         assertThrows(RuntimeException.class, () -> elaborate(twoArgs, keeping(MAP, SIGNATURE)));
@@ -95,7 +102,7 @@ class WhatARepresentationKeepsIsTheRepresentationsToSayTest {
 
     private static Hir.Expr callTo(ValueName.Stdlib.Operation operation) {
         return Hir.Apply.synthetic(operation.qualified(), new ReachName.OfLibrary(operation),
-                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0),
+                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0), WROTE,
                 List.of(new Hir.IntLit(1, POS, null)), POS, null);
     }
 

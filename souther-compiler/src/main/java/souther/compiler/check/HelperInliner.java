@@ -9,6 +9,7 @@ import souther.compiler.ast.StructuralCost;
 import souther.compiler.ast.WrittenName;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
+import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.EtaOrigin;
 import souther.compiler.types.ExpansionSite;
 import souther.compiler.types.Type;
@@ -1679,14 +1680,37 @@ public final class HelperInliner {
      * walk — and the walk differs between the tree a backend emits and the tree an analysis reads.
      */
     private static ExpansionSite siteOf(Hir.Apply call) {
-        if (call.construct().isWritten()) {
-            return new ExpansionSite.Written(call.construct());
+        ExpansionSite site = expandableSite(call.application());
+        if (site == null) {
+            throw new IllegalStateException(
+                    "a value composed for a fixture was expanded as a body: " + call);
         }
-        if (call.function() instanceof Hir.Var function) {
-            return new ExpansionSite.Eta(etaOf(function));
-        }
-        throw new IllegalStateException(
-                "an application no source wrote and no name was expanded into: " + call);
+        return site;
+    }
+
+    /**
+     * Which expansion this application is, or null where it is not one anything expands.
+     *
+     * <p>Read off what the application says about itself and never off its shape. An application no
+     * source wrote looks the same whether a name was expanded into it, a library operation was
+     * reached for, or a value was composed for a fixture — so a reader taking the shape gets the
+     * common case right and answers the rest with what the common case says. What each of them is,
+     * is settled where it is written ({@link ApplicationOrigin}).
+     *
+     * <p>Two questions and not one. Every application says why it is here; only one that is expanded
+     * has to say which expansion it is. A value composed for a fixture is not a body this walks, so
+     * it is asked the first question and not the second — and it is null here rather than carrying
+     * an identity nothing wants, which would mean deciding what such values are numbered within.
+     */
+    private static ExpansionSite expandableSite(ApplicationOrigin application) {
+        return switch (application) {
+            case ApplicationOrigin.Written written ->
+                    new ExpansionSite.Written(written.application());
+            case ApplicationOrigin.Eta eta -> new ExpansionSite.Eta(eta.cause());
+            case ApplicationOrigin.Derived derived ->
+                    new ExpansionSite.Derived(derived.cause(), derived.ordinal());
+            case ApplicationOrigin.ComposedFixture _ -> null;
+        };
     }
 
     /**
@@ -1696,17 +1720,16 @@ public final class HelperInliner {
      * the author wrote — a helper of another module is written qualified in a body carried out of
      * it — so a spelling that is the pass's says nothing about whose reference it is, and asking
      * that question is what would put the two respelled ones on the wrong side.
+     *
+     * <p>Total, because a name has one of the two answers by the time it is here. A name reading a
+     * binding is told by the binding; a name reaching a declaration is some reference of it and
+     * carries which, whoever wrote it ({@link Hir.Var.Denoting}). There is nothing left to refuse.
      */
     private static EtaOrigin etaOf(Hir.Var function) {
         if (function instanceof Hir.Var.Denoting named
                 && named.reachedAs() instanceof ReachName.InScope in
                 && in.denotes() instanceof ValueName.Local local) {
             return new EtaOrigin.Bound(local.id());
-        }
-        if (function.origin() == null) {
-            throw new IllegalStateException(
-                    "a name no source wrote, reaching a declaration, expanded as a value: "
-                            + function.name());
         }
         return new EtaOrigin.Declaration(function.origin());
     }
@@ -1729,9 +1752,12 @@ public final class HelperInliner {
             args.add(Hir.Var.local(p, function.pos()));
         }
         // The block and the application in it are this pass's: what the author wrote there is a
-        // name, and these are the parameters and the call it stands for.
+        // name, and these are the parameters and the call it stands for. Which expansion it is, is
+        // said here, where the name that made it necessary is still in hand — a reader below has
+        // only the shape, and the shape is one every composed application wears.
         return new Hir.Block(params,
-                Hir.Apply.synthetic(function, args, function.pos(), null),
+                Hir.Apply.synthetic(function, args, new ApplicationOrigin.Eta(etaOf(function)),
+                        function.pos(), null),
                 souther.compiler.types.RuleOrigin.unwritten(), function.pos(), null);
     }
 

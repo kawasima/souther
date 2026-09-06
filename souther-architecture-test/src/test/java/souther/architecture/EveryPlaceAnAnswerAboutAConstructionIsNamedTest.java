@@ -126,11 +126,13 @@ class EveryPlaceAnAnswerAboutAConstructionIsNamedTest {
                             + "Lsouther/compiler/ast/Hir$Apply;"),
             new Settler("Apply.synthetic(Expr)", "souther/compiler/ast/Hir$Apply", "synthetic",
                     "(Lsouther/compiler/ast/Hir$Expr;Ljava/util/List;"
+                            + "Lsouther/compiler/types/ApplicationOrigin;"
                             + "Lsouther/compiler/diag/SourcePos;Lsouther/compiler/diag/Region;)"
                             + "Lsouther/compiler/ast/Hir$Apply;"),
             new Settler("Apply.synthetic(String)", "souther/compiler/ast/Hir$Apply", "synthetic",
                     "(Ljava/lang/String;Lsouther/compiler/types/ReachName;"
-                            + "Lsouther/compiler/types/ReferenceOrigin;Ljava/util/List;"
+                            + "Lsouther/compiler/types/ReferenceOrigin;"
+                            + "Lsouther/compiler/types/ApplicationOrigin;Ljava/util/List;"
                             + "Lsouther/compiler/diag/SourcePos;Lsouther/compiler/diag/Region;)"
                             + "Lsouther/compiler/ast/Hir$Apply;"),
             new Settler("Apply.carriedByValue", "souther/compiler/ast/Hir$Apply", "carriedByValue",
@@ -168,7 +170,7 @@ class EveryPlaceAnAnswerAboutAConstructionIsNamedTest {
             "souther/compiler/ast/Hir$Apply#origin()Lsouther/compiler/ast/ConstructionOrigin;",
             "souther/compiler/ast/Hir$Apply#read(Lsouther/compiler/ast/Ast$Apply;Lsouther/compiler/ast/Hir$AppliedCallee;Lsouther/compiler/ast/Hir$Expr;Ljava/util/List;)Lsouther/compiler/ast/Hir$Apply;",
             "souther/compiler/ast/Hir$Apply#replacedBy(Lsouther/compiler/ast/Hir$Expr;Ljava/util/List;)Lsouther/compiler/ast/Hir$Apply;",
-            "souther/compiler/ast/Hir$Apply#synthetic(Lsouther/compiler/ast/Hir$Expr;Ljava/util/List;Lsouther/compiler/diag/SourcePos;Lsouther/compiler/diag/Region;)Lsouther/compiler/ast/Hir$Apply;",
+            "souther/compiler/ast/Hir$Apply#synthetic(Lsouther/compiler/ast/Hir$Expr;Ljava/util/List;Lsouther/compiler/types/ApplicationOrigin;Lsouther/compiler/diag/SourcePos;Lsouther/compiler/diag/Region;)Lsouther/compiler/ast/Hir$Apply;",
             "souther/compiler/ast/Hir$Apply#wasCarriedByValue()Z",
             "souther/compiler/ast/Hir$Apply#with(Lsouther/compiler/ast/Hir$AppliedCallee;Lsouther/compiler/ast/Hir$Expr;Ljava/util/List;Lsouther/compiler/diag/SourcePos;Lsouther/compiler/diag/Region;)Lsouther/compiler/ast/Hir$Apply;",
             "souther/compiler/ast/Hir$Apply#withArgs(Ljava/util/List;)Lsouther/compiler/ast/Hir$Apply;",
@@ -209,7 +211,7 @@ class EveryPlaceAnAnswerAboutAConstructionIsNamedTest {
      * move for it.
      */
     private static final List<String> SETTLING = List.of(
-            "souther/compiler/ast/Hir$Apply#synthetic(Ljava/lang/String;Lsouther/compiler/types/ReachName;Lsouther/compiler/types/ReferenceOrigin;Ljava/util/List;Lsouther/compiler/diag/SourcePos;Lsouther/compiler/diag/Region;)Lsouther/compiler/ast/Hir$Apply; -> Apply.synthetic(Expr) x1",
+            "souther/compiler/ast/Hir$Apply#synthetic(Ljava/lang/String;Lsouther/compiler/types/ReachName;Lsouther/compiler/types/ReferenceOrigin;Lsouther/compiler/types/ApplicationOrigin;Ljava/util/List;Lsouther/compiler/diag/SourcePos;Lsouther/compiler/diag/Region;)Lsouther/compiler/ast/Hir$Apply; -> Apply.synthetic(Expr) x1",
             "souther/compiler/check/Elaborator#fromList(Ljava/lang/String;Lsouther/compiler/ast/Hir$Expr;Lsouther/compiler/ast/Hir$RowCollection;)Lsouther/compiler/ast/Hir$Expr; -> Apply.synthetic(String) x1",
             "souther/compiler/check/HelperInliner#etaExpand(Lsouther/compiler/ast/Hir$Var;ILjava/util/function/IntFunction;)Lsouther/compiler/ast/Hir$Block; -> Apply.synthetic(Expr) x1",
             "souther/compiler/check/HelperInliner#rename(Lsouther/compiler/ast/Hir$Expr;Lsouther/compiler/check/HelperInliner$Renaming;)Lsouther/compiler/ast/Hir$Expr; -> Apply.with x1",

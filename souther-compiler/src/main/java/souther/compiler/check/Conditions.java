@@ -7,7 +7,11 @@ import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.Rel;
 import souther.compiler.semantics.ConstantArguments;
 import souther.compiler.semantics.ResultRange;
+import souther.compiler.types.ApplicationDerivationCause;
+import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.BinOp;
+import souther.compiler.types.DerivedReferenceOrigin;
+import souther.compiler.types.ReferenceDerivationCause;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.Type;
 
@@ -350,9 +354,15 @@ final class Conditions {
                         instanceof BoundOperationFact.MeansTheSameAsASizeOfNought means) {
             // No source wrote this call. It is the size the written one means, composed so that the
             // rule can be read as the comparison it states — and giving it the written call's own
-            // construct would put two applications under one identity.
+            // identity would put two applications under one. So it is a name and an application of
+            // this pass's, each derived from the one the comparison it is read off reached.
             Core size = new Core.PreservedCall(means.size(), call.args(),
-                    SourceConstructOrigin.unwritten(), Type.INT, call.pos());
+                    new DerivedReferenceOrigin(
+                            new ReferenceDerivationCause.SizeMeaningOfReference(call.reference()), 0),
+                    new ApplicationOrigin.Derived(
+                            new ApplicationDerivationCause.SizeMeaningOfApplication(
+                                    call.application()), 0),
+                    Type.INT, call.pos());
             return new Core.Binary(BinOp.EQ, size, new Core.Int(0, Type.INT, call.pos()),
                     SourceConstructOrigin.unwritten(), Type.BOOL, call.pos());
         }

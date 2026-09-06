@@ -4,7 +4,9 @@ import souther.compiler.DefaultStdlib;
 import souther.compiler.ast.Hir;
 import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
+import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.BindingOwner;
+import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.SourceReferenceOrigin;
 import souther.compiler.types.Type;
@@ -38,13 +40,17 @@ class ALanguageOperationKeptStandingTypesFromWhatItDeclaresTest {
     /** This test stands in for a body, so the names it applies are that body's references. */
     private static final SourceReferenceOrigin REF =
             new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0);
+
+    /** And the applications are that body's too: this test stands where an author's call stands. */
+    private static final ApplicationOrigin WROTE = new ApplicationOrigin.Written(
+            SourceConstructOrigin.written(new WrittenOwner.Body("m", "b"), 0, SourceConstruct.CALL));
     private static final Preserved KEPT = Preserved.byTheLanguagesOwnOperations();
 
     @Test
     void aPolymorphicOperationSettlesItsVariablesFromItsArguments() {
         // List.length : (List<'a>) -> Int — the argument decides 'a, and the result is not a variable
         Hir.Expr call = Hir.Apply.synthetic("List.length",
-                new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "length")), REF,
+                new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "length")), REF, WROTE,
                 List.of(new Hir.ListLit(List.of(new Hir.IntLit(1, POS, null)), COMPOSED, POS, null)),
                 POS, null);
 
@@ -67,7 +73,7 @@ class ALanguageOperationKeptStandingTypesFromWhatItDeclaresTest {
         Hir.Block step = new Hir.Block(List.of(binders.binder("x", POS)),
                 new Hir.ListLit(List.of(new Hir.IntLit(1, POS, null)), COMPOSED, POS, null), souther.compiler.types.RuleOrigin.unwritten(), POS, null);
         Hir.Expr call = Hir.Apply.synthetic("List.flatMap",
-                new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "flatMap")), REF,
+                new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "flatMap")), REF, WROTE,
                 List.of(step, new Hir.ListLit(List.of(new Hir.IntLit(2, POS, null)), COMPOSED, POS, null)),
                 POS, null);
 
@@ -101,7 +107,8 @@ class ALanguageOperationKeptStandingTypesFromWhatItDeclaresTest {
         // still holds one is this compiler having failed to do that
         ValueName.Helper half = new ValueName.Helper("demo", "half");
         Hir.Expr call = Hir.Apply.synthetic("half",
-                new ReachName.Own(half), REF, List.of(new Hir.IntLit(1, POS, null)), POS, null);
+                new ReachName.Own(half), REF, WROTE, List.of(new Hir.IntLit(1, POS, null)), POS,
+                null);
 
         assertThrows(RuntimeException.class, () -> Elaborator.elaborate(call, Scope.NONE,
                 CheckContext.of(Symbols.none(DefaultStdlib.get())).preserving(KEPT)));

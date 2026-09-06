@@ -22,7 +22,8 @@ package souther.compiler.types;
  * @param cause    what the source wrote that made a pass write this reference
  * @param ordinal  which of the references that cause derived this is, by the producer's own count
  */
-public record DerivedReferenceOrigin(DerivationCause cause, int ordinal) implements ReferenceOrigin {
+public record DerivedReferenceOrigin(ReferenceDerivationCause cause, int ordinal)
+        implements ReferenceOrigin {
 
     public DerivedReferenceOrigin {
         if (cause == null) {

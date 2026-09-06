@@ -7,6 +7,7 @@ import souther.compiler.diag.Region;
 import souther.compiler.numeric.Count;
 import souther.compiler.numeric.Place;
 import souther.compiler.diag.SourcePos;
+import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.FixtureReferenceOrigin;
 import souther.compiler.types.ReachName;
 import souther.compiler.types.SourceConstructOrigin;
@@ -128,6 +129,7 @@ public record FixtureTemplate(String text, Hir.Expr value) {
         ValueName.Stdlib.Namespace namespace = ValueName.Stdlib.namespace(type);
         return new FixtureTemplate(type + "(\"" + iso + "\")",
                 Hir.Apply.synthetic(type, new ReachName.TheNamespace(namespace), null,
+                        new ApplicationOrigin.ComposedFixture(),
                         List.of(new Hir.StringLit(iso, NOWHERE, NO_SOURCE)), NOWHERE, NO_SOURCE));
     }
 
@@ -208,7 +210,8 @@ public record FixtureTemplate(String text, Hir.Expr value) {
         ValueName.OfType named = new ValueName.OfType(written, type.denotes());
         return new FixtureTemplate(written + "(" + inner.text() + ")",
                 Hir.Apply.synthetic(written, new ReachName.InScope(named), null,
-                        List.of(inner.value()), NOWHERE, NO_SOURCE));
+                        new ApplicationOrigin.ComposedFixture(), List.of(inner.value()), NOWHERE,
+                        NO_SOURCE));
     }
 
     /** No elements. A list, a set and a map are all written this way in a fixture: what the position

@@ -11,6 +11,8 @@ import souther.compiler.diag.SourcePos;
 import souther.compiler.diag.msg.TypeMessage;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.ReachName;
+import souther.compiler.types.ApplicationOrigin;
+import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.SourceReferenceOrigin;
 import souther.compiler.types.WrittenOwner;
@@ -43,6 +45,10 @@ class AKeptCallsFunctionArgumentIsRefusedWhereItIsWrittenTest {
 
     /** The list here is this test's own: no source spells the brackets. */
     private static final SourceConstructOrigin COMPOSED = SourceConstructOrigin.unwritten();
+
+    /** The applications are a body's: this test stands where an author's call stands. */
+    private static final ApplicationOrigin WROTE = new ApplicationOrigin.Written(
+            SourceConstructOrigin.written(new WrittenOwner.Body("m", "b"), 0, SourceConstruct.CALL));
     private static final SourcePos ARGUMENT = new SourcePos(3, 5, SOURCE);
 
     /**
@@ -58,7 +64,7 @@ class AKeptCallsFunctionArgumentIsRefusedWhereItIsWrittenTest {
                 new Hir.IntLit(1, ARGUMENT, null), souther.compiler.types.RuleOrigin.unwritten(), ARGUMENT, null);
         Hir.Expr call = Hir.Apply.synthetic("List.flatMap",
                 new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "flatMap")),
-                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0),
+                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0), WROTE,
                 List.of(answersAnInt, new Hir.ListLit(List.of(new Hir.IntLit(2, CALL, null)), COMPOSED, CALL, null)),
                 CALL, null);
 
@@ -82,7 +88,7 @@ class AKeptCallsFunctionArgumentIsRefusedWhereItIsWrittenTest {
                 new Hir.IntLit(1, ARGUMENT, null), souther.compiler.types.RuleOrigin.unwritten(), ARGUMENT, null);
         Hir.Expr call = Hir.Apply.synthetic("List.flatMap",
                 new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "flatMap")),
-                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0),
+                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0), WROTE,
                 List.of(answersAnInt, new Hir.ListLit(List.of(new Hir.IntLit(2, CALL, null)), COMPOSED, CALL, null)),
                 CALL, null);
 

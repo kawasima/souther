@@ -3,7 +3,10 @@ package souther.compiler.check;
 import souther.compiler.DefaultStdlib;
 import souther.compiler.ast.Hir;
 import souther.compiler.diag.SourcePos;
+import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.ReachName;
+import souther.compiler.types.SourceConstruct;
+import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.SourceReferenceOrigin;
 import souther.compiler.types.ValueName;
 import souther.compiler.types.WrittenOwner;
@@ -23,13 +26,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 class AnUnexpandedCallIsOnlyTypedWhereARepresentationKeepsItTest {
 
+    /** The applications are a body's: this test stands where an author's call stands. */
+    private static final ApplicationOrigin WROTE = new ApplicationOrigin.Written(
+            SourceConstructOrigin.written(new WrittenOwner.Body("m", "b"), 0, SourceConstruct.CALL));
+
     private static final SourcePos POS = new SourcePos(1, 1);
 
     @Test
     void aStandardLibraryCallLeftStandingIsNotSomethingToType() {
         Hir.Expr call = Hir.Apply.synthetic("List.map",
                 new ReachName.OfLibrary(ValueName.Stdlib.operation("List", "map")),
-                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0),
+                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0), WROTE,
                 List.of(new Hir.IntLit(1, POS, null)), POS, null);
 
         assertThrows(RuntimeException.class, () -> Elaborator.elaborate(call, Scope.NONE,
@@ -43,7 +50,8 @@ class AnUnexpandedCallIsOnlyTypedWhereARepresentationKeepsItTest {
         // namespace the name was in
         ValueName.Helper half = new ValueName.Helper("demo", "half");
         Hir.Expr call = Hir.Apply.synthetic("half",
-                new ReachName.Own(half), new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0),
+                new ReachName.Own(half),
+                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0), WROTE,
                 List.of(new Hir.IntLit(1, POS, null)), POS, null);
 
         assertThrows(RuntimeException.class, () -> Elaborator.elaborate(call, Scope.NONE,

@@ -5,6 +5,9 @@ import souther.compiler.ast.Hir;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.ReachName;
+import souther.compiler.types.ApplicationOrigin;
+import souther.compiler.types.SourceConstruct;
+import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.SourceReferenceOrigin;
 import souther.compiler.types.ValueName;
 import souther.compiler.types.WrittenOwner;
@@ -52,7 +55,10 @@ class WhetherAWrongLibraryCallIsTheAuthorsIsTheLibrarysToSayTest {
             given.add(new Hir.IntLit(i, POS, null));
         }
         return Hir.Apply.synthetic(name.qualified(), new ReachName.OfLibrary(name),
-                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0), given, POS, null);
+                new SourceReferenceOrigin(new WrittenOwner.Body("m", "b"), 0),
+                new ApplicationOrigin.Written(SourceConstructOrigin.written(
+                        new WrittenOwner.Body("m", "b"), 0, SourceConstruct.CALL)),
+                given, POS, null);
     }
 
     private static RuntimeException refusing(Hir.Expr call) {

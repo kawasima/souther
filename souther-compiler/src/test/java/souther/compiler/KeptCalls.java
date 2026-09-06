@@ -5,9 +5,11 @@ import souther.compiler.core.Core;
 import souther.compiler.core.DeclaredOperation;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.stdlib.Stdlib;
+import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
-import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.FixtureReferenceOrigin;
+import souther.compiler.types.ReferenceOrigin;
 import souther.compiler.types.Type;
 import souther.compiler.types.ValueName;
 
@@ -37,15 +39,18 @@ public final class KeptCalls {
         return CompleteSignature.ofSettledValue(name, type).declaring();
     }
 
-    /** No source wrote a call a fixture composes, which is what these carry as their construct. A
-     *  written one would be a number this fixture invented, standing for an application in a file
-     *  nobody read. */
-    private static final SourceConstructOrigin UNWRITTEN = SourceConstructOrigin.unwritten();
+    /** These calls are this fixture's own: no source wrote the name or the application, and a
+     *  written one would be a number this fixture invented, standing for something in a file nobody
+     *  read. */
+    private static final ReferenceOrigin NAME = new FixtureReferenceOrigin(0);
+
+    /** And the application is composed for the same reason. */
+    private static final ApplicationOrigin COMPOSED = new ApplicationOrigin.ComposedFixture();
 
     /** A call to {@code operation} over {@code args}, answering {@code type}. */
     public static Core.PreservedCall to(ValueName.Stdlib.Operation operation, List<Core> args,
                                         Type type, SourcePos pos) {
-        return new Core.PreservedCall(declared(operation), args, UNWRITTEN, type, pos);
+        return new Core.PreservedCall(declared(operation), args, NAME, COMPOSED,type, pos);
     }
 
     /**
@@ -61,7 +66,7 @@ public final class KeptCalls {
             args.add(new Core.Read("arg" + i, new BindingId(OWNER, i), signature.params().get(i),
                     pos));
         }
-        return new Core.PreservedCall(signature.declaring(), args, UNWRITTEN, signature.result(),
+        return new Core.PreservedCall(signature.declaring(), args, NAME, COMPOSED,signature.result(),
                 pos);
     }
 

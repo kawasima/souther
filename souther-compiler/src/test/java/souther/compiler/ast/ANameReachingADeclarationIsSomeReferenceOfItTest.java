@@ -2,7 +2,7 @@ package souther.compiler.ast;
 
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingOwner;
-import souther.compiler.types.DerivationCause;
+import souther.compiler.types.ReferenceDerivationCause;
 import souther.compiler.types.DerivedReferenceOrigin;
 import souther.compiler.types.FixtureReferenceOrigin;
 import souther.compiler.types.ReachName;
@@ -65,7 +65,7 @@ class ANameReachingADeclarationIsSomeReferenceOfItTest {
     @Test
     void aNameReachingADeclarationMayCarryAReferenceAPassDerived() {
         DerivedReferenceOrigin derived = new DerivedReferenceOrigin(
-                new DerivationCause.CollectionLiteral(SourceConstructOrigin.written(
+                new ReferenceDerivationCause.CollectionLiteral(SourceConstructOrigin.written(
                         new WrittenOwner.Body("demo", "b"), 0, SourceConstruct.COLLECTION_LITERAL)),
                 0);
 
@@ -112,7 +112,7 @@ class ANameReachingADeclarationIsSomeReferenceOfItTest {
     @Test
     void aCauseDerivedFromASourceRefusesAConstructNoSourceWrote() {
         IllegalArgumentException nothingBehindIt = assertThrows(IllegalArgumentException.class,
-                () -> new DerivationCause.CollectionLiteral(SourceConstructOrigin.unwritten()));
+                () -> new ReferenceDerivationCause.CollectionLiteral(SourceConstructOrigin.unwritten()));
 
         assertEquals(true, nothingBehindIt.getMessage().contains("collection"),
                 nothingBehindIt.getMessage());

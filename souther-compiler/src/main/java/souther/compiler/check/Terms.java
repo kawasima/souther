@@ -2,8 +2,10 @@ package souther.compiler.check;
 
 import souther.compiler.semantics.Accumulation;
 import souther.compiler.semantics.NumericResult;
+import souther.compiler.types.ApplicationDerivationCause;
+import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.BinOp;
-import souther.compiler.types.DerivationCause;
+import souther.compiler.types.ReferenceDerivationCause;
 import souther.compiler.types.DerivedReferenceOrigin;
 import souther.compiler.ast.Hir;
 import souther.compiler.types.SourceConstructOrigin;
@@ -2704,10 +2706,19 @@ final class Terms {
                 List<Hir.Expr> args = written(call.args(), at, given);
                 // The operation is named again here because the name the author wrote is gone by
                 // now, and the application they wrote is what made that necessary.
+                // Both occurrences are this writing's, and each is derived from the one it stands
+                // for. Written out from whatever the kept call was — one the author wrote, the
+                // application inside a block a name was expanded into, one composed — because
+                // writing a call out again is the same act over any of them, and reading which kind
+                // it was would be this pass deciding something about a tree it did not build.
                 yield args == null ? null
                         : Hir.Apply.synthetic(call.operation().name(), reachOf(call.operation()),
                                 new DerivedReferenceOrigin(
-                                        new DerivationCause.ApplicationWrittenBack(call.origin()), 0),
+                                        new ReferenceDerivationCause.ReferenceWrittenBack(
+                                                call.reference()), 0),
+                                new ApplicationOrigin.Derived(
+                                        new ApplicationDerivationCause.ApplicationWrittenBack(
+                                                call.application()), 0),
                                 args, call.pos(), null);
             }
             // A temporal is written as a literal with its text spelled out (spec
@@ -2723,9 +2734,14 @@ final class Terms {
             case Core.Temporal t -> {
                 ValueName.Stdlib.Namespace namespace =
                         ValueName.Stdlib.namespace(t.kind().shown());
-                // A namespace is not a declaration, so there is no reference of one to be.
+                // A namespace is not a declaration, so there is no reference of one to be. The
+                // application is this writing's, derived from the construction the value was folded
+                // from — whichever kind that was.
                 yield Hir.Apply.synthetic(namespace.qualified(),
                         new ReachName.TheNamespace(namespace), null,
+                        new ApplicationOrigin.Derived(
+                                new ApplicationDerivationCause.ApplicationWrittenBack(
+                                        t.application()), 0),
                         List.of(new Hir.StringLit(t.text(), t.pos(), null)), t.pos(), null);
             }
             // A case of an enumeration is written by naming it, so the value is the name.

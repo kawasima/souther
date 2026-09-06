@@ -17,9 +17,11 @@ import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
-import souther.compiler.types.DerivationCause;
+import souther.compiler.types.ApplicationDerivationCause;
+import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.DerivedReferenceOrigin;
-import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.ReferenceDerivationCause;
+import souther.compiler.types.ReferenceOrigin;
 import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
@@ -236,7 +238,7 @@ public final class Elaborator {
                 // the reference where the reference is written, so nothing downstream of this has
                 // to learn that a name can stand for one.
                 case ValueName.Helper _ when ctx.preserved().valueKept(v.denotes()) != null ->
-                        keptValue(ctx.preserved().valueKept(v.denotes()), v.pos());
+                        keptValue(ctx.preserved().valueKept(v.denotes()), v.origin(), v.pos());
                 default -> throw notAValue(v, env);
             };
             case Hir.FieldAccess fa -> elaborateFieldAccess(fa, env, ctx);
@@ -457,7 +459,10 @@ public final class Elaborator {
         // empty one below is the same first thing, the two being the two ways one row is read.
         return Hir.Apply.synthetic(collection + ".fromList",
                 new souther.compiler.types.ReachName.OfLibrary(fromList),
-                new DerivedReferenceOrigin(new DerivationCause.CollectionLiteral(row.origin()), 0),
+                new DerivedReferenceOrigin(
+                        new ReferenceDerivationCause.CollectionLiteral(row.origin()), 0),
+                new ApplicationOrigin.Derived(
+                        new ApplicationDerivationCause.CollectionLiteral(row.origin()), 0),
                 List.of(written), row.pos(), row.region());
     }
 
@@ -471,7 +476,8 @@ public final class Elaborator {
         // write — the first thing that collection derived, as the filled one is.
         return Hir.Var.respelled(collection + ".empty",
                 new souther.compiler.types.ReachName.OfLibrary(empty),
-                new DerivedReferenceOrigin(new DerivationCause.CollectionLiteral(row.origin()), 0),
+                new DerivedReferenceOrigin(
+                        new ReferenceDerivationCause.CollectionLiteral(row.origin()), 0),
                 row.pos(), row.region());
     }
 
@@ -1511,12 +1517,16 @@ public final class Elaborator {
      * and is held to it the same way. Nothing about this node says it came from a name rather than
      * from a call, because nothing downstream asks.
      */
-    private static Core keptValue(CompleteSignature settled, SourcePos pos) {
+    private static Core keptValue(CompleteSignature settled, ReferenceOrigin reference,
+                                  SourcePos pos) {
         // A name read where a value goes, and no application was written over it. What it is built
-        // as is a call; what an author wrote there is a name, so there is no application of this
-        // source for it to be.
-        return new Core.PreservedCall(settled.declaring(), List.of(),
-                SourceConstructOrigin.unwritten(), settled.result(), pos);
+        // as is a call, and that call is this reading's: nobody applied anything there, so it is
+        // derived from the name that was written rather than being an application of a source. The
+        // reference is that name's and is carried, not made again.
+        return new Core.PreservedCall(settled.declaring(), List.of(), reference,
+                new ApplicationOrigin.Derived(
+                        new ApplicationDerivationCause.NameReadAsAValue(reference), 0),
+                settled.result(), pos);
     }
 
     /**
