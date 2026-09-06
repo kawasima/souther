@@ -42,6 +42,37 @@ public sealed interface ApplicationOrigin {
     }
 
     /**
+     * What an application composed out of {@code from} says about where it came from, given how
+     * this composer would name a cause.
+     *
+     * <p>The one place the question is put. A pass that composes an application out of another —
+     * writing a call back out of a checked value, reading a comparison as the size it means — has
+     * the same three cases to answer, and answering them apiece is how one reader comes to answer
+     * differently from the next: one told the three apart and one asked only whether it had an
+     * identity, so a composed fixture arrived as a term with nothing behind it.
+     *
+     * <p>The cases, and why each is what it is. An application that can be told from every other of
+     * its kind is what a derivation is derived from, so it is one. One composed for a fixture is not
+     * a derivation of anything — two of them carry the same answer, and a derivation of one would
+     * equal a derivation of the other while claiming to be its own occurrence — so what comes out of
+     * a composed thing is another composed thing. And a term with its places taken out
+     * ({@link souther.compiler.core.Core#withoutItsPlace}) says nothing about where it came from,
+     * so neither does this: what is composed out of it says as little as it does.
+     *
+     * <p>Which is separate from what the composed thing <em>means</em>. Every case comes out with
+     * the same meaning; they differ only in how much can be said about where it came from.
+     */
+    static ApplicationOrigin composedOutOf(
+            ApplicationOrigin from,
+            java.util.function.Function<Identified, ApplicationDerivationCause> cause) {
+        return switch (from) {
+            case Identified identified -> new Derived(cause.apply(identified), 0);
+            case ComposedFixture _ -> new ComposedFixture();
+            case null -> null;
+        };
+    }
+
+    /**
      * An application the author wrote.
      *
      * <p>The construct, which every application takes when it is read

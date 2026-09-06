@@ -447,6 +447,15 @@ public sealed interface Core {
         // term to write back out.
 
         public PreservedCall {
+            // One state or the other and never half of one. What a call applies and why it is here
+            // are dropped together where a term's places are taken out, and are wanted together by
+            // every reader that composes something out of this — so a call carrying one of them
+            // alone is a call no producer makes and no reader can read, and the first reader to
+            // meet one would be reporting somebody else's mistake.
+            if ((reference == null) != (application == null)) {
+                throw new IllegalArgumentException(
+                        "a call carries what it applies and why it is here together: " + declared);
+            }
             // Taken over rather than borrowed. Checking a list the caller goes on holding says what
             // was true when the call was built, and every reader below reads the call afterwards —
             // a pass that kept the list it handed over could put another argument in it and leave a

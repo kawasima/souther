@@ -83,6 +83,23 @@ class ANormalizedTermStatesWhatTheTermItCameFromStatesTest {
     }
 
     /**
+     * And read off a value the generator composed, it stays composed.
+     *
+     * <p>Composed is not the same answer as saying nothing. A fixture's call carries why it is
+     * there, and turning that into a term with nothing behind it would say a normalization had
+     * happened where none did — which is what a reader telling only "does this have an identity"
+     * from "which of the three is it" comes to.
+     */
+    @Test
+    void andAValueTheGeneratorComposedStaysComposed() {
+        Core stated = Conditions.asSizeComparison(emptiness());
+
+        Core.Binary compared = assertInstanceOf(Core.Binary.class, stated);
+        Core.PreservedCall size = assertInstanceOf(Core.PreservedCall.class, compared.left());
+        assertInstanceOf(ApplicationOrigin.ComposedFixture.class, size.application());
+    }
+
+    /**
      * And the two come to one term once the places are out of both, which is what taking them out
      * is for: a caller reading a normalized contract must reach the value it would have reached
      * from the term that contract was normalized from.

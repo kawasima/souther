@@ -6,7 +6,7 @@ import souther.compiler.types.ApplicationDerivationCause;
 import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.BinOp;
 import souther.compiler.types.ReferenceDerivationCause;
-import souther.compiler.types.DerivedReferenceOrigin;
+import souther.compiler.types.ReferenceOrigin;
 import souther.compiler.ast.Hir;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.numeric.Endpoint;
@@ -2681,18 +2681,17 @@ final class Terms {
      * composed thing is another composed thing, and it says so.
      */
     private static ApplicationOrigin writtenBackFrom(ApplicationOrigin folded) {
-        return switch (folded) {
-            case ApplicationOrigin.Identified identified ->
-                    new ApplicationOrigin.Derived(
-                            new ApplicationDerivationCause.ApplicationWrittenBack(identified), 0);
-            case ApplicationOrigin.ComposedFixture _ -> new ApplicationOrigin.ComposedFixture();
+        ApplicationOrigin written = ApplicationOrigin.composedOutOf(folded,
+                ApplicationDerivationCause.ApplicationWrittenBack::new);
+        if (written == null) {
             // A term with its places taken out says nothing about where it came from, and what is
             // written out of one is reached only where every part of it could be written — which is
-            // where the call still carries what it applies. Said rather than left to a reader
-            // meeting a bare absence further down.
-            case null -> throw new IllegalStateException(
+            // where the call still carries what it applies. Said here rather than left to the tree
+            // this builds, which refuses an application with no reason to be.
+            throw new IllegalStateException(
                     "a term with its places taken out was written back out as a construction");
-        };
+        }
+        return written;
     }
 
     /** {@code given} with {@code li}'s binder standing for what it was given. */
@@ -2738,9 +2737,8 @@ final class Terms {
                 // are this writing's, and each is said by what it stands for.
                 yield args == null ? null
                         : Hir.Apply.synthetic(call.operation().name(), reachOf(call.operation()),
-                                new DerivedReferenceOrigin(
-                                        new ReferenceDerivationCause.ReferenceWrittenBack(
-                                                call.reference()), 0),
+                                ReferenceOrigin.composedOutOf(call.reference(),
+                                        ReferenceDerivationCause.ReferenceWrittenBack::new),
                                 writtenBackFrom(call.application()), args, call.pos(), null);
             }
             // A temporal is written as a literal with its text spelled out (spec

@@ -30,4 +30,23 @@ package souther.compiler.types;
  */
 public sealed interface ReferenceOrigin
         permits SourceReferenceOrigin, DerivedReferenceOrigin, FixtureReferenceOrigin {
+
+    /**
+     * What a reference composed out of {@code from} says about where it came from, given how this
+     * composer would name a cause.
+     *
+     * <p>The one place the question is put, for the reason
+     * {@link ApplicationOrigin#composedOutOf} is: a pass composing a name out of another has the
+     * same cases to answer wherever it does it, and answering them apiece is how two readers come
+     * to answer differently.
+     *
+     * <p>Two cases and not three, because every reference can be told from every other of its kind
+     * — an author's, one a pass derived, one a run composed. What is left is the term with its
+     * places taken out, which carries none and out of which nothing can be said.
+     */
+    static ReferenceOrigin composedOutOf(
+            ReferenceOrigin from,
+            java.util.function.Function<ReferenceOrigin, ReferenceDerivationCause> cause) {
+        return from == null ? null : new DerivedReferenceOrigin(cause.apply(from), 0);
+    }
 }

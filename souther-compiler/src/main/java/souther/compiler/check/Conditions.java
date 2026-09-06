@@ -10,8 +10,8 @@ import souther.compiler.semantics.ResultRange;
 import souther.compiler.types.ApplicationDerivationCause;
 import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.BinOp;
-import souther.compiler.types.DerivedReferenceOrigin;
 import souther.compiler.types.ReferenceDerivationCause;
+import souther.compiler.types.ReferenceOrigin;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.Type;
 
@@ -362,17 +362,12 @@ final class Conditions {
             // meaning away from the reader for the sake of an identity it never asked for. A
             // normalized term is read as a normalized one: the size is a call of this pass's either
             // way, and it says as much about where it came from as the term it was read off does.
-            Core size = call.application() instanceof ApplicationOrigin.Identified applied
-                    ? new Core.PreservedCall(means.size(), call.args(),
-                            new DerivedReferenceOrigin(
-                                    new ReferenceDerivationCause.SizeMeaningOfReference(
-                                            call.reference()), 0),
-                            new ApplicationOrigin.Derived(
-                                    new ApplicationDerivationCause.SizeMeaningOfApplication(applied),
-                                    0),
-                            Type.INT, call.pos())
-                    : new Core.PreservedCall(means.size(), call.args(), null, null, Type.INT,
-                            call.pos());
+            ApplicationOrigin application = ApplicationOrigin.composedOutOf(call.application(),
+                    ApplicationDerivationCause.SizeMeaningOfApplication::new);
+            Core size = new Core.PreservedCall(means.size(), call.args(),
+                    ReferenceOrigin.composedOutOf(call.reference(),
+                            ReferenceDerivationCause.SizeMeaningOfReference::new),
+                    application, Type.INT, call.pos());
             return new Core.Binary(BinOp.EQ, size, new Core.Int(0, Type.INT, call.pos()),
                     SourceConstructOrigin.unwritten(), Type.BOOL, call.pos());
         }
