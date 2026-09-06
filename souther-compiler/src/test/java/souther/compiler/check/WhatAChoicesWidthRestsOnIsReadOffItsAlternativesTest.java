@@ -43,6 +43,11 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
         return PlannedValues.at(VALUE, AdmittedPlan.of(ValueSet.allBut(A)));
     }
 
+    /** {@code other == A}. */
+    private static PlannedValues<FactSubject> otherIsA() {
+        return PlannedValues.at(OTHER, AdmittedPlan.of(ValueSet.just(A)));
+    }
+
     /** A rule this reading has no word for, naming the positions it is about. */
     private static PlannedValues<FactSubject> unread(Set<FactSubject> named) {
         return PlannedValues.unreadable(named, UnreadReason.FORM_NOT_READ);
@@ -129,18 +134,21 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
     }
 
     /**
-     * A position neither alternative is about is on neither, whatever they do to the one they are
-     * about.
+     * The width is asked at each position on its own, and a branch answerable for one is not
+     * answerable for the next.
      *
-     * <p>It holds every value with or without either of them, so no alternative is why the choice
-     * says nothing there. Asked over the positions either branch narrowed, it is never asked at
-     * all.
+     * <p>Two alternatives that narrow one position apart and another alike: dropping either leaves
+     * the first wider than it was and the second exactly where it was. Answered for the branch
+     * rather than for each of its positions, a branch that is why a choice is wide anywhere would
+     * be why it is wide everywhere it spoke.
      */
     @Test
-    void aPositionNeitherAlternativeIsAboutIsOnNeither() {
-        Settlement.WidthDependency width = between(isA(), notA());
+    void aBranchAnswerableForOnePositionIsNotAnswerableForTheNext() {
+        Settlement.WidthDependency width = between(isA().meet(otherIsA()),
+                notA().meet(otherIsA()));
 
-        assertEquals(Set.of(VALUE), width.onLeft(), "the position they are about is on both");
+        assertEquals(Set.of(VALUE), width.onLeft(),
+                "other is A under either alternative, so neither is why the choice leaves it so");
         assertEquals(Set.of(VALUE), width.onRight());
     }
 
