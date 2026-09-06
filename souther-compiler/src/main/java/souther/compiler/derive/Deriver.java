@@ -45,15 +45,20 @@ public final class Deriver {
     }
 
     /**
-     * The boundary representation of {@code d}, or null where its fields do not all name a type.
+     * The boundary representation of {@code d}, or null where a field of it carries, anywhere in
+     * its type, a type nobody could name.
      *
      * <p>Null and not a report. A field whose type nobody could name was reported where the name is
      * written, and saying it again here would say the same thing twice; what a caller does with the
      * absence is answer nothing about the declaration, which is what a module holding one is worth.
+     * Anywhere in the type, because the walk below reaches every position of it and would report
+     * the unnamed part as a type with no representation — which it is not; it is a type with no
+     * name, already said.
      */
     public static Codecs derive(Hir.Data d, Symbols symbols) {
         Map<String, Type> fields = TypeOps.fieldTypes(d, symbols);
-        if (fields.values().stream().anyMatch(t -> t instanceof Type.Erroneous)) {
+        if (fields.values().stream()
+                .anyMatch(t -> Type.mentions(t, inside -> inside instanceof Type.Erroneous))) {
             return null;
         }
         // One walk decides what each field carries, and the decoder and the encoder are both lowered
