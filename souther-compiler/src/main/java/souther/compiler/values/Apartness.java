@@ -87,42 +87,6 @@ public final class Apartness<A> {
      */
     private static final int MOST_EDGES_HELD = 5000;
 
-    /**
-     * And how many assignments a relation may have for one of them to be looked for.
-     *
-     * <p>Every block's values against every other's, which is what a search for an assignment
-     * reaches at most one of per branch it takes to the end. Read off the values before any of them
-     * are tried, so that whether a relation is answered is a fact about the relation and not about
-     * where the search happened to start — the same reason the two figures above are about the
-     * shape rather than about a walk.
-     *
-     * <p>Bounding the assignments and not the blocks, because that is what the work is. A relation
-     * of many blocks each holding a handful of values is a large search and one of two blocks
-     * holding many values is not, and how many blocks there are tells the two apart the wrong way
-     * round.
-     *
-     * <p>What it comes to. Every branch the search takes is one assignment, and it stands on a
-     * block of that assignment at each step — so what it does is this many assignments times how
-     * many blocks there are, and not twice this many: a block left one value is a step the search
-     * takes all the same, so the branches are not all two ways. That holds one relation to a
-     * fraction of a second whatever shape it is. Measured on the shapes that are actually hard — a
-     * relation with no three blocks all stated to differ that three values are still not enough for
-     * — it is a few milliseconds, so what this figure bounds is the case nobody has built rather
-     * than the ones there are.
-     *
-     * <p>Read off what the rules leave and not off what they started from. Taking away the values
-     * one-valued blocks hold makes the search smaller, so a relation that would be past this figure
-     * as written may be inside it once that has run — and what a reading may still be asked is a
-     * question about what it holds now. Which does not put the answer back on the order the rules
-     * were written in: taking values away runs to a fixpoint, and where it stops is the same
-     * whichever block it started at.
-     *
-     * <p>Read the other way it is what a declaration may ask for: ten positions over a sum of four
-     * cases, or twenty over two. A position count and a carrier past that is a relation this says
-     * nothing about.
-     */
-    private static final long MOST_ASSIGNMENTS = 1L << 20;
-
     /** In the order they were stated, so that what is written out of a reading comes out the same
      *  on two compiles of one model. */
     private final Set<Edge<A>> edges;
@@ -579,9 +543,12 @@ public final class Apartness<A> {
             return new Reduction.NotKnown<>();
         }
         TellingApart<A> over = TellingApart.over(mayHold, this::apartFrom);
+        // The blocks the search was over, asked of the search. Read off what was handed to it
+        // instead, this would be the same set worked out twice, and the day the two differ is the
+        // day a lack names blocks nothing was looked for over.
         return over.isSatisfiable() ? found
                 : new Reduction.Nothing<>(
-                        new RelationalWitness.NoAssignmentTellsThemApart<>(mayHold.keySet()));
+                        new RelationalWitness.NoAssignmentTellsThemApart<>(over.blocks()));
     }
 
     /**

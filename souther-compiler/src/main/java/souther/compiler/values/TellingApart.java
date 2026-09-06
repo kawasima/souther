@@ -103,7 +103,19 @@ final class TellingApart<A> {
      * How many assignments there may be for one of them to be looked for.
      *
      * <p>Every block's values against every other's, which the search reaches at most one of per
-     * branch it takes to the end.
+     * branch it takes to the end. Every branch stands on a block of that assignment at each step,
+     * so what the search does is this many assignments times how many blocks there are — and not
+     * twice this many, since a block left one value is a step it takes all the same and its
+     * branches are not all two ways. Which is why the figure below is beside this one.
+     *
+     * <p>That holds one relation to a fraction of a second whatever shape it is. Measured on the
+     * shapes that are actually hard — a relation with no three blocks all stated to differ that
+     * three values are still not enough for — it is a few milliseconds, so what this bounds is the
+     * case nobody has built rather than the ones there are.
+     *
+     * <p>Read the other way it is what a declaration may ask for: ten positions over a sum of four
+     * cases, or twenty over two. A relation of more positions over a larger carrier is one this
+     * says nothing about.
      */
     private static final long MOST_ASSIGNMENTS = 1L << 20;
 
