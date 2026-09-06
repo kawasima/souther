@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -82,7 +83,7 @@ class AnArchiveIsWrittenByACompileAndReadByTheNextOneIT {
         builder.environment().putAll(environment);
         builder.redirectErrorStream(true);
         Process process = builder.start();
-        String said = new String(process.getInputStream().readAllBytes());
+        String said = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         int status = process.waitFor();
         assertFalse(said.contains("Error occurred during initialization of VM"), said);
         return status;

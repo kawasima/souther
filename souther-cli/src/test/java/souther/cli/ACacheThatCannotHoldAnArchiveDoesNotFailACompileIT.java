@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -51,7 +52,7 @@ class ACacheThatCannotHoldAnArchiveDoesNotFailACompileIT {
         builder.environment().put("XDG_CACHE_HOME", cache.toString());
         builder.redirectErrorStream(true);
         Process process = builder.start();
-        String said = new String(process.getInputStream().readAllBytes());
+        String said = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
 
         assertEquals(0, process.waitFor(), "the compile is what the run is judged by: " + said);
         assertTrue(Files.isRegularFile(out.resolve("trip").resolve("Draft.class")),
