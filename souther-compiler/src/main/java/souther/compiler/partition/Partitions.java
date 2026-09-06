@@ -140,7 +140,8 @@ public final class Partitions {
         }
 
         /**
-         * The measures made of those locations, in the order the rules name the numbers.
+         * The measures made of those locations, location by location and in the order each of them
+         * settled.
          *
          * <p>For a reader whose question is about a number. Which location a measure is of is
          * where the measure sits, so a reader that needs the location asks {@link #measurements()}
