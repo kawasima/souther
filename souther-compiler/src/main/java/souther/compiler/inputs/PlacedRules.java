@@ -10,7 +10,6 @@ import souther.compiler.check.Owed;
 import souther.compiler.check.Requirement;
 import souther.compiler.check.RuleAccounting;
 import souther.compiler.check.RuleCitation;
-import souther.compiler.check.RuleRef;
 import souther.compiler.check.ProjectionEvidence;
 import souther.compiler.check.Rules;
 import souther.compiler.check.Shape;
@@ -148,9 +147,9 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
         // Rule by rule, and every question each of them raised. What a reading holds afterwards is
         // what the rules came to together — a field two clauses narrow is one narrowed field — so an
         // account taken from there is one either clause can go missing from with nothing to see.
-        bounds().accounting().forEach((rule, accounting) ->
+        bounds().accounting().values().forEach(accounting ->
                 accounting.answers().keySet().forEach(owed ->
-                        out.add(PlacementSeed.of(root, owed, rule, accounting.cited()))));
+                        out.add(PlacementSeed.of(root, owed, accounting.cited()))));
         return List.copyOf(out);
     }
 
@@ -326,11 +325,11 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
             return List.of();
         }
         List<RuleUnclassifiedAt> out = new ArrayList<>();
-        bounds().accounting().forEach((rule, accounting) ->
+        bounds().accounting().values().forEach(accounting ->
                 accounting.undetermined().stream()
                         .filter(each -> each.at().equals(where))
-                        .forEach(each -> out.add(new RuleUnclassifiedAt(rule, accounting.cited(),
-                                each))));
+                        .forEach(each ->
+                                out.add(new RuleUnclassifiedAt(accounting.cited(), each))));
         TermPath above = alsoAt(path);
         if (above != null) {
             out.addAll(alsoReaching.outer().unclassified(above));
@@ -338,9 +337,9 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
         return List.copyOf(out);
     }
 
-    /** One rule, how a reader finds it, and one place its classification did not come out. */
-    record RuleUnclassifiedAt(RuleRef rule, RuleCitation cited,
-                              Requirement.BoundaryUndetermined at) {}
+    /** How a reader finds the rule, which says which rule it is, and one place its classification
+     *  did not come out. */
+    record RuleUnclassifiedAt(RuleCitation cited, Requirement.BoundaryUndetermined at) {}
 
     /**
      * How much of what the rules say the bounds at {@code path} are able to state.
@@ -502,6 +501,26 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
         return bounds().stated().stream()
                 .filter(each -> each.path().isTheValueItself())
                 .toList();
+    }
+
+    /**
+     * The same, and the moved ones beside them, for a reader asking about one position.
+     *
+     * <p><b>Whose ends these are is this reading's answer and not the asker's.</b> They are the
+     * ends of the value the reading is opened at, so at any other position they are ends of another
+     * value — and a reader that took them anyway would be holding the root's ends against the
+     * numbers of whatever it happened to be reading. That was a silent nothing while the only thing
+     * done with them was to keep the ones on the position's own number, and stops being one the
+     * moment somebody asks what became of each of them.
+     */
+    List<FieldDomains.Placed> ownEndsAt(TermPath path) {
+        RuleKey where = keyOf(path);
+        if (where == null || !where.isTheValueItself()) {
+            return List.of();
+        }
+        List<FieldDomains.Placed> out = new ArrayList<>(statedAtTheValue());
+        out.addAll(movedAtTheValue());
+        return List.copyOf(out);
     }
 
     /**

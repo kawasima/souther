@@ -9,7 +9,6 @@ import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.Rel;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.values.AdmissibleSet;
-import souther.compiler.values.ConjoinedAdmissibleValues;
 import souther.compiler.values.UnreadReason;
 import souther.compiler.values.ValueSet;
 
@@ -109,17 +108,17 @@ public final class FieldDomains {
      *  {@link #movedEnds}. */
     private volatile List<Placed> moved;
     /** What each clause reaching this value raises, keyed on the rule it is. */
-    private final Map<RuleRef, Required> raised;
+    private final Map<RuleRef.Invariant, Required> raised;
     /** The same per part of each clause. A reader that found one conjunct wanting names what that
      *  conjunct is about, and not what the conjunct written beside it raised. */
-    private final Map<RuleRef, Map<Core, Required>> raisedByPart;
+    private final Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart;
 
     /** What the reading answered for each boundary question it raised and left standing. */
     private final Map<BoundaryQuestion, BoundaryStanding> standing;
     /** Which readings took each clause in, as each of them said so. */
     private final ReadingEvidence took;
     /** The accounting, worked out once. Every name of a value asks the same question of it. */
-    private volatile Map<RuleRef, RuleAccounting> accounting;
+    private volatile Map<RuleRef.Invariant, RuleAccounting> accounting;
     /** Which declarations relate each coordinate to something else, and so could have moved where it
      * stops — see {@link #narrowedBy}. */
     private final Map<RuleKey, List<TypeSymbol.AtModule>> narrowers;
@@ -175,7 +174,7 @@ public final class FieldDomains {
     private final Map<RuleKey, Counted> countAt;
     /** What the reading that builds the bounds made of each part of each rule. Per part, because a
      *  rule is represented where every part of it is. */
-    private final Map<RuleRef, Map<Core, InvariantChecker.PartRead>> readBy;
+    private final Map<RuleRef.Invariant, Map<Core, InvariantChecker.PartRead>> readBy;
     /** How each atom's values are spaced, so that settling one afterwards states the same equality
      *  the reading would have stated for it. */
     private final Map<FactSubject, souther.compiler.numeric.Granularity> spacing;
@@ -189,8 +188,8 @@ public final class FieldDomains {
                          List<WithoutAnEnd> withoutAnEnd, List<AboutOneCoordinate> aboutOneCoordinate,
                          List<AboutOneCoordinate> aboutTheStrings,
                          PartsLeftOut withoutParts,
-                         Map<RuleRef, Required> raised,
-                         Map<RuleRef, Map<Core, Required>> raisedByPart,
+                         Map<RuleRef.Invariant, Required> raised,
+                         Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
                          Map<BoundaryQuestion, BoundaryStanding> standing, ReadingEvidence took,
                          Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
                          Map<RuleKey, Set<RulesMissed>> notGathered, Set<RuleKey> handedOn,
@@ -200,7 +199,7 @@ public final class FieldDomains {
                          Map<NumberAt<RuleKey>, Count> settled,
                          Set<RuleKey> unreadOfEveryValue,
                          Map<RuleKey, FactSubject> atomAt, Map<RuleKey, Counted> countAt,
-                         Map<RuleRef, Map<Core, InvariantChecker.PartRead>> readBy,
+                         Map<RuleRef.Invariant, Map<Core, InvariantChecker.PartRead>> readBy,
                          Map<FactSubject, souther.compiler.numeric.Granularity> spacing) {
         this.byName = byName;
         this.heldByName = heldByName;
@@ -379,68 +378,14 @@ public final class FieldDomains {
                 out.put(field, bounds);
             }
         });
-        // Which values may stand at each name, resolved onto names for the same reason the bounds
-        // are. Every one of them and not only the fields: what a name wraps is at no name of its
-        // own, and it is what a reader of a newtype asks about.
-        Map<RuleKey, ValueSet> admitted = new LinkedHashMap<>();
-        Map<RuleKey, List<UnreadReason>> unread = new LinkedHashMap<>();
-        Set<RuleKey> notSeparated = new LinkedHashSet<>();
-        // Every name that answers to either subject. A number is called one thing by the interval
-        // algebra and another by everything else, and the two are filed as they are found — so a
-        // reading keyed by one of the maps would leave a name held only by the other answering
-        // from a default, which is the widest thing there is to say and is said about a place a
-        // clause may well have narrowed.
-        Set<RuleKey> written = new LinkedHashSet<>(seeded.keys().keySet());
-        written.addAll(seeded.atoms().keySet());
-        written.forEach(field -> {
-            ConjoinedAdmissibleValues<FactSubject> values = seeded.constraints().values();
-            // Both subjects the name answers to, since a number has one of each and a clause
-            // reaching it is filed under whichever the reading recognised. Both are about the same
-            // values, so what holds of it is what both leave.
-            ValueSet here = ValueSet.ANY;
-            List<UnreadReason> why = new ArrayList<>();
-            // Asked of each subject the name answers to, as the values are. What the reading could
-            // not hold together is a fact about the subjects a choice reached across, and a name
-            // outside them is left where it was.
-            //
-            // Not asked at all where the reading admits nothing. What it holds there is not the
-            // relation's projections — those are empty wherever the relation is — but where the
-            // arithmetic had got to when it learned that no value of this type exists, so whether
-            // it is exact is a question about a projection nobody is being shown. And the answer
-            // owed about such a declaration is that it has no values, which is said elsewhere and
-            // is not made truer by a note about how the values were held.
-            boolean separated = true;
-            for (FactSubject name : named(seeded, field)) {
-                // Put together by what put the reading together, since that is the answer being
-                // built: the two subjects are two ways one name's rules were filed, and what they
-                // leave between them is the machine that name pays for. Where it could not be
-                // built, the set widens and says so in the same breath — which is the list below.
-                souther.compiler.values.Allowance.Composed made =
-                        values.sets().meet(values.blockOf(name), here, values.at(name));
-                here = made.set();
-                if (made.gaveUp()) {
-                    why.add(UnreadReason.EXACT_VALUES_TOO_COSTLY);
-                }
-                separated = separated && values.projectionExactAt(name);
-                // Every one of them. Two subjects of one name are two ways the same rules were
-                // filed, and a rule filed under one of them is not the rule filed under the other:
-                // an ordering the interval algebra knows the place by and a pattern the values
-                // reading knows it by stop this reading in two ways, and each is a rule of the
-                // author's to act on. Said once here — a limit met under both names is one limit.
-                values.whyUnread(name).forEach(each -> {
-                    if (!why.contains(each)) {
-                        why.add(each);
-                    }
-                });
-            }
-            admitted.put(field, here);
-            if (!why.isEmpty()) {
-                unread.put(field, List.copyOf(why));
-            }
-            if (!separated) {
-                notSeparated.add(field);
-            }
-        });
+        // Which values may stand at each name is read off the reading and not worked out here. What
+        // a name admits is the sets of the subjects it is filed under met, which takes a machine —
+        // and the purse that pays for it is the one the clauses were read under, which is the
+        // reading's and stays there.
+        //
+        // Every one of them and not only the fields: what a name wraps is at no name of its own,
+        // and it is what a reader of a newtype asks about.
+        //
         // Resolved here rather than handed over as atoms. An atom is a name the seeding gave a shape
         // and means nothing once the reading that named it is gone, so a caller holding one could
         // only ask the domain it came from — which is this one, while it is still here.
@@ -459,16 +404,12 @@ public final class FieldDomains {
         // Every subject a name answers to, filed under the name, in the order the value declares
         // them. A proof that names a place is settled by this order: read off a domain's own map,
         // the place named would be the one whose clause was read first.
-        //
-        // The order is the walk's, and the walk's is the declaration's. `written` is the keys
-        // followed by the atoms, and that is the keys: an atom is named from a body key, so a
-        // name with an atom has a key and the second pass adds nothing. A size has no key and
-        // is not one of these — it is a number taken of what stands at a name.
         SequencedMap<FactSubject, RuleKey> placeOf = new LinkedHashMap<>();
-        written.forEach(field ->
-                named(seeded, field).forEach(term -> placeOf.putIfAbsent(term, field)));
-        return new FieldDomains(Map.copyOf(out), Map.copyOf(holds), Map.copyOf(admitted),
-                Map.copyOf(unread), Set.copyOf(notSeparated), seeded.reading().directs(), seeded.reading().noLines(),
+        seeded.written().forEach(field ->
+                seeded.named(field).forEach(term -> placeOf.putIfAbsent(term, field)));
+        return new FieldDomains(Map.copyOf(out), Map.copyOf(holds), Map.copyOf(seeded.admitted()),
+                Map.copyOf(seeded.unreadAt()), Set.copyOf(seeded.notSeparated()),
+                seeded.reading().directs(), seeded.reading().noLines(),
                 seeded.reading().withoutAnEnd(), seeded.reading().aboutOneCoordinate(),
                 seeded.reading().aboutTheStrings(),
                 reach.withoutParts(),
@@ -891,7 +832,7 @@ public final class FieldDomains {
      * managed — the second is what a completeness written per reader amounts to, and it says the
      * model was read in full for exactly as long as nobody adds a reader.
      */
-    public Map<RuleRef, Required> required() {
+    public Map<RuleRef.Invariant, Required> required() {
         return raised;
     }
 
@@ -921,12 +862,12 @@ public final class FieldDomains {
      * first case and by the reading of values in the second — so a completeness read off either
      * reading alone reports a model that was read in full as one this compiler could not read.
      */
-    public Map<RuleRef, RuleAccounting> accounting() {
-        Map<RuleRef, RuleAccounting> had = accounting;
+    public Map<RuleRef.Invariant, RuleAccounting> accounting() {
+        Map<RuleRef.Invariant, RuleAccounting> had = accounting;
         if (had != null) {
             return had;
         }
-        Map<RuleRef, RuleAccounting> out = new LinkedHashMap<>();
+        Map<RuleRef.Invariant, RuleAccounting> out = new LinkedHashMap<>();
         raised.forEach((rule, required) ->
                 out.put(rule,
                         RuleAccounting.of(rule, required, owed -> answered(rule, owed))));
@@ -945,7 +886,7 @@ public final class FieldDomains {
      * here while the question was an obligation beside a subject and the pair admitted combinations
      * nothing raises.
      */
-    private RuleAccounting.Outcome answered(RuleRef rule, Owed owed) {
+    private RuleAccounting.Outcome answered(RuleRef.Invariant rule, Owed owed) {
         return switch (owed) {
             case Owed.AdmittedValues it -> admissionAnswered(rule, it.path());
             case Owed.Boundary it -> boundaryAnswered(rule, it.on());
@@ -973,7 +914,8 @@ public final class FieldDomains {
      * question's word depend on a table nobody had asked it of, and left every reader downstream
      * looking at a list where the model has one answer.
      */
-    private RuleAccounting.Outcome boundaryAnswered(RuleRef rule, NumberAt<RuleKey> where) {
+    private RuleAccounting.Outcome boundaryAnswered(RuleRef.Invariant rule,
+                                                    NumberAt<RuleKey> where) {
         BoundaryStanding said = rule instanceof RuleRef.Invariant invariant
                 ? standing.get(new BoundaryQuestion(invariant, where)) : null;
         return said == null
@@ -994,7 +936,7 @@ public final class FieldDomains {
      * clause beside it: {@code value >= 1} leaves the reading of values short at a name, and
      * {@code value == 7} written beside it was taken in whole.
      */
-    private RuleAccounting.Outcome admissionAnswered(RuleRef rule, RuleKey at) {
+    private RuleAccounting.Outcome admissionAnswered(RuleRef.Invariant rule, RuleKey at) {
         List<FactSubject> named = named(at);
         // A part of the rule nothing took in outranks everything else about it. An end placed by
         // one conjunct is not an account of the conjunct written beside it.
@@ -1041,7 +983,8 @@ public final class FieldDomains {
      * <p>Both empty is the accounting coming apart. The rule was met by the walk that asks and by
      * nothing that reads, and neither the rule nor the position has a word for it.
      */
-    private RuleAccounting.Why stoppedBy(RuleRef rule, RuleKey at, List<FactSubject> named) {
+    private RuleAccounting.Why stoppedBy(RuleRef.Invariant rule, RuleKey at,
+                                         List<FactSubject> named) {
         // What a rule is answerable for, as the facts it is answerable for. Asked for the reasons
         // alone here, the written places they were decided at would be gone one call before the
         // account that names the rule, and two facts about two clauses would arrive as one.
@@ -1667,21 +1610,6 @@ public final class FieldDomains {
         return true;
     }
 
-    /** Both subjects the name {@code path} answers to. A number has one of each and everything
-     * else has the second, and a clause is filed under whichever the reading recognised. */
-    private static List<FactSubject> named(InvariantChecker.Seeded seeded, RuleKey path) {
-        List<FactSubject> names = new ArrayList<>();
-        FactSubject atom = seeded.atoms().get(path);
-        if (atom != null) {
-            names.add(atom);
-        }
-        FactSubject key = seeded.keys().get(path);
-        if (key != null) {
-            names.add(key);
-        }
-        return names;
-    }
-
     /**
      * What stands at {@code path} can hold, with the declarations holding each end.
      *
@@ -1721,14 +1649,28 @@ public final class FieldDomains {
                 : "the algebra proved no rule of its own and this reading names none";
     }
 
+    /**
+     * A rule as a sort key, which is the author's word for it or what it is where they wrote none.
+     *
+     * <p>Spelled here because what it is for is here. Nobody is shown this: what a reader is sent to
+     * a rule by is a citation, which carries a place for the rules that have no name, and an order
+     * has no place to put one.
+     */
+    private static String orderOf(RuleRef rule) {
+        return switch (rule) {
+            case RuleRef.Named it -> it.citedName();
+            case RuleRef.Written it -> "the " + it.whatItIs();
+        };
+    }
+
     /** What a cause is filed under, so that two runs print them the same way round. */
     private static String orderOf(ProjectionEvidence.Cause cause) {
         return switch (cause) {
             case ProjectionEvidence.Cause.Unavailable it -> "1 " + it.path();
             case ProjectionEvidence.Cause.Unrepresented it ->
-                    "2 " + it.rule().named() + " " + it.path();
+                    "2 " + orderOf(it.rule()) + " " + it.path();
             case ProjectionEvidence.Cause.Lossy it ->
-                    "3 " + it.rule().named() + " " + it.atom() + " " + it.unstated();
+                    "3 " + orderOf(it.rule()) + " " + it.atom() + " " + it.unstated();
             case ProjectionEvidence.Cause.Rounded it -> "4 " + it.atom();
             case ProjectionEvidence.Cause.NothingIsLeft _ -> "5";
             case ProjectionEvidence.Cause.PositionsSpacedDifferently _ -> "6";

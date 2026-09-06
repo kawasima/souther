@@ -36,13 +36,31 @@ import java.util.List;
  *                   about that conjunct — kept here because asking it again afterwards is a second
  *                   reader, and the two agree only until somebody changes one of them
  */
-record TypeGuarantee(RuleRef.Invariant rule, Core clause, List<Clauses.StatedPart> written,
+record TypeGuarantee(Core clause, List<Clauses.StatedPart> written,
                      Predicates.Owed owed, List<Quantified> quantified, List<Part> parts) {
 
     TypeGuarantee {
+        if (written.isEmpty()) {
+            throw new IllegalArgumentException("a clause guarantees what its parts guarantee");
+        }
         written = List.copyOf(written);
         quantified = List.copyOf(quantified);
         parts = List.copyOf(parts);
+    }
+
+    /**
+     * Which rule of the model this is, read off the parts the clause was written in.
+     *
+     * <p>Every part of a clause is a part of that clause, so the rule is the parts' answer and not
+     * a second thing to carry: held beside them, a guarantee about one rule could be built about
+     * two.
+     */
+    RuleRef.Invariant rule() {
+        if (written.get(0).id().rule() instanceof RuleRef.Invariant it) {
+            return it;
+        }
+        throw new IllegalStateException("a declaration's own clause guarantees this, and "
+                + written.get(0).id().rule() + " is not one");
     }
 
     /** What one part of a clause came to, beside the part it was read from. */

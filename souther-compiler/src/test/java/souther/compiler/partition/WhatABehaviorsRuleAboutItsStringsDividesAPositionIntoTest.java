@@ -86,7 +86,7 @@ class WhatABehaviorsRuleAboutItsStringsDividesAPositionIntoTest {
 
         assertEquals(List.of(), read.blocked(), "both rules divide the position");
         assertEquals(2, read.statements().size(), "and each of them is a division of it");
-        assertEquals(1, read.statements().stream().map(PartitionEvidence::at).distinct().count(),
+        assertEquals(1, read.statements().stream().map(RuleEvidence::at).distinct().count(),
                 "of the one position both are written about");
     }
 
@@ -133,7 +133,7 @@ class WhatABehaviorsRuleAboutItsStringsDividesAPositionIntoTest {
 
         assertEquals(List.of(), read.blocked(), "both rules divide the position");
         assertEquals(2, read.statements().size(), "and each of them is a division of it");
-        assertEquals(1, read.statements().stream().map(PartitionEvidence::at).distinct().count(),
+        assertEquals(1, read.statements().stream().map(RuleEvidence::at).distinct().count(),
                 "of the one position both are written about");
     }
 
@@ -291,7 +291,7 @@ class WhatABehaviorsRuleAboutItsStringsDividesAPositionIntoTest {
                 // A position whose own declarations leave it a language, which is what an
                 // `invariant String.matches(...)` leaves. Meeting a rule with it is machine work,
                 // and that is the work this allowance cannot afford.
-                ((PartitionEvidence.BySet) read.statements().get(0)).states().whenTrue(),
+                ((RuleEvidence.BySet) read.statements().get(0)).states().whenTrue(),
                 spent, place -> null);
 
         assertInstanceOf(Classing.Classed.NotComposed.class, answered.classed(),
@@ -304,7 +304,7 @@ class WhatABehaviorsRuleAboutItsStringsDividesAPositionIntoTest {
     /** The one division the model under test states. */
     private static SetStatement divisionIn(BehaviorSetStatements.Read read) {
         assertEquals(1, read.statements().size(), "the model under test states one division");
-        return ((PartitionEvidence.BySet) read.statements().get(0)).states();
+        return ((RuleEvidence.BySet) read.statements().get(0)).states();
     }
 
     private static BehaviorSetStatements.Read readingsOf(String behavior) {

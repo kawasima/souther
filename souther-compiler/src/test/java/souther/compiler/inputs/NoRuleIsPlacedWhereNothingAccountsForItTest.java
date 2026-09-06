@@ -114,7 +114,8 @@ class NoRuleIsPlacedWhereNothingAccountsForItTest {
     @Test
     void everyRuleThatPlacedAnEndIsInTheAccount() throws Exception {
         for (PlacedRules rules : everyValueRead()) {
-            java.util.Set<souther.compiler.check.RuleRef> counted = rules.bounds().accounting().keySet();
+            java.util.Set<souther.compiler.check.RuleRef.Invariant> counted =
+                    rules.bounds().accounting().keySet();
             for (souther.compiler.check.FieldDomains.Placed each : rules.bounds().placed()) {
                 assertTrue(counted.contains(each.part().rule()),
                         () -> "`" + each.part().rule() + "` placed an end at " + each.path()

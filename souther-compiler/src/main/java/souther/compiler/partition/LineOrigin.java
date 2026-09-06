@@ -18,8 +18,8 @@ import java.util.List;
  * the rule placed on the values either side of what it wrote, which of its lines this is, which
  * point a row against it stands at, what a declaration is owed for it. So a rule that divides a
  * position without drawing a line is not one of these — it is the other kind of reading a piece of
- * partition evidence carries ({@link PredicateOrigin}), and what the two share is identity alone
- * ({@link PartitionEvidenceOrigin}). Named for neither, this type was one a predicate looked as
+ * rule evidence carries ({@link PredicateOrigin}), and what the two share is identity alone
+ * ({@link RuleEvidenceOrigin}). Named for neither, this type was one a predicate looked as
  * though it belonged in, and putting one here would have made the line's answers total over a
  * reading that has no line.
  *
@@ -40,7 +40,7 @@ import java.util.List;
  * they merge into one partition while staying separate obligations. Reaching the boundary through one
  * guard says nothing about the other.
  */
-public sealed interface LineOrigin extends PartitionEvidenceOrigin {
+public sealed interface LineOrigin extends RuleEvidenceOrigin {
 
     /**
      * A clause of a {@code data}'s invariant, as the clause it is.
@@ -117,28 +117,39 @@ public sealed interface LineOrigin extends PartitionEvidenceOrigin {
      * comparison is not modelled, because no measure asks it: a row meets the line by lighting the
      * comparison's own probe.
      *
-     * @param rule  which comparison, which is the rule and the whole of it
-     * @param read  which reading of that rule this is, and where it was met
+     * @param read  which comparison this is, which reading of it, and where it was met
      * @param facts what the rule placed on the values ({@link souther.compiler.check.ComparisonClaim
      *              ComparisonClaim}), which decides which neighbour is the other class's edge:
      *              {@code <= 3000} leaves 3001 over there, {@code < 3000} leaves 2999
      */
-    record ComparisonOrigin(RuleRef.Comparison rule, Read read, LineFacts facts)
-            implements LineOrigin {
+    record ComparisonOrigin(Read read, LineFacts facts) implements LineOrigin {
 
         public ComparisonOrigin {
-            if (facts == null) {
+            if (read == null || facts == null) {
                 throw new IllegalArgumentException("a line is what some comparison placed");
             }
         }
 
         /**
-         * Which reading of the comparison this is, and where that reading was.
+         * Which comparison of the model this reads.
          *
-         * <p>None of it tells one rule from another. A comparison inside a non-recursive helper is
-         * read once per call of that helper, so one comparison the author wrote arrives as several
-         * of these — each a real occurrence, each measured on its own, and all of them the same
-         * rule.
+         * <p>Through the handle the reading holds and not beside it. A rule and how a reader is sent
+         * to it are one answer, and kept as two they could be built about two comparisons — which
+         * would put an identity and a sentence about different rules in one entry of a document
+         * ({@link souther.compiler.check.RuleCitation}).
+         */
+        @Override
+        public RuleRef.Comparison rule() {
+            return read.rule();
+        }
+
+        /**
+         * Which comparison this reads, which reading of it this is, and where that reading was.
+         *
+         * <p>Only the handle tells one rule from another. A comparison inside a non-recursive helper
+         * is read once per call of that helper, so one comparison the author wrote arrives as
+         * several of these — each a real occurrence, each measured on its own, and all of them the
+         * same rule, which is the one {@code written} names.
          *
          * <p>No fork. What a row met the line by is getting the comparison to answer, and the
          * comparison is where that is recorded — so the arms of the {@code if} standing round it
@@ -152,10 +163,12 @@ public sealed interface LineOrigin extends PartitionEvidenceOrigin {
          *              {@code B} false and rows that never reached {@code B}. The comparison and not
          *              the number it is instrumented under — two readers agreeing that they mean one
          *              place should not come down to their having been handed the same int
-         * @param written how a reader finds the rule, which is where it is written. The
-         *              comparison's own place and not the fork's — a condition holding three
-         *              comparisons is three rules, and a reader sent to the {@code if} is given one
-         *              handle for all of them
+         * @param rule which comparison of the model this is, which is the same value however many
+         *              times the comparison is read
+         * @param writtenAt where a reader finds it, which is where it is written. The comparison's
+         *              own place and not the fork's — a condition holding three comparisons is
+         *              three rules, and a reader sent to the {@code if} is given one handle for all
+         *              of them
          * @param recordedAt where a run through that comparison is written down. Beside the
          *              comparison and not instead of it: which comparison this reads is what
          *              everything about the rule is said of, and this is only how a run is asked
@@ -163,15 +176,28 @@ public sealed interface LineOrigin extends PartitionEvidenceOrigin {
          *              that numbered it, so the two cannot come from different builds
          */
         public record Read(souther.compiler.coverage.ComparisonOccurrence comparison,
-                           souther.compiler.check.RuleCitation.WrittenAt written,
+                           RuleRef.Comparison rule, Citation writtenAt,
                            souther.compiler.coverage.ComparisonEmissionSite recordedAt) {
 
             public Read {
-                if (comparison == null || written == null || recordedAt == null) {
+                if (comparison == null || rule == null || writtenAt == null
+                        || recordedAt == null) {
                     throw new IllegalArgumentException(
                             "a rule read off a comparison names one, cites it and says where a run"
                                     + " through it is recorded");
                 }
+            }
+
+            /**
+             * How a reader finds the rule, which is where it is written.
+             *
+             * <p>Made here rather than kept, so that the handle is of {@link #rule} and can be of no
+             * other. Kept beside the rule, the two could be built about different comparisons — and
+             * a document writing both would file an entry under one rule with a sentence about
+             * another.
+             */
+            public souther.compiler.check.RuleCitation.WrittenAt written() {
+                return new souther.compiler.check.RuleCitation.WrittenAt(rule, writtenAt);
             }
         }
 
@@ -361,9 +387,9 @@ public sealed interface LineOrigin extends PartitionEvidenceOrigin {
     @Override
     default souther.compiler.check.RuleCitation cited() {
         return switch (this) {
-            case InvariantOrigin i -> souther.compiler.check.RuleCitation.named(i.rule());
+            case InvariantOrigin i -> new souther.compiler.check.RuleCitation.Named(i.rule());
             case ComparisonOrigin g -> g.read().written();
-            case EnsuresOrigin e -> souther.compiler.check.RuleCitation.named(e.rule());
+            case EnsuresOrigin e -> new souther.compiler.check.RuleCitation.Named(e.rule());
             case NarrowedOrigin n -> n.bound().cited();
         };
     }
@@ -388,8 +414,8 @@ public sealed interface LineOrigin extends PartitionEvidenceOrigin {
      */
     default String describe(SourceNameResolver names, SourceId sectionSource) {
         return switch (this) {
-            case InvariantOrigin i -> i.rule().named();
-            case EnsuresOrigin e -> e.rule().named();
+            case InvariantOrigin i -> i.rule().citedName();
+            case EnsuresOrigin e -> e.rule().citedName();
             // The same word and the same join a question about this rule is written with. A rule
             // and a line it drew are found the same way, and two spellings of one place read as two
             // places.
@@ -456,15 +482,15 @@ public sealed interface LineOrigin extends PartitionEvidenceOrigin {
     }
 
     /**
-     * The same rule, named without a place.
+     * The same rule, said without a place.
      *
      * <p>What a diagnostic's own sentence says. A diagnostic is built where no reader is — nothing
      * there knows what to call a source — so a place written into its text would be a line and a
      * column with no file, read against whichever file the report happens to be about. Where the rule
-     * is a guard, the place is pointed at instead, by {@link #citation}.
+     * has no name, the place is pointed at instead, by {@link #citation}.
      */
-    default String named() {
-        return authoredLine().named();
+    default String saidWithoutAPlace() {
+        return authoredLine().saidWithoutAPlace();
     }
 
     /**
@@ -478,22 +504,28 @@ public sealed interface LineOrigin extends PartitionEvidenceOrigin {
      *
      * <p>Asked rather than matched on the text: what a rule is called is a rendering, and two of
      * them read the same word.
+     *
+     * <p>And asked of the rule, which is what says so ({@link RuleRef.Named},
+     * {@link RuleRef.Written}). Read off which reading this is, the answer would be a second one
+     * beside the rule's own — agreeing while the arms line up, and coming apart the day a reading
+     * is added for a rule with no name, where this would answer {@code false} about a rule
+     * {@link #cited} sends a reader to by its place.
      */
     default boolean isWrittenRatherThanNamed() {
-        return switch (this) {
-            case ComparisonOrigin _ -> true;
-            case NarrowedOrigin n -> n.bound().isWrittenRatherThanNamed();
-            case InvariantOrigin _, EnsuresOrigin _ -> false;
-        };
+        return rule() instanceof RuleRef.Written;
     }
 
-    /** Where the rule is written, where it is a rule that has a place rather than a name. */
+    /**
+     * Where the rule is written, where it is a rule that has a place rather than a name.
+     *
+     * <p>Taken out of the handle, for the reason above: the handle is what carries the place, and a
+     * reading that answered from its own arm would be a second answer to what the handle already
+     * says.
+     */
     default java.util.Optional<Citation> citation() {
-        return switch (this) {
-            case ComparisonOrigin g -> java.util.Optional.of(g.read().written().at());
-            case NarrowedOrigin n -> n.bound().citation();
-            case InvariantOrigin _, EnsuresOrigin _ -> java.util.Optional.empty();
-        };
+        return cited() instanceof souther.compiler.check.RuleCitation.WrittenAt written
+                ? java.util.Optional.of(written.at())
+                : java.util.Optional.empty();
     }
 
     /**
@@ -532,14 +564,7 @@ public sealed interface LineOrigin extends PartitionEvidenceOrigin {
      * the rule's, so both are asked of it.
      */
     default java.util.Optional<souther.compiler.check.DeclaredBorders.Key> declaredLine() {
-        return switch (this) {
-            case InvariantOrigin i ->
-                    java.util.Optional.of(new souther.compiler.check.DeclaredBorders.Key(i.part()));
-            // The bound's line, which the narrowing did not draw.
-            case NarrowedOrigin n -> n.bound().declaredLine();
-            // A rule written in a body places no end for a declaration to have words for.
-            case ComparisonOrigin _, EnsuresOrigin _ -> java.util.Optional.empty();
-        };
+        return authoredLine().declaredLine();
     }
 
     /**

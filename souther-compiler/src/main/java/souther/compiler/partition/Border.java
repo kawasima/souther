@@ -374,8 +374,7 @@ public record Border(BoundaryTarget cut, LineOrigin origin, Map<DomainPoint, Poi
      * of every behavior carrying the type.
      */
     public BorderObligationId obligation() {
-        return new BorderObligationId(origin.authoredLine(), cut.at(),
-                origin.declaredLine().orElse(null));
+        return new BorderObligationId(origin.authoredLine(), cut.at());
     }
 
     /** Where the line is, as a report names it. Not what any one of its points asks for: that is
@@ -996,7 +995,8 @@ public record Border(BoundaryTarget cut, LineOrigin origin, Map<DomainPoint, Poi
         Level leaves = Seam.of(space, cut, valueBelongs(origin)).leaving(kept);
         if (end == null || !end.at().sameAs(placeOf(leaves))) {
             throw new IllegalStateException(
-                    "a bound whose line is not where what it leaves stops: " + origin.named());
+                    "a bound whose line is not where what it leaves stops: "
+                            + origin.saidWithoutAPlace());
         }
     }
 
@@ -1044,7 +1044,7 @@ public record Border(BoundaryTarget cut, LineOrigin origin, Map<DomainPoint, Poi
             return order;
         }
         throw new IllegalStateException("which way a rule is satisfied from its line, asked of one"
-                + " that names a value and orders nothing: " + origin.named());
+                + " that names a value and orders nothing: " + origin.saidWithoutAPlace());
     }
 
     /**

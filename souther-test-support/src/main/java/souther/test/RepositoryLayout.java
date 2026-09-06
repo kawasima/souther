@@ -139,13 +139,32 @@ public final class RepositoryLayout {
     public List<Path> mainTrees(String kind) {
         List<Path> out = new ArrayList<>();
         for (Path module : modules) {
-            Path tree = module.resolve("src").resolve("main").resolve(kind);
-            if (Files.isDirectory(tree)) {
+            Path tree = treeOf(module, "main", kind);
+            if (tree != null) {
                 out.add(tree);
             }
         }
         out.sort(Path::compareTo);
         return List.copyOf(out);
+    }
+
+    /**
+     * The {@code src/<phase>/java} of {@code module}, or null where it has none.
+     *
+     * <p>The roots the compiler is handed apart, which is what a check that reads sources for what
+     * a name means has to keep apart too. A name written in a test source resolves against that
+     * module's test root and its main root; one written in a main source resolves against the main
+     * root alone, whatever the tests beside it declare. Read off a path instead, which root a
+     * source is under is worked out by whoever asks and the answer is a spelling.
+     */
+    public Path javaTreeOf(Path module, String phase) {
+        return treeOf(module, phase, "java");
+    }
+
+    /** Where a module keeps one kind of source, or null where it keeps none of that kind. */
+    private static Path treeOf(Path module, String phase, String kind) {
+        Path tree = module.resolve("src").resolve(phase).resolve(kind);
+        return Files.isDirectory(tree) ? tree : null;
     }
 
     /**

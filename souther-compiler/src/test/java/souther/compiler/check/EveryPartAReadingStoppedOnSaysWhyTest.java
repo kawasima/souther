@@ -115,7 +115,7 @@ class EveryPartAReadingStoppedOnSaysWhyTest {
         read.accounting().values().forEach(accounting ->
                 accounting.answers().forEach((owed, outcome) -> {
                     if (outcome instanceof RuleAccounting.Outcome.Unaccounted unaccounted) {
-                        out.put(((RuleCitation.Named) accounting.cited()).name() + " at " + owed,
+                        out.put(accounting.cited().rule().citedName() + " at " + owed,
                                 unaccounted.why().getClass().getSimpleName());
                     }
                 }));
@@ -148,7 +148,7 @@ class EveryPartAReadingStoppedOnSaysWhyTest {
                     if (outcome instanceof RuleAccounting.Outcome.Unaccounted unaccounted
                             && unaccounted.why()
                                     instanceof RuleAccounting.Why.TheEndReadingSays says) {
-                        out.put(((RuleCitation.Named) accounting.cited()).name() + " at " + owed,
+                        out.put(accounting.cited().rule().citedName() + " at " + owed,
                                 List.of(says.why().getClass().getSimpleName()));
                     }
                 }));
@@ -222,7 +222,7 @@ class EveryPartAReadingStoppedOnSaysWhyTest {
                     if (outcome instanceof RuleAccounting.Outcome.Unaccounted unaccounted
                             && unaccounted.why()
                                     instanceof RuleAccounting.Why.TheValueReadingSays says) {
-                        out.put(((RuleCitation.Named) accounting.cited()).name() + " at " + owed,
+                        out.put(accounting.cited().rule().citedName() + " at " + owed,
                                 says.why());
                     }
                 }));

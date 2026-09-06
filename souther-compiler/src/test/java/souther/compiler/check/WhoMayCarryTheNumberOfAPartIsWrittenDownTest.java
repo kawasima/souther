@@ -40,6 +40,12 @@ class WhoMayCarryTheNumberOfAPartIsWrittenDownTest {
     private record Held(String who, String why) { }
 
     private static final List<Held> MAY_HOLD = List.of(
+            new Held("souther.compiler.check.DeclaredBorders.Key.conjunct",
+                    "which line of a declaration's clause a report reads its own words for. What"
+                            + " reaches it from the report side is a line of the model, which"
+                            + " carries a number rather than a part's name, so a key built from"
+                            + " the part that drew the line and one built from a line have to be"
+                            + " one key"),
             new Held("souther.compiler.partition.AuthoredLine.conjunct",
                     "which line of a rule this is, counted over the conjuncts an author wrote for a"
                             + " declaration's clause and over the comparisons a body's rule states."

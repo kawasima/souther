@@ -137,7 +137,7 @@ public final class LinesRead {
 
     private static String said(List<Line> lines) {
         return lines.stream()
-                .map(each -> each.at().label() + " (" + each.by().named() + ")")
+                .map(each -> each.at().label() + " (" + each.by().saidWithoutAPlace() + ")")
                 .collect(java.util.stream.Collectors.joining(", "));
     }
 }

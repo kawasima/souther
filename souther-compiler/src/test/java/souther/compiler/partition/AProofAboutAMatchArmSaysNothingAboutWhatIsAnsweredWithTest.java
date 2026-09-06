@@ -8,7 +8,6 @@ import souther.compiler.coverage.CoverageSites;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
-import souther.compiler.reach.Reachability;
 import souther.compiler.report.AdequacyReport;
 import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.TypeSymbol;
@@ -92,7 +91,7 @@ class AProofAboutAMatchArmSaysNothingAboutWhatIsAnsweredWithTest {
 
     @Test
     void aRefusedMatchArmLeavesTheCaseItAnswersWithOwed() {
-        assertEquals(Reachability.Unreachable.class,
+        assertEquals(souther.compiler.reach.Reachability.Unreachable.class,
                 armThatIsRefused(REFUSED_CASE, SourceConstruct.MATCH).getClass(),
                 "the arm for the case the rules refuse is proven unreachable");
         assertEquals(Set.of("example.refused.Yes", "example.refused.No"),
@@ -103,7 +102,7 @@ class AProofAboutAMatchArmSaysNothingAboutWhatIsAnsweredWithTest {
 
     @Test
     void anArmNothingReachesTakesTheCaseOnlyItAnswersWith() {
-        assertEquals(Reachability.Unreachable.class,
+        assertEquals(souther.compiler.reach.Reachability.Unreachable.class,
                 armThatIsRefused(REFUSED_CONDITION, SourceConstruct.IF).getClass(),
                 "the arm the condition cannot come out into is proven unreachable");
         assertEquals(List.of("example.capped.Yes"), declaredOutputCasesOf(REFUSED_CONDITION).stream()
@@ -135,7 +134,7 @@ class AProofAboutAMatchArmSaysNothingAboutWhatIsAnsweredWithTest {
         Set<TypeSymbol> answersWith = casesNamedIn(body);
 
         ControlPointId.ArmOccurrence refused = arrives.found().entrySet().stream()
-                .filter(each -> each.getValue() instanceof Reachability.Unreachable)
+                .filter(each -> each.getValue() instanceof souther.compiler.reach.Reachability.Unreachable)
                 .map(Map.Entry::getKey)
                 .filter(ControlPointId.ArmOccurrence.class::isInstance)
                 .map(ControlPointId.ArmOccurrence.class::cast)
@@ -185,7 +184,7 @@ class AProofAboutAMatchArmSaysNothingAboutWhatIsAnsweredWithTest {
     private static PathReachability.Answers arrivalsWith(PathReachability.Answers answers,
                                                          ControlPointId.ArmOccurrence was,
                                                          ControlPointId.ArmOccurrence now) {
-        Map<ControlPointId, Reachability> found = new LinkedHashMap<>();
+        Map<ControlPointId, souther.compiler.reach.Reachability> found = new LinkedHashMap<>();
         answers.found().forEach((where, said) -> found.put(where.equals(was) ? now : where, said));
         return new PathReachability.Answers(found, answers.arriving());
     }
@@ -218,7 +217,7 @@ class AProofAboutAMatchArmSaysNothingAboutWhatIsAnsweredWithTest {
     }
 
     /** What the reading says about the one arm of {@code kind} it proves nothing arrives at. */
-    private static Reachability armThatIsRefused(String model, SourceConstruct kind) {
+    private static souther.compiler.reach.Reachability armThatIsRefused(String model, SourceConstruct kind) {
         Compilation compilation = compiled(model);
         Map<String, PathReachability.Answers> answers = compilation.db()
                 .ask(new Adequacy.PathReached(compilation.modules().get(0))).value();
@@ -226,7 +225,7 @@ class AProofAboutAMatchArmSaysNothingAboutWhatIsAnsweredWithTest {
                 .filter(each -> each.getKey() instanceof ControlPointId.ArmOccurrence arm
                         && arm.origin().kind() == kind)
                 .map(Map.Entry::getValue)
-                .filter(Reachability.Unreachable.class::isInstance)
+                .filter(souther.compiler.reach.Reachability.Unreachable.class::isInstance)
                 .findFirst().orElseThrow(() ->
                         new AssertionError("no arm of a " + kind + " is proven unreachable"));
     }

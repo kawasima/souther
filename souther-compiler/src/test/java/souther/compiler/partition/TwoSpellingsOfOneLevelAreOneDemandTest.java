@@ -108,12 +108,12 @@ class TwoSpellingsOfOneLevelAreOneDemandTest {
     /** A debt keyed on a level is keyed on the level and not on how it was written. */
     @Test
     void twoSpellingsOfOneLineAreOneDebt() {
-        BorderObligationId one = new BorderObligationId(aLine(), at("0"), null);
-        BorderObligationId same = new BorderObligationId(aLine(), at("0.00"), null);
+        BorderObligationId one = new BorderObligationId(aLine(), at("0"));
+        BorderObligationId same = new BorderObligationId(aLine(), at("0.00"));
 
         assertEquals(one, same, "one line at one place is one debt");
         assertEquals(one.hashCode(), same.hashCode(), "and a map of debts finds it there");
-        assertNotEquals(one, new BorderObligationId(aLine(), at("1"), null),
+        assertNotEquals(one, new BorderObligationId(aLine(), at("1")),
                 "while the same rule cutting at another place is another debt");
     }
 

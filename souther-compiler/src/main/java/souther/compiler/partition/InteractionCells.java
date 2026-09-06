@@ -4,7 +4,6 @@ import souther.compiler.check.ComparisonClaim;
 import souther.compiler.coverage.ComparisonOccurrence;
 import souther.compiler.inputs.TermPath;
 import souther.compiler.numeric.Towards;
-import souther.compiler.reading.Condition;
 import souther.compiler.reading.Factor;
 import souther.compiler.reading.Interaction;
 import souther.compiler.reading.Outcome;
@@ -370,9 +369,9 @@ public final class InteractionCells {
     }
 
     /** What {@code holds} leaves open, or null where any of it narrows nothing or narrows it away. */
-    private static Cell narrowedBy(List<Condition> holds, List<Axis> axes) {
+    private static Cell narrowedBy(List<souther.compiler.reading.Condition> holds, List<Axis> axes) {
         Cell cell = Cell.anything(axes);
-        for (Condition each : holds) {
+        for (souther.compiler.reading.Condition each : holds) {
             Cell said = admittedBy(each, axes);
             if (said == null) {
                 return null;
@@ -395,9 +394,9 @@ public final class InteractionCells {
     }
 
     /** Which classes {@code condition} leaves its position, or null where it names none. */
-    private static Cell admittedBy(Condition condition, List<Axis> axes) {
+    private static Cell admittedBy(souther.compiler.reading.Condition condition, List<Axis> axes) {
         switch (condition) {
-            case Condition.Case one -> {
+            case souther.compiler.reading.Condition.Case one -> {
                 int axis = axisAt(axes, one.at());
                 if (axis < 0) {
                     return null;
@@ -410,7 +409,7 @@ public final class InteractionCells {
                 }
                 return null;
             }
-            case Condition.Side one -> {
+            case souther.compiler.reading.Condition.Side one -> {
                 int axis = axisOf(axes, one.at());
                 if (axis < 0) {
                     return null;
@@ -449,7 +448,7 @@ public final class InteractionCells {
                 return wantedIsUp ? only(axes, axis, edge, last) : only(axes, axis, 0, edge);
             }
             // A fork this reading could not name a position for narrows nothing.
-            case Condition.Arm ignored -> {
+            case souther.compiler.reading.Condition.Arm ignored -> {
                 return null;
             }
         }

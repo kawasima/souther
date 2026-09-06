@@ -47,10 +47,10 @@ import java.util.Set;
 final class ReadingEvidence {
 
     /** Where each reading took a clause in. */
-    private final Map<RuleRef, Set<FactSubject>> spokenFor = new LinkedHashMap<>();
+    private final Map<RuleRef.Invariant, Set<FactSubject>> spokenFor = new LinkedHashMap<>();
 
     /** Where a part of a clause was taken in by nothing, which no other part makes up for. */
-    private final Map<RuleRef, Set<FactSubject>> left = new LinkedHashMap<>();
+    private final Map<RuleRef.Invariant, Set<FactSubject>> left = new LinkedHashMap<>();
 
     /**
      * What stopped the reading of values at each position of each rule.
@@ -74,10 +74,10 @@ final class ReadingEvidence {
      * <p>A set, because nothing here is in an order anybody may read. Which of two an author wrote
      * first is the source's to say and is asked where a document is written.
      */
-    private final Map<RuleRef, Set<RuleShortfall>> stopped = new LinkedHashMap<>();
+    private final Map<RuleRef.Invariant, Set<RuleShortfall>> stopped = new LinkedHashMap<>();
 
     /** A reading took {@code rule} in at {@code position}. */
-    void record(RuleRef rule, FactSubject position) {
+    void record(RuleRef.Invariant rule, FactSubject position) {
         spokenFor.computeIfAbsent(rule, _ -> new LinkedHashSet<>()).add(position);
     }
 
@@ -88,13 +88,13 @@ final class ReadingEvidence {
      * nothing read, however well the other half went — so an end placed by one conjunct does not
      * answer for the conjunct beside it.
      */
-    boolean anyLeftStanding(RuleRef rule, Collection<FactSubject> positions) {
+    boolean anyLeftStanding(RuleRef.Invariant rule, Collection<FactSubject> positions) {
         Set<FactSubject> standing = left.get(rule);
         return standing != null && positions.stream().anyMatch(standing::contains);
     }
 
     /** A part of {@code rule} was taken in by nothing, of the positions it named. */
-    void leftStanding(RuleRef rule, Set<FactSubject> positions) {
+    void leftStanding(RuleRef.Invariant rule, Set<FactSubject> positions) {
         left.computeIfAbsent(rule, _ -> new LinkedHashSet<>()).addAll(positions);
     }
 
@@ -122,7 +122,7 @@ final class ReadingEvidence {
      * Nothing is asked here because nothing of the wrong kind can be made: what arrives is refused
      * where it would be built, which is one fact away from where a caller could have written it.
      */
-    void stoppedBy(RuleRef rule, Set<RuleShortfall> read) {
+    void stoppedBy(RuleRef.Invariant rule, Set<RuleShortfall> read) {
         stopped.computeIfAbsent(rule, _ -> new LinkedHashSet<>()).addAll(read);
     }
 
@@ -133,7 +133,7 @@ final class ReadingEvidence {
      * under whichever the reading recognised. Empty where this reading recorded nothing of the
      * rule there, which a caller has to answer for rather than fill in from the position.
      */
-    Set<RuleShortfall> stoppedBy(RuleRef rule, Collection<FactSubject> positions) {
+    Set<RuleShortfall> stoppedBy(RuleRef.Invariant rule, Collection<FactSubject> positions) {
         Set<RuleShortfall> here = stopped.get(rule);
         if (here == null) {
             return Set.of();
@@ -154,7 +154,7 @@ final class ReadingEvidence {
      * algebra and another by everything else, and a clause reaching it is filed under whichever the
      * reading recognised.
      */
-    boolean tookIn(RuleRef rule, Collection<FactSubject> positions) {
+    boolean tookIn(RuleRef.Invariant rule, Collection<FactSubject> positions) {
         if (anyLeftStanding(rule, positions)) {
             return false;
         }

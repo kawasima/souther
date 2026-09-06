@@ -175,7 +175,7 @@ final class TypeGuarantees {
                 (part, said) -> parts.add(new TypeGuarantee.Part(part, said)), read);
         List<Quantified> quantified = new ArrayList<>();
         predicates.quantifiedBy(one.expr(), denotations, true, quantified, read);
-        return new TypeGuarantee(rule, one.expr(), one.parts(), owed, quantified, parts);
+        return new TypeGuarantee(one.expr(), one.parts(), owed, quantified, parts);
     }
 
     /**

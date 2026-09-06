@@ -98,7 +98,7 @@ class ALineIsNamedByTheClauseThatDrewItTest {
         Cut at1 = cutAt(length, 1L);
 
         assertEquals(List.of("invariant Length (floorA)", "invariant Length (floorB)"),
-                at1.origins().stream().map(LineOrigin::named).toList(),
+                at1.origins().stream().map(LineOrigin::saidWithoutAPlace).toList(),
                 "one cut, two rules that drew it");
 
         // Under the declaration that drew them, and named in the terms it wrote: the line is owed

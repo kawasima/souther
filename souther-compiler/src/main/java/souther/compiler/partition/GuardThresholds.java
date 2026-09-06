@@ -70,7 +70,7 @@ public final class GuardThresholds {
      * {@code c} on the low side and are two different rules about it — so it is read where the
      * operator is still in hand, and which values arrive is asked of the reading of the whole body.
      */
-    public record Guards(List<PartitionEvidence> evidence,
+    public record Guards(List<RuleEvidence> evidence,
                          RulesWithNoLine noLine,
                          List<LineDrawn> between,
                          ReachingCuts reaching) {
@@ -86,12 +86,12 @@ public final class GuardThresholds {
         /** The lines, read off what the walk said. Not a list of their own: the walk met these and
          *  the values it singled out in one order, and holding two lists loses it. */
         public List<Threshold> thresholds() {
-            return PartitionEvidence.linesIn(evidence);
+            return RuleEvidence.linesIn(evidence);
         }
 
         /** The values singled out, likewise. */
         public List<Singled> singled() {
-            return PartitionEvidence.pointsIn(evidence);
+            return RuleEvidence.pointsIn(evidence);
         }
 
         /**
@@ -147,7 +147,7 @@ public final class GuardThresholds {
                             souther.compiler.check.ElementBindings elements,
                             souther.compiler.check.PathReachability.Answers arrives) {
         InputDomain inputs = read.domain();
-        List<PartitionEvidence> found = new ArrayList<>();
+        List<RuleEvidence> found = new ArrayList<>();
         RulesWithNoLine.Gathered withoutALine = new RulesWithNoLine.Gathered();
         List<LineDrawn> between = new ArrayList<>();
         // One reading of the body, and everything below is that reading asked something. Where a
@@ -422,7 +422,7 @@ public final class GuardThresholds {
     private static void lineAt(ComparisonCatalog.Catalogued each,
                                CoverageSites.Plan plan,
                                ComparisonAssessment read,
-                               List<PartitionEvidence> out,
+                               List<RuleEvidence> out,
                                List<LineDrawn> between,
                                RulesWithNoLine.Gathered withoutALine) {
         publish(each, read, withoutALine);
@@ -442,11 +442,11 @@ public final class GuardThresholds {
                     // here — the position is divided all the same, and what divides it is the line.
                     case ComparisonClaim.Singled _ -> {
                         if (at.value() != null) {
-                            out.add(new PartitionEvidence.Singles(
+                            out.add(new RuleEvidence.Singles(
                                     new Guards.Singled(at.position(), at.value(), origin)));
                         }
                     }
-                    case ComparisonClaim.Cut order -> out.add(new PartitionEvidence.Divides(
+                    case ComparisonClaim.Cut order -> out.add(new RuleEvidence.Divides(
                             new Threshold(at.position(), at.cutting().seam(),
                                     order.valueBelongs(), origin)));
                 }
@@ -509,10 +509,10 @@ public final class GuardThresholds {
         // Whose body it is, from the name the catalog issued. Taken from a caller beside it, the
         // rule this reports and the comparison it is read off would be free to be of two behaviors,
         // and the occurrence being one this plan holds would not refuse it.
-        RuleRef.Comparison rule =
-                new RuleRef.Comparison(comparison.which().behavior(), comparison.origin());
         souther.compiler.check.RuleCitation cited =
-                new souther.compiler.check.RuleCitation.WrittenAt(comparison.at());
+                new souther.compiler.check.RuleCitation.WrittenAt(
+                        new RuleRef.Comparison(comparison.which().behavior(), comparison.origin()),
+                        comparison.at());
         // What each place is left with, and which places there are, are the assessment's one
         // answer. A rule that was read is filed at its quantity's coordinates and says one thing
         // there, because the quantity is one subject; a reading that stopped has none, and each
@@ -523,9 +523,9 @@ public final class GuardThresholds {
         // reading stopped there is nothing that was determined and nothing that could have been.
         read.whatEachPlaceIsLeftWith().forEach((at, why) -> {
             if (why instanceof BlockReason.RuleReadingStopped stopped) {
-                out.unclassified(rule, cited, at, stopped);
+                out.unclassified(cited, at, stopped);
             } else {
-                out.add(rule, cited, at, why);
+                out.add(cited, at, why);
             }
         });
     }
@@ -539,9 +539,9 @@ public final class GuardThresholds {
         // and it is required rather than looked up leniently because only an admitted reading
         // reaches here and the policy admits nothing the plan does not number.
         return new LineOrigin.ComparisonOrigin(
-                new RuleRef.Comparison(each.which().behavior(), each.origin()),
                 new LineOrigin.ComparisonOrigin.Read(each.which(),
-                        new souther.compiler.check.RuleCitation.WrittenAt(each.at()),
+                        new RuleRef.Comparison(each.which().behavior(), each.origin()),
+                        each.at(),
                         plan.requireEmissionSiteOf(each.which())),
                 new LineFacts(cutting.claim()));
     }

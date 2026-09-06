@@ -6,7 +6,6 @@ import souther.compiler.numeric.OrderedInterval;
 import souther.compiler.numeric.OrderedIntervals;
 import souther.compiler.values.Allowance;
 import souther.compiler.values.AsACompilationAllows;
-import souther.compiler.values.Emptiness;
 import souther.compiler.values.PlannedValues;
 
 import org.junit.jupiter.api.Test;
@@ -58,7 +57,7 @@ class ADeadChoiceLeavesNoLanguageAnsweringForABranchThatStandsTest {
                                                     OrderedInterval afterwards) {
         Confinement.Planned<String> dead = refusedByItsValues(left).bothDead(
                 refusedByItsValues(right),
-                Confinement.Admission.left(Emptiness.EMPTY));
+                Confinement.Admission.left(souther.compiler.values.Emptiness.EMPTY));
         Confinement.Planned<String> met = dead.meet(new Confinement.Planned<>(
                 PlannedValues.top(), OrderedIntervals.at(POSITION, afterwards), Map.of()));
         return met.resolve(SETS).holdingNothing();

@@ -82,18 +82,27 @@ public record AuthoredLine(RuleRef rule, int conjunct, LineFacts facts,
     }
 
     /**
-     * What a report calls this line.
+     * What a report calls this line where it has no place to point at.
      *
-     * <p>The rule's own name, and the declarations that took it in beside it. A narrowing is not
-     * part of the rule, so the rule does not say it and this does.
+     * <p>The author's word for the rule where they wrote one and what the rule is where they did
+     * not, with the declarations that took it in beside it. A narrowing is not part of the rule, so
+     * the rule does not say it and this does.
      *
-     * <p>A name and not a place, because a debt is not at one: a line an {@code invariant} drew is
-     * met wherever the type is carried, so any place to print would be the position of whichever
-     * behavior a walk reached first. Where a reading of it is being named rather than the line, the
-     * place is said by {@link LineOrigin#describe}.
+     * <p>Not a place, because a debt is not at one: a line an {@code invariant} drew is met wherever
+     * the type is carried, so any place to print would be the position of whichever behavior a walk
+     * reached first. Where a reading of it is being said rather than the line, the place is there to
+     * point at and {@link LineOrigin#describe} says it.
+     *
+     * <p>The two halves of the seal, spelled here because this is the sentence being written. Which
+     * of the two a rule is found by is the rule's own answer and it says nothing about what a
+     * sentence with no place in it should read; a fold over both that lived on the rule would be one
+     * word for a question only a caller writing a sentence has.
      */
-    public String named() {
-        return said(rule.named());
+    public String saidWithoutAPlace() {
+        return said(switch (rule) {
+            case RuleRef.Named it -> it.citedName();
+            case RuleRef.Written it -> "the " + it.whatItIs();
+        });
     }
 
     /**
@@ -140,6 +149,19 @@ public record AuthoredLine(RuleRef rule, int conjunct, LineFacts facts,
     public Optional<TypeSymbol> owedToTheDeclaration() {
         return rule instanceof RuleRef.Invariant i
                 ? Optional.of(i.clause().id().declaredOn())
+                : Optional.empty();
+    }
+
+    /**
+     * Which authored line of a declaration this is, where it is a declaration's line.
+     *
+     * <p>The clause and the number of the line, which together name one line the author wrote —
+     * what a report reads the declaration's own words for the line by
+     * ({@link souther.compiler.check.DeclaredBorders}).
+     */
+    public Optional<souther.compiler.check.DeclaredBorders.Key> declaredLine() {
+        return rule instanceof RuleRef.Invariant i
+                ? Optional.of(new souther.compiler.check.DeclaredBorders.Key(i, conjunct))
                 : Optional.empty();
     }
 

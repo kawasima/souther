@@ -191,7 +191,7 @@ class ALimitIsAnsweredForByWhatAskedForItTest {
 
     /** The name the author gave the rule, which is how this test says which one it means. */
     private static String named(RuleAccounting accounting) {
-        String printed = ((RuleCitation.Named) accounting.cited()).name();
+        String printed = accounting.cited().rule().citedName();
         return printed.substring(printed.indexOf('(') + 1, printed.indexOf(')'));
     }
 

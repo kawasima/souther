@@ -8,7 +8,9 @@ import tools.jackson.databind.json.JsonMapper;
 import souther.compiler.check.RuleCitation;
 import souther.compiler.types.WrittenOwner;
 import souther.compiler.check.RuleRef;
+import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.diag.SourcePos;
 import souther.compiler.inputs.BlockReason;
 import souther.compiler.inputs.FilingCoordinate;
 import souther.compiler.inputs.StandingQuestion;
@@ -371,11 +373,12 @@ class WhatKeepsAnUndeterminedVerdictOpenIsSaidTest {
     private static Weakening ruleUnread(BlockReason.RuleReadingStopped why, String term) {
         return new Weakening.ModelReadingIncomplete(ClosureGap.QuestionUnanswered.of(
                 StandingQuestion.NothingClassifiesIt.of(
-                        new RuleRef.Comparison("go",
-                                new SourceConstructOrigin(
-                                        new WrittenOwner.Body("m", "b"), 0, 0,
-                                        SourceConstruct.IF)),
-                        new RuleCitation.Named(term),
+                        new RuleCitation.WrittenAt(
+                                new RuleRef.Comparison("go",
+                                        new SourceConstructOrigin(
+                                                new WrittenOwner.Body("m", "b"), 0, 0,
+                                                SourceConstruct.IF)),
+                                Citation.of(new SourcePos(1, 1))),
                         new FilingCoordinate.AtPosition(TermPath.of(term)), why)));
     }
 }

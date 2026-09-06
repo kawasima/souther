@@ -86,7 +86,7 @@ class AGuardsQuestionIsCitedByWhereItIsWrittenTest {
 
         RuleCitation.WrittenAt written = one.cited().stream()
                 .filter(RuleCitation.WrittenAt.class::isInstance)
-                .map(RuleCitation.WrittenAt.class::cast).findFirst()
+                .map(each -> (RuleCitation.WrittenAt) each).findFirst()
                 .orElseThrow(() -> new AssertionError("a comparison has no name, so it is cited by"
                         + " where it is written: " + one.cited()));
         assertTrue(written.said(SourceNameResolver.identity(), null).startsWith("comparison@"),
@@ -119,6 +119,6 @@ class AGuardsQuestionIsCitedByWhereItIsWrittenTest {
                 .map(RuleCitation.Named.class::cast).findFirst()
                 .orElseThrow(() -> new AssertionError("an invariant is cited by the name the"
                         + " author gave it: " + evidence.unanswered().get(0).cited()));
-        assertEquals("invariant Length (square)", named.name());
+        assertEquals("invariant Length (square)", named.rule().citedName());
     }
 }

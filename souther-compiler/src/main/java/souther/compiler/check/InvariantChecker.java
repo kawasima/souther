@@ -1,6 +1,9 @@
 package souther.compiler.check;
 
 import souther.compiler.values.AdmissibleValues;
+import souther.compiler.values.Allowance;
+import souther.compiler.values.ConjoinedAdmissibleValues;
+import souther.compiler.values.UnreadReason;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.Combinators.Handed;
 import souther.compiler.check.PathEngine.Entered;
@@ -448,14 +451,29 @@ public final class InvariantChecker {
      * @param handedOn the positions this reading ended at with a declaration still to be read under
      *                 them, which is an obligation on whoever walks the positions rather than
      *                 anything wrong here — see {@link Gathering#handedOn}
+     * @param admitted which values may stand at each name the reading wrote. Answered here because
+     *                 a name is filed under more than one subject and what it admits is the sets of
+     *                 those met — which is a machine, and the purse that pays for it is the one this
+     *                 reading was read under. Left to a caller, the caller would need that purse to
+     *                 finish an answer this reading started, and every later holder of this reading
+     *                 would be holding one
+     * @param unreadAt everything that stopped the reading from speaking for each name, empty where
+     *                 nothing did. Beside {@link #admitted} and never after it: a name whose sets
+     *                 could not be met is one this widened, and the two arrive together or a reader
+     *                 is handed every value with nothing saying why
+     * @param notSeparated the names whose values this reading cannot show are the whole of what the
+     *                 rules leave
      */
     record Seeded(ConstraintState<FactSubject> constraints, Map<RuleKey, FactSubject> atoms,
                   Map<RuleKey, FactSubject> keys,
                   Map<RuleKey, FieldDomains.Counted> held, Reading reading, ReadingEvidence took,
                   boolean everyClauseRead, Map<RuleKey, Set<RulesMissed>> notGathered,
                   Set<RuleKey> unreadOfEveryValue, Set<RuleKey> handedOn,
-                  Map<RuleRef, Map<Core, PartRead>> readBy,
-                  Map<FactSubject, souther.compiler.numeric.Granularity> spacing) {
+                  Map<RuleRef.Invariant, Map<Core, PartRead>> readBy,
+                  Map<FactSubject, souther.compiler.numeric.Granularity> spacing,
+                  Map<RuleKey, ValueSet> admitted,
+                  Map<RuleKey, List<UnreadReason>> unreadAt,
+                  Set<RuleKey> notSeparated) {
 
         /** The atom each count is recorded against, for a reader that wants the subject and not
          *  which operation it is a count of. Projected rather than kept beside {@link #held()}: two
@@ -464,6 +482,23 @@ public final class InvariantChecker {
             Map<RuleKey, FactSubject> out = new LinkedHashMap<>();
             held.forEach((path, counted) -> out.put(path, counted.atom()));
             return out;
+        }
+
+        /**
+         * Both subjects the name {@code path} answers to.
+         *
+         * <p>A number has one of each and everything else has the second, and a clause is filed
+         * under whichever the reading recognised. Answered here because which subjects a name is
+         * filed under is how this reading files them: read from outside, a caller would be walking
+         * two of these maps and would be answering for a filing it does not own.
+         */
+        List<FactSubject> named(RuleKey path) {
+            return InvariantChecker.named(atoms, keys, path);
+        }
+
+        /** Every name this reading wrote — see {@link InvariantChecker#written}. */
+        Set<RuleKey> written() {
+            return InvariantChecker.written(atoms, keys);
         }
 
         public Seeded {
@@ -480,18 +515,12 @@ public final class InvariantChecker {
             // iterates in an order salted once per JVM run, and what is read off these is a list of
             // causes a report prints.
             readBy = Collections.unmodifiableMap(new LinkedHashMap<>(readBy));
-        }
-
-        /** What a walk that fell over comes to: no position named, no rule read, and saying so of
-         *  every position, since nothing here knows which of them the rules were about. */
-        static Seeded nothingRead() {
-            return new Seeded(ConstraintState.<FactSubject>top(), Map.of(), Map.of(), Map.of(),
-                    new Reading(List.of(), List.of(), List.of(), List.of(), List.of(), Map.of(),
-                            Map.of(), Map.of(), Map.of()),
-                    new ReadingEvidence(),
-                    false, Map.of(RuleKey.THE_VALUE,
-                            Set.of(new RulesMissed.ReadingFellOver())),
-                    Set.of(RuleKey.THE_VALUE), Set.of(), Map.of(), Map.of());
+            // In the order the declaration writes its names, for the reason above: what is read off
+            // these is what a report says about each place, and a walk over a salted order would
+            // list them by a rule of this JVM run's.
+            admitted = Collections.unmodifiableMap(new LinkedHashMap<>(admitted));
+            unreadAt = Collections.unmodifiableMap(new LinkedHashMap<>(unreadAt));
+            notSeparated = Collections.unmodifiableSet(new LinkedHashSet<>(notSeparated));
         }
 
         /** The numbers alone, for the readers that are about intervals. Whether a value exists is
@@ -625,14 +654,14 @@ public final class InvariantChecker {
         // Per part, because a rule is represented where every part of it is: a conjunct the bounds
         // hold nothing of leaves the range wider than the rule however well the conjunct beside it
         // went, and a set unioned over the whole clause says the opposite.
-        Map<RuleRef, Map<Core, PartRead>> readBy = new LinkedHashMap<>();
+        Map<RuleRef.Invariant, Map<Core, PartRead>> readBy = new LinkedHashMap<>();
 
         Gathering gathering = new Gathering() {
 
             @Override
             public void gathered(RuleRef.Invariant from, Core clause,
                                  List<Clauses.StatedPart> parts, Set<FactSubject> spokenFor) {
-                written.add(new Written(from, clause, parts));
+                written.add(new Written(clause, parts));
                 spokenFor.forEach(spoken -> took.record(from, spoken));
             }
 
@@ -694,7 +723,7 @@ public final class InvariantChecker {
             }
             // The clause as one reading, and the parts its author wrote as subtrees of it. Which
             // parts there are was settled where the clause was split; nothing here decides it.
-            written.add(new Written(origin, stated, declared.shape().onto(stated, origin)));
+            written.add(new Written(stated, declared.shape().onto(stated, origin)));
             Predicates.Owed owed = c.predicates.assumed(stated, at, false,
                     (part, said) -> gathering.constrained(origin, part, partRead(said)),
                     // Which conjuncts of this rule were asked for. Which nodes of the clause
@@ -762,10 +791,10 @@ public final class InvariantChecker {
         // another pay into the same machine. Made per position inside — a complicated rule at
         // one position may not spend what a plain one at another was going to need, or which of
         // the two went unanswered would turn on the order they were written in.
-        souther.compiler.values.Allowance<FactSubject> allowed =
+        Allowance<FactSubject> allowed =
                 policy.allowanceForAdmittedValues();
-        Map<RuleRef, Map<Core, ReadByClauses.OfAPart>> adoptedBy = new LinkedHashMap<>();
-        Map<RuleRef, ReadByClauses.OfARule> narrowedBy = new LinkedHashMap<>();
+        Map<RuleRef.Invariant, Map<Core, ReadByClauses.OfAPart>> adoptedBy = new LinkedHashMap<>();
+        Map<RuleRef.Invariant, ReadByClauses.OfARule> narrowedBy = new LinkedHashMap<>();
         // One reader for this value's positions, used over however many clauses reach it, and
         // the one that decides the choices in what they came to.
         StatedByClauses.Reading reader = StatedByClauses
@@ -876,9 +905,96 @@ public final class InvariantChecker {
             }
             constraints = ConstraintState.settling(constraints, atom, each.getValue(), spaced);
         }
+        // And what stands at each name the reading wrote, which is the last of this answer and is
+        // built here because here is where the purse is. A name is filed under a subject the
+        // interval algebra knows it by and a subject everything else knows it by, and what it
+        // admits is what both leave — a machine, out of the same allowance every rule that reached
+        // the name paid into. Handed over unfinished, whoever asked would need this purse to
+        // finish it, and a reading kept by a reader that only asks questions of it would be
+        // keeping an allowance.
+        Map<RuleKey, ValueSet> admitted = new LinkedHashMap<>();
+        Map<RuleKey, List<UnreadReason>> unreadAt = new LinkedHashMap<>();
+        Set<RuleKey> notSeparated = new LinkedHashSet<>();
+        ConjoinedAdmissibleValues<FactSubject> readAs = constraints.values();
+        for (RuleKey field : written(atoms, keys)) {
+            ValueSet here = ValueSet.ANY;
+            List<UnreadReason> why = new ArrayList<>();
+            // Not asked at all where the reading admits nothing. What it holds there is not the
+            // relation's projections — those are empty wherever the relation is — but where the
+            // arithmetic had got to when it learned that no value of this type exists, so whether
+            // it is exact is a question about a projection nobody is being shown. And the answer
+            // owed about such a declaration is that it has no values, which is said elsewhere and
+            // is not made truer by a note about how the values were held.
+            boolean separated = true;
+            for (FactSubject name : named(atoms, keys, field)) {
+                // Where it could not be built, the set widens and says so in the same breath —
+                // which is the list below.
+                Allowance.Composed made =
+                        allowed.meet(readAs.blockOf(name), here, readAs.at(name));
+                here = made.set();
+                if (made.gaveUp()) {
+                    why.add(UnreadReason.EXACT_VALUES_TOO_COSTLY);
+                }
+                separated = separated && readAs.projectionExactAt(name);
+                // Every one of them. Two subjects of one name are two ways the same rules were
+                // filed, and a rule filed under one of them is not the rule filed under the other:
+                // an ordering the interval algebra knows the place by and a pattern the values
+                // reading knows it by stop this reading in two ways, and each is a rule of the
+                // author's to act on. Said once here — a limit met under both names is one limit.
+                for (UnreadReason each : readAs.whyUnread(name)) {
+                    if (!why.contains(each)) {
+                        why.add(each);
+                    }
+                }
+            }
+            admitted.put(field, here);
+            if (!why.isEmpty()) {
+                unreadAt.put(field, List.copyOf(why));
+            }
+            if (!separated) {
+                notSeparated.add(field);
+            }
+        }
         return new Seeded(constraints, atoms, keys, held, reading, took, read,
                 notGathered, unreadOfEveryValue, Set.copyOf(handedOn),
-                readBy, Map.copyOf(spacing));
+                readBy, Map.copyOf(spacing), admitted, unreadAt, notSeparated);
+    }
+
+    /**
+     * Every name a reading wrote, which is every name that answers to either subject.
+     *
+     * <p>A number is called one thing by the interval algebra and another by everything else, and
+     * the two are filed as they are found — so a walk over one of the maps would leave a name held
+     * only by the other answering from a default, which is the widest thing there is to say and is
+     * said about a place a clause may well have narrowed.
+     *
+     * <p>The keys and then the atoms, which is the keys: an atom is named from a body key, so a
+     * name with an atom has a key and the second pass adds nothing. A size has no key and is not
+     * one of these — it is a number taken of what stands at a name. So the order is the walk's, and
+     * the walk's is the declaration's.
+     */
+    private static Set<RuleKey> written(Map<RuleKey, FactSubject> atoms,
+                                        Map<RuleKey, FactSubject> keys) {
+        Set<RuleKey> out = new LinkedHashSet<>(keys.keySet());
+        out.addAll(atoms.keySet());
+        return out;
+    }
+
+    /** Both subjects the name {@code path} answers to — see {@link Seeded#named}. Over the two maps
+     *  rather than over a reading, so that the reading itself can be answered for before there is
+     *  one to ask. */
+    private static List<FactSubject> named(Map<RuleKey, FactSubject> atoms,
+                                           Map<RuleKey, FactSubject> keys, RuleKey path) {
+        List<FactSubject> names = new ArrayList<>();
+        FactSubject atom = atoms.get(path);
+        if (atom != null) {
+            names.add(atom);
+        }
+        FactSubject key = keys.get(path);
+        if (key != null) {
+            names.add(key);
+        }
+        return names;
     }
 
     /** The atom of a count that may not be there, which every lookup of one wants. */
@@ -1041,7 +1157,30 @@ public final class InvariantChecker {
      * a line drawn on a position is attributed to, and each of them is a subtree of that same
      * reading — carrying which part of the clause it is, settled where the clause was split.
      */
-    private record Written(RuleRef.Invariant from, Core clause, List<Clauses.StatedPart> parts) {}
+    private record Written(Core clause, List<Clauses.StatedPart> parts) {
+
+        Written {
+            if (parts.isEmpty()) {
+                throw new IllegalArgumentException("a clause reaching a value is written in parts");
+            }
+            parts = List.copyOf(parts);
+        }
+
+        /**
+         * Which rule of the model this is, read off the parts it was written in.
+         *
+         * <p>Every part of a clause is a part of that clause, so the rule is the parts' answer and
+         * not a second thing to carry: held beside them, a value about one rule could be built
+         * about two.
+         */
+        RuleRef.Invariant from() {
+            if (parts.get(0).id().rule() instanceof RuleRef.Invariant it) {
+                return it;
+            }
+            throw new IllegalStateException("a declaration's own clause reaches a value here, and "
+                    + parts.get(0).id().rule() + " is not one");
+        }
+    }
 
     /**
      * How much an allowance has spent in all, for holding an answer to what it spent between two
@@ -1051,7 +1190,7 @@ public final class InvariantChecker {
      * to a factor, and which factors there are is settled by the rules rather than before them, so
      * a list of the expected ones would leave out the one an equality made.
      */
-    private static int spentBy(souther.compiler.values.Allowance<FactSubject> allowed) {
+    private static int spentBy(Allowance<FactSubject> allowed) {
         return allowed.spentSoFar();
     }
 
@@ -1184,9 +1323,9 @@ public final class InvariantChecker {
      *                reaching the position, so a reader taking it for one rule's would lend a rule
      *                that narrows nothing whatever its neighbours narrowed
      */
-    record PartsRead(Map<RuleRef, Map<Core, PartRead>> read,
-                     Map<RuleRef, Map<Core, ReadByClauses.OfAPart>> account,
-                     Map<RuleRef, ReadByClauses.OfARule> byRule) {
+    record PartsRead(Map<RuleRef.Invariant, Map<Core, PartRead>> read,
+                     Map<RuleRef.Invariant, Map<Core, ReadByClauses.OfAPart>> account,
+                     Map<RuleRef.Invariant, ReadByClauses.OfARule> byRule) {
 
         /** What the reading that builds the bounds made of {@code part} of {@code rule}, or null
          *  where it read no such part — which is not the same as having read it and made nothing of
@@ -1329,8 +1468,8 @@ public final class InvariantChecker {
                    List<FieldDomains.AboutOneCoordinate> aboutOneCoordinate,
                    List<FieldDomains.AboutOneCoordinate> aboutTheStrings,
                    Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
-                   Map<RuleRef, Required> raised,
-                   Map<RuleRef, Map<Core, Required>> raisedByPart,
+                   Map<RuleRef.Invariant, Required> raised,
+                   Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
                    Map<FieldDomains.BoundaryQuestion, FieldDomains.BoundaryStanding> standing) {}
 
     private Reading directsIn(List<Written> stated, Denotations at,
@@ -1366,8 +1505,8 @@ public final class InvariantChecker {
         // put among them it would set every other conjunct about the number to be read again.
         List<FieldDomains.AboutOneCoordinate> aboutTheStrings = new ArrayList<>();
         Map<RuleKey, List<TypeSymbol.AtModule>> narrowers = new LinkedHashMap<>();
-        Map<RuleRef, Required> raised = new LinkedHashMap<>();
-        Map<RuleRef, Map<Core, Required>> raisedByPart = new LinkedHashMap<>();
+        Map<RuleRef.Invariant, Required> raised = new LinkedHashMap<>();
+        Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart = new LinkedHashMap<>();
         Map<FieldDomains.BoundaryQuestion, FieldDomains.BoundaryStanding> standing =
                 new LinkedHashMap<>();
         stated.forEach(each -> each.parts().forEach(part ->
@@ -1398,10 +1537,10 @@ public final class InvariantChecker {
                           List<FieldDomains.AboutOneCoordinate> naming,
                           List<FieldDomains.AboutOneCoordinate> namingTheStrings,
                           Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
-                          Map<RuleRef, Required> raised, ReadingEvidence took,
+                          Map<RuleRef.Invariant, Required> raised, ReadingEvidence took,
                           Map<RuleKey, Type> typeAt,
                           PartsRead parts,
-                          Map<RuleRef, Map<Core, Required>> raisedByPart,
+                          Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
                           Map<FieldDomains.BoundaryQuestion,
                                   FieldDomains.BoundaryStanding> standing,
                           PartsLeftOut withoutParts) {
@@ -1411,7 +1550,7 @@ public final class InvariantChecker {
     }
 
     /** What {@code clause} raises, taken together with whatever its other conjuncts raised. */
-    private static void raises(Map<RuleRef, Required> into, RuleRef.Invariant rule,
+    private static void raises(Map<RuleRef.Invariant, Required> into, RuleRef.Invariant rule,
                                ClauseStates states) {
         into.merge(rule, Required.ofInvariant(states), Required::and);
     }
@@ -1427,10 +1566,10 @@ public final class InvariantChecker {
      */
     private void settle(Core part, RuleRef.Invariant rule, ClauseStates states,
                         InvariantBound.Read placed,
-                        Map<FactSubject, Coordinate> byName, Map<RuleRef, Required> raised,
+                        Map<FactSubject, Coordinate> byName, Map<RuleRef.Invariant, Required> raised,
                         ReadingEvidence took,
                         PartsRead parts,
-                        Map<RuleRef, Map<Core, Required>> raisedByPart) {
+                        Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart) {
         raises(raised, rule, states);
         // And what this part of it raises, kept apart from what the rule raises. A reader that found
         // one conjunct wanting reaches for this: the questions of the conjunct written beside it are
@@ -1514,10 +1653,10 @@ public final class InvariantChecker {
                         List<FieldDomains.AboutOneCoordinate> naming,
                         List<FieldDomains.AboutOneCoordinate> namingTheStrings,
                         Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
-                        Map<RuleRef, Required> raised, ReadingEvidence took,
+                        Map<RuleRef.Invariant, Required> raised, ReadingEvidence took,
                         Map<RuleKey, Type> typeAt,
                         PartsRead parts,
-                        Map<RuleRef, Map<Core, Required>> raisedByPart,
+                        Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
                         Map<FieldDomains.BoundaryQuestion,
                                 FieldDomains.BoundaryStanding> standing,
                         PartsLeftOut withoutParts) {

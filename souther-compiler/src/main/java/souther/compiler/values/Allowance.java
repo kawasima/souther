@@ -30,10 +30,25 @@ import java.util.Set;
  * was before any of this.
  *
  * <p><b>One answer, one allowance.</b> Turning a rule into the set it names and putting a position's
- * sets together are the same spending, and so is putting two readings' answers together afterwards —
- * what comes out of that is a third set nobody has paid for. An answer given a fresh allowance for
- * each of those may spend its whole budget several times over, and the bound would be on a phase
- * rather than on the answer.
+ * sets together are the same spending, and both are part of the one answer being built. An answer
+ * given a fresh allowance for each of those may spend its whole budget several times over, and the
+ * bound would be on a phase rather than on the answer.
+ *
+ * <p><b>And putting two answers together is a third answer.</b> A reading of one declaration is
+ * bounded by the purse it was read under; two of them met over one vocabulary come to a set neither
+ * of them holds, and that set belongs to whoever asked for it. So it is paid for out of that
+ * caller's own allowance, and the readings' purses are where they were — a composition charged to
+ * an operand's purse would spend what a declaration was allowed on an answer about somebody else's
+ * question.
+ *
+ * <p><b>Which is why this is held by whoever is building an answer and never by a value that
+ * answers.</b> A value carrying one is a value carrying a fact about no reading in it, and a
+ * composition of two such values has two purses to pick from — so which of them pays, and with it
+ * how exactly the composition comes out, would be settled by which side the call was written on.
+ * So an operation that may build is told which allowance it spends, and one that builds nothing
+ * takes none. Who holds one is written down and counted off the compiled classes
+ * ({@code AnAllowanceIsHeldByWhoeverIsBuildingAnAnswerTest}), rather than listed here, where a
+ * holder added later would be one this sentence had not heard of.
  *
  * <p><b>And nothing composes outside it.</b> Everything that may build is asked for through
  * {@link AdmittedPlan} and worked out by a {@link Realizer}, which is what makes the order the work
@@ -383,30 +398,6 @@ public final class Allowance<A> {
             spent += budget.mostBuilt() - nowhereMeter.left();
         }
         return spent;
-    }
-
-    /**
-     * The same allowance, filed under what {@code naming} calls each position.
-     *
-     * <p>One answer and not two. A reading renamed into another vocabulary is the same answer being
-     * built under other names, so what a position has spent goes with it — given a fresh allowance,
-     * a position would be allowed its machine once on each side of the renaming and the product of
-     * the two would be bought by nobody. The meters and the worked-out answers themselves, and not
-     * copies of them, for that reason.
-     */
-    public <B> Allowance<B> renamed(java.util.function.Function<A, B> naming) {
-        // What was lent goes with the positions it was lent to, which are the realizers below: each
-        // of them holds the lending question already, asked under the name it was asked under. A
-        // position this hears of only after the renaming is one that was in no lending question,
-        // there being nothing under either name to lend — so what is left here lends nothing.
-        Allowance<B> out = new Allowance<>(budget, Known.nothing());
-        meters.forEach((block, meter) -> out.meters.put(block.renamed(naming), meter));
-        realizers.forEach((block, made) -> out.realizers.put(block.renamed(naming), made));
-        spent.forEach(block -> out.spent.add(block.renamed(naming)));
-        out.nowhere = nowhere;
-        out.nowhereMeter = nowhereMeter;
-        out.spentElsewhere = spentElsewhere;
-        return out;
     }
 
     /** Every value there is, and the fact that this is not what the rules leave. */

@@ -8,6 +8,7 @@ import tools.jackson.databind.json.JsonMapper;
 import souther.compiler.check.RuleCitation;
 import souther.compiler.types.WrittenOwner;
 import souther.compiler.check.RuleRef;
+import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.observe.RunSensitivity;
 import souther.compiler.partition.ReportedReason;
@@ -118,6 +119,13 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
         table.put("ValueRuleRelatingTwoPositions",
                 "UNSUPPORTED_PARTITION_SHAPE/UNAFFECTED");
         table.put("CompetingCoordinates", "COMPETING_COORDINATES/UNAFFECTED");
+        // Its own word beside the one above, and read to the end where that one is a stop. Both are
+        // what two coordinates at one place can come to and they are opposite answers: there no
+        // number could be chosen and every rule about either is one to rewrite; here one was
+        // chosen, the rules about it draw their lines, and this rule states where a different
+        // number of the same place stops. Nothing is owed of it — the end it places is placed, at a
+        // number the position is not divided along.
+        table.put("RuleAboutAnotherCoordinate", "RULE_ABOUT_ANOTHER_COORDINATE/-");
         // Read to the end, and placed nowhere. Its own word beside the two above: the comparison
         // was taken apart, a line came out of it and every name it is between reached positions —
         // what was not reached is which of those positions the line runs between. Both measures are
@@ -307,10 +315,11 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
     void aReasonSaysWhatBecameOfTheReadingAndNotWhatAMeasureIsShortOf() {
         for (BlockReason.RuleWithoutLineReason each : everyRuleWithoutALine()) {
             RulesWithNoLine.Gathered gathered = new RulesWithNoLine.Gathered();
-            gathered.add(new RuleRef.Comparison("b",
-                            new SourceConstructOrigin(new WrittenOwner.Body("m", "b"),
-                                    1, 1, SourceConstruct.IF)),
-                    new RuleCitation.Named("n"),
+            gathered.add(new RuleCitation.WrittenAt(
+                            new RuleRef.Comparison("b",
+                                    new SourceConstructOrigin(new WrittenOwner.Body("m", "b"),
+                                            1, 1, SourceConstruct.IF)),
+                            Citation.of(new SourcePos(1, 1))),
                     new FilingCoordinate.AtPosition(TermPath.of("x")), each);
             RulesWithNoLine filed = gathered.found();
 
@@ -404,6 +413,7 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
                 new BlockReason.ComparisonNothingArrivesAtItsLine(),
                 new BlockReason.ComparisonBetweenPositions(),
                 new BlockReason.ComparisonOverARun(),
+                new BlockReason.RuleAboutAnotherCoordinate(),
                 new BlockReason.RuleRestrictingToAdmittedValues(),
                 new BlockReason.PredicateTellingNothingApart(),
                 new BlockReason.ClassesNotComposed(),

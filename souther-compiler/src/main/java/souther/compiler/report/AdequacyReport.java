@@ -597,7 +597,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                     // and a point beside it names a run, and a sentence that wrote `=` for both said
                     // a run was one value.
                     out.append(String.format("      %s no row is at the %s%n",
-                            mark(f), pointOf(owed, owed.debt().id().named())));
+                            mark(f), pointOf(owed, owed.debt().id().saidWithoutAPlace())));
                 }
             }
         });
@@ -1685,8 +1685,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case UNRESOLVED_CASE_PAIRING -> "it reaches case-specific positions on both sides, and "
                     + "how those positions pair up is not worked out";
             case COMPETING_COORDINATES ->
-                    "a rule beside it is about the position's other coordinate, so neither can be"
-                            + " chosen";
+                    "the rules of this position are about more than one of its numbers, so it is"
+                            + " measured at none of them and this end has nowhere to go";
+            case RULE_ABOUT_ANOTHER_COORDINATE ->
+                    "it says where another of this position's numbers stops, and the position is"
+                            + " measured at the one its own rules are about";
             case UNSUPPORTED_PARTITION_SHAPE ->
                     "it relates two positions rather than dividing one";
             case RULE_ABOUT_A_RUN ->
@@ -2738,9 +2741,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * How schema 3 spells which kind of rule an identity is of.
      *
      * <p>A wire value and not a word for the rule, which is what the name used to say. What a rule
-     * is called is {@link RuleCitation}'s answer, and the two say one thing
-     * again as of version 4 — they are still separate values, because what a document groups by is a
-     * contract a version pins and what a reader is shown is not.
+     * with no name is called is {@link RuleRef.Written#whatItIs}'s answer, and what one with a name
+     * is called is the author's; the two surfaces say one thing and are still separate values,
+     * because what a document groups by is a contract a version pins and what a reader is shown is
+     * not. That they agree today is held over every kind of rule the seal has rather than by their
+     * being one string.
      *
      * <p>Here rather than at the one place it is written, for the reason the others are. No
      * {@code default}, so a rule shape added and not given a spelling stops the compile rather than

@@ -827,10 +827,11 @@ class EverySchemaWordIsAccountedForTest {
     /** A rule read far enough to say it restricts the values, and no further. */
     private static souther.compiler.inputs.StandingQuestion boundaryUndetermined() {
         return souther.compiler.inputs.StandingQuestion.BoundaryUndetermined.of(
-                new souther.compiler.check.RuleRef.Comparison("f",
-                        new souther.compiler.types.SourceConstructOrigin(new WrittenOwner.Body("m", "b"), 0, 0,
-                                souther.compiler.types.SourceConstruct.IF)),
                 new souther.compiler.check.RuleCitation.WrittenAt(
+                        new souther.compiler.check.RuleRef.Comparison("f",
+                                new souther.compiler.types.SourceConstructOrigin(
+                                        new WrittenOwner.Body("m", "b"), 0, 0,
+                                        souther.compiler.types.SourceConstruct.IF)),
                         souther.compiler.diag.Citation.of(
                                 new souther.compiler.diag.SourcePos(1, 1))),
                 souther.compiler.inputs.FilingCoordinate.at(
@@ -841,10 +842,11 @@ class EverySchemaWordIsAccountedForTest {
     /** A rule this compiler did not read far enough to classify. */
     private static souther.compiler.inputs.StandingQuestion unclassified() {
         return souther.compiler.inputs.StandingQuestion.NothingClassifiesIt.of(
-                new souther.compiler.check.RuleRef.Comparison("f",
-                        new souther.compiler.types.SourceConstructOrigin(new WrittenOwner.Body("m", "b"), 0, 0,
-                                souther.compiler.types.SourceConstruct.IF)),
                 new souther.compiler.check.RuleCitation.WrittenAt(
+                        new souther.compiler.check.RuleRef.Comparison("f",
+                                new souther.compiler.types.SourceConstructOrigin(
+                                        new WrittenOwner.Body("m", "b"), 0, 0,
+                                        souther.compiler.types.SourceConstruct.IF)),
                         souther.compiler.diag.Citation.of(
                                 new souther.compiler.diag.SourcePos(1, 1))),
                 souther.compiler.inputs.FilingCoordinate.at(
@@ -856,10 +858,11 @@ class EverySchemaWordIsAccountedForTest {
     private static souther.compiler.inputs.StandingQuestion asking(
             souther.compiler.inputs.InputQuestion about) {
         return souther.compiler.inputs.StandingQuestion.Exact.of(
-                new souther.compiler.check.RuleRef.Comparison("f",
-                        new souther.compiler.types.SourceConstructOrigin(new WrittenOwner.Body("m", "b"), 0, 0,
-                                souther.compiler.types.SourceConstruct.IF)),
                 new souther.compiler.check.RuleCitation.WrittenAt(
+                        new souther.compiler.check.RuleRef.Comparison("f",
+                                new souther.compiler.types.SourceConstructOrigin(
+                                        new WrittenOwner.Body("m", "b"), 0, 0,
+                                        souther.compiler.types.SourceConstruct.IF)),
                         souther.compiler.diag.Citation.of(
                                 new souther.compiler.diag.SourcePos(1, 1))),
                 about,
