@@ -2681,7 +2681,7 @@ final class Terms {
      * composed thing is another composed thing, and it says so.
      */
     private static ApplicationOrigin writtenBackFrom(ApplicationOrigin folded) {
-        ApplicationOrigin written = ApplicationOrigin.composedOutOf(folded,
+        ApplicationOrigin written = ApplicationOrigin.composedOutOf(folded, 0,
                 ApplicationDerivationCause.ApplicationWrittenBack::new);
         if (written == null) {
             // A term with its places taken out says nothing about where it came from, and what is
@@ -2737,7 +2737,7 @@ final class Terms {
                 // are this writing's, and each is said by what it stands for.
                 yield args == null ? null
                         : Hir.Apply.synthetic(call.operation().name(), reachOf(call.operation()),
-                                ReferenceOrigin.composedOutOf(call.reference(),
+                                ReferenceOrigin.composedOutOf(call.reference(), 0,
                                         ReferenceDerivationCause.ReferenceWrittenBack::new),
                                 writtenBackFrom(call.application()), args, call.pos(), null);
             }

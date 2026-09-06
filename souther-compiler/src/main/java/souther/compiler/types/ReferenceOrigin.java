@@ -43,10 +43,17 @@ public sealed interface ReferenceOrigin
      * <p>Two cases and not three, because every reference can be told from every other of its kind
      * — an author's, one a pass derived, one a run composed. What is left is the term with its
      * places taken out, which carries none and out of which nothing can be said.
+     *
+     * <p>Which case it is in is this type's to say, and which of what a composer derived it is, is
+     * the composer's: one cause may make a pass write more than one name, and only that pass knows
+     * how many.
+     *
+     * @param ordinal which of the names this composer derives from {@code from} is being made, by
+     *                the composer's own count over them
      */
     static ReferenceOrigin composedOutOf(
-            ReferenceOrigin from,
+            ReferenceOrigin from, int ordinal,
             java.util.function.Function<ReferenceOrigin, ReferenceDerivationCause> cause) {
-        return from == null ? null : new DerivedReferenceOrigin(cause.apply(from), 0);
+        return from == null ? null : new DerivedReferenceOrigin(cause.apply(from), ordinal);
     }
 }

@@ -8,6 +8,12 @@ package souther.compiler.types;
  * name is a reference: two of them are two, and expanding each of them as a value writes a block of
  * its own. This is what tells them apart.
  *
+ * <p><b>What it is derived from is not always what a source wrote.</b> A construct the author wrote
+ * is one cause; another is a reference that already carries which occurrence it is, whoever made it
+ * — an author's, one another pass derived, one a generator run composed. What a cause has to be is
+ * something that can be told from every other of its kind, because that is what this is derived
+ * from; being the source's is one way to be that and not the only one.
+ *
  * <p><b>The cause and the producer's count over it, and neither alone.</b> One construct may make a
  * pass write several names, so the cause answers which construct is behind them and not which of
  * them this is. And a count on its own moves with whatever else the pass met first.
@@ -28,7 +34,7 @@ public record DerivedReferenceOrigin(ReferenceDerivationCause cause, int ordinal
     public DerivedReferenceOrigin {
         if (cause == null) {
             throw new IllegalArgumentException(
-                    "a reference a pass wrote was written because a source wrote something");
+                    "a reference a pass wrote was written because of something it can name");
         }
         if (ordinal < 0) {
             throw new IllegalArgumentException(

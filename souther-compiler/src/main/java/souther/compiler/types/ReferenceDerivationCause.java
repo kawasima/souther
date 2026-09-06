@@ -34,9 +34,13 @@ public sealed interface ReferenceDerivationCause {
     record CollectionLiteral(SourceConstructOrigin construct) implements ReferenceDerivationCause {
 
         public CollectionLiteral {
-            if (construct == null || !construct.isWritten()) {
+            // And written as a collection. The construct says what the author put there, so one
+            // saying they wrote a call is not the brackets this is derived from.
+            if (construct == null || !construct.isWritten()
+                    || construct.kind() != SourceConstruct.COLLECTION_LITERAL) {
                 throw new IllegalArgumentException(
-                        "a collection written in brackets is one a source wrote: " + construct);
+                        "a collection written in brackets is one a source counted as a"
+                                + " collection: " + construct);
             }
         }
     }

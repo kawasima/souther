@@ -61,12 +61,21 @@ public sealed interface ApplicationOrigin {
      *
      * <p>Which is separate from what the composed thing <em>means</em>. Every case comes out with
      * the same meaning; they differ only in how much can be said about where it came from.
+     *
+     * <p><b>Which of the three it is in, is this type's to say; which of what it composed it is, is
+     * the composer's.</b> One cause may make a pass write more than one thing, and only that pass
+     * knows how many — so {@code ordinal} is taken rather than assumed. Assumed, this would hand
+     * the same number to every composer, and a pass that composed twice from one cause would come
+     * out with two values that are one.
+     *
+     * @param ordinal which of the things this composer derives from {@code from} is being made, by
+     *                the composer's own count over them
      */
     static ApplicationOrigin composedOutOf(
-            ApplicationOrigin from,
+            ApplicationOrigin from, int ordinal,
             java.util.function.Function<Identified, ApplicationDerivationCause> cause) {
         return switch (from) {
-            case Identified identified -> new Derived(cause.apply(identified), 0);
+            case Identified identified -> new Derived(cause.apply(identified), ordinal);
             case ComposedFixture _ -> new ComposedFixture();
             case null -> null;
         };
@@ -82,9 +91,15 @@ public sealed interface ApplicationOrigin {
     record Written(SourceConstructOrigin application) implements Identified {
 
         public Written {
-            if (application == null || !application.isWritten()) {
+            // And written as an application. The construct says what the author put there, so one
+            // saying they wrote a comparison or a collection is a construct standing for something
+            // this is not — and a name that answered for either would be a name saying a fact the
+            // value beside it does not.
+            if (application == null || !application.isWritten()
+                    || application.kind() != SourceConstruct.CALL) {
                 throw new IllegalArgumentException(
-                        "an application the source wrote is one this source counted: " + application);
+                        "an application the source wrote is one this source counted as an"
+                                + " application: " + application);
             }
         }
     }

@@ -362,10 +362,10 @@ final class Conditions {
             // meaning away from the reader for the sake of an identity it never asked for. A
             // normalized term is read as a normalized one: the size is a call of this pass's either
             // way, and it says as much about where it came from as the term it was read off does.
-            ApplicationOrigin application = ApplicationOrigin.composedOutOf(call.application(),
+            ApplicationOrigin application = ApplicationOrigin.composedOutOf(call.application(), 0,
                     ApplicationDerivationCause.SizeMeaningOfApplication::new);
             Core size = new Core.PreservedCall(means.size(), call.args(),
-                    ReferenceOrigin.composedOutOf(call.reference(),
+                    ReferenceOrigin.composedOutOf(call.reference(), 0,
                             ReferenceDerivationCause.SizeMeaningOfReference::new),
                     application, Type.INT, call.pos());
             return new Core.Binary(BinOp.EQ, size, new Core.Int(0, Type.INT, call.pos()),

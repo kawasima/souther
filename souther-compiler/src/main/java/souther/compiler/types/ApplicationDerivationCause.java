@@ -9,9 +9,13 @@ package souther.compiler.types;
  * {@link ApplicationOrigin.Derived} adds the pass's own count over what one reason produced.
  *
  * <p><b>Its own vocabulary, beside the one references have.</b> A reason for writing an application
- * is not a reason for writing a name: what an application is derived from is an application or a
- * construct. Held as one vocabulary with {@link ReferenceDerivationCause}, an arm added for one of
- * them would be offered to the other.
+ * is not a reason for writing a name. Held as one vocabulary with {@link ReferenceDerivationCause},
+ * an arm added for one of them would be offered to the other.
+ *
+ * <p>What an arm holds is whatever that reason actually is, and that is not always a construct or
+ * an application: a name read where a value goes makes an application out of a reference, there
+ * being no application to make it out of. What every one of them does hold is something that can be
+ * told from every other of its kind, which is what a thing derived from it is derived from.
  */
 public sealed interface ApplicationDerivationCause {
 
@@ -26,9 +30,13 @@ public sealed interface ApplicationDerivationCause {
     record CollectionLiteral(SourceConstructOrigin construct) implements ApplicationDerivationCause {
 
         public CollectionLiteral {
-            if (construct == null || !construct.isWritten()) {
+            // And written as a collection. The construct says what the author put there, so one
+            // saying they wrote a call is not the brackets this is derived from.
+            if (construct == null || !construct.isWritten()
+                    || construct.kind() != SourceConstruct.COLLECTION_LITERAL) {
                 throw new IllegalArgumentException(
-                        "a collection written in brackets is one a source wrote: " + construct);
+                        "a collection written in brackets is one a source counted as a"
+                                + " collection: " + construct);
             }
         }
     }
