@@ -750,7 +750,8 @@ public final class FieldDomains {
      * it.
      *
      * <p>The one place a counterfactual of this reading is stood up, so that what one is — the
-     * declaration, its source, what it may spend, and what it leaves out — is settled once. The
+     * declaration, its source, what it may spend, what it leaves out, and what it is handed rather
+     * than builds ({@link #borrowingMachines}) — is settled once. The
      * questions that leave the same rules out get the reading that was made: both ends of a
      * coordinate leave the same rules out, a declaration reaching several of a record's names
      * leaves them out again at each of them, and the questions {@link EndNarrowing} puts ask for
