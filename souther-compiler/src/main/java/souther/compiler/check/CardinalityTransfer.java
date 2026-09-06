@@ -8,7 +8,6 @@ import souther.compiler.values.Value;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.function.Predicate;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -69,15 +68,15 @@ final class CardinalityTransfer {
      */
     static Cardinality upperOf(TypeSymbol named, Hir.Def def, RuleReadingSource source,
                                ReadingPolicy policy, Answers answers,
-                               Predicate<TypeSymbol> granted) {
-        return upperOf(named, def, source, policy, answers, granted, StringMachineLookup.NONE);
+                               Set<TypeSymbol> granted) {
+        return upperOf(named, def, source, policy, answers, granted, DeclarationReadings.NONE);
     }
 
     /** The same, asking {@code machines} for what somebody has already made of the declaration's
      *  string rules before building any of it. */
     static Cardinality upperOf(TypeSymbol named, Hir.Def def, RuleReadingSource source,
                                ReadingPolicy policy, Answers answers,
-                               Predicate<TypeSymbol> granted, StringMachineLookup machines) {
+                               Set<TypeSymbol> granted, DeclarationReadings machines) {
         return switch (def) {
             case Hir.UnitData _ -> Cardinality.atMost(1);
             case Hir.SumData sum -> ofCases(namedCases(sum), answers);
@@ -133,7 +132,7 @@ final class CardinalityTransfer {
 
     private static Cardinality ofData(TypeSymbol.AtModule named, Hir.Data data, RuleReadingSource source,
                                       ReadingPolicy policy, Answers answers,
-                                      Predicate<TypeSymbol> granted, StringMachineLookup machines) {
+                                      Set<TypeSymbol> granted, DeclarationReadings machines) {
         // Rules that cannot all hold leave nothing to count, and the ends they would have been
         // counted between are gone with them. Asked before the positions, which have nothing to say
         // about a value the declaration as a whole refuses, and nearer than anything they could say.
@@ -213,7 +212,7 @@ final class CardinalityTransfer {
      */
     static Cardinality upperAt(Type type, RuleKey path, OccurrenceCounts counts,
                                OccurrenceValues values, RuleReadingSource source,
-                               Answers answers, Predicate<TypeSymbol> granted,
+                               Answers answers, Set<TypeSymbol> granted,
                                Set<TypeSymbol> worn) {
         return switch (type) {
             case Type.Prim prim -> switch (prim) {
@@ -279,10 +278,10 @@ final class CardinalityTransfer {
      */
     private static Cardinality ofRef(Type.Ref ref, RuleKey path, OccurrenceCounts counts,
                                      OccurrenceValues values, RuleReadingSource source,
-                                     Answers answers, Predicate<TypeSymbol> granted,
+                                     Answers answers, Set<TypeSymbol> granted,
                                      Set<TypeSymbol> worn) {
         Cardinality named = answers.of(ref.name());
-        if (granted.test(ref.name())
+        if (granted.contains(ref.name())
                 || !(source.symbols().declaredNode(ref.name()) instanceof Hir.Data data)
                 || !data.newtype()
                 || !worn.add(ref.name())) {
@@ -312,7 +311,7 @@ final class CardinalityTransfer {
 
     /** A value a collection holds, which no rule of the collection's own was written about. */
     private static Cardinality ofType(Type type, RuleReadingSource source, Answers answers,
-                                      Predicate<TypeSymbol> granted, Set<TypeSymbol> worn) {
+                                      Set<TypeSymbol> granted, Set<TypeSymbol> worn) {
         return upperAt(type, RuleKey.THE_VALUE, OccurrenceCounts.NOTHING_READ,
                 OccurrenceValues.NOTHING_READ, source, answers, granted, worn);
     }
@@ -339,7 +338,7 @@ final class CardinalityTransfer {
 
     private static Cardinality ofSet(Type element, RuleKey path, OccurrenceCounts counts,
                                      RuleReadingSource source, Answers answers,
-                                     Predicate<TypeSymbol> granted, Set<TypeSymbol> worn) {
+                                     Set<TypeSymbol> granted, Set<TypeSymbol> worn) {
         if (!counts.mayHoldAtLeast(path, 1)) {
             return noSizeLeft(counts, path);
         }
@@ -378,7 +377,7 @@ final class CardinalityTransfer {
 
     private static Cardinality ofList(Type element, RuleKey path, OccurrenceCounts counts,
                                       RuleReadingSource source, Answers answers,
-                                      Predicate<TypeSymbol> granted, Set<TypeSymbol> worn) {
+                                      Set<TypeSymbol> granted, Set<TypeSymbol> worn) {
         if (!counts.mayHoldAtLeast(path, 1)) {
             return noSizeLeft(counts, path);
         }
@@ -404,7 +403,7 @@ final class CardinalityTransfer {
 
     private static Cardinality ofMap(Type.MapOf map, RuleKey path, OccurrenceCounts counts,
                                      RuleReadingSource source, Answers answers,
-                                     Predicate<TypeSymbol> granted, Set<TypeSymbol> worn) {
+                                     Set<TypeSymbol> granted, Set<TypeSymbol> worn) {
         if (!counts.mayHoldAtLeast(path, 1)) {
             return noSizeLeft(counts, path);
         }

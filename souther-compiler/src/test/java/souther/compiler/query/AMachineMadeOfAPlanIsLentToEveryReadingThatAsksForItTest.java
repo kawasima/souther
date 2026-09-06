@@ -4,7 +4,7 @@ import souther.compiler.check.FieldDomains;
 import souther.compiler.check.ReadingPolicy;
 import souther.compiler.check.RuleKey;
 import souther.compiler.check.RuleReadingSource;
-import souther.compiler.check.StringMachineLookup;
+import souther.compiler.check.DeclarationReadings;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.regex.PatternPlan;
 import souther.compiler.types.TypeKey;
@@ -130,7 +130,7 @@ class AMachineMadeOfAPlanIsLentToEveryReadingThatAsksForItTest {
         // The control: a reading that has to build for itself, under an allowance that can build
         // nothing, does not come to the set the pattern admits.
         ValueSet built = FieldDomains.of(TypeSymbols.declared(CODE), source, BUILDING_NOTHING,
-                StringMachineLookup.NONE).admits(RuleKey.THE_VALUE).approximation();
+                DeclarationReadings.NONE).admits(RuleKey.THE_VALUE).approximation();
         assertFalse(built instanceof ValueSet.Matching,
                 () -> "with nothing lent and nothing affordable, the set is not the language: "
                         + built);
@@ -138,7 +138,7 @@ class AMachineMadeOfAPlanIsLentToEveryReadingThatAsksForItTest {
         // And the claim: the same reading handed the store's answer comes to the language, which
         // it can only have borrowed.
         ValueSet borrowed = FieldDomains.of(TypeSymbols.declared(CODE), source, BUILDING_NOTHING,
-                Machines.of(db)).admits(RuleKey.THE_VALUE).approximation();
+                db.readings()).admits(RuleKey.THE_VALUE).approximation();
         assertTrue(borrowed instanceof ValueSet.Matching,
                 () -> "handed the declaration's answer, the reading comes to the language it"
                         + " could not have built: " + borrowed);

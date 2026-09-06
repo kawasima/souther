@@ -112,7 +112,7 @@ class EveryClauseADeclarationPassesTypesInTheDischargeRepresentationTest {
             assertNotNull(declared);
             assertNotNull(prepared);
 
-            Clauses clauses = new Clauses(symbols, declared, StringMachineLookup.NONE);
+            Clauses clauses = new Clauses(symbols, declared, DeclarationReadings.NONE);
             int read = 0;
             for (Hir.Def def : prepared.defs().stream().map(each -> each.declaration().node()).toList()) {
                 if (!(def instanceof Hir.Data data)) {

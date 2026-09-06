@@ -712,7 +712,7 @@ public final class Adequacy {
                             // differently depending on what had been asked before it.
                             demandOf(db, name, spec, fn.present() ? fn.value() : null,
                                     scope.value(), statedOf(stated, spec)),
-                            Machines.of(db)));
+                            db.readings()));
                 }
             }
             return Answer.of(Ordered.map(out));
