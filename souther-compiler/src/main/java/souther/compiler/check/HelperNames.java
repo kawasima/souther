@@ -225,7 +225,7 @@ public final class HelperNames {
             given.add(value == g.value() ? g
                     : new Hir.Given(g.declaredType(), value, g.applied(), g.arrivesAs()));
         }
-        return any ? new Hir.Expansion(ex.callee(), ex.application(), ex.bound(), given,
+        return any ? new Hir.Expansion(ex.callee(), ex.application(), ex.at(), ex.bound(), given,
                 ex.declaredReturn(), ex.body(), ex.pos(), ex.region()) : e;
     }
 

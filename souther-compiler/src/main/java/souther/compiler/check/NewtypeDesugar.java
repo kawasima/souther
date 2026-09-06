@@ -151,7 +151,7 @@ public final class NewtypeDesugar {
                 for (Hir.Bound b : ex.bound()) {
                     bound.add(new Hir.Bound(b.binder(), b.declaredType(), go(b.value(), symbols)));
                 }
-                yield new Hir.Expansion(ex.callee(), ex.application(), bound, ex.given(),
+                yield new Hir.Expansion(ex.callee(), ex.application(), ex.at(), bound, ex.given(),
                         ex.declaredReturn(), go(ex.body(), symbols), ex.pos(), ex.region());
             }
             case Hir.If iff ->

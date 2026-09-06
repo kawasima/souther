@@ -11,6 +11,13 @@ import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.EtaOrigin;
+import souther.compiler.types.ExpansionLineage;
+import souther.compiler.types.ExpansionSite;
+import souther.compiler.types.ParameterSlot;
+import souther.compiler.types.ReferenceOrigin;
+import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.SourceReferenceOrigin;
+import souther.compiler.types.EtaOrigin;
 import souther.compiler.types.Type;
 import souther.compiler.types.ReachName;
 import souther.compiler.types.ValueName;
@@ -141,7 +148,8 @@ public final class HelperInliner {
      *                      — and inside the writing because a lambda is in scope for as long as the
      *                      body holding it is being written and not one call longer
      */
-    private record Writing(BindingOwner destination, BindingOwner enclosing, Hir.Binders binders,
+    private record Writing(BindingOwner destination, BindingOwner enclosing,
+                           ExpansionLineage lineage, Hir.Binders binders,
                            Set<BindingId> dependencies,
                            Map<BindingId, ScopedLambda> scopedLambdas) {
 
@@ -156,9 +164,15 @@ public final class HelperInliner {
          * <p>Not a writing of its own. One started here would number this pass's names from zero
          * again and would begin with no lambda in scope, so a function handed to the call would stop
          * being reachable from inside the body it was handed to.
+         *
+         * <p>{@code deeper} is that copy said the other way. What a binding belongs to is this
+         * pass's answer and has this pass's counting in it; what a construct is a copy of is the
+         * sites the splicing went through, and it is carried here rather than read back off the
+         * owner — a reader that recovered it from there would be taking an identity out of a value
+         * that says how the compiler ran.
          */
-        Writing inside(BindingOwner copy) {
-            return new Writing(destination, copy, binders, dependencies, scopedLambdas);
+        Writing inside(BindingOwner copy, ExpansionLineage deeper) {
+            return new Writing(destination, copy, deeper, binders, dependencies, scopedLambdas);
         }
     }
 
@@ -172,10 +186,10 @@ public final class HelperInliner {
      * changed and neither has what is in scope; what has changed is which copy the names written
      * from here belong to.
      */
-    private Hir.Expr insideThisCopy(BindingOwner copy,
+    private Hir.Expr insideThisCopy(BindingOwner copy, ExpansionLineage deeper,
                                     java.util.function.Supplier<Hir.Expr> work) {
         Writing outer = writing;
-        writing = outer.inside(copy);
+        writing = outer.inside(copy, deeper);
         try {
             return work.get();
         } finally {
@@ -206,8 +220,14 @@ public final class HelperInliner {
      * that declares that parameter, and the lambda's own position. Asked by the binding and not by
      * the spelling: two combinators nested one inside the other give their function parameters the
      * same name as often as not, and a report that found the outer one's lambda would point at
-     * another author's line. */
-    private record LambdaOrigin(String param, String owner, SourcePos pos) {}
+     * another author's line.
+     *
+     * <p>{@code slot} is where that parameter stands among the ones the callee declares, which is
+     * what names the block when the copy applying it is expanded ({@link ExpansionSite.Supplied}).
+     * It is read off the declaration rather than off the binding this lambda was registered under:
+     * that binding's number is the minter's count over everything the expansion wrote, and what it
+     * counts is the order things were reached in. */
+    private record LambdaOrigin(String param, ParameterSlot slot, String owner, SourcePos pos) {}
 
     private HelperInliner(HelperTable table, HelperGraph graph) {
         this.table = table;
@@ -1146,7 +1166,8 @@ public final class HelperInliner {
         // The writing is what places the copies, so it is what they are written under. Rooted at
         // the body instead, two writings into one body would place one call's copy in one spot
         // twice — the body cannot tell them apart, and which writing this is is exactly what does.
-        writing = new Writing(into, mine, new Hir.Binders(mine), dependencies, new HashMap<>());
+        writing = new Writing(into, mine, ExpansionLineage.ORIGINAL, new Hir.Binders(mine),
+                dependencies, new HashMap<>());
         try {
             return expansion.get();
         } finally {
@@ -1252,9 +1273,11 @@ public final class HelperInliner {
                 }
                 // Walked with this expansion as the copy being written: a call the body still holds
                 // is one this expansion made, not one the body around it made.
-                yield new Hir.Expansion(ex.callee(), ex.application(), bound, given,
+                yield new Hir.Expansion(ex.callee(), ex.application(), ex.at(), bound, given,
                         ex.declaredReturn(),
-                        insideThisCopy(ex.application(), () -> inline(ex.body())),
+                        insideThisCopy(ex.application(),
+                                writing.lineage().copiedInto(ex.callee(), ex.at()),
+                                () -> inline(ex.body())),
                         ex.pos(), ex.region());
             }
             case Hir.LetIn li -> {
@@ -1409,6 +1432,11 @@ public final class HelperInliner {
             throw new IllegalStateException(
                     "a helper expanded at an application that says only why it is here: " + call);
         }
+        // And where the copy is, which is the same call said in words the source settles. Worked
+        // out here, where the application is still in hand, and refused where it projects to
+        // nothing — a copy this cannot name is one whose constructs would be named by whatever the
+        // application happens to carry, and some of that is this compiler's own counting.
+        ExpansionSite site = siteOf(at, call);
         BindingOwner mine =
                 new BindingOwner.Expansion(writing.enclosing(), callee.denotes(), at);
         Hir.Binders ours = new Hir.Binders(mine);
@@ -1445,7 +1473,8 @@ public final class HelperInliner {
         // belongs to the copy of that body it stands in, so a helper expanded at two places holds
         // two of everything inside it. The body being written into is the same for both and cannot
         // tell them apart.
-        Hir.Expr body = insideThisCopy(mine, () -> inline(rename(helper.writtenBody(), renaming)));
+        Hir.Expr body = insideThisCopy(mine, writing.lineage().copiedInto(callee.denotes(), site),
+                () -> inline(rename(helper.writtenBody(), renaming)));
         List<Hir.Bound> bound = new ArrayList<>(arguments.bound());
         // A scoped lambda the body still names was passed rather than applied, so nothing
         // reduced it and the name would stand for nothing. It is bound to what it names, which
@@ -1456,8 +1485,67 @@ public final class HelperInliner {
             }
         });
         arguments.unreduced().keySet().forEach(writing.scopedLambdas()::remove);
-        return new Hir.Expansion(callee.denotes(), mine, bound, arguments.given(),
+        return new Hir.Expansion(callee.denotes(), mine, site, bound, arguments.given(),
                 instantiated(helper.declaredReturn(), applied), body, call.pos(), call.region());
+    }
+
+    /**
+     * Where the copy {@code at} makes is, or a refusal where the application projects to nothing the
+     * source settles.
+     *
+     * <p>The one crossing from why an application is here to which call it is. Three of the four
+     * kinds of application reach an expansion and each projects differently: one the source wrote is
+     * the call itself, a block a name was expanded into is the reference the author wrote, and a
+     * block bound inside a copy is that copy and the parameter it filled.
+     *
+     * <p><b>Refused rather than given a name of some other kind.</b> A reference this compiler
+     * composed says nothing but a number, and a binding written by a pass is numbered among what
+     * that pass wrote — a copy named by either is a copy whose name moves when the compiler is asked
+     * to do the same work in another order, and every construct inside it moves with it. Stopping
+     * here is how such an application gets looked at rather than absorbed.
+     */
+    private ExpansionSite siteOf(ApplicationOrigin.Identified at, Hir.Apply call) {
+        return switch (at) {
+            case ApplicationOrigin.Written(SourceConstructOrigin application) ->
+                    new ExpansionSite.Written(application);
+            case ApplicationOrigin.Eta(EtaOrigin cause) -> etaSiteOf(cause, call);
+            // What a pass wrote because of something it can name. Nothing reaches an expansion this
+            // way today, and what such an application projects to is a question about the pass that
+            // wrote it: it is answered when one turns up, by whoever writes it.
+            case ApplicationOrigin.Derived derived -> throw new IllegalStateException(
+                    "a copy of a body made at an application a pass composed: " + derived
+                            + " at " + call.pos());
+        };
+    }
+
+    /** The same, for the block a name or a binding was expanded into. */
+    private ExpansionSite etaSiteOf(EtaOrigin cause, Hir.Apply call) {
+        switch (cause) {
+            case EtaOrigin.Declaration(ReferenceOrigin reference) -> {
+                // The reference the author wrote, counted within what wrote it. A reference this
+                // compiler composed carries a number and nothing else, so it names no copy.
+                if (reference instanceof SourceReferenceOrigin written) {
+                    return new ExpansionSite.Named(written);
+                }
+                throw new IllegalStateException(
+                        "a copy of a body made at a name this compiler composed: " + reference
+                                + " at " + call.pos());
+            }
+            case EtaOrigin.Bound(BindingId binding) -> {
+                // The block a call handed to a parameter. What copy it was handed to is the one
+                // being written here — the block is expanded where the copy taking it applies it —
+                // and which parameter it filled is what the binding was registered with. Read off
+                // the registration rather than off the binding's own number, which is this pass's
+                // count over the names it minted.
+                ScopedLambda lambda = writing.scopedLambdas().get(binding);
+                if (lambda == null || lambda.origin() == null) {
+                    throw new IllegalStateException(
+                            "a copy of a body made at a binding no call handed to a parameter: "
+                                    + binding + " at " + call.pos());
+                }
+                return new ExpansionSite.Supplied(writing.lineage(), lambda.origin().slot());
+            }
+        }
     }
 
     /**
@@ -1598,7 +1686,8 @@ public final class HelperInliner {
                             Hir.FnDef.lambda(f.name(), lparams,
                                     declares == null ? null : declares.result(),
                                     new Hir.FnBody.Written(lambda.body()), lambda.pos()),
-                            new LambdaOrigin(p.name(), helper.name(), lambda.pos())));
+                            new LambdaOrigin(p.name(), new ParameterSlot(i), helper.name(),
+                                    lambda.pos())));
                     stands(f.id(), ruleOf(lambda));
                     unreduced.put(f.id(),
                             new Hir.Bound(f, instantiated(p.type(), applied), lambda));
@@ -2301,7 +2390,7 @@ public final class HelperInliner {
                 // as it was, the two copies of one already-expanded body would say they wrote into
                 // the same place while their bindings had gone to two.
                 yield new Hir.Expansion(ex.callee(),
-                        renaming.copy().ownerOf(ex.application()), bound, given,
+                        renaming.copy().ownerOf(ex.application()), ex.at(), bound, given,
                         ex.declaredReturn(), rename(ex.body(), renaming),
                         renaming.at(ex.pos()), renaming.over(ex.region()));
             }
