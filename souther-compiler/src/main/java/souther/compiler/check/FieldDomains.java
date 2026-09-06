@@ -1363,7 +1363,7 @@ public final class FieldDomains {
     private FieldDomains without(Set<AboutOneCoordinate> removed) {
         return of(named, data, source, policy, settled,
                 InvariantChecker.Reach.withoutParts(removed.stream()
-                        .map(each -> new PartsLeftOut.AuthoredPart(each.part(), each.read()))
+                        .map(AboutOneCoordinate::part)
                         .collect(java.util.stream.Collectors.toSet())),
                 StringMachineLookup.NONE);
     }

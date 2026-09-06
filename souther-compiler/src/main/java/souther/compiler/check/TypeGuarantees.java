@@ -165,17 +165,27 @@ final class TypeGuarantees {
                                PartsLeftOut withoutParts) {
         // Where this clause becomes a rule of the model something can be attributed to. Settled here
         // so that no reader of the reading has to decide which of the rules of the model it holds.
-        RuleRef.Invariant rule = new RuleRef.Invariant(one.clause().ref());
-        // Which of this clause's conjuncts the caller asked for, and the same answer for everything
-        // read out of it. A guarantee is what one clause states, so a reading that took a conjunct
-        // out of what it owes and left it in what it quantifies would be a clause half taken away.
-        Predicates.PartsToRead read = withoutParts.of(rule);
         List<TypeGuarantee.Part> parts = new ArrayList<>();
-        Predicates.Owed owed = predicates.assumed(one.expr(), denotations, false,
-                (part, said) -> parts.add(new TypeGuarantee.Part(part, said)), read);
         List<Quantified> quantified = new ArrayList<>();
-        predicates.quantifiedBy(one.expr(), denotations, true, quantified, read);
-        return new TypeGuarantee(one.expr(), one.parts(), owed, quantified, parts);
+        // A part at a time, and the ones the caller asked for. Which parts a clause has was settled
+        // where it was split, so leaving one out is leaving a part out of the list and never a node
+        // out of a walk — and the same list answers for what the clause owes and for what it
+        // quantifies, since a part left out of the one and left in the other is a clause taken half
+        // away.
+        Predicates.Owed owed = null;
+        for (Clauses.StatedPart part : one.parts()) {
+            if (withoutParts.excludes(part.id())) {
+                continue;
+            }
+            Predicates.Owed said = predicates.assumed(part.expr(), denotations, false,
+                    (of, came) -> parts.add(new TypeGuarantee.Part(of, came)));
+            owed = owed == null ? said : owed.and(said);
+            predicates.quantifiedBy(part.expr(), denotations, true, quantified);
+        }
+        // Nothing owed where every part was left out, which is a clause with all of it taken away
+        // and not a clause that holds.
+        return new TypeGuarantee(one.expr(), one.parts(),
+                owed == null ? Predicates.Owed.unread() : owed, quantified, parts);
     }
 
     /**

@@ -579,7 +579,7 @@ public final class InvariantChecker {
          * {@link #withoutClausesOf}: a clause has as many conjuncts as the author wrote, and taking
          * the clause away answers for all of them at once.
          */
-        static Reach withoutParts(java.util.Set<PartsLeftOut.AuthoredPart> parts) {
+        static Reach withoutParts(java.util.Set<PartId> parts) {
             return new Reach(RulesLeftOut.NONE, PartsLeftOut.without(parts), _ -> false);
         }
 
@@ -743,14 +743,23 @@ public final class InvariantChecker {
             }
             // The clause as one reading, and the parts its author wrote as subtrees of it. Which
             // parts there are was settled where the clause was split; nothing here decides it.
-            written.add(new Written(stated, declared.shape().onto(stated, origin)));
-            Predicates.Owed owed = c.predicates.assumed(stated, at, false,
-                    (part, said) -> gathering.constrained(origin, part, partRead(said)),
-                    // Which conjuncts of this rule were asked for. Which nodes of the clause
-                    // its conjuncts are is the predicate reader's answer, so what is handed
-                    // over is the one that is not wanted rather than a clause rebuilt without
-                    // it.
-                    reach.withoutParts().of(origin));
+            Written wrote = new Written(stated, declared.shape().onto(stated, origin));
+            written.add(wrote);
+            // A part at a time, and the ones this reading was asked for. Which parts a clause has
+            // was settled where it was split, so a part left out is one left out of the list —
+            // never a node a walk was told to step over.
+            Predicates.Owed owed = null;
+            for (Clauses.StatedPart part : wrote.parts()) {
+                if (reach.withoutParts().excludes(part.id())) {
+                    continue;
+                }
+                Predicates.Owed said = c.predicates.assumed(part.expr(), at, false,
+                        (of, came) -> gathering.constrained(origin, of, partRead(came)));
+                owed = owed == null ? said : owed.and(said);
+            }
+            if (owed == null) {
+                owed = Predicates.Owed.unread();
+            }
             // And the reading that builds the numeric constraints, said by what it produced.
             // `value * 2 >= 4` is beyond the two readings below and is taken in here about the
             // position itself; `value * value >= 4` comes back about an atom standing for the
@@ -1528,10 +1537,15 @@ public final class InvariantChecker {
         Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart = new LinkedHashMap<>();
         Map<FieldDomains.BoundaryQuestion, FieldDomains.BoundaryStanding> standing =
                 new LinkedHashMap<>();
-        stated.forEach(each -> each.parts().forEach(part ->
-                direct(part.expr(), each.from(), part.id(), at, byName, out, noLines,
-                        withoutAnEnd, aboutOneCoordinate, aboutTheStrings, narrowers, raised,
-                        took, typeAt, parts, raisedByPart, standing, withoutParts)));
+        // A part this reading was not asked for is not read, which is the same list of parts the
+        // reader of predicates was given: a part one of them reached that the other never read is a
+        // value whose rules were not gathered ({@link APartNoReadingSaw}).
+        stated.forEach(each -> each.parts().stream()
+                .filter(part -> !withoutParts.excludes(part.id()))
+                .forEach(part ->
+                        direct(part.expr(), each.from(), part.id(), at, byName, out, noLines,
+                                withoutAnEnd, aboutOneCoordinate, aboutTheStrings, narrowers,
+                                raised, took, typeAt, parts, raisedByPart, standing)));
         // Insertion order, kept: `Map.copyOf` iterates in an order salted once per JVM run, and
         // what a report prints for a position is these in the order the declaration writes them.
         return new Reading(List.copyOf(out), List.copyOf(noLines), List.copyOf(withoutAnEnd),
@@ -1561,11 +1575,9 @@ public final class InvariantChecker {
                           PartsRead parts,
                           Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
                           Map<FieldDomains.BoundaryQuestion,
-                                  FieldDomains.BoundaryStanding> standing,
-                          PartsLeftOut withoutParts) {
+                                  FieldDomains.BoundaryStanding> standing) {
         direct(stated.spelled().get(0), from, part, at, byName, out, noLines, withoutAnEnd, naming,
-                namingTheStrings, narrowers, raised, took, typeAt, parts, raisedByPart, standing,
-                withoutParts);
+                namingTheStrings, narrowers, raised, took, typeAt, parts, raisedByPart, standing);
     }
 
     /** What {@code clause} raises, taken together with whatever its other conjuncts raised. */
@@ -1677,20 +1689,11 @@ public final class InvariantChecker {
                         PartsRead parts,
                         Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
                         Map<FieldDomains.BoundaryQuestion,
-                                FieldDomains.BoundaryStanding> standing,
-                        PartsLeftOut withoutParts) {
+                                FieldDomains.BoundaryStanding> standing) {
         if (clause instanceof Core.LetIn li) {
             direct(li.body(), from, part, terms.inside(li, at), byName, out, noLines,
                     withoutAnEnd, naming, namingTheStrings, narrowers, raised, took, typeAt, parts,
-                    raisedByPart, standing, withoutParts);
-            return;
-        }
-        // A part this reading was not asked for is walked no further.
-        //
-        // Here as well as in the reader of predicates, because the two walk the clause together: a
-        // part this one reached that the other never read is a value whose rules were not gathered
-        // ({@link APartNoReadingSaw}), and leaving it out of one walk alone is exactly that.
-        if (withoutParts.excludes(from, clause)) {
+                    raisedByPart, standing);
             return;
         }
         // What one part states may be more than one rule: a part that names a rule is that rule's
@@ -1710,10 +1713,10 @@ public final class InvariantChecker {
                 && joined.how() == ConditionJoin.BOTH && joined.positive()) {
             statedIn(joined.left(), from, part, at, byName, out, noLines, withoutAnEnd, naming,
                     namingTheStrings, narrowers, raised, took, typeAt, parts, raisedByPart,
-                    standing, withoutParts);
+                    standing);
             statedIn(joined.right(), from, part, at, byName, out, noLines, withoutAnEnd, naming,
                     namingTheStrings, narrowers, raised, took, typeAt, parts, raisedByPart,
-                    standing, withoutParts);
+                    standing);
             return;
         }
         // What a rule about the strings at a position says about where they stop, which is a rule
