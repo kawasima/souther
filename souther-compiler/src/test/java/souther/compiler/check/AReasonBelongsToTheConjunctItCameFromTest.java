@@ -54,7 +54,8 @@ class AReasonBelongsToTheConjunctItCameFromTest {
 
     /** The parts of the clause standing behind that answer, by where each stands among them. */
     private static List<Integer> partsBehindTheLine(String clause) {
-        return standing(clause).conjuncts().stream().map(PartId::ordinal).toList();
+        return standing(clause).conjuncts().stream()
+                .map(PartId<RuleRef.Invariant>::ordinal).toList();
     }
 
     /**

@@ -30,7 +30,7 @@ public sealed interface WhichLine {
      * body joins — so this says which part drew it and not which line of that part it is. Two lines
      * of one part are told apart by what each says about its own value ({@link LineFacts}).
      */
-    record OfAPart(PartId part) implements WhichLine {
+    record OfAPart(PartId<RuleRef.Invariant> part) implements WhichLine {
 
         public OfAPart {
             if (part == null) {

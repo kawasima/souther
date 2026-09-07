@@ -146,7 +146,8 @@ class WhatIsHandedOnIsNotWhatIsReportedTest {
     }
 
     /** What the clause is called, taken out of the name a report prints it under. */
-    private static String named(souther.compiler.check.PartId part) {
+    private static String named(
+            souther.compiler.check.PartId<souther.compiler.check.RuleRef.Invariant> part) {
         String written = part.rule().citedName();
         return written.substring(written.indexOf('(') + 1, written.indexOf(')'));
     }

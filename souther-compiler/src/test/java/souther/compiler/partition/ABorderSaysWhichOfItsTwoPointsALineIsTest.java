@@ -224,14 +224,14 @@ class ABorderSaysWhichOfItsTwoPointsALineIsTest {
     void aBoundThatStopsShortOfItsLineWhereTheOrderStepsIsRefused() {
         Border kept = borderOf(
                 new LineOrigin.InvariantOrigin(
-                        new souther.compiler.check.PartId(invariant(), THE_ONLY_CONJUNCT),
+                        new souther.compiler.check.PartId<>(invariant(), THE_ONLY_CONJUNCT),
                         souther.compiler.numeric.EndSide.LOWER, true));
         assertEquals("= 5", kept.demand(PointRole.ON).criterion().asked(kept.cut().of()),
                 "a bound that admits its own end is at that end's ON point");
 
         IllegalStateException refused = assertThrows(IllegalStateException.class,
                 () -> borderOf(new LineOrigin.InvariantOrigin(
-                        new souther.compiler.check.PartId(invariant(), THE_ONLY_CONJUNCT),
+                        new souther.compiler.check.PartId<>(invariant(), THE_ONLY_CONJUNCT),
                         souther.compiler.numeric.EndSide.LOWER, false)),
                 "a rule parting the values at 6 over a range that stops at 5 is two readings of one"
                         + " model that disagree");
@@ -282,7 +282,7 @@ class ABorderSaysWhichOfItsTwoPointsALineIsTest {
 
         // A bound owes nothing outside itself, and says which of the three answers settled it.
         Border bound = borderOf(new LineOrigin.InvariantOrigin(
-                        new souther.compiler.check.PartId(invariant(), THE_ONLY_CONJUNCT),
+                        new souther.compiler.check.PartId<>(invariant(), THE_ONLY_CONJUNCT),
                         souther.compiler.numeric.EndSide.LOWER, true));
         assertEquals(new Demand.NotOwed(NotOwedReason.THE_RULES_REFUSE_IT),
                 bound.demand(PointRole.OFF));

@@ -65,7 +65,7 @@ class ALineSaysWhatCountsItAndCannotSayBothTest {
     /** And what the part-counted arm carries is a part, which is a declaration's clause by type. */
     @Test
     void aLineCountedByPartsIsADeclarationsOwn() {
-        assertEquals(aClause(), new WhichLine.OfAPart(new PartId(aClause(), 0)).rule(),
+        assertEquals(aClause(), new WhichLine.OfAPart(new PartId<>(aClause(), 0)).rule(),
                 "the clause the part is a part of, which is what such a line is of");
     }
 }

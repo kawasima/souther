@@ -148,7 +148,7 @@ class ANarrowingIsToldOnlyAboutTheEndItWasReadAtTest {
     /** The clause the bound is written in, which is only an identity here. */
     private static LineOrigin.InvariantOrigin aMinimum() {
         return new LineOrigin.InvariantOrigin(
-                new souther.compiler.check.PartId(new RuleRef.Invariant(new Clause.Ref(
+                new souther.compiler.check.PartId<>(new RuleRef.Invariant(new Clause.Ref(
                         new Clause.Id(
                                 TypeSymbols.declared(new TypeKey("example.weigh", "Amount")), 0),
                         Optional.of(new ClauseName("floor")))), 0),

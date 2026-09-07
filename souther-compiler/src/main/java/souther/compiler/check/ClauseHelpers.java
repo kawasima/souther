@@ -282,9 +282,17 @@ public final class ClauseHelpers {
             return written;
         }
 
-        /** What this part is called as a part of {@code rule}. */
-        public PartId idFor(RuleRef.Invariant rule) {
-            return new PartId(rule, ordinal);
+        /**
+         * What this part is called as a part of {@code rule}.
+         *
+         * <p>The kind of clause comes back with the name, so a reader that holds the parts of one
+         * kind is holding them and not whatever the caller happened to pass. One split serves both
+         * kinds: what an author joins out of conjuncts is joined the same way in a {@code data}'s
+         * invariant and in a behavior's {@code ensures}, and a second split for the second kind is
+         * a second answer to which parts a clause has.
+         */
+        public <R extends RuleRef.Named> PartId<R> idFor(R rule) {
+            return new PartId<>(rule, ordinal);
         }
 
         /**

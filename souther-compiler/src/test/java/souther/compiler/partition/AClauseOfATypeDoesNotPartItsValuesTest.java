@@ -184,7 +184,7 @@ class AClauseOfATypeDoesNotPartItsValuesTest {
 
     private static LineOrigin.InvariantOrigin aBound() {
         return new LineOrigin.InvariantOrigin(
-                new souther.compiler.check.PartId(new RuleRef.Invariant(new Clause.Ref(
+                new souther.compiler.check.PartId<>(new RuleRef.Invariant(new Clause.Ref(
                         new Clause.Id(
                                 TypeSymbols.declared(new TypeKey("example.weigh", "Amount")), 0),
                         Optional.of(new ClauseName("cap")))), 0),

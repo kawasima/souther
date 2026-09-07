@@ -86,7 +86,7 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      *                        derivation gets and not one about the end, and reading the end is what
      *                        keeps the two from being confused if it ever does get further
      */
-    record InvariantOrigin(souther.compiler.check.PartId part,
+    record InvariantOrigin(souther.compiler.check.PartId<RuleRef.Invariant> part,
                            souther.compiler.numeric.EndSide keeps, boolean holdsAtTheValue)
             implements LineOrigin {
 

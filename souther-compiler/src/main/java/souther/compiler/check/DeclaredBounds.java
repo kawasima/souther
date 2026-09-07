@@ -48,7 +48,7 @@ public final class DeclaredBounds {
      * that could make nothing of one conjunct still numbers the next the same as a reading that
      * could.
      */
-    public record Drawn(PartId part) {
+    public record Drawn(PartId<RuleRef.Invariant> part) {
 
         public Drawn {
             if (part == null) {

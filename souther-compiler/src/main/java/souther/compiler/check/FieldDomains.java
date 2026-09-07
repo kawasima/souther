@@ -477,7 +477,8 @@ public final class FieldDomains {
      *              place, and no other kind of rule reaches this reading
      * @param lower whether this bounds the coordinate below; otherwise above
      */
-    public record Placed(NumberAt<RuleKey> at, PartId part, boolean lower, Endpoint end) {
+    public record Placed(NumberAt<RuleKey> at, PartId<RuleRef.Invariant> part, boolean lower,
+                         Endpoint end) {
 
         /** What the value's rules call where the end sits. Never which number it is on: that is
          *  {@link #at}, and reading one off the other is what the pair exists to stop. */
@@ -506,7 +507,7 @@ public final class FieldDomains {
      * @param part which part of which rule it is, as the split that wrote the parts down named it
      * @param read the part itself
      */
-    public record WithoutAnEnd(PartId part, Core read) {
+    public record WithoutAnEnd(PartId<RuleRef.Invariant> part, Core read) {
 
         public WithoutAnEnd {
             if (part == null || read == null) {
@@ -550,7 +551,7 @@ public final class FieldDomains {
      * @param at   the number its quantity is over
      * @param part which part of which rule it is
      */
-    public record AboutOneCoordinate(NumberAt<RuleKey> at, PartId part) {
+    public record AboutOneCoordinate(NumberAt<RuleKey> at, PartId<RuleRef.Invariant> part) {
 
         public AboutOneCoordinate {
             if (at == null || part == null) {
@@ -566,7 +567,7 @@ public final class FieldDomains {
     }
 
     /** One authored line: which part of which rule drew it. */
-    record Line(PartId part) {}
+    record Line(PartId<RuleRef.Invariant> part) {}
 
     /**
      * A rule about where one coordinate's values stop that this reading placed no end from, and
@@ -595,7 +596,7 @@ public final class FieldDomains {
      * @param why  what would have to change before this rule could be a line, in this compiler's
      *             own terms
      */
-    public record NoLine(NumberAt<RuleKey> at, PartId part, Core read,
+    public record NoLine(NumberAt<RuleKey> at, PartId<RuleRef.Invariant> part, Core read,
                          souther.compiler.inputs.BlockReason.RuleWithoutLineReason why) {
 
         /** What the value's rules call where the end was to have been placed. */
@@ -639,7 +640,8 @@ public final class FieldDomains {
      *                  written
      */
     public record BoundaryStanding(
-            souther.compiler.inputs.BlockReason.RuleReadingStopped why, List<PartId> conjuncts) {
+            souther.compiler.inputs.BlockReason.RuleReadingStopped why,
+            List<PartId<RuleRef.Invariant>> conjuncts) {
 
         public BoundaryStanding {
             if (why == null) {
@@ -653,11 +655,11 @@ public final class FieldDomains {
         }
 
         /** The same answer, with {@code part} standing behind it too. */
-        BoundaryStanding and(PartId part) {
+        BoundaryStanding and(PartId<RuleRef.Invariant> part) {
             if (conjuncts.contains(part)) {
                 return this;
             }
-            List<PartId> both = new ArrayList<>(conjuncts);
+            List<PartId<RuleRef.Invariant>> both = new ArrayList<>(conjuncts);
             both.add(part);
             return new BoundaryStanding(why, both);
         }
@@ -740,7 +742,7 @@ public final class FieldDomains {
         }
 
         /** These conjuncts of the rules, everything else the declaration says being read. */
-        record Conjuncts(Set<PartId> parts) implements LeftOut {
+        record Conjuncts(Set<PartId<RuleRef.Invariant>> parts) implements LeftOut {
 
             public Conjuncts {
                 parts = Set.copyOf(parts);
