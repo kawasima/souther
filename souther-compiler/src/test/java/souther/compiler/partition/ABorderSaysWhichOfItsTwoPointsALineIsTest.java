@@ -224,14 +224,14 @@ class ABorderSaysWhichOfItsTwoPointsALineIsTest {
     void aBoundThatStopsShortOfItsLineWhereTheOrderStepsIsRefused() {
         Border kept = borderOf(
                 new LineOrigin.InvariantOrigin(
-                        new souther.compiler.check.PartId(invariant(), THE_ONLY_CONJUNCT),
+                        new souther.compiler.check.PartId<>(invariant(), THE_ONLY_CONJUNCT),
                         souther.compiler.numeric.EndSide.LOWER, true));
         assertEquals("= 5", kept.demand(PointRole.ON).criterion().asked(kept.cut().of()),
                 "a bound that admits its own end is at that end's ON point");
 
         IllegalStateException refused = assertThrows(IllegalStateException.class,
                 () -> borderOf(new LineOrigin.InvariantOrigin(
-                        new souther.compiler.check.PartId(invariant(), THE_ONLY_CONJUNCT),
+                        new souther.compiler.check.PartId<>(invariant(), THE_ONLY_CONJUNCT),
                         souther.compiler.numeric.EndSide.LOWER, false)),
                 "a rule parting the values at 6 over a range that stops at 5 is two readings of one"
                         + " model that disagree");
@@ -266,8 +266,10 @@ class ABorderSaysWhichOfItsTwoPointsALineIsTest {
         // the IN point and neither of the two words against the line.
         Carrier carrier = new Carrier.Whole();
         LineOrigin closed = new LineOrigin.EnsuresOrigin(
-                new RuleRef.Ensures(new BehaviorContract.RuleId(null, 0, 0, null), "cap"),
-                THE_ONLY_CONJUNCT,
+                new WhichLine.OfAComparisonOfAPart(new ClauseStatementId(
+                        new souther.compiler.check.PartId<>(new RuleRef.Ensures(
+                                new BehaviorContract.RuleId(null, 0, 0, null), "cap"),
+                                THE_ONLY_CONJUNCT), 0)),
                 new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(Towards.BELOW, true)));
         Border border = Border.at(lineAt(new AxisId("cap", "n"), carrier, Count.of(100)), closed,
                 new NumericDomain.Bounds(null, null));
@@ -282,7 +284,7 @@ class ABorderSaysWhichOfItsTwoPointsALineIsTest {
 
         // A bound owes nothing outside itself, and says which of the three answers settled it.
         Border bound = borderOf(new LineOrigin.InvariantOrigin(
-                        new souther.compiler.check.PartId(invariant(), THE_ONLY_CONJUNCT),
+                        new souther.compiler.check.PartId<>(invariant(), THE_ONLY_CONJUNCT),
                         souther.compiler.numeric.EndSide.LOWER, true));
         assertEquals(new Demand.NotOwed(NotOwedReason.THE_RULES_REFUSE_IT),
                 bound.demand(PointRole.OFF));

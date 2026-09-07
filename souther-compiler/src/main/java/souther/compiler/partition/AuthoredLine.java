@@ -36,9 +36,10 @@ import java.util.Set;
  * of the model, so an identity read off it would be worked back out of what the rules happened to
  * leave rather than read from what this rule says.
  *
- * @param which          which of that rule's lines this is, said as what counts them: a part of a
- *                       declaration's clause, or one of the comparisons a rule written in a body
- *                       states ({@link WhichLine})
+ * @param which          which of that rule's lines this is, said as what named it: a part of a
+ *                       declaration's clause, a statement of a part of a behavior's, or the rule
+ *                       alone where a body's comparison drew it and there is nothing under the rule
+ *                       to be one of ({@link WhichLine})
  * @param facts          what the rule says about its own line
  * @param narrowedWithin the declarations that took a bound's end in, kept so that a narrowed line
  *                       stays apart from the bare one it narrows: {@code MinuteOfDay}'s maximum is

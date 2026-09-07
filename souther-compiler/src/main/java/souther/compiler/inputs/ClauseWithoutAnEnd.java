@@ -33,7 +33,7 @@ import souther.compiler.types.TypeSymbol;
  *                 is that name's — matched against the writing declaration's bindings alone, a
  *                 clause under a name names no position at all
  */
-public record ClauseWithoutAnEnd(PartId part, Core read, TermPath at,
+public record ClauseWithoutAnEnd(PartId<RuleRef.Invariant> part, Core read, TermPath at,
                                  TypeSymbol.AtModule readUnder) {
 
     public ClauseWithoutAnEnd {

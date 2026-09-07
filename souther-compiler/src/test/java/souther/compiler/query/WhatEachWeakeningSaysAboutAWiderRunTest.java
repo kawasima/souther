@@ -238,8 +238,12 @@ class WhatEachWeakeningSaysAboutAWiderRunTest {
                         TermOrdersFixtures.itself(value, carrier)),
                 new Level.OnACarrier(carrier, Count.of(100)));
         LineOrigin origin = new LineOrigin.EnsuresOrigin(
-                new RuleRef.Ensures(new BehaviorContract.RuleId(null, 0, 0, null), "cap"),
-                0, new LineFacts(new ComparisonClaim.Cut(Towards.BELOW, true)));
+                new souther.compiler.partition.WhichLine.OfAComparisonOfAPart(
+                        new souther.compiler.partition.ClauseStatementId(
+                                new souther.compiler.check.PartId<>(new RuleRef.Ensures(
+                                        new BehaviorContract.RuleId(null, 0, 0, null), "cap"), 0),
+                                0)),
+                new LineFacts(new ComparisonClaim.Cut(Towards.BELOW, true)));
         return Border.at(target, origin, new NumericDomain.Bounds(null, null));
     }
 }

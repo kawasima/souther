@@ -164,14 +164,15 @@ record PredicateReadings(List<Reading> predicates, Set<Core> statedAt) {
                     if (one == null) {
                         continue;
                     }
-                    for (ClauseStatements.Statement each
-                            : ClauseStatements.of(one, reads, read.symbols())) {
+                    for (ClauseStatements.Stated said : ClauseStatements.of(
+                            conjunct.part(), one, reads, read.symbols())) {
                         // The statements this reader owns, and nothing said about the rest. What a
                         // statement of another kind came to is answered by the reader that owns it,
                         // once.
                         // The call is one the author wrote, which is what `ClauseStatements` reads
                         // these off; the construct is taken here rather than worked out inside.
-                        if (each instanceof ClauseStatements.Statement.TellsStringsApart it
+                        if (said.statement()
+                                        instanceof ClauseStatements.Statement.TellsStringsApart it
                                 && it.stated().application()
                                         instanceof ApplicationOrigin.Written wrote) {
                             read(it.stated(), wrote.application(), behavior, it.states(), it.reads(),

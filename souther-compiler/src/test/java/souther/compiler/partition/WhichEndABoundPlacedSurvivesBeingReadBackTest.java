@@ -83,7 +83,7 @@ class WhichEndABoundPlacedSurvivesBeingReadBackTest {
     void aBoundBuiltFromThatEndReadsBackAsThePairItCameFrom() {
         for (Row row : THE_LAW) {
             LineOrigin.InvariantOrigin origin = new LineOrigin.InvariantOrigin(
-                    new souther.compiler.check.PartId(aClause(), 0),
+                    new souther.compiler.check.PartId<>(aClause(), 0),
                     DeclaredThresholds.endKept(row.cut()), row.holdsAtTheValue());
 
             assertEquals(row.cut(), origin.lineFacts().claim(),

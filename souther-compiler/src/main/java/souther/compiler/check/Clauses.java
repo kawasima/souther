@@ -252,7 +252,7 @@ final class Clauses {
      * worked out here: which part of a clause a tree is is not something a reader of the tree can
      * answer, and a reader that counted them would be a second walk deciding which parts there are.
      */
-    record StatedPart(PartId id, Core expr) {
+    record StatedPart(PartId<RuleRef.Invariant> id, Core expr) {
 
         public StatedPart {
             if (id == null || expr == null) {

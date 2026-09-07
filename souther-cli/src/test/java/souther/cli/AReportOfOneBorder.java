@@ -88,7 +88,7 @@ final class AReportOfOneBorder {
      */
     static Border aBoundedBorder() {
         LineOrigin origin = new LineOrigin.InvariantOrigin(
-                new souther.compiler.check.PartId(new RuleRef.Invariant(new Clause.Ref(
+                new souther.compiler.check.PartId<>(new RuleRef.Invariant(new Clause.Ref(
                         new Clause.Id(
                                 TypeSymbols.declared(new TypeKey("example.rate", "Amount")), 0),
                         java.util.Optional.of(new ClauseName("cap")))), 0),
@@ -141,7 +141,7 @@ final class AReportOfOneBorder {
     /** The same border a rule leaves at 100 and up, where the ON point is the whole of what it owes. */
     static Border aBorderAtTheEdgeOfItsDomain() {
         LineOrigin origin = new LineOrigin.InvariantOrigin(
-                new souther.compiler.check.PartId(new RuleRef.Invariant(new Clause.Ref(
+                new souther.compiler.check.PartId<>(new RuleRef.Invariant(new Clause.Ref(
                         new Clause.Id(
                                 TypeSymbols.declared(new TypeKey("example.rate", "Amount")), 0),
                         java.util.Optional.of(new ClauseName("cap")))), 0),

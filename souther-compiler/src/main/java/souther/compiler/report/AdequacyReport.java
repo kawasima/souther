@@ -152,7 +152,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         return ReportMeasurement.statusOf(weakenedBy);
     }
 
-    public static final int SCHEMA_VERSION = 15;
+    public static final int SCHEMA_VERSION = 16;
 
     /**
      * Where the schema this writes documents ships.
@@ -2588,10 +2588,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * differs is where the run stops, which is {@code region} here and is in no sentence.
      *
      * <p>Every part, for the reason a rule's identity is written whole. Which line of the rule is
-     * {@code conjunct}: one clause places as many lines as it has ends. What the line says about
-     * its own value is {@code facts}: {@code value >= 5 && value <= 5} puts a minimum and a maximum
-     * at one place and they are two lines. Which declarations took an end in is
-     * {@code narrowedWithin}: a bound another type narrowed is not the bound it narrows.
+     * {@code which}, which carries the rule and whatever names a line of that kind of rule: one
+     * clause places as many lines as it has ends. What the line says about its own value is
+     * {@code facts}: {@code value >= 5 && value <= 5} puts a minimum and a maximum at one place and
+     * they are two lines. Which declarations took an end in is {@code narrowedWithin}: a bound
+     * another type narrowed is not the bound it narrows.
      */
     private static void obligationId(ObjectNode into, About.ObligationIdentity identity,
                                      DocumentSources sources) {
@@ -2636,19 +2637,40 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     /**
      * One line of the model, by the rule that drew it and which of that rule's lines it is.
      *
-     * <p>Which of the rule's lines is written under one word and counted two ways, because that is
-     * what it is: a part its author wrote where a declaration drew it, and one of the comparisons
-     * the rule states where a body did. Written as two words instead, a reader of the document
-     * would be told which counting was used by which key is present, and every reader of a line
-     * would have to know both.
+     * <p>Which of the rule's lines says what named it, because the three kinds of rule do not
+     * decompose alike: a declaration's clause is written in the parts its author joined, a part of a
+     * behavior's clause states as many things as a reading of it finds, and a comparison in a body
+     * is a rule apiece with nothing under it. Written as one number, a reader was handed a count
+     * without being told which of the three made it, and no two of them mean the same.
+     *
+     * <p>The rule stands inside the same object as the numbers that are counted within it, so what
+     * a document allows is what this compiler can build: a part number beside a body's comparison is
+     * not a shape a reader has to decide what to do with, because the schema has no such shape.
      */
     private static void authoredLineId(ObjectNode into,
                                        AuthoredLine line) {
-        ruleId(into.putObject("rule"), line.which().rule());
-        into.put("conjunct", switch (line.which()) {
-            case souther.compiler.partition.WhichLine.OfAPart it -> it.part().ordinal();
-            case souther.compiler.partition.WhichLine.OfAComparison it -> it.line();
-        });
+        ObjectNode which = into.putObject("which");
+        switch (line.which()) {
+            case souther.compiler.partition.WhichLine.OfAPart it -> {
+                which.put("kind", "part");
+                ruleId(which.putObject("rule"), it.rule());
+                which.put("part", it.part().ordinal());
+            }
+            case souther.compiler.partition.WhichLine.OfAComparisonOfAPart it -> {
+                which.put("kind", "statement_of_part");
+                ruleId(which.putObject("rule"), it.rule());
+                which.put("part", it.statement().part().ordinal());
+                // Which of the things the part states, and not which of the comparisons in it. A
+                // choice states neither of its sides and holds its place, so the second statement of
+                // a part is not its second comparison — and a reader told "comparison" would count
+                // the ones it can see and land somewhere else.
+                which.put("statement", it.statement().ordinal());
+            }
+            case souther.compiler.partition.WhichLine.OfAComparison it -> {
+                which.put("kind", "comparison");
+                ruleId(which.putObject("rule"), it.rule());
+            }
+        }
         ObjectNode facts = into.putObject("facts");
         // Which side of the line the value it wrote belongs to is an order's own answer. A rule
         // that names a value orders nothing either side of it, so a document writing a side there

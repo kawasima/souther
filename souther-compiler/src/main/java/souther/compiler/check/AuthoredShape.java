@@ -71,7 +71,7 @@ public sealed interface AuthoredShape {
      * tree to read. Both come from the shape, so a reader has nothing to split and nothing to
      * number.
      */
-    record Written(PartId id, Hir.Expr read) {
+    record Written(PartId<RuleRef.Invariant> id, Hir.Expr read) {
 
         public Written {
             if (id == null || read == null) {
