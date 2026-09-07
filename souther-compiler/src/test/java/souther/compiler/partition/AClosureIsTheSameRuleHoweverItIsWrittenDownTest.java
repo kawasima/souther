@@ -7,11 +7,15 @@ import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.StatedContract;
 import souther.compiler.inputs.InputDomain;
+import souther.compiler.inputs.RulesWithNoLine;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 import souther.compiler.regex.PatternPlan;
 import souther.compiler.values.Allowance;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -41,7 +45,30 @@ class AClosureIsTheSameRuleHoweverItIsWrittenDownTest {
      *  stating a rule nothing else answers for. */
     private record Read(int lines, int forks, int noLine) {}
 
-    private static Read read(String declaration) {
+    /** Where each rule that came to no line was filed, and what stopped its reading, in the order
+     *  the walk met them. */
+    private static List<String> withoutALine(String declaration) {
+        RulesWithNoLine noLine = guardsOf(declaration).noLine();
+        List<String> found = new ArrayList<>();
+        noLine.reported().forEach(each ->
+                found.add(each.at() + " " + each.why().getClass().getSimpleName()));
+        noLine.unclassified().forEach(each ->
+                found.add(each.at() + " " + each.why().getClass().getSimpleName()));
+        return found;
+    }
+
+    private static GuardThresholds.Guards guardsOf(String declaration) {
+        Compilation compilation = compiled(declaration);
+        String module = compilation.modules().get(0);
+        Bodies.Elaborated checked = compilation.db().ask(new Bodies.Checked(module)).value();
+        assertNotNull(checked, "the model under test compiles");
+        return GuardThresholds.of("pick", checked.analysisBodies().get("pick"),
+                checked.behaviorBodies().get("pick"), checked.plan(),
+                compilation.db().ask(new Adequacy.Inputs(module)).value().get("pick"),
+                RuleReadings.of(compilation, module));
+    }
+
+    private static Compilation compiled(String declaration) {
         Compilation compilation = Compilation.ofSource("""
                 module probe.spelling
 
@@ -50,6 +77,11 @@ class AClosureIsTheSameRuleHoweverItIsWrittenDownTest {
                 """ + "\n" + declaration + "\n", "Main");
         compilation.answerEverything();
         assertEquals(1, compilation.modules().size(), "the model under test compiles");
+        return compilation;
+    }
+
+    private static Read read(String declaration) {
+        Compilation compilation = compiled(declaration);
         String module = compilation.modules().get(0);
         RuleReadingSource rules = RuleReadings.of(compilation, module);
         Bodies.Elaborated checked = compilation.db().ask(new Bodies.Checked(module)).value();
@@ -251,11 +283,40 @@ class AClosureIsTheSameRuleHoweverItIsWrittenDownTest {
      */
     @Test
     void aClosureTwoCallsShareNamesTheElementsOfBoth() {
-        assertEquals(new Read(0, 0, 2), read("""
-                behavior pick : (xs: List<Int>, ys: List<Int>) -> Low | High
-                let pick (xs, ys) = {
-                    let positive = (x) -> x > 0
-                    if List.any(positive, xs) && List.any(positive, ys) then High else Low
-                }"""));
+        assertEquals(List.of("xs[*] RuleAboutAnElementOfSeveralSequences",
+                        "ys[*] RuleAboutAnElementOfSeveralSequences"),
+                withoutALine("""
+                        behavior pick : (xs: List<Int>, ys: List<Int>) -> Low | High
+                        let pick (xs, ys) = {
+                            let positive = (x) -> x > 0
+                            if List.any(positive, xs) && List.any(positive, ys)
+                                then High else Low
+                        }"""));
+    }
+
+    /**
+     * And the places it may be about are the places the rule is written about.
+     *
+     * <p>The rule is about a field of the element, so where it may be is a field of each of the
+     * sequences and not the sequences themselves. Told at the element instead, a reader would be
+     * sent to a position the model says nothing about while the position the rule is written about
+     * came out as one no rule reaches — which is the same measurement standing open at the wrong
+     * place, and it reads as an answer.
+     *
+     * <p>Which is why the places are checked here and not how many there are. A count is the same
+     * count whichever place each of them is.
+     */
+    @Test
+    void whatTheSharedClosureNamesIsWhereItsRuleIsWritten() {
+        assertEquals(List.of("xs[*].age RuleAboutAnElementOfSeveralSequences",
+                        "ys[*].age RuleAboutAnElementOfSeveralSequences"),
+                withoutALine("""
+                        data Person = { age: Int }
+
+                        behavior pick : (xs: List<Person>, ys: List<Person>) -> Low | High
+                        let pick (xs, ys) = {
+                            let adult = (p) -> p.age > 18
+                            if List.any(adult, xs) && List.any(adult, ys) then High else Low
+                        }"""));
     }
 }

@@ -278,6 +278,11 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
                         // closure said ({@link WhatAForkTests}) — a filter answers fewer for
                         // exactly that reason and a mapping does not, and the two calls are the
                         // same shape.
+                        // Or the position the part is, which is one position: what such a fork
+                        // divides is the values standing there, and a part standing at one of
+                        // several divides no one of them. Owned there, a fork would be counted as
+                        // read at whichever place a reader picked out of the several; left here, it
+                        // states a rule of its own and the question stands.
                         if (WhatAForkTests.turnsOnSomething(atom,
                                         part -> comparisonAt(part) != null,
                                         one -> reads.denotes(one, symbols).value())

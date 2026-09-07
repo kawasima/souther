@@ -215,8 +215,11 @@ public final class BehaviorSetStatements {
                 case Outcome.OfADistinction(Asked it) -> asked.add(it);
                 case Outcome.NotGot(var at, var why) ->
                         blocked.add(new ClassingBlocker(at, each.origin(), why));
-                case Outcome.SayingNothing(var at, var why) -> saying.add(
-                        RuleWithoutALine.of(each.origin().cited(), at, why));
+                // At every place it may be about. A rule said to divide nothing is one sentence,
+                // and where the reading could not settle which position it was of, each of the
+                // places it may have been of is owed it.
+                case Outcome.SayingNothing(var at, var why) -> at.forEach(where ->
+                        saying.add(RuleWithoutALine.of(each.origin().cited(), where, why)));
                 // Nothing places it, so there is nobody to say it to. Which is the answer the
                 // reading of a comparison gives the same shape, and not this walk being quiet.
                 case Outcome.Nowhere _ -> { }
@@ -278,8 +281,17 @@ public final class BehaviorSetStatements {
          * value an operation made from a position is about that value, and a rule read to the end
          * that tells nothing apart has been read. Neither is a distinction gone missing.
          */
-        record SayingNothing(FilingCoordinate at,
-                             BlockReason.RuleWithoutLineReason why) implements Outcome {}
+        record SayingNothing(List<FilingCoordinate> at,
+                             BlockReason.RuleWithoutLineReason why) implements Outcome {
+
+            public SayingNothing {
+                at = List.copyOf(at);
+                if (at.isEmpty()) {
+                    throw new IllegalArgumentException(
+                            "a rule said to divide nothing is said somewhere: " + why);
+                }
+            }
+        }
 
         /** And a rule about a value that came from no position the reading can name, which has
          *  nowhere to be said. */
@@ -293,16 +305,10 @@ public final class BehaviorSetStatements {
      * somebody decides about here rather than one that quietly takes its neighbour's answer.
      */
     private static Outcome ask(PredicateReadings.Reading each, Symbols symbols) {
-        // Where the rule's subject stands, read where the rule stands. A subject no single position
-        // answers is a rule about a value made from the position rather than about the position, and
-        // there is no denominator for it to divide — so a reader is told, at the position the value
-        // came from, and nothing there is held open.
-        if (!(each.reads().pathOf(each.subject(), symbols) instanceof PathResolution.At at)) {
-            return each.reads().cameFrom(each.subject(), symbols)
-                    instanceof PathResolution.At(var from)
-                    ? new Outcome.SayingNothing(FilingCoordinate.at(from),
-                            new BlockReason.RuleAboutADerivedValue())
-                    : new Outcome.Nowhere();
+        // Where the rule's subject stands, read where the rule stands.
+        PathResolution stands = each.reads().pathOf(each.subject(), symbols);
+        if (!(stands instanceof PathResolution.At at)) {
+            return saidWithoutADenominator(each, stands, symbols);
         }
         NumericTerm.FromOnePosition term = new NumericTerm.ValueOf(at.path());
         return switch (each.reading()) {
@@ -317,6 +323,44 @@ public final class BehaviorSetStatements {
             // when what is absent is this compiler's reading of it.
             case StringPredicates.Reading.WrittenArgumentNotKnown _ ->
                     new Outcome.NotGot(term, new BlockReason.UnreadValueRule());
+        };
+    }
+
+    /**
+     * What a rule whose subject stands at no one position comes to, and where to say it.
+     *
+     * <p>Two ways for that, and they are different sentences. A value an operation made out of what
+     * stands somewhere is about that value, and what the rule says about the values at the position
+     * it came from would take reading the operation backwards. A value that <em>is</em> what stands
+     * somewhere, in a block handed to more than one walk, is about the input at one of several
+     * places with nothing to say which — nothing was made out of it and there is no operation to
+     * read backwards.
+     *
+     * <p>Both are said at every place they may be about, and neither holds a position's classes
+     * open: what is missing is not a distinction the classes would have been composed from, it is
+     * which position the rule was of.
+     */
+    private static Outcome saidWithoutADenominator(PredicateReadings.Reading each,
+                                                   PathResolution stands, Symbols symbols) {
+        return switch (stands) {
+            case PathResolution.AtOneOfSeveral(var among) -> new Outcome.SayingNothing(
+                    among.stream().map(FilingCoordinate::at).toList(),
+                    new BlockReason.RuleAboutAnElementOfSeveralSequences());
+            case PathResolution.NotAPosition _ ->
+                    switch (each.reads().cameFrom(each.subject(), symbols)) {
+                        case PathResolution.At(var from) -> new Outcome.SayingNothing(
+                                List.of(FilingCoordinate.at(from)),
+                                new BlockReason.RuleAboutADerivedValue());
+                        case PathResolution.AtOneOfSeveral(var among) -> new Outcome.SayingNothing(
+                                among.stream().map(FilingCoordinate::at).toList(),
+                                new BlockReason.RuleAboutAnElementOfSeveralSequences());
+                        // And a rule about a value that came from no position the reading can name,
+                        // which has nowhere to be said.
+                        case PathResolution.NotAPosition _ -> new Outcome.Nowhere();
+                    };
+            // The caller asks this only where the subject stands at no one place.
+            case PathResolution.At at -> throw new IllegalArgumentException(
+                    "a rule whose subject stands at " + at.path() + " has a denominator");
         };
     }
 

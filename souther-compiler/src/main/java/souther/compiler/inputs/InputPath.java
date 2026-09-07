@@ -148,12 +148,12 @@ final class InputPath {
                         trail.through(r.binding(), () -> named(held, names));
                 case BindingRole.Unknown _ -> new PathResolution.NotAPosition();
             };
-            case Core.FieldAccess fa -> switch (named(fa.target(), names)) {
-                case PathResolution.At(var base) -> new PathResolution.At(
-                        Location.isStep(fa.target().type(), fa.field(), symbols)
-                                ? base.then(fa.field()) : base);
-                case PathResolution other -> other;
-            };
+            // A field of what the target stands at, at every place the target stands. Where the
+            // field is not a step of a path — a newtype's own value is the value under it — the
+            // place is the target's, which is the step this takes there.
+            case Core.FieldAccess fa -> named(fa.target(), names).deeper(
+                    Location.isStep(fa.target().type(), fa.field(), symbols)
+                            ? base -> base.then(fa.field()) : base -> base);
             // What an expression that binds a name comes to is what its body comes to, under that
             // name. Whether the name may stand for the position its value names is not asked here
             // and is not a question about this shape: it is asked where the name is read, of what
@@ -222,8 +222,7 @@ final class InputPath {
                 among.add(element);
             }
         }
-        return among.size() == 1 ? new PathResolution.At(among.get(0))
-                : new PathResolution.AtOneOfSeveral(among);
+        return PathResolution.oneOf(among);
     }
 
     private PathResolution elementOf(BindingId binding, BindingEnvironment names) {
@@ -233,10 +232,8 @@ final class InputPath {
         // The container names no position of this behavior's input — it is what another operation
         // answered, or something this does not read — so neither does an element of it. Where a
         // reading of provenance goes on from there is not this walk's.
-        return switch (trail.through(binding, () -> containerPath(container, names))) {
-            case PathResolution.At(var at) -> new PathResolution.At(at.element());
-            case PathResolution other -> other;
-        };
+        return trail.through(binding, () -> containerPath(container, names))
+                .deeper(TermPath::element);
     }
 
     /**
