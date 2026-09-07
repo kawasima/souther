@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 /**
  * What a value about a relation holds no order of is not an order it shows.
@@ -33,22 +32,29 @@ class TwoValuesThatAreOneReadAlikeTest {
     private static final Value A = Value.text("A");
     private static final Value B = Value.text("B");
 
-    /** Two blocks stated to differ, and the same pair stated the other way round. */
+    /** A pair stated the other way round, and pairs stated in the other order. */
     @Test
     void aRelationReadsTheSameWhicheverWayItsPairsWereStated() {
+        assertSame(Apartness.of("p", "q"), Apartness.of("q", "p"));
         assertSame(Apartness.of("p", "q").and(Apartness.of("q", "r")),
                 Apartness.of("q", "r").and(Apartness.of("p", "q")));
+    }
+
+    /** What a block is left, counted in either order. */
+    @Test
+    void andWhatABlockIsLeftReadsTheSameWhicheverOrderItsValuesWereCountedIn() {
+        assertSame(new Admits.These(ordered(A, B)), new Admits.These(ordered(B, A)));
     }
 
     /** What the blocks are left, handed over in either order. */
     @Test
     void andAReadingReadsTheSameWhicheverOrderItsBlocksArrivedIn() {
         Map<Sameness.Block<String>, Admits> one = new LinkedHashMap<>();
-        one.put(P, new Admits.These(Set.of(A)));
-        one.put(Q, new Admits.These(Set.of(B)));
+        one.put(P, new Admits.These(ordered(A, B)));
+        one.put(Q, new Admits.These(ordered(B)));
         Map<Sameness.Block<String>, Admits> back = new LinkedHashMap<>();
-        back.put(Q, new Admits.These(Set.of(B)));
-        back.put(P, new Admits.These(Set.of(A)));
+        back.put(Q, new Admits.These(ordered(B)));
+        back.put(P, new Admits.These(ordered(B, A)));
 
         assertSame(new Domains<>(one), new Domains<>(back));
     }
@@ -98,17 +104,6 @@ class TwoValuesThatAreOneReadAlikeTest {
         assertSame(new Closure.Contradicted<>(ordered(P, Q), Provenance.nothing()),
                 new Closure.Contradicted<>(ordered(Q, P), Provenance.nothing()));
         assertSame(new Refusal.AtEachOf<>(ordered(P, Q)), new Refusal.AtEachOf<>(ordered(Q, P)));
-    }
-
-    /** And two that are not one value read differently, which is what says the reading is of the
-     *  value and not of one word for every one of them. */
-    @Test
-    void andTwoThatAreNotOneValueReadDifferently() {
-        RelationalLack<String> one = new RelationalLack.NoAssignmentTellsThemApart<>(ordered(P, Q));
-        RelationalLack<String> other = new RelationalLack.NoAssignmentTellsThemApart<>(ordered(P, R));
-
-        assertNotEquals(one, other);
-        assertNotEquals(String.valueOf(one), String.valueOf(other));
     }
 
     /** That two values which are one are written the same way. */

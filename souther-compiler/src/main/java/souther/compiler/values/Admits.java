@@ -27,6 +27,13 @@ public sealed interface Admits {
         public These {
             values = Collections.unmodifiableSet(new LinkedHashSet<>(values));
         }
+
+        /** The values written in one order whichever order they were counted in — see
+         *  {@code InOneOrder}. */
+        @Override
+        public String toString() {
+            return "These" + InOneOrder.of(values);
+        }
     }
 
     /** More values than the caller said it would count, which is as many as it needs. */
