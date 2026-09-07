@@ -99,15 +99,24 @@ public record ModelOccurrence(SourceConstructOrigin origin, ExpansionLineage lin
     /**
      * Whether {@code step} is the operation's own body re-entering what the caller handed it.
      *
-     * <p>Read off what the block belongs to. A block a call handed to a parameter belongs to the
-     * copy taking it, and a block an author bound belongs to the body that bound it — so the second
-     * is a copy the model makes and stays, and only the first closes anything.
+     * <p>Read off where the copy was made ({@link ExpansionSite.Supplied}), which is the one thing
+     * that says a callable came from outside the operation. A copy made at code the caller supplied
+     * is the operation's body reaching back out to it, whatever the caller wrote there — a lambda at
+     * the call, a name they bound first, a second name for either — and a copy the operation made of
+     * its own code is not.
+     *
+     * <p><b>Not what the applied binding belongs to.</b> That was read here, and it answered by
+     * standing next to the fact rather than being it: a lambda written at the call is bound by the
+     * expansion taking it, so its owner was the operation's copy and the reading worked; a lambda
+     * the author bound to a name first is bound by their own body, so the same reading said the
+     * operation's body was still running its own code and the envelope never closed. One model
+     * spelled two ways came out as two, and the second stopped the compile.
      */
     private static boolean closes(ExpansionLineage.Expansion step,
                                   ExpansionLineage.Expansion operation) {
-        return step.expanded() instanceof ValueName.Local block
-                && block.id().owner() instanceof BindingOwner.Expansion copy
-                && copy.expanded().equals(operation.expanded());
+        return step.at() instanceof ExpansionSite.Supplied supplied
+                && supplied.copy() instanceof ExpansionLineage.Expansion took
+                && took.expanded().equals(operation.expanded());
     }
 
     /** The copies of {@code lineage}, outermost first. */

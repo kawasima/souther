@@ -172,13 +172,11 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
          * were a second place the same reading could be taken from, and one that has nothing to say
          * about a comparison written where no fork stands round it.
          *
-         * @param comparison which comparison this reads. Required, and this is what meeting the line
-         *              is measured against: a row met it by getting the comparison to answer, which
-         *              is not what any arm records. A condition stops as soon as it is settled, so
-         *              under {@code A && B} the arm where the condition failed holds rows that made
-         *              {@code B} false and rows that never reached {@code B}. The comparison and not
-         *              the number it is instrumented under — two readers agreeing that they mean one
-         *              place should not come down to their having been handed the same int
+         * <p>What meeting the line is measured against is getting the comparison to answer, which
+         * is not what any arm records. A condition stops as soon as it is settled, so under
+         * {@code A && B} the arm where the condition failed holds rows that made {@code B} false and
+         * rows that never reached {@code B}.
+         *
          * @param rule which comparison of the model this is, which is the same value however many
          *              times the comparison is read
          * @param writtenAt where a reader finds it, which is where it is written. The comparison's
