@@ -97,6 +97,12 @@ public record ModelOccurrence(SourceConstructOrigin origin, ExpansionLineage lin
         // operations, which the reading that states rules never enters. Every other copy still open
         // is a copy the model itself makes — a helper spliced into each call of it — and those are
         // what a construct of the model stands in.
+        //
+        // Read off the name a copy is of, which is what says whose code was copied: everything the
+        // library declares is reached under the name the library publishes it by, private helpers
+        // included ({@link souther.compiler.check.HelperTable}), and nothing a module declares is
+        // reached under one. So a copy of the language's own code is one of these and a copy of a
+        // model's code is not, whichever of them the call that made it was written in.
         if (open.stream().anyMatch(each -> each.expanded() instanceof ValueName.Stdlib.Operation)) {
             return java.util.Optional.empty();
         }

@@ -175,6 +175,29 @@ class AClosureIsTheSameRuleHoweverItIsWrittenDownTest {
     }
 
     /**
+     * And where nothing the language owns is between the closure and where it runs at all.
+     *
+     * <p>A helper of the model applying what it was handed, and a second helper handing it on to
+     * the first. Both readings expand both, so the copies are the same copies in each — which is
+     * what says the crossing is about who wrote the block and not about which of the copies is one
+     * of the language's.
+     */
+    @Test
+    void aClosureTheModelHandsAboutAndAppliesItself() {
+        assertEquals(new Read(1, 0, 0), read("""
+                let applies (p: (Int) -> Bool, n: Int): Bool = p(n)
+
+                behavior pick : (n: Int) -> Low | High
+                let pick (n) = if applies(x -> x > 0, n) then High else Low"""));
+        assertEquals(new Read(1, 0, 0), read("""
+                let applies (p: (Int) -> Bool, n: Int): Bool = p(n)
+                let hands (p: (Int) -> Bool, n: Int): Bool = applies(p, n)
+
+                behavior pick : (n: Int) -> Low | High
+                let pick (n) = if hands(x -> x > 0, n) then High else Low"""));
+    }
+
+    /**
      * And where what took the closure binds a name of its own to it before handing it on.
      *
      * <p>A second name for a callable is the same callable, so where it came from is where the
