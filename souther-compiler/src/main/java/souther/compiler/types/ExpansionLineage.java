@@ -62,14 +62,48 @@ public sealed interface ExpansionLineage {
             }
         }
 
+        /** This copy said without what it stands in. */
+        public Step step() {
+            return new Step(expanded, at);
+        }
+
         @Override
         public String toString() {
             return within + " / " + expanded + " @ " + at;
         }
     }
 
+    /**
+     * A copy said without what it stands in: what was expanded, and where.
+     *
+     * <p>What one copy of a body is, told from the others a chain holds without carrying the chain.
+     * A chain is derived rather than stored — a body already expanded is walked again when a copy of
+     * it is made, and every step is rebuilt against wherever it is being walked — so a value that
+     * held a chain would be answering about wherever it was first built. This holds neither and is
+     * the same value both times.
+     *
+     * <p>And it tells the copies of one walk apart, because a step cannot occur twice on a chain: a
+     * step is a call written in some body, so the same one deeper down would be that body expanded
+     * inside its own expansion, and a declaration that can reach itself is left standing rather than
+     * inlined ({@link souther.compiler.check.HelperGraph#recurses}).
+     */
+    record Step(ValueName expanded, ExpansionSite at) {
+
+        public Step {
+            if (expanded == null || at == null) {
+                throw new IllegalArgumentException(
+                        "a copy is of something, at some site: " + expanded + " at " + at);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return expanded + " @ " + at;
+        }
+    }
+
     /** This lineage with one more copy on it, for the pass that makes the copy. */
-    default ExpansionLineage copiedInto(ValueName expanded, ExpansionSite at) {
+    default Expansion copiedInto(ValueName expanded, ExpansionSite at) {
         return new Expansion(this, expanded, at);
     }
 }

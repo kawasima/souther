@@ -26,8 +26,8 @@ import java.util.List;
  * of is the operation, not the walk it turns into, so the copies made inside one are how a backend
  * writes it out. They come in an envelope: it opens where an operation is expanded and closes where
  * the operation's own body re-enters the block the caller handed it, and it nests. What closes one is
- * read off the block — a block belongs to the copy that bound it — so nothing here looks a name up in
- * a declaration.
+ * where the block crossed in: a copy made at a supplied site says which operation copy the caller's
+ * code was handed to, so nothing here looks a name up in a declaration or asks what bound a block.
  */
 public record ModelOccurrence(SourceConstructOrigin origin, ExpansionLineage lineage) {
 
@@ -106,6 +106,13 @@ public record ModelOccurrence(SourceConstructOrigin origin, ExpansionLineage lin
      * the call, a name they bound first, a second name for either — and a copy the operation made of
      * its own code is not.
      *
+     * <p>Which operation it left is the copy the site names, and this asks whether that is the one
+     * whose envelope is being tested. Not whether the two are copies of the same operation: a body
+     * that calls one operation from inside another has two copies of it on the stack, and the
+     * caller's code was handed to one of them. The two are compared as
+     * {@linkplain ExpansionLineage.Step steps}, which is what tells the copies of one walk apart
+     * without either side carrying the chain it stands in.
+     *
      * <p><b>Not what the applied binding belongs to.</b> That was read here, and it answered by
      * standing next to the fact rather than being it: a lambda written at the call is bound by the
      * expansion taking it, so its owner was the operation's copy and the reading worked; a lambda
@@ -116,8 +123,7 @@ public record ModelOccurrence(SourceConstructOrigin origin, ExpansionLineage lin
     private static boolean closes(ExpansionLineage.Expansion step,
                                   ExpansionLineage.Expansion operation) {
         return step.at() instanceof ExpansionSite.Supplied supplied
-                && supplied.copy() instanceof ExpansionLineage.Expansion took
-                && took.expanded().equals(operation.expanded());
+                && supplied.copy().equals(operation.step());
     }
 
     /** The copies of {@code lineage}, outermost first. */

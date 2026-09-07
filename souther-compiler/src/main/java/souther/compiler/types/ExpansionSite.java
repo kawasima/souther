@@ -71,10 +71,22 @@ public sealed interface ExpansionSite {
      * parameter it filled — both settled by the source, the first by the calls the splicing went
      * through and the second by the position the callee declares.
      *
+     * <p><b>The copy the block was handed to, not the one applying it.</b> An operation may hand a
+     * block it was given straight on to another, and the application that runs it then stands in the
+     * second while the code it runs came from outside the first. Read as the copy applying it, a
+     * closure crossing two operations would say the caller's code was left behind at the inner one,
+     * and everything the outer one opened would stay open.
+     *
+     * <p>Said as a {@linkplain ExpansionLineage.Step step} and not as a chain, which is what a value
+     * standing inside a lineage can be. A chain is derived by whatever walks the copies and is built
+     * again wherever an already-expanded body is walked, so a chain written down here would name the
+     * copy under whichever walk first reached it — and a walk that had since put the same construct
+     * somewhere else would find it naming nothing it holds.
+     *
      * @param copy      the copy the block was handed to
      * @param parameter which of that callee's parameters it filled
      */
-    record Supplied(ExpansionLineage copy, ParameterSlot parameter) implements ExpansionSite {
+    record Supplied(ExpansionLineage.Step copy, ParameterSlot parameter) implements ExpansionSite {
 
         public Supplied {
             if (copy == null || parameter == null) {

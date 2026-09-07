@@ -123,6 +123,44 @@ class AClosureIsTheSameRuleHoweverItIsWrittenDownTest {
     }
 
     /**
+     * And where the operation handed the closure hands it on to another.
+     *
+     * <p>{@code Set.filter} is written as {@code List.filter} over the set's elements, so the
+     * closure the author supplied crosses two operations before anything applies it. The rule
+     * inside it is the author's at both, and what says so is which copy was handed the closure —
+     * the outer one — rather than which copy stands where it is finally applied.
+     */
+    @Test
+    void aClosureOneOperationHandsToAnother() {
+        assertEquals(new Read(1, 0, 0), read("""
+                behavior pick : (xs: Set<Int>) -> Low | High
+                let pick (xs) =
+                    if Set.isEmpty(Set.filter(x -> x > 0, xs)) then High else Low"""));
+        assertEquals(new Read(1, 0, 0), read("""
+                behavior pick : (xs: Set<Int>) -> Low | High
+                let pick (xs) = {
+                    let positive = (x) -> x > 0
+                    if Set.isEmpty(Set.filter(positive, xs)) then High else Low
+                }"""));
+    }
+
+    /**
+     * And where one closure is written inside another.
+     *
+     * <p>The inner call is expanded before the block holding it is handed anywhere, and the copies
+     * it made are built again where that block is applied. So a copy said as the chain it stood in
+     * would name the chain it was first built under, and the inner closure's rule would come out as
+     * a construct the model does not state — which stops the compile rather than losing a line.
+     */
+    @Test
+    void aClosureWrittenInsideAnother() {
+        assertEquals(new Read(1, 0, 0), read("""
+                behavior pick : (rows: List<List<Int>>) -> Low | High
+                let pick (rows) =
+                    if List.any(r -> List.any(n -> n >= 5, r), rows) then High else Low"""));
+    }
+
+    /**
      * And one closure two calls share names the elements of neither.
      *
      * <p>One block handed to two operations has one parameter and two containers, so what arrives
