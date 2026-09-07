@@ -3957,7 +3957,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * {@link WeakeningVocabulary} is the name of. A surface that wants only the word asks
      * {@link #kindOf}, and the two cannot come apart because that one reads this.
      */
-    private static WeakeningVocabulary vocabularyOf(Weakening weakening) {
+    static WeakeningVocabulary vocabularyOf(Weakening weakening) {
         return weakening instanceof Weakening.ObservationIncomplete gap
                 ? new WeakeningVocabulary.AnObservationCode(gap.met().fact().code())
                 : new WeakeningVocabulary.AWordOfThisDocuments(wordFor(weakening));
