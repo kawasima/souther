@@ -23,6 +23,7 @@ import java.lang.reflect.AccessFlag;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -63,9 +64,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class AReadingOfValuesIsStartedComposedOrWorkedOutTest {
 
-    private static final String READING = "souther/compiler/values/AdmissibleValues";
+    private static final String VALUES = "souther/compiler/values/";
 
-    private static final String DESCRIPTION = "souther/compiler/values/PlannedValues";
+    private static final String READING = VALUES + "AdmissibleValues";
+
+    private static final String DESCRIPTION = VALUES + "PlannedValues";
+
+    /** What a parameter or a return of one of these is written as in a descriptor. */
+    private static String held(String type) {
+        return "L" + type + ";";
+    }
 
     private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
 
@@ -90,21 +98,34 @@ class AReadingOfValuesIsStartedComposedOrWorkedOutTest {
      * <p>{@code metAll} is not here, and that it is not is the reading holding: a conjunction of
      * several is written as one meet after another, so it makes nothing of its own.
      *
-     * <p>A row whose warrant reads {@code handed nothing} and which takes an argument is the defect
-     * this is about, and cannot be written: the warrant is read off the signature rather than
-     * declared beside the row.
+     * <p>Each row carries the descriptor, so a second maker written as an overload of a name
+     * already here is a row of its own rather than the one that was allowed.
+     *
+     * <p><b>What the warrant does and does not settle.</b> It is read off the signature and not
+     * declared beside the row, so a maker cannot be written down as something it is not — a static
+     * one handed a set of values says so, whatever it is called. It does not settle that a row
+     * belongs here: a method of the reading is handed one as {@code this} and its warrant says so
+     * however much else it takes, and {@code alsoOpenedAt} is such a method and is right. So what
+     * this list is, is every place a reading is made, each with what it had in hand; adding to it
+     * is somebody saying that a new one of those is a composition and not a leaf.
      */
     private static final List<String> MAKING_ONE = List.of(
-            READING + "#alsoOpenedAt -> " + COMPOSED,
-            READING + "#meet -> " + COMPOSED,
-            READING + "#renamed -> " + COMPOSED,
-            READING + "#sayingWhatWasReadInTheOrderOf -> " + COMPOSED,
-            READING + "#top -> " + A_START,
-            DESCRIPTION + "#resolved -> " + WORKED_OUT);
+            row(READING, "alsoOpenedAt", "(Ljava/util/Set;)" + held(READING), COMPOSED),
+            row(READING, "meet",
+                    "(" + held(READING) + held(VALUES + "Allowance") + ")" + held(READING),
+                    COMPOSED),
+            row(READING, "renamed", "(Ljava/util/function/Function;)" + held(READING), COMPOSED),
+            row(READING, "sayingWhatWasReadInTheOrderOf",
+                    "(Ljava/util/List;)" + held(READING), COMPOSED),
+            row(READING, "top", "()" + held(READING), A_START),
+            row(DESCRIPTION, "resolved",
+                    "(" + held(DESCRIPTION + "$Settled") + held(VALUES + "Allowance") + ")"
+                            + held(VALUES + "Realized"),
+                    WORKED_OUT));
 
     @Test
     void everyMakerOfAReadingOfValuesWasHandedOneOrADescriptionOrNothing() {
-        assertEquals(MAKING_ONE, new ArrayList<>(makers()),
+        assertEquals(MAKING_ONE, makers(),
                 "a maker handed a position, a set of values or a reason a rule went unread is a"
                         + " second way of saying what a rule of the values comes to, and it says it"
                         + " without the allowance and the shortfall resolving one settles");
@@ -138,10 +159,23 @@ class AReadingOfValuesIsStartedComposedOrWorkedOutTest {
         return Files.isDirectory(module.resolve("src").resolve("main").resolve("java"));
     }
 
-    /** Every method whose code makes a reading, as the method and the warrant its signature gives
-     *  it. Sorted, so the rows do not turn on the order a walk of the file system took. */
-    private static Set<String> makers() {
-        Set<String> found = new TreeSet<>();
+    /**
+     * Every method whose code makes a reading, as the method and the warrant its signature gives
+     * it.
+     *
+     * <p>A method and not a name: the descriptor is part of what is written down, because two
+     * methods of one name are two makers. A row is what a reader sees and is not what a maker is,
+     * and identifying one by the sentence printed about it would let a leaf come back as an
+     * overload of something already allowed — same name, same warrant where the receiver is a
+     * reading, and nothing left to tell them apart.
+     *
+     * <p>Held in a list for the same reason. A set keeps one of whatever it is given twice, and
+     * what a rule like this is asking is how many there are as much as which.
+     *
+     * <p>Sorted, so the rows do not turn on the order a walk of the file system took.
+     */
+    private static List<String> makers() {
+        List<String> found = new ArrayList<>();
         for (Path module : REPOSITORY.modules()) {
             for (Path each : classesUnder(module)) {
                 ClassModel owner = parse(each);
@@ -150,14 +184,21 @@ class AReadingOfValuesIsStartedComposedOrWorkedOutTest {
                 }
                 for (MethodModel method : owner.methods()) {
                     if (makesAReading(method)) {
-                        found.add(owner.thisClass().asInternalName() + "#"
-                                + method.methodName().stringValue() + " -> "
-                                + warrantOf(owner, method));
+                        found.add(row(owner.thisClass().asInternalName(),
+                                method.methodName().stringValue(),
+                                method.methodTypeSymbol().descriptorString(),
+                                warrantOf(owner, method)));
                     }
                 }
             }
         }
+        found.sort(Comparator.naturalOrder());
         return found;
+    }
+
+    /** One maker, as it is written down and as it is read off the classes. */
+    private static String row(String owner, String name, String descriptor, String warrant) {
+        return owner + "#" + name + descriptor + " -> " + warrant;
     }
 
     /**
