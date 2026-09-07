@@ -1131,7 +1131,6 @@
         "kind",
         "rule"
       ],
-      "additionalProperties": false,
       "oneOf": [
         {
           "description": "A part of a declaration's clause. `part` is where it stands among the parts of that clause, counted from zero, and it means something only beside the rule — two clauses each have a part numbered nought. One part may draw more than one line, so this says which part drew it and not which line of that part it is; `facts` beside it is what tells two lines of one part apart.",
