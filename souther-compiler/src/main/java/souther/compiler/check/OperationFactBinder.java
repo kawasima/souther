@@ -134,8 +134,8 @@ final class OperationFactBinder {
                                     new ArgumentRef.TheContainer(), TypeRequirement.CONTAINER,
                                     "the container a predicate reads"),
                             reads.through());
-            case OperationFact.TurnsOnWhatAnArgumentAnswers turns ->
-                    new BoundOperationFact.TurnsOnWhatAnArgumentAnswers(operation, turns.aspect(),
+            case OperationFact.TurnsOnWhetherAnArgumentHolds turns ->
+                    new BoundOperationFact.TurnsOnWhetherAnArgumentHolds(operation, turns.aspect(),
                             holdToTheDeclaration(declaration, turns.argument(),
                                     new ArgumentRef.TheClosure(), TypeRequirement.ANY,
                                     "the argument the answer turns on"));

@@ -205,7 +205,7 @@ class AClauseOfATypeDoesNotPartItsValuesTest {
                                         souther.compiler.types.SourceConstruct.BINARY)),
                         souther.compiler.diag.Citation.of(
                                 new souther.compiler.diag.SourcePos(3, 5)),
-                        WHERE),
+                        java.util.List.of(WHERE)),
                 new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(Towards.BELOW, true)));
     }
 }

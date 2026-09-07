@@ -187,8 +187,6 @@ public final class GuardThresholds {
         // the two readings agree about.
         souther.compiler.coverage.ComparisonEmissionIndex index =
                 souther.compiler.coverage.ComparisonEmissionIndex.ofBody(behavior, emitted, plan);
-        souther.compiler.coverage.LegacyComparisonAddresses named =
-                souther.compiler.coverage.LegacyComparisonAddresses.of(index);
         ReachingCuts.Collected cuts = new ReachingCuts.Collected();
         for (ComparisonReadings.Reading each : comparisons.comparisons()) {
             // Which comparison of the model this is. Total over what this walk reads: the tree it
@@ -201,32 +199,41 @@ public final class GuardThresholds {
                     .orElseThrow(() -> new IllegalStateException("`" + behavior + "` reads a"
                             + " comparison at " + each.at() + " that states no construct of the"
                             + " model, in a tree where the language's operations stand"));
-            // And where the emitted tree holds it, which {@link LegacyComparisonAddresses} raises
-            // for rather than answering around. The absence that is not a disagreement is the one
-            // below: a construct both trees hold, with no place a run through it is recorded.
-            ComparisonOccurrence which = named.of(stated);
-            souther.compiler.coverage.EmittedComparisonState placed =
-                    index.siteOf(stated)
-                            .<souther.compiler.coverage.EmittedComparisonState>map(site ->
-                                    new souther.compiler.coverage.EmittedComparisonState
-                                            .Instrumented(site, arrives.arrivalAt(which)))
-                            .orElseGet(souther.compiler.coverage.EmittedComparisonState
-                                    .NotInstrumented::new);
+            // And every place the emitted tree writes it. One rule may be written there more than
+            // once — a library operation evaluating a closure it was handed twice writes the
+            // comparison twice — and none at all is the two trees disagreeing about the body,
+            // which is raised rather than answered around.
+            List<souther.compiler.coverage.ComparisonEmissionIndex.EmittedComparison> made =
+                    index.madeFor(stated);
+            if (made.isEmpty()) {
+                throw new IllegalStateException("`" + behavior + "` reads a comparison at "
+                        + each.at() + " that the tree it runs does not hold");
+            }
+            List<souther.compiler.coverage.EmittedComparisonState.Observation> watched =
+                    new ArrayList<>();
+            made.forEach(one -> one.site().ifPresent(site -> watched.add(
+                    new souther.compiler.coverage.EmittedComparisonState.Observation(
+                            one.occurrence(), site, arrives.arrivalAt(one.occurrence())))));
+            souther.compiler.coverage.EmittedComparisonState placed = watched.isEmpty()
+                    ? new souther.compiler.coverage.EmittedComparisonState.NotInstrumented()
+                    : new souther.compiler.coverage.EmittedComparisonState.Instrumented(watched);
             switch (placed) {
-                // No place a run through it is recorded, so meeting a line on it is not something a
+                // Nowhere a run through it is recorded, so meeting a line on it is not something a
                 // row could be held to. What the model states there is still read; what is not owed
                 // is a row.
                 case souther.compiler.coverage.EmittedComparisonState.NotInstrumented _ -> { }
                 case souther.compiler.coverage.EmittedComparisonState.Instrumented at -> {
-                    cuts.reached(which, each.assumed());
+                    at.observations().forEach(one -> cuts.reached(one.occurrence(), each.assumed()));
                     switch (each.standing()) {
                         case BoundaryPolicy.Standing.Admitted admitted ->
-                                // The same reading on the narrower domain a run leaves at the line,
-                                // which is the one thing about a comparison the tree that runs
-                                // settles.
-                                lineAt(which, each.occurrence().origin(), each.at(), plan,
+                                // The same reading on the narrower domain a run leaves at the line.
+                                // Narrowed by what arrives at every place it is watched: the line
+                                // goes only where all of them prove nothing reaches it, since a run
+                                // through any one of them is a run through the rule.
+                                lineAt(at, each.occurrence().origin(), each.at(),
                                         ComparisonAssessment.narrowedByWhatArrives(admitted.read(),
-                                                at.arrival(), false),
+                                                at.observations().stream()
+                                                        .map(one -> one.arrival()).toList(), false),
                                         found, between, withoutALine);
                         // Not a rule with no line here: its outcome is about no row, whichever of
                         // the reasons refused it ({@link NotABoundary}), so there is nothing for a
@@ -489,17 +496,20 @@ public final class GuardThresholds {
      * here, by {@link BoundaryPolicy}, and what the comparison comes to was read where that was
      * settled ({@code read}). Nothing here reads the comparison again.
      */
-    private static void lineAt(ComparisonOccurrence which, SourceConstructOrigin wrote, Citation where,
-                               CoverageSites.Plan plan,
+    private static void lineAt(souther.compiler.coverage.EmittedComparisonState.Instrumented at,
+                               SourceConstructOrigin wrote, Citation where,
                                ComparisonAssessment read,
                                List<RuleEvidence> out,
                                List<LineDrawn> between,
                                RulesWithNoLine.Gathered withoutALine) {
+        // The rule is one however many places it is watched at, so a name for it is taken from any
+        // of them: what a report says is about the rule, and which materialisation lent its number
+        // is nothing a reader is shown.
+        ComparisonOccurrence which = at.observations().get(0).occurrence();
         publish(which, wrote, where, read, withoutALine);
         switch (read) {
-            case ComparisonAssessment.AtAPosition at -> {
-                LineOrigin.ComparisonOrigin drawn = originOf(which, wrote, where, plan,
-                        at.cutting());
+            case ComparisonAssessment.AtAPosition placed -> {
+                LineOrigin.ComparisonOrigin drawn = originOf(at, wrote, where, placed.cutting());
                 // The value a row is owed against this line, which the reading of the comparison
                 // already answered. Taken off the level the rule was written with, a rule that wrote
                 // a multiple of the position named a class at a number the position never holds.
@@ -507,18 +517,18 @@ public final class GuardThresholds {
                 // the rule placed. Asked twice — once to choose the branch and once for the side —
                 // the two are free to disagree, and the side is a question only one of them
                 // answers.
-                switch (at.cutting().claim()) {
+                switch (placed.cutting().claim()) {
                     // The value the rule names, which is where its line falls and not the value
                     // beside it. A rule that names no value of the position singles nothing out
                     // here — the position is divided all the same, and what divides it is the line.
                     case ComparisonClaim.Singled _ -> {
-                        if (at.value() != null) {
+                        if (placed.value() != null) {
                             out.add(new RuleEvidence.Singles(
-                                    new Guards.Singled(at.position(), at.value(), drawn)));
+                                    new Guards.Singled(placed.position(), placed.value(), drawn)));
                         }
                     }
                     case ComparisonClaim.Cut order -> out.add(new RuleEvidence.Divides(
-                            new Threshold(at.position(), at.cutting().seam(),
+                            new Threshold(placed.position(), placed.cutting().seam(),
                                     order.valueBelongs(), drawn)));
                 }
                 // And the line itself, where the position has no value beside it for a row to be
@@ -526,8 +536,8 @@ public final class GuardThresholds {
                 // tells apart — and the border is drawn on the quantity the rule wrote, which can
                 // name where the line falls. Left out, a rule that cuts at a third had its classes
                 // counted and nothing said about its line at all.
-                if (at.value() == null && at.drawsABorder()) {
-                    between.add(new LineDrawn(at.cutting(), drawn));
+                if (placed.value() == null && placed.drawsABorder()) {
+                    between.add(new LineDrawn(placed.cutting(), drawn));
                 }
             }
             // A line on something that is not one position's own values. What the partition could
@@ -545,7 +555,7 @@ public final class GuardThresholds {
                 // the two meet, and that arm is a row the branch measure already asks for.
                 if (over.drawsABorder()) {
                     between.add(new LineDrawn(over.cutting(),
-                            originOf(which, wrote, where, plan, over.cutting())));
+                            originOf(at, wrote, where, over.cutting())));
                 }
             }
             case ComparisonAssessment.AnswerDependent _, ComparisonAssessment.NoInput _,
@@ -600,17 +610,18 @@ public final class GuardThresholds {
 
     /** How a row meets a line a body's condition drew, which is a guard's own answer: what it takes
      *  is getting the comparison to answer, because what it is about is a place in a body. */
-    private static LineOrigin.ComparisonOrigin originOf(ComparisonOccurrence which,
-                                                       SourceConstructOrigin wrote, Citation where,
-                                                       CoverageSites.Plan plan, Cutting cutting) {
-        // The two together, from the plan that numbered this comparison. Which comparison the rule
-        // is about is the catalog's answer; where a run through it is written down is the plan's,
-        // and it is required rather than looked up leniently because only an admitted reading
-        // reaches here and the policy admits nothing the plan does not number.
+    private static LineOrigin.ComparisonOrigin originOf(
+            souther.compiler.coverage.EmittedComparisonState.Instrumented at,
+            SourceConstructOrigin wrote, Citation where, Cutting cutting) {
+        // Which comparison the rule is about, and every place a run through it is written down.
+        // Both come off the join rather than being looked up again: the join already asked the plan
+        // which of the rule's materialisations it numbered, and asking a second time is a second
+        // answer to how many places there are.
+        ComparisonOccurrence which = at.observations().get(0).occurrence();
         return new LineOrigin.ComparisonOrigin(
                 new LineOrigin.ComparisonOrigin.Read(which,
                         new RuleRef.Comparison(which.behavior(), wrote), where,
-                        plan.requireEmissionSiteOf(which)),
+                        at.observations().stream().map(one -> one.site()).toList()),
                 new LineFacts(cutting.claim()));
     }
 

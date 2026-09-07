@@ -834,7 +834,7 @@ final class Coverages {
     private static OneShapeOfBorder reading(
             souther.compiler.partition.MeasuredInput.BorderReading line,
             ItemAssessment.WritabilityProjection projection) {
-        java.util.Optional<souther.compiler.coverage.ComparisonEmissionSite> site =
+        java.util.List<souther.compiler.coverage.ComparisonEmissionSite> site =
                 line.border().origin().recordedAt();
         return new OneShapeOfBorder() {
 
@@ -888,7 +888,7 @@ final class Coverages {
         souther.compiler.partition.MeasuredInput.BorderReading line = input.at(border);
         souther.compiler.inputs.Quantities rules = input.quantities();
         BorderQuantity quantity = line.quantity();
-        java.util.Optional<souther.compiler.coverage.ComparisonEmissionSite> site =
+        java.util.List<souther.compiler.coverage.ComparisonEmissionSite> site =
                 border.origin().recordedAt();
         // Built here and gone when the search is. What a row has to be to arrive is a way of asking
         // about values rather than something that says what it is, so it is what the walk runs
@@ -1048,7 +1048,7 @@ final class Coverages {
     private static StandingAtAPoint.Met standingThere(
             Probe probe, souther.compiler.partition.MeasuredInput.BorderReading line,
             Criterion criterion,
-            java.util.Optional<souther.compiler.coverage.ComparisonEmissionSite> site,
+            java.util.List<souther.compiler.coverage.ComparisonEmissionSite> site,
             souther.compiler.partition.Generator.BoundaryAttempt.Built built) {
         souther.compiler.partition.ObservedInputs read =
                 probe.read(built.row().inputs()).asInputs();

@@ -23,7 +23,7 @@ import java.util.function.Predicate;
  * so a walk that went wherever it could go would credit both alike — and a rule credited to a fork
  * it says nothing about is a fork this compiler did not read reported as one it did. What an
  * operation's answer turns on is a fact about the operation
- * ({@link souther.compiler.semantics.OperationFact.TurnsOnWhatAnArgumentAnswers}), so it is asked
+ * ({@link souther.compiler.semantics.OperationFact.TurnsOnWhetherAnArgumentHolds}), so it is asked
  * there.
  *
  * <p><b>Stopping is the answer, not a gap.</b> An operation the library says nothing about is one
@@ -42,14 +42,18 @@ final class WhatAForkTests {
      * the closures the library says the answer turns on, each asked for its own truth.
      */
     static boolean turnsOnSomething(Core atom, Predicate<Core> rule) {
-        return turnsOn(atom, AnswerAspect.TRUTH, rule, 0);
+        return turnsOn(atom, AnswerAspect.TRUTH, rule,
+                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>()));
     }
 
-    private static boolean turnsOn(Core e, AnswerAspect aspect, Predicate<Core> rule, int deep) {
-        // A depth, because an operation the library declares to turn on its closure may be handed a
-        // closure that calls it again. The edges are the library's and there are finitely many, but
-        // what they are applied to is a body, and a body may nest as far as an author wrote.
-        if (e == null || deep > 32) {
+    private static boolean turnsOn(Core e, AnswerAspect aspect, Predicate<Core> rule,
+                                   java.util.Set<Asked> met) {
+        // By what has been asked, which is what makes it stop. The tree is finite and so are the
+        // library's edges, and a name a walk followed may lead back to where it started — so a
+        // question already asked is one already answered rather than one to ask again. Not a depth:
+        // a number would make a walk of thirty-two steps answer and one of thirty-three come back
+        // saying nothing was found, which is the shape of an answer nobody decided.
+        if (e == null || !met.add(new Asked(e, aspect))) {
             return false;
         }
         // Whether it holds is decided by the parts of it that decide it, which is the same cut a
@@ -61,7 +65,7 @@ final class WhatAForkTests {
             List<Core> parts = ConditionSkeleton.atoms(e);
             if (parts.size() != 1 || parts.get(0) != e) {
                 for (Core part : parts) {
-                    if (turnsOn(part, AnswerAspect.TRUTH, rule, deep + 1)) {
+                    if (turnsOn(part, AnswerAspect.TRUTH, rule, met)) {
                         return true;
                     }
                 }
@@ -77,15 +81,15 @@ final class WhatAForkTests {
             // is the other question, about what deciding it turns on.
             switch (e) {
                 case Core.If iff -> {
-                    if (turnsOn(iff.cond(), AnswerAspect.TRUTH, rule, deep + 1)
-                            || turnsOn(iff.then(), AnswerAspect.TRUTH, rule, deep + 1)
-                            || turnsOn(iff.els(), AnswerAspect.TRUTH, rule, deep + 1)) {
+                    if (turnsOn(iff.cond(), AnswerAspect.TRUTH, rule, met)
+                            || turnsOn(iff.then(), AnswerAspect.TRUTH, rule, met)
+                            || turnsOn(iff.els(), AnswerAspect.TRUTH, rule, met)) {
                         return true;
                     }
                 }
                 case Core.Match match -> {
                     for (Core.Case arm : match.cases()) {
-                        if (turnsOn(arm.body(), AnswerAspect.TRUTH, rule, deep + 1)) {
+                        if (turnsOn(arm.body(), AnswerAspect.TRUTH, rule, met)) {
                             return true;
                         }
                     }
@@ -97,19 +101,20 @@ final class WhatAForkTests {
         if (operation == null) {
             return false;
         }
-        // A truth about a container that is a question about how many it holds. The library says
-        // which operations mean that, and which number they mean it of.
+        // A truth about a container that is the question of whether it holds anything. The library
+        // says which operations mean that, by naming the size they are a comparison of against
+        // nought.
         if (aspect == AnswerAspect.TRUTH
                 && DefaultBoundOperationFacts.get().meansTheSameAsASizeOfNought(operation) != null) {
-            return turnsOn(only(e), AnswerAspect.CARDINALITY, rule, deep + 1);
+            return turnsOn(only(e), AnswerAspect.EMPTINESS, rule, met);
         }
         // And the argument this side of the answer turns on, asked for its own truth. A closure
         // answers what its body comes to, so that is what is read where one stands there; anything
         // else answers itself.
         var turns = DefaultBoundOperationFacts.get()
-                .turnsOnWhatAnArgumentAnswers(operation, aspect);
+                .turnsOnWhetherAnArgumentHolds(operation, aspect);
         return turns != null && turnsOn(answerOf(argument(e, turns.argument())),
-                AnswerAspect.TRUTH, rule, deep + 1);
+                AnswerAspect.TRUTH, rule, met);
     }
 
     /** Which library operation {@code e} applies, in either shape a representation gives one, or
@@ -147,5 +152,20 @@ final class WhatAForkTests {
     /** What {@code e} answers with: the body of the block, where it is one, and otherwise itself. */
     private static Core answerOf(Core e) {
         return e instanceof Core.Block block ? block.body() : e;
+    }
+
+    /** One question this walk has been asked: an expression, and which side of what it answers.
+     *  Told apart by the node itself, so that two of one shape written twice are two questions. */
+    private record Asked(Core e, AnswerAspect aspect) {
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof Asked it && it.e == e && it.aspect == aspect;
+        }
+
+        @Override
+        public int hashCode() {
+            return System.identityHashCode(e) * 31 + aspect.hashCode();
+        }
     }
 }

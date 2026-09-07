@@ -60,7 +60,8 @@ class WhereARunThroughAConstructOfTheModelIsRecordedTest {
                     ComparisonEmissionIndex.of(each.bodies(), each.plan());
             for (ModelOccurrence states : constructsIn(each.bodies())) {
                 constructs[0]++;
-                answered.merge(index.siteOf(states).isPresent() ? "one place" : "none", 1,
+                answered.merge(index.madeFor(states).stream()
+                        .anyMatch(one -> one.site().isPresent()) ? "one place" : "none", 1,
                         Integer::sum);
             }
         }
@@ -91,7 +92,7 @@ class WhereARunThroughAConstructOfTheModelIsRecordedTest {
                 if (states.origin().owner() instanceof souther.compiler.types.WrittenOwner.Body body
                         && body.definition().equals("picked")) {
                     picked.add(states);
-                    index.siteOf(states).ifPresent(places::add);
+                    index.madeFor(states).forEach(one -> one.site().ifPresent(places::add));
                 }
             }
         }

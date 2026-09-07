@@ -22,11 +22,14 @@ import java.util.List;
  *
  * <p><b>Structure and not evaluation.</b> What is followed is what says "the answer here is the
  * answer there": the two sides of an {@code &&}, the body of a binding whose value the answer does
- * not depend on. A name standing for a condition is not followed — reading what a binding holds
+ * not depend on. A name standing for a condition is not followed here — reading what a binding holds
  * makes this a walk of where values come from, and the parts of a condition would then depend on how
- * many names an author put between the fork and what it tests. A fork on such a name has a part
- * nothing owns, which is the honest answer: this compiler did not work out what the name stands for,
- * and saying so is what leaves the question open rather than closing it on a guess.
+ * many names an author put between the fork and what it tests.
+ *
+ * <p><b>Which does not mean a name is left standing for nothing.</b> Cutting is one question and
+ * what a part turns out to be is another: an owner holding a part asks the reading what the name
+ * stands for ({@link souther.compiler.inputs.InputReads#denotes}) and answers about that. So the
+ * cut is of the shape and the resolving is the owner's, and neither is doing the other's work.
  */
 final class ConditionSkeleton {
 

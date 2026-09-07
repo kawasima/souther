@@ -166,22 +166,31 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
          *              own place and not the fork's — a condition holding three comparisons is
          *              three rules, and a reader sent to the {@code if} is given one handle for all
          *              of them
-         * @param recordedAt where a run through that comparison is written down. Beside the
+         * @param watched every place a run through that comparison is written down. Beside the
          *              comparison and not instead of it: which comparison this reads is what
-         *              everything about the rule is said of, and this is only how a run is asked
+         *              everything about the rule is said of, and these are only how a run is asked
          *              whether it got there. Minted together with the comparison, from the plan
-         *              that numbered it, so the two cannot come from different builds
+         *              that numbered it, so the two cannot come from different builds.
+         *              <p>Several because one rule may be written into the tree that runs more than
+         *              once: a library operation evaluating a closure it was handed twice writes the
+         *              comparison twice, and the model states one rule all the same. A run that got
+         *              an answer out of any of them got one out of the rule
          */
         public record Read(souther.compiler.coverage.ComparisonOccurrence comparison,
                            RuleRef.Comparison rule, Citation writtenAt,
-                           souther.compiler.coverage.ComparisonEmissionSite recordedAt) {
+                           java.util.List<souther.compiler.coverage.ComparisonEmissionSite>
+                                   watched) {
 
             public Read {
-                if (comparison == null || rule == null || writtenAt == null
-                        || recordedAt == null) {
+                if (comparison == null || rule == null || writtenAt == null) {
                     throw new IllegalArgumentException(
-                            "a rule read off a comparison names one, cites it and says where a run"
-                                    + " through it is recorded");
+                            "a rule read off a comparison names one and cites it");
+                }
+                watched = java.util.List.copyOf(watched);
+                if (watched.isEmpty()) {
+                    throw new IllegalArgumentException(
+                            "a rule a row is held to is one a run through is written down"
+                                    + " somewhere");
                 }
             }
 
@@ -592,11 +601,11 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      * One projection for both would hand a reading the emitter's number and let it stand for the
      * comparison, which is how the two came to be one value.
      */
-    default java.util.Optional<souther.compiler.coverage.ComparisonEmissionSite> recordedAt() {
+    default java.util.List<souther.compiler.coverage.ComparisonEmissionSite> recordedAt() {
         return switch (this) {
-            case ComparisonOrigin g -> java.util.Optional.of(g.read().recordedAt());
+            case ComparisonOrigin g -> g.read().watched();
             case NarrowedOrigin n -> n.bound().recordedAt();
-            case InvariantOrigin _, EnsuresOrigin _ -> java.util.Optional.empty();
+            case InvariantOrigin _, EnsuresOrigin _ -> java.util.List.of();
         };
     }
 

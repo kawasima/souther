@@ -159,15 +159,16 @@ class AForkStatesARuleOnlyWhereNothingInItDoesTest {
     }
 
     /**
-     * And a name standing for a condition is a part nothing owns, which is the honest answer.
+     * And a name is resolved by the owner, not by the cut.
      *
-     * <p>What the name holds is not read: following it would make the parts of a condition depend
-     * on how many names an author put between the fork and what it tests. So this compiler did not
-     * work out what {@code ok} stands for, and the question stays open rather than being closed on
-     * a guess about it.
+     * <p>Cutting a condition stops at a name — following it there would make the parts depend on
+     * how many names an author put between the fork and what it tests — and the owner holding the
+     * part asks the reading what the name stands for. So this fork is answered about
+     * {@code List.isEmpty(xs)} rather than about {@code ok}, and states a rule of its own for the
+     * same reason the one above it does.
      */
     @Test
-    void aNameStandingForAConditionIsAPartNothingOwns() {
+    void aNameStandingForAConditionIsResolvedByWhoeverOwnsThePart() {
         assertEquals(new Owned(0, 1), read("""
                 behavior pick : (xs: List<Int>) -> Low | High
                 let pick (xs) = {
@@ -208,7 +209,7 @@ class AForkStatesARuleOnlyWhereNothingInItDoesTest {
      * <p>Which is why the size the two declare is not what is asked. Both answer at most as many as
      * they walked, and so do a take and a distinct whose closures decide nothing; the fact read
      * here is the one that says the closure is the reason
-     * ({@link souther.compiler.semantics.OperationFact.TurnsOnWhatItsClosureAnswered}).
+     * ({@link souther.compiler.semantics.OperationFact.TurnsOnWhetherAnArgumentHolds}).
      */
     @Test
     void aRuleReachesAForkAlongWhatTheAnswerTurnsOn() {
@@ -231,6 +232,26 @@ class AForkStatesARuleOnlyWhereNothingInItDoesTest {
         assertEquals(new Owned(1, 0), read("""
                 behavior pick : (xs: List<Int>) -> Low | High
                 let pick (xs) = if List.all(x -> x > 0, xs) then High else Low"""));
+    }
+
+    /**
+     * And a closure that changes how many are answered but never whether any are.
+     *
+     * <p>The third corner of the triangle the pair above makes. {@code List.distinctBy} answers
+     * fewer where its key sends two elements to one, so the key does decide the count — and it
+     * never decides emptiness, because the first element of what it walked is always kept. A fork
+     * on whether the answer is empty turns on neither the key nor what it said.
+     *
+     * <p>Which is why the aspect a fork on {@code List.isEmpty} reads is whether the answer holds
+     * anything and not how many it holds. Read as the count, the key would answer for this fork on
+     * a rule that says nothing about it.
+     */
+    @Test
+    void aClosureThatChangesTheCountAndNotTheEmptinessAnswersForNoFork() {
+        assertEquals(new Owned(1, 1), read("""
+                behavior pick : (xs: List<Int>) -> Low | High
+                let pick (xs) =
+                    if List.isEmpty(List.distinctBy(x -> x > 0, xs)) then High else Low"""));
     }
 
     /** Nothing this compiler composed is one of these: the forks are the ones an author wrote. */

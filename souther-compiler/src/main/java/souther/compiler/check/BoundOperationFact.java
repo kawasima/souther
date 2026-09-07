@@ -137,7 +137,7 @@ sealed interface BoundOperationFact permits BoundOperationFact.OneAboutAnOperati
 
     /** What {@code argument} answers decides {@code aspect} of what the operation answers, which is
      *  the edge a rule written inside that argument reaches the call along. */
-    record TurnsOnWhatAnArgumentAnswers(DeclaredOperation operation,
+    record TurnsOnWhetherAnArgumentHolds(DeclaredOperation operation,
                                         souther.compiler.semantics.AnswerAspect aspect,
                                         DeclaredArgument argument)
             implements OneAboutAnOperation {}

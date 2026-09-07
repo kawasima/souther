@@ -3,7 +3,9 @@ package souther.compiler.coverage;
 import souther.compiler.core.Core;
 import souther.compiler.types.ModelOccurrence;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -20,6 +22,13 @@ import java.util.Optional;
  * out by the walk that numbered the sites — the question "which construct is this" would be as
  * complete as "what was measured about it", and a construct nothing measures would have no name.
  *
+ * <p><b>One construct of the model, several materialisations of it.</b> A library operation may
+ * evaluate a closure it was handed more than once — {@code List.distinctBy} asks its key twice —
+ * so a comparison the author wrote once is written into the tree that runs twice, and the model
+ * states one rule all the same. What differs between them is where inside the operation's body it
+ * was applied, which the model does not state; so they are materialisations of one construct, and
+ * this holds them all rather than refusing the second.
+ *
  * <p><b>Empty where the emitter numbered nothing.</b> A comparison behind an abort is one no run
  * reaches, so the plan numbers no site for it — and what comes back here says that and no more. It
  * does not say a run never answers through the comparison, and it does not say the arrival at its
@@ -28,13 +37,29 @@ import java.util.Optional;
  */
 public final class ComparisonEmissionIndex {
 
-    private final Map<ModelOccurrence, ComparisonEmissionSite> sites;
+    /**
+     * One materialisation of a construct of the model in the tree that runs.
+     *
+     * <p>The site is the materialisation's and not the construct's: an operation applying a closure
+     * twice writes the comparison twice, and the plan may number one of them and not the other — a
+     * comparison behind an abort on one path and reached on the other. Held per materialisation, a
+     * reader is told which of them a run is recorded at rather than being handed one answer for
+     * both.
+     */
+    public record EmittedComparison(ComparisonOccurrence occurrence,
+                                    Optional<ComparisonEmissionSite> site) {
 
-    private final Map<ModelOccurrence, ComparisonOccurrence> emitted;
+        public EmittedComparison {
+            if (occurrence == null || site == null) {
+                throw new IllegalArgumentException(
+                        "a materialisation is one the numbering counted, with or without a site");
+            }
+        }
+    }
 
-    private ComparisonEmissionIndex(Map<ModelOccurrence, ComparisonEmissionSite> sites,
-                                    Map<ModelOccurrence, ComparisonOccurrence> emitted) {
-        this.sites = sites;
+    private final Map<ModelOccurrence, List<EmittedComparison>> emitted;
+
+    private ComparisonEmissionIndex(Map<ModelOccurrence, List<EmittedComparison>> emitted) {
         this.emitted = emitted;
     }
 
@@ -47,32 +72,32 @@ public final class ComparisonEmissionIndex {
      * says so ({@link NumberingIdentity}) only when a site is asked about rather than when the index
      * is built.
      *
-     * @throws IllegalStateException where two comparisons of one body are one construct of the
-     *                               model. They would be one key and two places a run is recorded,
-     *                               and a reader holding the key could not say which of them a row
-     *                               was owed for
      */
     public static ComparisonEmissionIndex of(ModuleBodies of, CoverageSites.Plan plan) {
-        Map<ModelOccurrence, ComparisonEmissionSite> sites = new LinkedHashMap<>();
-        Map<ModelOccurrence, ComparisonOccurrence> emitted = new LinkedHashMap<>();
+        Map<ModelOccurrence, List<EmittedComparison>> emitted = new LinkedHashMap<>();
         for (Map.Entry<String, Core> body : of.bodies().entrySet()) {
-            walk(body.getValue(), body.getKey(), plan, sites, emitted);
+            walk(body.getValue(), plan, emitted);
         }
-        return new ComparisonEmissionIndex(Map.copyOf(sites), Map.copyOf(emitted));
+        return new ComparisonEmissionIndex(copy(emitted));
     }
 
     /** The same over one body, for a reader that holds one rather than the module's. */
     public static ComparisonEmissionIndex ofBody(String behavior, Core body,
                                                  CoverageSites.Plan plan) {
-        Map<ModelOccurrence, ComparisonEmissionSite> sites = new LinkedHashMap<>();
-        Map<ModelOccurrence, ComparisonOccurrence> emitted = new LinkedHashMap<>();
-        walk(body, behavior, plan, sites, emitted);
-        return new ComparisonEmissionIndex(Map.copyOf(sites), Map.copyOf(emitted));
+        Map<ModelOccurrence, List<EmittedComparison>> emitted = new LinkedHashMap<>();
+        walk(body, plan, emitted);
+        return new ComparisonEmissionIndex(copy(emitted));
     }
 
-    private static void walk(Core e, String behavior, CoverageSites.Plan plan,
-                             Map<ModelOccurrence, ComparisonEmissionSite> sites,
-                             Map<ModelOccurrence, ComparisonOccurrence> emitted) {
+    private static Map<ModelOccurrence, List<EmittedComparison>> copy(
+            Map<ModelOccurrence, List<EmittedComparison>> of) {
+        Map<ModelOccurrence, List<EmittedComparison>> out = new LinkedHashMap<>();
+        of.forEach((states, made) -> out.put(states, List.copyOf(made)));
+        return Map.copyOf(out);
+    }
+
+    private static void walk(Core e, CoverageSites.Plan plan,
+                             Map<ModelOccurrence, List<EmittedComparison>> emitted) {
         // Which comparison of the emitted tree this is, asked of the catalog, which is what the
         // numbering was taken over. A node it does not hold is one no site was planned for and one
         // no rule is read off — a comparison this compiler composed, or one of another module.
@@ -84,27 +109,25 @@ public final class ComparisonEmissionIndex {
             // asking them all for one place would be one key over as many places as the body calls
             // the operation.
             ModelOccurrence.statedAt(((Core.Binary) e).occurrence()).ifPresent(states -> {
-                ComparisonOccurrence already = emitted.put(states, which);
-                if (already != null && !already.equals(which)) {
-                    throw new IllegalStateException("two comparisons of `" + behavior
-                            + "` are one construct of the model: " + already + " and " + which
-                            + " are both " + states);
+                List<EmittedComparison> made =
+                        emitted.computeIfAbsent(states, _ -> new ArrayList<>());
+                if (made.stream().noneMatch(each -> each.occurrence().equals(which))) {
+                    made.add(new EmittedComparison(which, plan.emissionSiteOf(which)));
                 }
-                plan.emissionSiteOf(which).ifPresent(site -> sites.put(states, site));
             });
         }
-        Core.forEachChild(e, child -> walk(child, behavior, plan, sites, emitted));
+        Core.forEachChild(e, child -> walk(child, plan, emitted));
     }
 
-    /** Where a run through {@code occurrence} is recorded, or empty where the emitter numbered
-     *  none. */
-    public Optional<ComparisonEmissionSite> siteOf(ModelOccurrence occurrence) {
-        return Optional.ofNullable(sites.get(occurrence));
-    }
-
-    /** What the walk that numbered the sites called each of them, for the one reader that still
-     *  names a comparison that way ({@link LegacyComparisonAddresses}). */
-    Map<ModelOccurrence, ComparisonOccurrence> emittedNames() {
-        return emitted;
+    /**
+     * Every materialisation of {@code occurrence} in the tree that runs, in the order the walk met
+     * them.
+     *
+     * <p>Empty where the emitted tree holds none, which is the two readings disagreeing about the
+     * body rather than a construct nothing was measured about — a caller raises rather than
+     * answering around it.
+     */
+    public List<EmittedComparison> madeFor(ModelOccurrence occurrence) {
+        return emitted.getOrDefault(occurrence, List.of());
     }
 }

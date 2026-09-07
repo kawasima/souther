@@ -172,7 +172,7 @@ final class NumericReadings {
                      BoundOperationFact.ReadsItsContainer _,
                      BoundOperationFact.IsStatedOverAProjection _,
                      BoundOperationFact.StatesItsPredicateOfEveryElement _,
-                     BoundOperationFact.TurnsOnWhatAnArgumentAnswers _,
+                     BoundOperationFact.TurnsOnWhetherAnArgumentHolds _,
                      BoundOperationFact.MeansTheSameAsASizeOfNought _,
                      BoundOperationFact.EveryAnswerItCanGiveHasASourceValue _,
                      BoundOperationFact.SaysNothingOf _ -> { }

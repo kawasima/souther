@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -94,14 +93,19 @@ public final class StandingAtAPoint {
      * caller could put a line drawn at one reading to the rows of a behavior read at another —
      * which two behaviors taking a parameter spelled the same way is all it takes.
      *
-     * @param site where a run through the comparison a row has to have got an answer out of is
-     *             recorded, for a rule that meeting takes more than standing at the level. Empty
-     *             where standing there is the whole of it. The place a run is written down and not
-     *             which comparison it is, because what this asks it of is a run's own record
+     * @param watched every place a run through the comparison a row has to have got an answer out
+     *             of is recorded, for a rule that meeting takes more than standing at the level.
+     *             Empty where standing there is the whole of it. The places a run is written down
+     *             and not which comparison it is, because what this asks them of is a run's own
+     *             record.
+     *             <p>Several where one rule is written into the tree that runs more than once, and
+     *             a run that got an answer out of any of them got one out of the rule: they are
+     *             one comparison the author wrote, and which of its copies ran is the operation's
+     *             business rather than the model's
      */
     public static Met met(MeasuredInput.BorderReading line,
                           List<ObservedInputs> observed, Criterion criterion,
-                          Optional<ComparisonEmissionSite> site) {
+                          List<ComparisonEmissionSite> watched) {
         BorderQuantity quantity = line.quantity();
         BehaviorInputs where = line.subject().inputs();
         Set<ReadingGap> unreadable = new java.util.LinkedHashSet<>();
@@ -131,12 +135,15 @@ public final class StandingAtAPoint {
                 }
             }
             if (stands) {
-                if (site.isEmpty()) {
+                if (watched.isEmpty()) {
                     return Met.REACHED;   // writing the value is the whole of what there is to reach
                 }
                 switch (one.watched()) {
                     case Generator.Watched.Ran(var account) -> {
-                        if (site.stream().allMatch(account::reached)) {
+                        // Any of them, because they are one rule: a row that got an answer out of
+                        // one copy of a comparison got one out of the comparison, and asking for
+                        // all of them would owe a row through copies the operation makes.
+                        if (watched.stream().anyMatch(account::reached)) {
                             return Met.REACHED;
                         }
                     }

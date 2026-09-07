@@ -110,7 +110,7 @@ class AnAccountEstablishesItsDenominatorBeforeItCountsTest {
                                         new WrittenOwner.Body("example.one", "f"), 2, 0,
                                         souther.compiler.types.SourceConstruct.BINARY)),
                         Citation.of(new souther.compiler.diag.SourcePos(1, 1)),
-                        WHERE),
+                        java.util.List.of(WHERE)),
                 new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(Towards.BELOW, true)));
     }
 }

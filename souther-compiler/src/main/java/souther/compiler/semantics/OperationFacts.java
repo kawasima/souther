@@ -244,15 +244,21 @@ public final class OperationFacts {
             // answer the closure really does decide, and everything else says nothing.
             //
             // A mapping is the case this is for. `List.map` answers one per element whatever the
-            // closure said, so a rule written inside it decides what the answers are and not how
-            // many there are — and a fork on whether the mapping is empty turns on neither.
-            about("List", "filter", turnsOn(AnswerAspect.CARDINALITY)),
-            about("Set", "filter", turnsOn(AnswerAspect.CARDINALITY)),
-            about("Map", "filterEntries", turnsOn(AnswerAspect.CARDINALITY)),
-            about("List", "filterMap", turnsOn(AnswerAspect.CARDINALITY)),
-            // Two elements the closure sends to one key are one element of the answer, so how many
-            // it answers is what the closure made of them.
-            about("List", "distinctBy", turnsOn(AnswerAspect.CARDINALITY)),
+            // closure said, so a rule written inside it decides what the answers are and not
+            // whether there are any.
+            //
+            // `List.distinctBy` is the case beside it. Its key does change how many it answers —
+            // two elements it sends to one key are one element of the answer — and never whether
+            // it answers any, since the first element of what it walked is always kept. So it says
+            // nothing here: what it decides is the count, and the count is not what a fork on
+            // emptiness reads.
+            //
+            // `List.filterMap` decides emptiness, and by whether the closure answered a value
+            // rather than by whether it holds. Nothing here can say that yet, so it says nothing
+            // rather than saying the nearest thing.
+            about("List", "filter", turnsOn(AnswerAspect.EMPTINESS)),
+            about("Set", "filter", turnsOn(AnswerAspect.EMPTINESS)),
+            about("Map", "filterEntries", turnsOn(AnswerAspect.EMPTINESS)),
             // And the two whose whole answer is what the closure said of the elements.
             about("List", "any", turnsOn(AnswerAspect.TRUTH)),
             about("List", "all", turnsOn(AnswerAspect.TRUTH)),
@@ -583,12 +589,12 @@ public final class OperationFacts {
 
     /** What an argument decides, for the operations whose answer turns on it. */
     private static OperationFact turnsOn(AnswerAspect aspect) {
-        return new OperationFact.TurnsOnWhatAnArgumentAnswers(aspect, new ArgumentRef.TheClosure());
+        return new OperationFact.TurnsOnWhetherAnArgumentHolds(aspect, new ArgumentRef.TheClosure());
     }
 
     /** The same, where the argument is not a closure. */
     private static OperationFact turnsOn(AnswerAspect aspect, ArgumentRef argument) {
-        return new OperationFact.TurnsOnWhatAnArgumentAnswers(aspect, argument);
+        return new OperationFact.TurnsOnWhetherAnArgumentHolds(aspect, argument);
     }
 
     /** The answer holds the very elements {@code source} held. */

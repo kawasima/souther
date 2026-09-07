@@ -206,10 +206,10 @@ public sealed interface OperationFact {
      * credited to nobody leaves a measure open, and one credited to the wrong owner reports a model
      * nothing read as one read to the end.
      */
-    record TurnsOnWhatAnArgumentAnswers(AnswerAspect aspect, ArgumentRef argument)
+    record TurnsOnWhetherAnArgumentHolds(AnswerAspect aspect, ArgumentRef argument)
             implements OperationFact {
 
-        public TurnsOnWhatAnArgumentAnswers {
+        public TurnsOnWhetherAnArgumentHolds {
             java.util.Objects.requireNonNull(aspect, "this one names a side of the answer");
             java.util.Objects.requireNonNull(argument, "this one names an argument");
         }

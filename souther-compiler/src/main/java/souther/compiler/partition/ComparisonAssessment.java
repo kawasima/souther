@@ -298,7 +298,8 @@ sealed interface ComparisonAssessment {
      * not asked this at all.
      */
     static ComparisonAssessment narrowedByWhatArrives(
-            ComparisonAssessment read, souther.compiler.reach.ComparisonArrival arrival,
+            ComparisonAssessment read,
+            java.util.List<souther.compiler.reach.ComparisonArrival> arrivals,
             boolean drawnByAnInvariant) {
         Cutting cutting = switch (read) {
             case AtAPosition at -> at.cutting();
@@ -310,15 +311,27 @@ sealed interface ComparisonAssessment {
         if (cutting == null) {
             return read;
         }
-        return switch (arrival) {
-            case souther.compiler.reach.ComparisonArrival.NothingArrives _ ->
-                    new NothingArrivesAtItsLine(cutting);
-            case souther.compiler.reach.ComparisonArrival.Values values ->
-                    Border.reaches(cutting.at(), cutting.seam(), cutting.claim(),
-                            drawnByAnInvariant, cutting.withinGiven(values))
-                            ? read : new NothingArrivesAtItsLine(cutting);
-            case souther.compiler.reach.ComparisonArrival.NoProjection _ -> read;
-        };
+        // Every place the rule is watched at, and the line goes only where all of them proved
+        // nothing reaches it. One rule may be written into the tree that runs more than once, and a
+        // run through any of the copies is a run through the rule — so a proof about one of them is
+        // a proof about that copy, and the line is what the model states about all of them.
+        //
+        // Which is why one place that could not be projected leaves the line where it was: what a
+        // walk did not settle is not a proof that nothing arrives, and the line has to be dropped by
+        // a proof rather than by the absence of one.
+        for (souther.compiler.reach.ComparisonArrival arrival : arrivals) {
+            boolean reaches = switch (arrival) {
+                case souther.compiler.reach.ComparisonArrival.NothingArrives _ -> false;
+                case souther.compiler.reach.ComparisonArrival.Values values ->
+                        Border.reaches(cutting.at(), cutting.seam(), cutting.claim(),
+                                drawnByAnInvariant, cutting.withinGiven(values));
+                case souther.compiler.reach.ComparisonArrival.NoProjection _ -> true;
+            };
+            if (reaches) {
+                return read;
+            }
+        }
+        return arrivals.isEmpty() ? read : new NothingArrivesAtItsLine(cutting);
     }
 
     /**

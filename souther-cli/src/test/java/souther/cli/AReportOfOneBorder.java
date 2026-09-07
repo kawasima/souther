@@ -123,7 +123,7 @@ final class AReportOfOneBorder {
                                         souther.compiler.types.SourceConstruct.BINARY)),
                         souther.compiler.diag.Citation.of(
                                 new souther.compiler.diag.SourcePos(3, 5)),
-                        WHERE),
+                        java.util.List.of(WHERE)),
                 new souther.compiler.partition.LineFacts(
                         new ComparisonClaim.Cut(souther.compiler.numeric.Towards.BELOW, true)));
         return Border.at(

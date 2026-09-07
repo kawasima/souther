@@ -238,7 +238,7 @@ class ABorderDebtIsTheLineTheAuthorWroteTest {
                         rule,
                         souther.compiler.diag.Citation.of(
                                 new souther.compiler.diag.SourcePos(15, 16)),
-                        WHERE.comparison(occurrence)),
+                        java.util.List.of(WHERE.comparison(occurrence))),
                 new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(
                         souther.compiler.numeric.Towards.BELOW, true)));
     }
