@@ -517,9 +517,10 @@ public final class Apartness<A> {
      *
      * <p><b>Why the first three stay, once the fourth decides.</b> Not one reason but three.
      *
-     * <p>Refusing by reading the rule and by taking values away is what says which blocks the lack
-     * is about — one pair, or a chain of four — where looking for an assignment can only name the
-     * blocks it looked over. Reading the rule is also what the fourth rests on: a block holding
+     * <p>Refusing by reading the rule and by narrowing is what says which blocks the lack is about
+     * — one pair, or one block and the ones its values went to — where looking for an assignment
+     * can only name the blocks it looked over. Reading the rule is also what the fourth rests on: a
+     * block holding
      * more values than the relation has blocks is left out of the search because it can be given
      * one after every other block has, and a block stated to differ from itself is a block no such
      * argument holds for.
