@@ -7,8 +7,10 @@ import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.Rel;
+import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.values.AdmissibleSet;
+import souther.compiler.values.KnownExtents;
 import souther.compiler.values.StringFacts;
 import souther.compiler.values.StringMachineAnswers;
 import souther.compiler.values.UnreadReason;
@@ -74,7 +76,7 @@ public final class FieldDomains {
                     NOTHING_NAMED,
                     ConstraintState.<FactSubject>top(), null, null, null, null, Map.of(),
                     Set.of(RuleKey.THE_VALUE),
-                    Map.of(), Map.of(), Map.of(), Map.of(), StringFacts.NONE);
+                    Map.of(), Map.of(), Map.of(), Map.of(), StringFacts.NONE, KnownExtents.NONE);
 
     private final Map<RuleKey, NumericDomain.Bounds> byName;
     /** The ends the record's own clauses place, which is a different question from the range they
@@ -187,6 +189,15 @@ public final class FieldDomains {
     private final StringFacts stringMachines;
 
     /**
+     * Where the sets met under this revision were found to stop, for the readings this one makes
+     * of what its rules would leave without a clause.
+     *
+     * <p>A capability and not facts, and here rather than in what a reading came to: it is the
+     * revision's and is dropped with it, while what a reading came to is a value a store keeps.
+     */
+    private final KnownExtents known;
+
+    /**
      * The counterfactual readings this one has been asked for, kept under what each leaves out
      * ({@link #counterfactual}).
      *
@@ -217,8 +228,9 @@ public final class FieldDomains {
                          Map<RuleKey, FactSubject> atomAt, Map<RuleKey, Counted> countAt,
                          Map<RuleRef.Invariant, Map<Core, InvariantChecker.PartRead>> readBy,
                          Map<FactSubject, souther.compiler.numeric.Granularity> spacing,
-                         StringFacts stringMachines) {
+                         StringFacts stringMachines, KnownExtents known) {
         this.stringMachines = stringMachines;
+        this.known = known;
         this.byName = byName;
         this.heldByName = heldByName;
         this.admittedByName = admittedByName;
@@ -444,7 +456,7 @@ public final class FieldDomains {
                 seeded.notGathered(), seeded.handedOn(), placeOf,
                 seeded.constraints(), named, data, source, policy, settled,
                 seeded.unreadOfEveryValue(), seeded.atoms(), seeded.held(),
-                seeded.readBy(), seeded.spacing(), seeded.stringMachines());
+                seeded.readBy(), seeded.spacing(), seeded.stringMachines(), machines.extents());
     }
 
     /**
@@ -766,7 +778,11 @@ public final class FieldDomains {
      * <p>This declaration's, because they are what is here. Another declaration's are a store's
      * answer about it, and asking for one takes a store, which a reading standing inside a
      * comparison has no way to reach — so a reading of one of those borrows nothing and keeps what
-     * it builds, which is what {@link StringMachineAnswers#unborrowed()} is.
+     * it builds, which is what {@link StringMachineAnswers#unborrowed} is.
+     *
+     * <p>What the revision has worked out about sets goes with it either way. A counterfactual
+     * meets the sets its reading met wherever what it leaves out is about something else, and where
+     * a set stops is settled by the set — so a walk here is one the revision has already made.
      *
      * <p>Nothing of the reading itself is lent. What a counterfactual is depends on what it leaves
      * out, so no counterfactual is the declaration's canonical reading and none is kept as one —
@@ -774,8 +790,20 @@ public final class FieldDomains {
      * handed.
      */
     private DeclarationReadings borrowingMachines() {
-        return declaration -> declaration.equals(named.key())
-                ? StringMachineAnswers.borrowing(stringMachines) : StringMachineAnswers.unborrowed();
+        return new DeclarationReadings() {
+
+            @Override
+            public StringMachineAnswers of(TypeKey declaration) {
+                return declaration.equals(named.key())
+                        ? StringMachineAnswers.borrowing(stringMachines, known)
+                        : StringMachineAnswers.unborrowed(known);
+            }
+
+            @Override
+            public KnownExtents extents() {
+                return known;
+            }
+        };
     }
 
     /**

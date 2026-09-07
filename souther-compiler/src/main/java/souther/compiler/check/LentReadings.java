@@ -1,7 +1,10 @@
 package souther.compiler.check;
 
 import souther.compiler.types.TypeKey;
+import souther.compiler.values.KnownExtents;
 import souther.compiler.values.StringMachineAnswers;
+import souther.compiler.values.TextExtent;
+import souther.compiler.values.ValueSet;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -23,6 +26,11 @@ import java.util.function.Supplier;
  * the reading is of that world. {@code revision} is what says which one is current; when it moves,
  * what was lent under the old one is dropped rather than carried into a world it was not read from.
  *
+ * <p>What was worked out about the sets those readings met is held here on the same terms and under
+ * a key of its own. Where a set's strings stop is settled by the set, so it is not one declaration's
+ * to lend to another — it is what this revision has found out, and every reading made under the
+ * revision asks the one table.
+ *
  * <p>This shares work and not answers. Which questions are recomputed is settled before anything is
  * asked of this, and an answer is never kept here for a reader to find later.
  */
@@ -40,6 +48,10 @@ public final class LentReadings implements DeclarationReadings {
     private final LongSupplier revision;
     private final StoreWork work;
     private final Map<OfDeclarationUnder, Shared> lent = new HashMap<>();
+    /** Where the sets met under this revision were found to stop. Beside the readings because the
+     *  lifetime is the same one, and apart from them because it is keyed by the set and by nothing
+     *  about who met it. */
+    private final Map<ValueSet, TextExtent> extents = new HashMap<>();
 
     /** The revision the readings in hand were made under. */
     private long lentAt;
@@ -59,6 +71,33 @@ public final class LentReadings implements DeclarationReadings {
     public StringMachineAnswers of(TypeKey declaration) {
         return machines.of(declaration);
     }
+
+    @Override
+    public KnownExtents extents() {
+        return known;
+    }
+
+    /**
+     * What this revision has worked out about where sets stop, as the readings made under it ask
+     * and answer it.
+     *
+     * <p>One object over a table that is dropped when the revision moves, rather than one made per
+     * revision: what holds it is the reading a question was handed long before anybody asks it
+     * anything, and a lender that handed out the table itself would have handed out one the next
+     * revision no longer keeps.
+     */
+    private final KnownExtents known = new KnownExtents() {
+
+        @Override
+        public TextExtent of(ValueSet set) {
+            return currentExtents().get(set);
+        }
+
+        @Override
+        public void remember(ValueSet set, TextExtent extent) {
+            currentExtents().put(set, extent);
+        }
+    };
 
     @Override
     public InvariantChecker.Seeded reading(TypeKey declaration, RuleReadingSource source,
@@ -93,11 +132,23 @@ public final class LentReadings implements DeclarationReadings {
      * lent at all.
      */
     private Map<OfDeclarationUnder, Shared> current() {
+        atTheCurrentRevision();
+        return lent;
+    }
+
+    /** The same for what was worked out about sets, which is dropped by the same move. */
+    private Map<ValueSet, TextExtent> currentExtents() {
+        atTheCurrentRevision();
+        return extents;
+    }
+
+    /** Drops what was shared under a revision that has been left behind. */
+    private void atTheCurrentRevision() {
         long now = revision.getAsLong();
         if (now != lentAt) {
             lent.clear();
+            extents.clear();
             lentAt = now;
         }
-        return lent;
     }
 }

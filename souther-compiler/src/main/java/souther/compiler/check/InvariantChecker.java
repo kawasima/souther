@@ -265,9 +265,10 @@ public final class InvariantChecker {
      * worked out by asking what the rules leave without it, and each of those readings meets the
      * same sets. Where a set stops does not turn on which reading is asking, so it is not this
      * reading's to keep: it is asked of these, which answer from what the store keeps for the
-     * declaration and work out the rest.
+     * declaration, from what the revision has worked out about the sets themselves, and walk what
+     * neither of them has.
      */
-    private StringMachineAnswers answers = StringMachineAnswers.unborrowed();
+    private StringMachineAnswers answers;
     private final List<CompileException> errors = new ArrayList<>();
     private final List<Diagnostic> warnings = new ArrayList<>();
 
@@ -285,6 +286,9 @@ public final class InvariantChecker {
         // declaration this check reads: a capability handed on to the engine, which hands it to
         // every reading made through it, and kept by nothing any of them answers with.
         this.engine = new PathEngine(symbols, dischargeInvariants, machines, contracts, policy);
+        // Borrowing nothing, since no declaration is being seeded yet, and knowing what the
+        // revision knows: where a set stops is the same answer whoever met it.
+        this.answers = StringMachineAnswers.unborrowed(machines.extents());
         // Named here because this check reads them directly and often. They are the engine's, not a
         // second copy: one engine builds them once and everything below sees those.
         this.symbols = engine.symbols();
