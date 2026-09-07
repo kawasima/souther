@@ -266,8 +266,10 @@ class ABorderSaysWhichOfItsTwoPointsALineIsTest {
         // the IN point and neither of the two words against the line.
         Carrier carrier = new Carrier.Whole();
         LineOrigin closed = new LineOrigin.EnsuresOrigin(
-                new RuleRef.Ensures(new BehaviorContract.RuleId(null, 0, 0, null), "cap"),
-                THE_ONLY_CONJUNCT,
+                new WhichLine.OfAComparisonOfAPart(new ClauseStatementId(
+                        new souther.compiler.check.PartId<>(new RuleRef.Ensures(
+                                new BehaviorContract.RuleId(null, 0, 0, null), "cap"),
+                                THE_ONLY_CONJUNCT), 0)),
                 new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(Towards.BELOW, true)));
         Border border = Border.at(lineAt(new AxisId("cap", "n"), carrier, Count.of(100)), closed,
                 new NumericDomain.Bounds(null, null));

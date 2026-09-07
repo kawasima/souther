@@ -1,6 +1,8 @@
 package souther.compiler.partition;
 
 import souther.compiler.check.Comparison;
+import souther.compiler.check.PartId;
+import souther.compiler.check.RuleRef;
 import souther.compiler.check.StringPredicates;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
@@ -48,6 +50,16 @@ final class ClauseStatements {
     }
 
     /**
+     * One of the things a part states, with the name this reading issued for it.
+     *
+     * <p>The name and not the place in a list. Read off the list by whoever held it, the number is
+     * one the caller counted — and a caller that skipped an arm it had nothing to do with, or that
+     * carried on counting into the next part, would be numbering the statements of a clause its own
+     * way. Issued here, there is one answer to which statement of which part a line came out of.
+     */
+    record Stated(ClauseStatementId id, Statement statement) {}
+
+    /**
      * One of the things a clause states, said as the kind of rule it is.
      *
      * <p>Every arm is counted: the position in the list is which statement of the clause this is,
@@ -84,10 +96,22 @@ final class ClauseStatements {
         record StatesNeither(Core choice) implements Statement {}
     }
 
-    /** What {@code e} states, read under the names in force at it. */
-    static List<Statement> of(Core e, InputReads reads, Symbols symbols) {
-        List<Statement> out = new ArrayList<>();
-        walk(e, reads, symbols, out);
+    /**
+     * What {@code part} states, read under the names in force at it, each under the name this
+     * issues for it.
+     *
+     * @param part which part of which clause the tree came out of, which is half of what a
+     *             statement of it is called. The other half is where the statement stands among
+     *             this part's, and it is assigned here and nowhere a reader stands
+     */
+    static List<Stated> of(PartId<RuleRef.Ensures> part, Core e, InputReads reads,
+                           Symbols symbols) {
+        List<Statement> found = new ArrayList<>();
+        walk(e, reads, symbols, found);
+        List<Stated> out = new ArrayList<>();
+        for (int at = 0; at < found.size(); at++) {
+            out.add(new Stated(new ClauseStatementId(part, at), found.get(at)));
+        }
         return out;
     }
 

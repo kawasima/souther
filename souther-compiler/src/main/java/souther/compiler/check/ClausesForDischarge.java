@@ -99,8 +99,7 @@ public final class ClausesForDischarge {
         List<ClauseReading> out = new ArrayList<>();
         for (ClauseHelpers.AuthoredPart each : ClauseHelpers.conjunctsOf(written)) {
             Expansion<Hir.Expr> read = expansion.expanding(each.written(), owner);
-            out.add(new ClauseReading(each.written(), read.value(),
-                    CallsLeftStanding.of(read.standing())));
+            out.add(new ClauseReading(each, read.value(), CallsLeftStanding.of(read.standing())));
         }
         return out;
     }
@@ -112,26 +111,39 @@ public final class ClausesForDischarge {
      * than carried beside it: a position that can be passed is a position that can be passed wrongly,
      * and the one thing every reader of this got wrong was which tree they took it from.
      *
+     * <p>The part and not the tree alone, so that the place this conjunct holds among the parts of
+     * its clause travels with it. That place was assigned where the clause was split, two lines up;
+     * dropped here, the readers below counted the conjuncts again to get it back, and a count made
+     * where a reading stands is a count that moves with what that reading managed.
+     *
+     * @param part     the conjunct as the split issued it, which is what a caller holding the rule
+     *                 asks for the name of this part ({@link ClauseHelpers.AuthoredPart#idFor})
      * @param standing which calls the expansion that produced {@code read} left standing — the
      *                 fourth of the facts this file exists to hand over together, and the one a
      *                 reader looking at {@code read} alone cannot recover
      */
-    public record ClauseReading(Hir.Expr written, Hir.Expr read, CallsLeftStanding standing) {
+    public record ClauseReading(ClauseHelpers.AuthoredPart part, Hir.Expr read,
+                                CallsLeftStanding standing) {
 
         /** The tree and what its expansion left standing, which is what a reading of it takes. */
         ClauseAsExpanded asExpanded() {
             return new ClauseAsExpanded(read, standing);
         }
 
+        /** The conjunct as the author wrote it, before anything was expanded into it. */
+        public Hir.Expr written() {
+            return part.written();
+        }
+
         /** Where the author wrote it — the earliest position anything written carries. */
         public SourcePos at() {
-            return ClauseHelpers.beginsAt(written);
+            return ClauseHelpers.beginsAt(written());
         }
 
         /** The stretch of source it is written over, for a reader holding it against the clause it
          *  came from. */
         public Region region() {
-            return written.region();
+            return written().region();
         }
     }
 }

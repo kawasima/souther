@@ -27,10 +27,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * how one authored part came to be numbered by two counters over two trees.
  *
  * <p>So a type downstream of that split holds the name and not the number, and this is the list of
- * what still holds a number. It is not empty, and what is on it is a different question wearing the
- * same word: the lines a body's rule draws are counted over the comparisons the rule states, which
- * is not which part of a clause its author wrote. Those two share a field today, and telling them
- * apart is its own change.
+ * what still holds one. There is one entry, and it is the pair itself: the place a clause's parts
+ * are numbered, which is the place every reader below holds a name instead of.
+ *
+ * <p>The other number a clause has is not here and is not this question. What one part states is
+ * read off the tree that part expanded into, and which of those statements a line came out of is
+ * counted within the part — a different decomposition, with a mint and a check of its own
+ * ({@link souther.compiler.partition.ClauseStatementId}). Held on one list, the two would be one
+ * allowance covering two things, and either could grow a second counter under the other's reason.
  *
  * <p>Read off the compiled classes, because what a type carries is what the class file says.
  */
@@ -43,14 +47,7 @@ class WhoMayCarryTheNumberOfAPartIsWrittenDownTest {
             new Held("souther.compiler.check.PartId.ordinal",
                     "the pair itself, made where a clause is split and carried from there. This is"
                             + " the name everything downstream holds instead of a number, so it is"
-                            + " the one place the two stand together"),
-            new Held("souther.compiler.partition.WhichLine.OfAComparison.line",
-                    "which of the comparisons a rule written in a body states this line is. Not a"
-                            + " part of anything: such a rule is one rule and is not written in the"
-                            + " parts an author joined, so what counts its lines is the reading of"
-                            + " comparisons and there is no name to carry"),
-            new Held("souther.compiler.partition.LineOrigin.EnsuresOrigin.conjunct",
-                    "the same count, where a behavior's clause drew the line"));
+                            + " the one place the two stand together"));
 
     @Test
     void aNumberBesideARuleIsWrittenDownWithWhatItCounts() throws IOException {

@@ -287,15 +287,14 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      * and not the origin — and a reader asking which rule is owed this row does not have to know
      * which shape the line has.
      *
-     * @param rule              which clause of which behavior — the rule and the whole of it
-     * @param conjunct          which of the clause's comparisons drew this line, counted over every
-     *                          one the clause states in the order they are written. A clause states
-     *                          as many lines as it has comparisons in it, and they are not each
-     *                          other's: {@code r.a >= 5 && r.b >= 5} is one clause naming two
-     *                          positions, and a row whose {@code a} is 5 says nothing about
-     *                          {@code b}. Counted over all of them and not over the ones a line came
-     *                          out of, so that a reading which could make nothing of one still
-     *                          numbers the next the same as a reading that could
+     * @param which             which line of the model this drew, as the readings that decomposed
+     *                          the clause named it: which part the author wrote, and which of the
+     *                          things that part states. Both, because they are not each other's —
+     *                          {@code r.a >= 5 && r.b >= 5} is one clause the author wrote in two
+     *                          parts, and a row whose {@code a} is 5 says nothing about {@code b}.
+     *                          Carried rather than assembled from a rule and a number here, so that
+     *                          what this says about the line is what named it and not what this
+     *                          reading counted
      * @param facts             what the rule placed on the values
      *                          ({@link souther.compiler.check.ComparisonClaim ComparisonClaim}),
      *                          which decides which neighbour is the other class's edge and what
@@ -305,17 +304,19 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      *                          a line between two positions that is the whole of what the row shows,
      *                          since there is no class either side to read instead
      */
-    record EnsuresOrigin(RuleRef.Ensures rule, int conjunct, LineFacts facts)
+    record EnsuresOrigin(WhichLine.OfAComparisonOfAPart which, LineFacts facts)
             implements LineOrigin {
 
         public EnsuresOrigin {
-            if (facts == null) {
-                throw new IllegalArgumentException("a line is what some comparison placed");
+            if (which == null || facts == null) {
+                throw new IllegalArgumentException("a line is what some comparison of some part"
+                        + " placed: " + which + " " + facts);
             }
-            if (conjunct < 0) {
-                throw new IllegalArgumentException(
-                        "a conjunct of a clause is counted from zero: " + conjunct);
-            }
+        }
+
+        /** Which clause of which behavior — the rule and the whole of it. */
+        public RuleRef.Ensures rule() {
+            return which.statement().rule();
         }
     }
 
@@ -521,15 +522,15 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
             // The part that drew it, which is what named the line where a declaration wrote it.
             case InvariantOrigin i ->
                     new AuthoredLine(new WhichLine.OfAPart(i.part()), lineFacts(), List.of());
-            // One line, so the zeroth of the one. A comparison is a rule apiece — a condition
-            // holding three comparisons is three rules — so there is no second line of it to tell
-            // this one from.
+            // The rule and nothing under it. A comparison is a rule apiece — a condition holding
+            // three comparisons is three rules — so there is no second line of it to tell this one
+            // from, and a number here would be one this reading made up to fill a field.
             case ComparisonOrigin g ->
-                    new AuthoredLine(new WhichLine.OfAComparison(g.rule(), 0), lineFacts(),
-                            List.of());
-            case EnsuresOrigin e ->
-                    new AuthoredLine(new WhichLine.OfAComparison(e.rule(), e.conjunct()),
-                            lineFacts(), List.of());
+                    new AuthoredLine(new WhichLine.OfAComparison(g.rule()), lineFacts(), List.of());
+            // The line this reading was drawn for, handed back. Taken apart into a rule and a
+            // number and put together again here, the two halves would be free to be joined
+            // differently from the way they were named.
+            case EnsuresOrigin e -> new AuthoredLine(e.which(), lineFacts(), List.of());
             // The bound's line, said to have been taken in. What the narrowing adds is about the
             // end and not about the rule, so the rule comes back the same and this is kept beside
             // it.

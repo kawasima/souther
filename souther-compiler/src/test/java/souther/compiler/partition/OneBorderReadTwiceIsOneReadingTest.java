@@ -223,7 +223,7 @@ class OneBorderReadTwiceIsOneReadingTest {
         return new AuthoredLine(new WhichLine.OfAComparison(new RuleRef.Comparison("weigh",
                 new souther.compiler.types.SourceConstructOrigin(
                         new WrittenOwner.Body("example.weigh", "weigh"), 2, 0,
-                        souther.compiler.types.SourceConstruct.BINARY)), 0),
+                        souther.compiler.types.SourceConstruct.BINARY))),
                 new LineFacts(new ComparisonClaim.Cut(Towards.BELOW, true)), List.of());
     }
 }
