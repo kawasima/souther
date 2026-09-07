@@ -885,9 +885,11 @@ public final class Apartness<A> {
         return edges.hashCode();
     }
 
+    /** The pairs written in one order whichever order they were stated in — see
+     *  {@link InOneOrder}. */
     @Override
     public String toString() {
-        return edges.toString();
+        return InOneOrder.of(edges);
     }
 
     /**

@@ -93,10 +93,10 @@ public final class RelationalEvidence<A> {
                 && routes.containsAll(it.routes);
     }
 
-    /** Written in one order whichever they arrived in — see {@link Lacks#toString}. */
+    /** Written in one order whichever they arrived in — see {@link InOneOrder}. */
     @Override
     public String toString() {
-        return routes.stream().map(String::valueOf).sorted().toList().toString();
+        return InOneOrder.of(routes);
     }
 
     @Override

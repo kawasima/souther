@@ -53,6 +53,12 @@ public record Domains<A>(Map<Sameness.Block<A>, Admits> byBlock) {
         return new Domains<>(out);
     }
 
+    /** What each block is left, written in one order — see {@link InOneOrder}. */
+    @Override
+    public String toString() {
+        return InOneOrder.of(byBlock);
+    }
+
     /** What {@code block} is left. */
     public Admits of(Sameness.Block<A> block) {
         return byBlock.get(block);

@@ -44,5 +44,11 @@ public sealed interface Closure<A> {
                                 + " Stable");
             }
         }
+
+        /** The blocks written in one order — see {@link InOneOrder}. */
+        @Override
+        public String toString() {
+            return "Contradicted" + InOneOrder.of(leftNothing) + provenance;
+        }
     }
 }

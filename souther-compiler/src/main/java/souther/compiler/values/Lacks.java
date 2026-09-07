@@ -179,11 +179,9 @@ public final class Lacks<A> {
         return out;
     }
 
-    /** Written in one order whichever they arrived in, which is what a set of them written out
-     *  twice has to read alike. Which order that is settled here and nowhere any of these is
-     *  compared. */
+    /** Written in one order whichever they arrived in — see {@link InOneOrder}. */
     @Override
     public String toString() {
-        return each.stream().map(String::valueOf).sorted().toList().toString();
+        return InOneOrder.of(each);
     }
 }

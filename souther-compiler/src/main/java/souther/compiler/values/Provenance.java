@@ -40,6 +40,13 @@ public record Provenance<A>(Set<Removal<A>> removals) {
         return new Provenance<>(new LinkedHashSet<>(made));
     }
 
+    /** The removals, written in one order whichever order they were made in — see
+     *  {@link InOneOrder}. */
+    @Override
+    public String toString() {
+        return InOneOrder.of(removals);
+    }
+
     /** Nothing was taken from anything, which is what a relation narrowed by no round has. */
     static <A> Provenance<A> nothing() {
         return new Provenance<>(Set.of());
@@ -59,6 +66,13 @@ public record Provenance<A>(Set<Removal<A>> removals) {
 
         public Removal {
             blockers = Collections.unmodifiableSet(new LinkedHashSet<>(blockers));
+        }
+
+        /** The blockers written in one order — see {@link InOneOrder}. */
+        @Override
+        public String toString() {
+            return block + " lost " + value + " in round " + round + " to "
+                    + InOneOrder.of(blockers);
         }
     }
 

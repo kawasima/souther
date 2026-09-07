@@ -42,6 +42,12 @@ public sealed interface Refusal<A> {
                         "a lack at no block is a lack nowhere, which is Nowhere");
             }
         }
+
+        /** The blocks written in one order — see {@link InOneOrder}. */
+        @Override
+        public String toString() {
+            return "AtEachOf" + InOneOrder.of(blocks);
+        }
     }
 
     /** A lack at each of {@code blocks}, which is nowhere where they are none. */

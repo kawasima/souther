@@ -136,6 +136,12 @@ public sealed interface RelationalLack<A> {
             }
         }
 
+        /** The blocks and the values written in one order — see {@link InOneOrder}. */
+        @Override
+        public String toString() {
+            return "TooFewValuesBetweenThem" + InOneOrder.of(blocks) + InOneOrder.of(available);
+        }
+
         /** The blocks and the values, scattered — see {@link #scattering}. */
         @Override
         public int hashCode() {
@@ -190,6 +196,12 @@ public sealed interface RelationalLack<A> {
 
         public NoAssignmentTellsThemApart {
             blocks = Collections.unmodifiableSet(new LinkedHashSet<>(blocks));
+        }
+
+        /** The blocks written in one order — see {@link InOneOrder}. */
+        @Override
+        public String toString() {
+            return "NoAssignmentTellsThemApart" + InOneOrder.of(blocks);
         }
 
         /** The blocks, scattered — see {@link #scattering}. */
