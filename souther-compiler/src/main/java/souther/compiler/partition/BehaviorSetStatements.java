@@ -402,12 +402,21 @@ public final class BehaviorSetStatements {
      * is about no position of the input states nothing, and an outer fork owned by it would be
      * owned by a rule nobody wrote and its own question would go with it.
      *
+     * <p><b>Taken part by part, as every other owner is.</b> A fork owned for one part of its
+     * condition still states the other one, and a fork rule owns what it decides rather than the
+     * fork around it: {@code List.any(closure, xs) && List.isEmpty(ys)} states the closure's rule
+     * at the first part and something nobody read at the second, and dropping the whole fork for
+     * the first would take the second's question with it.
+     *
      * <p>Over the rules found rather than over the forks met on the way, so where the two stand
      * relative to each other says nothing: a walk records a fork before it descends its arms, and
      * an owner looked up among the forks already met would leave one written under the arm of the
-     * other owning nothing. And dropping one does not take an owner from anything else — a part
-     * that turns on a dropped fork's condition turns on whatever owned that condition, and reaches
-     * it along the same edges.
+     * other owning nothing.
+     *
+     * <p>And once, rather than until it settles. Taking a part away can leave a fork stating
+     * nothing, and a part that turned on that fork's condition is not left without an owner by it:
+     * the fork stated nothing because its own parts turn on some other rule's condition, and a walk
+     * that reached the first condition goes on through it to the second along the same edges.
      */
     private static List<ForkOfItsOwn> ofTheirOwn(String behavior, PredicateReadings read,
                                                  Symbols symbols,
@@ -415,34 +424,39 @@ public final class BehaviorSetStatements {
         List<Standing> standing = standingRules(behavior, read, symbols, forks);
         List<ForkOfItsOwn> out = new ArrayList<>();
         for (Standing each : standing) {
-            if (standing.stream().noneMatch(other -> other != each
-                    && each.turnsOnTheConditionOf(other, symbols))) {
-                out.add(each.rule());
+            List<Core> left = new ArrayList<>();
+            for (Core part : each.untaken()) {
+                if (standing.stream().noneMatch(other -> other != each
+                        && each.turnsOnTheConditionOf(part, other, symbols))) {
+                    left.add(part);
+                }
+            }
+            if (left.isEmpty()) {
+                continue;
+            }
+            ForkOfItsOwn asked = asked(behavior, each.fork(), left, symbols);
+            if (asked != null) {
+                out.add(asked);
             }
         }
         return out;
     }
 
-    /** One fork that states a rule of its own, before any of them is asked whether another one's
-     *  rule is what it states. */
+    /** One fork that states a rule of its own, before any of its parts is asked whether another
+     *  one's rule is what it states. */
     private record Standing(ComparisonReadings.ForkMet fork, List<Core> untaken,
                             ForkOfItsOwn rule) {
 
         /**
-         * Whether what this fork tests turns on the condition of {@code other}.
+         * Whether {@code part} of what this fork tests turns on the condition of {@code other}.
          *
-         * <p>Along the same edges every other owner is looked for along, and asked of the parts
-         * this fork was left with: a fork owned for one part and stating another is answered for
-         * where it is answered for, and this is about the part that was not.
+         * <p>Along the same edges every other owner is looked for along, and asked of one part: a
+         * fork owned for one part and stating another is answered for where it is answered for, and
+         * this is about the part in hand and not about the rest of the condition.
          */
-        boolean turnsOnTheConditionOf(Standing other, Symbols symbols) {
-            for (Core part : untaken) {
-                if (WhatAForkTests.turnsOnSomething(part, it -> it == other.fork().condition(),
-                        one -> fork.reads().denotes(one, symbols).value())) {
-                    return true;
-                }
-            }
-            return false;
+        boolean turnsOnTheConditionOf(Core part, Standing other, Symbols symbols) {
+            return WhatAForkTests.turnsOnSomething(part, it -> it == other.fork().condition(),
+                    one -> fork.reads().denotes(one, symbols).value());
         }
     }
 

@@ -56,6 +56,25 @@ class AForkStatesARuleOnlyWhereNothingInItDoesTest {
     private record Owned(int comparisons, int forks) {}
 
     private static Owned read(String declaration) {
+        Both both = both(declaration);
+        return new Owned(both.guards().thresholds().size(), both.forks().size());
+    }
+
+    /** Where each fork left stating a rule of its own is filed, in the order the walk met them. */
+    private static List<String> filedAt(String declaration) {
+        return both(declaration).forks().stream()
+                .flatMap(each -> each.filed().keySet().stream())
+                .map(String::valueOf)
+                .toList();
+    }
+
+    /** What one compile of the model says, read once: the two answers are about the same nodes, and
+     *  a second compile would hold nodes of its own for the first one's forks to be matched
+     *  against. */
+    private record Both(GuardThresholds.Guards guards,
+                        List<BehaviorSetStatements.ForkOfItsOwn> forks) {}
+
+    private static Both both(String declaration) {
         Compilation compilation = Compilation.ofSource(PRELUDE + "\n" + declaration + "\n", "Main");
         compilation.answerEverything();
         assertEquals(1, compilation.modules().size(), "the model under test compiles");
@@ -76,8 +95,9 @@ class AForkStatesARuleOnlyWhereNothingInItDoesTest {
                 rules);
         BehaviorSetStatements.Read sets = BehaviorSetStatements.of("pick", states, stated,
                 inputs.reading(rules), inputs.parameterReads(),
-                checked.elementBindings().get("pick"), Allowance.of(new PatternPlan.Budget(1000, 1000)), guards.forks());
-        return new Owned(guards.thresholds().size(), sets.forks().size());
+                checked.elementBindings().get("pick"),
+                Allowance.of(new PatternPlan.Budget(1000, 1000)), guards.forks());
+        return new Both(guards, sets.forks());
     }
 
     /** A comparison owns the question, and the fork around it states nothing of its own. */
@@ -157,6 +177,27 @@ class AForkStatesARuleOnlyWhereNothingInItDoesTest {
                 behavior pick : (xs: List<Int>) -> Low | High
                 let pick (xs) =
                     if List.any(n -> if List.isEmpty([1, 2, 3]) then false else true, xs)
+                        then High else Low"""));
+    }
+
+    /**
+     * And a fork one rule owns a part of still states the part it does not.
+     *
+     * <p>The same thing already held of a comparison owning one part, said of the owner a fork rule
+     * is. The first part is what the closure decided, which is the inner fork's rule; the second is
+     * something nobody read. Subtracted fork by fork rather than part by part, the second part's
+     * question goes with the first part's owner, and a model half of which nobody took in is
+     * reported as read.
+     */
+    @Test
+    void aForkOwnedByAnotherForkForOnePartStillStatesTheOther() {
+        assertEquals(List.of("xs[*].tags", "ys"), filedAt("""
+                data Bag = { tags: List<Int> }
+
+                behavior pick : (xs: List<Bag>, ys: List<Int>) -> Low | High
+                let pick (xs, ys) =
+                    if List.any(p -> if List.isEmpty(p.tags) then true else false, xs)
+                            && List.isEmpty(ys)
                         then High else Low"""));
     }
 
