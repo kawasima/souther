@@ -257,17 +257,17 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
                 // is a measure held open over a question no row can answer.
                 if (live && iff.occurrence() != null && iff.origin() != null
                         && iff.origin().isWritten()) {
-                    List<Core> atoms = new ArrayList<>();
                     // What each part stands for, which is where the readers of it look. The
                     // cutting is of the shape ({@link ConditionSkeleton}) and stops at a name; what
                     // the name denotes is the owner's question, and a reader that could not answer
                     // it would call a fork on a named comparison one nobody read.
+                    List<Core> atoms = new ArrayList<>();
                     for (Core part : ConditionSkeleton.atoms(iff.cond())) {
                         atoms.add(reads.denotes(part, symbols).value());
                     }
                     Set<Core> owned = Collections.newSetFromMap(new IdentityHashMap<>());
                     for (Core atom : atoms) {
-                        if (somethingElseStatesIt(atom, reads, symbols)) {
+                        if (statedElsewhere(atom, reads, symbols).isEmpty()) {
                             owned.add(atom);
                         }
                     }
@@ -378,19 +378,40 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
      * closure would be owned by a rule that does not exist and the question it leaves would go with
      * it. So that owner is asked where the rules themselves are known
      * ({@code BehaviorSetStatements#ofTheirOwn}), of the rules and not of the source.
+     *
+     * <p><b>Answered as the parts nobody else states, and not as whether somebody states one.</b>
+     * What an operation's answer turns on is as many things as the closure states
+     * ({@link WhatAForkTests#partsOfTheAnswer}): a closure answering
+     * {@code p.age > 18 && List.isEmpty(p.tags)} states a comparison and something nothing here
+     * reads, and the fork around the operation states the second whoever owns the first. Answered
+     * as "something in there is owned", the second went with the first — which is the same partial
+     * ownership a condition's own parts are cut along, lost one step past the operation.
      */
-    static boolean somethingElseStatesIt(Core atom, InputReads reads, Symbols symbols) {
-        return WhatAForkTests.turnsOnSomething(atom,
-                part -> comparisonAt(part) != null
-                        || reads.pathOf(part, symbols) instanceof PathResolution.At,
-                one -> reads.denotes(one, symbols).value());
+    static List<Core> statedElsewhere(Core atom, InputReads reads, Symbols symbols) {
+        List<Core> left = new ArrayList<>();
+        for (Core part : WhatAForkTests.partsOfTheAnswer(atom,
+                one -> reads.denotes(one, symbols).value())) {
+            if (comparisonAt(part) == null
+                    && !(reads.pathOf(part, symbols) instanceof PathResolution.At)) {
+                left.add(part);
+            }
+        }
+        return left;
     }
 
     /** Whether the truth of {@code atom} turns on a predicate {@code read} took in, which is the
      *  same walk a comparison is looked for along and is here so that the two agree about it. */
     static boolean turnsOnAPredicate(Core atom, PredicateReadings read, InputReads reads,
                                      Symbols symbols) {
-        return WhatAForkTests.turnsOnSomething(atom, read::statesOneAt,
-                one -> reads.denotes(one, symbols).value());
+        return leftUnread(atom, read, reads, symbols).isEmpty();
+    }
+
+    /** The parts of what {@code atom} decides that none of the three readers answers for, which is
+     *  what a fork over it is left stating. */
+    static List<Core> leftUnread(Core atom, PredicateReadings read, InputReads reads,
+                                 Symbols symbols) {
+        return statedElsewhere(atom, reads, symbols).stream()
+                .filter(part -> !read.statesOneAt(part))
+                .toList();
     }
 }

@@ -434,7 +434,7 @@ public final class BehaviorSetStatements {
             if (left.isEmpty()) {
                 continue;
             }
-            ForkOfItsOwn asked = asked(behavior, each.fork(), left, symbols);
+            ForkOfItsOwn asked = asked(behavior, each.fork(), left, read, symbols);
             if (asked != null) {
                 out.add(asked);
             }
@@ -479,7 +479,7 @@ public final class BehaviorSetStatements {
             if (untaken.isEmpty()) {
                 continue;
             }
-            ForkOfItsOwn asked = asked(behavior, each, untaken, symbols);
+            ForkOfItsOwn asked = asked(behavior, each, untaken, read, symbols);
             if (asked != null) {
                 out.add(new Standing(each, untaken, asked));
             }
@@ -513,10 +513,25 @@ public final class BehaviorSetStatements {
      * part that does name a position is filed there, however little else was worked out about it.
      */
     private static ForkOfItsOwn asked(String behavior, ComparisonReadings.ForkMet fork,
-                                      List<Core> untaken, Symbols symbols) {
+                                      List<Core> untaken, PredicateReadings read,
+                                      Symbols symbols) {
         SequencedMap<FilingCoordinate, BlockReason.RuleReadingStopped> filed =
                 new LinkedHashMap<>();
-        for (Core part : untaken) {
+        for (Core atom : untaken) {
+            // Where the unread question is, which is the parts of what the atom decides that
+            // nobody answers for. A reader sent to the whole atom would be sent to the positions
+            // an owned part is about as well — a comparison beside it inside one closure — for a
+            // question that comparison already asks.
+            //
+            // And the atom itself where those parts are about nothing of the input. What such a
+            // fork turns on is still what the atom reaches: a closure that says nothing about the
+            // element leaves the fork turning on the sequence it walks, and that is where a reader
+            // is owed the question.
+            List<Core> unread =
+                    ComparisonReadings.leftUnread(atom, read, fork.reads(), symbols);
+            List<Core> places = unread.stream()
+                    .anyMatch(one -> namesSomething(one, fork, symbols)) ? unread : List.of(atom);
+            for (Core part : places) {
             // Where the part stands at places this could not choose between, those are the places,
             // and they are what the walk below cannot give: it reads a part as one term over the
             // positions it names, and a term over a place nothing settled is a term at whichever
@@ -532,8 +547,16 @@ public final class BehaviorSetStatements {
             BlockReason.RuleReadingStopped why =
                     UnreadComparison.notAboutOwnValues(names.origin());
             names.met().keySet().forEach(at -> filed.putIfAbsent(FilingCoordinate.at(at), why));
+            }
         }
         return filed.isEmpty() ? null : new ForkOfItsOwn(new RuleCitation.WrittenAt(
                 new RuleRef.Fork(behavior, fork.occurrence().origin()), fork.at()), filed);
+    }
+
+    /** Whether {@code part} names a position of the input, however the reading gets there. */
+    private static boolean namesSomething(Core part, ComparisonReadings.ForkMet fork,
+                                          Symbols symbols) {
+        return fork.reads().pathOf(part, symbols) instanceof PathResolution.MayStandAt
+                || !GuardThresholds.namesIn(part, fork.reads(), symbols).met().isEmpty();
     }
 }

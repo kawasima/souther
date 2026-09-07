@@ -201,6 +201,26 @@ class AForkStatesARuleOnlyWhereNothingInItDoesTest {
                         then High else Low"""));
     }
 
+    /**
+     * And an owner of one part of what a closure states leaves the other part.
+     *
+     * <p>The same partial ownership a condition's own parts are cut along, one step past the
+     * operation. The library says {@code List.any} answers what its closure said, and the closure
+     * says two things: a comparison, and something nothing here reads. Asked as "is anything in
+     * there owned", the second went with the first and the fork came out fully read — a model half
+     * of which nobody took in reported as one this compiler followed to the end.
+     */
+    @Test
+    void anOwnerOfOnePartPastTheOperationLeavesTheOther() {
+        assertEquals(List.of("xs[*].tags"), filedAt("""
+                data Row = { age: Int, tags: List<Int> }
+
+                behavior pick : (xs: List<Row>) -> Low | High
+                let pick (xs) =
+                    if List.any(p -> p.age > 18 && List.isEmpty(p.tags), xs)
+                        then High else Low"""));
+    }
+
     /** And a fork on a predicate is the predicate's, which is a rule this compiler reads. */
     @Test
     void aForkOnAPredicateIsThePredicatesRule() {
