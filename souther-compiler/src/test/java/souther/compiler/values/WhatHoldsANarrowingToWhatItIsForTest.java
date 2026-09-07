@@ -166,6 +166,36 @@ class WhatHoldsANarrowingToWhatItIsForTest {
                 "and the same relation with those two swapped is answered the same way");
     }
 
+    /**
+     * And a block that came to hold one value in the round that emptied its neighbour is no reason
+     * for it.
+     *
+     * <p>{@code x} loses {@code A} to {@code y} and {@code B} to {@code u}, and is left nothing by
+     * the first round. {@code z} loses {@code A} to {@code w} in that same round, so it holds
+     * {@code B} alone once the narrowing has stopped — and it is a neighbour of {@code x}, holding
+     * the value {@code x} lost to {@code u}.
+     *
+     * <p>Read off where the narrowing stopped, {@code z} would be offered as why {@code x} lost
+     * {@code B}. It was left two values when {@code B} went, so it took nothing from anything, and
+     * a report naming it would send an author to a rule that had not yet said anything.
+     */
+    @Test
+    void andABlockThatCameToOneValueInThatRoundIsNoReasonForIt() {
+        Apartness<String> around = Apartness.of("x", "y").and(Apartness.of("x", "z"))
+                .and(Apartness.of("x", "u")).and(Apartness.of("z", "w"));
+        Apartness.WhatABlockAdmits<String> left = holding(Map.of(
+                block("x"), Set.of(A, B), block("y"), Set.of(A), block("z"), Set.of(A, B),
+                block("w"), Set.of(A), block("u"), Set.of(B)));
+
+        Closure.Contradicted<String> refused = refusing(around, left);
+
+        assertEquals(Set.of(block("x")), refused.leftNothing());
+        assertEquals(Set.of(block("y"), block("u")),
+                refused.provenance().restingOn(block("x")),
+                "the blocks that held one value when x lost its own, and not the one that came to"
+                        + " hold one in the same round");
+    }
+
     /** What narrowing {@code relation} against what {@code left} says its blocks hold comes to,
      *  where that leaves a block nothing. */
     private static Closure.Contradicted<String> refusing(
