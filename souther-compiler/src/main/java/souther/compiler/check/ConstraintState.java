@@ -307,7 +307,8 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
             // two sentences: one is about how many values there are and the other about nothing of
             // the kind.
             case POSITIONS_HELD_APART -> shown.site() instanceof Refusal.OfThemTogether<A> it
-                    && it.why() instanceof RelationalWitness.ABlockApartFromItself
+                    && it.lacks().stream().allMatch(
+                            lack -> lack instanceof RelationalWitness.ABlockApartFromItself)
                     ? new Emptiness.PositionsHeldAsOneAreHeldApart()
                     : new Emptiness.NoDistinctValuesForPositionsHeldApart();
             case NOTHING_SHOWN, VALUES, RULES_TOGETHER -> null;
@@ -320,7 +321,7 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
         // whose positions are one value, and these positions are not one value — read through it,
         // a proof would say the rules hold them as one, which is what they state they are not.
         if (shown.site() instanceof Refusal.OfThemTogether<A> it) {
-            List<Emptiness.AtAField.Where> apart = declaredIn(it.why().blocks(), positions);
+            List<Emptiness.AtAField.Where> apart = declaredIn(it.blocks(), positions);
             return Optional.of(apart.size() < 2 ? Emptiness.preferred(why, said)
                     : Emptiness.preferred(why, new Emptiness.AtPositionsHeldApart(apart, said)));
         }

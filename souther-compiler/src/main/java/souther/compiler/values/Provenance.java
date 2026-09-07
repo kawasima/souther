@@ -1,0 +1,96 @@
+package souther.compiler.values;
+
+import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
+/**
+ * Which values a narrowing took from which blocks, and what left them nowhere else to go.
+ *
+ * <p>Every removal is filed under the round it happened in, and what blocked a value is read off
+ * the round before it. So the blocks a lack rests on are reached by walking back through rounds
+ * that only ever decrease, and a block that came to hold one value after the removal it is being
+ * offered as a reason for is not a reason for it.
+ *
+ * <p><b>Which is what a final reading of the blocks cannot say.</b> Two neighbours may each hold
+ * one value once a narrowing has stopped and only one of them have held it when the value went, and
+ * the sentence naming both says a block took a value it had not yet come to hold. The rounds are
+ * what tell those two apart, so they are carried rather than worked out again from where the
+ * narrowing stopped.
+ *
+ * <p><b>And the blockers of one removal are alternatives and not a conjunction.</b> Two neighbours
+ * each holding the same one value each take it on their own, so a report that read them as what
+ * together took it would be describing an argument that was never made. What a reader wants of
+ * them is that the value had nowhere to go, which is what any one of them shows.
+ *
+ * @param <A> what a position is called
+ */
+public record Provenance<A>(Set<Removal<A>> removals) {
+
+    public Provenance {
+        removals = Collections.unmodifiableSet(new LinkedHashSet<>(removals));
+    }
+
+    /** Nothing was taken from anything, which is what a relation narrowed by no round has. */
+    static <A> Provenance<A> nothing() {
+        return new Provenance<>(Set.of());
+    }
+
+    /**
+     * One value taken from one block, and what left it nowhere to go.
+     *
+     * @param block the block the value was taken from
+     * @param value the value
+     * @param round which round of the narrowing took it, counting the first from one
+     * @param blockers the neighbours that were left only this value the round before, each of
+     *                 which is on its own why the value could not stay
+     */
+    public record Removal<A>(Sameness.Block<A> block, Value value, int round,
+                             Set<Sameness.Block<A>> blockers) {
+
+        public Removal {
+            blockers = Collections.unmodifiableSet(new LinkedHashSet<>(blockers));
+        }
+    }
+
+    /**
+     * Every block the emptying of {@code block} rests on, which is what took its values and what
+     * left those blocks holding what they took them with.
+     *
+     * <p>Walked back through the rounds and never across one. A neighbour that blocked a value in
+     * round {@code n} was left one value by rounds before {@code n}, so what that neighbour rests
+     * on is asked of those rounds alone — and the walk ends because a round is a number that goes
+     * down.
+     *
+     * <p>{@code block} itself is not among them: what a report says is that this block is left
+     * nothing, and the blocks named beside it are the ones an author is sent to read.
+     */
+    public Set<Sameness.Block<A>> restingOn(Sameness.Block<A> block) {
+        Set<Sameness.Block<A>> out = new LinkedHashSet<>();
+        Deque<Asked<A>> asking = new ArrayDeque<>();
+        Set<Asked<A>> already = new LinkedHashSet<>();
+        asking.add(new Asked<>(block, Integer.MAX_VALUE));
+        while (!asking.isEmpty()) {
+            Asked<A> here = asking.removeFirst();
+            if (!already.add(here)) {
+                continue;
+            }
+            for (Removal<A> removal : removals) {
+                if (!removal.block().equals(here.block()) || removal.round() >= here.before()) {
+                    continue;
+                }
+                for (Sameness.Block<A> blocker : removal.blockers()) {
+                    out.add(blocker);
+                    asking.add(new Asked<>(blocker, removal.round()));
+                }
+            }
+        }
+        out.remove(block);
+        return Collections.unmodifiableSet(out);
+    }
+
+    /** One block, asked of the rounds before {@code before}. */
+    private record Asked<A>(Sameness.Block<A> block, int before) {}
+}

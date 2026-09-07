@@ -203,42 +203,50 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
     }
 
     /**
-     * A block whose neighbours hold one value each loses those values, along the whole chain.
+     * A block both of whose neighbours leave it no room holds nothing, and the lack is at that
+     * block.
      *
-     * <p>{@code p} at {@code A} takes {@code A} from {@code q}, which leaves {@code q} at {@code B}
-     * — and that takes {@code B} from {@code r}, which is left nothing. Two steps and not one, so a
-     * reading that took only what the blocks held when it started would admit this.
+     * <p>{@code p} holds {@code A} and leaves {@code q} no room for it; {@code r} holds {@code B}
+     * and leaves it no room for that. So {@code q} is what the rules leave nothing, and it is left
+     * nothing by two blocks neither of which took a value the other's removal made available.
+     *
+     * <p><b>Which block that is, is not a question about the order the denials were written.</b>
+     * Taking the blocks one after another and writing each removal down as it is made, {@code p}
+     * leaves {@code q} holding {@code B} and {@code q} then leaves {@code r} nothing — the same
+     * relation refused at a different block, and which of the two a reader is handed would be
+     * settled by which pair was stated first.
      */
     @Test
-    void takingWhatOneValuedBlocksHoldFollowsTheWholeChain() {
+    void aBlockItsNeighboursLeaveNoRoomForHoldsNothing() {
         Apartness<String> chain = Apartness.of("p", "q").and(Apartness.of("q", "r"));
 
         RelationalWitness<String> why = refusedBy(chain.reduce(holding(java.util.Map.of(
                 P, Set.of(A), Q, Set.of(A, B), R, Set.of(B)))));
 
         if (!(why instanceof RelationalWitness.NoValueLeftBetweenThem<String> left)) {
-            throw new AssertionError("refused by taking values away, and said so: " + why);
+            throw new AssertionError("refused by narrowing, and said so: " + why);
         }
-        assertEquals(R, left.block());
-        // And the argument is every block it rests on. {@code q} took the last value from {@code r}
-        // and holds one value only because {@code p} does — so {@code q} with {@code r} alone is
-        // satisfiable, and a witness naming those two would say a lack is at a pair whose own rules
-        // are fine with what they leave it.
-        assertEquals(Set.of(P, Q), left.by(),
-                "every block the argument rests on, and not the one that took the last value");
+        assertEquals(Q, left.block());
+        assertEquals(Set.of(P, R), left.by(), "the blocks that left it no room");
         assertEquals(Set.of(P, Q, R), left.blocks());
+
+        // And the relation written the other way round is the same relation and is answered the
+        // same way.
+        assertEquals(why, refusedBy(Apartness.of("q", "r").and(Apartness.of("p", "q"))
+                .reduce(holding(java.util.Map.of(
+                        P, Set.of(A), Q, Set.of(A, B), R, Set.of(B))))));
     }
 
     /**
-     * And a lack reached through other blocks is another lack, whatever it ends at.
+     * And a lack at another block is another lack.
      *
-     * <p>Two chains ending at the same block, taking the same values away, resting on different
-     * rules: one runs through {@code q} and the other through {@code s}. Named by where they end,
-     * the two would be one lack — and a choice between readings holding them would keep it and say
-     * that those blocks together admit nothing, which neither of them showed of them.
+     * <p>Two relations of the same shape over different blocks: one leaves {@code q} nothing and
+     * the other leaves {@code s} nothing, and each block is left values of its own in the relation
+     * that does not name it. Read as one lack, a choice between readings holding them would say
+     * that both blocks are left nothing, which neither of them showed.
      */
     @Test
-    void andALackReachedThroughOtherBlocksIsAnotherLack() {
+    void andALackAtAnotherBlockIsAnotherLack() {
         RelationalWitness<String> one = refusedBy(
                 Apartness.of("p", "q").and(Apartness.of("q", "r")).reduce(holding(java.util.Map.of(
                         P, Set.of(A), Q, Set.of(A, B), R, Set.of(B)))));
@@ -246,10 +254,10 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
                 Apartness.of("p", "s").and(Apartness.of("s", "r")).reduce(holding(java.util.Map.of(
                         P, Set.of(A), Sameness.Block.of("s"), Set.of(A, B), R, Set.of(B)))));
 
-        assertNotEquals(one, other, "two arguments over different blocks are two arguments");
+        assertNotEquals(one, other, "two lacks at different blocks are two lacks");
         assertInstanceOf(Refusal.Nowhere.class,
-                Refusal.shownByBoth(new Refusal.OfThemTogether<>(one),
-                        new Refusal.OfThemTogether<>(other)),
+                Refusal.shownByBoth(new Refusal.OfThemTogether<>(Set.of(one)),
+                        new Refusal.OfThemTogether<>(Set.of(other))),
                 "so a choice between readings holding them keeps neither");
     }
 
@@ -276,14 +284,22 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         if (!(both.refusedBy() instanceof Refusal.OfThemTogether<String> together)) {
             throw new AssertionError("refused by what its blocks are held as: " + both.refusedBy());
         }
-        assertInstanceOf(RelationalWitness.ABlockApartFromItself.class, together.why());
-        assertEquals(Set.of(Sameness.of("p", "r").blockOf("p")), together.blocks());
+        assertInstanceOf(RelationalWitness.ABlockApartFromItself.class,
+                together.lacks().iterator().next());
+        assertEquals(Set.of(Sameness.of("p", "r").blockOf("p")), both.refusedBy().blocks());
     }
 
-    /** What a reduction that refused was refused by. */
+    /** What a reduction that refused was refused by, where what it shows is one lack. */
     private static RelationalWitness<String> refusedBy(Apartness.Reduction<String> said) {
+        Set<RelationalWitness<String>> lacks = everyLackOf(said);
+        assertEquals(1, lacks.size(), "one lack, and this shows several: " + lacks);
+        return lacks.iterator().next();
+    }
+
+    /** Every lack a reduction that refused shows. */
+    private static Set<RelationalWitness<String>> everyLackOf(Apartness.Reduction<String> said) {
         assertInstanceOf(Apartness.Reduction.Nothing.class, said);
-        return ((Apartness.Reduction.Nothing<String>) said).why();
+        return ((Apartness.Reduction.Nothing<String>) said).lacks();
     }
 
     /**
@@ -358,9 +374,13 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
                 refusedBy(all.reduce(holding(java.util.Map.of()))));
 
         assertEquals(1, butOne.extent().pairsLeftOut(), "and this one leaves a pair out");
-        assertInstanceOf(RelationalWitness.TooFewValuesBetweenThem.class,
-                refusedBy(butOne.reduce(holding(java.util.Map.of()))),
+        // Two sets nothing can be added to, since the pair left out is in neither, and each of them
+        // short. They share every block but one, so what is said is about all of them together —
+        // and that is not a shortage, since the blocks it names are not all stated to differ.
+        RelationalWitness<String> shown = refusedBy(butOne.reduce(holding(java.util.Map.of())));
+        assertInstanceOf(RelationalWitness.NoAssignmentTellsThemApart.class, shown,
                 "which the walk is as cheap on, so it is counted too");
+        assertEquals(named.size(), shown.blocks().size(), "and the lack is about all of them");
     }
 
     /**
@@ -384,7 +404,10 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         assertInstanceOf(Apartness.Reduction.NotKnown.class,
                 past.reduce(holding(java.util.Map.of())),
                 "past what either question admits, and so unanswered");
-        assertInstanceOf(RelationalWitness.TooFewValuesBetweenThem.class,
+        // And counted, which is what the two are asserted for. What the count shows here is short
+        // of every set it was taken of and those sets share blocks, so the lack is about all of
+        // them together rather than a shortage of any one of them.
+        assertInstanceOf(RelationalWitness.NoAssignmentTellsThemApart.class,
                 refusedBy(within.reduce(holding(java.util.Map.of()))),
                 "and one pair fewer left out is inside it, and counted");
     }

@@ -618,11 +618,9 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
                 if (at.values().stream().anyMatch(ValueSet::isEmpty)) {
                     return new Held.Nothing<>(Refusal.atEachOf(emptied));
                 }
-                for (Apartness.Edge<A> edge : apart.edges()) {
-                    if (edge.isOfOneBlock()) {
-                        return new Held.Nothing<>(new Refusal.OfThemTogether<>(
-                                new RelationalWitness.ABlockApartFromItself<>(edge.one())));
-                    }
+                Set<RelationalWitness<A>> stated = apart.apartFromThemselves();
+                if (!stated.isEmpty()) {
+                    return new Held.Nothing<>(new Refusal.OfThemTogether<>(stated));
                 }
                 return Held.Alternatives.of(new Alternative<>(new Box<>(at), apart));
             }
@@ -1193,7 +1191,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
             return new Refusal.AtEachOf<>(here);
         }
         return relating.of(box.apart(), box.product()) instanceof Apartness.Reduction.Nothing<A> it
-                ? new Refusal.OfThemTogether<>(it.why()) : new Refusal.Nowhere<>();
+                ? new Refusal.OfThemTogether<>(it.lacks()) : new Refusal.Nowhere<>();
     }
 
     /**

@@ -24,8 +24,8 @@ class ALackAboutBlocksTogetherIsNotALackAtEachOfThemTest {
 
     private static Refusal<String> together(Sameness.Block<String> one,
                                             Sameness.Block<String> other) {
-        return new Refusal.OfThemTogether<>(new RelationalWitness.TooFewValuesBetweenThem<>(
-                Set.of(one, other), Set.of(Value.text("A"))));
+        return new Refusal.OfThemTogether<>(Set.of(new RelationalWitness.TooFewValuesBetweenThem<>(
+                Set.of(one, other), Set.of(Value.text("A")))));
     }
 
     /** Two lacks at blocks are one lack at the blocks both of them name. */

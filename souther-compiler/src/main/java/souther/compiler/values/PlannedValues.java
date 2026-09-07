@@ -236,13 +236,8 @@ public sealed interface PlannedValues<A> {
         if (!here.isEmpty()) {
             return new Refusal.AtEachOf<>(here);
         }
-        for (Apartness.Edge<A> edge : box.apart().edges()) {
-            if (edge.isOfOneBlock()) {
-                return new Refusal.OfThemTogether<>(
-                        new RelationalWitness.ABlockApartFromItself<>(edge.one()));
-            }
-        }
-        return new Refusal.Nowhere<>();
+        Set<RelationalWitness<A>> stated = box.apart().apartFromThemselves();
+        return stated.isEmpty() ? new Refusal.Nowhere<>() : new Refusal.OfThemTogether<>(stated);
     }
 
     /** What one block's description comes to under the question, waiting where a machine would
