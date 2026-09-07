@@ -29,10 +29,16 @@ import java.util.Map;
  * its strings holds none. So this takes the representation where the operation stands and reads it
  * as what it states.
  *
- * <p><b>Beside {@link ComparisonReadings} and not inside it.</b> The two read two trees, and what
- * each carries is where a rule stands in the tree it is in. One walk over both would be a reader of
- * two representations, and every question asked of it — where does this stand, which copy is it,
- * what is in force here — would first have to say which of the two it meant.
+ * <p><b>Beside {@link ComparisonReadings} and not inside it.</b> Both read the tree the language's
+ * operations stand in; what differs is the authority. A comparison puts a line on the order the
+ * values at a position are counted on, and a predicate tells a set of them from the rest — two
+ * questions with two answers, and a walk that asked them together would be one reader deciding
+ * which of the two a rule is by looking at what it turned out to do.
+ *
+ * <p>This said the two read two trees, which is what they used to do: a rule stated as one of the
+ * language's own operations was read where those stand and a comparison where they are expanded.
+ * A comparison is read where they stand now, so the difference between the two readers is the
+ * question and not the representation.
  *
  * <p><b>What a rule means and what it does to a position are still apart.</b> This says which
  * predicate was applied, which strings it states and what the subject is. Whether that restricts the

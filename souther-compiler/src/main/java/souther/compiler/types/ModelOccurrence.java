@@ -50,10 +50,11 @@ public record ModelOccurrence(SourceConstructOrigin origin, ExpansionLineage lin
      * all come back as one construct of the model — one key over as many places as a body calls the
      * operation, which is what a reader asking where a run is recorded cannot have.
      *
-     * <p>Empty says that and only that. Where a run through a construct the model does state is
-     * recorded is a further question and a different absence
-     * ({@code ComparisonEmissionIndex#siteOf}), and the two are answered by different things so that
-     * neither can be read off the other.
+     * <p>Empty says that and only that. Which materialisations of a construct the model does state
+     * the tree that runs holds, and which of those a run through is recorded at, are further
+     * questions and different absences ({@code ComparisonEmissionIndex#madeFor}) — a construct may
+     * be written into that tree more than once, and each of those may or may not be numbered. They
+     * are answered by different things so that none can be read off another.
      *
      * <p>An envelope left open at the end is what says it: the construct stands inside an
      * operation's own body, either because the operation takes no block or because this stands

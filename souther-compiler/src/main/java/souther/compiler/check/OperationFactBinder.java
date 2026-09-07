@@ -135,10 +135,7 @@ final class OperationFactBinder {
                                     "the container a predicate reads"),
                             reads.through());
             case OperationFact.TurnsOnWhetherAnArgumentHolds turns ->
-                    new BoundOperationFact.TurnsOnWhetherAnArgumentHolds(operation, turns.aspect(),
-                            holdToTheDeclaration(declaration, turns.argument(),
-                                    new ArgumentRef.TheClosure(), TypeRequirement.ANY,
-                                    "the argument the answer turns on"));
+                    holdTurnsOn(declaration, operation, turns);
             case OperationFact.IsStatedOverAProjection over ->
                     new BoundOperationFact.IsStatedOverAProjection(operation,
                             holdToTheDeclaration(declaration, over.projection(),
@@ -774,4 +771,53 @@ final class OperationFactBinder {
     }
 
     private OperationFactBinder() {}
+
+    /**
+     * What an operation's answer turns on, held to the declaration on both sides.
+     *
+     * <p>The fact says whether an argument <em>holds</em> decides a side of the answer, so what
+     * stands there has to be something that holds: a truth, or a closure answering one. And which
+     * side of the answer it decides has to be a side the answer has: a truth for an operation
+     * answering one, whether it holds anything for an operation answering a container.
+     *
+     * <p><b>Both, because either alone lets a row through that means something else.</b> A key that
+     * answers whichever value it projects is not a truth, and a count is not an emptiness — the two
+     * operations this compiler must not credit are exactly those, and a rule written for either
+     * would read as this fact and be followed as one. Held at the reading instead, the mistake
+     * arrives as a rule about the elements of a list credited with deciding whether the list is
+     * empty, which is a model reported as read that nothing read.
+     */
+    static BoundOperationFact holdTurnsOn(
+            CompleteSignature declaration, DeclaredOperation operation,
+            OperationFact.TurnsOnWhetherAnArgumentHolds turns) {
+        ValueName.Stdlib library = (ValueName.Stdlib) declaration.declaring().operation();
+        DeclaredArgument argument = holdToTheDeclaration(declaration, turns.argument(), null,
+                TypeRequirement.ANY, "the argument the answer turns on");
+        Type stands = argument.stands();
+        Type holds = stands instanceof Type.FnOf fn ? fn.result() : stands;
+        if (!Type.BOOL.equals(holds)) {
+            throw new IllegalStateException("argument " + (argument.position() + 1) + " of "
+                    + library.qualified() + " answers " + Type.show(holds)
+                    + ", so whether it holds is not something to read: the answer turning on it is"
+                    + " said of a truth, or of a closure answering one");
+        }
+        Type answers = declaration.result();
+        switch (turns.aspect()) {
+            case TRUTH -> {
+                if (!Type.BOOL.equals(answers)) {
+                    throw new IllegalStateException(library.qualified() + " answers "
+                            + Type.show(answers) + ", which has no truth for an argument to decide");
+                }
+            }
+            case EMPTINESS -> {
+                if (Type.elementOfAContainer(answers) == null) {
+                    throw new IllegalStateException(library.qualified() + " answers "
+                            + Type.show(answers)
+                            + ", which holds nothing for an argument to decide the emptiness of");
+                }
+            }
+        }
+        return new BoundOperationFact.TurnsOnWhetherAnArgumentHolds(operation, turns.aspect(),
+                argument);
+    }
 }

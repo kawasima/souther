@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Over the models this repository carries for measurement: every comparison the analysis reads has
- * one comparison of the emitted tree behind it.
+ * somewhere the tree that runs writes it.
  *
  * <p>The same question the compiler's own corpus is asked, over the models written to be big. That
  * corpus is written against what the language declares and reaches each construct once or twice;
@@ -47,8 +47,12 @@ class EveryRuleTheAnalysisReadsHasSomewhereItsRunIsRecordedTest {
                                 Set<ConstructOccurrence> analysis) {}
 
     /**
-     * Each comparison the analysis reads is reached by one of the emitted tree, none by two, and
-     * none by none.
+     * Each comparison the analysis reads is reached by at least one of the emitted tree.
+     *
+     * <p>How many is not asked. A library operation may evaluate a closure it was handed more than
+     * once, so a comparison the author wrote once is written into the tree that runs more than once
+     * — one rule, several places it is watched at. This asked for exactly one, over models that
+     * called no such operation, and the first model that did stopped the compile.
      */
     @Test
     void eachComparisonTheAnalysisReadsIsReachedByOneOfTheEmittedTree() {
