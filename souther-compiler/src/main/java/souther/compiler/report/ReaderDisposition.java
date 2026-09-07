@@ -1,7 +1,7 @@
 package souther.compiler.report;
 
 import souther.compiler.observe.RunSensitivity;
-import souther.compiler.publish.NotMeasuredWord;
+import souther.compiler.query.NotMeasuredReason;
 import souther.compiler.query.PartitionEvidence;
 import souther.compiler.publish.WeakeningVocabulary;
 
@@ -55,8 +55,14 @@ public sealed interface ReaderDisposition {
     record LookAtWhatTheMeasureWentWithout(Subject subject, WeakeningVocabulary said)
             implements ReaderDisposition {}
 
-    /** Why no measurement was made, which is a reason this document carries. */
-    record LookAtWhyNothingWasMeasured(Subject subject, NotMeasuredWord why)
+    /**
+     * Why no measurement was made.
+     *
+     * <p>The reason and not the word a document writes for it. What a person is shown is the
+     * sentence that reason already has, and what a consumer matches on is the word; carried as the
+     * word, the sentence would have to be written a second time here.
+     */
+    record LookAtWhyNothingWasMeasured(Subject subject, NotMeasuredReason why)
             implements ReaderDisposition {}
 
     /** The point, and what did or did not show that a row can be written at it. */
@@ -116,7 +122,7 @@ public sealed interface ReaderDisposition {
         }
         return switch (opening) {
             case AdequacyOpening.NotMeasured it ->
-                    new LookAtWhyNothingWasMeasured(subject, NotMeasuredWord.of(it.why()));
+                    new LookAtWhyNothingWasMeasured(subject, it.why());
             case AdequacyOpening.ShowingStopped _,
                  AdequacyOpening.NothingShowedARowCanBeWritten _ ->
                     new LookAtWhatShowedNoRow(subject);

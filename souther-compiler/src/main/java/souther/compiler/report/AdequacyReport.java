@@ -1195,7 +1195,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // lines below name each one and say where it leaves them, both read from what the
             // measurement established rather than worked out again here.
             for (AdequacyOpening each : whatKeepsTheVerdictOpen()) {
-                out.append(String.format("      %s %s — %s%n", kindWord(kindOf(each)),
+                // What it is about and what to do with it, and not the word the document writes
+                // for the kind: those are for a consumer keyed on this report, and a person reading
+                // a line is owed a sentence. What kind of thing it is comes out in what is said to
+                // do about it, which is read from the same fact the word is.
+                out.append(String.format("      %s — %s%n",
                         said(each.subject(), names), next(ReaderDisposition.of(each))));
             }
         }
@@ -4172,10 +4176,13 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         return switch (disposition) {
             case ReaderDisposition.WidenTheRun _ -> "run this again allowing more";
             case ReaderDisposition.LookAtTheRule _ -> "read the rule and what stopped it";
-            case ReaderDisposition.LookAtWhatTheMeasureWentWithout it ->
-                    "read what the measure went without: " + word(it.said());
+            // Without the word for it. What the document calls a weakening is for a consumer keyed
+            // on this report; a person reading a line is owed a sentence, and the words a build
+            // matches on do not reach one (ASourceThatProducedNoObservationSaysSo).
+            case ReaderDisposition.LookAtWhatTheMeasureWentWithout _ ->
+                    "read what this measure went without";
             case ReaderDisposition.LookAtWhyNothingWasMeasured it ->
-                    "no measurement was made: " + word(it.why());
+                    ReasonProse.of(it.why()).clause();
             case ReaderDisposition.LookAtWhatShowedNoRow _ ->
                     "read what was tried to show a row can be written there";
             case ReaderDisposition.LookAtTheFork _ -> "read the fork nothing told apart";
