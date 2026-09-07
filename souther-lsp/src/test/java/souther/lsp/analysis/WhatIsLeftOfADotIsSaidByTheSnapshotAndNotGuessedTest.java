@@ -3,6 +3,7 @@ package souther.lsp.analysis;
 import org.junit.jupiter.api.Test;
 import souther.compiler.cst.LineIndex;
 import souther.compiler.meta.ModulePath;
+import souther.compiler.query.Abandonment;
 import souther.compiler.sites.Evidence;
 import souther.compiler.sites.MemberReceiver;
 import souther.compiler.sites.SemanticSnapshot;
@@ -141,7 +142,7 @@ class WhatIsLeftOfADotIsSaidByTheSnapshotAndNotGuessedTest {
         joining.put(LIB_URI, LIB);
         int cursor = text.lastIndexOf(".\n") + 1;
         SemanticProbe.Reading reading = new SemanticProbe().of(joining, Set.of(), ModulePath.EMPTY,
-                MODEL_URI, text, cursor);
+                MODEL_URI, text, cursor, Abandonment.NEVER);
         if (reading == null) {
             throw new AssertionError("the half-written line is one the probe finishes off");
         }

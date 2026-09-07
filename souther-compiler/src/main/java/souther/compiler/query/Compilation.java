@@ -482,6 +482,11 @@ public final class Compilation {
         return db;
     }
 
+    /** What makes a walk of this compilation stop short of an answer — {@link Db#abandonWhen}. */
+    public void abandonWhen(Abandonment abandonment) {
+        db.abandonWhen(abandonment);
+    }
+
     /** The names of the modules these sources declare, in the order the sources were given. */
     public List<String> modules() {
         List<String> declared = db.ask(new Front.Declared()).value();
