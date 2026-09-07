@@ -54,8 +54,9 @@ public sealed interface ArmCensus {
     /**
      * What {@code provedWrong} leaves the denominator, which is the one place the two are related.
      *
-     * @param behavior     whose arms these are, which is what the fact is named by
-     * @param provedWrong  arms proven unreachable that a row went through anyway
+     * @param provedWrong the arms proven unreachable that a row went through anyway, as the source
+     *                    wrote them. Named by the arm and no longer by the behavior beside it: an
+     *                    arm says which behavior's it is
      */
     static ArmCensus of(Set<CoverageSites.Obligation> provedWrong) {
         if (provedWrong.isEmpty()) {
