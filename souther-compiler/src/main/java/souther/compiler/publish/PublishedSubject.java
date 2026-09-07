@@ -159,10 +159,12 @@ public sealed interface PublishedSubject {
     /**
      * One rule, at the position it was read at.
      *
-     * <p>The same two answers the rule handles already publish: {@code rule} is what a person is
-     * sent to look at and {@code ruleId} is what tells two rules apart within this document.
+     * <p>The identity and the place, and not the words a person is shown for the rule. Those are
+     * what the rule handles write wherever this document names a rule, through the one surface that
+     * knows how to render a handle — spelled again here, a document would have two answers to what
+     * a rule is called and no way to say which of them moved.
      */
-    record AtARule(String at, String rule, ObjectNode ruleId) implements PublishedSubject {
+    record AtARule(String at, ObjectNode ruleId) implements PublishedSubject {
 
         @Override
         public SubjectWord kind() {

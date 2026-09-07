@@ -74,7 +74,9 @@ import souther.compiler.publish.NotMeasuredWord;
 import souther.compiler.publish.PublicationOrders;
 import souther.compiler.publish.PublishedAt;
 import souther.compiler.publish.PublishedIncompleteness;
+import souther.compiler.observe.RowIdentity;
 import souther.compiler.publish.MeasureWord;
+import souther.compiler.publish.PublishedSubject;
 import souther.compiler.publish.PublishedOpening;
 import souther.compiler.publish.DocumentArray;
 import souther.compiler.publish.DocumentItem;
@@ -3998,6 +4000,75 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             each.reason().ifPresent(reason -> fact.put("reason", word(reason)));
             fact.put("runSensitivity", word(each.runSensitivity()));
         }
+    }
+
+    /**
+     * What one subject is, as the document writes it.
+     *
+     * <p>A {@code switch} with no {@code default}, so a subject added later is a compile error here
+     * rather than an entry a document quietly writes nothing about.
+     *
+     * <p>Every nested identity is spelled by whoever already spells it. A point is written as the
+     * obligations are, an arm as the branch account is, a fork by what wrote it: none of them is
+     * spelled a second way here, because a second spelling is a second thing to keep true and the
+     * one a reader joins on would be whichever they happened to read.
+     */
+    private static PublishedSubject publishedSubject(Subject subject, DocumentSources sources) {
+        return switch (subject) {
+            case Subject.OfAModule it -> new PublishedSubject.OfAModule(it.module());
+            case Subject.OfABehavior it -> new PublishedSubject.OfABehavior(it.behavior());
+            case Subject.OfASource it ->
+                    new PublishedSubject.OfASource(sources.written(it.source()));
+            // Named where the row has a name, and which of its behavior's rows in that source
+            // where it has none: a row without a name says of itself that nothing outside this
+            // compiler can address it by a number.
+            case Subject.OfARow it -> switch (it.row().identity()) {
+                case RowIdentity.Named named -> new PublishedSubject.OfARow(it.row().behavior(),
+                        sources.written(it.row().source()), named.name(), null);
+                case RowIdentity.Unnamed unnamed -> new PublishedSubject.OfARow(
+                        it.row().behavior(), sources.written(it.row().source()), null,
+                        unnamed.ordinal());
+            };
+            case Subject.AtASpelledPosition it ->
+                    new PublishedSubject.AtASpelledPosition(it.behavior(), it.path());
+            // Both spellings. The first is what an author recognises and the second is what tells
+            // apart two positions that one spells alike.
+            case Subject.AtAPosition it -> new PublishedSubject.AtAPosition(it.behavior(),
+                    it.at().toString(), it.at().at().discriminated());
+            case Subject.AtAnInput it ->
+                    new PublishedSubject.AtAnInput(it.behavior(), it.at());
+            case Subject.AtARule it -> {
+                PartitionEvidence.Unanswered asked = new PartitionEvidence.Unanswered(it.question());
+                ObjectNode id = JSON.createObjectNode();
+                ruleId(id, asked.rule());
+                yield new PublishedSubject.AtARule(asked.at(), id);
+            }
+            case Subject.AtABorder it -> {
+                ObjectNode id = JSON.createObjectNode();
+                ruleId(id, it.border().origin().rule());
+                yield new PublishedSubject.AtABorder(it.border().label(), id);
+            }
+            case Subject.AtAPoint it -> {
+                ObjectNode id = JSON.createObjectNode();
+                obligationId(id, it.point());
+                yield new PublishedSubject.AtAPoint(id);
+            }
+            case Subject.AtAFork it -> {
+                ObjectNode wrote = JSON.createObjectNode();
+                writtenBy(wrote, it.fork().owner(), sources);
+                yield new PublishedSubject.AtAFork(it.fork().module(), wrote,
+                        it.fork().ordinal(), it.fork().lowered(), word(it.fork().kind()));
+            }
+            case Subject.AtAnArm it -> {
+                ObjectNode id = JSON.createObjectNode();
+                armId(id, it.arm(), sources);
+                yield new PublishedSubject.AtAnArm(id);
+            }
+            case Subject.OfAMeasure it -> new PublishedSubject.OfAMeasure(it.module(),
+                    it.behavior(), it.measure());
+            case Subject.OfAnAxisMeasure it -> new PublishedSubject.OfAnAxisMeasure(it.module(),
+                    it.behavior(), it.at().toString());
+        };
     }
 
     /**
