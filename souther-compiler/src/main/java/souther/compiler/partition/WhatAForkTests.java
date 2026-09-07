@@ -41,12 +41,14 @@ final class WhatAForkTests {
      * <p>{@code atom} itself first, since a fork testing a comparison tests that comparison; then
      * the closures the library says the answer turns on, each asked for its own truth.
      */
-    static boolean turnsOnSomething(Core atom, Predicate<Core> rule) {
-        return turnsOn(atom, AnswerAspect.TRUTH, rule,
+    static boolean turnsOnSomething(Core atom, Predicate<Core> rule,
+                                    java.util.function.UnaryOperator<Core> denotes) {
+        return turnsOn(atom, AnswerAspect.TRUTH, rule, denotes,
                 java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>()));
     }
 
     private static boolean turnsOn(Core e, AnswerAspect aspect, Predicate<Core> rule,
+                                   java.util.function.UnaryOperator<Core> denotes,
                                    java.util.Set<Asked> met) {
         // By what has been asked, which is what makes it stop. The tree is finite and so are the
         // library's edges, and a name a walk followed may lead back to where it started — so a
@@ -65,7 +67,7 @@ final class WhatAForkTests {
             List<Core> parts = ConditionSkeleton.atoms(e);
             if (parts.size() != 1 || parts.get(0) != e) {
                 for (Core part : parts) {
-                    if (turnsOn(part, AnswerAspect.TRUTH, rule, met)) {
+                    if (turnsOn(part, AnswerAspect.TRUTH, rule, denotes, met)) {
                         return true;
                     }
                 }
@@ -81,15 +83,15 @@ final class WhatAForkTests {
             // is the other question, about what deciding it turns on.
             switch (e) {
                 case Core.If iff -> {
-                    if (turnsOn(iff.cond(), AnswerAspect.TRUTH, rule, met)
-                            || turnsOn(iff.then(), AnswerAspect.TRUTH, rule, met)
-                            || turnsOn(iff.els(), AnswerAspect.TRUTH, rule, met)) {
+                    if (turnsOn(iff.cond(), AnswerAspect.TRUTH, rule, denotes, met)
+                            || turnsOn(iff.then(), AnswerAspect.TRUTH, rule, denotes, met)
+                            || turnsOn(iff.els(), AnswerAspect.TRUTH, rule, denotes, met)) {
                         return true;
                     }
                 }
                 case Core.Match match -> {
                     for (Core.Case arm : match.cases()) {
-                        if (turnsOn(arm.body(), AnswerAspect.TRUTH, rule, met)) {
+                        if (turnsOn(arm.body(), AnswerAspect.TRUTH, rule, denotes, met)) {
                             return true;
                         }
                     }
@@ -106,15 +108,15 @@ final class WhatAForkTests {
         // nought.
         if (aspect == AnswerAspect.TRUTH
                 && DefaultBoundOperationFacts.get().meansTheSameAsASizeOfNought(operation) != null) {
-            return turnsOn(only(e), AnswerAspect.EMPTINESS, rule, met);
+            return turnsOn(only(e), AnswerAspect.EMPTINESS, rule, denotes, met);
         }
         // And the argument this side of the answer turns on, asked for its own truth. A closure
         // answers what its body comes to, so that is what is read where one stands there; anything
         // else answers itself.
         var turns = DefaultBoundOperationFacts.get()
                 .turnsOnWhetherAnArgumentHolds(operation, aspect);
-        return turns != null && turnsOn(answerOf(argument(e, turns.argument())),
-                AnswerAspect.TRUTH, rule, met);
+        return turns != null && turnsOn(answerOf(argument(e, turns.argument()), denotes),
+                AnswerAspect.TRUTH, rule, denotes, met);
     }
 
     /** Which library operation {@code e} applies, in either shape a representation gives one, or
@@ -149,9 +151,17 @@ final class WhatAForkTests {
         return at < 0 || at >= args.size() ? null : args.get(at);
     }
 
-    /** What {@code e} answers with: the body of the block, where it is one, and otherwise itself. */
-    private static Core answerOf(Core e) {
-        return e instanceof Core.Block block ? block.body() : e;
+    /**
+     * What {@code e} answers with: the body of the block, where it is one, and otherwise itself.
+     *
+     * <p>What a name stands for is asked first, of whoever owns that question. A closure written as
+     * a name is the block that name was bound to, so a reading that stopped at the name would say a
+     * rule inside it decides nothing — and one model would be read two ways depending on whether the
+     * author bound the closure before handing it over.
+     */
+    private static Core answerOf(Core e, java.util.function.UnaryOperator<Core> denotes) {
+        Core stands = denotes.apply(e);
+        return stands instanceof Core.Block block ? block.body() : stands;
     }
 
     /** One question this walk has been asked: an expression, and which side of what it answers.

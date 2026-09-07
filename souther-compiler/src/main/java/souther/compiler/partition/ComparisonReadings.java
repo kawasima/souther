@@ -276,7 +276,8 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
                         // exactly that reason and a mapping does not, and the two calls are the
                         // same shape.
                         if (WhatAForkTests.turnsOnSomething(atom,
-                                        part -> comparisonAt(part) != null)
+                                        part -> comparisonAt(part) != null,
+                                        one -> reads.denotes(one, symbols).value())
                                 || reads.pathOf(atom, symbols)
                                         instanceof souther.compiler.inputs.PathResolution.At) {
                             owned.add(atom);
@@ -367,7 +368,9 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
 
     /** Whether the truth of {@code atom} turns on a predicate {@code read} took in, which is the
      *  same walk a comparison is looked for along and is here so that the two agree about it. */
-    static boolean turnsOnAPredicate(Core atom, PredicateReadings read) {
-        return WhatAForkTests.turnsOnSomething(atom, read::statesOneAt);
+    static boolean turnsOnAPredicate(Core atom, PredicateReadings read, InputReads reads,
+                                     Symbols symbols) {
+        return WhatAForkTests.turnsOnSomething(atom, read::statesOneAt,
+                one -> reads.denotes(one, symbols).value());
     }
 }

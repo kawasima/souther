@@ -94,16 +94,26 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
      * of the closure's parameters the element arrives on is {@link Combinators}' answer about the
      * operation, and which bindings those are is this tree's.
      *
-     * <p>A closure written as anything but a block is not read. What such an argument stands for is a
-     * value some other binding holds, and the parameter an element arrives on is that value's, not
-     * this call's to name.
+     * <p>A closure written as a name is the block that name was bound to. Read as nothing, one
+     * model would be read two ways depending on whether the author bound the closure before handing
+     * it over — and the rules inside it would be about no position at all.
+     *
+     * <p><b>And a closure two calls share names no element.</b> One block handed to two operations
+     * has one parameter and two containers, so what arrives under that binding is not one
+     * container's elements. Kept as whichever call was met first, a rule inside the closure would
+     * be filed at a sequence it says nothing about; so the binding is taken back out and the
+     * closure names no element for either of them, which is what a reading that cannot tell them
+     * apart has to say.
      */
     public static ElementBindings of(Core body, ElementProvenance provenance, Symbols symbols) {
         Map<BindingId, Core> found = new LinkedHashMap<>();
         Map<BindingId, Core> held = new LinkedHashMap<>();
         Map<BindingId, Core> answered = new LinkedHashMap<>();
         Map<BindingId, Core> standing = new LinkedHashMap<>();
-        walk(body, found, held, provenance, answered, standing);
+        java.util.Set<BindingId> shared = new java.util.LinkedHashSet<>();
+        walk(body, found, held, provenance, answered, standing, shared);
+        shared.forEach(found::remove);
+        shared.forEach(standing::remove);
         Map<BindingId, souther.compiler.inputs.ElementProjection> projected =
                 projections(answered, found, held, provenance, symbols);
         standing.forEach((element, closure) -> {
@@ -200,7 +210,7 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
 
     private static void walk(Core e, Map<BindingId, Core> found, Map<BindingId, Core> held,
                              ElementProvenance provenance, Map<BindingId, Core> answered,
-                             Map<BindingId, Core> standing) {
+                             Map<BindingId, Core> standing, java.util.Set<BindingId> shared) {
         if (e instanceof Core.LetIn let && let.binder() != null
                 && let.binder().binding() != null) {
             held.putIfAbsent(let.binder().binding(), let.value());
@@ -217,15 +227,17 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
         // expanded away, and the operation standing as itself where it has not. What is asked of it
         // is the same question, so it is asked once.
         if (e instanceof Core.Call call && call.fn() instanceof Core.Reached reached) {
-            handed(reached.denotes(), call.args(), found, null);
+            handed(reached.denotes(), call.args(), found, null, held, shared);
         }
         if (e instanceof Core.PreservedCall preserved) {
             // Where the operation still stands, what it answers of what it was handed is still
             // there to be asked, so the licence a run needs is read from the declaration rather
             // than from a fact an expansion would have had to leave behind.
-            handed(preserved.declared().operation(), preserved.args(), found, standing);
+            handed(preserved.declared().operation(), preserved.args(), found, standing, held,
+                    shared);
         }
-        Core.forEachChild(e, child -> walk(child, found, held, provenance, answered, standing));
+        Core.forEachChild(e, child ->
+                walk(child, found, held, provenance, answered, standing, shared));
     }
 
     /**
@@ -243,16 +255,22 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
      */
     private static void handed(ValueName operation,
                                java.util.List<Core> args, Map<BindingId, Core> found,
-                               Map<BindingId, Core> standing) {
+                               Map<BindingId, Core> standing, Map<BindingId, Core> held,
+                               java.util.Set<BindingId> shared) {
         Combinators.Handed handed = Combinators.handedTo(operation, args,
-                closure -> closure instanceof Core.Block block ? block : null);
+                closure -> blockOf(closure, held));
         if (handed == null || handed.element().binding() == null) {
             return;
         }
         BindingId element = handed.element().binding();
         // The nearest binding of a name stands, as everywhere else: a body binding one twice has
         // two bindings, and each is answered where it is.
-        found.putIfAbsent(element, handed.container());
+        Core already = found.putIfAbsent(element, handed.container());
+        if (already != null && already != handed.container()) {
+            // One closure, two calls, two containers. What arrives under this binding is not one
+            // sequence's elements, so it is not one this can answer about at all.
+            shared.add(element);
+        }
         if (standing != null && answersOnePerElementOf(operation, handed.container(), args)) {
             standing.putIfAbsent(element, handed.step().body());
         }
@@ -280,5 +298,27 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
         }
         int at = CallArguments.positionOf(mapsEach, operation);
         return at >= 0 && at < args.size() && args.get(at) == container;
+    }
+
+    /**
+     * The block {@code closure} is, following the names it was given through.
+     *
+     * <p>Through what the body bound rather than through a reading of the names in force. This is a
+     * walk of one body collecting a relation, and the binding a name reads is the same binding
+     * wherever it is read — so what a name holds is the answer, and there is nothing about where it
+     * is read for the answer to turn on.
+     *
+     * <p>By the bindings met, which is what makes it stop.
+     */
+    private static Core.Block blockOf(Core closure, Map<BindingId, Core> held) {
+        Core at = closure;
+        java.util.Set<BindingId> met = new java.util.HashSet<>();
+        while (at instanceof Core.Read read) {
+            if (!met.add(read.binding())) {
+                return null;
+            }
+            at = held.get(read.binding());
+        }
+        return at instanceof Core.Block block ? block : null;
     }
 }

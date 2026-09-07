@@ -361,7 +361,7 @@ public final class BehaviorSetStatements {
             // took in.
             List<Core> untaken = new ArrayList<>();
             for (Core atom : each.leftHere()) {
-                if (!ComparisonReadings.turnsOnAPredicate(atom, read)) {
+                if (!ComparisonReadings.turnsOnAPredicate(atom, read, each.reads(), symbols)) {
                     untaken.add(atom);
                 }
             }
