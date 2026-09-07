@@ -198,12 +198,14 @@ public final class GuardThresholds {
                 souther.compiler.coverage.ComparisonEmissionIndex.ofBody(emitted, plan);
         ReachingCuts.Collected cuts = new ReachingCuts.Collected();
         for (ComparisonReadings.Reading each : comparisons.comparisons()) {
-            // Which comparison of the model this is. Total over what this walk reads: the tree it
-            // read keeps the language's operations standing, so no copy of one is open at a
-            // comparison in it and every occurrence it met is one the model states. A reading that
-            // came back with nothing here is the two trees disagreeing about the body, and it is
-            // raised — dropped, the rule would leave the measurement and the report could still
-            // call it complete.
+            // Which comparison of the model this is. Total over what this walk reads, and read off
+            // what makes the tree rather than off what the models here happen to hold: the table
+            // this tree was expanded from leaves the library out under the policy that made it
+            // ({@link souther.compiler.check.HelperTable}), so no copy of one of the language's
+            // operations is open at a comparison in it and every occurrence it met is one the model
+            // states. A reading that came back with nothing here is the two trees disagreeing about
+            // the body, and it is raised — dropped, the rule would leave the measurement and the
+            // report could still call it complete.
             ModelOccurrence stated = ModelOccurrence.statedAt(each.occurrence())
                     .orElseThrow(() -> new IllegalStateException("`" + behavior + "` reads a"
                             + " comparison at " + each.at() + " that states no construct of the"
@@ -212,6 +214,12 @@ public final class GuardThresholds {
             // once — a library operation evaluating a closure it was handed twice writes the
             // comparison twice — and none at all is the two trees disagreeing about the body,
             // which is raised rather than answered around.
+            //
+            // That there is always one rests on the emitted tree expanding everything this one does
+            // and more, so a construct reached here was reached there. It is an argument and not a
+            // proof about every rewrite the emitted tree goes through afterwards, which is why it
+            // is raised rather than assumed away: a rewrite that dropped a comparison an author
+            // wrote would say so here rather than taking a rule out of the measurement quietly.
             List<souther.compiler.coverage.ComparisonEmissionIndex.EmittedComparison> made =
                     index.madeFor(stated);
             if (made.isEmpty()) {

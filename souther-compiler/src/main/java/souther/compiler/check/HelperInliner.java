@@ -1502,6 +1502,14 @@ public final class HelperInliner {
      * that pass wrote — a copy named by either is a copy whose name moves when the compiler is asked
      * to do the same work in another order, and every construct inside it moves with it. Stopping
      * here is how such an application gets looked at rather than absorbed.
+     *
+     * <p><b>Why nothing reaches those refusals today, read off what makes one.</b> The applications
+     * and references a pass composes are the collection a row writes in brackets, which stand for
+     * {@code fromList} and {@code empty} — and the library declares both as intrinsics. Only an
+     * operation the library writes a body for is in the table this inlines from
+     * ({@link HelperTable}), so a composed application never reaches an expansion. That is a fact
+     * about what the library declares rather than about what any model happens to be written with,
+     * and it is what the refusals below rest on.
      */
     private ExpansionSite siteOf(ApplicationOrigin.Identified at, Hir.Apply call) {
         return switch (at) {
