@@ -87,7 +87,8 @@ class LspServerTest {
         new LspServer(new MessageConnection(new ByteArrayInputStream(input), out)).run();
 
         JsonNode caps = readFrames(out.toByteArray()).stream()
-                .filter(m -> m.has("id") && m.get("id").asInt() == 1).findFirst().orElseThrow()
+                .filter(m -> m.has("id") && m.get("id").isNumber() && m.get("id").asInt() == 1)
+                .findFirst().orElseThrow()
                 .get("result").get("capabilities");
         assertTrue(caps.get("referencesProvider").asBoolean(), "references is advertised");
     }
@@ -120,7 +121,8 @@ class LspServerTest {
         new LspServer(new MessageConnection(new ByteArrayInputStream(input), out)).run();
 
         JsonNode caps = readFrames(out.toByteArray()).stream()
-                .filter(m -> m.has("id") && m.get("id").asInt() == 1).findFirst().orElseThrow()
+                .filter(m -> m.has("id") && m.get("id").isNumber() && m.get("id").asInt() == 1)
+                .findFirst().orElseThrow()
                 .get("result").get("capabilities");
         assertTrue(caps.get("documentFormattingProvider").asBoolean(), "formatting is advertised");
         assertTrue(caps.get("renameProvider").asBoolean(), "rename is advertised");

@@ -79,7 +79,9 @@ class TheLanguageServerIsOneThisCommandLineServesTest {
     private record Answer(int code, List<JsonNode> written, String said) {
 
         JsonNode replyTo(int id) {
-            return written.stream().filter(m -> m.has("id") && m.get("id").asInt() == id)
+            return written.stream()
+                    .filter(m -> m.has("id") && m.get("id").isNumber()
+                            && m.get("id").asInt() == id)
                     .findFirst().orElseThrow(() -> new AssertionError("no reply to request " + id));
         }
 

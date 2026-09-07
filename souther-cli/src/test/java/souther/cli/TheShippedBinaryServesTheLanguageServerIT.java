@@ -61,7 +61,7 @@ class TheShippedBinaryServesTheLanguageServerIT {
         String frame;
         while (published == null && (frame = answers.read()) != null) {
             JsonNode m = JSON.readTree(frame);
-            if (m.has("id") && m.get("id").asInt() == 1) {
+            if (m.has("id") && m.get("id").isNumber() && m.get("id").asInt() == 1) {
                 capabilities = m.get("result").get("capabilities");
             } else if (m.has("method")
                     && m.get("method").asString().equals("textDocument/publishDiagnostics")) {
