@@ -45,7 +45,7 @@ class ALimitIsAnsweredForByWhatAskedForItTest {
 
             data N = { x: String, y: String }
                 invariant r =
-                    (String.matches("a{300}", y) && String.matches("b{300}", y))
+                    (String.matches("(a{251})*b", y) && String.matches("(a{223})*c", y))
                     || x == "A"
                 invariant huge = String.matches("a{60000}", y)
             """;

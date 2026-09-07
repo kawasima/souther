@@ -40,13 +40,15 @@ class WhatARuleCostsDoesNotTurnOnWhereItIsWrittenTest {
     /**
      * Two patterns that share one string and nothing else short, and the string itself.
      *
-     * <p>{@code a{300}} and {@code b{300}} make the meet large; {@code x} is what both of them
-     * accept. A reading that meets the two patterns builds three hundred states against three
-     * hundred, and one that reaches the written value first has a question about one string.
+     * <p>The two arms beside {@code x} repeat over runs of one length and of another that share no
+     * factor, so a walk over both at once is in a different pair at every step until the lengths
+     * come round together — which is past what one machine may be. {@code x} is what both of them
+     * accept. A reading that meets the two patterns is refused, and one that reaches the written
+     * value first has a question about one string.
      */
     private static final List<String> RULES = List.of(
-            "    invariant one = String.matches(\"x|a{300}\", value)",
-            "    invariant two = String.matches(\"x|b{300}\", value)",
+            "    invariant one = String.matches(\"x|(a{251})*b\", value)",
+            "    invariant two = String.matches(\"x|(a{223})*c\", value)",
             "    invariant three = value == \"x\"");
 
     /**
@@ -58,8 +60,8 @@ class WhatARuleCostsDoesNotTurnOnWhereItIsWrittenTest {
      * test above while every pair of patterns still met in the order somebody wrote them.
      */
     private static final List<String> ALL_PATTERNS = List.of(
-            "    invariant one = String.matches(\"x|a{300}\", value)",
-            "    invariant two = String.matches(\"x|b{300}\", value)",
+            "    invariant one = String.matches(\"x|(a{251})*b\", value)",
+            "    invariant two = String.matches(\"x|(a{223})*c\", value)",
             "    invariant three = String.matches(\"x\", value)");
 
     private static String model(List<String> rules, List<Integer> order) {
