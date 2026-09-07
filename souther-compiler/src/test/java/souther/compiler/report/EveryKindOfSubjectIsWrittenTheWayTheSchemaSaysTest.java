@@ -3,6 +3,7 @@ package souther.compiler.report;
 import souther.compiler.DocumentShape;
 import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.publish.MeasureWord;
+import souther.compiler.publish.PublishedRuleHandle;
 import souther.compiler.publish.PublishedSubject;
 import souther.compiler.publish.SubjectWord;
 
@@ -86,7 +87,9 @@ class EveryKindOfSubjectIsWrittenTheWayTheSchemaSaysTest {
                 new PublishedSubject.AtASpelledPosition("b", "r.cost"),
                 new PublishedSubject.AtAPosition("b", "r.cost", "r.cost@Some"),
                 new PublishedSubject.AtAnInput("b", 0),
-                new PublishedSubject.AtARule("r.cost", ruleId, List.of("rule_about_a_derived_value")),
+                new PublishedSubject.AtARule("r.cost", ruleId,
+                        new PublishedRuleHandle.NumberedInvariant("Amount", 1),
+                        List.of("rule_about_a_derived_value")),
                 new PublishedSubject.AtABorder("r.cost = 0", line.deepCopy()),
                 new PublishedSubject.AtAPoint(obligationId),
                 new PublishedSubject.AtAFork("m", writtenBy, 0, 0, "if"),
@@ -109,6 +112,30 @@ class EveryKindOfSubjectIsWrittenTheWayTheSchemaSaysTest {
 
         assertEquals(Set.of(SubjectWord.values()), built,
                 "a kind of place this document can name that nothing here writes");
+    }
+
+    /**
+     * And the union's branches are those kinds and no others.
+     *
+     * <p>Which kind a subject is, is the constant one branch turns on rather than a field of one
+     * shape, so the check that holds every enumerated field of this document against a vocabulary
+     * has nothing to read here. This is that check for this union: a word this compiler can write
+     * that no branch turns on is a subject the schema refuses, and a branch on a word the compiler
+     * has none of is a shape nothing writes.
+     */
+    @Test
+    void theUnionsBranchesAreTheKindsAndNoOthers() {
+        Set<String> branches = new LinkedHashSet<>();
+        for (JsonNode branch : schema().get("$defs").get("subject").get("oneOf")) {
+            branches.add(branch.get("properties").get("kind").get("const").asString());
+        }
+        Set<String> words = new LinkedHashSet<>();
+        for (SubjectWord word : SubjectWord.values()) {
+            words.add(AdequacyReport.word(word));
+        }
+
+        assertEquals(words, branches, "the words this compiler writes and the branches it is read"
+                + " under");
     }
 
     /**
@@ -138,41 +165,54 @@ class EveryKindOfSubjectIsWrittenTheWayTheSchemaSaysTest {
     }
 
     /**
-     * And each kind writes the keys the schema says that kind has.
+     * And what each kind writes is exactly one branch of the union the schema declares.
      *
      * <p>Read from the schema's own branches. What holds a document to its shape here walks the
-     * definitions and says so of itself: it is not a validator, and it does not take a branch that
-     * turns on the value of a field. So the branch a consumer reads to know what it can expect for
-     * a kind is one nothing else checks, and a key renamed on one side of it would ship — which is
-     * how `input` came to be written as `at` for as long as it took to write this.
+     * definitions and says of itself that it is not a validator: it does not take a branch that
+     * turns on the value of a field. So the branch a consumer reads to know what it can expect is
+     * one nothing else checks, and a key renamed on one side of it would ship.
+     *
+     * <p>Exactly one, and both directions of it. A subject matching no branch is one the schema
+     * refuses; a subject matching two is a union that does not discriminate, and a document written
+     * against it would leave a consumer reading which fields are filled in to find out what it was
+     * handed — which is what the sum on this side exists to spare them.
      */
     @Test
-    void everyKindWritesTheKeysItsBranchRequires() {
-        JsonNode subject = schema().get("$defs").get("subject");
+    void everyKindWritesExactlyOneBranchOfTheUnion() {
+        JsonNode union = schema().get("$defs").get("subject").get("oneOf");
         List<String> wrong = new ArrayList<>();
         for (PublishedSubject each : oneOfEach()) {
             ObjectNode written = JSON.createObjectNode();
-            AdequacyReport.about(written, each, new DocumentSources(SourceNameResolver.identity()));
-            for (JsonNode branch : subject.get("allOf")) {
-                String of = branch.get("if").get("properties").get("kind").get("const").asString();
-                if (!of.equals(written.get("kind").asString())) {
-                    continue;
-                }
-                for (JsonNode key : branch.get("then").get("required")) {
-                    if (!written.has(key.asString())) {
-                        wrong.add(of + " is written without `" + key.asString() + "`");
-                    }
+            AdequacyReport.about(written, each,
+                    new DocumentSources(SourceNameResolver.identity()));
+            List<String> matched = new ArrayList<>();
+            for (JsonNode branch : union) {
+                if (fits(written, branch)) {
+                    matched.add(branch.get("properties").get("kind").get("const").asString());
                 }
             }
-            for (String key : written.propertyNames()) {
-                if (!subject.get("properties").has(key)) {
-                    wrong.add(written.get("kind").asString() + " writes `" + key
-                            + "`, which the schema does not declare");
-                }
+            if (matched.size() != 1) {
+                wrong.add(written + " is written by " + matched.size() + " branches: " + matched);
             }
         }
 
-        assertEquals(List.of(), wrong, () -> "what a kind writes and what its branch says: " + wrong);
+        assertEquals(List.of(), wrong, () -> "what a kind writes and what the union says: " + wrong);
+    }
+
+    /** Whether one written subject is what one branch of the union says a subject of its kind is. */
+    private static boolean fits(ObjectNode written, JsonNode branch) {
+        for (JsonNode key : branch.get("required")) {
+            if (!written.has(key.asString())) {
+                return false;
+            }
+        }
+        for (String key : written.propertyNames()) {
+            if (!branch.get("properties").has(key)) {
+                return false;
+            }
+        }
+        JsonNode kind = branch.get("properties").get("kind");
+        return kind.get("const").asString().equals(written.get("kind").asString());
     }
 
     /** The schema this compiler ships beside the documents it writes. */

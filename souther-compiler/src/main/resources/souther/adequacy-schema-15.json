@@ -2431,7 +2431,8 @@
           "description": "Two-class combinations, kept as the relations they are between. Counts rather than a ratio: a combination no row reaches has not been shown unreachable, only unknown, so the denominator is not known.",
           "required": [
             "total",
-            "status"
+            "status",
+            "between"
           ],
           "additionalProperties": false,
           "properties": {
@@ -3133,392 +3134,359 @@
       }
     },
     "subject": {
-      "type": "object",
-      "description": "What one entry is about: the thing a reader is sent back to, and never what happened to it. What happened is the entry's own word and the reason beside it, so one place met in two ways is two entries about one place. Every kind carries what names it and the others carry something else; three of them name a position — as a reason spells it for a person, as the reading of the model addresses it, and as one of a behavior's declared inputs — and those are three vocabularies rather than one said three ways.",
-      "required": [
-        "kind"
-      ],
-      "additionalProperties": false,
-      "allOf": [
+      "description": "What one entry is about: the thing a reader is sent back to, and never what happened to it. What happened is the entry's own word and the reason beside it, so one place met in two ways is two entries about one place. Every kind carries what names it and the others carry something else; three of them name a position — as a reason spells it for a person, as the reading of the model addresses it, and as one of a behavior's declared inputs — and those are three vocabularies rather than one said three ways. Written as the union it is: a document cannot carry a place made of one kind's fields and another's, because no such place is one this compiler can build.",
+      "oneOf": [
         {
-          "if": {
-            "properties": {
-              "kind": {
-                "const": "module"
-              }
+          "type": "object",
+          "required": [
+            "kind",
+            "module"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "module"
             },
-            "required": [
-              "kind"
-            ]
-          },
-          "then": {
-            "required": [
-              "kind",
-              "module"
-            ]
+            "module": {
+              "type": "string"
+            }
           }
         },
         {
-          "if": {
-            "properties": {
-              "kind": {
-                "const": "behavior"
-              }
+          "type": "object",
+          "required": [
+            "kind",
+            "behavior"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "behavior"
             },
-            "required": [
-              "kind"
-            ]
-          },
-          "then": {
-            "required": [
-              "kind",
-              "behavior"
-            ]
+            "behavior": {
+              "type": "string"
+            }
           }
         },
         {
-          "if": {
-            "properties": {
-              "kind": {
-                "const": "source"
-              }
+          "type": "object",
+          "required": [
+            "kind",
+            "source"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "source"
             },
-            "required": [
-              "kind"
-            ]
-          },
-          "then": {
-            "required": [
-              "kind",
-              "source"
-            ]
+            "source": {
+              "type": "string",
+              "description": "The source, under the name this document gives it."
+            }
           }
         },
         {
-          "if": {
-            "properties": {
-              "kind": {
-                "const": "row"
-              }
-            },
-            "required": [
-              "kind"
-            ]
-          },
-          "then": {
-            "required": [
-              "kind",
-              "behavior",
-              "source"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "kind": {
-                "const": "position"
-              }
-            },
-            "required": [
-              "kind"
-            ]
-          },
-          "then": {
-            "required": [
-              "kind",
-              "behavior",
-              "path"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "kind": {
-                "const": "read_position"
-              }
-            },
-            "required": [
-              "kind"
-            ]
-          },
-          "then": {
-            "required": [
-              "kind",
-              "behavior",
-              "path",
-              "positionId"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "kind": {
-                "const": "input"
-              }
-            },
-            "required": [
-              "kind"
-            ]
-          },
-          "then": {
-            "required": [
-              "kind",
-              "behavior",
-              "input"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "kind": {
-                "const": "rule"
-              }
-            },
-            "required": [
-              "kind"
-            ]
-          },
-          "then": {
-            "required": [
-              "kind",
-              "at",
-              "ruleId"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "kind": {
-                "const": "border"
-              }
-            },
-            "required": [
-              "kind"
-            ]
-          },
-          "then": {
-            "required": [
-              "kind",
-              "label",
-              "line"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "kind": {
-                "const": "point"
-              }
-            },
-            "required": [
-              "kind"
-            ]
-          },
-          "then": {
-            "required": [
-              "kind",
-              "obligationId"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "kind": {
-                "const": "fork"
-              }
-            },
-            "required": [
-              "kind"
-            ]
-          },
-          "then": {
-            "required": [
-              "kind",
-              "module",
-              "writtenBy",
-              "construct",
-              "lowered",
-              "said"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "kind": {
-                "const": "arm"
-              }
-            },
-            "required": [
-              "kind"
-            ]
-          },
-          "then": {
-            "required": [
-              "kind",
-              "armId"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "kind": {
-                "const": "measure"
-              }
-            },
-            "required": [
-              "kind"
-            ]
-          },
-          "then": {
-            "required": [
-              "kind",
-              "module",
-              "behavior",
-              "measure"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "kind": {
-                "const": "axis_measure"
-              }
-            },
-            "required": [
-              "kind"
-            ]
-          },
-          "then": {
-            "required": [
-              "kind",
-              "module",
-              "behavior",
-              "axis"
-            ]
-          }
-        }
-      ],
-      "properties": {
-        "kind": {
-          "enum": [
-            "module",
+          "type": "object",
+          "required": [
+            "kind",
             "behavior",
             "source",
-            "row",
-            "position",
-            "read_position",
-            "input",
-            "rule",
-            "border",
-            "point",
-            "fork",
-            "arm",
-            "measure",
-            "axis_measure"
+            "name"
           ],
-          "description": "What kind of place this is."
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "row"
+            },
+            "behavior": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string",
+              "description": "The source, under the name this document gives it."
+            },
+            "name": {
+              "type": "string",
+              "description": "The row's name, where it was written with one. A row without a name is not addressable from outside this compiler, so what is written for it is `ordinal` and a reader is not handed a number to look it up by."
+            }
+          }
         },
-        "module": {
-          "type": "string"
-        },
-        "behavior": {
-          "type": "string"
-        },
-        "source": {
-          "type": "string",
-          "description": "The source, under the name this document gives it."
-        },
-        "name": {
-          "type": "string",
-          "description": "The row's name, where it was written with one. A row without a name is not addressable from outside this compiler, so what is written for it is `ordinal` and a reader is not handed a number to look it up by."
-        },
-        "ordinal": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "Which of its behavior's rows in that source it is, where it has no name."
-        },
-        "path": {
-          "type": "string",
-          "description": "The position as an author would recognise it. Two positions this compiler holds apart can be spelled alike here, which is what `positionId` is for."
-        },
-        "positionId": {
-          "type": "string",
-          "description": "What tells apart two positions `path` spells alike. Within this document, and not a name to show a reader."
-        },
-        "input": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Which of the behavior's declared inputs, counted from zero."
-        },
-        "at": {
-          "type": "string",
-          "description": "The position the rule was read at."
-        },
-        "ruleId": {
-          "$ref": "#/$defs/ruleId"
-        },
-        "label": {
-          "type": "string",
-          "description": "What a person is shown for the line."
-        },
-        "obligationId": {
-          "$ref": "#/$defs/obligationId"
-        },
-        "armId": {
-          "$ref": "#/$defs/armObligationId"
-        },
-        "writtenBy": {
-          "$ref": "#/$defs/writtenBy"
-        },
-        "construct": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Which of that body's constructs the fork is."
-        },
-        "lowered": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "said": {
-          "type": "string",
-          "description": "What the author wrote the fork as."
-        },
-        "measure": {
-          "enum": [
-            "reading",
-            "signature",
-            "branch",
-            "boundary",
-            "partition"
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "behavior",
+            "source",
+            "ordinal"
           ],
-          "description": "Which of the measurements a behavior has exactly one of. What the rows reach of a position is measured once per position and is named by that position instead (`axis_measure`)."
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "row"
+            },
+            "behavior": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string",
+              "description": "The source, under the name this document gives it."
+            },
+            "ordinal": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Which of its behavior's rows in that source it is, where it has no name."
+            }
+          }
         },
-        "axis": {
-          "type": "string",
-          "description": "The position, as `axes` names it."
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "behavior",
+            "path"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "position"
+            },
+            "behavior": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string",
+              "description": "The position as an author would recognise it. Two positions this compiler holds apart can be spelled alike here, which is what `positionId` is for."
+            }
+          }
         },
-        "line": {
-          "$ref": "#/$defs/authoredLineId",
-          "description": "Which of the rule's lines this is. One rule draws more than one."
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "behavior",
+            "path",
+            "positionId"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "read_position"
+            },
+            "behavior": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string",
+              "description": "The position as an author would recognise it. Two positions this compiler holds apart can be spelled alike here, which is what `positionId` is for."
+            },
+            "positionId": {
+              "type": "string",
+              "description": "What tells apart two positions `path` spells alike. Within this document, and not a name to show a reader."
+            }
+          }
         },
-        "stopped": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/ruleStoppedReadingReason"
-          },
-          "description": "What stopped the reading of the rule, in the words the questions themselves are written under. Absent where nothing stopped it."
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "behavior",
+            "input"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "input"
+            },
+            "behavior": {
+              "type": "string"
+            },
+            "input": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Which of the behavior's declared inputs, counted from zero."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "at",
+            "ruleId",
+            "rule"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "rule"
+            },
+            "at": {
+              "type": "string",
+              "description": "The position the rule was read at."
+            },
+            "ruleId": {
+              "$ref": "#/$defs/ruleId"
+            },
+            "stopped": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ruleStoppedReadingReason"
+              },
+              "description": "What stopped the reading of the rule, in the words the questions themselves are written under. Absent where nothing stopped it."
+            },
+            "rule": {
+              "$ref": "#/$defs/ruleHandle",
+              "description": "The rule, as a person is shown one wherever this document names a rule."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "label",
+            "line"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "border"
+            },
+            "label": {
+              "type": "string",
+              "description": "What a person is shown for the line."
+            },
+            "line": {
+              "$ref": "#/$defs/authoredLineId",
+              "description": "Which of the rule's lines this is. One rule draws more than one."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "obligationId"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "point"
+            },
+            "obligationId": {
+              "$ref": "#/$defs/obligationId"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "module",
+            "writtenBy",
+            "construct",
+            "lowered",
+            "said"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "fork"
+            },
+            "module": {
+              "type": "string"
+            },
+            "writtenBy": {
+              "$ref": "#/$defs/writtenBy"
+            },
+            "construct": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Which of that body's constructs the fork is."
+            },
+            "lowered": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "said": {
+              "type": "string",
+              "description": "What the author wrote the fork as."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "armId"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "arm"
+            },
+            "armId": {
+              "$ref": "#/$defs/armObligationId"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "module",
+            "behavior",
+            "measure"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "measure"
+            },
+            "module": {
+              "type": "string"
+            },
+            "behavior": {
+              "type": "string"
+            },
+            "measure": {
+              "enum": [
+                "reading",
+                "signature",
+                "branch",
+                "boundary",
+                "partition"
+              ],
+              "description": "Which of the measurements a behavior has exactly one of. What the rows reach of a position is measured once per position and is named by that position instead (`axis_measure`)."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "module",
+            "behavior",
+            "axis"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "axis_measure"
+            },
+            "module": {
+              "type": "string"
+            },
+            "behavior": {
+              "type": "string"
+            },
+            "axis": {
+              "type": "string",
+              "description": "The position, as `axes` names it."
+            }
+          }
         }
-      }
+      ]
     }
   }
 }

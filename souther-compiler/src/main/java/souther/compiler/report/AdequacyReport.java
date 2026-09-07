@@ -4096,6 +4096,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case PublishedSubject.AtARule it -> {
                 into.put("at", it.at());
                 into.set("ruleId", it.ruleId());
+                RuleHandleSurface.OPENING_RULE.put(into, it.rule(), sources::written, null);
                 if (!it.stopped().isEmpty()) {
                     ArrayNode stopped = into.putArray("stopped");
                     it.stopped().forEach(stopped::add);
@@ -4156,7 +4157,9 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // both.
             case Subject.AtARule it -> {
                 PartitionEvidence.Unanswered asked = new PartitionEvidence.Unanswered(it.question());
-                yield asked.at() + " (" + whyStanding(asked).written().stream()
+                yield RuleHandleProse.said(PublishedRuleHandle.of(handle(asked.cited())), names,
+                                null)
+                        + " at " + asked.at() + " (" + whyStanding(asked).written().stream()
                         .map(AdequacyReport::whyUnread).collect(Collectors.joining("; ")) + ")";
             }
             case Subject.AtABorder it -> it.border().label();
@@ -4262,6 +4265,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 // and an entry naming neither is one that says what to do and hands over none of
                 // the material to do it with.
                 yield new PublishedSubject.AtARule(asked.at(), id,
+                        PublishedRuleHandle.of(handle(asked.cited())),
                         whyStanding(asked).written().stream().map(AdequacyReport::word).toList());
             }
             case Subject.AtABorder it -> {

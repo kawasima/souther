@@ -308,14 +308,12 @@ class EverySchemaWordIsAccountedForTest {
             new Vocabulary("writtenBy.kind",
                     List.of("$defs", "writtenBy", "properties", "kind"),
                     List.of(souther.compiler.types.WrittenOwner.class), ownerWords(), Set.of()),
-            // What an entry of `keptOpenBy` is about, and which of the measurements a behavior has
-            // one of it names where it names one. Both are vocabularies of this document's own, so
-            // a word added to either has to be taught to the schema before it can be written.
-            new Vocabulary("keptOpenBy[].about.kind",
-                    List.of("$defs", "subject", "properties", "kind"),
-                    souther.compiler.publish.SubjectWord.class),
+            // Which of the measurements a behavior has one of, where a subject names one. Which
+            // kind of place a subject is, is not a field of this shape: a subject is written as the
+            // union it is, so each kind is the constant one branch turns on, and the words are held
+            // against the branches where the union is.
             new Vocabulary("keptOpenBy[].about.measure",
-                    List.of("$defs", "subject", "properties", "measure"),
+                    List.of("$defs", "subject", "oneOf", "13", "properties", "measure"),
                     souther.compiler.publish.MeasureWord.class),
             new Vocabulary("findings[].disposition",
                     List.of("$defs", "findings", "items", "properties", "disposition"),
@@ -1299,7 +1297,10 @@ class EverySchemaWordIsAccountedForTest {
     private static JsonNode nodeAt(JsonNode schema, List<String> at) {
         JsonNode node = schema;
         for (String key : at) {
-            node = node.get(key);
+            // A step into a branch of a union is a number, and a union is where a shape that
+            // discriminates writes its arms — so a field of one is reached the way the shape is
+            // written rather than only where a shape is an object all the way down.
+            node = node.isArray() ? node.get(Integer.parseInt(key)) : node.get(key);
             assertNotNull(node, "the schema has no " + String.join("/", at));
         }
         return node;

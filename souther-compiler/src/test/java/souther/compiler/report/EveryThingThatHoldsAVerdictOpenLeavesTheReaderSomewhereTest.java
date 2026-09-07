@@ -106,12 +106,13 @@ class EveryThingThatHoldsAVerdictOpenLeavesTheReaderSomewhereTest {
             reached.add(ReaderDisposition.of(each).getClass().getSimpleName());
         }
 
-        // Four of the eight. A fork nothing tells apart holds no verdict open in any model here,
-        // and this compiler's own proof has never been contradicted by one — so those two arms are
-        // held where a fact can be built rather than found, and the two that ask a person to weigh
-        // something are not reached by an opening at all.
-        assertEquals(Set.of("LookAtTheRule", "LookAtWhyNothingWasMeasured",
-                        "LookAtWhatShowedNoRow", "LookAtWhatTheMeasureWentWithout"), reached,
-                () -> "the arms these models reach: " + reached);
+        // These, and whatever else comes to be reached. What a corpus witness establishes is that a
+        // state is reached by a model somebody wrote, which is a claim that only grows: a model
+        // added tomorrow whose verdict a fork holds open is one more thing witnessed, not a
+        // regression. Held as an equality, this would fail the day the corpora got better at the
+        // thing they are for.
+        assertTrue(reached.containsAll(Set.of("LookAtTheRule", "LookAtWhyNothingWasMeasured",
+                        "LookAtWhatShowedNoRow", "LookAtWhatTheMeasureWentWithout")),
+                () -> "a state these models used to reach and no longer do: " + reached);
     }
 }

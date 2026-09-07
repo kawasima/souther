@@ -175,11 +175,12 @@ public sealed interface PublishedSubject {
      * stopped it — and an entry that named neither sent them to another array to find both, which
      * is the join this one was written to spare them.
      *
-     * <p>The words a person is shown for the rule are not here. Those are what the rule handles
-     * write wherever this document names a rule, through the one surface that renders a handle;
-     * spelled again, a document would have two answers to what a rule is called.
+     * <p>The words a person is shown are the handle's, written through the one surface that renders
+     * one wherever this document names a rule. Held as the handle and not as the words, so nothing
+     * here spells a rule a second way; what makes it worth carrying is that an entry telling a
+     * reader to read the rule and naming none sends them to another array to find it.
      */
-    record AtARule(String at, ObjectNode ruleId, List<String> stopped)
+    record AtARule(String at, ObjectNode ruleId, PublishedRuleHandle rule, List<String> stopped)
             implements PublishedSubject {
 
         public AtARule {

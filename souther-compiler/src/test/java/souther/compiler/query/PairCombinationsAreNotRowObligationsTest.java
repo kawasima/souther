@@ -71,6 +71,26 @@ class PairCombinationsAreNotRowObligationsTest {
     }
 
     /**
+     * And nothing a row can be offered for is a combination either.
+     *
+     * <p>The other half of what this law says it rests on, and the half a check over the findings
+     * alone leaves open: a change that offered a row for a combination without giving it a finding
+     * would say a row is owed at one in the only way an author meets — the command that hands them
+     * the row to write.
+     *
+     * <p>Read from what says what a row can be offered for, which is a sum of three and none of
+     * them is a relation between two positions.
+     */
+    @Test
+    void nothingARowIsOfferedForIsACombination() {
+        List<String> every = new ArrayList<>();
+        walk(OfferItem.class, every);
+
+        assertEquals(List.of("AClass", "AnArm", "APointOfALine"), every,
+                "a thing a row can be offered for that this law says nothing about");
+    }
+
+    /**
      * And the pair space carries no finding of its own.
      *
      * <p>The other half. A measure may answer for gaps it did not name — the classes measure finds
