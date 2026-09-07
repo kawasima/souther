@@ -343,11 +343,16 @@ public final class Db implements StoreWork {
             throughCycle.addAll(inProgress);
             return key.onCycle(List.copyOf(inProgress));
         }
+        // Before either of the two things that cost anything, and after the one that does not. An
+        // answer already verified at this revision is a lookup and a return; checking what is left
+        // is a walk of everything the answer read, and working one out is a walk of whatever it
+        // reaches. A store told to stop while it is re-verifying a graph nothing moved is a store
+        // being asked its cheapest question over and over, and that is the question an edit asks.
+        abandonment.stopIfAsked();
         if (memo != null && stillHolds(memo)) {
             memos.put(key, memo.verifiedAt(revision));
             return (Answer<T>) memo.answer();
         }
-        abandonment.stopIfAsked();
         inProgress.add(key);
         frames.push(new LinkedHashSet<>());
         Answer<T> answer;
@@ -385,6 +390,10 @@ public final class Db implements StoreWork {
      * Whether {@code memo}'s answer can be kept: everything it read still answers what it did when
      * this answer was made. Asking each of them is what settles that, and each of those may settle
      * the same way without running anything.
+     *
+     * <p>Every step of it is an {@link #ask}, which is where a store that was told to stop stops. So
+     * a verification walk is abandoned wherever it has got to, without this loop asking again on its
+     * own account.
      */
     private boolean stillHolds(Memo memo) {
         // Verification is not a read: a key being checked is not a dependency of whoever happened to

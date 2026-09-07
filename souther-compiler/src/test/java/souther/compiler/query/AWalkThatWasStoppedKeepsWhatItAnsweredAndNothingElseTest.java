@@ -20,6 +20,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  *
  * <p>Counting both is what makes this say anything. A store that threw everything away would satisfy
  * the first half on its own, and one that kept everything would satisfy the second.
+ *
+ * <p>And a walk is not only what a question is worked out by. An edit moves the revision, and what
+ * the next question does with a graph nothing else touched is walk all of it to find that out — no
+ * answer is worked out anywhere, and that walk is most of what an editor's store does. A stop that
+ * only reached the working-out would be a stop that never came where it was most wanted.
  */
 class AWalkThatWasStoppedKeepsWhatItAnsweredAndNothingElseTest {
 
@@ -52,6 +57,32 @@ class AWalkThatWasStoppedKeepsWhatItAnsweredAndNothingElseTest {
                 "the question that never returned a value left nothing behind to be handed over");
         assertEquals(1, INNER_RUNS.get(),
                 "the one that did is an answer of this revision, and was not worked out twice");
+    }
+
+    @Test
+    void theWalkThatOnlyCheckedWhatWasKeptIsStoppedToo() {
+        ARMED.set(false);
+        OUTER_RUNS.set(0);
+        INNER_RUNS.set(0);
+
+        Db db = new Db();
+        db.abandonWhen(new Abandonment(ARMED::get));
+        db.set(new Untouched(), "first");
+        assertEquals("inner", db.ask(new Outer()).value(), "the graph is answered and kept");
+
+        // An edit somewhere else. Nothing this graph read has moved, so every question in it will
+        // be kept — and finding that out is a walk of all of them.
+        db.set(new Untouched(), "second");
+        ARMED.set(true);
+
+        assertThrows(Abandoned.class, () -> db.ask(new Outer()),
+                "checking what is still good is a walk, and a walk that was told to stop stops");
+        assertEquals(1, OUTER_RUNS.get(), "nothing was worked out again");
+        assertEquals(1, INNER_RUNS.get(), "nor was anything under it");
+    }
+
+    /** An input this graph does not read, so setting it moves the revision and nothing else. */
+    private record Untouched() implements Input<String> {
     }
 
     /** Asks the inner question, and then a second one — which is where the stop falls. */
