@@ -51,7 +51,8 @@ public final class Language {
      * compiler can afford to answer exactly, and a half-made answer handed out is one whose next
      * question does the rest of the work somewhere nobody is counting.
      *
-     * <p><b>The sequences no string is read as are taken out here, and nowhere else.</b> A machine
+     * <p><b>The sequences no string is read as are taken out by {@link #holdingOnlyStrings}, and
+     * nowhere else.</b> Every way to one of these ends there, this one and {@link #not}. A machine
      * steps over what a matcher reads, and a high surrogate followed by a low one is one symbol
      * rather than two — so there are sequences of symbols no string is written as, and a complement
      * holds them like anything else. Left in, two machines telling each other apart only over those
@@ -76,9 +77,19 @@ public final class Language {
             return null;
         }
         Automaton one = made.canonical(meter);
-        if (one == null) {
-            return null;
-        }
+        return one == null ? null : holdingOnlyStrings(one, meter);
+    }
+
+    /**
+     * The strings {@code one} stops on, where {@code one} is already the one machine for the
+     * sequences it stops on.
+     *
+     * <p>Beside {@link #canonical} rather than inside it, because there is a way to a canonical
+     * machine that is not a construction: see {@link #not}. Both end here, which is what makes this
+     * the one place the sequences come out; why they have to and where the walk is skipped is
+     * written on {@link #canonical}, which is where a reader arrives from.
+     */
+    private static Language holdingOnlyStrings(Automaton one, Meter meter) {
         if (!one.mayStopHavingReadALoneSurrogatePair()) {
             return new Language(one);
         }
@@ -151,9 +162,23 @@ public final class Language {
         return canonical(machine.or(other.machine, meter), meter);
     }
 
-    /** The strings this does not hold, on the same terms. */
+    /**
+     * The strings this does not hold, on the same terms.
+     *
+     * <p><b>Not made canonical afterwards, because it arrives that way.</b> What is held here is
+     * the one machine for these strings, and the complement of such a machine is that machine with
+     * the states it stops at turned over ({@link Automaton#not}). A string that told two of its
+     * states apart tells them apart still, both of the answers it read having turned over together,
+     * so a machine no string could tell two states of stays one — and the steps not moving leaves
+     * the walk that numbers them where it was. Made canonical again, the construction would arrive
+     * where it started, having paid for the walk.
+     *
+     * <p>The sequences no string is read as still have to come out. A complement holds them like
+     * anything else, which is why this ends where every other way to one of these ends.
+     */
     public Language not(Meter meter) {
-        return canonical(machine.not(meter), meter);
+        Automaton turned = machine.not(meter);
+        return turned == null ? null : holdingOnlyStrings(turned, meter);
     }
 
     /**

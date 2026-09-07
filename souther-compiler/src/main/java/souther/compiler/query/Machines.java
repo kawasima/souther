@@ -25,10 +25,18 @@ import souther.compiler.values.StringFacts;
  * there is one answer per declaration, it is recomputed when the declaration's clauses change, and
  * it goes when the declaration's source does.
  *
- * <p>Nothing is borrowed while the answer is made. The reading here builds every machine itself
- * — its own declaration's and those of the declarations its fields reach — so no question is put
- * to the store from inside this one, and two declarations that reach each other do not ask for each
- * other's answers in a circle.
+ * <p>Which is about what a store keeps and not about what a walk may be spared. Where a set's
+ * strings stop is settled by the set, under an allowance minted for that set, so it is the same
+ * answer wherever it is met — and what the revision has worked out about sets is held for the
+ * revision and dropped with it ({@link souther.compiler.check.DeclarationReadings#extents}).
+ * Nothing there is an answer of anything, and nothing there outlives the world it was worked out
+ * in.
+ *
+ * <p>No question is put to the store while the answer is made. The reading here works out its own
+ * declaration's machines and those of the declarations its fields reach rather than asking for
+ * their answers, so two declarations that reach each other do not wait on each other in a circle.
+ * What it takes from what the revision knows is asked of nobody: it is a fact about a set, worked
+ * out by whichever reading met it first.
  *
  * <p>The reading made here is the declaration's canonical one, and the store's lender hands it to
  * whoever asks next for the rest of the revision. What the store keeps is still what is written
@@ -54,7 +62,8 @@ public final class Machines {
             if (!source.present() || !policy.present()) {
                 return Answer.absent();
             }
-            StringMachineAnswers recorder = StringMachineAnswers.unborrowed();
+            StringMachineAnswers recorder =
+                    StringMachineAnswers.unborrowed(db.readings().extents());
             FieldDomains domains = FieldDomains.of(TypeSymbols.declared(named), source.value(),
                     policy.value(),
                     db.readings().whileTheAnswerIsMade(named, recorder));
