@@ -2,6 +2,7 @@ package souther.compiler.partition;
 
 import souther.compiler.coverage.ComparisonEmissionSite;
 import souther.compiler.types.WrittenOwner;
+import souther.compiler.coverage.ComparisonOccurrence;
 import souther.compiler.coverage.Numberings;
 
 import org.junit.jupiter.api.Test;
@@ -197,15 +198,15 @@ class AClauseOfATypeDoesNotPartItsValuesTest {
     private static LineOrigin aComparison() {
         return new LineOrigin.ComparisonOrigin(
                 new LineOrigin.ComparisonOrigin.Read(
-                        new souther.compiler.coverage.ComparisonOccurrence(
-                                "example.weigh", "weigh", 0),
                         new RuleRef.Comparison("weigh",
                                 new souther.compiler.types.SourceConstructOrigin(
                                         new WrittenOwner.Body("example.weigh", "weigh"), 2, 0,
                                         souther.compiler.types.SourceConstruct.BINARY)),
                         souther.compiler.diag.Citation.of(
                                 new souther.compiler.diag.SourcePos(3, 5)),
-                        WHERE),
+                        List.of(new LineOrigin.ComparisonOrigin.Watched(
+                                new ComparisonOccurrence(
+                                        "example.weigh", "weigh", 0), WHERE))),
                 new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(Towards.BELOW, true)));
     }
 }

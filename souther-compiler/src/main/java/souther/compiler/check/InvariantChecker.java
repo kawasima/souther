@@ -222,7 +222,7 @@ public final class InvariantChecker {
      * That is a rule this check did not reach and is recorded as one; it is never read as a
      * declaration with no rules, which is the same empty list and the opposite fact.
      */
-    public record Source(Hir.Expr body, ExpandedClauseLookup invariants,
+    public record Source(Hir.Expr body, ElementProvenance elements, ExpandedClauseLookup invariants,
                          DeclarationReadings machines,
                          Map<ValueName.Behavior, StatedContract> contracts) {
 

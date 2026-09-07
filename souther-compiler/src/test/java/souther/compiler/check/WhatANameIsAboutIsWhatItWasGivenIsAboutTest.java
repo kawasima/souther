@@ -7,7 +7,7 @@ import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
-import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.ReachName;
 import souther.compiler.types.Type;
 import souther.compiler.types.ValueName;
@@ -60,7 +60,8 @@ class WhatANameIsAboutIsWhatItWasGivenIsAboutTest {
         Denotations outer = Denotations.none().location(x, engine.terms().placeSubject(x), engine.terms().placeTerm(x));
 
         heldOf(new Core.Binary(BinOp.ADD, new Core.Read("x", x, Type.INT, POS),
-                new Core.Int(1, Type.INT, POS), SourceConstructOrigin.unwritten(), Type.INT, POS), outer);
+                new Core.Int(1, Type.INT, POS), ConstructOccurrence.unwritten(), Type.INT, POS),
+                outer);
     }
 
     @Test

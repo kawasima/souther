@@ -116,6 +116,10 @@ public final class UnreachableClaims {
         TermPath path = switch (reads.pathOf(match.scrutinee(), symbols)) {
             case PathResolution.At(var at) -> at;
             case PathResolution.NotAPosition _ -> null;
+            // A claim is about one position, and a scrutinee that only may stand at one is about
+            // whichever of them the run is in. Claimed of each, a case unreachable in one sequence
+            // would be claimed unreachable in the other.
+            case PathResolution.MayStandAt _ -> null;
         };
         if (path == null) {
             return;

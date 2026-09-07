@@ -1,5 +1,7 @@
 package souther.compiler.semantics;
 
+import java.util.Objects;
+
 /**
  * One thing that is true of one of the language's operations.
  *
@@ -54,7 +56,7 @@ public sealed interface OperationFact {
             implements OperationFact {
 
         public AnswersAFormOfItsArguments {
-            java.util.Objects.requireNonNull(form, "this one says what it answers");
+            Objects.requireNonNull(form, "this one says what it answers");
             if (form.coefs().isEmpty()) {
                 throw new IllegalArgumentException(
                         "a form of its arguments names one: a result that is a constant whatever it"
@@ -77,7 +79,7 @@ public sealed interface OperationFact {
     record StatesTheOrderOfItsArguments(PositiveOrder order) implements OperationFact {
 
         public StatesTheOrderOfItsArguments {
-            java.util.Objects.requireNonNull(order, "this one says which way round");
+            Objects.requireNonNull(order, "this one says which way round");
         }
     }
 
@@ -94,10 +96,10 @@ public sealed interface OperationFact {
                     ArgumentRef amount, java.math.BigDecimal per) implements OperationFact {
 
         public ShiftsBy {
-            java.util.Objects.requireNonNull(measure, "a shift is stated through a measure");
-            java.util.Objects.requireNonNull(of, "and moves something");
-            java.util.Objects.requireNonNull(amount, "by something");
-            java.util.Objects.requireNonNull(per, "at some rate");
+            Objects.requireNonNull(measure, "a shift is stated through a measure");
+            Objects.requireNonNull(of, "and moves something");
+            Objects.requireNonNull(amount, "by something");
+            Objects.requireNonNull(per, "at some rate");
         }
     }
 
@@ -110,7 +112,7 @@ public sealed interface OperationFact {
     record BoundsItsResult(ResultBound<ArgumentRef> bound) implements OperationFact {
 
         public BoundsItsResult {
-            java.util.Objects.requireNonNull(bound, "this one states a bound");
+            Objects.requireNonNull(bound, "this one states a bound");
         }
     }
 
@@ -121,7 +123,7 @@ public sealed interface OperationFact {
     record BuildsItsResultFrom(BuiltFrom<ArgumentRef> built) implements OperationFact {
 
         public BuildsItsResultFrom {
-            java.util.Objects.requireNonNull(built, "this one says what it was built from");
+            Objects.requireNonNull(built, "this one says what it was built from");
         }
     }
 
@@ -140,7 +142,7 @@ public sealed interface OperationFact {
     record ResultIsNoSmallerThan(ArgumentRef container) implements OperationFact {
 
         public ResultIsNoSmallerThan {
-            java.util.Objects.requireNonNull(container, "this one names a container");
+            Objects.requireNonNull(container, "this one names a container");
         }
     }
 
@@ -158,8 +160,8 @@ public sealed interface OperationFact {
             implements OperationFact {
 
         public AccumulatesItsContainer {
-            java.util.Objects.requireNonNull(container, "this one names a container");
-            java.util.Objects.requireNonNull(how, "and what walking it comes to");
+            Objects.requireNonNull(container, "this one names a container");
+            Objects.requireNonNull(how, "and what walking it comes to");
         }
     }
 
@@ -175,8 +177,43 @@ public sealed interface OperationFact {
             implements OperationFact {
 
         public ReadsItsContainer {
-            java.util.Objects.requireNonNull(container, "this one names a container");
+            Objects.requireNonNull(container, "this one names a container");
             through = java.util.Set.copyOf(through);
+        }
+    }
+
+    /**
+     * What the closure answered decides {@code aspect} of what the operation answers.
+     *
+     * <p><b>Said, and never read off a size.</b> That {@code List.filter} answers at most as many
+     * as it walked is one fact ({@link BuiltFrom}); that the closure's truth is <em>why</em> it
+     * answers fewer is another, and the first does not state the second. An operation whose result
+     * is smaller for a reason of its own — a take, a distinct — is one whose closure decides
+     * nothing, and a reading that took the size for the cause would say a rule inside such a call
+     * decides what the call comes to.
+     *
+     * <p>Which is what a reader wants it for. A rule written inside a closure reaches a fork
+     * testing the call only along an edge declared here: {@code List.isEmpty(List.filter(p, xs))}
+     * turns on what {@code p} answered, and {@code List.isEmpty(List.map(p, xs))} does not — the
+     * mapping answers one per element whatever the closure said, so a rule inside it says nothing
+     * about whether the answer is empty.
+     *
+     * <p><b>Nothing here is about the type of what stands there.</b> What is stated is about the
+     * answer, and a closure and a truth are both things that answer; which argument may carry the
+     * fact is what naming it holds it to.
+     *
+     * <p><b>Silence is the answer for everything else.</b> An operation with no such fact is one
+     * this compiler cannot follow to the answer, and a reader stops there rather than
+     * guessing — which leaves a fork stating a rule of its own, and is the safe way round: a rule
+     * credited to nobody leaves a measure open, and one credited to the wrong owner reports a model
+     * nothing read as one read to the end.
+     */
+    record TurnsOnWhetherAnArgumentHolds(AnswerAspect aspect, ArgumentRef argument)
+            implements OperationFact {
+
+        public TurnsOnWhetherAnArgumentHolds {
+            Objects.requireNonNull(aspect, "this one names a side of the answer");
+            Objects.requireNonNull(argument, "this one names an argument");
         }
     }
 
@@ -191,7 +228,7 @@ public sealed interface OperationFact {
     record IsStatedOverAProjection(ArgumentRef projection) implements OperationFact {
 
         public IsStatedOverAProjection {
-            java.util.Objects.requireNonNull(projection, "this one names where it is written");
+            Objects.requireNonNull(projection, "this one names where it is written");
         }
     }
 
@@ -218,7 +255,7 @@ public sealed interface OperationFact {
             implements OperationFact {
 
         public MeansTheSameAsASizeOfNought {
-            java.util.Objects.requireNonNull(size, "this one names the size it means");
+            Objects.requireNonNull(size, "this one names the size it means");
         }
     }
 
@@ -226,7 +263,7 @@ public sealed interface OperationFact {
     record ComputesANumber(NumericResult<ArgumentRef> result) implements OperationFact {
 
         public ComputesANumber {
-            java.util.Objects.requireNonNull(result, "this one says what it computes");
+            Objects.requireNonNull(result, "this one says what it computes");
         }
     }
 
@@ -244,7 +281,7 @@ public sealed interface OperationFact {
     record IsDefinedByCases(DefinitionCase<ArgumentRef> one) implements OperationFact {
 
         public IsDefinedByCases {
-            java.util.Objects.requireNonNull(one, "this one states a case");
+            Objects.requireNonNull(one, "this one states a case");
         }
     }
 
@@ -273,7 +310,7 @@ public sealed interface OperationFact {
     record AnswersANumberTakenOfTheOneValueItIsGiven(TakenAs how) implements OperationFact {
 
         public AnswersANumberTakenOfTheOneValueItIsGiven {
-            java.util.Objects.requireNonNull(how, "this one says what the number is taken as");
+            Objects.requireNonNull(how, "this one says what the number is taken as");
         }
     }
 
@@ -316,7 +353,7 @@ public sealed interface OperationFact {
     record SaysNothingOf(OperationSubject subject) implements OperationFact {
 
         public SaysNothingOf {
-            java.util.Objects.requireNonNull(subject, "a silence is about something");
+            Objects.requireNonNull(subject, "a silence is about something");
         }
     }
 }

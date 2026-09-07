@@ -86,17 +86,16 @@ class BothSurfacesSayWhatWasFoundAboutAPositionTest {
         // reason alone, two rules stopped alike here were one entry and the document could not say
         // which of them a reader was being told about.
         //
-        // Two entries about `n`, from two rules and for two different reasons. The second is
-        // `Int.clamp`'s own first comparison, which the call expands here: it asks whether `n` is
-        // below zero, and the guard above leaves nothing below sixty arriving at it, so the line it
-        // draws has nothing either side of it. That line has never been measured; what is new is
-        // that a reader is told why rather than finding it silently out of the denominator.
-        // What the model states first and what nothing classified after, which is the order the two
-        // are asked in: a rule read to the end says something about the model, and a rule nothing
-        // worked out the questions of is this compiler saying it does not know.
-        assertEquals(List.of("n:nothing_arrives_at_the_rules_line:"
-                                + "comparison in `Int.clamp`, reached at 0:11:11",
-                        "n:unsupported_syntax:comparison@0:11:32"),
+        // One entry, about the guard the author wrote. `Int.clamp` answers a number nothing states
+        // anything about, so the comparison against it is a rule about a value an operation made.
+        //
+        // The reading this is made over keeps that operation standing, so the comparisons inside
+        // `Int.clamp` are not here. They were: the call was spliced in, its own first comparison
+        // asked whether `n` is below zero, and the guard above left nothing arriving at the line it
+        // draws — so the document carried an entry about a rule the author never wrote, at a number
+        // their model never mentions. Those comparisons are that operation's implementation, and a
+        // caller owes rows for what a caller wrote.
+        assertEquals(List.of("n:rule_about_a_derived_value:comparison@0:11:32"),
                 documentSaysNotRead(MEASURED_AND_UNREAD),
                 "the document says what the report said");
     }

@@ -35,21 +35,5 @@ public enum NotABoundary {
      * a chain of dead bindings is still counted as read. So a comparison named this is one nothing
      * reads under any reading, and one not named this may still be one a sharper reading would.
      */
-    NOTHING_READS_IT,
-
-    /**
-     * No run answers a value through the comparison, so its outcome is about no row.
-     *
-     * <p>What the plan numbering already answers, and exactly that. The plan numbers a site for a
-     * comparison only where the expression the comparison decides can answer a value
-     * ({@link souther.compiler.coverage.NormalReturn}); a comparison behind something that aborts,
-     * or deciding between arms that both abort, gets none. So a comparison named this is not one a
-     * row may reach and this cannot measure — it is one whose truth no answer of the behavior turns
-     * on, for the same reason the first is, arrived at by a different reading.
-     *
-     * <p>Which is why it is not a shortfall of the measurement and no report says it. Where such a
-     * comparison stands is a case the model rules out, and that is what the report says of the
-     * case; a line the comparison would have drawn is not something the model is missing.
-     */
-    NO_RUN_ANSWERS_THROUGH_IT
+    NOTHING_READS_IT
 }

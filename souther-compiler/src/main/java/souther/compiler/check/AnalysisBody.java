@@ -22,11 +22,17 @@ import souther.compiler.core.Core;
  * has no body to read either way, and what a reader owed the meanings must do there is say it could
  * not read them — never fall back to the algorithm, which answers the question with a tree the
  * question is not about.
+ *
+ * <p><b>{@code elements} is of this tree and of no other.</b> Where the elements of what a binding
+ * holds came from is written by the expansion that made the binding, and the two representations of
+ * one body are two expansions with two sets of bindings — so a reading of this tree handed the other
+ * expansion's answer is asking about bindings this tree does not have. The two travel together for
+ * that reason, and a reader takes the pair rather than putting one beside the other.
  */
-public record AnalysisBody(Core core) {
+public record AnalysisBody(Core core, ElementProvenance elements) {
 
     public AnalysisBody {
-        if (core == null) {
+        if (core == null || elements == null) {
             throw new IllegalArgumentException(
                     "a body the analysis reads is some tree; a behavior with none has no reading"
                             + " rather than one holding nothing");

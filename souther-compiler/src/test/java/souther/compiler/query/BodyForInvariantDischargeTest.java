@@ -35,11 +35,7 @@ class BodyForInvariantDischargeTest {
             let shift (b) = List.map(x -> doubled(x), b.items)
             """;
 
-    private static Hir.Expr body(Key<Hir.FnDef> key) {
-        return db().ask(key).value().writtenBody();
-    }
-
-    /** The same, for a body that answers with what its expansion could not remove beside it. */
+    /** The body a reading answers with, for a body its expansion could not remove everything from. */
     private static Hir.Expr lowered(Key<souther.compiler.check.Expansion<Hir.FnDef>> key) {
         return db().ask(key).value().value().writtenBody();
     }
@@ -65,14 +61,14 @@ class BodyForInvariantDischargeTest {
 
     @Test
     void theAnalysisBodyKeepsTheOperationsTheLanguageDefines() {
-        List<String> fns = calls(body(new Bodies.BodyForInvariantDischarge("m.a", "shift")));
+        List<String> fns = calls(lowered(new Bodies.BodyForInvariantDischarge("m.a", "shift")));
         assertTrue(fns.contains("List.map"),
                 "a standard-library operation is what the rules are written about: " + fns);
     }
 
     @Test
     void theAnalysisBodyExpandsTheModulesOwnHelpers() {
-        List<String> fns = calls(body(new Bodies.BodyForInvariantDischarge("m.a", "shift")));
+        List<String> fns = calls(lowered(new Bodies.BodyForInvariantDischarge("m.a", "shift")));
         assertFalse(fns.contains("doubled"),
                 "a helper of this module carries no such rule, and does not travel: " + fns);
     }

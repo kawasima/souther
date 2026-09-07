@@ -7,7 +7,7 @@ import souther.compiler.query.ReadAs;
 import souther.compiler.types.BinOp;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
-import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.Type;
 
 import org.junit.jupiter.api.Test;
@@ -56,7 +56,7 @@ class HowFarTheReadingOfWhatAClauseOwesDescendsTest {
     }
 
     private static Core.Binary comparing(BinOp op, Core left, Core right, Type answers) {
-        return new Core.Binary(op, left, right, SourceConstructOrigin.unwritten(), answers, POS);
+        return new Core.Binary(op, left, right, ConstructOccurrence.unwritten(), answers, POS);
     }
 
     /** `value >= 1`, one of the two rules every clause below is written out of. */

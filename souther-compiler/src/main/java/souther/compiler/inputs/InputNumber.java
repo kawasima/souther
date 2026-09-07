@@ -3,6 +3,7 @@ package souther.compiler.inputs;
 import souther.compiler.check.NumericMeasures;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.Symbols;
+import souther.compiler.check.WalkElements;
 import souther.compiler.core.Core;
 import souther.compiler.types.Type;
 
@@ -46,6 +47,10 @@ public final class InputNumber {
             TermPath of = switch (reads.pathOf(measured.of(), symbols)) {
                 case PathResolution.At(var at) -> at;
                 case PathResolution.NotAPosition _ -> null;
+                // A taking is of one location, and a name that only may stand at one is no one of
+                // them. Taken of any, the number would be a size of a sequence the run it is on
+                // never walked.
+                case PathResolution.MayStandAt _ -> null;
             };
             if (of != null) {
                 return NumericTerm.TakenOf.of(measured.operation(), of,
@@ -61,6 +66,10 @@ public final class InputNumber {
         return switch (reads.pathOf(e, symbols)) {
             case PathResolution.At(var at) -> new NumericTerm.ValueOf(at);
             case PathResolution.NotAPosition _ -> null;
+            // And a number of the input is the value at one position. A name standing at one of
+            // several would be a number at whichever of them a reader picked, and a line drawn on
+            // it would fall at a place the rule may say nothing about.
+            case PathResolution.MayStandAt _ -> null;
         };
     }
 
@@ -97,22 +106,14 @@ public final class InputNumber {
     private static NumericTerm overARun(NumericMeasures.Measured measured, InputDomain inputs,
                                         InputReads reads, RuleReadingSource source) {
         Symbols symbols = source.symbols();
-        Core walk = measured.of();
-        InputReads where = reads;
-        // By the bindings met, so a name that came round to itself stops rather than being followed
-        // again. Bindings are added on the way down and each tells itself from every other, so this
-        // is the shape of the tree saying so and not a depth somebody chose.
-        java.util.Set<souther.compiler.types.BindingId> met = new java.util.HashSet<>();
-        while (walk instanceof Core.Read read) {
-            if (!met.add(read.binding())
-                    || !(where.meaningOf(read, symbols) instanceof ReadMeaning.Through through)) {
-                return null;
-            }
-            walk = through.denotes().value();
-            where = through.denotes().at();
-        }
+        // The walk and the names it stands under, which travel together: a name bound inside a
+        // helper stands for what the call handed over, and what is read of that afterwards is read
+        // where it stands rather than where the name was.
+        Denotation met = reads.denotes(measured.of(), symbols);
+        Core walk = met.value();
+        InputReads where = met.at();
         souther.compiler.types.BindingId element =
-                souther.compiler.core.GrowingFold.elementBindingOf(walk);
+                WalkElements.elementBindingOf(walk, where, symbols);
         if (element == null) {
             return null;
         }
@@ -122,6 +123,9 @@ public final class InputNumber {
         TermPath at = switch (where.elementAt(element, symbols)) {
             case PathResolution.At(var stands) -> stands;
             case PathResolution.NotAPosition _ -> null;
+            // A run is over the values at one position, and a walk whose elements come from more
+            // than one container is no one run.
+            case PathResolution.MayStandAt _ -> null;
         };
         if (answered == null || at == null) {
             return null;

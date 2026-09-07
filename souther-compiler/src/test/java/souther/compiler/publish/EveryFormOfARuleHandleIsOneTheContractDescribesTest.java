@@ -161,7 +161,9 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
                 new RuleRef.Comparison("b",
                         new SourceConstructOrigin(body, 0, 0, SourceConstruct.BINARY)),
                 new RuleRef.Predicate("b",
-                        new SourceConstructOrigin(body, 1, 0, SourceConstruct.CALL)));
+                        new SourceConstructOrigin(body, 1, 0, SourceConstruct.CALL)),
+                new RuleRef.Fork("b",
+                        new SourceConstructOrigin(body, 2, 0, SourceConstruct.IF)));
 
         assertEquals(
                 Set.of(RuleRef.Written.class.getPermittedSubclasses()),

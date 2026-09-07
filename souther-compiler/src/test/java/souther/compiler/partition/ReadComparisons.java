@@ -37,14 +37,10 @@ record ReadComparisons(List<ComparisonReadings.Reading> comparisons,
         RuleReadingSource rules = RuleReadings.of(compilation, module);
         souther.compiler.inputs.InputDomain inputs =
                 compilation.db().ask(new Adequacy.Inputs(module)).value().get(behavior);
-        return new ReadComparisons(ComparisonReadings.of(
+        return new ReadComparisons(ComparisonReadings.of(behavior,
                 checked.behaviorBodies().get(behavior),
-                checked.plan(),
                 inputs.reading(rules), InputReads.ofParameters(inputs.parameterReads(),
-                        checked.elementBindings().get(behavior)),
-                // Nothing said about what arrives, so every line here is held to what the
-                // declarations leave — which is what a fixture about standing wants.
-                souther.compiler.check.PathReachability.Answers.NONE).comparisons(),
+                        checked.elementBindings().get(behavior))).comparisons(),
                 inputs, rules);
     }
 
@@ -52,7 +48,7 @@ record ReadComparisons(List<ComparisonReadings.Reading> comparisons,
      *  them by where it stands, after which a fixture could be about a rule nobody meant. */
     ComparisonReadings.Reading only() {
         assertEquals(1, comparisons.size(), () -> "the body under test writes one comparison: "
-                + comparisons.stream().map(each -> each.catalogued().at().toString()).toList());
+                + comparisons.stream().map(each -> each.at().toString()).toList());
         return comparisons.get(0);
     }
 }

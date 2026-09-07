@@ -8,6 +8,10 @@ import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
 import souther.compiler.semantics.BuiltFrom;
 import souther.compiler.types.BindingId;
+import souther.compiler.types.ValueName;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Which position of a behavior's input an expression names, and that it names none where it names
@@ -133,16 +137,23 @@ final class InputPath {
             case Core.Read r -> switch (names.roleOf(r.binding())) {
                 case BindingRole.Root(var stands) -> new PathResolution.At(stands);
                 case BindingRole.Element _ -> elementOf(r.binding(), names);
+                // An element of more than one container is at one of their places and which is not
+                // settled. Answered with the first, a rule under this name would be filed at a
+                // sequence it says nothing about; answered with none, it would read as a name that
+                // holds nothing of the input, and a rule the author wrote about their input would
+                // leave the measurement without a word.
+                case BindingRole.ElementOfSeveral(var containers) ->
+                        oneOfTheElementsOf(r.binding(), containers, names);
                 case BindingRole.Alias(var held) ->
                         trail.through(r.binding(), () -> named(held, names));
                 case BindingRole.Unknown _ -> new PathResolution.NotAPosition();
             };
-            case Core.FieldAccess fa -> switch (named(fa.target(), names)) {
-                case PathResolution.At(var base) -> new PathResolution.At(
-                        Location.isStep(fa.target().type(), fa.field(), symbols)
-                                ? base.then(fa.field()) : base);
-                case PathResolution other -> other;
-            };
+            // A field of what the target stands at, at every place the target stands. Where the
+            // field is not a step of a path — a newtype's own value is the value under it — the
+            // place is the target's, which is the step this takes there.
+            case Core.FieldAccess fa -> named(fa.target(), names).deeper(
+                    Location.isStep(fa.target().type(), fa.field(), symbols)
+                            ? base -> base.then(fa.field()) : base -> base);
             // What an expression that binds a name comes to is what its body comes to, under that
             // name. Whether the name may stand for the position its value names is not asked here
             // and is not a question about this shape: it is asked where the name is read, of what
@@ -189,6 +200,26 @@ final class InputPath {
         };
     }
 
+    /**
+     * Where an element of any of {@code containers} stands.
+     *
+     * <p>The binding takes an element of a different one on each run, so where it stands is where
+     * an element of each of them stands, taken together ({@link PathResolution#anyOf}). A container
+     * standing at no position of the input leaves the runs through it saying nothing and takes
+     * nothing away from the runs through the others: a block handed to a walk over the input and to
+     * a walk over a list written in the body states the caller's rule about the input on the first
+     * run whatever the second does.
+     */
+    private PathResolution oneOfTheElementsOf(BindingId binding, List<Core> containers,
+                                              BindingEnvironment names) {
+        List<PathResolution> each = new ArrayList<>();
+        for (Core container : containers) {
+            each.add(trail.through(binding, () -> containerPath(container, names))
+                    .deeper(TermPath::element));
+        }
+        return PathResolution.anyOf(each);
+    }
+
     private PathResolution elementOf(BindingId binding, BindingEnvironment names) {
         if (!(names.roleOf(binding) instanceof BindingRole.Element(var container))) {
             return new PathResolution.NotAPosition();
@@ -196,10 +227,8 @@ final class InputPath {
         // The container names no position of this behavior's input — it is what another operation
         // answered, or something this does not read — so neither does an element of it. Where a
         // reading of provenance goes on from there is not this walk's.
-        return switch (trail.through(binding, () -> containerPath(container, names))) {
-            case PathResolution.At(var at) -> new PathResolution.At(at.element());
-            case PathResolution other -> other;
-        };
+        return trail.through(binding, () -> containerPath(container, names))
+                .deeper(TermPath::element);
     }
 
     /**
@@ -224,6 +253,10 @@ final class InputPath {
             // Each is a way to the same place, and neither is asked unless the other came back
             // without it, so whichever reached a position is the answer.
             case PathResolution.NotAPosition _ -> elementsOf(e, names);
+            // A container standing at one of several places is where its elements are, and there
+            // are as many of those as there are of it. Read further for one of them, the elements
+            // would come back at a single place while the container they are of stands at more.
+            case PathResolution.MayStandAt among -> among;
         };
     }
 
@@ -253,17 +286,42 @@ final class InputPath {
                 }
             };
         }
-        // Or through an operation the language keeps standing that answers what it was given.
-        if (!(e instanceof Core.Call call) || !(call.fn() instanceof Core.Reached reached)) {
-            return new PathResolution.NotAPosition();
+        // Or through an operation that answers what it was given, in either of the two shapes a
+        // representation gives an application: the call a name reached where the operation has been
+        // expanded away, and the operation standing as itself where it has not. What the library
+        // says its answer holds is said of the operation, so it is asked once of that.
+        ValueName operation;
+        List<Core> args;
+        switch (e) {
+            case Core.Call call when call.fn() instanceof Core.Reached reached -> {
+                operation = reached.denotes();
+                args = call.args();
+            }
+            case Core.PreservedCall kept -> {
+                operation = kept.declared().operation();
+                args = kept.args();
+            }
+            default -> {
+                return new PathResolution.NotAPosition();
+            }
         }
         BuiltFrom<DeclaredArgument> built =
-                DefaultBoundOperationFacts.get().buildsItsResultFrom(reached.denotes());
+                DefaultBoundOperationFacts.get().buildsItsResultFrom(operation);
         DeclaredArgument holds = built == null ? null : built.holdsTheElementsOf();
-        // The call is the runnable tree's and not a kept one, so its argument count is checked
+        // What is made from a position came from it and is not it, so an answer holding only that
+        // is crossed by the walk after where a value came from and not by the walk after which
+        // position an expression names — the same two licences an edge written by an expansion
+        // carries ({@link souther.compiler.check.ElementProvenance#stepFrom}), read here from the
+        // declaration that states them because the operation is still standing to be asked.
+        DeclaredArgument which = holds != null ? holds
+                : switch (asked) {
+                    case VALUE_ORIGIN -> built == null ? null : built.derivesItsElementsFrom();
+                    case NAMED_POSITION -> null;
+                };
+        // The call may be the runnable tree's and not a kept one, so its argument count is checked
         // here rather than by a kept call's own constructor.
-        int argument = holds == null ? -1 : CallArguments.positionOf(holds, reached.denotes());
-        return argument < 0 || argument >= call.args().size() ? new PathResolution.NotAPosition()
-                : containerPath(call.args().get(argument), names);
+        int argument = which == null ? -1 : CallArguments.positionOf(which, operation);
+        return argument < 0 || argument >= args.size() ? new PathResolution.NotAPosition()
+                : containerPath(args.get(argument), names);
     }
 }

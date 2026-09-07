@@ -527,8 +527,10 @@ public final class InteractionCells {
     /** Which rule of the cut this reading of the comparison is. */
     private static LineOrigin.ComparisonOrigin guardOf(Cut cut, ComparisonOccurrence comparison) {
         for (LineOrigin origin : cut.origins()) {
+            // Any of the rule's materialisations, since the decision was recorded at whichever
+            // copy ran and the rule is one however many copies an operation makes.
             if (origin instanceof LineOrigin.ComparisonOrigin guard
-                    && guard.read().comparison().equals(comparison)) {
+                    && guard.read().names(comparison)) {
                 return guard;
             }
         }

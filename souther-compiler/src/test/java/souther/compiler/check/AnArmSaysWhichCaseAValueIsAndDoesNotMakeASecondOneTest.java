@@ -1,6 +1,7 @@
 package souther.compiler.check;
 
 import souther.compiler.DefaultStdlib;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.BinOp;
 import souther.compiler.ast.Hir;
 import souther.compiler.core.Core;
@@ -213,7 +214,7 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
                 .binder("v", POS).binding();
         Core states = new Core.Binary(BinOp.GT,
                 new Core.Read("v", value, Type.INT, POS), new Core.Int(0, Type.INT, POS),
-                souther.compiler.types.SourceConstructOrigin.unwritten(), Type.BOOL, POS);
+                ConstructOccurrence.unwritten(), Type.BOOL, POS);
         return new StatedContract(FIND, List.of(), Type.INT,
                 List.of(new StatedContract.StatedRule(new RuleId(FIND, 0, 0, AN_INT),
                         new Guard.Case(CaseSpace.resolve(CaseSelector.direct(AN_INT),

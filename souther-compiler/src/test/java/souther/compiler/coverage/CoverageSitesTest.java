@@ -418,7 +418,7 @@ class CoverageSitesTest {
         assertEquals("case UnderThirty", labelAt(plan, java.util.Optional.of(
                 plan.numbering().arm(arms[0]))));
 
-        Core.Match copy = new Core.Match(match.scrutinee(), match.cases(), match.origin(),
+        Core.Match copy = new Core.Match(match.scrutinee(), match.cases(), match.occurrence(),
                 match.type(), match.pos(), java.util.List.of());
         assertEquals(match, copy, "an equal node is easy to make");
         assertNull(plan.probesOf(copy),

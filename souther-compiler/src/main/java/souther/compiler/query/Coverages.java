@@ -1,6 +1,7 @@
 package souther.compiler.query;
 
 import souther.compiler.check.CoverageObligation;
+import souther.compiler.check.ElementBindings;
 import souther.compiler.check.ReadingPolicy;
 import souther.compiler.inputs.FilingCoordinate;
 import souther.compiler.inputs.InputQuestion;
@@ -13,6 +14,7 @@ import souther.compiler.check.PathReachability;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.numeric.Place;
 import souther.compiler.core.Core;
+import souther.compiler.coverage.ComparisonEmissionSite;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.coverage.SiteNumbering;
 import souther.compiler.observe.Classification;
@@ -84,7 +86,6 @@ final class Coverages {
     static Partitioned partitioningOf(Hir.SpecBehavior behavior,
                                       souther.compiler.inputs.InputReading read,
                                       Core body,
-                                      souther.compiler.check.ElementBindings elements,
                                       CoverageSites.Plan plan,
                                       PathReachability.Answers arrives,
                                       souther.compiler.check.StatedContract stated,
@@ -101,8 +102,19 @@ final class Coverages {
         // implements it: a clause is written against the declaration, so an injected behavior draws
         // its lines like any other and there is no body for them to have come out of.
         EnsuresThresholds.Clauses clauses = EnsuresThresholds.of(stated, read);
+        // What the analysis tree binds to the elements of what, built once for both readers of it.
+        // The bindings an expansion wrote are the bindings of the tree it expanded: the two
+        // representations of one body are two expansions with two sets of them, so `elements` —
+        // which is the emitted tree's — is about bindings neither reader below has.
+        ElementBindings standing = analysis == null
+                ? ElementBindings.NONE
+                : ElementBindings.of(analysis.core(), analysis.elements(),
+                        read.symbols());
+        // Whether there is a tree to read is the reading's own answer, so a body with no analysis
+        // representation is handed over and comes back with nothing rather than being checked for
+        // here as well.
         GuardThresholds.Guards guards = body == null ? GuardThresholds.Guards.NONE
-                : GuardThresholds.of(body, plan, read, elements, arrives);
+                : GuardThresholds.of(behavior.name(), analysis, body, plan, read, standing, arrives);
         // And what the declarations state between two of this input's positions. Such a rule places
         // no end at either of them, so the reading of ends has nothing to draw it from; read here,
         // it is a line like the two above and is arranged with them.
@@ -114,7 +126,7 @@ final class Coverages {
         // be two measures of it, each told nothing of the other's.
         souther.compiler.partition.BehaviorSetStatements.Read sets =
                 souther.compiler.partition.BehaviorSetStatements.of(behavior.name(), analysis, stated, read,
-                        read.domain().parameterReads(), elements, distinctions);
+                        read.domain().parameterReads(), standing, distinctions, guards.forks());
         List<souther.compiler.partition.LineDrawn> declared =
                 souther.compiler.partition.DeclaredThresholds.between(behavior.name(), read);
         // Every producer of one kind of line, put together before the position is divided. Two
@@ -165,6 +177,12 @@ final class Coverages {
         // operation made from a position is about that value — so they are said and nothing waits
         // on them.
         sets.saying().forEach(found::add);
+        // And the forks whose condition no reader took in. A question for each and no finding: what
+        // a report is owed about such a rule is that nothing worked out what it states, which the
+        // question says, and where it says it is what the reading got to rather than what the fork
+        // is about.
+        sets.forks().forEach(each ->
+                each.filed().forEach((at, why) -> found.unclassified(each.cited(), at, why)));
         return clauses.noLine().and(guards.noLine()).and(filed.notPlaced()).and(found.found());
     }
 
@@ -820,7 +838,7 @@ final class Coverages {
     private static OneShapeOfBorder reading(
             souther.compiler.partition.MeasuredInput.BorderReading line,
             ItemAssessment.WritabilityProjection projection) {
-        java.util.Optional<souther.compiler.coverage.ComparisonEmissionSite> site =
+        List<ComparisonEmissionSite> site =
                 line.border().origin().recordedAt();
         return new OneShapeOfBorder() {
 
@@ -874,7 +892,7 @@ final class Coverages {
         souther.compiler.partition.MeasuredInput.BorderReading line = input.at(border);
         souther.compiler.inputs.Quantities rules = input.quantities();
         BorderQuantity quantity = line.quantity();
-        java.util.Optional<souther.compiler.coverage.ComparisonEmissionSite> site =
+        List<ComparisonEmissionSite> site =
                 border.origin().recordedAt();
         // Built here and gone when the search is. What a row has to be to arrive is a way of asking
         // about values rather than something that says what it is, so it is what the walk runs
@@ -1034,7 +1052,7 @@ final class Coverages {
     private static StandingAtAPoint.Met standingThere(
             Probe probe, souther.compiler.partition.MeasuredInput.BorderReading line,
             Criterion criterion,
-            java.util.Optional<souther.compiler.coverage.ComparisonEmissionSite> site,
+            List<ComparisonEmissionSite> site,
             souther.compiler.partition.Generator.BoundaryAttempt.Built built) {
         souther.compiler.partition.ObservedInputs read =
                 probe.read(built.row().inputs()).asInputs();

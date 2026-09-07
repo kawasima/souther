@@ -6,7 +6,7 @@ import souther.compiler.core.Core;
 import souther.compiler.types.BinOp;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
-import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.Type;
 import souther.compiler.diag.SourcePos;
 
@@ -165,8 +165,8 @@ class WhichWaysOfAComparisonStandIsReadOffTheEndsOfItsRangeTest {
             BinOp op = numberOnTheLeft ? exchanged(each.op()) : each.op();
             Core number = new Core.Int(each.written(), Type.INT, POS);
             Core.Binary comparison = numberOnTheLeft
-                    ? new Core.Binary(op, number, POSITION, SourceConstructOrigin.unwritten(), Type.BOOL, POS)
-                    : new Core.Binary(op, POSITION, number, SourceConstructOrigin.unwritten(), Type.BOOL, POS);
+                    ? new Core.Binary(op, number, POSITION, ConstructOccurrence.unwritten(), Type.BOOL, POS)
+                    : new Core.Binary(op, POSITION, number, ConstructOccurrence.unwritten(), Type.BOOL, POS);
             boolean stands = Witnessed.comesOut(comparison, each.want(), read -> null);
             out.add(new Row(op, each.written(), each.want(), stands).asked(numberOnTheLeft)
                     + ": " + stands);

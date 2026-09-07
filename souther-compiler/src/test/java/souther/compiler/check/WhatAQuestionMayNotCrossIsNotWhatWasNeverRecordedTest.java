@@ -12,6 +12,7 @@ import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.Type;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -58,7 +59,7 @@ class WhatAQuestionMayNotCrossIsNotWhatWasNeverRecordedTest {
     /** The names, with {@code provenance} said of the container. */
     private static InputReads reads(ElementProvenance provenance) {
         ElementBindings elements = new ElementBindings(
-                Map.of(ELEMENT, read("xs", CONTAINER)),
+                Map.of(ELEMENT, List.of(read("xs", CONTAINER))),
                 Map.of(CONTAINER, read("held", HELD)),
                 provenance, Map.of());
         return InputReads.ofParameters(Map.of(HELD, "held", MADE_FROM, "made"), elements);

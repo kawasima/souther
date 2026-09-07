@@ -9,7 +9,10 @@ import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleRef;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.Compiler;
 import souther.compiler.diag.SourcePos;
+import souther.compiler.jvm.ClassFileImage;
+import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.BehaviorEvidence;
 import souther.compiler.query.BorderAssessment;
@@ -25,6 +28,7 @@ import souther.compiler.types.WrittenOwner;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -302,27 +306,46 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
      * The citations of code this compile reaches rather than holds, taken from a compilation.
      *
      * <p>Made where a source is placed, and only there. So this reads a model whose rules are in a
-     * library the compile did not open, and keeps what the readings offered — which is the one way
+     * module the compile did not open, and keeps what the readings offered — which is the one way
      * to have such a citation out here, and is what makes the arm this type has for one something
      * the property below is asked over.
+     *
+     * <p><b>A module put on the path, and not the standard library.</b> Which code stands in for
+     * somewhere else is decided by the text a body was quoted from being one this compile cannot
+     * show ({@code HelperInliner.whereTheBodyIs}) — any published module, not the one this compiler
+     * ships. A population taken from a model that only calls the library says nothing about the
+     * rest of that domain: the library writes its operations in this language, a reading of rules
+     * leaves those standing rather than taking them in, and a model built only of those has no such
+     * citation at all. So the module is built here and put on the path, which is the shape the
+     * domain actually has.
      */
     private static List<Citation> reachedFromHere() {
+        Map<String, ClassFileImage> published = Compiler.compile("""
+                module lib exposing ( big, small )
+
+                let big (n: Int): Bool = n > 10
+
+                let small (n: Int): Bool = n < 3
+                """);
         String model = """
                 module m
+
+                import lib ( big, small )
 
                 data Low
                 data Accepted = { at: Int }
 
-                behavior classify : (n: Int) -> Accepted | Low
+                behavior classify : (n: Int, m: Int) -> Accepted | Low
                     constructs Accepted
 
-                let classify (n) = {
-                    guard Int.clamp(0, 100, n) > 70 else Low
-                    guard Int.abs(n) > 3 else Low
+                let classify (n, m) = {
+                    guard big(n) else Low
+                    guard small(m) else Low
                     Accepted { at = n }
                 }
                 """;
-        Compilation compilation = Compilation.ofSource(model, "Main");
+        Compilation compilation =
+                Compilation.ofSources(List.of(model), ModulePath.of(published));
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         BehaviorEvidence behavior =

@@ -77,6 +77,11 @@ public sealed interface WhichLine {
                                 + rule);
                 case RuleRef.Predicate _ -> throw new IllegalArgumentException(
                         "a rule that tells values apart draws no line to count: " + rule);
+                // A fork is a rule by having been written and not by anything read out of it, so
+                // there is no line of it to be the first, second or any of. A line counted here
+                // would be a reader's own arithmetic filed under the construct that occasioned it.
+                case RuleRef.Fork _ -> throw new IllegalArgumentException(
+                        "a fork whose condition states no rule draws no line to count: " + rule);
             }
         }
     }

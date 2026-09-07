@@ -7,10 +7,11 @@ import souther.compiler.types.WrittenOwner;
  * Which rule of the model, and nothing about how anybody came to be holding it.
  *
  * <p>One answer per way a rule is written. An author writes a rule as a clause of a {@code data}'s
- * invariant, as a comparison in a body, as a predicate applied in a body, or as a clause of a
- * behavior's {@code ensures}; a question about coverage is raised by one of those, and what answers
- * it is a fact about that rule and not about the reading that reached it. So this is what a question
- * is filed under, and it is the same value however many times the rule is read.
+ * invariant, as a comparison in a body, as a predicate applied in a body, as a fork whose condition
+ * is none of those, or as a clause of a behavior's {@code ensures}; a question about coverage is
+ * raised by one of those, and what answers it is a fact about that rule and not about the reading
+ * that reached it. So this is what a question is filed under, and it is the same value however many
+ * times the rule is read.
  *
  * <p><b>A comparison and a predicate are two of them and not one "rule of a body".</b> They divide a
  * position differently — one places a line on an order and the other tells a set of values from the
@@ -85,7 +86,7 @@ public sealed interface RuleRef permits RuleRef.Named, RuleRef.Written {
      * to act on. Nothing here has a name to be looked up by, so a report writes what the rule is
      * and where it stands, and the place is one no reader can invent.
      */
-    sealed interface Written extends RuleRef permits Comparison, Predicate {
+    sealed interface Written extends RuleRef permits Comparison, Fork, Predicate {
 
         /**
          * What a report calls a rule that has no name, which is one word per kind of them.
@@ -109,6 +110,7 @@ public sealed interface RuleRef permits RuleRef.Named, RuleRef.Written {
         default String whatItIs() {
             return switch (this) {
                 case Comparison _ -> "comparison";
+                case Fork _ -> "fork";
                 case Predicate _ -> "predicate";
             };
         }
@@ -168,6 +170,63 @@ public sealed interface RuleRef permits RuleRef.Named, RuleRef.Written {
 
         /** The definition whose body wrote the comparison — not the behavior reading it, which a
          *  helper's comparison has one of per caller. */
+        public WrittenOwner.Body writtenIn() {
+            return (WrittenOwner.Body) origin.owner();
+        }
+    }
+
+    /**
+     * A fork a definition wrote, for the part of what it tests that states no rule anything read.
+     *
+     * <p>The fork itself and not what it tests, which is where this parts from {@link Comparison}.
+     * That one is the rule and the fork around it is where the rule was met; here there is no such
+     * rule to be met — the condition is a value the analysis keeps standing, or a shape no reading
+     * takes apart — and what the author wrote is a fork all the same. A model that forks states
+     * something about its input by forking, so the question the fork raises is raised whether or not
+     * anything worked out what it says.
+     *
+     * <p><b>Only for the parts of a condition nothing else answers for.</b> {@code if x > 0} states
+     * its rule as a comparison, and that comparison is what a question about it is filed under; a
+     * fork there as well would be one construct raising two questions and a report telling a reader
+     * twice. A condition is several things at once — {@code a > 0 && List.isEmpty(xs)} states a
+     * comparison and something nothing read — so one fork may stand beside a comparison of the same
+     * condition, each answering for its own part of it.
+     *
+     * <p><b>And only about the input.</b> Where no part of what such a fork tests names a position,
+     * the fork states nothing about the input and is no rule of it — which is the answer a
+     * comparison of the same shape already gets. Where a part does name one, the question is filed
+     * there and not at a number of it: which number of the position the fork is about is exactly
+     * what went unread ({@link souther.compiler.inputs.FilingCoordinate.AtPosition}).
+     *
+     * @param behavior whose body it is written in, as a comparison's is: two behaviors calling one
+     *                 helper each read its fork, and the readings are what a question is raised per
+     * @param origin   which construct of which module the author wrote, which is what tells one fork
+     *                 from another wherever it is met
+     */
+    record Fork(String behavior, SourceConstructOrigin origin) implements Written {
+
+        public Fork {
+            if (behavior == null || origin == null) {
+                throw new IllegalArgumentException("a fork of a body is one of some behavior's");
+            }
+            // A rule is something an author wrote. A fork this compiler composed — the arm a
+            // `guard` supplies, a lowering's test — states nothing about the model, and a question
+            // filed under one would send a reader to a construct they never wrote.
+            if (!origin.isWritten()) {
+                throw new IllegalArgumentException(
+                        "no source wrote this fork, so it states no rule: " + origin);
+            }
+            // Written by a definition's body, which is the only place a fork stands. A behavior's
+            // own clauses state their rules as clauses and are answered for as such; an ordinal
+            // means nothing outside what it was counted in, so what may be held here is said here.
+            if (!(origin.owner() instanceof WrittenOwner.Body)) {
+                throw new IllegalStateException("a fork of a body was written by a definition,"
+                        + " and this was written by " + origin.owner());
+            }
+        }
+
+        /** The definition whose body wrote the fork — not the behavior reading it, which a helper's
+         *  fork has one of per caller. */
         public WrittenOwner.Body writtenIn() {
             return (WrittenOwner.Body) origin.owner();
         }

@@ -32,10 +32,17 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * term would have to be one answer for both, and what is actually one for both is that the operation
  * answers an {@code Int} (#1027).
  *
- * <p>And {@code Int.abs} is not among them and cannot be. It is an ordinary {@code let} over
- * {@code <} and {@code -}, so the reading takes its body and draws the line the definition draws —
- * at nought, which is where {@code n < 0} is. A term standing for the call would be a second reading
- * of the same call, and the declarations refuse to be written that way.
+ * <p>And {@code Int.abs} is not among them, which is the other half of what this shows. It answers
+ * an {@code Int} like the two above and the library declares nothing about what that number is, so
+ * there is no account for a line to be measured on — the guard is a rule about a value an operation
+ * made, and no line comes of it.
+ *
+ * <p><b>Not a line at nought, which is what the reading used to draw.</b> {@code Int.abs} is written
+ * in this language as a fork at nought, and a reading made over a tree with that body spliced in
+ * took the line the body draws. A caller's model never said anything about nought: the number is
+ * this operation's implementation, and a row owed at it is a row owed for how the library happens
+ * to be written. So what the reading is made over keeps the operation standing, and the line an
+ * author is owed rows for is the one an author wrote.
  */
 class AGuardOnWhatAnOperationAnswersDrawsItsLineThereTest {
 
@@ -70,7 +77,8 @@ class AGuardOnWhatAnOperationAnswersDrawsItsLineThereTest {
         Core body = checked.behaviorBodies().get(behavior);
         InputDomain inputs = compilation.db().ask(new Adequacy.Inputs(module)).value().get(behavior);
         souther.compiler.inputs.Quantities quantities = inputs.quantities(rules);
-        return GuardThresholds.of(body, plan, inputs, rules).thresholds().stream()
+        return GuardThresholds.of(behavior, checked.analysisBodies().get(behavior), body, plan,
+                        inputs, rules).thresholds().stream()
                 .<String>map(each -> each.term() + " at "
                         + (each.value() == null ? "nowhere" : each.value().key()) + " on "
                         + quantities.ordersOf(each.term()).answered())
@@ -96,14 +104,19 @@ class AGuardOnWhatAnOperationAnswersDrawsItsLineThereTest {
     }
 
     /**
-     * A guard on an operation the language writes out is read through it.
+     * And a guard on an operation the language writes out draws no line here.
      *
-     * <p>Not a gap. {@code Int.abs(n) > 10} is {@code (if n < 0 then 0 - n else n) > 10}, and what
-     * the reading takes from it is the line the definition draws at nought. That is more than a term
-     * standing for the call could say, which is why such an operation may not declare one.
+     * <p>Nothing declares what {@code Int.abs} answers of the number it is given, so there is no
+     * account the line could be measured on and the rule is about a value an operation made. That
+     * is a reading short of what the model states, and it is reported as one — where a line at
+     * nought, taken from how the library is written, was a row owed at a number the author's model
+     * never mentions.
+     *
+     * <p>What would place a line here is a statement about the operation, said where the operation
+     * is declared. Which is the same thing the two above have and this one does not.
      */
     @Test
-    void aGuardOnAnOperationWrittenInTheLanguageIsReadThroughIt() {
-        assertEquals(List.of("n at 0 on Whole[]"), thresholdsOf("howFar"));
+    void aGuardOnAnOperationWrittenInTheLanguageDrawsNoLine() {
+        assertEquals(List.of(), thresholdsOf("howFar"));
     }
 }

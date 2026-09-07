@@ -6,6 +6,7 @@ import souther.compiler.observe.RowIdentity;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
+import souther.compiler.types.ExpansionSite;
 import souther.compiler.types.MapKeyRepresentation;
 import souther.compiler.types.LeafScalar;
 import souther.compiler.types.SourceConstructOrigin;
@@ -1401,9 +1402,15 @@ public interface Hir {
      * <p>{@code body} is the callee's, with each parameter read as the binding or the function it was
      * given. It is the only slot holding code that runs: what {@code given} holds is already inside
      * it wherever the callee applies it, and is kept here so the signature can be read against it.
+     *
+     * <p>{@code at} is where this copy is, and it is here rather than read off {@code application}.
+     * What a binding belongs to is a chain the passes wrote and count within; where a copy is is the
+     * call the source settles, and a reader that took the second from the first would be reading an
+     * identity out of a value that says how the compiler ran. The two answer about one call and are
+     * not the same answer to give.
      */
-    record Expansion(ValueName callee, BindingOwner application, List<Bound> bound,
-                     List<Given> given, RetType declaredReturn, Expr body,
+    record Expansion(ValueName callee, BindingOwner application, ExpansionSite at,
+                     List<Bound> bound, List<Given> given, RetType declaredReturn, Expr body,
                      SourcePos pos, Region region) implements Expr {
 
         /**
@@ -2512,7 +2519,8 @@ public interface Hir {
                             region);
             case LetIn x -> new LetIn(x.binder(), x.value(), x.declaredType(), x.annotated(),
                     x.opens(), x.body(), x.pos(), region);
-            case Expansion x -> new Expansion(x.callee(), x.application(), x.bound(), x.given(),
+            case Expansion x -> new Expansion(x.callee(), x.application(), x.at(), x.bound(),
+                    x.given(),
                     x.declaredReturn(), x.body(), x.pos(), region);
             case Block x -> new Block(x.params(), x.body(), x.rule(), x.pos(), region);
             case ListLit x -> new ListLit(x.elements(), x.origin(), x.pos(), region);
@@ -2608,7 +2616,7 @@ public interface Hir {
                 });
                 Expr body = atExpr.apply(ex.body());
                 yield bound == ex.bound() && body == ex.body() ? ex
-                        : new Expansion(ex.callee(), ex.application(), bound, ex.given(),
+                        : new Expansion(ex.callee(), ex.application(), ex.at(), bound, ex.given(),
                                 ex.declaredReturn(), body, ex.pos(), ex.region());
             }
             case Block bl -> {

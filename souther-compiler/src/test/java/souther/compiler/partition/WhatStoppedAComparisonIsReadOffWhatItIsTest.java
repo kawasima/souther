@@ -65,17 +65,23 @@ class WhatStoppedAComparisonIsReadOffWhatItIsTest {
     }
 
     /**
-     * An operation the library writes in this language is not one of those, and is not an oversight
-     * here. {@code Int.abs} has a body, so what stands in the tree by the time anything reads it is
-     * the arithmetic that body wrote and not a call — and what stopped the reading is that form.
+     * An operation the library writes in this language is one of those all the same.
      *
-     * <p>Which is also where the line at zero in this model comes from. Whether a comparison an
-     * author cannot open should place one is a question about who owns a partition's contributions,
-     * and it is not this one.
+     * <p>{@code Int.abs} has a body, and that body is not what the reading of rules looks at. The
+     * tree such a reading is made over keeps the operation standing, so what the author wrote —
+     * a comparison against what an operation answered — is what is there to be read, and the word
+     * is the same word every other operation gets.
+     *
+     * <p><b>Which is a decision about who owns a partition's contributions, taken here.</b> The
+     * comparisons inside {@code Int.abs} are that operation's implementation, and a caller does not
+     * owe rows for them: a line at nought came out of the body forking there, and the model that
+     * called it never said anything about nought. So the caller's rule is read for what the caller
+     * wrote, and what {@code abs} does to the values is a fact about the operation — one this
+     * compiler may learn to state, and until it does, this is what the reading comes to.
      */
     @Test
-    void anOperationWrittenInThisLanguageIsTheArithmeticItsBodyWrote() {
-        assertEquals(List.of(UndividedPosition.Reason.UNSUPPORTED_SYNTAX),
+    void anOperationWrittenInThisLanguageIsAnOperationLikeAnyOther() {
+        assertEquals(List.of(UndividedPosition.Reason.RULE_ABOUT_A_DERIVED_VALUE),
                 whyAt(guard("a: Int", "Int.abs(a) > 10"), "a"));
     }
 

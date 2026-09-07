@@ -2,7 +2,7 @@ package souther.compiler.check;
 
 import souther.compiler.semantics.NumericResult;
 import souther.compiler.core.Core;
-import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.Type;
 
 import java.math.BigDecimal;
@@ -41,7 +41,7 @@ final class TheOtherCase {
                 result.unless().argument(), Terms.operationOf(called)));
         return new Core.Binary(result.unless().op(), argument,
                 numberOf(result.unless().than(), argument.type(), argument.pos()),
-                SourceConstructOrigin.unwritten(), Type.BOOL, argument.pos());
+                ConstructOccurrence.unwritten(), Type.BOOL, argument.pos());
     }
 
     /** The type the number's case carries, or null where {@code called} answers no number as a

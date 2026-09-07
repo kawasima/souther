@@ -3,7 +3,7 @@ package souther.compiler.check;
 import souther.compiler.DefaultStdlib;
 import souther.compiler.types.BinOp;
 import souther.compiler.ast.Hir;
-import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingId;
@@ -60,7 +60,7 @@ class OneValueIsOneLocationHoweverItWasSpelledTest {
         assertNull(of(new Core.Int(1, Type.INT, POS)));
         assertNull(of(new Core.Binary(BinOp.ADD,
                 new Core.Int(1, Type.INT, POS), new Core.Int(2, Type.INT, POS),
-                SourceConstructOrigin.unwritten(), Type.INT, POS)));
+                ConstructOccurrence.unwritten(), Type.INT, POS)));
     }
 
     private static Core read(BindingId binding, String spelledAs) {

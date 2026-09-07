@@ -71,6 +71,8 @@ class OneRuleIsCalledOneThingOnBothSurfacesTest {
                         "c"),
                 new RuleRef.Comparison("b",
                         new SourceConstructOrigin(body, 1, 0, SourceConstruct.BINARY)),
+                new RuleRef.Fork("b",
+                        new SourceConstructOrigin(body, 3, 0, SourceConstruct.IF)),
                 new RuleRef.Predicate("b",
                         new SourceConstructOrigin(body, 2, 0, SourceConstruct.CALL)));
     }

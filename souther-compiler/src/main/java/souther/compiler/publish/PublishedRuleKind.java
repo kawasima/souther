@@ -20,7 +20,11 @@ public enum PublishedRuleKind {
     COMPARISON("comparison"),
 
     /** A rule that tells a set of the values at a position from the rest, and draws no line. */
-    PREDICATE("predicate");
+    PREDICATE("predicate"),
+
+    /** A fork whose condition states none of the others, which is the model saying it divides on
+     *  something this compiler did not read. */
+    FORK("fork");
 
     private final String word;
 
@@ -43,6 +47,7 @@ public enum PublishedRuleKind {
     public static PublishedRuleKind of(RuleRef.Written rule) {
         return switch (rule) {
             case RuleRef.Comparison _ -> COMPARISON;
+            case RuleRef.Fork _ -> FORK;
             case RuleRef.Predicate _ -> PREDICATE;
         };
     }

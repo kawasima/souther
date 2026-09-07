@@ -59,7 +59,7 @@ public final class BinaryElaborator {
         Core right = operand(bin.right(), bin, env, ctx);
         return switch (bin.op()) {
             // both operands were asked for a Bool where they were read
-            case AND, OR -> new Core.Binary(bin.op(), left, right, bin.origin(), Type.BOOL, bin.pos());
+            case AND, OR -> new Core.Binary(bin.op(), left, right, ctx.occurrenceOf(bin.origin()), Type.BOOL, bin.pos());
             case LT, LE, GT, GE -> {
                 // The ordered primitives: Int numerically, String lexicographically, Decimal by
                 // value, Date/DateTime in time. Unlike Elm (which orders only Int/Float/Char/String
@@ -73,7 +73,7 @@ public final class BinaryElaborator {
                     throw CompileException.of(Diagnostic
                                     .at(bin.pos()).say(new TypeMessage.ComparisonNeedsOrderedValuesOfOneType(Type.show(lt), Type.show(rt))).build());
                 }
-                yield new Core.Binary(bin.op(), left, right, bin.origin(), Type.BOOL, bin.pos());
+                yield new Core.Binary(bin.op(), left, right, ctx.occurrenceOf(bin.origin()), Type.BOOL, bin.pos());
             }
             case ADD, SUB, MUL, DIV -> {
                 // `+ - * /` work on two Int or two Decimal operands (spec
@@ -94,7 +94,7 @@ public final class BinaryElaborator {
                         // One type against another: the found-versus-expected block says it better
                         // than a sentence would, and requireType raises or absorbs it.
                         Elaborator.requireType(bin.right(), rt, lt, ctx.symbols(), "operand of arithmetic");
-                        yield new Core.Binary(bin.op(), left, right, bin.origin(), lt, bin.pos());
+                        yield new Core.Binary(bin.op(), left, right, ctx.occurrenceOf(bin.origin()), lt, bin.pos());
                     }
                     case ArithmeticCheck.Refused no -> throw refused(bin, no.refusal(), lt, rt);
                 };
@@ -106,7 +106,7 @@ public final class BinaryElaborator {
                 Type lraw = left.type();
                 Type rraw = right.type();
                 if (lraw == Type.STRING && rraw == Type.STRING) {
-                    yield new Core.Binary(bin.op(), left, right, bin.origin(), Type.STRING, bin.pos());
+                    yield new Core.Binary(bin.op(), left, right, ctx.occurrenceOf(bin.origin()), Type.STRING, bin.pos());
                 }
                 // A bottom operand ({@code Nothing}) is a list read from an accumulator an empty
                 // collection seed grows — the value at a key of a `Map.empty`-seeded fold, whose element
@@ -134,7 +134,7 @@ public final class BinaryElaborator {
                                     .hint(new TypeMessage.MakeEveryElementTheSameType())
                                     .say(new TypeMessage.TheTwoListsHoldDifferentElements()).build());
                 }
-                yield new Core.Binary(bin.op(), left, right, bin.origin(), Type.list(element), bin.pos());
+                yield new Core.Binary(bin.op(), left, right, ctx.occurrenceOf(bin.origin()), Type.list(element), bin.pos());
             }
             case EQ, NE -> {
                 Type lt = left.type();
@@ -174,7 +174,7 @@ public final class BinaryElaborator {
                                     
                                     .say(new TypeMessage.TheseTwoCannotBeCompared(Type.show(lt, rt), Type.show(rt, lt))).build());
                 }
-                yield new Core.Binary(bin.op(), left, right, bin.origin(), Type.BOOL, bin.pos());
+                yield new Core.Binary(bin.op(), left, right, ctx.occurrenceOf(bin.origin()), Type.BOOL, bin.pos());
             }
         };
     }
@@ -295,9 +295,10 @@ public final class BinaryElaborator {
         // A newtype is a declaration a module wrote, which is what having a base says of it; the
         // pattern is what used to be an unchecked cast below.
         if (base == null || !(result instanceof Type.Ref(TypeSymbol.AtModule wrapper))) {
-            return new Core.Binary(bin.op(), left, right, bin.origin(), result, bin.pos());
+            return new Core.Binary(bin.op(), left, right, ctx.occurrenceOf(bin.origin()), result, bin.pos());
         }
-        Core computed = new Core.Binary(bin.op(), opened(left, ctx), opened(right, ctx), bin.origin(),
+        Core computed = new Core.Binary(bin.op(), opened(left, ctx), opened(right, ctx),
+                ctx.occurrenceOf(bin.origin()),
                 base, bin.pos());
         return new Core.Construct(wrapper,
                 List.of(new Core.FieldValue(WRAPPED, computed, bin.pos())), result, bin.pos());

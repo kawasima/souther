@@ -1,6 +1,7 @@
 package souther.compiler.core;
 
 import souther.compiler.check.CoreBinders;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.WrittenOwner;
 import souther.compiler.ast.Hir;
 import souther.compiler.diag.SourcePos;
@@ -110,7 +111,7 @@ class EverySlotIsAChildTest {
         Core.IfConstructed attempt = new Core.IfConstructed(construction(),
                 binder("p"), new Core.Int(0, Type.INT, POS),
                 List.of(new Core.ElseArm(Optional.empty(), new Core.Int(1, Type.INT, POS))),
-                ORIGIN, Type.INT, POS, java.util.List.of());
+                ConstructOccurrence.asWritten(ORIGIN), Type.INT, POS, List.of());
 
         assertTrue(childrenOf(attempt).stream().anyMatch(c -> c instanceof Core.Construct),
                 "the construction itself, rather than the field values inside it");
@@ -121,7 +122,7 @@ class EverySlotIsAChildTest {
         Core.IfConstructed attempt = new Core.IfConstructed(construction(),
                 binder("p"),
                 new Core.Apply(read("f", 1), List.of(), Type.INT, POS),
-                List.of(), ORIGIN, Type.INT, POS, java.util.List.of());
+                List.of(), ConstructOccurrence.asWritten(ORIGIN), Type.INT, POS, List.of());
 
         List<String> asExpressions = new ArrayList<>();
         List<String> asNames = new ArrayList<>();

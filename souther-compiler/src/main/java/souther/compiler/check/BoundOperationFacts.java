@@ -2,6 +2,7 @@ package souther.compiler.check;
 
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.semantics.Accumulation;
+import souther.compiler.semantics.AnswerAspect;
 import souther.compiler.semantics.BuiltFrom;
 import souther.compiler.semantics.DefinitionCase;
 import souther.compiler.semantics.NumericResult;
@@ -239,6 +240,15 @@ public final class BoundOperationFacts {
     /** The operations that are predicates over what a container holds. */
     public Set<ValueName> readsItsContainer() {
         return ones(BoundOperationFact.ReadsItsContainer.class);
+    }
+
+    /** Which argument {@code aspect} of {@code operation}'s answer turns on, or null where the
+     *  library says nothing about what decides it. */
+    public BoundOperationFact.TurnsOnWhetherAnArgumentHolds turnsOnWhetherAnArgumentHolds(
+            ValueName operation, AnswerAspect aspect) {
+        BoundOperationFact.TurnsOnWhetherAnArgumentHolds held =
+                one(BoundOperationFact.TurnsOnWhetherAnArgumentHolds.class, operation);
+        return held == null || held.aspect() != aspect ? null : held;
     }
 
     /** Where {@code operation}'s predicate is stated over a projection, or null where it is stated

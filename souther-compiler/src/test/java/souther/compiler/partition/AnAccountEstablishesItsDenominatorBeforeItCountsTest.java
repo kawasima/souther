@@ -2,6 +2,7 @@ package souther.compiler.partition;
 
 import souther.compiler.coverage.ComparisonEmissionSite;
 import souther.compiler.types.WrittenOwner;
+import souther.compiler.coverage.ComparisonOccurrence;
 import souther.compiler.coverage.Numberings;
 
 import org.junit.jupiter.api.Test;
@@ -104,13 +105,14 @@ class AnAccountEstablishesItsDenominatorBeforeItCountsTest {
     private static LineOrigin origin() {
         return new LineOrigin.ComparisonOrigin(
                 new LineOrigin.ComparisonOrigin.Read(
-                        new souther.compiler.coverage.ComparisonOccurrence("example.one", "f", 0),
                         new RuleRef.Comparison("f",
                                 new souther.compiler.types.SourceConstructOrigin(
                                         new WrittenOwner.Body("example.one", "f"), 2, 0,
                                         souther.compiler.types.SourceConstruct.BINARY)),
                         Citation.of(new souther.compiler.diag.SourcePos(1, 1)),
-                        WHERE),
+                        List.of(new LineOrigin.ComparisonOrigin.Watched(
+                                new ComparisonOccurrence(
+                                        "example.one", "f", 0), WHERE))),
                 new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(Towards.BELOW, true)));
     }
 }

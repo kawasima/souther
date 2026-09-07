@@ -1711,6 +1711,9 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case RULE_ABOUT_A_DERIVED_VALUE ->
                     "it is about a value made from this one, and what it says about the values here"
                             + " is not worked out";
+            case RULE_ABOUT_AN_ELEMENT_OF_SEVERAL_SEQUENCES ->
+                    "it is written inside a block handed to more than one walk, so it is about an"
+                            + " element of this position or of another and nothing says which";
             case RULE_CUTS_NOTHING ->
                     "it was read to the end and cuts nothing this position appears in";
             case RULE_TELLS_NOTHING_APART ->
@@ -2727,6 +2730,18 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 into.put("ordinal", it.origin().ordinal());
                 into.put("lowered", it.origin().lowered());
             }
+            // The fork, by the same coordinates a comparison is told apart by: a fork is a construct
+            // of a definition, numbered there, and read by every behavior that calls it. Which
+            // construct it is is the ordinal's to say, as a comparison's is — a document that also
+            // wrote the keyword would be publishing what the source spells rather than what tells
+            // one rule from another.
+            case RuleRef.Fork it -> {
+                into.put("declaredIn", it.writtenIn().module());
+                into.put("definition", it.writtenIn().definition());
+                into.put("behavior", it.behavior());
+                into.put("ordinal", it.origin().ordinal());
+                into.put("lowered", it.origin().lowered());
+            }
             // An application the author wrote, told from the others by which application it is —
             // which takes what it was counted within, the way a comparison's does. What differs
             // from a comparison is that a behavior writes one of these in two places: a definition
@@ -2779,6 +2794,10 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // version 3 carry `guard` here; the word moved with the version rather than under one,
             // because a document already written groups by what it was told.
             case RuleRef.Comparison _ -> "comparison";
+            // A fork whose condition states none of the others. Its own word because what a reader
+            // does about it differs from all of them: there is no line and no set of values here,
+            // only that the model forks on something this compiler did not read.
+            case RuleRef.Fork _ -> "fork";
             // Its own word beside that one, and not the same word. Both are rules a body writes,
             // and what a reader does about them differs: a comparison puts a line on the order the
             // values are counted on, and this tells a set of them from the rest.

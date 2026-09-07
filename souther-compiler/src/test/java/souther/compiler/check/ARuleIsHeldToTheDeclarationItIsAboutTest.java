@@ -2,9 +2,11 @@ package souther.compiler.check;
 
 import souther.compiler.DefaultStdlib;
 import souther.compiler.core.CompleteSignature;
+import souther.compiler.semantics.AnswerAspect;
 import souther.compiler.semantics.ArgumentRef;
 import souther.compiler.semantics.BuiltFrom;
 import souther.compiler.semantics.ElementLineage;
+import souther.compiler.semantics.OperationFact;
 import souther.compiler.semantics.SizeAgainstItsSource;
 import souther.compiler.types.ValueName;
 
@@ -51,6 +53,78 @@ class ARuleIsHeldToTheDeclarationItIsAboutTest {
                         SizeAgainstItsSource.AT_MOST).from(),
                 new ArgumentRef.TheContainer(), TypeRequirement.CONTAINER,
                 "the container something is built from");
+    }
+
+    /** A rule saying a side of the answer turns on whether an argument holds, bound to the
+     *  declaration it is about. */
+    private static void bindTurnsOn(String operation,
+                                    AnswerAspect aspect,
+                                    ArgumentRef argument) {
+        CompleteSignature declaration = declared(operation);
+        OperationFactBinder.holdTurnsOn(declaration, declaration.declaring(),
+                new OperationFact.TurnsOnWhetherAnArgumentHolds(
+                        aspect, argument));
+    }
+
+    /**
+     * A closure that answers something other than a truth decides no "whether it holds".
+     *
+     * <p>The two the library has are the ones this compiler must not credit. {@code List.distinctBy}
+     * answers fewer where its key sends two elements to one, so the key does decide a count — and a
+     * key answers whichever value it projects rather than holding or not. {@code List.filterMap}
+     * answers fewer where its closure answered nothing, and what decides that is whether a value is
+     * there, which is not a truth either.
+     *
+     * <p>Written as this fact, both would be followed as one: a rule inside such a closure would be
+     * credited with deciding whether the answer is empty, and a model nothing read would come back
+     * read. So they are refused where the fact meets the signature.
+     */
+    @Test
+    void aClosureAnsweringSomethingOtherThanATruthIsRefused() {
+        IllegalStateException key = assertThrows(IllegalStateException.class,
+                () -> bindTurnsOn("List.distinctBy",
+                        AnswerAspect.EMPTINESS,
+                        new ArgumentRef.TheClosure()));
+        assertTrue(key.getMessage().contains("whether it holds is not something to read"),
+                key.getMessage());
+
+        IllegalStateException optional = assertThrows(IllegalStateException.class,
+                () -> bindTurnsOn("List.filterMap",
+                        AnswerAspect.EMPTINESS,
+                        new ArgumentRef.TheClosure()));
+        assertTrue(optional.getMessage().contains("whether it holds is not something to read"),
+                optional.getMessage());
+    }
+
+    /** And a side of the answer the answer does not have. */
+    @Test
+    void aSideTheAnswerDoesNotHaveIsRefused() {
+        IllegalStateException truth = assertThrows(IllegalStateException.class,
+                () -> bindTurnsOn("List.filter",
+                        AnswerAspect.TRUTH,
+                        new ArgumentRef.TheClosure()));
+        assertTrue(truth.getMessage().contains("no truth for an argument to decide"),
+                truth.getMessage());
+
+        IllegalStateException empty = assertThrows(IllegalStateException.class,
+                () -> bindTurnsOn("List.any",
+                        AnswerAspect.EMPTINESS,
+                        new ArgumentRef.TheClosure()));
+        assertTrue(empty.getMessage().contains("holds nothing for an argument to decide"),
+                empty.getMessage());
+    }
+
+    /** And the ones the library really does state, which bind. */
+    @Test
+    void theOnesTheLibraryStatesBind() {
+        assertDoesNotThrow(() -> bindTurnsOn("List.filter",
+                AnswerAspect.EMPTINESS,
+                new ArgumentRef.TheClosure()));
+        assertDoesNotThrow(() -> bindTurnsOn("List.any",
+                AnswerAspect.TRUTH,
+                new ArgumentRef.TheClosure()));
+        assertDoesNotThrow(() -> bindTurnsOn("Bool.not",
+                AnswerAspect.TRUTH, new ArgumentRef.At(0)));
     }
 
     @Test

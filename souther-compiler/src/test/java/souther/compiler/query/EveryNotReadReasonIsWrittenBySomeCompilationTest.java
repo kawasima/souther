@@ -299,6 +299,18 @@ class EveryNotReadReasonIsWrittenBySomeCompilationTest {
                 behavior f : (a: DateTime, b: DateTime) -> Answer
                 let f (a, b) = if DateTime.minutesBetween(a, b) > 10 then Yes else No
                 """.formatted(ANSWER)));
+        // One block written once and handed to two walks. The name it reads the element under
+        // holds an element of a different sequence on each run, so the rule inside it is about one
+        // of the two and nothing here says which — and each of them is told so.
+        out.put(UndividedPosition.Reason.RULE_ABOUT_AN_ELEMENT_OF_SEVERAL_SEQUENCES, of("""
+                module m
+                %s
+                behavior f : (xs: List<Int>, ys: List<Int>) -> Answer
+                let f (xs, ys) = {
+                    let positive = (x) -> x > 0
+                    if List.any(positive, xs) && List.any(positive, ys) then Yes else No
+                }
+                """.formatted(ANSWER)));
         // Read to the end, and the positions cancel: the rule is about the position and the
         // quantity it cuts is nothing.
         out.put(UndividedPosition.Reason.RULE_CUTS_NOTHING, of("""

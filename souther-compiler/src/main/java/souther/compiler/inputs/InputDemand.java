@@ -89,6 +89,11 @@ public record InputDemand(List<TermPath> paths) {
         switch (names.pathOf(e, symbols)) {
             case PathResolution.At(var at) -> found.add(at);
             case PathResolution.NotAPosition _ -> { }
+            // A name that may stand at a place stands there on some run, so each of them is asked
+            // for. Which of them this read is of is what could not be worked out, and taking one of
+            // them for the answer would leave the others unasked wherever the model reads nothing
+            // else of them.
+            case PathResolution.MayStandAt(var among) -> found.addAll(among);
         }
         switch (e) {
             // The body of a `let` is where the name stands for what was bound to it.

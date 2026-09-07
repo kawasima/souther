@@ -3,6 +3,7 @@ package souther.compiler.core;
 import souther.compiler.types.BinOp;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.CaseSelector;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.ApplicationOrigin;
 import souther.compiler.types.ReferenceOrigin;
 import souther.compiler.types.SourceConstructOrigin;
@@ -143,9 +144,26 @@ public sealed interface Core {
 
     record FieldAccess(Core target, String field, Type type, SourcePos pos) implements Core {}
 
-    /** {@code origin} is where the comparison was written; see {@link souther.compiler.ast.Hir.Binary}. */
-    record Binary(BinOp op, Core left, Core right, SourceConstructOrigin origin, Type type,
-                  SourcePos pos) implements Core {}
+    /**
+     * {@code occurrence} is which comparison of the model this is: the construct the source wrote
+     * (see {@link souther.compiler.ast.Hir.Binary}) and the copy of the body it stands in. Both,
+     * because a helper spliced into two calls holds one written comparison twice, and a reader
+     * holding only the first would be reading one of them about the other.
+     */
+    record Binary(BinOp op, Core left, Core right, ConstructOccurrence occurrence, Type type,
+                  SourcePos pos) implements Core {
+
+        /**
+         * What the source wrote, for a reader whose question is about the construct alone.
+         *
+         * <p>Null where the term has had its places taken out ({@link #withoutItsPlace}), which is
+         * where the occurrence is: what that walk makes is a value two readings of one term compare
+         * equal, and both halves of an occurrence move with edits the term cannot see.
+         */
+        public SourceConstructOrigin origin() {
+            return occurrence == null ? null : occurrence.origin();
+        }
+    }
 
     /**
      * What a call applies.
@@ -496,16 +514,31 @@ public sealed interface Core {
     record Apply(Read fn, List<Core> args, Type type, SourcePos pos) implements Core {}
 
     /**
-     * {@code origin} is the fork the source wrote this as, carried from the AST so that the copies
-     * an expansion made of one fork are one coverage obligation ({@link SourceConstructOrigin}).
+     * {@code occurrence} is which fork of the model this is: the fork the source wrote it as,
+     * carried from the AST so that the copies an expansion made of one fork are one coverage
+     * obligation ({@link SourceConstructOrigin}), and the copy of the body it stands in
+     * ({@link souther.compiler.types.ExpansionLineage}).
      *
-     * <p>{@code expansion} is which copy of a body this fork stands in, innermost first, empty where it
-     * stands in the body as written. What settles a fork can be a rule the caller supplied, and which rule that
-     * was is a fact about this copy — so it travels with the fork rather than being recovered from
-     * whatever names the fork's own subtree happens to hold. A rewrite that keeps a fork keeps this.
+     * <p>{@code expansion} is what a copy is called where the rules a call supplied are looked up,
+     * innermost first, empty where the fork stands in the body as written. What settles a fork can
+     * be a rule the caller supplied, and which rule that was is recorded against the copy's bindings
+     * — so it travels with the fork rather than being recovered from whatever names the fork's own
+     * subtree happens to hold. A rewrite that keeps a fork keeps this.
+     *
+     * <p><b>Beside the occurrence and not folded into it.</b> The two say which copy in two
+     * vocabularies, and each is the vocabulary its reader already speaks: what a construct is a copy
+     * of is settled by the calls the source wrote, and what a binding belongs to is the inlining
+     * pass's own answer, which is what the table of supplied rules is keyed by. Either derived from
+     * the other would put one reader's counting inside the other's identity.
      */
-    record If(Core cond, Core then, Core els, SourceConstructOrigin origin, Type type, SourcePos pos,
+    record If(Core cond, Core then, Core els, ConstructOccurrence occurrence, Type type,
+              SourcePos pos,
               List<souther.compiler.types.BindingOwner> expansion) implements Core {
+
+        /** What the source wrote, null where the places were taken out, as for {@link Binary}. */
+        public SourceConstructOrigin origin() {
+            return occurrence == null ? null : occurrence.origin();
+        }
     }
 
     /**
@@ -519,14 +552,17 @@ public sealed interface Core {
      * the {@code Result} carries selects one; the checker has already established that every named
      * clause is answered, so one always matches.
      *
-     * <p>{@code expansion} is which copy of a body this fork stands in, innermost first, empty where it
-     * stands in the body as written. What settles a fork can be a rule the caller supplied, and which rule that
-     * was is a fact about this copy — so it travels with the fork rather than being recovered from
-     * whatever names the fork's own subtree happens to hold. A rewrite that keeps a fork keeps this.
+     * <p>{@code occurrence} and {@code expansion} say which fork of the model this is and what its
+     * copy is called where supplied rules are looked up, as they do for {@link If}.
      */
     record IfConstructed(Construct construct, Binder binder, Core then, List<ElseArm> els,
-                         SourceConstructOrigin origin, Type type, SourcePos pos,
+                         ConstructOccurrence occurrence, Type type, SourcePos pos,
                          List<souther.compiler.types.BindingOwner> expansion) implements Core {
+
+        /** What the source wrote, null where the places were taken out, as for {@link Binary}. */
+        public SourceConstructOrigin origin() {
+            return occurrence == null ? null : occurrence.origin();
+        }
     }
 
     /** One departure of an attempted construction: the clause it answers ({@link Optional#empty()}
@@ -752,13 +788,17 @@ public sealed interface Core {
     }
 
     /**
-     * {@code expansion} is which copy of a body this fork stands in, innermost first, empty where it
-     * stands in the body as written. What settles a fork can be a rule the caller supplied, and which rule that
-     * was is a fact about this copy — so it travels with the fork rather than being recovered from
-     * whatever names the fork's own subtree happens to hold. A rewrite that keeps a fork keeps this.
+     * {@code occurrence} and {@code expansion} say which fork of the model this is and what its copy
+     * is called where supplied rules are looked up, as they do for {@link If}.
      */
-    record Match(Core scrutinee, List<Case> cases, SourceConstructOrigin origin, Type type, SourcePos pos,
+    record Match(Core scrutinee, List<Case> cases, ConstructOccurrence occurrence, Type type,
+                 SourcePos pos,
                  List<souther.compiler.types.BindingOwner> expansion) implements Core {
+
+        /** What the source wrote, null where the places were taken out, as for {@link Binary}. */
+        public SourceConstructOrigin origin() {
+            return occurrence == null ? null : occurrence.origin();
+        }
     }
 
     /** {@code unreachable "reason"}: the position it stands in gets no value, and the reason is the
@@ -812,7 +852,7 @@ public sealed interface Core {
                 Core left = atExpr.apply(b.left());
                 Core right = atExpr.apply(b.right());
                 yield left == b.left() && right == b.right() ? b
-                        : new Binary(b.op(), left, right, b.origin(), b.type(), b.pos());
+                        : new Binary(b.op(), left, right, b.occurrence(), b.type(), b.pos());
             }
             case Call c -> {
                 List<Core> args = each(c.args(), atExpr);
@@ -838,7 +878,7 @@ public sealed interface Core {
                 Core then = atExpr.apply(iff.then());
                 Core els = atExpr.apply(iff.els());
                 yield cond == iff.cond() && then == iff.then() && els == iff.els() ? iff
-                        : new If(cond, then, els, iff.origin(), iff.type(), iff.pos(),
+                        : new If(cond, then, els, iff.occurrence(), iff.type(), iff.pos(),
                                 iff.expansion());
             }
             case IfConstructed ic -> {
@@ -849,7 +889,7 @@ public sealed interface Core {
                     return body == arm.body() ? arm : new ElseArm(arm.clause(), body);
                 });
                 yield construct == ic.construct() && then == ic.then() && els == ic.els() ? ic
-                        : new IfConstructed(construct, ic.binder(), then, els, ic.origin(),
+                        : new IfConstructed(construct, ic.binder(), then, els, ic.occurrence(),
                                 ic.type(), ic.pos(), ic.expansion());
             }
             case LetIn li -> {
@@ -885,7 +925,7 @@ public sealed interface Core {
                 Core scrutinee = atExpr.apply(m.scrutinee());
                 List<Case> cases = each(m.cases(), c -> c.answering(atExpr.apply(c.body())));
                 yield scrutinee == m.scrutinee() && cases == m.cases() ? m
-                        : new Match(scrutinee, cases, m.origin(), m.type(), m.pos(),
+                        : new Match(scrutinee, cases, m.occurrence(), m.type(), m.pos(),
                                 m.expansion());
             }
         };

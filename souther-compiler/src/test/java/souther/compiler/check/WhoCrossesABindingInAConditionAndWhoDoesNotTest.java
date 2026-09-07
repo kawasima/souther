@@ -13,7 +13,7 @@ import souther.compiler.query.ReadAs;
 import souther.compiler.types.BinOp;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.BindingOwner;
-import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.Type;
 
 import org.junit.jupiter.api.Test;
@@ -78,7 +78,7 @@ class WhoCrossesABindingInAConditionAndWhoDoesNotTest {
     }
 
     private static Core.Binary binary(BinOp op, Core left, Core right) {
-        return new Core.Binary(op, left, right, SourceConstructOrigin.unwritten(), Type.BOOL, POS);
+        return new Core.Binary(op, left, right, ConstructOccurrence.unwritten(), Type.BOOL, POS);
     }
 
     /** `<subject> >= 0`, the rule itself. */

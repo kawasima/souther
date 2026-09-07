@@ -1,8 +1,5 @@
 package souther.compiler.partition;
 
-import souther.compiler.coverage.ComparisonOccurrence;
-import souther.compiler.coverage.CoverageSites;
-
 import java.util.Optional;
 
 /**
@@ -112,22 +109,22 @@ final class BoundaryPolicy {
      * occurrence of a position where the passes stand at different occurrences of one, and at the
      * same values where they do not — and a pass reading anything else is one no line came of.
      *
+     * <p><b>What a run can be observed at is not asked here.</b> Whether the emitter numbered a
+     * place for the comparison is a fact about the tree that runs, and this decides what a model
+     * states, which is read where the language's operations stand. The two were one clause while
+     * one walk answered both; a reading that asked it would be a reading no tree could make on its
+     * own, and a comparison the emitter numbers nothing for would have no reading at all rather
+     * than a reading with nowhere to watch it.
+     *
      * @param live whether what is computed at this position is read on the way to what the behavior
      *             answers with, which is {@link LiveFlow}'s answer carried down the walk
      * @return why the comparison is refused, or empty where a line may be drawn on it. Decided from
      *         what is passed in and nothing else: the reading of the comparison is made by the
      *         caller, and only where this is empty
      */
-    static Optional<NotABoundary> refuses(ComparisonOccurrence comparison, CoverageSites.Plan plan,
-                                          boolean live) {
+    static Optional<NotABoundary> refuses(boolean live) {
         if (!live) {
             return Optional.of(NotABoundary.NOTHING_READS_IT);
-        }
-        // Meeting a line takes getting the comparison to answer, and whether it answered is what a
-        // site records — and the plan numbers no site where the expression the comparison decides
-        // never answers, so a comparison with no site is one no run answers through.
-        if (!plan.instruments(comparison)) {
-            return Optional.of(NotABoundary.NO_RUN_ANSWERS_THROUGH_IT);
         }
         return Optional.empty();
     }

@@ -1,31 +1,39 @@
 package souther.compiler.partition;
 
 import souther.compiler.check.Comparison;
-import souther.compiler.check.PathReachability;
+import souther.compiler.diag.Citation;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
-import souther.compiler.coverage.ComparisonCatalog;
-import souther.compiler.coverage.ComparisonOccurrence;
-import souther.compiler.coverage.CoverageSites;
 import souther.compiler.types.BinOp;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.inputs.InputReading;
 import souther.compiler.inputs.InputReads;
+import souther.compiler.inputs.PathResolution;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 
 /**
  * One reading of a body's comparisons: where each stands, what its names point at, what a row had
  * already satisfied to get there, whether a line may be drawn on it, and what it came to where one
  * may.
  *
- * <p><b>Of the body the backend emits, which is the tree the comparisons of a module are numbered
- * in.</b> A rule stated as one of the language's own operations is not in this tree at all — it has
- * been expanded into what it does — and is read where such operations still stand
- * ({@link souther.compiler.check.AnalysisBody}) by a reading of its own. Two trees and two readings,
- * which is not the same thing as one tree read twice: what each of them carries is where a rule
- * stands in the tree it is in.
+ * <p><b>Of the body the analysis reads, which is the tree the language's own operations stand
+ * in.</b> A rule written over what such an operation answers is a rule of the model, and the tree
+ * the backend emits from has the operation expanded into what it does — so a reading made there
+ * met the comparison after the call was gone, while the rules about strings in the same body were
+ * read where they stand. Two facts about one position came from two walks of two trees, and a
+ * reader wanting both had to know which tree each came from.
+ *
+ * <p>Which leaves the comparisons inside such an operation out, and that is what it means to leave
+ * them out: they are that operation's implementation, and a caller answers for the rules a caller
+ * wrote. Where a run through a comparison is recorded is still the emitted tree's, and the two are
+ * joined on the construct of the model they agree about
+ * ({@link souther.compiler.types.ModelOccurrence}).
  *
  * <p><b>Each comparison is read once, here, and what it came to travels with it.</b> A reader that
  * reports why a comparison bears no line reads the answer off the standing and never reads the
@@ -55,10 +63,67 @@ import java.util.List;
  * out its way established — which is the whole of what makes this per comparison rather than per
  * fork. Everything else evaluates its parts under what stood at it.
  */
-record ComparisonReadings(List<Reading> comparisons) {
+record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
 
     ComparisonReadings {
         comparisons = List.copyOf(comparisons);
+        forks = List.copyOf(forks);
+    }
+
+    /**
+     * A fork the author wrote, the parts of what it tests, and which of them this walk owns.
+     *
+     * <p>Facts and not a verdict. A fork states a rule of its own only where a part of what it
+     * tests is one nothing else answers for, and the readers that could answer are several — a
+     * comparison of the values, the position a part is, a predicate over the strings there — so no
+     * one of them may settle it. What is here is this walk's half: the parts
+     * ({@link ConditionSkeleton}), and the ones this reading claims.
+     *
+     * <p>Read for every author-written fork and not only the ones that look opaque. A reader
+     * joining these with what the other readers found needs the forks they say nothing about as
+     * much as the ones they do, and a list already narrowed here would be this walk deciding the
+     * question on its own evidence.
+     *
+     * @param atoms      what the fork tests, cut into the parts a rule can be about
+     * @param ownedHere  the parts this reading answers for: one it read a comparison at, and one
+     *                   that is a position of the input — a fork on such a part tests the values
+     *                   standing there and its arms are their classes, so the question is the
+     *                   position's
+     */
+    record ForkMet(ConstructOccurrence occurrence, Core condition, Citation at, InputReads reads,
+                   List<Core> atoms, Set<Core> ownedHere) {
+
+        ForkMet {
+            if (occurrence == null || condition == null || at == null) {
+                throw new IllegalArgumentException("a fork of the model is written somewhere");
+            }
+            atoms = List.copyOf(atoms);
+        }
+
+        /**
+         * The parts of this fork this reading does not answer for.
+         *
+         * <p>What the other readers claim is subtracted by whoever holds their answers, which is
+         * where the three meet ({@link BehaviorSetStatements}); this says only which parts are left
+         * over from what was found here.
+         *
+         * <p>Compared by being the nodes the walk met and never by what they hold: a condition
+         * writing one comparison twice writes two parts, and parts compared by their contents would
+         * be one.
+         */
+        List<Core> leftHere() {
+            List<Core> out = new ArrayList<>();
+            for (Core each : atoms) {
+                boolean owned = false;
+                for (Core one : ownedHere) {
+                    owned |= one == each;
+                }
+                if (!owned) {
+                    out.add(each);
+                }
+            }
+            return out;
+        }
     }
 
     /**
@@ -73,33 +138,18 @@ record ComparisonReadings(List<Reading> comparisons) {
      *                reading has no arithmetic for is on the list as a decline, so the two are not
      *                one answer
      */
-    record Reading(ComparisonCatalog.Catalogued catalogued, InputReads reads,
+    record Reading(ConstructOccurrence occurrence, Comparison comparison, Citation at,
+                   InputReads reads,
                    List<OnTheWay> assumed, BoundaryPolicy.Standing standing) {
 
-        /** Which comparison this is a reading of, which is what every reader joins on. */
-        ComparisonOccurrence at() {
-            return catalogued.which();
-        }
-
-        /** What the recognition established: what the comparison placed, and on which two sides. */
-        Comparison comparison() {
-            return catalogued.comparison();
-        }
-    }
-
-    /** What each comparison stands under, filed under the site a run through it is recorded at. */
-    ReachingCuts reaching(CoverageSites.Plan plan) {
-        ReachingCuts.Collected cuts = new ReachingCuts.Collected();
-        for (Reading each : comparisons) {
-            // Only where a run through it is written down. What stands on the way to a comparison
-            // nothing records is a fact about the body all the same, and there is no run for a
-            // reader of this to hold it against.
-            if (plan.instruments(each.at())) {
-                cuts.reached(each.at(), each.assumed());
+        Reading {
+            if (occurrence == null || comparison == null || at == null) {
+                throw new IllegalArgumentException(
+                        "a reading is of some comparison of the model, placed somewhere");
             }
         }
-        return cuts.made();
     }
+
 
     /**
      * What is the same at every comparison of one body: whose body it is, what the plan numbered,
@@ -111,9 +161,7 @@ record ComparisonReadings(List<Reading> comparisons) {
      * reading is one value for the whole of this walk. Put in it, the reading would be copied at
      * every step and asked of whichever copy a reader happened to hold.
      */
-    private record Body(CoverageSites.Plan plan,
-                        InputReading read,
-                        PathReachability.Answers arrives) {
+    private record Body(String behavior, InputReading read) {
 
         Symbols symbols() {
             return read.symbols();
@@ -127,22 +175,22 @@ record ComparisonReadings(List<Reading> comparisons) {
     /**
      * One reading of {@code body}.
      *
-     * <p>Whose body it is is not asked for: what a reading is of is a comparison the catalog named,
-     * and a name says which behavior's body it stands in. Taken as a parameter beside that, a
-     * caller could read one body under another's name and nothing would refuse it.
+     * <p>Whose body it is is asked for, and it is what a report calls the rules read here. Which
+     * comparison of the model each is comes off the node ({@link ModelOccurrence}) and not from the
+     * name, so the two cannot come apart: a body read under another's name says the wrong thing in a
+     * report and names no other comparison.
      *
-     * <p>{@code arrives} is what the walk of the whole body found reaching each comparison, which is
-     * one of the two domains a line is held against — the declarations leave the other. It is handed
-     * in here because this is where a comparison is read, and a reading of it is made once.
+     * <p><b>Nothing here is asked about the tree that runs.</b> Where a run through a comparison is
+     * recorded, and what a run leaves arriving at its line, are read where the language's operations
+     * are expanded — and this reads where they stand. A reading that took either would be one no
+     * tree could make on its own.
      */
-    static ComparisonReadings of(Core body, CoverageSites.Plan plan,
-                                 InputReading read,
-                                 InputReads reads,
-                                 PathReachability.Answers arrives) {
+    static ComparisonReadings of(String behavior, Core body, InputReading read, InputReads reads) {
         List<Reading> readings = new ArrayList<>();
-        walk(body, new Body(plan, read, arrives), reads,
-                LiveFlow.of(body), List.of(), true, readings);
-        return new ComparisonReadings(readings);
+        List<ForkMet> forks = new ArrayList<>();
+        walk(body, new Body(behavior, read), reads,
+                LiveFlow.of(body), List.of(), true, readings, forks);
+        return new ComparisonReadings(readings, forks);
     }
 
     /**
@@ -152,38 +200,29 @@ record ComparisonReadings(List<Reading> comparisons) {
      *                nothing either
      */
     private static void walk(Core e, Body in, InputReads reads, LiveFlow flow,
-                             List<OnTheWay> assumed, boolean live, List<Reading> out) {
-        CoverageSites.Plan plan = in.plan();
+                             List<OnTheWay> assumed, boolean live, List<Reading> out,
+                             List<ForkMet> forks) {
         Symbols symbols = in.symbols();
         RuleReadingSource ruleSource = in.rules();
-        ComparisonCatalog.Catalogued catalogued = e instanceof Core.Binary binary
-                ? plan.comparisons().at(binary).orElse(null) : null;
-        if (catalogued != null) {
-            // What the catalog holds, kept whole. It carries which comparison this is, what the
-            // recognition established and where it is written, and all three travel to whoever
-            // reads this — taken apart here, a reader wanting one of them again would have to find
-            // its way back to the node, which is the arrangement this replaces.
-            Comparison comparison = catalogued.comparison();
+        // A comparison the source wrote, recognised by the one thing that says what one is
+        // ({@link Comparison#of}). A binary this compiler composed states no rule of the model and
+        // is not one, which is what an unwritten construct says of itself.
+        Comparison comparison = comparisonAt(e);
+        if (comparison != null) {
+            Core.Binary binary = (Core.Binary) e;
+            // Which comparison of the model it is, off the node. The two readings of a body hold
+            // different comparisons and agree about this, so it is what a reader below joins on.
+            ConstructOccurrence stands = binary.occurrence();
+            Citation where = Citation.of(binary.pos());
             // Read only where the policy admits it, and under the names in force here, which is
             // the one environment the comparison is about. `answer` is null: a body has nothing
             // that is the answer.
-            //
-            // And under what arrives at it, which is where a body's comparison differs from a
-            // clause's: it stands somewhere, and what the conditions on the way leave is the other
-            // domain its line is held against. Required and not looked up leniently — the policy
-            // refuses a comparison the plan numbers no site for, so reaching here is the site
-            // existing. Asked as an optional, a policy that stopped proving it would hand the
-            // reading below the answer that restricts nothing, and this stage disagreeing with the
-            // plan would go out as an arrival nobody could project.
-            BoundaryPolicy.Standing standing =
-                    BoundaryPolicy.refuses(catalogued.which(), plan, live)
+            BoundaryPolicy.Standing standing = BoundaryPolicy.refuses(live)
                     .<BoundaryPolicy.Standing>map(BoundaryPolicy.Standing.Refused::new)
                     .orElseGet(() -> new BoundaryPolicy.Standing.Admitted(
-                            ComparisonAssessment.of(catalogued.which().behavior(), comparison,
-                                    catalogued.at(), in.read(), reads,
-                                    null, false,
-                                    in.arrives().arrivalAt(catalogued.which()))));
-            out.add(new Reading(catalogued, reads, assumed, standing));
+                            ComparisonAssessment.of(in.behavior(), comparison, where,
+                                    in.read(), reads, null, false)));
+            out.add(new Reading(stands, comparison, where, reads, assumed, standing));
         }
         switch (e) {
             // The right operand runs only where the left came out the way that leaves the answer
@@ -191,32 +230,64 @@ record ComparisonReadings(List<Reading> comparisons) {
             // any fork above it: there need not be one, and where there is, this is what the fork
             // would have been reading anyway.
             case Core.Binary both when both.op() == BinOp.AND -> {
-                walk(both.left(), in, reads, flow, assumed, live, out);
+                walk(both.left(), in, reads, flow, assumed, live, out, forks);
                 walk(both.right(), in, reads, flow,
-                        taking(both.left(), true, in.read().domain(), reads, assumed, ruleSource), live, out);
+                        taking(both.left(), true, in.read().domain(), reads, assumed, ruleSource),
+                        live, out, forks);
             }
             case Core.Binary either when either.op() == BinOp.OR -> {
-                walk(either.left(), in, reads, flow, assumed, live, out);
+                walk(either.left(), in, reads, flow, assumed, live, out, forks);
                 walk(either.right(), in, reads, flow,
                         taking(either.left(), false, in.read().domain(), reads, assumed, ruleSource),
-                        live, out);
+                        live, out, forks);
             }
             // The condition under what stood above the fork, and each arm under what that arm proves
             // of it. A comparison inside a condition is not below the fork: it runs to decide it.
             case Core.If iff -> {
-                walk(iff.cond(), in, reads, flow, assumed, live, out);
+                walk(iff.cond(), in, reads, flow, assumed, live, out, forks);
+                // What this walk found in the condition, for the reader that decides whether the
+                // fork states a rule of its own. Said of every fork an author wrote, and of none
+                // this compiler composed — a `guard`'s supplied arm and a lowering's test state
+                // nothing about the model.
+                //
+                // And of none whose answer nothing reads. What is computed where no run reads it
+                // divides nothing a row could be held to, which is the same reason a comparison
+                // there draws no line ({@link NotABoundary#NOTHING_READS_IT}) — said of the fork
+                // too, since a fork is a rule for having been written and a rule nothing reaches
+                // is a measure held open over a question no row can answer.
+                if (live && iff.occurrence() != null && iff.origin() != null
+                        && iff.origin().isWritten()) {
+                    // What each part stands for, which is where the readers of it look. The
+                    // cutting is of the shape ({@link ConditionSkeleton}) and stops at a name; what
+                    // the name denotes is the owner's question, and a reader that could not answer
+                    // it would call a fork on a named comparison one nobody read.
+                    List<Core> atoms = new ArrayList<>();
+                    for (Core part : ConditionSkeleton.atoms(iff.cond())) {
+                        atoms.add(reads.denotes(part, symbols).value());
+                    }
+                    Set<Core> owned = Collections.newSetFromMap(new IdentityHashMap<>());
+                    for (Core atom : atoms) {
+                        if (statedElsewhere(atom, reads, symbols).isEmpty()) {
+                            owned.add(atom);
+                        }
+                    }
+                    forks.add(new ForkMet(iff.occurrence(), iff.cond(), Citation.of(iff.pos()),
+                            reads, atoms, owned));
+                }
                 walk(iff.then(), in, reads, flow,
-                        taking(iff.cond(), true, in.read().domain(), reads, assumed, ruleSource), live, out);
+                        taking(iff.cond(), true, in.read().domain(), reads, assumed, ruleSource),
+                        live, out, forks);
                 walk(iff.els(), in, reads, flow,
-                        taking(iff.cond(), false, in.read().domain(), reads, assumed, ruleSource), live, out);
+                        taking(iff.cond(), false, in.read().domain(), reads, assumed, ruleSource),
+                        live, out, forks);
             }
             // What a `let` computes is read on the way to the answer only where the name is read;
             // everywhere else a value stands in a body it is consumed by what it stands in. And its
             // body is where the name stands for what was bound to it.
             case Core.LetIn let -> {
-                walk(let.value(), in, reads, flow, assumed, live && flow.reads(let), out);
+                walk(let.value(), in, reads, flow, assumed, live && flow.reads(let), out, forks);
                 walk(let.body(), in, reads.and(let.binder(), let.value()), flow, assumed, live,
-                        out);
+                        out, forks);
             }
             // And each arm under what the arm says the value it matched turned out to be. A name
             // the arm binds is the scrutinee's position narrowed to that case, so a comparison
@@ -228,14 +299,15 @@ record ComparisonReadings(List<Reading> comparisons) {
             // inside an arm was owed a row by a walk that had been told nothing stood on the way to
             // it, and the row composed for it was written in whichever arm the values fell in.
             case Core.Match match -> {
-                walk(match.scrutinee(), in, reads, flow, assumed, live, out);
+                walk(match.scrutinee(), in, reads, flow, assumed, live, out, forks);
                 for (Core.Case arm : match.cases()) {
                     walk(arm.body(), in, reads.insideArm(match, arm, symbols), flow,
-                            entering(match, arm, in.read().domain(), reads, assumed, ruleSource), live, out);
+                            entering(match, arm, in.read().domain(), reads, assumed, ruleSource),
+                            live, out, forks);
                 }
             }
             default -> Core.forEachChild(e, child ->
-                    walk(child, in, reads, flow, assumed, live, out));
+                    walk(child, in, reads, flow, assumed, live, out, forks));
         }
     }
 
@@ -267,5 +339,79 @@ record ComparisonReadings(List<Reading> comparisons) {
         List<OnTheWay> out = new ArrayList<>(assumed);
         out.add(ReachingCuts.entering(match, arm, inputs, reads, ruleSource));
         return List.copyOf(out);
+    }
+
+    /**
+     * The comparison of the model {@code e} is, or null where it is not one.
+     *
+     * <p>The one thing that says what a comparison is ({@link Comparison#of}), asked once. A binary
+     * this compiler composed states no rule of the model and is not one, which is what an unwritten
+     * construct says of itself.
+     */
+    private static Comparison comparisonAt(Core e) {
+        return e instanceof Core.Binary binary && binary.origin() != null
+                && binary.origin().isWritten() ? Comparison.of(binary).orElse(null) : null;
+    }
+
+
+    /**
+     * Whether something other than the fork itself states what {@code atom} decides.
+     *
+     * <p>Three readers could own it and each of them is asked the same way: a comparison of the
+     * model, a position of the input the part is the value at, and another fork the source wrote.
+     * Asked of the part rather than of the condition — a fork testing two things owns one of them
+     * and leaves the other, and an answer about the whole would lose that.
+     *
+     * <p><b>Along what the part's answer turns on, for every one of them.</b> A rule written in a
+     * closure one of the language's operations is handed reaches the fork where the library says
+     * the answer turns on what that closure said ({@link WhatAForkTests}) — a filter answers fewer
+     * for exactly that reason and a mapping does not, and the two calls are the same shape. Which
+     * is a fact about the operation and not about the kind of rule on the other side of it: asked
+     * along the edge for a comparison and at the part itself for a position,
+     * {@code List.any(x -> x > 0, xs)} states nothing of its own while
+     * {@code List.any(p -> p.active, xs)} states a rule nobody wrote.
+     *
+     * <p><b>Two of the three and not the third.</b> A fork the answer turns on may state a rule of
+     * its own, and whether it does is not a fact about the fork's shape: a condition nobody else
+     * answers for and that is about no position of the input states nothing, so a source-written
+     * fork there is no rule for an outer one to be owned by. Read as one, a fork over such a
+     * closure would be owned by a rule that does not exist and the question it leaves would go with
+     * it. So that owner is asked where the rules themselves are known
+     * ({@code BehaviorSetStatements#ofTheirOwn}), of the rules and not of the source.
+     *
+     * <p><b>Answered as the parts nobody else states, and not as whether somebody states one.</b>
+     * What an operation's answer turns on is as many things as the closure states
+     * ({@link WhatAForkTests#partsOfTheAnswer}): a closure answering
+     * {@code p.age > 18 && List.isEmpty(p.tags)} states a comparison and something nothing here
+     * reads, and the fork around the operation states the second whoever owns the first. Answered
+     * as "something in there is owned", the second went with the first — which is the same partial
+     * ownership a condition's own parts are cut along, lost one step past the operation.
+     */
+    static List<Core> statedElsewhere(Core atom, InputReads reads, Symbols symbols) {
+        List<Core> left = new ArrayList<>();
+        for (Core part : WhatAForkTests.partsOfTheAnswer(atom,
+                one -> reads.denotes(one, symbols).value())) {
+            if (comparisonAt(part) == null
+                    && !(reads.pathOf(part, symbols) instanceof PathResolution.At)) {
+                left.add(part);
+            }
+        }
+        return left;
+    }
+
+    /** Whether the truth of {@code atom} turns on a predicate {@code read} took in, which is the
+     *  same walk a comparison is looked for along and is here so that the two agree about it. */
+    static boolean turnsOnAPredicate(Core atom, PredicateReadings read, InputReads reads,
+                                     Symbols symbols) {
+        return leftUnread(atom, read, reads, symbols).isEmpty();
+    }
+
+    /** The parts of what {@code atom} decides that none of the three readers answers for, which is
+     *  what a fork over it is left stating. */
+    static List<Core> leftUnread(Core atom, PredicateReadings read, InputReads reads,
+                                 Symbols symbols) {
+        return statedElsewhere(atom, reads, symbols).stream()
+                .filter(part -> !read.statesOneAt(part))
+                .toList();
     }
 }
