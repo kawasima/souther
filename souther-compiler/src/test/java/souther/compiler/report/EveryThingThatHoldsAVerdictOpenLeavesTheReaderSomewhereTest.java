@@ -33,8 +33,16 @@ class EveryThingThatHoldsAVerdictOpenLeavesTheReaderSomewhereTest {
     /**
      * Every opening every model here produces, which is where a claim about them has to be held.
      *
-     * <p>Built once for the class, as the population underneath it is. What these cost is the
-     * models being answered, which is paid once per run of the tests whatever asks for it first.
+     * <p>Built once for the class, and it is what this costs: nothing else here asks a bench
+     * corpus how adequate its rows are, so the measuring of one of them is paid by this and by
+     * nothing else. Measured, it is that one model and not the population — the models are built
+     * for whoever asks first, and answering them all takes a fraction of what measuring that one
+     * does.
+     *
+     * <p>It is not narrowed to make it cheaper. That model is the only one here whose openings
+     * reach a measure that went without something and a point nothing showed a row for; without it
+     * the law is held over half the arms it is about, which is a smaller claim rather than a faster
+     * one.
      */
     private static final List<AdequacyOpening> OPENINGS = everyOpening();
 
