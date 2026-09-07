@@ -273,25 +273,6 @@ class AQuestionExistsBecauseTheModelStatesItAndNotBecauseAReadingSucceededTest {
         return out;
     }
 
-    /** The rules of one declaration of {@code over}, read as the compilation reads them. */
-    private static FieldDomains read(String clause, String named, String over) {
-        String source = """
-                module example.rooms
-
-                data %s = %s
-                    %s
-                """.formatted(named, over, clause);
-        Compilation compilation = Compilation.ofSource(source, "Main");
-        compilation.answerEverything();
-        String module = compilation.modules().get(0);
-        Symbols symbols = Scopes.derived(compilation.db(), module).value();
-        assertNotNull(symbols);
-        TypeSymbol.AtModule at = TypeSymbols.declared(new TypeKey(module, named));
-        assertNotNull(symbols.declaredNode(at.key()), "no `" + named + "` declared");
-        return FieldDomains.of(at, RuleReadings.of(compilation, module),
-                souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
-    }
-
     /** What the one clause of {@code named} raises, over every place it writes. */
     private static Set<CoverageObligation> raisedIn(String source, String named) {
         Set<CoverageObligation> out = new LinkedHashSet<>();
