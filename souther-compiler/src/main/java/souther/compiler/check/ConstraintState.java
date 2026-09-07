@@ -320,7 +320,8 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
         // whose positions are one value, and these positions are not one value — read through it,
         // a proof would say the rules hold them as one, which is what they state they are not.
         if (shown.site().nearest() == Refusal.Nearest.OF_THEM_TOGETHER) {
-            List<Emptiness.AtAField.Where> apart = declaredIn(shown.site().blocks(), positions);
+            List<Emptiness.AtAField.Where> apart =
+                    declaredIn(shown.site().together().blocks(), positions);
             return Optional.of(apart.size() < 2 ? Emptiness.preferred(why, said)
                     : Emptiness.preferred(why, new Emptiness.AtPositionsHeldApart(apart, said)));
         }
@@ -332,7 +333,13 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
         // one is settled by the order the value declares its positions, as which of several empty
         // positions is named is: read off the state's own set, the block named would be the one
         // whose clause was met first, and moving a clause would move the refusal.
-        List<Emptiness.AtAField.Where> where = nearestBlock(shown.at(), positions);
+        //
+        // And read off the blocks each of which holds nothing, which is what this sentence is
+        // about. A refusal also carries what no assignment to some blocks satisfies, and each of
+        // those blocks is left values of its own — named here, a reader would be sent to a place
+        // whose own rules are fine with what they leave it, and which of the two a proof was about
+        // would turn on which the value declares first.
+        List<Emptiness.AtAField.Where> where = nearestBlock(shown.site().atEachOf(), positions);
         if (where.size() == 1) {
             return Optional.of(Emptiness.preferred(why,
                     new Emptiness.AtAField(where.getFirst(), said)));

@@ -81,14 +81,15 @@ class ALackAboutBlocksTogetherIsNotALackAtEachOfThemTest {
         Refusal<String> one = leaving(Q, P);
         Refusal<String> other = leaving(Q, R);
 
-        assertEquals(Set.of(P, Q), one.blocks(), "the route is what a report may name");
-        assertEquals(Set.of(Q, R), other.blocks());
+        assertEquals(Set.of(P, Q), one.together().blocks(),
+                "the route is what a report may name");
+        assertEquals(Set.of(Q, R), other.together().blocks());
 
         Refusal<String> both = Refusal.shownByBoth(one, other);
 
         assertEquals(Set.of(new RelationalLack.NoValueLeftForIt<>(Q)),
                 both.together().claimed());
-        assertEquals(Set.of(P, Q, R), both.blocks(),
+        assertEquals(Set.of(P, Q, R), both.together().blocks(),
                 "and what may be named is the block and the rules of either reading");
     }
 
@@ -112,7 +113,7 @@ class ALackAboutBlocksTogetherIsNotALackAtEachOfThemTest {
         assertEquals(Set.of(new RelationalLack.NoValueLeftForIt<>(P),
                         new RelationalLack.NoValueLeftForIt<>(R)),
                 both.together().claimed());
-        assertEquals(Set.of(P, Q, R, s), both.blocks(),
+        assertEquals(Set.of(P, Q, R, s), both.together().blocks(),
                 "and each block is named beside what took its values");
     }
 

@@ -125,11 +125,6 @@ sealed interface Confinement<A> {
      */
     record Admission<A>(souther.compiler.values.Emptiness emptiness, EmptyBy by, Refusal<A> site, Shown how) {
 
-        /** The blocks the lack is about, for a reader that only has to name places. */
-        Set<Sameness.Block<A>> at() {
-            return site.blocks();
-        }
-
         /** The same, where what was refused is places rather than values several of them share. */
         static <A> Admission<A> at(souther.compiler.values.Emptiness emptiness, EmptyBy by, Set<A> positions, Shown how) {
             Set<Sameness.Block<A>> blocks = new LinkedHashSet<>();

@@ -284,7 +284,8 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
                 "refused by what its blocks are held as");
         assertInstanceOf(RelationalLack.ABlockApartFromItself.class,
                 both.refusedBy().together().only().lack());
-        assertEquals(Set.of(Sameness.of("p", "r").blockOf("p")), both.refusedBy().blocks());
+        assertEquals(Set.of(Sameness.of("p", "r").blockOf("p")),
+                both.refusedBy().together().blocks());
     }
 
     /** What a reduction that refused was refused by, where what it shows is one lack. */
