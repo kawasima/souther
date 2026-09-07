@@ -5,6 +5,7 @@ import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.report.AdequacyReport;
+import souther.compiler.report.ReaderDisposition;
 
 import org.junit.jupiter.api.Test;
 
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -138,6 +140,86 @@ class APositionSaysHowManyOfItsClassesTheseRulesComposedTest {
 
         assertTrue(human.contains("unknown; no row is owed at one"),
                 () -> "the count says nobody is behind on it: " + human);
+    }
+
+    /**
+     * And what a reader is left with there is a decision, at the position.
+     *
+     * <p>The other half of the sentence: the report says the two numbers, and what follows from
+     * them is that somebody weighs whether this behavior needs the distinction. Not that they
+     * narrow anything — a value passed through untouched is as ordinary as an input wider than it
+     * needs to be — and not a row, since nobody is owed one at a combination.
+     */
+    @Test
+    void aBehaviorWiderThanItSeparatesLeavesADecisionAtThePosition() {
+        var compilation = compiled("""
+                module example.left
+
+                data TooShort
+                data TooLong
+                data WrongCase
+                data Refusal = TooShort | TooLong | WrongCase
+
+                data Ok = { n: Int }
+
+                behavior judge : (why: Refusal, n: Int) -> Ok
+                    constructs Ok
+
+                let judge (why, n) = {
+                    guard n > 10 else Ok { n = 0 }
+                    Ok { n = 1 }
+                }
+
+                example judge
+                    | (TooShort, 5)  -> Ok { n = 0 }
+                    | (TooLong, 50)  -> Ok { n = 1 }
+                """);
+        var partition = compilation.db()
+                .ask(new Adequacy.Coverage("example.left")).value().get("judge");
+
+        assertInstanceOf(ReaderDisposition.ReconsiderWhatThisBehaviorNeedsToDistinguish.class,
+                ReaderDisposition.of(partition.pairs(), partition.axes()),
+                () -> "a position it takes wider than it separates: " + partition.pairs());
+    }
+
+    /**
+     * And where every position is divided as far as its rules divide it, nothing further.
+     *
+     * <p>Without this the arm above would be one this report reaches for whenever a combination is
+     * unknown, which is most models: what the rows happen not to sit in is not the same as what
+     * they cannot reach.
+     */
+    @Test
+    void combinationsTheRowsMerelyMissLeaveNothingFurther() {
+        var compilation = compiled("""
+                module example.missed
+
+                data Ok = { n: Int }
+
+                behavior judge : (a: Int, b: Int) -> Ok
+                    constructs Ok
+
+                let judge (a, b) = {
+                    guard a > 10 else Ok { n = 0 }
+                    guard b > 10 else Ok { n = 1 }
+                    Ok { n = 2 }
+                }
+
+                example judge
+                    | (5, 5)   -> Ok { n = 0 }
+                    | (50, 50) -> Ok { n = 2 }
+                """);
+        var partition = compilation.db()
+                .ask(new Adequacy.Coverage("example.missed")).value().get("judge");
+
+        assertInstanceOf(ReaderDisposition.Settled.class,
+                ReaderDisposition.of(partition.pairs(), partition.axes()),
+                () -> "every position is divided by its own rules: " + partition.pairs());
+    }
+
+    private static Compilation compiled(String model) {
+        return Compiler.analyzedModules(List.of(model), ModulePath.EMPTY, new ArrayList<>(),
+                Adequacy.Asked.fullReport());
     }
 
     private static String report(String model) {

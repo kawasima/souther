@@ -2,7 +2,10 @@ package souther.compiler.report;
 
 import souther.compiler.observe.RunSensitivity;
 import souther.compiler.publish.NotMeasuredWord;
+import souther.compiler.query.PartitionEvidence;
 import souther.compiler.publish.WeakeningVocabulary;
+
+import java.util.List;
 
 /**
  * Where one thing this report says leaves the person reading it.
@@ -132,6 +135,41 @@ public sealed interface ReaderDisposition {
                         new LookAtWhatTheMeasureWentWithout(subject, wordOf(it));
             };
         };
+    }
+
+    /**
+     * Where the combinations a behavior's rows do not reach leave a reader.
+     *
+     * <p>Nobody is owed a row at one, so the question is whether there is anything to look at. There
+     * is where a position the relations run between holds more classes than this behavior's rules
+     * composed: the combinations those classes take part in are ones no row can reach, and what to
+     * do about that is a judgement about the model rather than a row.
+     *
+     * <p>Where every position is divided as far as its rules divide it, the combinations left are
+     * ones the rows happen not to sit in, and there is nothing further here — which is what
+     * {@link Settled} says and is not the same as saying nothing is owed.
+     *
+     * <p>Read from the axes and not from the count. How many are unknown says how much of the
+     * product the rows reach; whether any of it is out of their reach is the positions' answer.
+     */
+    static ReaderDisposition of(PartitionEvidence.PairSpace pairs,
+                                List<PartitionEvidence.AxisCoverage> axes) {
+        if (pairs.counted().made().isEmpty() || pairs.unknown() == 0) {
+            return new Settled();
+        }
+        for (PartitionEvidence.AxisCoverage axis : axes) {
+            if (!axis.cutOrParted() && axis.divides().size() < axis.classes().size()
+                    && pairs.space().stream().anyMatch(pair ->
+                            pair.between().one().equals(axis.at())
+                                    || pair.between().other().equals(axis.at()))) {
+                // The position and not the measurement of it. What is being weighed is what the
+                // behavior's input carries, which is a place in the model; what was counted there
+                // came back in full and is not what a reader is sent to.
+                return new ReconsiderWhatThisBehaviorNeedsToDistinguish(
+                        new Subject.AtASpelledPosition(axis.at().behavior(), axis.path()));
+            }
+        }
+        return new Settled();
     }
 
     /** What the weakening behind an entry is called, asked of the one projection that names it. */
