@@ -12,7 +12,9 @@ import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.Signature;
 import java.lang.classfile.attribute.SignatureAttribute;
+import java.lang.classfile.constantpool.MemberRefEntry;
 import java.lang.classfile.constantpool.MethodHandleEntry;
+import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.classfile.instruction.InvokeDynamicInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.constant.ClassDesc;
@@ -143,6 +145,9 @@ class AReadingOfValuesIsStartedComposedOrWorkedOutTest {
         for (Path module : REPOSITORY.modules()) {
             for (Path each : classesUnder(module)) {
                 ClassModel owner = parse(each);
+                if (!namesTheConstructor(owner)) {
+                    continue;
+                }
                 for (MethodModel method : owner.methods()) {
                     if (makesAReading(method)) {
                         found.add(owner.thisClass().asInternalName() + "#"
@@ -227,6 +232,26 @@ class AReadingOfValuesIsStartedComposedOrWorkedOutTest {
     private static String internalNameOf(ClassDesc said) {
         String descriptor = said.descriptorString();
         return descriptor.substring(1, descriptor.length() - 1);
+    }
+
+    /**
+     * Whether the class names the constructor at all, which is read off its constant pool.
+     *
+     * <p>Ahead of the methods because it answers for the whole file at once: a class that makes a
+     * reading names the constructor there whichever way it was written, since both an
+     * {@code invokespecial} and the handle a constructor reference carries are entries in that
+     * pool. Almost every class in the repository names it nowhere, and this is what keeps their
+     * code from being taken apart to find that out.
+     */
+    private static boolean namesTheConstructor(ClassModel owner) {
+        for (PoolEntry entry : owner.constantPool()) {
+            if (entry instanceof MemberRefEntry member
+                    && READING.equals(member.owner().name().stringValue())
+                    && "<init>".equals(member.name().stringValue())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Whether the method's own code makes a reading: written out, or handed to something that will
