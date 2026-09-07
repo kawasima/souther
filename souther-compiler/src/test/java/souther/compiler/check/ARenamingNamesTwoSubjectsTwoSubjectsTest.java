@@ -11,6 +11,7 @@ import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.Rel;
 import souther.compiler.values.AdmissibleValues;
 import souther.compiler.values.AdmittedPlan;
+import souther.compiler.values.AsACompilationAllows;
 import souther.compiler.values.PlannedValues;
 import souther.compiler.values.Value;
 import souther.compiler.values.ValueSet;
@@ -120,7 +121,7 @@ class ARenamingNamesTwoSubjectsTwoSubjectsTest {
                 .takingRead(Confinement.Worked.of(
                                 says(ONLY_IN_FACTS, "A"),
                                 OrderedIntervals.top(), Map.of()),
-                        souther.compiler.values.AsACompilationAllows.forAdmittedValues());
+                        AsACompilationAllows.forAdmittedValues());
         java.util.concurrent.atomic.AtomicInteger asked = new java.util.concurrent.atomic.AtomicInteger();
 
         ConstraintState<String> said = both.renamed(
@@ -133,7 +134,7 @@ class ARenamingNamesTwoSubjectsTwoSubjectsTest {
     /** One rule about one position, worked out, which is how a reading is come by. */
     private static AdmissibleValues<FactSubject> says(FactSubject atom, String text) {
         return PlannedValues.at(atom, AdmittedPlan.of(ValueSet.just(Value.text(text))))
-                .resolve(souther.compiler.values.AsACompilationAllows.forAdmittedValues())
+                .resolve(AsACompilationAllows.forAdmittedValues())
                 .values();
     }
 
@@ -147,7 +148,7 @@ class ARenamingNamesTwoSubjectsTwoSubjectsTest {
                                         Endpoint.inclusive(Count.of(6)),
                                         Endpoint.inclusive(Count.of(2)))),
                                 Map.of()),
-                        souther.compiler.values.AsACompilationAllows.forAdmittedValues())
+                        AsACompilationAllows.forAdmittedValues())
                 .taking(LinearForm.<FactSubject>atom(ONLY_IN_NUMBERS)
                                 .minus(LinearForm.<FactSubject>constant(BigDecimal.valueOf(3))),
                         Rel.LE, Map.of(ONLY_IN_NUMBERS, souther.compiler.numeric.Granularity.DISCRETE));

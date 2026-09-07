@@ -31,10 +31,10 @@ import java.util.Set;
  * could read: those are written as {@link PlannedValues} and worked out. What a leaf minted here
  * would leave out is what working one out settles — what the allowance let it build, and what it
  * went short of — so a caller would be handed a reading whose every position looks worked out and
- * whose shortfall was never asked about. What this side does have is what it does to readings
- * already in hand: {@link #meet} and {@link #metAll}, {@link #renamed}, {@link #alsoOpenedAt}, and
- * {@link #top}, which is handed nothing. That list is what
- * {@code AReadingOfValuesIsStartedComposedOrWorkedOutTest} holds it to.
+ * whose shortfall was never asked about. What this side has instead is what a reading already in
+ * hand can be put through: {@link #meet} and {@link #metAll}, {@link #renamed} and
+ * {@link #alsoOpenedAt}. Beside them is {@link #top}, which is handed nothing and is where a
+ * reading starts.
  *
  * <h2>What is held</h2>
  *

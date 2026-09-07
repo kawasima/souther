@@ -109,17 +109,31 @@ class AReadingOfValuesIsStartedComposedOrWorkedOutTest {
     }
 
     /**
-     * And the walk found the maker outside the type, which is what it is for.
+     * And every module the repository holds was read.
      *
-     * <p>A reading of the class files that found only what {@code AdmissibleValues} does to itself
-     * would be a reading that never reached the boundary the rule is about, and it would pass.
+     * <p>Asked of the modules the repository has rather than of what a build happened to leave. A
+     * module whose classes are missing is one whose makers this cannot see, and the rows from the
+     * rest would match — so this would pass while answering about fewer modules than it names.
      */
     @Test
-    void andTheOneMakerOutsideTheTypeWasReached() {
-        assertTrue(makers().contains(DESCRIPTION + "#resolved -> " + WORKED_OUT),
-                "the walk reaches the place a description becomes values");
+    void andEveryModuleTheRepositoryHoldsWasRead() {
+        List<String> unbuilt = new ArrayList<>();
+        for (Path module : REPOSITORY.modules()) {
+            if (classesUnder(module).isEmpty() && hasMainSources(module)) {
+                unbuilt.add(module.getFileName().toString());
+            }
+        }
+
+        assertEquals(List.of(), unbuilt,
+                "a module whose classes are not built is one this walk passes over");
         assertTrue(modulesRead() > 1,
                 "the classes this reads are in more than the module that declares the reading");
+    }
+
+    /** Whether the module has main sources to have been built from. A module holding only tests or
+     *  only a pom leaves no classes and is not one this walk is missing. */
+    private static boolean hasMainSources(Path module) {
+        return Files.isDirectory(module.resolve("src").resolve("main").resolve("java"));
     }
 
     /** Every method whose code makes a reading, as the method and the warrant its signature gives

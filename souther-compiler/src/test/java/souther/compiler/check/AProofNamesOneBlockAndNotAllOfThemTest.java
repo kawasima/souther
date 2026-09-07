@@ -6,8 +6,8 @@ import souther.compiler.numeric.OrderedIntervals;
 import souther.compiler.values.AdmissibleValues;
 import souther.compiler.values.AdmittedPlan;
 import souther.compiler.values.Allowance;
-import souther.compiler.values.PlannedValues;
 import souther.compiler.values.AsACompilationAllows;
+import souther.compiler.values.PlannedValues;
 import souther.compiler.values.Value;
 import souther.compiler.values.ValueSet;
 

@@ -11,6 +11,8 @@ import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.Rel;
 import souther.compiler.values.AdmissibleValues;
 import souther.compiler.values.AdmittedPlan;
+import souther.compiler.values.Allowance;
+import souther.compiler.values.AsACompilationAllows;
 import souther.compiler.values.PlannedValues;
 import souther.compiler.values.Value;
 import souther.compiler.values.ValueSet;
@@ -135,16 +137,14 @@ class WhetherAValueExistsIsAskedOfEveryDomainTest {
     private static ConstraintState<FactSubject> valuesAtBottom() {
         // Met as one reading and handed over as one. Two readings are combined where the
         // clauses of a declaration are read, and never at the state's boundary.
-        souther.compiler.values.Allowance<FactSubject> sets =
-                souther.compiler.values.AsACompilationAllows.forAdmittedValues();
+        Allowance<FactSubject> sets = AsACompilationAllows.forAdmittedValues();
         return ConstraintState.<FactSubject>top().takingRead(Confinement.Worked.of(
                 says("A", sets).meet(says("B", sets), sets),
                 OrderedIntervals.top(), Map.of()), sets);
     }
 
     /** One rule about the position, worked out, which is how a reading is come by. */
-    private static AdmissibleValues<FactSubject> says(String text,
-            souther.compiler.values.Allowance<FactSubject> sets) {
+    private static AdmissibleValues<FactSubject> says(String text, Allowance<FactSubject> sets) {
         return PlannedValues.at(A_POSITION, AdmittedPlan.of(ValueSet.just(Value.text(text))))
                 .resolve(sets).values();
     }
@@ -159,8 +159,7 @@ class WhetherAValueExistsIsAskedOfEveryDomainTest {
 
     /** The values pinned at one string, and the order left the strings above another. */
     private static ConstraintState<FactSubject> setBesideARangeItIsOutside() {
-        souther.compiler.values.Allowance<FactSubject> sets =
-                souther.compiler.values.AsACompilationAllows.forAdmittedValues();
+        Allowance<FactSubject> sets = AsACompilationAllows.forAdmittedValues();
         return ConstraintState.<FactSubject>top().takingRead(Confinement.Worked.of(
                 says("A", sets),
                 OrderedIntervals.at(A_POSITION, new OrderedInterval(
