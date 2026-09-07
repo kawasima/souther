@@ -253,7 +253,7 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
                     // the name denotes is the owner's question, and a reader that could not answer
                     // it would call a fork on a named comparison one nobody read.
                     for (Core part : ConditionSkeleton.atoms(iff.cond())) {
-                        atoms.add(denoted(part, reads, symbols));
+                        atoms.add(reads.denotes(part, symbols).value());
                     }
                     java.util.Set<Core> owned = java.util.Collections.newSetFromMap(
                             new java.util.IdentityHashMap<>());
@@ -358,28 +358,6 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
                 && binary.origin().isWritten() ? Comparison.of(binary).orElse(null) : null;
     }
 
-    /**
-     * What {@code e} stands for, through however many names were given to it.
-     *
-     * <p>By the bindings met, so a name that came round to itself stops rather than being followed
-     * again. What comes back is a node of the tree, which is what a reader holding one of these
-     * looks inside.
-     */
-    private static Core denoted(Core e, InputReads reads, Symbols symbols) {
-        Core at = e;
-        InputReads where = reads;
-        java.util.Set<souther.compiler.types.BindingId> met = new java.util.HashSet<>();
-        while (at instanceof Core.Read read) {
-            if (!met.add(read.binding())
-                    || !(where.meaningOf(read, symbols)
-                            instanceof souther.compiler.inputs.ReadMeaning.Through through)) {
-                return at;
-            }
-            at = through.denotes().value();
-            where = through.denotes().at();
-        }
-        return at;
-    }
 
     /** Whether the truth of {@code atom} turns on a predicate {@code read} took in, which is the
      *  same walk a comparison is looked for along and is here so that the two agree about it. */

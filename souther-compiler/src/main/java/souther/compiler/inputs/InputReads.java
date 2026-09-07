@@ -346,6 +346,47 @@ public final class InputReads {
     }
 
     /**
+     * What {@code e} stands for, through however many names were given to it.
+     *
+     * <p>A name is a name and not another value: a closure bound once and read under a second name
+     * is the same closure, and a walk that stopped at the first read would answer one thing for
+     * {@code List.sum(List.map(f, xs))} and another for the same model with a name in the middle —
+     * which is a {@code let} changing what a model means.
+     *
+     * <p>Here because {@link #meaningOf} is here. What a name stands for is this reading's answer,
+     * and a caller that followed the chain for itself would be a second walk of it — three of them
+     * were, each stopping where its own caller needed and each free to learn a shape the others
+     * did not.
+     *
+     * <p>What comes back is the expression and the reading it is under, because the second is not
+     * the one the name was read in: a name bound inside a helper stands for what the call handed
+     * over, and what is read of that afterwards is read where it stands. Handed the expression
+     * alone, a caller goes on asking the outer reading about a value that is not in it.
+     *
+     * <p>It is never a permission. Whether the expression may stand where the name did is the
+     * caller's question, and so is what kind of expression it wanted: a reader after a closure
+     * takes a block from this and one after a walk takes whatever is there.
+     *
+     * <p>By the bindings met, which is what makes it stop. Each tells itself from every other, so a
+     * name that came round to itself is one already answered for, and what is handed back is the
+     * name rather than a walk that does not end.
+     */
+    public Denotation denotes(Core e, Symbols symbols) {
+        Core at = e;
+        InputReads reads = this;
+        java.util.Set<BindingId> met = new java.util.HashSet<>();
+        while (at instanceof Core.Read read) {
+            if (!met.add(read.binding())
+                    || !(reads.meaningOf(read, symbols) instanceof ReadMeaning.Through through)) {
+                return new Denotation(at, reads);
+            }
+            at = through.denotes().value();
+            reads = through.denotes().at();
+        }
+        return new Denotation(at, reads);
+    }
+
+    /**
      * The same, through the bindings a walk into a container has already met.
      *
      * <p>One set for the whole answer, because the answer reaches back into this: a name an

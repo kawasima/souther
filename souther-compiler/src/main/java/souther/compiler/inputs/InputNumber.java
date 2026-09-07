@@ -97,20 +97,12 @@ public final class InputNumber {
     private static NumericTerm overARun(NumericMeasures.Measured measured, InputDomain inputs,
                                         InputReads reads, RuleReadingSource source) {
         Symbols symbols = source.symbols();
-        Core walk = measured.of();
-        InputReads where = reads;
-        // By the bindings met, so a name that came round to itself stops rather than being followed
-        // again. Bindings are added on the way down and each tells itself from every other, so this
-        // is the shape of the tree saying so and not a depth somebody chose.
-        java.util.Set<souther.compiler.types.BindingId> met = new java.util.HashSet<>();
-        while (walk instanceof Core.Read read) {
-            if (!met.add(read.binding())
-                    || !(where.meaningOf(read, symbols) instanceof ReadMeaning.Through through)) {
-                return null;
-            }
-            walk = through.denotes().value();
-            where = through.denotes().at();
-        }
+        // The walk and the names it stands under, which travel together: a name bound inside a
+        // helper stands for what the call handed over, and what is read of that afterwards is read
+        // where it stands rather than where the name was.
+        Denotation met = reads.denotes(measured.of(), symbols);
+        Core walk = met.value();
+        InputReads where = met.at();
         souther.compiler.types.BindingId element =
                 souther.compiler.check.WalkElements.elementBindingOf(walk, where, symbols);
         if (element == null) {

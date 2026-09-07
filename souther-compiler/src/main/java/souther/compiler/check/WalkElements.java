@@ -3,7 +3,6 @@ package souther.compiler.check;
 import souther.compiler.core.Core;
 import souther.compiler.core.GrowingFold;
 import souther.compiler.inputs.InputReads;
-import souther.compiler.inputs.ReadMeaning;
 import souther.compiler.types.BindingId;
 
 /**
@@ -41,21 +40,10 @@ public final class WalkElements {
         return GrowingFold.elementBindingOf(walk);
     }
 
-    /** The block {@code closure} is, following the names it was given through. */
+    /** The block {@code closure} is, or null where what it stands for is not one. What a name
+     *  stands for is the reading's answer ({@link InputReads#denotes}); which kind of expression
+     *  this wanted is its own. */
     private static Core.Block blockOf(Core closure, InputReads where, Symbols symbols) {
-        Core at = closure;
-        InputReads reads = where;
-        java.util.Set<BindingId> met = new java.util.HashSet<>();
-        while (at instanceof Core.Read read) {
-            // By the bindings met, so a name that came round to itself stops rather than being
-            // followed again.
-            if (!met.add(read.binding())
-                    || !(reads.meaningOf(read, symbols) instanceof ReadMeaning.Through through)) {
-                return null;
-            }
-            at = through.denotes().value();
-            reads = through.denotes().at();
-        }
-        return at instanceof Core.Block block ? block : null;
+        return where.denotes(closure, symbols).value() instanceof Core.Block block ? block : null;
     }
 }
