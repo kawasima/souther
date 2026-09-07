@@ -343,7 +343,7 @@ public final class BehaviorSetStatements {
     private static Outcome saidWithoutADenominator(PredicateReadings.Reading each,
                                                    PathResolution stands, Symbols symbols) {
         return switch (stands) {
-            case PathResolution.AtOneOfSeveral(var among) -> new Outcome.SayingNothing(
+            case PathResolution.MayStandAt(var among) -> new Outcome.SayingNothing(
                     among.stream().map(FilingCoordinate::at).toList(),
                     new BlockReason.RuleAboutAnElementOfSeveralSequences());
             case PathResolution.NotAPosition _ ->
@@ -351,7 +351,7 @@ public final class BehaviorSetStatements {
                         case PathResolution.At(var from) -> new Outcome.SayingNothing(
                                 List.of(FilingCoordinate.at(from)),
                                 new BlockReason.RuleAboutADerivedValue());
-                        case PathResolution.AtOneOfSeveral(var among) -> new Outcome.SayingNothing(
+                        case PathResolution.MayStandAt(var among) -> new Outcome.SayingNothing(
                                 among.stream().map(FilingCoordinate::at).toList(),
                                 new BlockReason.RuleAboutAnElementOfSeveralSequences());
                         // And a rule about a value that came from no position the reading can name,
@@ -451,6 +451,17 @@ public final class BehaviorSetStatements {
         SequencedMap<FilingCoordinate, BlockReason.RuleReadingStopped> filed =
                 new LinkedHashMap<>();
         for (Core part : untaken) {
+            // Where the part stands at places this could not choose between, those are the places,
+            // and they are what the walk below cannot give: it reads a part as one term over the
+            // positions it names, and a term over a place nothing settled is a term at whichever
+            // place a reader picked. Asked first, so a fork over such a part is filed at each of
+            // them rather than at none — which is where the rule the author wrote would go.
+            if (fork.reads().pathOf(part, symbols)
+                    instanceof PathResolution.MayStandAt(var among)) {
+                among.forEach(at -> filed.putIfAbsent(FilingCoordinate.at(at),
+                        new BlockReason.RuleAboutAnElementOfSeveralSequences()));
+                continue;
+            }
             GuardThresholds.Names names = GuardThresholds.namesIn(part, fork.reads(), symbols);
             BlockReason.RuleReadingStopped why =
                     UnreadComparison.notAboutOwnValues(names.origin());

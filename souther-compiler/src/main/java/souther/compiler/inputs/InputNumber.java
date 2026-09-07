@@ -50,7 +50,7 @@ public final class InputNumber {
                 // A taking is of one location, and a name standing at one of several is no one of
                 // them. Taken of any, the number would be a size of a sequence the run it is on
                 // never walked.
-                case PathResolution.AtOneOfSeveral _ -> null;
+                case PathResolution.MayStandAt _ -> null;
             };
             if (of != null) {
                 return NumericTerm.TakenOf.of(measured.operation(), of,
@@ -69,7 +69,7 @@ public final class InputNumber {
             // And a number of the input is the value at one position. A name standing at one of
             // several would be a number at whichever of them a reader picked, and a line drawn on
             // it would fall at a place the rule may say nothing about.
-            case PathResolution.AtOneOfSeveral _ -> null;
+            case PathResolution.MayStandAt _ -> null;
         };
     }
 
@@ -125,7 +125,7 @@ public final class InputNumber {
             case PathResolution.NotAPosition _ -> null;
             // A run is over the values at one position, and a walk whose elements come from more
             // than one container is no one run.
-            case PathResolution.AtOneOfSeveral _ -> null;
+            case PathResolution.MayStandAt _ -> null;
         };
         if (answered == null || at == null) {
             return null;

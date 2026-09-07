@@ -60,34 +60,76 @@ public sealed interface PathResolution {
     record NotAPosition() implements PathResolution {}
 
     /**
-     * The expression stands at one of {@code among} and which is not settled.
+     * The expression stands at each of {@code among} on some run of the model, and nothing here
+     * says which of them any one read of it is.
      *
      * <p>A fact about this compiler and not about the model, which is why it is not the answer
      * beside it. A block handed to two walks has one parameter and two containers, so a name inside
      * it stands at one position of the input on one run and another on the next — the model is
      * perfectly clear and what cannot be worked out is which of them a reader should be sent to.
      *
-     * <p>Held apart because everything a reader does with the two differs. A rule about no position
-     * is one the model states nowhere and owes nothing; a rule about one of these is a rule the
-     * model states, whose obligation stands at whichever of them it turns out to be — so a measure
-     * over any of them is open until something says which. Answered alike, a rule an author wrote
-     * about their input left the measurement without a word, and every position it might have
-     * divided came back as one the model says nothing about.
+     * <p><b>These are the positions it may stand at and not every place it may be.</b> A block
+     * handed to a walk over the input and to a walk over a list written in the body stands at a
+     * position on one of those runs and at none on the other, and that is this answer with one
+     * position in it. So one of these does not say a read of the name is at a position — only that
+     * a rule written under it is about these, wherever it is about the input at all.
+     *
+     * <p>Held apart from {@link NotAPosition} because everything a reader does with the two
+     * differs. A rule about no position is one the model states nowhere and owes nothing; a rule
+     * about one of these is a rule the model states, whose obligation stands at whichever of them
+     * it turns out to be — so a measure over any of them is open until something says which.
+     * Answered alike, a rule an author wrote about their input left the measurement without a word,
+     * and every position it might have divided came back as one the model says nothing about.
      */
-    record AtOneOfSeveral(List<TermPath> among) implements PathResolution {
+    record MayStandAt(List<TermPath> among) implements PathResolution {
 
-        public AtOneOfSeveral {
+        public MayStandAt {
             among = List.copyOf(among);
-            if (among.size() < 2) {
+            if (among.isEmpty()) {
                 throw new IllegalArgumentException(
-                        "one of several is one of more than one: " + among);
+                        "a value that may stand somewhere may stand at some place");
             }
         }
     }
 
-    /** Whichever of the two {@code places} is: one place, or a choice between them. */
-    static PathResolution oneOf(List<TermPath> places) {
-        return places.size() == 1 ? new At(places.get(0)) : new AtOneOfSeveral(places);
+    /**
+     * Where a value that is any one of {@code these} stands.
+     *
+     * <p>One place where every one of them is that place, and the places among them otherwise. What
+     * makes the second not the first is that a reader of one of these has no run in hand: the value
+     * is what one of them is on the run it is on, so a place all of them agree about is where it
+     * stands and anything less is where it may.
+     *
+     * <p><b>An answer of none among them does not take the rest away.</b> A block handed to a walk
+     * over the input and to a walk over something the input has no part in is the caller's rule on
+     * the first run whatever the second does, and the position it is about there is owed the
+     * sentence. Dropped for the run that stands nowhere, a rule the author wrote about their input
+     * would leave the measurement — which is what "all of them or none" came to.
+     */
+    static PathResolution anyOf(List<PathResolution> these) {
+        List<TermPath> among = new java.util.ArrayList<>();
+        boolean everyOne = true;
+        for (PathResolution each : these) {
+            switch (each) {
+                case At(var at) -> {
+                    if (!among.contains(at)) {
+                        among.add(at);
+                    }
+                }
+                case MayStandAt(var some) -> {
+                    everyOne = false;
+                    some.forEach(at -> {
+                        if (!among.contains(at)) {
+                            among.add(at);
+                        }
+                    });
+                }
+                case NotAPosition _ -> everyOne = false;
+            }
+        }
+        return among.isEmpty() ? new NotAPosition()
+                : everyOne && among.size() == 1 ? new At(among.get(0))
+                : new MayStandAt(among);
     }
 
     /**
@@ -109,10 +151,11 @@ public sealed interface PathResolution {
         return switch (this) {
             case At(var at) -> new At(step.apply(at));
             case NotAPosition _ -> this;
-            // And where the step takes two of them to one place, there is one place. Kept as
-            // several, an answer would say which of them is not settled where nothing is left to
-            // settle.
-            case AtOneOfSeveral(var among) -> oneOf(among.stream().map(step).distinct().toList());
+            // Still may, and still at each of them: a step taken at a place a value may stand is a
+            // place a step of it may stand. Two of them the step takes to one place are one place
+            // among the ones it may be, and it may still be none of them.
+            case MayStandAt(var among) ->
+                    new MayStandAt(among.stream().map(step).distinct().toList());
         };
     }
 }

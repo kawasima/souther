@@ -458,6 +458,11 @@ public sealed interface BlockReason {
      * them and nothing here says which. It is filed at every one of them, because that is what is
      * known — the rule is about one of these places and each is a place a reader can be sent to.
      *
+     * <p>And filed at each of the ones there are where a run through the block stands at no
+     * position of the input at all — a block handed to a walk over a list written in the body as
+     * well as over a parameter. What that run says about the input is nothing, and what the others
+     * say is still owed where they say it.
+     *
      * <p>Its own case and not {@link RuleAboutADerivedValue}. Nothing was made out of the element
      * and there is no operation to invert; an author told that one would go looking for a
      * computation that is not there. What lifts this is telling the two walks apart, and what an

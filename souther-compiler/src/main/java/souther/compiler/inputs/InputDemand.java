@@ -93,7 +93,7 @@ public record InputDemand(List<TermPath> paths) {
             // asked for. Which of them this read is of is what could not be worked out, and taking
             // one of them for the answer would leave the others unasked wherever the model reads
             // nothing else of them.
-            case PathResolution.AtOneOfSeveral(var among) -> found.addAll(among);
+            case PathResolution.MayStandAt(var among) -> found.addAll(among);
         }
         switch (e) {
             // The body of a `let` is where the name stands for what was bound to it.

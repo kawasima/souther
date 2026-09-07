@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.check.AnalysisBody;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
+import souther.compiler.check.RuleRef;
 import souther.compiler.check.StatedContract;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.inputs.RulesWithNoLine;
@@ -54,6 +55,29 @@ class AClosureIsTheSameRuleHoweverItIsWrittenDownTest {
                 found.add(each.at() + " " + each.why().getClass().getSimpleName()));
         noLine.unclassified().forEach(each ->
                 found.add(each.at() + " " + each.why().getClass().getSimpleName()));
+        return found;
+    }
+
+    /** The forks left stating a rule of their own, as the rule and where it was filed. */
+    private static List<String> forksOfTheirOwn(String declaration) {
+        Compilation compilation = compiled(declaration);
+        String module = compilation.modules().get(0);
+        RuleReadingSource rules = RuleReadings.of(compilation, module);
+        Bodies.Elaborated checked = compilation.db().ask(new Bodies.Checked(module)).value();
+        assertNotNull(checked, "the model under test compiles");
+        InputDomain inputs =
+                compilation.db().ask(new Adequacy.Inputs(module)).value().get("pick");
+        BehaviorSetStatements.Read sets = BehaviorSetStatements.of("pick",
+                checked.analysisBodies().get("pick"),
+                compilation.db().ask(new Bodies.StatedContracts(module)).value().get("pick"),
+                inputs.reading(rules), inputs.parameterReads(),
+                checked.elementBindings().get("pick"),
+                Allowance.of(new PatternPlan.Budget(1000, 1000)),
+                guardsOf(declaration).forks());
+        List<String> found = new ArrayList<>();
+        sets.forks().forEach(each -> each.filed().forEach((at, why) ->
+                found.add(((RuleRef.Written) each.cited().rule()).whatItIs() + " at " + at + " "
+                        + why.getClass().getSimpleName())));
         return found;
     }
 
@@ -290,6 +314,55 @@ class AClosureIsTheSameRuleHoweverItIsWrittenDownTest {
                         let pick (xs, ys) = {
                             let positive = (x) -> x > 0
                             if List.any(positive, xs) && List.any(positive, ys)
+                                then High else Low
+                        }"""));
+    }
+
+    /**
+     * And a fork inside such a closure states a rule of its own, at each of those places.
+     *
+     * <p>Nothing owns what this fork tests: no comparison, no predicate, and no one position it is
+     * the value at — the position is what could not be chosen. So the fork is a rule of the model
+     * by having been written, and where a reader is sent for it is every place it may be about.
+     * Read only by what names one term, the places come back empty and the fork leaves with them.
+     *
+     * <p>The fork the body itself writes is the other one here, and it is filed as it always was:
+     * what it tests is what the walks answered, which came from the sequences and is not them.
+     */
+    @Test
+    void aForkInsideTheSharedClosureIsFiledWhereItMayBeAbout() {
+        assertEquals(List.of("fork at xs[*].active RuleAboutAnElementOfSeveralSequences",
+                        "fork at ys[*].active RuleAboutAnElementOfSeveralSequences",
+                        "fork at xs RuleAboutADerivedValue",
+                        "fork at ys RuleAboutADerivedValue"),
+                forksOfTheirOwn("""
+                        data Person = { active: Bool }
+
+                        behavior pick : (xs: List<Person>, ys: List<Person>) -> Low | High
+                        let pick (xs, ys) = {
+                            let chooses = (p) -> if p.active then true else false
+                            if List.any(chooses, xs) && List.any(chooses, ys)
+                                then High else Low
+                        }"""));
+    }
+
+    /**
+     * And a closure handed to a walk over the input and to a walk over something else keeps what it
+     * says about the input.
+     *
+     * <p>The run through the written list stands at no position, and the run through the parameter
+     * stands at one. Taken as all of them or none, the second went with the first: the rule the
+     * author wrote about their input came out as one about nothing, and the position it divides was
+     * left with no word said about it.
+     */
+    @Test
+    void aClosureHandedToTheInputAndToSomethingElseKeepsWhatItSaysAboutTheInput() {
+        assertEquals(List.of("xs[*] RuleAboutAnElementOfSeveralSequences"),
+                withoutALine("""
+                        behavior pick : (xs: List<Int>) -> Low | High
+                        let pick (xs) = {
+                            let positive: (Int) -> Bool = (x) -> x > 0
+                            if List.any(positive, xs) && List.any(positive, [1, 2])
                                 then High else Low
                         }"""));
     }

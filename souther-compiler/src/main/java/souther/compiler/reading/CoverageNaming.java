@@ -132,7 +132,7 @@ final class CoverageNaming implements Naming<Outcome> {
             case PathResolution.NotAPosition _ -> null;
             // A name standing at one of several names no one position for a fork to be on, and a
             // name built out of the several would be a place no reader could look up.
-            case PathResolution.AtOneOfSeveral _ -> null;
+            case PathResolution.MayStandAt _ -> null;
         };
         if (at == null) {
             Condition fork = forkOf(match, part);
@@ -163,7 +163,7 @@ final class CoverageNaming implements Naming<Outcome> {
             TermPath read = switch (reads.pathOf(iff.cond(), symbols)) {
                 case PathResolution.At(var stands) -> stands;
                 case PathResolution.NotAPosition _ -> null;
-                case PathResolution.AtOneOfSeveral _ -> null;
+                case PathResolution.MayStandAt _ -> null;
             };
             Condition what = read == null ? forkOf(fork, part)
                     : new Condition.Case(read, part == 0 ? "true" : "false");

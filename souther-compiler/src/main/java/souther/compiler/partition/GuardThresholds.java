@@ -291,7 +291,7 @@ public final class GuardThresholds {
                 case PathResolution.At(var at) -> out.putIfAbsent(FilingCoordinate.at(at),
                         new BlockReason.RuleAboutADerivedValue());
                 case PathResolution.NotAPosition _ -> { }
-                case PathResolution.AtOneOfSeveral(var among) -> among.forEach(each ->
+                case PathResolution.MayStandAt(var among) -> among.forEach(each ->
                         out.putIfAbsent(FilingCoordinate.at(each),
                                 new BlockReason.RuleAboutAnElementOfSeveralSequences()));
             }
@@ -361,7 +361,7 @@ public final class GuardThresholds {
                     // A name standing at one of several is a term over no one of them. What this
                     // answers for is a number a line can be drawn on, and a line drawn on this
                     // would be drawn at whichever place was picked out of the several.
-                    case PathResolution.AtOneOfSeveral _ -> null;
+                    case PathResolution.MayStandAt _ -> null;
                 };
             }
 
@@ -370,7 +370,7 @@ public final class GuardThresholds {
                 return switch (at.cameFrom(here, symbols)) {
                     case PathResolution.At(var from) -> from;
                     case PathResolution.NotAPosition _ -> null;
-                    case PathResolution.AtOneOfSeveral _ -> null;
+                    case PathResolution.MayStandAt _ -> null;
                 };
             }
 

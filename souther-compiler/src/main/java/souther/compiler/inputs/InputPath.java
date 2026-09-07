@@ -201,28 +201,23 @@ final class InputPath {
     }
 
     /**
-     * Where an element of any of {@code containers} stands, where every one of them stands
-     * somewhere.
+     * Where an element of any of {@code containers} stands.
      *
-     * <p>All of them or none. What this says is that a rule under the name is about one of these
-     * and nothing says which — a sentence that needs each of them to be a place a reader can be
-     * sent to. Where one of them is not, what the name stands at is not a set of places at all, and
-     * saying it was would send a reader to a shorter list than the rule is about.
+     * <p>The binding takes an element of a different one on each run, so where it stands is where
+     * an element of each of them stands, taken together ({@link PathResolution#anyOf}). A container
+     * standing at no position of the input leaves the runs through it saying nothing and takes
+     * nothing away from the runs through the others: a block handed to a walk over the input and to
+     * a walk over a list written in the body states the caller's rule about the input on the first
+     * run whatever the second does.
      */
     private PathResolution oneOfTheElementsOf(BindingId binding, List<Core> containers,
                                               BindingEnvironment names) {
-        List<TermPath> among = new ArrayList<>();
+        List<PathResolution> each = new ArrayList<>();
         for (Core container : containers) {
-            if (!(trail.through(binding, () -> containerPath(container, names))
-                    instanceof PathResolution.At(var at))) {
-                return new PathResolution.NotAPosition();
-            }
-            TermPath element = at.element();
-            if (!among.contains(element)) {
-                among.add(element);
-            }
+            each.add(trail.through(binding, () -> containerPath(container, names))
+                    .deeper(TermPath::element));
         }
-        return PathResolution.oneOf(among);
+        return PathResolution.anyOf(each);
     }
 
     private PathResolution elementOf(BindingId binding, BindingEnvironment names) {
@@ -261,7 +256,7 @@ final class InputPath {
             // A container standing at one of several places is where its elements are, and there
             // are as many of those as there are of it. Read further for one of them, the elements
             // would come back at a single place while the container they are of stands at more.
-            case PathResolution.AtOneOfSeveral among -> among;
+            case PathResolution.MayStandAt among -> among;
         };
     }
 

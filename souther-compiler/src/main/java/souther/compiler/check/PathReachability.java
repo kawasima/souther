@@ -606,7 +606,7 @@ public final class PathReachability {
             // is prove a branch unreachable by what the rules leave at the position — a proof about
             // one place — so a name that stands at one of two places on two runs is one no such
             // proof can be made about, whichever of them it turns out to be.
-            case PathResolution.AtOneOfSeveral _ -> null;
+            case PathResolution.MayStandAt _ -> null;
         };
     }
 
