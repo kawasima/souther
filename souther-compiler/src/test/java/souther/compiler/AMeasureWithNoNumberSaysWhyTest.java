@@ -267,6 +267,11 @@ class AMeasureWithNoNumberSaysWhyTest {
                   what keeps it open
                     may change in a wider run     0
                     unaffected by a wider run     5
+                      not_measured branch of sift — no measurement was made: no_rows
+                      not_measured invariant Amount #1 = 0 (at the line) — no measurement was made: no_rows
+                      not_measured invariant Amount #1 = 0 (in the region, above) — no measurement was made: no_rows
+                      not_measured invariant Amount #1 = 1000 (at the line) — no measurement was made: no_rows
+                      not_measured invariant Amount #1 = 1000 (in the region, below) — no measurement was made: no_rows
                 """, human());
     }
 

@@ -1190,6 +1190,14 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             out.append("  what keeps it open\n");
             out.append(String.format("    may change in a wider run   %3d%n", open.mayChange()));
             out.append(String.format("    unaffected by a wider run   %3d%n", open.unaffected()));
+            // And which they are. The counts alone told a reader how many things held the verdict
+            // open and nothing about what they were, with no mark in the body to find them by; the
+            // lines below name each one and say where it leaves them, both read from what the
+            // measurement established rather than worked out again here.
+            for (AdequacyOpening each : whatKeepsTheVerdictOpen()) {
+                out.append(String.format("      %s %s — %s%n", kindWord(kindOf(each)),
+                        said(each.subject(), names), next(ReaderDisposition.of(each))));
+            }
         }
         // What the mark above means, said by the report that wrote it. The count was said only by
         // `--strict`, on standard error, in a run a reader had to ask for — so a reader of the report
@@ -4083,6 +4091,77 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 into.put("axis", it.axis());
             }
         }
+    }
+
+    /**
+     * One subject, as a person is shown it.
+     *
+     * <p>Every phrase is the owner's. A line says what a report calls it, a rule says the position
+     * it was read at, a source is named by whoever handed it over — none of it is worded here,
+     * because a second wording is a second answer to what a thing is called and a reader meeting
+     * both has no way to say which one moved.
+     *
+     * <p>A {@code switch} with no {@code default}, so a subject added later is a compile error
+     * rather than an entry printed with nothing said about it.
+     */
+    private static String said(Subject subject, SourceNameResolver names) {
+        return switch (subject) {
+            case Subject.OfAModule it -> "module " + it.module();
+            case Subject.OfABehavior it -> it.behavior();
+            case Subject.OfASource it -> "source " + names.nameOf(it.source());
+            case Subject.OfARow it -> switch (it.row().identity()) {
+                case RowIdentity.Named named -> "row `" + named.name() + "` of " + it.row().behavior();
+                case RowIdentity.Unnamed unnamed ->
+                        "row " + unnamed.shown() + " of " + it.row().behavior();
+            };
+            case Subject.AtASpelledPosition it -> it.behavior() + "/" + it.path();
+            case Subject.AtAPosition it -> it.behavior() + "/" + it.at();
+            case Subject.AtAnInput it -> "input " + it.at() + " of " + it.behavior();
+            case Subject.AtARule it -> new PartitionEvidence.Unanswered(it.question()).at();
+            case Subject.AtABorder it -> it.border().label();
+            // The line as a report calls it, the level it falls at, and where on it the point is.
+            // All three: what a report calls a line leaves out where it stands, on purpose, and two
+            // points of one behavior's comparisons are told apart by nothing else — which is the
+            // shape this whole array was written to stop repeating.
+            case Subject.AtAPoint it -> it.point().line().saidWithoutAPlace()
+                    + " = " + it.point().line().at() + placeOn(it.point().point());
+            case Subject.AtAFork it -> "a fork of " + it.fork().module();
+            case Subject.AtAnArm it -> "an arm of " + it.arm().writtenIn().definition();
+            case Subject.OfAMeasure it ->
+                    word(it.measure()) + " of " + it.behavior();
+            case Subject.OfAnAxisMeasure it -> it.at().term() + " of " + it.behavior();
+        };
+    }
+
+    /** Where on a line a point stands, in the words the account beside it uses. */
+    private static String placeOn(souther.compiler.partition.DomainPoint point) {
+        return switch (point) {
+            case souther.compiler.partition.DomainPoint.AtTheLine _ -> " (at the line)";
+            case souther.compiler.partition.DomainPoint.BesideTheLine it ->
+                    " (beside the line, " + word(it.side()) + ")";
+            case souther.compiler.partition.DomainPoint.InTheRegion it ->
+                    " (in the region, " + word(it.side()) + ")";
+        };
+    }
+
+    /** What a reader does next with one thing holding the verdict open. */
+    private static String next(ReaderDisposition disposition) {
+        return switch (disposition) {
+            case ReaderDisposition.WidenTheRun _ -> "run this again allowing more";
+            case ReaderDisposition.LookAtTheRule _ -> "read the rule and what stopped it";
+            case ReaderDisposition.LookAtWhatTheMeasureWentWithout it ->
+                    "read what the measure went without: " + word(it.said());
+            case ReaderDisposition.LookAtWhyNothingWasMeasured it ->
+                    "no measurement was made: " + word(it.why());
+            case ReaderDisposition.LookAtWhatShowedNoRow _ ->
+                    "read what was tried to show a row can be written there";
+            case ReaderDisposition.LookAtTheFork _ -> "read the fork nothing told apart";
+            case ReaderDisposition.LookAtThisCompilersProof _ ->
+                    "read this compiler's proof, which is what does not hold";
+            case ReaderDisposition.ReconsiderWhatThisBehaviorNeedsToDistinguish _ ->
+                    "weigh what this behavior needs to tell apart";
+            case ReaderDisposition.Settled _ -> "nothing";
+        };
     }
 
     /**
