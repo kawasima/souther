@@ -198,6 +198,17 @@ public final class Db implements StoreWork {
     }
 
     private final Map<Key<?>, Memo> memos = new HashMap<>();
+    /**
+     * Whether whoever set this walk going has since stopped wanting the answer. Asked where a
+     * question is about to be answered and nowhere else, so a walk stops between two questions and
+     * never inside one.
+     *
+     * <p>Being asked to stop is not an input changing. The answers already reached are answers of
+     * this revision and stay: nothing can move an input while a walk is running, because the walk is
+     * what the one thread holding this store is doing. Only the key that never returned a value is
+     * left without a memo, which is what {@link #ask} does with a throw either way.
+     */
+    private Abandonment abandonment = Abandonment.NEVER;
     /** The keys being answered right now, outermost first — the chain a cycle is found on. */
     private final Set<Key<?>> inProgress = new LinkedHashSet<>();
     /** The reads of each in-progress key, innermost frame last. */
@@ -306,6 +317,19 @@ public final class Db implements StoreWork {
         spoke.removeIf(key -> !memos.containsKey(key));
     }
 
+    /**
+     * Says what makes a walk of this store stop short: while {@code asked} answers true, the next
+     * question that has to be answered raises {@link Abandoned} instead.
+     *
+     * <p>What is left behind is what was answered. A key whose computation was cut through leaves no
+     * memo — it never returned a value — while every key that answered inside it keeps one, because
+     * an answer of this revision is an answer of this revision however the walk that wanted it
+     * ended. The next walk pays for what this one did not finish and for nothing else.
+     */
+    public void abandonWhen(Abandonment abandonment) {
+        this.abandonment = abandonment;
+    }
+
     /** Answers {@code key}, computing it if nothing kept from before still holds. */
     @SuppressWarnings("unchecked")
     public <T> Answer<T> ask(Key<T> key) {
@@ -323,6 +347,7 @@ public final class Db implements StoreWork {
             memos.put(key, memo.verifiedAt(revision));
             return (Answer<T>) memo.answer();
         }
+        abandonment.stopIfAsked();
         inProgress.add(key);
         frames.push(new LinkedHashSet<>());
         Answer<T> answer;
