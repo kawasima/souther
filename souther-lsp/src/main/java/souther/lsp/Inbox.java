@@ -78,9 +78,17 @@ final class Inbox {
         return readerFailure.get();
     }
 
-    /** Whether anything is waiting to be carried out — what makes a diagnose give way. */
-    boolean anyWaiting() {
-        return !waiting.isEmpty();
+    /**
+     * Whether a client is waiting to be answered — what makes a diagnose give way.
+     *
+     * <p>A message, and not anything at all. The end of the stream and a failure of the reading
+     * thread are also things in this queue, and neither is a client asking for something: giving way
+     * to the end of the stream would abandon a diagnose that has nothing left to give way to, only
+     * to be asked for again a moment later. Reading the head is enough to tell, because the reading
+     * thread adds one of those two and then stops, so a queue whose head is one holds nothing else.
+     */
+    boolean aMessageIsWaiting() {
+        return waiting.peek() instanceof Inbound.Message;
     }
 
     /** The next thing to carry out, or null if nothing is waiting. */

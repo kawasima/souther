@@ -172,8 +172,8 @@ public final class LspServer {
      * Reads frames and hands them over until the stream ends or reading cannot go on.
      *
      * <p>Nothing is answered here. What this thread decides is the order things happened in, and the
-     * one thing it acts on itself is a cancel, which has to reach a request that is already being
-     * worked on.
+     * one thing it acts on itself is a cancel — which has to reach a request that has already been
+     * handed over, whether or not the session has got to it yet.
      */
     private void read() {
         try {
@@ -208,11 +208,11 @@ public final class LspServer {
     /**
      * Carries out what arrives, and diagnoses the workspace whenever nothing else is waiting.
      *
-     * <p>Which is the whole of the scheduling. A diagnose is what this thread does with an idle
-     * moment: it gives way to anything at all, and a run of keystrokes therefore costs one diagnose
-     * at the end of it rather than one each. What it does not do is guarantee it ever runs — a client
-     * that never stopped asking would never be told anything, and that is what asking without pause
-     * means, not a case to write a threshold for.
+     * <p>Which is the whole of the scheduling. A diagnose is what this thread does with a moment in
+     * which no client is waiting to be answered: it gives way to any message, and a run of keystrokes
+     * therefore costs one diagnose at the end of it rather than one each. What it does not do is
+     * guarantee it ever runs — a client that never stopped asking would never be told anything, and
+     * that is what asking without pause means, not a case to write a threshold for.
      */
     private int carryOutWhatArrives() {
         while (true) {
@@ -227,10 +227,10 @@ public final class LspServer {
             switch (next) {
                 case Inbound.ReaderFailed failed -> throw new ConnectionLost(failed.cause());
                 case Inbound.EndOfInput _ -> {
-                    // Not something to give way to. Everything else in this queue is a client
-                    // asking for something, and a diagnose steps aside for those; the end of the
-                    // stream asks for nothing, so what was already asked for is finished first. A
-                    // diagnose is the only thing that can still be owed at this point.
+                    // The end of the stream asks for nothing, so a diagnose does not give way to it
+                    // and one that is still owed is carried out before the session ends. `exit` is
+                    // not this: that is a client saying stop now, and a server told to stop now has
+                    // nothing more to publish.
                     if (diagnosticsAreStale) {
                         diagnose();
                     }
@@ -976,7 +976,7 @@ public final class LspServer {
      */
     private void diagnose() {
         diagnosticsAreStale = false;
-        stopWhen = inbox::anyWaiting;
+        stopWhen = inbox::aMessageIsWaiting;
         try {
             publishAll();
         } catch (Abandoned _) {
