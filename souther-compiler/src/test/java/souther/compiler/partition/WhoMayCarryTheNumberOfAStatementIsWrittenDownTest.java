@@ -104,8 +104,7 @@ class WhoMayCarryTheNumberOfAStatementIsWrittenDownTest {
     private static Map<String, String> numbersHeldBesideAPart() throws IOException {
         Map<String, String> found = new TreeMap<>();
         int read = 0;
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : compiled()) {
             read++;
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             boolean holdsAPart = false;
@@ -130,8 +129,7 @@ class WhoMayCarryTheNumberOfAStatementIsWrittenDownTest {
     private static Map<String, String> callsTo(String owner, String name) throws IOException {
         Map<String, String> calls = new TreeMap<>();
         int read = 0;
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : compiled()) {
             read++;
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
@@ -139,10 +137,7 @@ class WhoMayCarryTheNumberOfAStatementIsWrittenDownTest {
                 method.code().ifPresent(code -> code.forEach(element -> {
                     if (element instanceof InvokeInstruction call
                             && call.owner().asInternalName().equals(owner)
-                            && call.name().stringValue().equals(name)
-                            // The record's own constructor, which is what every maker calls
-                            // through. Counted, the type would be on its own list.
-                            && !from.equals(owner.replace('/', '.'))) {
+                            && call.name().stringValue().equals(name)) {
                         calls.put(where, "");
                     }
                 }));
@@ -152,10 +147,26 @@ class WhoMayCarryTheNumberOfAStatementIsWrittenDownTest {
         return calls;
     }
 
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(walk.filter(p -> p.toString().endsWith(".class")).toList());
+    /**
+     * Every compiled class, parsed once for both questions.
+     *
+     * <p>The two ask different things of the same classes, and reading the tree twice is reading
+     * every class file of the compiler twice for an answer that does not change between them.
+     */
+    private static List<ClassModel> compiled() throws IOException {
+        if (COMPILED != null) {
+            return COMPILED;
         }
+        Path root = Path.of("target", "classes").toAbsolutePath();
+        List<ClassModel> out = new ArrayList<>();
+        try (Stream<Path> walk = Files.walk(root)) {
+            for (Path each : walk.filter(p -> p.toString().endsWith(".class")).toList()) {
+                out.add(ClassFile.of().parse(Files.readAllBytes(each)));
+            }
+        }
+        COMPILED = List.copyOf(out);
+        return COMPILED;
     }
+
+    private static List<ClassModel> COMPILED;
 }
