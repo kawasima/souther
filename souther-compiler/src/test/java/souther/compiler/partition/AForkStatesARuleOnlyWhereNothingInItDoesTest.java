@@ -141,6 +141,25 @@ class AForkStatesARuleOnlyWhereNothingInItDoesTest {
                         then High else Low"""));
     }
 
+    /**
+     * And a fork that states no rule owns nothing.
+     *
+     * <p>The negative control for the one above, and the reason the owner is asked of the rules
+     * rather than of the source. The inner condition is about nothing of the input, so it states no
+     * rule — that is what a fork over {@code List.isEmpty([1, 2, 3])} already comes to. The outer
+     * fork turns on it all the same, and what it turns on being a fork the author wrote is not what
+     * makes it owned: read that way, the outer fork would be answered for by a rule that does not
+     * exist and the question it leaves would go with it.
+     */
+    @Test
+    void aForkThatStatesNoRuleOwnsNothing() {
+        assertEquals(new Owned(0, 1), read("""
+                behavior pick : (xs: List<Int>) -> Low | High
+                let pick (xs) =
+                    if List.any(n -> if List.isEmpty([1, 2, 3]) then false else true, xs)
+                        then High else Low"""));
+    }
+
     /** And a fork on a predicate is the predicate's, which is a rule this compiler reads. */
     @Test
     void aForkOnAPredicateIsThePredicatesRule() {

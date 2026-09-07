@@ -371,39 +371,19 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
      * {@code List.any(x -> x > 0, xs)} states nothing of its own while
      * {@code List.any(p -> p.active, xs)} states a rule nobody wrote.
      *
-     * <p>A fork among them for the same reason. What the answer turns on is a condition the author
-     * wrote, and a condition the author wrote is a rule of the model — by being owned, in which
-     * case this walk found its owner, or by being owed a rule of its own. Left out, the rule would
-     * be counted twice: once where it is written and once at every fork whose answer it decides,
-     * and a reader would be sent to the second for a question the first already asks.
-     *
-     * <p>Which is read off the source and not off what this walk has met, so it is the same answer
-     * wherever in a body the fork stands. A walk records a fork before it descends its arms, so an
-     * owner looked up among the forks already met would depend on where the two stand relative to
-     * each other, and one written under the arm of the other would own nothing.
+     * <p><b>Two of the three and not the third.</b> A fork the answer turns on may state a rule of
+     * its own, and whether it does is not a fact about the fork's shape: a condition nobody else
+     * answers for and that is about no position of the input states nothing, so a source-written
+     * fork there is no rule for an outer one to be owned by. Read as one, a fork over such a
+     * closure would be owned by a rule that does not exist and the question it leaves would go with
+     * it. So that owner is asked where the rules themselves are known
+     * ({@code BehaviorSetStatements#ofTheirOwn}), of the rules and not of the source.
      */
-    private static boolean somethingElseStatesIt(Core atom, InputReads reads, Symbols symbols) {
+    static boolean somethingElseStatesIt(Core atom, InputReads reads, Symbols symbols) {
         return WhatAForkTests.turnsOnSomething(atom,
                 part -> comparisonAt(part) != null
-                        || reads.pathOf(part, symbols) instanceof PathResolution.At
-                        || forkOfTheSource(part),
+                        || reads.pathOf(part, symbols) instanceof PathResolution.At,
                 one -> reads.denotes(one, symbols).value());
-    }
-
-    /**
-     * Whether {@code e} is a fork the source wrote.
-     *
-     * <p>Which is what makes one a rule of the model, and the only part of that this can be asked
-     * about a construct standing anywhere: whether the fork comes to a rule of its own or is owned
-     * by something inside it is the walk's answer at the place it stands, and either way it is
-     * where the rule is written.
-     */
-    private static boolean forkOfTheSource(Core e) {
-        return switch (e) {
-            case Core.If iff -> iff.origin() != null && iff.origin().isWritten();
-            case Core.Match match -> match.origin() != null && match.origin().isWritten();
-            default -> false;
-        };
     }
 
     /** Whether the truth of {@code atom} turns on a predicate {@code read} took in, which is the

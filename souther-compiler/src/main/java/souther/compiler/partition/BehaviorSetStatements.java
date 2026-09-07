@@ -393,11 +393,63 @@ public final class BehaviorSetStatements {
      * the body a second time to find out.
      *
      * <p>Said as no owner claiming it rather than as a shape. {@link ForkOfItsOwn} says why.
+     *
+     * <p><b>And a fork among the owners, once the rules are known.</b> An operation may say its
+     * answer turns on what a closure decided, and what the closure decided may be a fork of its own
+     * — so the fork around the operation states that rule rather than a second one, exactly as it
+     * states a comparison written there. Which fork is a rule is what this works out, so it is
+     * asked here and of the answer rather than of the source: a condition nobody answers for that
+     * is about no position of the input states nothing, and an outer fork owned by it would be
+     * owned by a rule nobody wrote and its own question would go with it.
+     *
+     * <p>Over the rules found rather than over the forks met on the way, so where the two stand
+     * relative to each other says nothing: a walk records a fork before it descends its arms, and
+     * an owner looked up among the forks already met would leave one written under the arm of the
+     * other owning nothing. And dropping one does not take an owner from anything else — a part
+     * that turns on a dropped fork's condition turns on whatever owned that condition, and reaches
+     * it along the same edges.
      */
     private static List<ForkOfItsOwn> ofTheirOwn(String behavior, PredicateReadings read,
                                                  Symbols symbols,
                                                  List<ComparisonReadings.ForkMet> forks) {
+        List<Standing> standing = standingRules(behavior, read, symbols, forks);
         List<ForkOfItsOwn> out = new ArrayList<>();
+        for (Standing each : standing) {
+            if (standing.stream().noneMatch(other -> other != each
+                    && each.turnsOnTheConditionOf(other, symbols))) {
+                out.add(each.rule());
+            }
+        }
+        return out;
+    }
+
+    /** One fork that states a rule of its own, before any of them is asked whether another one's
+     *  rule is what it states. */
+    private record Standing(ComparisonReadings.ForkMet fork, List<Core> untaken,
+                            ForkOfItsOwn rule) {
+
+        /**
+         * Whether what this fork tests turns on the condition of {@code other}.
+         *
+         * <p>Along the same edges every other owner is looked for along, and asked of the parts
+         * this fork was left with: a fork owned for one part and stating another is answered for
+         * where it is answered for, and this is about the part that was not.
+         */
+        boolean turnsOnTheConditionOf(Standing other, Symbols symbols) {
+            for (Core part : untaken) {
+                if (WhatAForkTests.turnsOnSomething(part, it -> it == other.fork().condition(),
+                        one -> fork.reads().denotes(one, symbols).value())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    private static List<Standing> standingRules(String behavior, PredicateReadings read,
+                                                Symbols symbols,
+                                                List<ComparisonReadings.ForkMet> forks) {
+        List<Standing> out = new ArrayList<>();
         for (ComparisonReadings.ForkMet each : forks) {
             // The parts of what it tests that no reader answers for. Asked part by part and not of
             // the fork: `a > 0 && List.isEmpty(xs)` states a comparison and something nothing read,
@@ -415,7 +467,7 @@ public final class BehaviorSetStatements {
             }
             ForkOfItsOwn asked = asked(behavior, each, untaken, symbols);
             if (asked != null) {
-                out.add(asked);
+                out.add(new Standing(each, untaken, asked));
             }
         }
         return out;
