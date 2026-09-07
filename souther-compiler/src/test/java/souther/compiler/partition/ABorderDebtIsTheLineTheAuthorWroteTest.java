@@ -233,12 +233,13 @@ class ABorderDebtIsTheLineTheAuthorWroteTest {
                                 souther.compiler.types.SourceConstruct.BINARY));
         return new LineOrigin.ComparisonOrigin(
                 new LineOrigin.ComparisonOrigin.Read(
-                        new souther.compiler.coverage.ComparisonOccurrence(
-                                "example.banding", "twice", occurrence),
                         rule,
                         souther.compiler.diag.Citation.of(
                                 new souther.compiler.diag.SourcePos(15, 16)),
-                        java.util.List.of(WHERE.comparison(occurrence))),
+                        java.util.List.of(new LineOrigin.ComparisonOrigin.Watched(
+                                new souther.compiler.coverage.ComparisonOccurrence(
+                                        "example.banding", "twice", occurrence),
+                                WHERE.comparison(occurrence)))),
                 new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(
                         souther.compiler.numeric.Towards.BELOW, true)));
     }

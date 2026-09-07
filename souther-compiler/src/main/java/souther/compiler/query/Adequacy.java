@@ -1456,9 +1456,6 @@ public final class Adequacy {
                             ? souther.compiler.coverage.CoverageSites.Plan.NONE : checked.plan();
             return Answer.of(Coverages.partitioningOf(spec,
                     domain.reading(reading.value()), bodies.get(behavior),
-                    checked == null ? souther.compiler.check.ElementBindings.NONE
-                            : checked.elementBindings().getOrDefault(behavior,
-                                    souther.compiler.check.ElementBindings.NONE),
                     plan,
                     arrivalsOf(db.ask(new PathReached(name)).value(), spec),
                     statedOf(db.ask(new Bodies.StatedContracts(name)).value(), spec),

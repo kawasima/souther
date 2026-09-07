@@ -82,8 +82,7 @@ public final class ComparisonEmissionIndex {
     }
 
     /** The same over one body, for a reader that holds one rather than the module's. */
-    public static ComparisonEmissionIndex ofBody(String behavior, Core body,
-                                                 CoverageSites.Plan plan) {
+    public static ComparisonEmissionIndex ofBody(Core body, CoverageSites.Plan plan) {
         Map<ModelOccurrence, List<EmittedComparison>> emitted = new LinkedHashMap<>();
         walk(body, plan, emitted);
         return new ComparisonEmissionIndex(copy(emitted));

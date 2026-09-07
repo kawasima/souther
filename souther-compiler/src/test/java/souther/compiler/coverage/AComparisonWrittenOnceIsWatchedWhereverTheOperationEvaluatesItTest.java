@@ -69,7 +69,7 @@ class AComparisonWrittenOnceIsWatchedWhereverTheOperationEvaluatesItTest {
                 () -> "the analysis reads each rule once: " + stated);
 
         ComparisonEmissionIndex index =
-                ComparisonEmissionIndex.ofBody("pick", emitted, checked.plan());
+                ComparisonEmissionIndex.ofBody(emitted, checked.plan());
         List<Integer> watched = stated.stream().map(each -> index.madeFor(each).size()).toList();
 
         assertEquals(List.of(1, 2), watched.stream().sorted().toList(),

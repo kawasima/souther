@@ -254,6 +254,24 @@ class AForkStatesARuleOnlyWhereNothingInItDoesTest {
                     if List.isEmpty(List.distinctBy(x -> x > 0, xs)) then High else Low"""));
     }
 
+    /**
+     * And a fork nothing reads states no rule a row could be held to.
+     *
+     * <p>What is computed where no run reads it divides nothing: a comparison there draws no line
+     * for that reason ({@link NotABoundary#NOTHING_READS_IT}), and a fork is a rule for having been
+     * written rather than for what came of it — so left in, it would hold a measure open over a
+     * question no row can answer, which is the case that word exists to exclude.
+     */
+    @Test
+    void aForkNothingReadsStatesNoRule() {
+        assertEquals(new Owned(0, 0), read("""
+                behavior pick : (xs: List<Int>) -> Low | High
+                let pick (xs) = {
+                    let unread = if List.isEmpty(xs) then 1 else 2
+                    High
+                }"""));
+    }
+
     /** Nothing this compiler composed is one of these: the forks are the ones an author wrote. */
     @Test
     void everyForkFiledIsOneAnAuthorWrote() {

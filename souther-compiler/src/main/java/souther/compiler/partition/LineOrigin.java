@@ -141,6 +141,25 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
         }
 
         /**
+         * One materialisation of a rule in the tree that runs, and the place a run through it is
+         * written down.
+         *
+         * <p>The two together because they are minted together, from the plan that numbered the
+         * materialisation. Held as two lists, a reader could be handed a name from one build and a
+         * place from another and nothing would say so.
+         */
+        public record Watched(souther.compiler.coverage.ComparisonOccurrence comparison,
+                              souther.compiler.coverage.ComparisonEmissionSite recordedAt) {
+
+            public Watched {
+                if (comparison == null || recordedAt == null) {
+                    throw new IllegalArgumentException(
+                            "a place a rule is watched at is one the numbering named, with a site");
+                }
+            }
+        }
+
+        /**
          * Which comparison this reads, which reading of it this is, and where that reading was.
          *
          * <p>Only the handle tells one rule from another. A comparison inside a non-recursive helper
@@ -166,23 +185,22 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
          *              own place and not the fork's — a condition holding three comparisons is
          *              three rules, and a reader sent to the {@code if} is given one handle for all
          *              of them
-         * @param watched every place a run through that comparison is written down. Beside the
-         *              comparison and not instead of it: which comparison this reads is what
-         *              everything about the rule is said of, and these are only how a run is asked
-         *              whether it got there. Minted together with the comparison, from the plan
-         *              that numbered it, so the two cannot come from different builds.
+         * @param watched every materialisation of that comparison in the tree that runs, with the
+         *              place a run through each is written down. Beside the rule and not instead of
+         *              it: which comparison this reads is what everything about the rule is said of,
+         *              and these are only how a run is asked whether it got there. Minted from the
+         *              plan that numbered them, so the names and the places cannot come from
+         *              different builds.
          *              <p>Several because one rule may be written into the tree that runs more than
          *              once: a library operation evaluating a closure it was handed twice writes the
          *              comparison twice, and the model states one rule all the same. A run that got
          *              an answer out of any of them got one out of the rule
          */
-        public record Read(souther.compiler.coverage.ComparisonOccurrence comparison,
-                           RuleRef.Comparison rule, Citation writtenAt,
-                           java.util.List<souther.compiler.coverage.ComparisonEmissionSite>
-                                   watched) {
+        public record Read(RuleRef.Comparison rule, Citation writtenAt,
+                           java.util.List<Watched> watched) {
 
             public Read {
-                if (comparison == null || rule == null || writtenAt == null) {
+                if (rule == null || writtenAt == null) {
                     throw new IllegalArgumentException(
                             "a rule read off a comparison names one and cites it");
                 }
@@ -192,6 +210,41 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
                             "a rule a row is held to is one a run through is written down"
                                     + " somewhere");
                 }
+            }
+
+            /** Every name the numbering gave a materialisation of this rule. */
+            public java.util.List<souther.compiler.coverage.ComparisonOccurrence> comparisons() {
+                return watched.stream().map(Watched::comparison).toList();
+            }
+
+            /** Every place a run through it is written down. */
+            public java.util.List<souther.compiler.coverage.ComparisonEmissionSite> recordedAt() {
+                return watched.stream().map(Watched::recordedAt).toList();
+            }
+
+            /**
+             * Whether {@code which} is one of this rule's materialisations.
+             *
+             * <p>Asked rather than compared against one of them. A rule may be written into the
+             * tree that runs more than once, and a reader holding the name of the second would
+             * find no rule where one is — the decision it recorded is the rule's, whichever copy
+             * made it.
+             */
+            public boolean names(souther.compiler.coverage.ComparisonOccurrence which) {
+                return watched.stream().anyMatch(one -> one.comparison().equals(which));
+            }
+
+            /**
+             * Any one of them, for a reader that asks a question every materialisation answers
+             * alike.
+             *
+             * <p>What a row had to satisfy to get to the rule is such a question: what stood on the
+             * way is read once off the tree the rule is read in, and recorded against every
+             * materialisation — so the ways are one way under several names, and taking the first
+             * is not a choice between answers.
+             */
+            public souther.compiler.coverage.ComparisonOccurrence anyOfThem() {
+                return watched.get(0).comparison();
             }
 
             /**
@@ -586,7 +639,7 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      */
     default java.util.Optional<souther.compiler.coverage.ComparisonOccurrence> comparisonAt() {
         return switch (this) {
-            case ComparisonOrigin g -> java.util.Optional.of(g.read().comparison());
+            case ComparisonOrigin g -> java.util.Optional.of(g.read().anyOfThem());
             case NarrowedOrigin n -> n.bound().comparisonAt();
             case InvariantOrigin _, EnsuresOrigin _ -> java.util.Optional.empty();
         };
@@ -603,7 +656,7 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      */
     default java.util.List<souther.compiler.coverage.ComparisonEmissionSite> recordedAt() {
         return switch (this) {
-            case ComparisonOrigin g -> g.read().watched();
+            case ComparisonOrigin g -> g.read().recordedAt();
             case NarrowedOrigin n -> n.bound().recordedAt();
             case InvariantOrigin _, EnsuresOrigin _ -> java.util.List.of();
         };

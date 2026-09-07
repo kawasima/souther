@@ -104,13 +104,14 @@ class AnAccountEstablishesItsDenominatorBeforeItCountsTest {
     private static LineOrigin origin() {
         return new LineOrigin.ComparisonOrigin(
                 new LineOrigin.ComparisonOrigin.Read(
-                        new souther.compiler.coverage.ComparisonOccurrence("example.one", "f", 0),
                         new RuleRef.Comparison("f",
                                 new souther.compiler.types.SourceConstructOrigin(
                                         new WrittenOwner.Body("example.one", "f"), 2, 0,
                                         souther.compiler.types.SourceConstruct.BINARY)),
                         Citation.of(new souther.compiler.diag.SourcePos(1, 1)),
-                        java.util.List.of(WHERE)),
+                        java.util.List.of(new LineOrigin.ComparisonOrigin.Watched(
+                                new souther.compiler.coverage.ComparisonOccurrence(
+                                        "example.one", "f", 0), WHERE))),
                 new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(Towards.BELOW, true)));
     }
 }

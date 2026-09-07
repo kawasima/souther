@@ -1530,19 +1530,26 @@ public final class HelperInliner {
                         "a copy of a body made at a name this compiler composed: " + reference
                                 + " at " + call.pos());
             }
-            case EtaOrigin.Bound(BindingId binding) -> {
+            case EtaOrigin.Bound(BindingId binding, ReferenceOrigin reference) -> {
                 // The block a call handed to a parameter. What copy it was handed to is the one
                 // being written here — the block is expanded where the copy taking it applies it —
                 // and which parameter it filled is what the binding was registered with. Read off
                 // the registration rather than off the binding's own number, which is this pass's
                 // count over the names it minted.
                 ScopedLambda lambda = writing.scopedLambdas().get(binding);
-                if (lambda == null || lambda.origin() == null) {
-                    throw new IllegalStateException(
-                            "a copy of a body made at a binding no call handed to a parameter: "
-                                    + binding + " at " + call.pos());
+                if (lambda != null && lambda.origin() != null) {
+                    return new ExpansionSite.Supplied(writing.lineage(), lambda.origin().slot());
                 }
-                return new ExpansionSite.Supplied(writing.lineage(), lambda.origin().slot());
+                // And a lambda the author bound to a name and then wrote where a value goes. No
+                // call handed it to anything, so there is no copy and no parameter to name it by —
+                // what the author wrote is the name, which is what every other name written where a
+                // value goes is named by.
+                if (reference instanceof SourceReferenceOrigin written) {
+                    return new ExpansionSite.Named(written);
+                }
+                throw new IllegalStateException(
+                        "a copy of a body made at a binding no call handed to a parameter and no"
+                                + " source wrote a name for: " + binding + " at " + call.pos());
             }
         }
     }
@@ -1782,7 +1789,7 @@ public final class HelperInliner {
         if (function instanceof Hir.Var.Denoting named
                 && named.reachedAs() instanceof ReachName.InScope in
                 && in.denotes() instanceof ValueName.Local local) {
-            return new EtaOrigin.Bound(local.id());
+            return new EtaOrigin.Bound(local.id(), named.origin());
         }
         return new EtaOrigin.Declaration(function.origin());
     }

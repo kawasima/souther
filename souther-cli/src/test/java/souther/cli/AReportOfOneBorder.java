@@ -115,15 +115,15 @@ final class AReportOfOneBorder {
     static Border aBorderABodyDrew() {
         LineOrigin origin = new LineOrigin.ComparisonOrigin(
                 new LineOrigin.ComparisonOrigin.Read(
-                        new souther.compiler.coverage.ComparisonOccurrence(
-                                "example.rate", "weigh", 0),
                         new RuleRef.Comparison("weigh",
                                 new souther.compiler.types.SourceConstructOrigin(
                                         new WrittenOwner.Body("example.rate", "weigh"), 2, 0,
                                         souther.compiler.types.SourceConstruct.BINARY)),
                         souther.compiler.diag.Citation.of(
                                 new souther.compiler.diag.SourcePos(3, 5)),
-                        java.util.List.of(WHERE)),
+                        java.util.List.of(new LineOrigin.ComparisonOrigin.Watched(
+                                new souther.compiler.coverage.ComparisonOccurrence(
+                                        "example.rate", "weigh", 0), WHERE))),
                 new souther.compiler.partition.LineFacts(
                         new ComparisonClaim.Cut(souther.compiler.numeric.Towards.BELOW, true)));
         return Border.at(

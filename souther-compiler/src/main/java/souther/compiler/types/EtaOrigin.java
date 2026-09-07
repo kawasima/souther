@@ -45,13 +45,26 @@ public sealed interface EtaOrigin {
     }
 
     /**
-     * A read of something bound in the body, which a pass put there.
+     * A read of something bound in the body.
      *
-     * <p>No source wrote it, so there is no reference to name it by — and none is wanted: what such
-     * a name reads is one binding, and a binding is already a thing this compiler tells from every
-     * other ({@link BindingId}).
+     * <p>What such a name reads is one binding, and a binding is already a thing this compiler tells
+     * from every other ({@link BindingId}) — so the binding is what the cause is.
+     *
+     * <p><b>And the reference beside it, because a source may have written this one.</b> Two
+     * different things reach here: a binding a pass put there for a block a call handed to a
+     * function parameter, which no source wrote; and a name the author bound a lambda to and then
+     * wrote where a value goes, which they did. Both read a binding, and only the second has a
+     * reference — so a reader that has to name the copy such an expansion makes has something to
+     * name it by in the case where there is one, and says so where there is not.
+     *
+     * <p>This said no source wrote either of them. What made that untrue was never a change: a
+     * {@code let} binding a lambda and passing it by name was always one of these, and the reader
+     * that first needed to tell the two apart met a sentence saying it could not happen.
+     *
+     * @param reference where the author wrote the name, or null where a pass put the binding there
+     *                  and no source wrote a name for it
      */
-    record Bound(BindingId binding) implements EtaOrigin {
+    record Bound(BindingId binding, ReferenceOrigin reference) implements EtaOrigin {
 
         public Bound {
             if (binding == null) {

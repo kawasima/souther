@@ -143,11 +143,11 @@ public final class GuardThresholds {
         // The elements of this tree, read here rather than handed in as nothing. A caller with no
         // reading of its own still asks about a body that walks something, and answered with none
         // it would be told a rule over a run is a rule about nothing.
-        return of(behavior, states, emitted, plan, inputs.reading(source),
-                states == null ? souther.compiler.check.ElementBindings.NONE
-                        : souther.compiler.check.ElementBindings.of(states.core(),
+        return states == null ? Guards.NONE
+                : of(behavior, states, emitted, plan, inputs.reading(source),
+                        souther.compiler.check.ElementBindings.of(states.core(),
                                 states.elements(), source.symbols()),
-                souther.compiler.check.PathReachability.Answers.NONE);
+                        souther.compiler.check.PathReachability.Answers.NONE);
     }
 
     /** The thresholds one behavior's body compares its parameters against. {@code plan} supplies
@@ -160,6 +160,15 @@ public final class GuardThresholds {
                             InputReading read,
                             souther.compiler.check.ElementBindings elements,
                             souther.compiler.check.PathReachability.Answers arrives) {
+        // A behavior with no representation for the analysis to read leaves nothing to read. This
+        // reading is of that tree — where the language's operations stand — so where there is none
+        // there are no rules to be had from it, and the answer is the same one a behavior with no
+        // body at all gets. Asked here rather than by each caller: whether there is a tree to read
+        // is one fact, and two callers answering it separately is how one of them came to build a
+        // value for a reader that then walked into the absence.
+        if (states == null) {
+            return Guards.NONE;
+        }
         InputDomain inputs = read.domain();
         List<RuleEvidence> found = new ArrayList<>();
         RulesWithNoLine.Gathered withoutALine = new RulesWithNoLine.Gathered();
@@ -186,7 +195,7 @@ public final class GuardThresholds {
         // And what the tree that runs says about each of them, joined on the construct of the model
         // the two readings agree about.
         souther.compiler.coverage.ComparisonEmissionIndex index =
-                souther.compiler.coverage.ComparisonEmissionIndex.ofBody(behavior, emitted, plan);
+                souther.compiler.coverage.ComparisonEmissionIndex.ofBody(emitted, plan);
         ReachingCuts.Collected cuts = new ReachingCuts.Collected();
         for (ComparisonReadings.Reading each : comparisons.comparisons()) {
             // Which comparison of the model this is. Total over what this walk reads: the tree it
@@ -619,9 +628,12 @@ public final class GuardThresholds {
         // answer to how many places there are.
         ComparisonOccurrence which = at.observations().get(0).occurrence();
         return new LineOrigin.ComparisonOrigin(
-                new LineOrigin.ComparisonOrigin.Read(which,
+                new LineOrigin.ComparisonOrigin.Read(
                         new RuleRef.Comparison(which.behavior(), wrote), where,
-                        at.observations().stream().map(one -> one.site()).toList()),
+                        at.observations().stream()
+                                .map(one -> new LineOrigin.ComparisonOrigin.Watched(
+                                        one.occurrence(), one.site()))
+                                .toList()),
                 new LineFacts(cutting.claim()));
     }
 

@@ -84,7 +84,6 @@ final class Coverages {
     static Partitioned partitioningOf(Hir.SpecBehavior behavior,
                                       souther.compiler.inputs.InputReading read,
                                       Core body,
-                                      souther.compiler.check.ElementBindings elements,
                                       CoverageSites.Plan plan,
                                       PathReachability.Answers arrives,
                                       souther.compiler.check.StatedContract stated,
@@ -109,6 +108,9 @@ final class Coverages {
                 ? souther.compiler.check.ElementBindings.NONE
                 : souther.compiler.check.ElementBindings.of(analysis.core(), analysis.elements(),
                         read.symbols());
+        // Whether there is a tree to read is the reading's own answer, so a body with no analysis
+        // representation is handed over and comes back with nothing rather than being checked for
+        // here as well.
         GuardThresholds.Guards guards = body == null ? GuardThresholds.Guards.NONE
                 : GuardThresholds.of(behavior.name(), analysis, body, plan, read, standing, arrives);
         // And what the declarations state between two of this input's positions. Such a rule places

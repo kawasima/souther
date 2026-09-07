@@ -197,15 +197,15 @@ class AClauseOfATypeDoesNotPartItsValuesTest {
     private static LineOrigin aComparison() {
         return new LineOrigin.ComparisonOrigin(
                 new LineOrigin.ComparisonOrigin.Read(
-                        new souther.compiler.coverage.ComparisonOccurrence(
-                                "example.weigh", "weigh", 0),
                         new RuleRef.Comparison("weigh",
                                 new souther.compiler.types.SourceConstructOrigin(
                                         new WrittenOwner.Body("example.weigh", "weigh"), 2, 0,
                                         souther.compiler.types.SourceConstruct.BINARY)),
                         souther.compiler.diag.Citation.of(
                                 new souther.compiler.diag.SourcePos(3, 5)),
-                        java.util.List.of(WHERE)),
+                        java.util.List.of(new LineOrigin.ComparisonOrigin.Watched(
+                                new souther.compiler.coverage.ComparisonOccurrence(
+                                        "example.weigh", "weigh", 0), WHERE))),
                 new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(Towards.BELOW, true)));
     }
 }

@@ -245,7 +245,13 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
                 // fork states a rule of its own. Said of every fork an author wrote, and of none
                 // this compiler composed — a `guard`'s supplied arm and a lowering's test state
                 // nothing about the model.
-                if (iff.occurrence() != null && iff.origin() != null
+                //
+                // And of none whose answer nothing reads. What is computed where no run reads it
+                // divides nothing a row could be held to, which is the same reason a comparison
+                // there draws no line ({@link NotABoundary#NOTHING_READS_IT}) — said of the fork
+                // too, since a fork is a rule for having been written and a rule nothing reaches
+                // is a measure held open over a question no row can answer.
+                if (live && iff.occurrence() != null && iff.origin() != null
                         && iff.origin().isWritten()) {
                     List<Core> atoms = new ArrayList<>();
                     // What each part stands for, which is where the readers of it look. The
