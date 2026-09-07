@@ -286,32 +286,6 @@ public final class DocumentShape {
             return refusals;
         }
 
-        /**
-         * Whether a key the schema does not name is refused here at all.
-         *
-         * <p>Asked apart from what is allowed, because the two are different questions and an
-         * object that allows nothing is not an object that refuses nothing. Read as one, a schema
-         * closed over an empty list of keys came out as a schema that had said nothing.
-         */
-        private boolean refuses(JsonNode said) {
-            if (closed(said)) {
-                return true;
-            }
-            for (String branch : List.of("oneOf", "anyOf")) {
-                if (said.has(branch) && everyBranchIsClosed(said.get(branch))) {
-                    return true;
-                }
-            }
-            if (said.has("allOf")) {
-                for (JsonNode each : said.get("allOf")) {
-                    if (refuses(resolved(each))) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
         /** Whether a composition refuses what none of its branches declares. */
         private boolean everyBranchIsClosed(JsonNode branches) {
             for (JsonNode each : branches) {
