@@ -108,13 +108,14 @@ final class Narrowing<A> {
      * it takes it. What that costs is one walk, on the answer that is about to be written up.
      */
     private Closure<A> from(Domains<A> domains) {
-        Walked<A> said = walk(domains, null);
-        if (said.emptied() == null) {
-            return new Closure.Stable<>(said.reading());
-        }
-        List<Provenance.Removal<A>> taken = new ArrayList<>();
-        walk(domains, taken);
-        return new Closure.Contradicted<>(said.emptied(), Provenance.of(taken));
+        return switch (walk(domains, null)) {
+            case Walked.Stable<A> it -> new Closure.Stable<>(it.reading());
+            case Walked.Contradicted<A> it -> {
+                List<Provenance.Removal<A>> taken = new ArrayList<>();
+                walk(domains, taken);
+                yield new Closure.Contradicted<>(it.emptied(), Provenance.of(taken));
+            }
+        };
     }
 
     /**
@@ -162,10 +163,10 @@ final class Narrowing<A> {
                 }
             }
             if (next == null) {
-                return new Walked<>(anythingWent ? reading(left) : domains, null);
+                return new Walked.Stable<>(anythingWent ? reading(left) : domains);
             }
             if (emptied != null) {
-                return new Walked<>(null, emptied);
+                return new Walked.Contradicted<>(emptied);
             }
             left = next;
             anythingWent = true;
@@ -173,13 +174,23 @@ final class Narrowing<A> {
     }
 
     /**
-     * What one walk came to: the reading nothing more can be taken from, or the blocks a round left
-     * nothing.
+     * What one walk came to.
      *
-     * @param reading what the blocks are left, where no round emptied one
-     * @param emptied the blocks the first round to empty anything emptied, or null where none did
+     * <p>What {@link Closure} is, less the removals — which a walk that was not asked to write them
+     * down does not have. Two arms and not a reading beside a set of blocks, for the reason a
+     * closure is two arms: one walk reaches one of them, and a value that could hold both or
+     * neither is one every reader has to be told which half to believe.
+     *
+     * @param <A> what a position is called
      */
-    private record Walked<A>(Domains<A> reading, Set<Sameness.Block<A>> emptied) {}
+    private sealed interface Walked<A> {
+
+        /** Nothing more can be taken from any block. */
+        record Stable<A>(Domains<A> reading) implements Walked<A> {}
+
+        /** A round left these blocks with no value at all. */
+        record Contradicted<A>(Set<Sameness.Block<A>> emptied) implements Walked<A> {}
+    }
 
     /** What the blocks are left, as a reading for whoever is answered with one. */
     private Domains<A> reading(Admits[] left) {
