@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -31,6 +32,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * allowance is the one every set is walked under. So the sets that cost the most are the ones this
  * saves most on, and a knowledge that kept only the answers it liked would walk those again for
  * every reading that meets them.
+ *
+ * <p><b>What the revision knows and what a reading comes to are two different sets, and both are
+ * held here.</b> A reading answered from the revision comes to the extent as though it had walked
+ * it, or the declaration's answer would say different things depending on which of its readings got
+ * there first; and a walk nobody could afford is not among what any of them came to, since it says
+ * what this compiler could do rather than what the rules leave. So each case below is asked twice —
+ * once of how much was walked, and once of what the readings hold afterwards.
  */
 class AnExtentIsWalkedOnceHoweverManyReadingsMeetTheSetTest {
 
@@ -45,32 +53,46 @@ class AnExtentIsWalkedOnceHoweverManyReadingsMeetTheSetTest {
     private static final ValueSet COSTS_TOO_MUCH = manyLongWords();
 
     @Test
-    void twoReadingsSharingWhatTheRevisionKnowsWalkARunOnce() {
+    void aReadingAnsweredFromTheRevisionComesToTheRunAsIfItHadWalkedIt() {
         KnownExtents known = aRevisionsKnowledge();
         long walked = StringMachineAnswers.extentsWalked();
 
-        TextExtent first = StringMachineAnswers.unborrowed(known).extentOf(ADMITS_A_RUN);
-        TextExtent second = StringMachineAnswers.unborrowed(known).extentOf(ADMITS_A_RUN);
+        StringMachineAnswers walking = StringMachineAnswers.unborrowed(known);
+        StringMachineAnswers answered = StringMachineAnswers.unborrowed(known);
+        TextExtent first = walking.extentOf(ADMITS_A_RUN);
+        TextExtent second = answered.extentOf(ADMITS_A_RUN);
 
         assertInstanceOf(TextExtent.One.class, first, "the set names a run");
         assertEquals(first, second, "and the second reading is answered with it");
         assertEquals(1, StringMachineAnswers.extentsWalked() - walked,
                 "walked for the first reading and by neither of them again");
+        assertEquals(first, walking.facts().extents().get(ADMITS_A_RUN),
+                "what the reading that walked it came to");
+        assertEquals(first, answered.facts().extents().get(ADMITS_A_RUN),
+                "and what the one that was answered came to, which is the same declaration answer"
+                        + " whichever of them walked");
     }
 
     @Test
-    void twoReadingsSharingWhatTheRevisionKnowsWalkAnUnaffordableSetOnce() {
+    void aReadingAnsweredFromTheRevisionComesToNothingWhereTheWalkRanOut() {
         KnownExtents known = aRevisionsKnowledge();
         long walked = StringMachineAnswers.extentsWalked();
 
-        TextExtent first = StringMachineAnswers.unborrowed(known).extentOf(COSTS_TOO_MUCH);
-        TextExtent second = StringMachineAnswers.unborrowed(known).extentOf(COSTS_TOO_MUCH);
+        StringMachineAnswers walking = StringMachineAnswers.unborrowed(known);
+        StringMachineAnswers answered = StringMachineAnswers.unborrowed(known);
+        TextExtent first = walking.extentOf(COSTS_TOO_MUCH);
+        TextExtent second = answered.extentOf(COSTS_TOO_MUCH);
 
         assertEquals(new TextExtent.NotBuilt(Meter.Stopped.ONE_MACHINE), first,
                 "the words are more than one machine may hold, and that is what stopped it");
         assertEquals(first, second, "and the second reading is told the same");
         assertEquals(1, StringMachineAnswers.extentsWalked() - walked,
                 "a walk that ran out is knowledge like any other");
+        assertFalse(walking.facts().extents().containsKey(COSTS_TOO_MUCH),
+                "and neither reading came to an extent: a walk nobody could afford says what this"
+                        + " compiler could do rather than what the rules leave");
+        assertFalse(answered.facts().extents().containsKey(COSTS_TOO_MUCH),
+                "which is as true of the one told so as of the one that found out");
     }
 
     @Test
