@@ -2,7 +2,9 @@ package souther.compiler.regex;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The strings a pattern accepts, as states to walk between.
@@ -300,59 +302,110 @@ final class Automaton {
      * moves for nothing is the same pair with that side further on, which is exactly what a step
      * costing no symbol means.
      *
-     * <p>The states are the product, and nothing here says whether that is a price worth paying:
-     * both sizes are known before this is called, so a caller that has to answer for its work asks
-     * them rather than being told afterwards.
+     * <p><b>The pairs a walk reaches, and not every pair there is.</b> Grown from the pair a walk
+     * begins at, so a pair nothing leads to is never made. One that is made costs a state, the
+     * steps out of it worked out over both machines' labels, and an allowance charged for both —
+     * and a pair no string is ever in is all of that spent on a state the minimisation afterwards
+     * would throw away.
+     *
+     * <p>Which is why nothing is asked of the meter before the first state is made. The two sizes
+     * multiplied is what a product could come to and hardly ever what it comes to, so a caller
+     * refused on that number is refused an answer it could have afforded.
      */
     Automaton and(Automaton other, Meter meter) {
-        int wide = other.size();
-        // The pairs, asked for before the first of them is made. This is the operation the whole
-        // allowance is about: two machines that cost nothing on their own have a product that is
-        // the two multiplied, and allocating it to find that out is paying the price to learn it.
-        if (!meter.making().states((long) size() * wide)) {
-            return null;
-        }
-        int count = size() * wide;
-        List<List<Step>> steps = new ArrayList<>(count);
-        List<int[]> free = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
-            steps.add(new ArrayList<>());
-            free.add(null);
-        }
-        for (int mine = 0; mine < size(); mine++) {
-            for (int theirs = 0; theirs < wide; theirs++) {
-                int pair = mine * wide + theirs;
+        try {
+            Pairs pairs = new Pairs(other.size(), meter.making());
+            List<List<Step>> steps = new ArrayList<>();
+            List<int[]> free = new ArrayList<>();
+            BitSet accepting = new BitSet();
+            pairs.at(START, START);
+            // Grows while it is walked: a pair first reached here is one more to take the steps
+            // out of, and the walk is over when nothing new has been reached.
+            for (int at = 0; at < pairs.count(); at++) {
+                int mine = pairs.mine(at);
+                int theirs = pairs.theirs(at);
+                List<Step> out = new ArrayList<>();
                 for (Step one : this.steps.get(mine)) {
                     for (Step two : other.steps.get(theirs)) {
                         CodePoints over = one.over().and(two.over());
                         if (!over.isEmpty()) {
-                            steps.get(pair).add(new Step(over, one.to() * wide + two.to()));
+                            out.add(new Step(over, pairs.at(one.to(), two.to())));
                         }
                     }
                 }
                 List<Integer> freely = new ArrayList<>();
                 for (int to : this.free.get(mine)) {
-                    freely.add(to * wide + theirs);
+                    freely.add(pairs.at(to, theirs));
                 }
                 for (int to : other.free.get(theirs)) {
-                    freely.add(mine * wide + to);
+                    freely.add(pairs.at(mine, to));
                 }
-                int[] out = new int[freely.size()];
-                for (int i = 0; i < out.length; i++) {
-                    out[i] = freely.get(i);
+                int[] freeOut = new int[freely.size()];
+                for (int i = 0; i < freeOut.length; i++) {
+                    freeOut[i] = freely.get(i);
                 }
-                free.set(pair, out);
+                steps.add(out);
+                free.add(freeOut);
+                if (this.accepting.get(mine) && other.accepting.get(theirs)) {
+                    accepting.set(at);
+                }
             }
+            return new Automaton(steps, free, accepting);
+        } catch (TooMany _) {
+            return null;
         }
-        BitSet accepting = new BitSet();
-        for (int mine = this.accepting.nextSetBit(0); mine >= 0;
-                mine = this.accepting.nextSetBit(mine + 1)) {
-            for (int theirs = other.accepting.nextSetBit(0); theirs >= 0;
-                    theirs = other.accepting.nextSetBit(theirs + 1)) {
-                accepting.set(mine * wide + theirs);
+    }
+
+    /**
+     * The pairs of states a walk over two machines is in at once, numbered as they are reached.
+     *
+     * <p>Where a meet's states come from and where they are counted. A pair asked for twice is the
+     * same state both times, which is what makes the walk finish; a pair asked for the first time
+     * is a state, and it is charged for there — so what a meet spends is the pairs it reached.
+     */
+    private static final class Pairs {
+
+        private final int wide;
+        private final Meter.Making making;
+        private final Map<Long, Integer> known = new HashMap<>();
+        private final List<Integer> mine = new ArrayList<>();
+        private final List<Integer> theirs = new ArrayList<>();
+
+        Pairs(int wide, Meter.Making making) {
+            this.wide = wide;
+            this.making = making;
+        }
+
+        /** Which state the pair is, making it where it has not been reached before. */
+        int at(int mine, int theirs) {
+            // A long, because the two sizes multiplied is what this could run to and nothing has
+            // been asked about that: a key that overflowed would put two pairs in one state.
+            Long key = (long) mine * wide + theirs;
+            Integer had = known.get(key);
+            if (had != null) {
+                return had;
             }
+            if (!making.state()) {
+                throw new TooMany();
+            }
+            int made = this.mine.size();
+            this.mine.add(mine);
+            this.theirs.add(theirs);
+            known.put(key, made);
+            return made;
         }
-        return new Automaton(steps, free, accepting);
+
+        int count() {
+            return mine.size();
+        }
+
+        int mine(int state) {
+            return mine.get(state);
+        }
+
+        int theirs(int state) {
+            return theirs.get(state);
+        }
     }
 
     /**
