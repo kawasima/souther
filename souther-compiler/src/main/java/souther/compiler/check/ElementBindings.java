@@ -308,14 +308,20 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
      * wherever it is read — so what a name holds is the answer, and there is nothing about where it
      * is read for the answer to turn on.
      *
-     * <p>By the bindings met, which is what makes it stop.
+     * <p><b>A name it has already been through is refused rather than left.</b> What binds a name
+     * is written before the name can be read, so the names a body binds to other names run one way
+     * and this walk goes down them — a body where they came round would be one nothing in this
+     * compiler builds, and reading it as a closure nobody wrote would file the rule inside it
+     * nowhere and say nothing about having done so.
      */
     private static Core.Block blockOf(Core closure, Map<BindingId, Core> held) {
         Core at = closure;
         java.util.Set<BindingId> met = new java.util.HashSet<>();
         while (at instanceof Core.Read read) {
             if (!met.add(read.binding())) {
-                return null;
+                throw new IllegalStateException(
+                        "a name bound to itself through the names it is bound to: "
+                                + read.binding());
             }
             at = held.get(read.binding());
         }

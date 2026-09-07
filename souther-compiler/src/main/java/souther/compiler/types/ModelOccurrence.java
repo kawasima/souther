@@ -22,12 +22,18 @@ import java.util.List;
  * reader joining the two readings on the first is joining many to many; on the second it is joining
  * nothing.
  *
- * <p><b>The copies an operation makes are not the model's.</b> What the language defines the meaning
- * of is the operation, not the walk it turns into, so the copies made inside one are how a backend
- * writes it out. They come in an envelope: it opens where an operation is expanded and closes where
- * the operation's own body re-enters the block the caller handed it, and it nests. What closes one is
- * where the block crossed in: a copy made at a supplied site says which operation copy the caller's
- * code was handed to, so nothing here looks a name up in a declaration or asks what bound a block.
+ * <p><b>A construct stands where whoever wrote it wrote it.</b> Running a block is the copy holding
+ * it reaching code somebody else wrote, so what stands inside that block stands where the block was
+ * written and not where it was run — and every copy made between the two is a copy of the running
+ * and not of what is written. So a crossing leaves them all: a copy made at a
+ * {@linkplain ExpansionSite.Supplied supplied} site says which copy was handed the block, and what
+ * follows it is the code that handed it over. Nothing here looks a name up in a declaration or asks
+ * what bound a block.
+ *
+ * <p><b>The copies an operation makes are not the model's at all.</b> What the language defines the
+ * meaning of is the operation, not the walk it turns into, so a construct still inside one when the
+ * copies run out is one the model states nowhere. Every other copy left is one the model makes — a
+ * helper spliced into each call of it — and those are what a construct of the model stands in.
  */
 public record ModelOccurrence(SourceConstructOrigin origin, ExpansionLineage lineage) {
 
@@ -71,59 +77,36 @@ public record ModelOccurrence(SourceConstructOrigin origin, ExpansionLineage lin
                     "a construct with no place is no occurrence of the model");
         }
         Deque<ExpansionLineage.Expansion> open = new ArrayDeque<>();
-        ExpansionLineage model = ExpansionLineage.ORIGINAL;
         for (ExpansionLineage.Expansion step : copiesIn(occurrence.lineage())) {
-            if (step.expanded() instanceof ValueName.Stdlib.Operation) {
-                open.push(step);
-                continue;
-            }
-            // A block belonging to one of the operations still open: applying it is that
-            // operation's body reaching the code its caller handed over, so everything opened since
-            // is left too. An operation passes a block it was given straight on to another, and the
-            // application that runs it is written inside the second while what it runs was handed to
-            // the first — so what is left is a level and not a bracket.
-            if (open.stream().anyMatch(each -> closes(step, each))) {
-                while (!closes(step, open.pop())) {
-                    // Everything the operation's own body opened on the way to handing the block on.
+            // A copy of a block one of the copies still open was handed: running it is that copy
+            // reaching the code whoever wrote the call supplied, so what stands inside it was
+            // written where that copy was called — and everything opened since is left with it. A
+            // copy passes a block it was given straight on to another, and the application that
+            // runs it is written inside the second while what it runs was handed to the first, so
+            // what is left is a level and not a bracket.
+            if (step.at() instanceof ExpansionSite.Supplied supplied
+                    && open.stream().anyMatch(each -> each.step().equals(supplied.copy()))) {
+                while (!open.pop().step().equals(supplied.copy())) {
+                    // Everything opened on the way to handing the block on.
                 }
                 continue;
             }
-            if (open.isEmpty()) {
-                model = model.copiedInto(step.expanded(), step.at());
-            }
+            open.push(step);
         }
-        return open.isEmpty()
-                ? java.util.Optional.of(new ModelOccurrence(occurrence.origin(), model))
-                : java.util.Optional.empty();
-    }
-
-    /**
-     * Whether {@code step} is the operation's own body re-entering what the caller handed it.
-     *
-     * <p>Read off where the copy was made ({@link ExpansionSite.Supplied}), which is the one thing
-     * that says a callable came from outside the operation. A copy made at code the caller supplied
-     * is the operation's body reaching back out to it, whatever the caller wrote there — a lambda at
-     * the call, a name they bound first, a second name for either — and a copy the operation made of
-     * its own code is not.
-     *
-     * <p>Which operation it left is the copy the site names, and this asks whether that is the one
-     * whose envelope is being tested. Not whether the two are copies of the same operation: a body
-     * that calls one operation from inside another has two copies of it on the stack, and the
-     * caller's code was handed to one of them. The two are compared as
-     * {@linkplain ExpansionLineage.Step steps}, which is what tells the copies of one walk apart
-     * without either side carrying the chain it stands in.
-     *
-     * <p><b>Not what the applied binding belongs to.</b> That was read here, and it answered by
-     * standing next to the fact rather than being it: a lambda written at the call is bound by the
-     * expansion taking it, so its owner was the operation's copy and the reading worked; a lambda
-     * the author bound to a name first is bound by their own body, so the same reading said the
-     * operation's body was still running its own code and the envelope never closed. One model
-     * spelled two ways came out as two, and the second stopped the compile.
-     */
-    private static boolean closes(ExpansionLineage.Expansion step,
-                                  ExpansionLineage.Expansion operation) {
-        return step.at() instanceof ExpansionSite.Supplied supplied
-                && supplied.copy().equals(operation.step());
+        // What the model states nothing at: a construct standing inside one of the language's own
+        // operations, which the reading that states rules never enters. Every other copy still open
+        // is a copy the model itself makes — a helper spliced into each call of it — and those are
+        // what a construct of the model stands in.
+        if (open.stream().anyMatch(each -> each.expanded() instanceof ValueName.Stdlib.Operation)) {
+            return java.util.Optional.empty();
+        }
+        ExpansionLineage model = ExpansionLineage.ORIGINAL;
+        for (java.util.Iterator<ExpansionLineage.Expansion> outermost = open.descendingIterator();
+                outermost.hasNext();) {
+            ExpansionLineage.Expansion each = outermost.next();
+            model = model.copiedInto(each.expanded(), each.at());
+        }
+        return java.util.Optional.of(new ModelOccurrence(occurrence.origin(), model));
     }
 
     /** The copies of {@code lineage}, outermost first. */

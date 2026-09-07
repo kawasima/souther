@@ -3,7 +3,6 @@ package souther.compiler.coverage;
 import souther.compiler.core.Core;
 import souther.compiler.types.ModelOccurrence;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,7 +73,8 @@ public final class ComparisonEmissionIndex {
      *
      */
     public static ComparisonEmissionIndex of(ModuleBodies of, CoverageSites.Plan plan) {
-        Map<ModelOccurrence, List<EmittedComparison>> emitted = new LinkedHashMap<>();
+        Map<ModelOccurrence, Map<ComparisonOccurrence, EmittedComparison>> emitted =
+                new LinkedHashMap<>();
         for (Map.Entry<String, Core> body : of.bodies().entrySet()) {
             walk(body.getValue(), plan, emitted);
         }
@@ -83,20 +83,22 @@ public final class ComparisonEmissionIndex {
 
     /** The same over one body, for a reader that holds one rather than the module's. */
     public static ComparisonEmissionIndex ofBody(Core body, CoverageSites.Plan plan) {
-        Map<ModelOccurrence, List<EmittedComparison>> emitted = new LinkedHashMap<>();
+        Map<ModelOccurrence, Map<ComparisonOccurrence, EmittedComparison>> emitted =
+                new LinkedHashMap<>();
         walk(body, plan, emitted);
         return new ComparisonEmissionIndex(copy(emitted));
     }
 
     private static Map<ModelOccurrence, List<EmittedComparison>> copy(
-            Map<ModelOccurrence, List<EmittedComparison>> of) {
+            Map<ModelOccurrence, Map<ComparisonOccurrence, EmittedComparison>> of) {
         Map<ModelOccurrence, List<EmittedComparison>> out = new LinkedHashMap<>();
-        of.forEach((states, made) -> out.put(states, List.copyOf(made)));
+        of.forEach((states, made) -> out.put(states, List.copyOf(made.values())));
         return Map.copyOf(out);
     }
 
-    private static void walk(Core e, CoverageSites.Plan plan,
-                             Map<ModelOccurrence, List<EmittedComparison>> emitted) {
+    private static void walk(
+            Core e, CoverageSites.Plan plan,
+            Map<ModelOccurrence, Map<ComparisonOccurrence, EmittedComparison>> emitted) {
         // Which comparison of the emitted tree this is, asked of the catalog, which is what the
         // numbering was taken over. A node it does not hold is one no site was planned for and one
         // no rule is read off — a comparison this compiler composed, or one of another module.
@@ -107,13 +109,15 @@ public final class ComparisonEmissionIndex {
             // operations is materialised once per call of it and the model states none of them, so
             // asking them all for one place would be one key over as many places as the body calls
             // the operation.
-            ModelOccurrence.statedAt(((Core.Binary) e).occurrence()).ifPresent(states -> {
-                List<EmittedComparison> made =
-                        emitted.computeIfAbsent(states, _ -> new ArrayList<>());
-                if (made.stream().noneMatch(each -> each.occurrence().equals(which))) {
-                    made.add(new EmittedComparison(which, plan.emissionSiteOf(which)));
-                }
-            });
+            //
+            // Collected under the name the catalog gave it. What is being collected is the
+            // materialisations of a rule, and two of them are two comparisons of the body — so a
+            // place the walk reaches twice is one place, and holding them by name is what says so
+            // rather than a scan of what is already there.
+            ModelOccurrence.statedAt(((Core.Binary) e).occurrence()).ifPresent(states ->
+                    emitted.computeIfAbsent(states, _ -> new LinkedHashMap<>())
+                            .putIfAbsent(which, new EmittedComparison(which,
+                                    plan.emissionSiteOf(which))));
         }
         Core.forEachChild(e, child -> walk(child, plan, emitted));
     }

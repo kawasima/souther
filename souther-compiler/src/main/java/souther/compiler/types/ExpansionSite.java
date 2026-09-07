@@ -67,15 +67,18 @@ public sealed interface ExpansionSite {
      * A block a call handed to a parameter, expanded where the copy taking it applies it.
      *
      * <p>Which block is which is not a question about the block: two calls of one combinator hand it
-     * two, and what tells them apart is the copy each was handed to. So this is that copy and the
+     * two, and what tells them apart is where each came in. So this is the copy that took it and the
      * parameter it filled — both settled by the source, the first by the calls the splicing went
      * through and the second by the position the callee declares.
      *
-     * <p><b>The copy the block was handed to, not the one applying it.</b> An operation may hand a
-     * block it was given straight on to another, and the application that runs it then stands in the
-     * second while the code it runs came from outside the first. Read as the copy applying it, a
-     * closure crossing two operations would say the caller's code was left behind at the inner one,
-     * and everything the outer one opened would stay open.
+     * <p><b>The copy the block crossed into, not every copy it was handed to since.</b> The copy
+     * named is the one whoever wrote the block handed it to; which copy is applying it is what the
+     * block's own lineage stands in and is not said again here.
+     *
+     * <p>Whose code handed it over is what decides it, and not how many hands it went through:
+     * a copy that was given the block by something further out is passing on what it was given.
+     * {@code HelperInliner#crossedInto} settles it where both the call and what was in force at it
+     * are still in hand.
      *
      * <p>Said as a {@linkplain ExpansionLineage.Step step} and not as a chain, which is what a value
      * standing inside a lineage can be. A chain is derived by whatever walks the copies and is built

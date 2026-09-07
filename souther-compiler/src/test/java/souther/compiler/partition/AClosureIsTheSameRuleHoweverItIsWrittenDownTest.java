@@ -145,6 +145,57 @@ class AClosureIsTheSameRuleHoweverItIsWrittenDownTest {
     }
 
     /**
+     * And where the model's own helper is what hands the closure to the operation.
+     *
+     * <p>The closure is written in {@code pick} and run inside {@code List.any} inside
+     * {@code through}, so two copies stand between where it is written and where it runs and
+     * neither is a copy of it. Left only as far as the operation, the rule would come out standing
+     * in a copy of {@code through} while the reading that keeps operations standing has it where
+     * the author wrote it, and the two would state two rules for one closure.
+     *
+     * <p>The second spelling writes the closure's type out because a name bound to a bare block has
+     * none a declared parameter can be checked against — which is the language and not this.
+     */
+    @Test
+    void aClosureTheModelsOwnHelperHandsToTheOperation() {
+        assertEquals(new Read(1, 0, 0), read("""
+                let through (p: (Int) -> Bool, xs: List<Int>): Bool = List.any(p, xs)
+
+                behavior pick : (xs: List<Int>) -> Low | High
+                let pick (xs) =
+                    if through(x -> x > 0, xs) then High else Low"""));
+        assertEquals(new Read(1, 0, 0), read("""
+                let through (p: (Int) -> Bool, xs: List<Int>): Bool = List.any(p, xs)
+
+                behavior pick : (xs: List<Int>) -> Low | High
+                let pick (xs) = {
+                    let positive: (Int) -> Bool = (x) -> x > 0
+                    if through(positive, xs) then High else Low
+                }"""));
+    }
+
+    /**
+     * And where what took the closure binds a name of its own to it before handing it on.
+     *
+     * <p>A second name for a callable is the same callable, so where it came from is where the
+     * first came from. Lost at the rebinding, the code being written would be handing over
+     * something of its own for the first time — and the copies between the closure and where it
+     * runs would be counted as copies of the closure.
+     */
+    @Test
+    void aClosureRenamedByWhatTookIt() {
+        assertEquals(new Read(1, 0, 0), read("""
+                let through (p: (Int) -> Bool, xs: List<Int>): Bool = {
+                    let same = p
+                    List.any(same, xs)
+                }
+
+                behavior pick : (xs: List<Int>) -> Low | High
+                let pick (xs) =
+                    if through(x -> x > 0, xs) then High else Low"""));
+    }
+
+    /**
      * And where one closure is written inside another.
      *
      * <p>The inner call is expanded before the block holding it is handed anywhere, and the copies

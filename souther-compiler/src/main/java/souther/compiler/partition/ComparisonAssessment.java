@@ -308,6 +308,15 @@ sealed interface ComparisonAssessment {
             // there is nothing for a narrower domain to settle differently.
             default -> null;
         };
+        // A rule watched nowhere is not asked this. What the places are is
+        // {@link souther.compiler.coverage.EmittedComparisonState.Instrumented}, which is never
+        // empty, and a comparison the emitter numbered nothing for is the other arm of that and
+        // never reaches here. Answered with none, "all of them proved nothing arrives" is true of
+        // no place at all, and the line would go for want of a proof rather than by one.
+        if (arrivals.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "a rule watched at no place is not one to ask what arrives at: " + read);
+        }
         if (cutting == null) {
             return read;
         }
@@ -331,7 +340,7 @@ sealed interface ComparisonAssessment {
                 return read;
             }
         }
-        return arrivals.isEmpty() ? read : new NothingArrivesAtItsLine(cutting);
+        return new NothingArrivesAtItsLine(cutting);
     }
 
     /**

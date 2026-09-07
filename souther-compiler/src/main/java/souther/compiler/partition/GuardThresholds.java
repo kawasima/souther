@@ -25,7 +25,6 @@ import souther.compiler.inputs.RulesWithNoLine;
 import souther.compiler.numeric.Place;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
-import souther.compiler.coverage.ComparisonOccurrence;
 import souther.compiler.diag.Citation;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.coverage.CoverageSites;
@@ -247,7 +246,7 @@ public final class GuardThresholds {
                                 // Narrowed by what arrives at every place it is watched: the line
                                 // goes only where all of them prove nothing reaches it, since a run
                                 // through any one of them is a run through the rule.
-                                lineAt(at, each.occurrence().origin(), each.at(),
+                                lineAt(behavior, at, each.occurrence().origin(), each.at(),
                                         ComparisonAssessment.narrowedByWhatArrives(admitted.read(),
                                                 at.observations().stream()
                                                         .map(one -> one.arrival()).toList(), false),
@@ -513,20 +512,18 @@ public final class GuardThresholds {
      * here, by {@link BoundaryPolicy}, and what the comparison comes to was read where that was
      * settled ({@code read}). Nothing here reads the comparison again.
      */
-    private static void lineAt(souther.compiler.coverage.EmittedComparisonState.Instrumented at,
+    private static void lineAt(String behavior,
+                               souther.compiler.coverage.EmittedComparisonState.Instrumented at,
                                SourceConstructOrigin wrote, Citation where,
                                ComparisonAssessment read,
                                List<RuleEvidence> out,
                                List<LineDrawn> between,
                                RulesWithNoLine.Gathered withoutALine) {
-        // The rule is one however many places it is watched at, so a name for it is taken from any
-        // of them: what a report says is about the rule, and which materialisation lent its number
-        // is nothing a reader is shown.
-        ComparisonOccurrence which = at.observations().get(0).occurrence();
-        publish(which, wrote, where, read, withoutALine);
+        publish(behavior, wrote, where, read, withoutALine);
         switch (read) {
             case ComparisonAssessment.AtAPosition placed -> {
-                LineOrigin.ComparisonOrigin drawn = originOf(at, wrote, where, placed.cutting());
+                LineOrigin.ComparisonOrigin drawn =
+                        originOf(behavior, at, wrote, where, placed.cutting());
                 // The value a row is owed against this line, which the reading of the comparison
                 // already answered. Taken off the level the rule was written with, a rule that wrote
                 // a multiple of the position named a class at a number the position never holds.
@@ -572,7 +569,7 @@ public final class GuardThresholds {
                 // the two meet, and that arm is a row the branch measure already asks for.
                 if (over.drawsABorder()) {
                     between.add(new LineDrawn(over.cutting(),
-                            originOf(at, wrote, where, over.cutting())));
+                            originOf(behavior, at, wrote, where, over.cutting())));
                 }
             }
             case ComparisonAssessment.AnswerDependent _, ComparisonAssessment.NoInput _,
@@ -602,12 +599,12 @@ public final class GuardThresholds {
      * relating two positions — a sentence saying no measure is short of anything, over a model
      * missing a border.
      */
-    private static void publish(ComparisonOccurrence which, SourceConstructOrigin wrote,
+    private static void publish(String behavior, SourceConstructOrigin wrote,
                                 Citation where,
                                 ComparisonAssessment read, RulesWithNoLine.Gathered out) {
         souther.compiler.check.RuleCitation cited =
                 new souther.compiler.check.RuleCitation.WrittenAt(
-                        new RuleRef.Comparison(which.behavior(), wrote), where);
+                        new RuleRef.Comparison(behavior, wrote), where);
         // What each place is left with, and which places there are, are the assessment's one
         // answer. A rule that was read is filed at its quantity's coordinates and says one thing
         // there, because the quantity is one subject; a reading that stopped has none, and each
@@ -628,16 +625,17 @@ public final class GuardThresholds {
     /** How a row meets a line a body's condition drew, which is a guard's own answer: what it takes
      *  is getting the comparison to answer, because what it is about is a place in a body. */
     private static LineOrigin.ComparisonOrigin originOf(
-            souther.compiler.coverage.EmittedComparisonState.Instrumented at,
+            String behavior, souther.compiler.coverage.EmittedComparisonState.Instrumented at,
             SourceConstructOrigin wrote, Citation where, Cutting cutting) {
-        // Which comparison the rule is about, and every place a run through it is written down.
-        // Both come off the join rather than being looked up again: the join already asked the plan
-        // which of the rule's materialisations it numbered, and asking a second time is a second
-        // answer to how many places there are.
-        ComparisonOccurrence which = at.observations().get(0).occurrence();
+        // Every place a run through the rule is written down, off the join rather than looked up
+        // again: the join already asked the plan which of the rule's materialisations it numbered,
+        // and asking a second time is a second answer to how many places there are. Whose rule it
+        // is comes from the body being read, which is what a rule of the model belongs to — read
+        // off a materialisation, the body would be answering about itself through the tree that
+        // runs.
         return new LineOrigin.ComparisonOrigin(
                 new LineOrigin.ComparisonOrigin.Read(
-                        new RuleRef.Comparison(which.behavior(), wrote), where,
+                        new RuleRef.Comparison(behavior, wrote), where,
                         at.observations().stream()
                                 .map(one -> new LineOrigin.ComparisonOrigin.Watched(
                                         one.occurrence(), one.site()))

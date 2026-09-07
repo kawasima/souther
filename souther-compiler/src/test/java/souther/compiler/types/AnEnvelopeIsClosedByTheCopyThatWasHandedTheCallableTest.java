@@ -82,6 +82,26 @@ class AnEnvelopeIsClosedByTheCopyThatWasHandedTheCallableTest {
     }
 
     /**
+     * And a copy the model itself makes is left by a crossing like any other.
+     *
+     * <p>A helper of the model taking a callable and handing it to an operation is two copies
+     * between where the callable was written and where it runs, and neither is a copy of it. Left
+     * only as far as the operation, what the callable holds would come out standing in a copy of
+     * the helper — which is a copy of the helper's own code and not of the caller's.
+     */
+    @Test
+    void aCopyTheModelMakesIsLeftTooWhereTheCallableCrossedOutOfIt() {
+        ExpansionLineage.Expansion helper = ExpansionLineage.ORIGINAL.copiedInto(
+                new ValueName.Helper("model", "through"), new ExpansionSite.Written(call(0)));
+        ExpansionLineage.Expansion operation = expanded(helper, "any", 1);
+        assertEquals(Optional.of(ExpansionLineage.ORIGINAL),
+                statedIn(applied(operation, helper, 0)));
+        // And what the helper's own body writes stands in the helper's copy, which is a copy the
+        // model makes: the same walk keeps it exactly where the crossing takes the other away.
+        assertEquals(Optional.of(helper), statedIn(helper));
+    }
+
+    /**
      * And two copies of one operation are two copies.
      *
      * <p>An operation calling itself has two of its copies open at once, and the caller's callable

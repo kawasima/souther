@@ -147,11 +147,10 @@ public final class HelperInliner {
      *                      — and inside the writing because a lambda is in scope for as long as the
      *                      body holding it is being written and not one call longer
      * @param suppliedFrom which callables in scope came from outside the code being written, and
-     *                     where they crossed in: the copy that was handed the callable and the
-     *                     parameter it filled. Set once, where a callable the writing did not
-     *                     itself write is bound to a parameter, and carried unchanged through
-     *                     every copy that hands it on — the boundary is where the caller's code
-     *                     was left behind, and handing it to a second operation does not move it
+     *                     where they crossed out of it: the copy whoever wrote the callable handed
+     *                     it to, and the parameter it filled. Set where a callable this writing did
+     *                     not write is bound to a parameter and carried unchanged through every
+     *                     copy that hands it on ({@link #crossedInto})
      */
     private record Writing(BindingOwner destination, BindingOwner enclosing,
                            ExpansionLineage lineage, Hir.Binders binders,
@@ -186,7 +185,7 @@ public final class HelperInliner {
             Map<BindingId, ExpansionSite.Supplied> here = new LinkedHashMap<>(suppliedFrom);
             here.putAll(supplied);
             return new Writing(destination, copy, deeper, binders, dependencies, scopedLambdas,
-                    Map.copyOf(here));
+                    here);
         }
     }
 
@@ -1181,7 +1180,7 @@ public final class HelperInliner {
         // the body instead, two writings into one body would place one call's copy in one spot
         // twice — the body cannot tell them apart, and which writing this is is exactly what does.
         writing = new Writing(into, mine, ExpansionLineage.ORIGINAL, new Hir.Binders(mine),
-                dependencies, new HashMap<>(), Map.of());
+                dependencies, new HashMap<>(), new LinkedHashMap<>());
         try {
             return expansion.get();
         } finally {
@@ -1305,21 +1304,29 @@ public final class HelperInliner {
                 Hir.FnDef aliased = value instanceof Hir.Var.Denoting v ? expands(v) : null;
                 if (aliased != null) {
                     BindingId alias = li.binder().id();
-                    // A second name for a callable is the same callable, so what was supplied under
-                    // the first was supplied under this one. Dropped here, an operation's body
-                    // binding its parameter to a name of its own would look like code of its own —
-                    // and the boundary a caller's block crosses would move one binding along.
-                    ScopedLambda under = value instanceof Hir.Var.Denoting v2
-                            && v2.denotes() instanceof ValueName.Local held
-                            ? writing.scopedLambdas().get(held.id()) : null;
+                    // A second name for a callable is the same callable, so what the first crossed
+                    // into the second crossed into, and a report about either points where the
+                    // block was written. Dropped, an operation's body binding its parameter to a
+                    // name of its own would be running code of its own under the second name, and
+                    // the envelope it opened would never close.
+                    BindingId first = value instanceof Hir.Var.Denoting v2
+                            && v2.denotes() instanceof ValueName.Local held ? held.id() : null;
+                    ScopedLambda under =
+                            first == null ? null : writing.scopedLambdas().get(first);
                     writing.scopedLambdas().put(alias,
                             under != null && under.origin() != null
                                     ? new ScopedLambda(aliased, under.origin())
                                     : new ScopedLambda(aliased));
+                    ExpansionSite.Supplied crossed =
+                            first == null ? null : writing.suppliedFrom().get(first);
+                    if (crossed != null) {
+                        writing.suppliedFrom().put(alias, crossed);
+                    }
                     stands(alias, ruleOf((Hir.Var.Denoting) value));
                     holds(alias, value);
                     Hir.Expr aliasBody = inline(li.body());
                     writing.scopedLambdas().remove(alias);
+                    writing.suppliedFrom().remove(alias);
                     yield references(aliasBody, alias)
                             ? new Hir.LetIn(li.binder(), value, li.declaredType(), li.annotated(),
                                     li.opens(), aliasBody, li.pos(), li.region())
@@ -1654,6 +1661,25 @@ public final class HelperInliner {
     }
 
     /**
+     * What a callable handed to parameter {@code slot} of the copy {@code taking} crosses out of,
+     * given what it was already crossing out of where the call is written.
+     *
+     * <p>The copy that was handed it by whoever wrote it. That is where the code the callable is
+     * made of stops and somebody else's begins, and a copy that was handed the callable from
+     * inside is passing on what it was given rather than being handed anything of its own — so the
+     * crossing stays where it was, however many copies it goes through afterwards.
+     *
+     * <p>Which is one fact and not two. A copy the callable was handed to further in is the copy an
+     * application of it stands in, and a lineage already says that; what nothing else says is which
+     * copy the writer's code was left behind at.
+     */
+    private static ExpansionSite.Supplied crossedInto(ExpansionSite.Supplied crossing,
+                                                      ExpansionLineage.Step taking, int slot) {
+        return crossing != null ? crossing
+                : new ExpansionSite.Supplied(taking, new ParameterSlot(slot));
+    }
+
+    /**
      * What one call's arguments become where the callee's body is spliced in.
      *
      * <p>A value argument becomes a binding the body reads by name; a function argument becomes
@@ -1739,17 +1765,11 @@ public final class HelperInliner {
                 if (handedIn != null && declaration != null) {
                     supplied.handed(mine, declaration, p.name(), handedIn);
                 }
-                // Where the callable this parameter takes crossed out of the code that wrote it. A
-                // name already carrying a boundary keeps it: what is being written is a copy the
-                // caller's callable was handed to, and handing it on to a second operation does not
-                // make the second the place the caller's code was left behind. A name carrying
-                // none is code this call is handing over for the first time, so the boundary is
-                // this copy and the parameter it fills.
                 if (arg instanceof Hir.Var.Denoting supplyingName
                         && supplyingName.denotes() instanceof ValueName.Local suppliedLocal) {
-                    ExpansionSite.Supplied already = writing.suppliedFrom().get(suppliedLocal.id());
-                    handedHere.put(suppliedLocal.id(), already != null ? already
-                            : new ExpansionSite.Supplied(crossingInto, new ParameterSlot(i)));
+                    handedHere.put(suppliedLocal.id(),
+                            crossedInto(writing.suppliedFrom().get(suppliedLocal.id()),
+                                    crossingInto, i));
                 }
                 if (arg instanceof Hir.Var.Denoting fnName) {
                     // A name handed to a function parameter is substituted through: what
@@ -1785,11 +1805,11 @@ public final class HelperInliner {
                                     declares == null ? null : declares.result(),
                                     new Hir.FnBody.Written(lambda.body()), lambda.pos()),
                             new LambdaOrigin(p.name(), helper.name(), lambda.pos())));
-                    // A block written at this call is the writer's own code crossing over here, so
-                    // the boundary is this copy — and it is recorded in the one place a boundary
-                    // is, so that handing it on from inside reads the same as handing on a name.
-                    handedHere.put(f.id(),
-                            new ExpansionSite.Supplied(crossingInto, new ParameterSlot(i)));
+                    // A block written at this call was written by whoever wrote the call, so what it
+                    // crosses into is this copy whatever stood before it. Recorded in the one place
+                    // a crossing is, so that handing it on from inside reads the same as handing on
+                    // a name.
+                    handedHere.put(f.id(), crossedInto(null, crossingInto, i));
                     stands(f.id(), ruleOf(lambda));
                     unreduced.put(f.id(),
                             new Hir.Bound(f, instantiated(p.type(), applied), lambda));
