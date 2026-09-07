@@ -162,11 +162,12 @@ public sealed interface ReaderDisposition {
                     && pairs.space().stream().anyMatch(pair ->
                             pair.between().one().equals(axis.at())
                                     || pair.between().other().equals(axis.at()))) {
-                // The position and not the measurement of it. What is being weighed is what the
-                // behavior's input carries, which is a place in the model; what was counted there
-                // came back in full and is not what a reader is sent to.
+                // The behavior, and not whichever of its positions this walk reached first. A
+                // behavior may take more than one position wider than it separates, and a reader
+                // sent to one of them was sent to the one that happened to be handed over first.
+                // Which positions those are is said on the positions, a line each.
                 return new ReconsiderWhatThisBehaviorNeedsToDistinguish(
-                        new Subject.AtASpelledPosition(axis.at().behavior(), axis.path()));
+                        new Subject.OfABehavior(axis.at().behavior()));
             }
         }
         return new Settled();

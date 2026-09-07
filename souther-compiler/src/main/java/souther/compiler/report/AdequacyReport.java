@@ -4131,6 +4131,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case Subject.AtAnInput it -> "input " + it.at() + " of " + it.behavior();
             case Subject.AtARule it -> new PartitionEvidence.Unanswered(it.question()).at();
             case Subject.AtABorder it -> it.border().label();
+            // Composed here and not by what writes a point beside a line, which takes the account
+            // of the point: which of the four roles it is and which side it is on are the line's
+            // answers about it and need the readings of the line to give them. A point on its own
+            // carries where it stands, and that is what is said.
+            //
             // The line as a report calls it, the level it falls at, and where on it the point is.
             // All three: what a report calls a line leaves out where it stands, on purpose, and two
             // points of one behavior's comparisons are told apart by nothing else — which is the
@@ -4145,15 +4150,21 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         };
     }
 
-    /** Where on a line a point stands, in the words the account beside it uses. */
-    private static String placeOn(souther.compiler.partition.DomainPoint point) {
-        return switch (point) {
-            case souther.compiler.partition.DomainPoint.AtTheLine _ -> " (at the line)";
-            case souther.compiler.partition.DomainPoint.BesideTheLine it ->
-                    " (beside the line, " + word(it.side()) + ")";
-            case souther.compiler.partition.DomainPoint.InTheRegion it ->
-                    " (in the region, " + word(it.side()) + ")";
-        };
+    /**
+     * Where on a line a point stands, in the words this document writes for it.
+     *
+     * <p>The same three the location of an obligation is written under, spelled once and read from
+     * there: two wordings of one place are two things to keep in step, and which of them a reader
+     * had met would decide whether the two lines they were reading were about the same point.
+     *
+     * <p>Which of the four roles it is, is not this. That is the line's answer about the point and
+     * needs the readings of the line to give it, which a point on its own does not carry.
+     */
+    private static String placeOn(DomainPoint point) {
+        ObjectNode said = JSON.createObjectNode();
+        location(said, point);
+        return " (" + said.get("kind").asString().replace('_', ' ')
+                + (said.has("side") ? ", " + said.get("side").asString() : "") + ")";
     }
 
     /** What a reader does next with one thing holding the verdict open. */
