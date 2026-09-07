@@ -104,6 +104,43 @@ class AForkStatesARuleOnlyWhereNothingInItDoesTest {
                 let pick (b) = if b then High else Low"""));
     }
 
+    /**
+     * And a position reached along what an operation's answer turns on owns the fork as well.
+     *
+     * <p>The same edge a comparison inside a closure is found along. The library says
+     * {@code List.any} answers what its closure said, and what this closure says is the value at a
+     * position — so the fork tests that position and states no rule of its own. Asked at the part
+     * itself while a comparison is asked along the edge, {@code List.any(x -> x > 0, xs)} would
+     * state nothing and this would state a rule nobody wrote, over one fact about the operation.
+     */
+    @Test
+    void aPositionTheAnswerTurnsOnOwnsTheFork() {
+        assertEquals(new Owned(0, 0), read("""
+                data Row = { active: Bool }
+
+                behavior pick : (xs: List<Row>) -> Low | High
+                let pick (xs) = if List.any(p -> p.active, xs) then High else Low"""));
+    }
+
+    /**
+     * And a fork the answer turns on owns it too.
+     *
+     * <p>The inner condition is a rule of the model — nothing in it is a comparison, a predicate or
+     * a position, so it is owed a rule of its own — and the outer fork's answer is what that rule
+     * decides. Counted apart, one rule the author wrote would be two: the place it is written, and
+     * every fork whose answer it settles.
+     */
+    @Test
+    void aForkTheAnswerTurnsOnOwnsIt() {
+        assertEquals(new Owned(0, 1), read("""
+                data Bag = { tags: List<Int> }
+
+                behavior pick : (xs: List<Bag>) -> Low | High
+                let pick (xs) =
+                    if List.any(p -> if List.isEmpty(p.tags) then true else false, xs)
+                        then High else Low"""));
+    }
+
     /** And a fork on a predicate is the predicate's, which is a rule this compiler reads. */
     @Test
     void aForkOnAPredicateIsThePredicatesRule() {

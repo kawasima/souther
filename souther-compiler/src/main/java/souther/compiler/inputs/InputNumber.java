@@ -47,7 +47,7 @@ public final class InputNumber {
             TermPath of = switch (reads.pathOf(measured.of(), symbols)) {
                 case PathResolution.At(var at) -> at;
                 case PathResolution.NotAPosition _ -> null;
-                // A taking is of one location, and a name standing at one of several is no one of
+                // A taking is of one location, and a name that only may stand at one is no one of
                 // them. Taken of any, the number would be a size of a sequence the run it is on
                 // never walked.
                 case PathResolution.MayStandAt _ -> null;

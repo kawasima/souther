@@ -267,27 +267,7 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
                     }
                     Set<Core> owned = Collections.newSetFromMap(new IdentityHashMap<>());
                     for (Core atom : atoms) {
-                        // A part with a comparison of the model in it, or one that is a position of
-                        // the input. Both are this reading's answers about the part, asked of the
-                        // part rather than of the condition: a fork testing two things owns one of
-                        // them and leaves the other, and an answer about the whole would lose that.
-                        //
-                        // Along what the part's answer turns on and not down its tree. A rule
-                        // written in a closure one of the language's operations is handed reaches
-                        // the fork only where the library says the answer turns on what that
-                        // closure said ({@link WhatAForkTests}) — a filter answers fewer for
-                        // exactly that reason and a mapping does not, and the two calls are the
-                        // same shape.
-                        // Or the position the part is, which is one position: what such a fork
-                        // divides is the values standing there, and a part standing at one of
-                        // several divides no one of them. Owned there, a fork would be counted as
-                        // read at whichever place a reader picked out of the several; left here, it
-                        // states a rule of its own and the question stands.
-                        if (WhatAForkTests.turnsOnSomething(atom,
-                                        part -> comparisonAt(part) != null,
-                                        one -> reads.denotes(one, symbols).value())
-                                || reads.pathOf(atom, symbols)
-                                        instanceof PathResolution.At) {
+                        if (somethingElseStatesIt(atom, reads, symbols)) {
                             owned.add(atom);
                         }
                     }
@@ -373,6 +353,58 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
                 && binary.origin().isWritten() ? Comparison.of(binary).orElse(null) : null;
     }
 
+
+    /**
+     * Whether something other than the fork itself states what {@code atom} decides.
+     *
+     * <p>Three readers could own it and each of them is asked the same way: a comparison of the
+     * model, a position of the input the part is the value at, and another fork the source wrote.
+     * Asked of the part rather than of the condition — a fork testing two things owns one of them
+     * and leaves the other, and an answer about the whole would lose that.
+     *
+     * <p><b>Along what the part's answer turns on, for every one of them.</b> A rule written in a
+     * closure one of the language's operations is handed reaches the fork where the library says
+     * the answer turns on what that closure said ({@link WhatAForkTests}) — a filter answers fewer
+     * for exactly that reason and a mapping does not, and the two calls are the same shape. Which
+     * is a fact about the operation and not about the kind of rule on the other side of it: asked
+     * along the edge for a comparison and at the part itself for a position,
+     * {@code List.any(x -> x > 0, xs)} states nothing of its own while
+     * {@code List.any(p -> p.active, xs)} states a rule nobody wrote.
+     *
+     * <p>A fork among them for the same reason. What the answer turns on is a condition the author
+     * wrote, and a condition the author wrote is a rule of the model — by being owned, in which
+     * case this walk found its owner, or by being owed a rule of its own. Left out, the rule would
+     * be counted twice: once where it is written and once at every fork whose answer it decides,
+     * and a reader would be sent to the second for a question the first already asks.
+     *
+     * <p>Which is read off the source and not off what this walk has met, so it is the same answer
+     * wherever in a body the fork stands. A walk records a fork before it descends its arms, so an
+     * owner looked up among the forks already met would depend on where the two stand relative to
+     * each other, and one written under the arm of the other would own nothing.
+     */
+    private static boolean somethingElseStatesIt(Core atom, InputReads reads, Symbols symbols) {
+        return WhatAForkTests.turnsOnSomething(atom,
+                part -> comparisonAt(part) != null
+                        || reads.pathOf(part, symbols) instanceof PathResolution.At
+                        || forkOfTheSource(part),
+                one -> reads.denotes(one, symbols).value());
+    }
+
+    /**
+     * Whether {@code e} is a fork the source wrote.
+     *
+     * <p>Which is what makes one a rule of the model, and the only part of that this can be asked
+     * about a construct standing anywhere: whether the fork comes to a rule of its own or is owned
+     * by something inside it is the walk's answer at the place it stands, and either way it is
+     * where the rule is written.
+     */
+    private static boolean forkOfTheSource(Core e) {
+        return switch (e) {
+            case Core.If iff -> iff.origin() != null && iff.origin().isWritten();
+            case Core.Match match -> match.origin() != null && match.origin().isWritten();
+            default -> false;
+        };
+    }
 
     /** Whether the truth of {@code atom} turns on a predicate {@code read} took in, which is the
      *  same walk a comparison is looked for along and is here so that the two agree about it. */

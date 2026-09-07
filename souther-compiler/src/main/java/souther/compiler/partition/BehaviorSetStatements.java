@@ -332,8 +332,8 @@ public final class BehaviorSetStatements {
      * <p>Two ways for that, and they are different sentences. A value an operation made out of what
      * stands somewhere is about that value, and what the rule says about the values at the position
      * it came from would take reading the operation backwards. A value that <em>is</em> what stands
-     * somewhere, in a block handed to more than one walk, is about the input at one of several
-     * places with nothing to say which — nothing was made out of it and there is no operation to
+     * somewhere, in a block handed to more than one walk, is about the input at whichever of the
+     * places it may stand at this run is — nothing was made out of it and there is no operation to
      * read backwards.
      *
      * <p>Both are said at every place they may be about, and neither holds a position's classes

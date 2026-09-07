@@ -279,9 +279,9 @@ public final class GuardThresholds {
      * <p>The reason is decided here, where the answer about the side is in hand, and not by whoever
      * reads the places afterwards. Two things bring a comparison here and they are not the same
      * sentence: a value some operation made out of what stands at a position, and a value that is
-     * what stands at one of several positions with nothing to say which. Answered alike, a rule
-     * about an element of a sequence would be reported as one about a value somebody computed, and
-     * an author would go looking for the operation to invert.
+     * what stands at a position on the run it is on, with nothing to say which of the ones it may
+     * be. Answered alike, a rule about an element of a sequence would be reported as one about a
+     * value somebody computed, and an author would go looking for the operation to invert.
      */
     static void cameFrom(Comparison comparison, InputReads reads, Symbols symbols,
                          SequencedMap<FilingCoordinate, BlockReason.RuleReadingStopped> out) {
@@ -358,9 +358,9 @@ public final class GuardThresholds {
                 return switch (at.pathOf(here, symbols)) {
                     case PathResolution.At(var stands) -> stands;
                     case PathResolution.NotAPosition _ -> null;
-                    // A name standing at one of several is a term over no one of them. What this
-                    // answers for is a number a line can be drawn on, and a line drawn on this
-                    // would be drawn at whichever place was picked out of the several.
+                    // A name that only may stand at a position is a term over no one of them. What
+                    // this answers for is a number a line can be drawn on, and a line drawn on this
+                    // would be drawn at whichever place was picked out of the ones it may be.
                     case PathResolution.MayStandAt _ -> null;
                 };
             }

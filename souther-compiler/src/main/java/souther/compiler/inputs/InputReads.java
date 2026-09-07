@@ -195,9 +195,9 @@ public final class InputReads {
         TermPath scrutinee = switch (pathOf(match.scrutinee(), symbols)) {
             case PathResolution.At(var at) -> at;
             case PathResolution.NotAPosition _ -> null;
-            // A scrutinee standing at one of several narrows nothing here either. What an arm
-            // narrows is one position, and narrowing each of them would say a value under this arm
-            // is a case of every one of them at once.
+            // A scrutinee that only may stand at a position narrows nothing here either. What an
+            // arm narrows is one position, and narrowing each of the ones it may be would say a
+            // value under this arm is a case of every one of them at once.
             case PathResolution.MayStandAt _ -> null;
         };
         if (scrutinee == null) {
@@ -409,7 +409,7 @@ public final class InputReads {
                 return new ReadMeaning.Position(at);
             }
             case PathResolution.NotAPosition _ -> { }
-            // A name standing at one of several is not the name of a position, and what it is
+            // A name that only may stand at a position is not the name of one, and what it is
             // instead is what the answers below say — an element, which is what it is however many
             // containers it is an element of.
             case PathResolution.MayStandAt _ -> { }

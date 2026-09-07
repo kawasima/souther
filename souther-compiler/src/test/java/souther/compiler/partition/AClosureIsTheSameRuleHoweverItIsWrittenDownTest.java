@@ -326,15 +326,14 @@ class AClosureIsTheSameRuleHoweverItIsWrittenDownTest {
      * by having been written, and where a reader is sent for it is every place it may be about.
      * Read only by what names one term, the places come back empty and the fork leaves with them.
      *
-     * <p>The fork the body itself writes is the other one here, and it is filed as it always was:
-     * what it tests is what the walks answered, which came from the sequences and is not them.
+     * <p>And it is the only rule here. The fork the body writes tests what the walks answered, and
+     * what they answered is what this closure decided — so it states the rule inside the closure
+     * rather than one of its own, which is what a fork over a comparison in a closure already does.
      */
     @Test
     void aForkInsideTheSharedClosureIsFiledWhereItMayBeAbout() {
         assertEquals(List.of("fork at xs[*].active RuleAboutAnElementOfSeveralSequences",
-                        "fork at ys[*].active RuleAboutAnElementOfSeveralSequences",
-                        "fork at xs RuleAboutADerivedValue",
-                        "fork at ys RuleAboutADerivedValue"),
+                        "fork at ys[*].active RuleAboutAnElementOfSeveralSequences"),
                 forksOfTheirOwn("""
                         data Person = { active: Bool }
 
