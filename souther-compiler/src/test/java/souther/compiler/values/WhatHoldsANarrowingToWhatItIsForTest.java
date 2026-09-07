@@ -9,6 +9,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -82,7 +83,7 @@ class WhatHoldsANarrowingToWhatItIsForTest {
         // And what a reading is handed is that lack and nothing the arguments after it would have
         // said, since a narrowing that leaves a block nothing is what the relation comes to.
         assertEquals(Set.of(new RelationalLack.NoValueLeftForIt<>(block("p0"))),
-                lacksOf(across.reduce(left)));
+                lacksOf(across.reduce(left)).claimed());
     }
 
     /**
@@ -112,7 +113,7 @@ class WhatHoldsANarrowingToWhatItIsForTest {
         standing.put(block("p1"), Set.of(A, B));
 
         assertEquals(Set.of(new RelationalLack.NoValueLeftForIt<>(block("p0"))),
-                lacksOf(padded.reduce(holdingElseMany(refused))));
+                lacksOf(padded.reduce(holdingElseMany(refused))).claimed());
         assertInstanceOf(Apartness.Reduction.NotKnown.class,
                 padded.reduce(holdingElseMany(standing)),
                 "and at this size nothing else answers, so a relation the round leaves alone is"
@@ -141,7 +142,7 @@ class WhatHoldsANarrowingToWhatItIsForTest {
 
         assertEquals(Set.of(new RelationalLack.TooFewValuesBetweenThem<>(
                         Set.of(block("a"), block("b"), block("c")), Set.of(B, C))),
-                lacksOf(triangle.reduce(left)),
+                lacksOf(triangle.reduce(left)).claimed(),
                 "and the three are short once the fourth has taken its value");
     }
 
@@ -196,6 +197,23 @@ class WhatHoldsANarrowingToWhatItIsForTest {
                         + " hold one in the same round");
     }
 
+    /**
+     * And a block left nothing before any round is not something a relation is asked about.
+     *
+     * <p>Such a block is its own answer, and the rule a round applies is about what a neighbour
+     * leaves room for — which a block holding nothing leaves for no value at all. Handed one, a
+     * round would take every value from every neighbour of it and answer with blocks the relation
+     * does not empty, so what a narrowing may be handed is said by the reading it is handed rather
+     * than by whoever remembers to ask.
+     */
+    @Test
+    void andABlockLeftNothingBeforeAnyRoundIsNotSomethingARelationIsAsked() {
+        Map<Sameness.Block<String>, Admits> nothing =
+                Map.of(block("p"), new Admits.These(Set.of()));
+
+        assertThrows(IllegalArgumentException.class, () -> new Domains<>(nothing));
+    }
+
     /** What narrowing {@code relation} against what {@code left} says its blocks hold comes to,
      *  where that leaves a block nothing. */
     private static Closure.Contradicted<String> refusing(
@@ -212,7 +230,7 @@ class WhatHoldsANarrowingToWhatItIsForTest {
                 .mapToInt(Provenance.Removal::round).max().orElseThrow();
     }
 
-    private static Set<RelationalLack<String>> lacksOf(Apartness.Reduction<String> said) {
+    private static Lacks<String> lacksOf(Apartness.Reduction<String> said) {
         assertInstanceOf(Apartness.Reduction.Nothing.class, said);
         return ((Apartness.Reduction.Nothing<String>) said).lacks();
     }

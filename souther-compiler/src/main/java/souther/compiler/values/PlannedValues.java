@@ -236,7 +236,7 @@ public sealed interface PlannedValues<A> {
         if (!here.isEmpty()) {
             return new Refusal.AtEachOf<>(here);
         }
-        Set<RelationalLack<A>> stated = box.apart().apartFromThemselves();
+        Lacks<A> stated = box.apart().apartFromThemselves();
         return stated.isEmpty() ? new Refusal.Nowhere<>() : new Refusal.OfThemTogether<>(stated);
     }
 

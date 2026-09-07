@@ -41,29 +41,28 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
     private static final int BLOCKS = 4;
 
     /**
-     * One relation written two ways round is answered the same way.
+     * One relation written any way round is answered the same way.
      *
      * <p>Every relation over these blocks, every way of leaving its blocks values, and every
-     * writing of its denials that a rotation reaches. What is compared is the whole answer — which
-     * blocks were left nothing, and which removals left them so — because a reading that agreed
-     * about the verdict and not about the lack would still be answering a report from how the
-     * rules were written.
+     * writing of its denials — asked as the writings that swap one neighbouring pair with the next,
+     * because every ordering of the pairs is a run of those. A rotation and a reversal are two
+     * orderings out of as many as there are ways to write the pairs down; these are what says the
+     * answer is the same for all of them.
+     *
+     * <p>What is compared is the whole answer — which blocks were left nothing, and which removals
+     * left them so — because a reading that agreed about the verdict and not about the lack would
+     * still be answering a report from how the rules were written.
      */
     @Test
-    void oneRelationWrittenTwoWaysRoundIsAnsweredTheSameWay() {
+    void oneRelationWrittenAnyWayRoundIsAnsweredTheSameWay() {
         overEveryRelation((stated, domains) -> {
-            Apartness<String> written = relating(stated);
-            Closure<String> said = Narrowing.of(written, domains);
-            for (int turn = 1; turn < stated.size(); turn++) {
-                List<Pair> other = new ArrayList<>(stated.subList(turn, stated.size()));
-                other.addAll(stated.subList(0, turn));
-                assertEquals(said, Narrowing.of(relating(other), domains),
-                        "the same relation, written from its " + turn + "th pair on");
+            Closure<String> said = Narrowing.of(relating(stated), domains);
+            for (int at = 0; at + 1 < stated.size(); at++) {
+                List<Pair> swapped = new ArrayList<>(stated);
+                Collections.swap(swapped, at, at + 1);
+                assertEquals(said, Narrowing.of(relating(swapped), domains),
+                        "the same relation, with its " + at + "th pair written after the next");
             }
-            List<Pair> back = new ArrayList<>(stated);
-            Collections.reverse(back);
-            assertEquals(said, Narrowing.of(relating(back), domains),
-                    "and written backwards");
         });
     }
 
@@ -75,24 +74,43 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      * were written, and would answer about {@code p} for one relation and about {@code q} for that
      * relation with its blocks swapped — which is a reading that decides a declaration by how its
      * positions are spelled.
+     *
+     * <p>Asked as the callings that swap one block with the next, and of every relation over these
+     * blocks. Every way of calling the blocks by each other's names is a run of those, and what is
+     * asked of a relation here is asked of every relation the run passes through — so a law that
+     * holds for a swap over the whole of this holds for all of them.
      */
     @Test
     void andRenamingTheBlocksRenamesTheAnswer() {
-        Map<String, String> swapping = new LinkedHashMap<>();
-        for (int each = 0; each < BLOCKS; each++) {
-            swapping.put(named(each), named(BLOCKS - 1 - each));
-        }
         overEveryRelation((stated, domains) -> {
             Closure<String> said = Narrowing.of(relating(stated), domains);
-            List<Pair> swapped = new ArrayList<>();
-            stated.forEach(pair ->
-                    swapped.add(new Pair(BLOCKS - 1 - pair.one(), BLOCKS - 1 - pair.other())));
-            Map<Sameness.Block<String>, Admits> under = new LinkedHashMap<>();
-            domains.byBlock().forEach((block, admits) ->
-                    under.put(block.renamed(swapping::get), admits));
-            assertEquals(renamed(said, swapping), Narrowing.of(
-                    relating(swapped), new Domains<>(under)));
+            for (int first = 0; first + 1 < BLOCKS; first++) {
+                int swapped = first;
+                Map<String, String> naming = new LinkedHashMap<>();
+                for (int each = 0; each < BLOCKS; each++) {
+                    naming.put(named(each), named(calling(each, swapped)));
+                }
+                List<Pair> under = new ArrayList<>();
+                stated.forEach(pair -> under.add(new Pair(
+                        calling(pair.one(), swapped), calling(pair.other(), swapped))));
+                Map<Sameness.Block<String>, Admits> left = new LinkedHashMap<>();
+                domains.byBlock().forEach((block, admits) ->
+                        left.put(block.renamed(naming::get), admits));
+                assertEquals(renamed(said, naming),
+                        Narrowing.of(relating(under), new Domains<>(left)),
+                        "the same relation, with its " + swapped + "th block called by the next"
+                                + " one's name");
+            }
         });
+    }
+
+    /** What {@code block} is called where {@code swapped} and the block after it are called by
+     *  each other's names. */
+    private static int calling(int block, int swapped) {
+        if (block == swapped) {
+            return swapped + 1;
+        }
+        return block == swapped + 1 ? swapped : block;
     }
 
     /**
@@ -164,15 +182,20 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
     }
 
     /**
-     * And what took a value is a block that already held only it, which is a round earlier.
+     * And what took a value held only that value when it went.
      *
-     * <p>The removals of one narrowing run through rounds that only decrease, so a block offered as
-     * why a value went is one whose own values went before it. Read off where the narrowing
-     * stopped, a block that came to hold one value later would be offered as the reason for a
-     * removal made while it still held two, which is a report of an argument nobody made.
+     * <p>Said of what the blocker was left and not of when its own values went. The removals of one
+     * narrowing run through rounds that only decrease, so a blocker's rounds being earlier is what
+     * makes the reading below it readable — but a blocker left {@code A} and {@code B} of which
+     * {@code B} never went is one those rounds say nothing about, and it took nothing from
+     * anything.
+     *
+     * <p>So the reading is built: what the block was handed, less every value a round before this
+     * one took from it. What that comes to is the one value the removal was blocked by, and a
+     * report naming anything else would be describing an argument nobody made.
      */
     @Test
-    void andWhatTookAValueHeldOnlyItBeforeTheRoundThatTookIt() {
+    void andWhatTookAValueHeldOnlyItWhenItWent() {
         overEveryRelation((stated, domains) -> {
             if (!(Narrowing.of(relating(stated), domains)
                     instanceof Closure.Contradicted<String> refused)) {
@@ -181,20 +204,27 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
             Set<Provenance.Removal<String>> removals = refused.provenance().removals();
             for (Provenance.Removal<String> removal : removals) {
                 for (Sameness.Block<String> blocker : removal.blockers()) {
-                    removals.stream().filter(each -> each.block().equals(blocker)).forEach(each -> {
-                        if (each.value().equals(removal.value())) {
-                            assertTrue(each.round() >= removal.round(),
-                                    blocker + " still held " + removal.value()
-                                            + " when it took it from " + removal.block());
-                        } else {
-                            assertTrue(each.round() < removal.round(),
-                                    blocker + " held nothing but " + removal.value()
-                                            + " when it took it from " + removal.block());
-                        }
-                    });
+                    assertEquals(Set.of(removal.value()),
+                            leftBefore(blocker, removal.round(), domains, removals),
+                            blocker + " held nothing but " + removal.value()
+                                    + " when it took it from " + removal.block());
                 }
             }
         });
+    }
+
+    /** What {@code block} was left before {@code round}, which is what it was handed less what the
+     *  rounds before that took from it. */
+    private static Set<Value> leftBefore(Sameness.Block<String> block, int round,
+                                         Domains<String> domains,
+                                         Set<Provenance.Removal<String>> removals) {
+        Set<Value> left = new LinkedHashSet<>(((Admits.These) domains.of(block)).values());
+        removals.forEach(removal -> {
+            if (removal.block().equals(block) && removal.round() < round) {
+                left.remove(removal.value());
+            }
+        });
+        return left;
     }
 
     /** Whether {@code block} is left a value {@code next} leaves room for, for every value it is

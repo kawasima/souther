@@ -618,7 +618,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
                 if (at.values().stream().anyMatch(ValueSet::isEmpty)) {
                     return new Held.Nothing<>(Refusal.atEachOf(emptied));
                 }
-                Set<RelationalLack<A>> stated = apart.apartFromThemselves();
+                Lacks<A> stated = apart.apartFromThemselves();
                 if (!stated.isEmpty()) {
                     return new Held.Nothing<>(new Refusal.OfThemTogether<>(stated));
                 }
@@ -1191,8 +1191,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
             return new Refusal.AtEachOf<>(here);
         }
         return relating.of(box.apart(), box.product()) instanceof Apartness.Reduction.Nothing<A> it
-                ? new Refusal.OfThemTogether<>(it.lacks(), it.evidence())
-                : new Refusal.Nowhere<>();
+                ? new Refusal.OfThemTogether<>(it.lacks()) : new Refusal.Nowhere<>();
     }
 
     /**

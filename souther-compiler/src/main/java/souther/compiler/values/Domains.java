@@ -2,7 +2,6 @@ package souther.compiler.values;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -20,12 +19,26 @@ import java.util.Set;
  * which of the three answers a block has is {@link Admits}'s to say, and a block missing from the
  * map would be a fourth answer said by leaving something out.
  *
+ * <p><b>And every one of them is left something.</b> A block left no value at all is that block's
+ * own answer, reached before anything asks what the denials between blocks come to — and the rule
+ * a narrowing applies is about what a neighbour leaves room for, which a block holding nothing
+ * leaves for no value. Admitted here, a round reading one would take every value from every
+ * neighbour of it, and what came back would be blocks the relation does not empty. So where a
+ * narrowing leaves a block nothing is said by {@link Closure.Contradicted} and nowhere else.
+ *
  * @param <A> what a position is called
  */
 public record Domains<A>(Map<Sameness.Block<A>, Admits> byBlock) {
 
     public Domains {
         byBlock = Collections.unmodifiableMap(new LinkedHashMap<>(byBlock));
+        byBlock.forEach((block, admits) -> {
+            if (admits.isNone()) {
+                throw new IllegalArgumentException(
+                        "a block left no value at all is that block's own answer and is reached"
+                                + " before a relation is asked what its denials come to: " + block);
+            }
+        });
     }
 
     /**
@@ -48,21 +61,5 @@ public record Domains<A>(Map<Sameness.Block<A>, Admits> byBlock) {
     /** Every block these are about. */
     public Set<Sameness.Block<A>> blocks() {
         return byBlock.keySet();
-    }
-
-    /** The blocks settled to hold no value at all. */
-    public Set<Sameness.Block<A>> leftNothing() {
-        Set<Sameness.Block<A>> out = new LinkedHashSet<>();
-        byBlock.forEach((block, admits) -> {
-            if (admits.isNone()) {
-                out.add(block);
-            }
-        });
-        return Collections.unmodifiableSet(out);
-    }
-
-    /** Whether any block is settled to hold no value at all. */
-    public boolean holdNothingSomewhere() {
-        return byBlock.values().stream().anyMatch(Admits::isNone);
     }
 }

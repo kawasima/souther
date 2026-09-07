@@ -59,38 +59,13 @@ public sealed interface Refusal<A> {
      * <p>Several of them, because one argument can show a lack about several lots of blocks at
      * once and the relation says nothing about which of them to carry.
      */
-    record OfThemTogether<A>(Set<RelationalLack<A>> lacks,
-                             RelationalEvidence<A> evidence) implements Refusal<A> {
+    record OfThemTogether<A>(Lacks<A> lacks) implements Refusal<A> {
 
         public OfThemTogether {
-            lacks = Collections.unmodifiableSet(new LinkedHashSet<>(lacks));
             if (lacks.isEmpty()) {
                 throw new IllegalArgumentException(
                         "a lack about blocks together is shown by an argument, and none was given");
             }
-        }
-
-        /** These lacks, shown of blocks the argument read and did not name. */
-        public OfThemTogether(Set<RelationalLack<A>> lacks) {
-            this(lacks, RelationalEvidence.none());
-        }
-
-        /**
-         * What was shown, and never how it was reached.
-         *
-         * <p>Two readings that leave one block no value have shown that block has none, whatever
-         * took the values in each of them. Compared by the route as well, the two would be two
-         * refusals and {@link #shownByBoth} would keep neither — which is to say that a choice
-         * between two readings that both hold nothing would be reported as holding something.
-         */
-        @Override
-        public boolean equals(Object said) {
-            return said instanceof OfThemTogether<?> it && lacks.equals(it.lacks);
-        }
-
-        @Override
-        public int hashCode() {
-            return lacks.hashCode();
         }
     }
 
@@ -108,12 +83,7 @@ public sealed interface Refusal<A> {
         return switch (this) {
             case Nowhere<A> _ -> Set.of();
             case AtEachOf<A> it -> it.blocks();
-            case OfThemTogether<A> it -> {
-                Set<Sameness.Block<A>> out = new LinkedHashSet<>();
-                it.lacks().forEach(lack -> out.addAll(lack.blocks()));
-                out.addAll(it.evidence().restingOn(it.lacks()));
-                yield Collections.unmodifiableSet(out);
-            }
+            case OfThemTogether<A> it -> it.lacks().blocks();
         };
     }
 
@@ -131,11 +101,7 @@ public sealed interface Refusal<A> {
                 it.blocks().forEach(block -> out.add(block.renamed(naming)));
                 yield new AtEachOf<>(out);
             }
-            case OfThemTogether<A> it -> {
-                Set<RelationalLack<B>> out = new LinkedHashSet<>();
-                it.lacks().forEach(lack -> out.add(lack.renamed(naming)));
-                yield new OfThemTogether<>(out, it.evidence().renamed(naming));
-            }
+            case OfThemTogether<A> it -> new OfThemTogether<>(it.lacks().renamed(naming));
         };
     }
 
@@ -169,9 +135,7 @@ public sealed interface Refusal<A> {
             return new AtEachOf<>(both);
         }
         if (one instanceof OfThemTogether<A> mine && other instanceof OfThemTogether<A> theirs) {
-            Set<RelationalLack<A>> both = new LinkedHashSet<>(mine.lacks());
-            both.addAll(theirs.lacks());
-            return new OfThemTogether<>(both, reachedAlike(mine, theirs));
+            return new OfThemTogether<>(mine.lacks().and(theirs.lacks()));
         }
         return one.equals(other) ? one : new Nowhere<>();
     }
@@ -188,10 +152,15 @@ public sealed interface Refusal<A> {
      * itself, and a reading that showed it is a reading the pair may be said to have shown it.
      * Where they show none in common, nothing was shown of the pair.
      *
-     * <p>Which is a question about what was shown and not about how it was reached. Two readings
-     * that leave the same block no value have shown that block has none, whatever took the values
-     * in each of them — so what these are compared by is the lack and never the argument's route
-     * to it.
+     * <p><b>What the two both showed is asked of the lacks and not of how either reached them.</b>
+     * Two readings that leave one block no value have shown that block has none, whatever took the
+     * values in each of them. Asked of the refusals whole, the two would be different wherever
+     * their routes were, and a choice between two readings that both hold nothing would be
+     * reported as holding something.
+     *
+     * <p>Which is why it is asked here and not by whether the two refusals are equal. A refusal is
+     * a value and is equal to what it is: two of them that were reached differently are two
+     * different values, and what they showed in common is this question rather than that one.
      */
     static <A> Refusal<A> shownByBoth(Refusal<A> one, Refusal<A> other) {
         if (one instanceof AtEachOf<A> mine && other instanceof AtEachOf<A> theirs) {
@@ -200,24 +169,9 @@ public sealed interface Refusal<A> {
             return atEachOf(both);
         }
         if (one instanceof OfThemTogether<A> mine && other instanceof OfThemTogether<A> theirs) {
-            Set<RelationalLack<A>> both = new LinkedHashSet<>(mine.lacks());
-            both.retainAll(theirs.lacks());
-            return both.isEmpty() ? new Nowhere<>()
-                    : new OfThemTogether<>(both, reachedAlike(mine, theirs));
+            Lacks<A> both = mine.lacks().sharedWith(theirs.lacks());
+            return both.isEmpty() ? new Nowhere<>() : new OfThemTogether<>(both);
         }
         return one.equals(other) ? one : new Nowhere<>();
-    }
-
-    /**
-     * The route two refusals were reached along, where it is one route.
-     *
-     * <p>Nothing where the two were reached differently. What a route is for is sending an author
-     * to the rules that were read, and two readings that read different rules leave nothing to
-     * send them to — the lack they both show is still theirs, which is what is kept beside this.
-     */
-    private static <A> RelationalEvidence<A> reachedAlike(OfThemTogether<A> one,
-                                                          OfThemTogether<A> other) {
-        return one.evidence().equals(other.evidence()) ? one.evidence()
-                : RelationalEvidence.none();
     }
 }

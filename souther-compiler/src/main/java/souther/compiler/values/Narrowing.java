@@ -56,14 +56,6 @@ final class Narrowing<A> {
     private Closure<A> from(Domains<A> domains) {
         Set<Provenance.Removal<A>> taken = new LinkedHashSet<>();
         Domains<A> here = domains;
-        // A block already holding nothing before any round has run. Answered here because the rule
-        // a round applies is about what a neighbour leaves room for, and a block holding nothing
-        // leaves room for no value at all — so a round reading one would take every value from
-        // every neighbour of it, and what came back would be blocks the relation does not empty.
-        // Nothing is carried, since no round took anything.
-        if (here.holdNothingSomewhere()) {
-            return new Closure.Contradicted<>(here.leftNothing(), Provenance.nothing());
-        }
         for (int round = 1; ; round++) {
             Map<Sameness.Block<A>, Admits> writing = new LinkedHashMap<>(here.byBlock());
             for (Sameness.Block<A> block : here.blocks()) {
@@ -83,10 +75,19 @@ final class Narrowing<A> {
                     writing.put(block, new Admits.These(keeping));
                 }
             }
-            Domains<A> next = new Domains<>(writing);
-            if (next.holdNothingSomewhere()) {
-                return new Closure.Contradicted<>(next.leftNothing(), new Provenance<>(taken));
+            // Read off the map and not off a reading, because a block left nothing is not one a
+            // reading may hold: which blocks a round emptied is what this answers with, and every
+            // block of the reading it hands on is one some value is left.
+            Set<Sameness.Block<A>> emptied = new LinkedHashSet<>();
+            writing.forEach((block, admits) -> {
+                if (admits.isNone()) {
+                    emptied.add(block);
+                }
+            });
+            if (!emptied.isEmpty()) {
+                return new Closure.Contradicted<>(emptied, new Provenance<>(taken));
             }
+            Domains<A> next = new Domains<>(writing);
             if (next.equals(here)) {
                 return new Closure.Stable<>(here);
             }
