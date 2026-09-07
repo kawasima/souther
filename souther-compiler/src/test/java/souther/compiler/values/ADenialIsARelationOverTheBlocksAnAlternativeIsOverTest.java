@@ -390,6 +390,40 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
     }
 
     /**
+     * A relation whose blocks each hold more values than they have neighbours stands, however large
+     * it is.
+     *
+     * <p>Read off the pairs and answered before anything walks. Take the blocks in any order and
+     * give each one a value: what it is stated to differ from has taken at most one value apiece
+     * and there are fewer of them than it holds, so one is always free.
+     *
+     * <p>Which is why the relation asserted here is one nothing else reaches. A ring of forty
+     * blocks is past what a set of blocks all stated to differ is looked for over, and three values
+     * apiece is more assignments than are looked through — so both of the arguments that decide by
+     * walking are out, and what answers is the shape.
+     *
+     * <p><b>And the same ring over two values is not.</b> Two values is what each block has
+     * neighbours, so the argument says nothing of it — and a ring of even length over two values
+     * stands all the same, which is what nothing here can show. Asserted so that what is claimed is
+     * where this stops rather than that it decides rings.
+     */
+    @Test
+    void andBlocksHoldingMoreValuesThanTheyHaveNeighboursStandHoweverLargeTheRelationIs() {
+        Apartness<String> ring = cycleOf(everyOneOf(40));
+        Set<Value> three = new LinkedHashSet<>(Set.of(A, B));
+        three.add(C);
+
+        assertEquals(40, ring.extent().blocks(), "past what the sets are walked for");
+        assertInstanceOf(Apartness.Reduction.Standing.class,
+                ring.reduce((_, _) -> new Admits.These(three)),
+                "and past what the assignments are looked through, and answered all the same");
+
+        assertInstanceOf(Apartness.Reduction.NotKnown.class,
+                ring.reduce(holding(java.util.Map.of())),
+                "where two values apiece is what its blocks have neighbours, and nothing answers");
+    }
+
+    /**
      * And a relation neither of those admits is one this says nothing about.
      *
      * <p>Enough blocks to be past what a general relation is admitted by, and enough pairs left out

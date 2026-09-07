@@ -9,7 +9,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiConsumer;
+
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -55,8 +55,8 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      */
     @Test
     void oneRelationWrittenAnyWayRoundIsAnsweredTheSameWay() {
-        overEveryRelation((stated, domains) -> {
-            Closure<String> said = Narrowing.of(relating(stated), domains);
+        overEveryRelation((written, stated, domains) -> {
+            Closure<String> said = Narrowing.of(written, domains);
             for (int at = 0; at + 1 < stated.size(); at++) {
                 List<Pair> swapped = new ArrayList<>(stated);
                 Collections.swap(swapped, at, at + 1);
@@ -82,8 +82,8 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      */
     @Test
     void andRenamingTheBlocksRenamesTheAnswer() {
-        overEveryRelation((stated, domains) -> {
-            Closure<String> said = Narrowing.of(relating(stated), domains);
+        overEveryRelation((written, stated, domains) -> {
+            Closure<String> said = Narrowing.of(written, domains);
             for (int first = 0; first + 1 < BLOCKS; first++) {
                 int swapped = first;
                 Map<String, String> naming = new LinkedHashMap<>();
@@ -123,8 +123,7 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      */
     @Test
     void whatANarrowingLeavesIsInsideWhatItWasHandedAndIsAllItCanTake() {
-        overEveryRelation((stated, domains) -> {
-            Apartness<String> written = relating(stated);
+        overEveryRelation((written, stated, domains) -> {
             if (!(Narrowing.of(written, domains) instanceof Closure.Stable<String> stable)) {
                 return;
             }
@@ -150,8 +149,7 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      */
     @Test
     void andEveryDenialLeavesRoomForWhatEachOfItsBlocksIsLeft() {
-        overEveryRelation((stated, domains) -> {
-            Apartness<String> written = relating(stated);
+        overEveryRelation((written, stated, domains) -> {
             if (!(Narrowing.of(written, domains) instanceof Closure.Stable<String> stable)) {
                 return;
             }
@@ -173,9 +171,10 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      */
     @Test
     void andABlockLeftNothingIsARelationNoAssignmentSatisfies() {
-        overEveryRelation((stated, domains) -> {
-            if (Narrowing.of(relating(stated), domains) instanceof Closure.Contradicted<String>) {
-                assertFalse(satisfiable(stated, domains, 0, new LinkedHashMap<>()),
+        overEveryRelation((written, stated, domains) -> {
+            if (Narrowing.of(written, domains) instanceof Closure.Contradicted<String>) {
+                assertFalse(satisfiable(stated, domains,
+                                new ArrayList<>(domains.blocks()), 0, new LinkedHashMap<>()),
                         "a block left nothing, and an assignment found: " + stated + " " + domains);
             }
         });
@@ -196,9 +195,8 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      */
     @Test
     void andWhatTookAValueHeldOnlyItWhenItWent() {
-        overEveryRelation((stated, domains) -> {
-            if (!(Narrowing.of(relating(stated), domains)
-                    instanceof Closure.Contradicted<String> refused)) {
+        overEveryRelation((written, stated, domains) -> {
+            if (!(Narrowing.of(written, domains) instanceof Closure.Contradicted<String> refused)) {
                 return;
             }
             Set<Provenance.Removal<String>> removals = refused.provenance().removals();
@@ -258,9 +256,9 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
     }
 
     /** Whether some way of giving the blocks values tells every stated pair apart. */
-    private static boolean satisfiable(List<Pair> stated, Domains<String> domains, int at,
+    private static boolean satisfiable(List<Pair> stated, Domains<String> domains,
+                                       List<Sameness.Block<String>> order, int at,
                                        Map<Sameness.Block<String>, Value> given) {
-        List<Sameness.Block<String>> order = new ArrayList<>(domains.blocks());
         if (at == order.size()) {
             return true;
         }
@@ -273,7 +271,7 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
                             && value.equals(given.get(blockOf(pair.one())))));
             if (!clash) {
                 given.put(block, value);
-                if (satisfiable(stated, domains, at + 1, given)) {
+                if (satisfiable(stated, domains, order, at + 1, given)) {
                     return true;
                 }
                 given.remove(block);
@@ -290,7 +288,7 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      * among them: that is the block's own answer and is reached before a relation is asked what its
      * denials come to.
      */
-    private static void overEveryRelation(BiConsumer<List<Pair>, Domains<String>> asking) {
+    private static void overEveryRelation(Asked asking) {
         List<Pair> pairs = new ArrayList<>();
         for (int one = 0; one < BLOCKS; one++) {
             for (int other = one + 1; other < BLOCKS; other++) {
@@ -304,7 +302,8 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
                     stated.add(pairs.get(at));
                 }
             }
-            Set<Sameness.Block<String>> blocks = relating(stated).blocks();
+            Apartness<String> written = relating(stated);
+            Set<Sameness.Block<String>> blocks = written.blocks();
             int[] pick = new int[blocks.size()];
             while (true) {
                 Map<Sameness.Block<String>, Admits> left = new LinkedHashMap<>();
@@ -312,7 +311,7 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
                 for (Sameness.Block<String> block : blocks) {
                     left.put(block, new Admits.These(valuesFor(pick[at++])));
                 }
-                asking.accept(stated, new Domains<>(left));
+                asking.of(written, stated, new Domains<>(left));
                 at = 0;
                 while (at < pick.length && ++pick[at] == (1 << VALUES.size()) - 1) {
                     pick[at] = 0;
@@ -323,6 +322,15 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
                 }
             }
         }
+    }
+
+    /** What each relation and each way of leaving its blocks values is asked. */
+    @FunctionalInterface
+    private interface Asked {
+
+        /** @param written the relation, built once for every reading it is asked about
+         *  @param stated the pairs it was built from, for a caller writing them another way */
+        void of(Apartness<String> written, List<Pair> stated, Domains<String> domains);
     }
 
     /** The {@code which}th non-empty set of values, counting from none. */

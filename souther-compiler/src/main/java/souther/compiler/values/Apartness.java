@@ -505,13 +505,15 @@ public final class Apartness<A> {
      * {@link Reduction.NotKnown}, which says that this reduction did not settle it and never that
      * something stands.
      *
-     * <p><b>Four arguments, in the order it tries them.</b> A block stated to differ from itself is
-     * read off the rule. A block loses every value a neighbour leaves it no room for, and where
-     * that leaves it none, nothing stands — narrowed round after round, because a block that loses
-     * a value leaves less room for its own neighbours ({@link Narrowing}). A set of blocks each
-     * stated to differ from every other needs a value apiece, so where there are fewer values
-     * between them than there are blocks, nothing stands. And what none of those reaches is looked
-     * for: whether some way of giving the blocks values tells every stated pair apart.
+     * <p><b>Five arguments, in the order it tries them.</b> A block stated to differ from itself is
+     * read off the rule. A relation whose blocks are each left more values than they are stated to
+     * differ from blocks stands, and is read off the pairs. A block loses every value a neighbour
+     * leaves it no room for, and where that leaves it none, nothing stands — narrowed round after
+     * round, because a block that loses a value leaves less room for its own neighbours
+     * ({@link Narrowing}). A set of blocks each stated to differ from every other needs a value
+     * apiece, so where there are fewer values between them than there are blocks, nothing stands.
+     * And what none of those reaches is looked for: whether some way of giving the blocks values
+     * tells every stated pair apart.
      *
      * <p><b>Every lack the argument that answered shows, and not one of them.</b> Each of these
      * arguments can hold of several blocks at once, and the relation says nothing about which of
@@ -541,9 +543,9 @@ public final class Apartness<A> {
      * says the lack better inside it, and neither of those is being kept for the sake of the other.
      *
      * <p><b>What it still cannot.</b> A relation whose shape is past what either search is admitted
-     * by, and a relation naming a block whose values nothing wrote down. Both are
-     * {@link Reduction.NotKnown}, which says that this did not settle it and never that something
-     * stands.
+     * by and whose blocks do not each outnumber their neighbours, and a relation naming a block
+     * whose values nothing wrote down. Both are {@link Reduction.NotKnown}, which says that this
+     * did not settle it and never that something stands.
      *
      * @param admitting what each block is left, which is a question about a block and a range and
      *                  belongs to whoever holds both
@@ -559,10 +561,61 @@ public final class Apartness<A> {
         // How many values a block has to hold before it never runs out, which is how many blocks
         // there are: its neighbours take fewer values than that between them, so one is left.
         int atMost = blocks().size();
-        return switch (Narrowing.of(this, Domains.of(blocks(), admitting, atMost))) {
+        Domains<A> left = Domains.of(blocks(), admitting, atMost);
+        if (outnumberTheirNeighbours(left)) {
+            return new Reduction.Standing<>();
+        }
+        return switch (Narrowing.of(this, left)) {
             case Closure.Contradicted<A> it -> emptied(it);
             case Closure.Stable<A> it -> whatIsLeftComesTo(it.domains());
         };
+    }
+
+    /**
+     * Whether every block is left more values than it is stated to differ from blocks.
+     *
+     * <p>Such a relation stands, and nothing has to be narrowed, counted or looked through to say
+     * so. Take the blocks in any order and give each one a value: what it is stated to differ from
+     * has taken at most one value apiece and there are fewer of them than it holds, so one is
+     * always free. What that argument needs of a block is a value nobody else took, and it needs it
+     * of every block at once — which is why this is asked of all of them or not at all.
+     *
+     * <p><b>The argument the search already rests on, said of a block's neighbours rather than of
+     * the relation's blocks.</b> A block holding more values than the relation has blocks is left
+     * out of the search because it can be given one after every other block has; that is this, with
+     * the loosest bound a block could be held to. Read against what each block is actually stated
+     * to differ from, it decides the relation rather than one block of it.
+     *
+     * <p>Which is why it is asked before anything walks. What it costs is the pairs, read once; a
+     * relation it admits is one the walk over the sets and the search would both reach the end of,
+     * and a relation of a shape neither is admitted for is now answered where it was not.
+     *
+     * <p>Nothing where a block's values are not written down. Such a block may hold no value at
+     * all, and an argument that gives it one last is one about a block whose values somebody
+     * counted.
+     */
+    private boolean outnumberTheirNeighbours(Domains<A> left) {
+        Map<Sameness.Block<A>, Integer> apart = new LinkedHashMap<>();
+        left.blocks().forEach(block -> apart.put(block, 0));
+        for (Edge<A> edge : edges) {
+            apart.merge(edge.one(), 1, Integer::sum);
+            apart.merge(edge.other(), 1, Integer::sum);
+        }
+        for (Sameness.Block<A> block : left.blocks()) {
+            switch (left.of(block)) {
+                case Admits.These it -> {
+                    if (it.values().size() <= apart.get(block)) {
+                        return false;
+                    }
+                }
+                // More than the relation has blocks, which is more than any block has neighbours.
+                case Admits.MoreThanCounted _ -> { }
+                case Admits.NotKnown _ -> {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /** A lack at each block a narrowing left no value, beside the removals that left them so. */
