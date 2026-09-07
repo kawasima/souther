@@ -40,47 +40,57 @@ public final class StringMachineAnswers {
      * <p><b>Never handed to a reading.</b> A reading's answers are its own and keep what they make,
      * because what a reading came to is what its counterfactual is handed; handed this one, a
      * reading would come to nothing and the counterfactual would build all of it again. A reading
-     * with nothing to borrow is {@link #unborrowed()}, which is a different thing from this and
+     * with nothing to borrow is {@link #unborrowed}, which is a different thing from this and
      * reads like it.
      */
-    public static final StringMachineAnswers NONE = new StringMachineAnswers(StringFacts.NONE, false);
+    public static final StringMachineAnswers NONE =
+            new StringMachineAnswers(StringFacts.NONE, false, KnownExtents.NONE);
 
     private final StringFacts borrowed;
     /** Whether what is made here is kept, which is what a reading's own answers do and what the
      *  shared {@link #NONE} must not. */
     private final boolean keeps;
+    /** Where the sets this meets stopped when anything else in the revision met them, and where
+     *  what this works out is said for the rest of it. */
+    private final KnownExtents known;
     private final Map<AdmittedPlan, ValueSet> realized = new LinkedHashMap<>();
     private final Map<ValueSet, TextExtent> extents = new LinkedHashMap<>();
     private final Map<StringFacts.Stretch, Emptiness> inside = new LinkedHashMap<>();
 
-    private StringMachineAnswers(StringFacts borrowed, boolean keeps) {
+    private StringMachineAnswers(StringFacts borrowed, boolean keeps, KnownExtents known) {
         this.borrowed = borrowed;
         this.keeps = keeps;
+        this.known = known;
     }
 
     /**
-     * A reading's own answers, made from {@code facts} and keeping what it works out beside them.
+     * A reading's own answers, made from {@code facts} and from what {@code known} says the
+     * revision has already worked out, and keeping what it works out beside them.
      *
-     * <p>{@link #unborrowed()} where there is nothing to borrow, which is the same thing over no
+     * <p>{@link #unborrowed} where there is nothing to borrow, which is the same thing over no
      * facts at all.
      */
-    public static StringMachineAnswers borrowing(StringFacts facts) {
+    public static StringMachineAnswers borrowing(StringFacts facts, KnownExtents known) {
         if (facts == null) {
             throw new IllegalArgumentException("a reading borrows from some facts, or from none");
         }
-        return new StringMachineAnswers(facts, true);
+        return new StringMachineAnswers(facts, true, known);
     }
 
     /**
-     * A reading's own answers with nothing to borrow: it builds every machine it meets and holds
-     * every one it built.
+     * A reading's own answers with nothing to borrow: it works out every machine it meets that
+     * {@code known} has no answer for, and holds every one it worked out.
      *
      * <p>Which is what a reading with no lender is, and what a reading of a declaration the lender
      * has nothing for is. Not {@link #NONE}: having nothing to borrow and keeping nothing are two
      * things, and they parted when what a reading came to became what its counterfactual is handed.
+     *
+     * <p>What the revision knows is beside all of that. It is not this reading's and is not lent
+     * to it — an extent is a fact about a set, so a reading that takes one from there came to what
+     * it would have come to on its own.
      */
-    public static StringMachineAnswers unborrowed() {
-        return new StringMachineAnswers(StringFacts.NONE, true);
+    public static StringMachineAnswers unborrowed(KnownExtents known) {
+        return new StringMachineAnswers(StringFacts.NONE, true, known);
     }
 
     /** What {@code plan} admits where somebody has made it, or null; asking makes nothing and
@@ -89,20 +99,49 @@ public final class StringMachineAnswers {
         return borrowed.realized().get(plan);
     }
 
-    /** Where the strings {@code set} holds stop on the order. */
+    /**
+     * Where the strings {@code set} holds stop on the order.
+     *
+     * <p>What the declaration's facts say, then what the revision has worked out, and only then the
+     * walk. The second is not the first: what a declaration came to is its answer and is compared
+     * as one, while what the revision knows is work anybody's reading did — so an extent taken from
+     * there is put where an extent this reading worked out would go, and the declaration comes to
+     * the same facts either way.
+     */
     public TextExtent extentOf(ValueSet set) {
-        TextExtent known = borrowed.extents().get(set);
-        if (known != null) {
-            return known;
+        TextExtent lent = borrowed.extents().get(set);
+        if (lent != null) {
+            return lent;
         }
+        TextExtent had = known.of(set);
+        if (had != null) {
+            keep(set, had);
+            return had;
+        }
+        WALKED.incrementAndGet();
         TextExtent made = TextExtents.of(set);
+        // Whatever it came to, including a walk that ran past what it may spend: an extent is
+        // settled by its set, and the allowance it ran past is the one every set is walked under.
+        known.remember(set, made);
         if (!(made instanceof TextExtent.NotBuilt)) {
             MADE.incrementAndGet();
-            if (keeps) {
-                extents.put(set, made);
-            }
         }
+        keep(set, made);
         return made;
+    }
+
+    /**
+     * Keeps what a set came to, where this reading keeps anything.
+     *
+     * <p>Whether the walk was here or anywhere else in the revision, since what the declaration
+     * came to is the same answer either way. A walk nobody could afford is not among them: it says
+     * what this compiler could do rather than what the declaration's rules leave, and a reading
+     * that kept one would be handing that on as something it came to.
+     */
+    private void keep(ValueSet set, TextExtent extent) {
+        if (keeps && !(extent instanceof TextExtent.NotBuilt)) {
+            extents.put(set, extent);
+        }
     }
 
     /**
@@ -158,8 +197,8 @@ public final class StringMachineAnswers {
     }
 
     /**
-     * How many machines have been made rather than answered from the facts, for a test holding a
-     * reading to what it borrows.
+     * How many machines have been made rather than answered from the facts or from what the
+     * revision knows, for a test holding a reading to what it borrows.
      *
      * <p>All three of the questions this answers, counted where the answer was not there to be had
      * and what was built came out: a plan realized into a set, the extent of a set, and whether a
@@ -174,6 +213,21 @@ public final class StringMachineAnswers {
     }
 
     private static final AtomicLong MADE = new AtomicLong();
+
+    /**
+     * How many times a set's extent has been walked, for a test holding a revision to working one
+     * out once.
+     *
+     * <p>Every walk and only a walk: a set answered from the facts or from what the revision knows
+     * is not one, and a walk that ran past its allowance is, since that is the walk this is about.
+     * Which is what makes it a different count from {@link #machinesMade}, where what is at stake
+     * is what a reading came to hold rather than what any of it cost.
+     */
+    public static long extentsWalked() {
+        return WALKED.get();
+    }
+
+    private static final AtomicLong WALKED = new AtomicLong();
 
     /**
      * Everything this answered from and everything it made: what the reading it belongs to came to.
