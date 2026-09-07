@@ -103,6 +103,43 @@ class APositionSaysHowManyOfItsClassesTheseRulesComposedTest {
                 () -> "its rules composed what it is divided into: " + human);
     }
 
+    /**
+     * And the count of what no row reaches says that no row is owed there.
+     *
+     * <p>The sentence #1444 is about. Every measure over the model below comes back full and a
+     * number in the middle says some combinations are unknown; a reader who takes that as work to
+     * do writes a row, moves the number by one, and buys no evidence with it. What stops that is
+     * said where the number is.
+     */
+    @Test
+    void whatNoRowReachesSaysNobodyIsOwedARowThere() {
+        String human = report("""
+                module example.owed
+
+                data TooShort
+                data TooLong
+                data WrongCase
+                data Refusal = TooShort | TooLong | WrongCase
+
+                data Ok = { n: Int }
+
+                behavior judge : (why: Refusal, n: Int) -> Ok
+                    constructs Ok
+
+                let judge (why, n) = {
+                    guard n > 10 else Ok { n = 0 }
+                    Ok { n = 1 }
+                }
+
+                example judge
+                    | (TooShort, 5)  -> Ok { n = 0 }
+                    | (TooLong, 50)  -> Ok { n = 1 }
+                """);
+
+        assertTrue(human.contains("unknown; no row is owed at one"),
+                () -> "the count says nobody is behind on it: " + human);
+    }
+
     private static String report(String model) {
         List<souther.compiler.diag.Located> warnings = new ArrayList<>();
         Compilation compilation = Compiler.analyzedModules(List.of(model), ModulePath.EMPTY,

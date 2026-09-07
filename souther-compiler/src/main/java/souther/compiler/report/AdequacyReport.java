@@ -1929,9 +1929,14 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // And whose rows, where not all of them were read. A combination none of the rows seen
         // reaches is not one none of the rows reaches, and the same number means the smaller thing.
         boolean whole = pairs.counted() instanceof Measurement.Complete<?>;
-        return String.format("pairs %d covered, %d unknown%s",
+        // And that nobody is behind on the second number. A count printed with no obligation
+        // beside it is read as one, which is what sent an author after a row that bought a
+        // combination and no evidence; a combination is not a thing this compiler finds a gap
+        // about, and no bar refuses over one (PairCombinationsAreNotRowObligationsTest).
+        return String.format("pairs %d covered, %d unknown%s%s",
                 pairs.counts().covered(), pairs.unknown(),
-                whole ? "" : " of the rows that were read");
+                whole ? "" : " of the rows that were read",
+                pairs.unknown() == 0 ? "" : "; no row is owed at one");
     }
 
     /**
