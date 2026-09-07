@@ -50,8 +50,9 @@ class TheShippedBinaryServesTheLanguageServerIT {
                 message(null, "textDocument/didOpen", Map.of(
                         "textDocument", Map.of("uri", source.toUri().toString(),
                                 "text", Files.readString(source)))),
-                message(2, "shutdown", Map.of()),
-                message(null, "exit", Map.of())));
+                // No `exit` after it: the stream closing below is what ends the session, and a
+                // server told to stop now would have nothing more to publish.
+                message(2, "shutdown", Map.of())));
         process.getOutputStream().close();
         byte[] wrote = process.getInputStream().readAllBytes();
         String said = new String(process.getErrorStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);

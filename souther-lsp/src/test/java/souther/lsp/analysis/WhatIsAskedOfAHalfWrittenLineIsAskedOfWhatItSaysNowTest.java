@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.ast.Hir;
 import souther.compiler.cst.LineIndex;
 import souther.compiler.meta.ModulePath;
+import souther.compiler.query.Abandonment;
 import souther.compiler.query.Names;
 import souther.compiler.sites.MemberReceiver;
 import souther.compiler.sites.SemanticSnapshot;
@@ -139,7 +140,8 @@ class WhatIsAskedOfAHalfWrittenLineIsAskedOfWhatItSaysNowTest {
     private static Reading reading(SemanticProbe probe, String text) {
         Map<String, String> joining = new LinkedHashMap<>();
         Reading reading = probe.of(joining, Set.of(), ModulePath.EMPTY, URI, text,
-                text.indexOf(".\n") < 0 ? text.length() : text.lastIndexOf(".\n") + 1);
+                text.indexOf(".\n") < 0 ? text.length() : text.lastIndexOf(".\n") + 1,
+                Abandonment.NEVER);
         assertNotNull(reading, "the half-written line is one this knows how to finish");
         return reading;
     }

@@ -40,8 +40,10 @@ class TheLanguageServerIsOneThisCommandLineServesTest {
                 message(null, "textDocument/didOpen", Map.of(
                         "textDocument", Map.of("uri", "file:///t.sou",
                                 "text", "module demo\ndata M = { name: Missing }\n"))),
-                message(2, "shutdown", Map.of()),
-                message(null, "exit", Map.of())));
+                // Shut down and then the stream ends, which is a session ending the way a client
+                // that closes its editor ends one. No `exit`: that is a client saying stop now, and
+                // a server told to stop now has nothing more to publish.
+                message(2, "shutdown", Map.of())));
 
         assertEquals(0, answer.code(), "a session its client shut down is this command finishing");
 

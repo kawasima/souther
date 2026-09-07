@@ -10,6 +10,7 @@ import souther.compiler.check.Sig;
 import souther.compiler.check.Resolve;
 import souther.compiler.check.SpecImplementation;
 import souther.compiler.examples.ExampleProvisioning;
+import souther.compiler.query.Abandonment;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.ArmSummary;
 import souther.compiler.query.Measurement;
@@ -162,6 +163,22 @@ public final class Analyzer {
      */
     private boolean resolvesActions;
 
+    /**
+     * What stops the work this analyzer is doing now, short of the answer.
+     *
+     * <p>Held rather than passed, because what makes the work stop is a property of the unit of work
+     * the caller is carrying out and not of any one question inside it: the same value covers the
+     * files this reads, the walk the compile makes, and the markers it lays out afterwards. One
+     * caller sets it as it begins a unit of work, and every step of that unit asks the same value.
+     */
+    private Abandonment abandonment = Abandonment.NEVER;
+
+    /** What makes the work this analyzer does from now on stop short of its answer. Set as a unit of
+     * work begins, and read by everything that unit reaches — the compile's walk included. */
+    public void abandonWhen(Abandonment abandonment) {
+        this.abandonment = abandonment;
+    }
+
     /** Whether anything is being measured, which is what decides if an offer can exist where there
      * is no diagnostic to fix. */
     public boolean measuring() {
@@ -271,6 +288,7 @@ public final class Analyzer {
         Set<String> brokenModules = new HashSet<>();   // names of files held out for their syntax errors
 
         for (String uri : graph.uris()) {
+            abandonment.stopIfAsked();   // between two files, before this one is parsed
             String text = graph.text(uri);
             LineIndex lines = new LineIndex(text);
             List<LspDiagnostic> syntax = new ArrayList<>();
@@ -314,6 +332,7 @@ public final class Analyzer {
             });
         };
         for (Map.Entry<SourceId, List<Located>> e : byUri.entrySet()) {
+            abandonment.stopIfAsked();   // between two files' markers, before this one is laid out
             List<LspDiagnostic> list = out.get(e.getKey().value());
             if (list == null) {
                 continue;
@@ -361,6 +380,9 @@ public final class Analyzer {
         } else {
             workspaceCompile.update(sources, broken);
         }
+        // Told here rather than where the compile is made: what stops the walk is whichever unit of
+        // work reached it, and a compile outlives every one of them.
+        workspaceCompile.abandonWhen(abandonment);
         return workspaceCompile;
     }
 
@@ -1567,7 +1589,8 @@ public final class Analyzer {
         // The buffer as it stands where it parses, and finished off where it does not: a call is
         // asked about while its closing bracket is not typed, which is most of the time.
         SemanticProbe.Reading reading =
-                probe.of(rest, sorted.broken(), pathCompiledAgainst(), uri, text, cursor);
+                probe.of(rest, sorted.broken(), pathCompiledAgainst(), uri, text, cursor,
+                        abandonment);
         Compilation compilation = reading == null ? compileOf(graph) : reading.compilation();
         String parsed = reading == null ? text : reading.repaired();
         String module = moduleOf(compilation, graph, uri);
@@ -1879,7 +1902,8 @@ public final class Analyzer {
         Map<String, String> rest = new LinkedHashMap<>(sorted.joining());
         rest.remove(uri);
         SemanticProbe.Reading reading =
-                probe.of(rest, sorted.broken(), pathCompiledAgainst(), uri, text, cursor);
+                probe.of(rest, sorted.broken(), pathCompiledAgainst(), uri, text, cursor,
+                        abandonment);
         if (reading == null) {
             return List.of();
         }

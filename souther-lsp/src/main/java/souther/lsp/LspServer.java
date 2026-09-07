@@ -5,6 +5,8 @@ import souther.lsp.analysis.Analyzer;
 import souther.lsp.analysis.DocumentStore;
 import souther.lsp.analysis.ModuleGraph;
 import souther.lsp.analysis.Workspace;
+import souther.compiler.query.Abandoned;
+import souther.compiler.query.Abandonment;
 import souther.compiler.query.Adequacy;
 import souther.lsp.protocol.CodeAction;
 import souther.lsp.protocol.CodeLens;
@@ -31,6 +33,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BooleanSupplier;
 
 /**
  * A hand-rolled LSP server over a {@link MessageConnection}. It reads JSON-RPC messages, dispatches
@@ -41,6 +44,25 @@ import java.util.Map;
 public final class LspServer {
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
+
+    /** JSON-RPC's, and the protocol's for a request the client gave up on. */
+    private static final int METHOD_NOT_FOUND = -32601;
+    private static final int INTERNAL_ERROR = -32603;
+    private static final int REQUEST_CANCELLED = -32800;
+
+    /**
+     * The one method carried out where the frames are read rather than where they are answered.
+     *
+     * <p>It is not in {@link LspMethod} because it is not answered: it says something about another
+     * message, and it says it while that message is being worked on. Handed over like the rest, it
+     * would be read after the request it names had been answered — which is every request it could
+     * have stopped.
+     */
+    private static final String CANCEL_REQUEST = "$/cancelRequest";
+
+    /** Nothing to write. Held once because it says nothing and every message that says it says the
+     * same nothing. */
+    private static final Outcome NOTHING = new Outcome.Nothing();
 
     private final MessageConnection conn;
     private final DocumentStore documents = new DocumentStore();
@@ -53,8 +75,49 @@ public final class LspServer {
     private final Workspace workspace = new Workspace();
     private int nextRequestId = 1;
 
+    /** What has been read and not yet carried out. The only thing both threads touch. */
+    private final Inbox inbox = new Inbox();
+
+    /** Whether what was published still says what the documents say. */
+    private boolean diagnosticsAreStale;
+
+    /**
+     * What would make the unit of work in hand stop short of its answer.
+     *
+     * <p>It is the unit of work that decides, and the two units this server has are stopped by
+     * different things: a request by the client saying it no longer wants the answer, a diagnose by
+     * anything at all arriving, because a diagnose is what this thread does when it has nothing else
+     * to do. Written as each unit begins and read through {@link #abandonment}.
+     */
+    private BooleanSupplier stopWhen = () -> false;
+
+    /**
+     * What every step of the work in hand asks. One value, held by the analyzer and the workspace
+     * from the start, so that the reason work stops is settled in one place and not carried down
+     * through each of them.
+     */
+    private final Abandonment abandonment = new Abandonment(this::stopNow);
+
     public LspServer(MessageConnection conn) {
         this.conn = conn;
+        analyzer.abandonWhen(abandonment);
+        workspace.abandonWhen(abandonment);
+    }
+
+    /**
+     * Whether the work in hand should stop, and where a failure of the reading thread is met.
+     *
+     * <p>In that order, and the order is the point. A session whose connection cannot be read has
+     * nobody left to answer, so whether this particular answer is still wanted is no longer a
+     * question. It is asked here because a thread in the middle of a long answer is not reading the
+     * queue the failure is also published to.
+     */
+    private boolean stopNow() {
+        Throwable failed = inbox.readerFailure();
+        if (failed != null) {
+            throw new ConnectionLost(failed);
+        }
+        return stopWhen.getAsBoolean();
     }
 
     public static void main(String[] args) {
@@ -79,66 +142,172 @@ public final class LspServer {
     }
 
     /**
-     * Reads and dispatches messages until end of input or an {@code exit} notification, and answers
-     * with the code the protocol asks the process to end under.
+     * Serves one session, and answers with the code the protocol asks the process to end under.
+     *
+     * <p>A thread beside this one reads frames; this one owns the documents, the workspace and the
+     * analyzer, and carries the frames out in the order they arrived. The store a compile is made of
+     * is asked by one thread only, which is the sentence it is written under, and what the second
+     * thread buys is not a second question being answered — it is that a question can be read while
+     * the one before it is still being answered, and so that it can be given up on.
+     *
+     * <p>This way round, and not the other. Whoever owns the store owns the session: an error
+     * nothing here is entitled to recover from ends this thread, and ending this thread ends the
+     * process, because the thread that reads is a daemon. A server that had lost its analysis and
+     * gone on reading would answer nothing and say nothing about it.
      */
     public int run() {
-        String message;
-        while ((message = conn.read()) != null) {
-            JsonNode m;
-            try {
-                m = JSON.readTree(message);
-            } catch (RuntimeException _) {
-                continue;   // a malformed frame is dropped, not fatal
-            }
-            JsonNode methodNode = m.get("method");
-            if (methodNode == null || methodNode.isNull()) {
-                continue;   // a response to a server-initiated request; nothing to do
-            }
-            boolean stop;
-            try {
-                stop = dispatch(methodNode.asString(), m.get("id"), m.get("params"));
-            } catch (RuntimeException | StackOverflowError e) {
-                // One request the server cannot answer must cost that request, not the session. The
-                // analysis layer catches what it can so it can publish a marker instead, but that is
-                // a promise made inside it; this is the one that holds whatever it does. A request
-                // gets an error reply so the client stops waiting; a notification has no reply to
-                // send, so it is simply dropped and the loop reads on.
-                failed(m.get("id"), e);
-                continue;
-            }
-            if (stop) {
-                break;      // exit
-            }
-        }
-        return askedToShutDown ? 0 : 1;
-    }
-
-    /** Replies to a request the server could not answer. A notification (no id) has no reply. */
-    private void failed(JsonNode id, Throwable cause) {
-        if (id == null || id.isNull()) {
-            return;
-        }
-        respondError(id, -32603,   // JSON-RPC InternalError
-                "the request could not be completed (" + cause.getClass().getSimpleName() + ")");
+        Thread.ofPlatform().daemon().name("souther-lsp-reader").start(this::read);
+        return carryOutWhatArrives();
     }
 
     /**
-     * Returns true when the server should stop (on {@code exit}).
+     * Reads frames and hands them over until the stream ends or reading cannot go on.
+     *
+     * <p>Nothing is answered here. What this thread decides is the order things happened in, and the
+     * one thing it acts on itself is a cancel, which has to reach a request that is already being
+     * worked on.
+     */
+    private void read() {
+        try {
+            String message;
+            while ((message = conn.read()) != null) {
+                JsonNode m;
+                try {
+                    m = JSON.readTree(message);
+                } catch (RuntimeException _) {
+                    continue;   // a malformed frame is dropped, not fatal
+                }
+                JsonNode methodNode = m.get("method");
+                if (methodNode == null || methodNode.isNull()) {
+                    continue;   // a response to a server-initiated request; nothing to do
+                }
+                if (CANCEL_REQUEST.equals(methodNode.asString())) {
+                    JsonNode params = m.get("params");
+                    inbox.cancel(params == null ? null : params.get("id"));
+                    continue;
+                }
+                inbox.hand(m);
+            }
+            inbox.readerEnded();
+        } catch (Throwable t) {
+            // Caught to be carried, not to be recovered from: this thread cannot end a session and
+            // the one that can is not reading the stream. It is raised again there.
+            inbox.readerFailed(t);
+        }
+    }
+
+    /**
+     * Carries out what arrives, and diagnoses the workspace whenever nothing else is waiting.
+     *
+     * <p>Which is the whole of the scheduling. A diagnose is what this thread does with an idle
+     * moment: it gives way to anything at all, and a run of keystrokes therefore costs one diagnose
+     * at the end of it rather than one each. What it does not do is guarantee it ever runs — a client
+     * that never stopped asking would never be told anything, and that is what asking without pause
+     * means, not a case to write a threshold for.
+     */
+    private int carryOutWhatArrives() {
+        while (true) {
+            Inbound next = inbox.take();
+            if (next == null && diagnosticsAreStale) {
+                diagnose();
+                continue;
+            }
+            if (next == null) {
+                next = inbox.await();
+            }
+            switch (next) {
+                case Inbound.ReaderFailed failed -> throw new ConnectionLost(failed.cause());
+                case Inbound.EndOfInput _ -> {
+                    // Not something to give way to. Everything else in this queue is a client
+                    // asking for something, and a diagnose steps aside for those; the end of the
+                    // stream asks for nothing, so what was already asked for is finished first. A
+                    // diagnose is the only thing that can still be owed at this point.
+                    if (diagnosticsAreStale) {
+                        diagnose();
+                    }
+                    return exitCode();
+                }
+                case Inbound.Message message -> {
+                    if (carryOut(message)) {
+                        return exitCode();
+                    }
+                }
+            }
+        }
+    }
+
+    /** What the protocol asks the process to end under: whether the client shut the server down. */
+    private int exitCode() {
+        return askedToShutDown ? 0 : 1;
+    }
+
+    /**
+     * Carries out one message, writes the one reply it is owed, and says whether the session ends.
+     *
+     * <p>Where a request is settled. The read of the cancellation taken here is what decides it: a
+     * client that gave up before this read is sent the reply that says so, and one that gave up
+     * after it is sent the answer, because by then there was an answer and nothing to be gained by
+     * throwing it away. Which of the two happened is not a thing the client can be told apart from
+     * the reply it gets, and the protocol asks for one reply either way.
+     */
+    private boolean carryOut(Inbound.Message message) {
+        JsonNode id = message.body().get("id");
+        stopWhen = message.cancellation()::asked;
+        Outcome outcome;
+        try {
+            outcome = dispatch(message.body());
+        } catch (Abandoned _) {
+            outcome = new Outcome.Cancelled();
+        } catch (RuntimeException | StackOverflowError e) {
+            // One request the server cannot answer must cost that request, not the session. The
+            // analysis layer catches what it can so it can publish a marker instead, but that is a
+            // promise made inside it; this is the one that holds whatever it does.
+            outcome = new Outcome.Failed(INTERNAL_ERROR,
+                    "the request could not be completed (" + e.getClass().getSimpleName() + ")");
+        }
+        if (outcome instanceof Outcome.Answered && message.cancellation().asked()) {
+            outcome = new Outcome.Cancelled();
+        }
+        inbox.answered(id);
+        write(id, outcome);
+        return outcome instanceof Outcome.Stop;
+    }
+
+    /**
+     * The one place a reply to a client's message is written.
+     *
+     * <p>A notification asked nothing, so nothing is written for one — an unknown notification
+     * included, which is what makes naming a method the way a client learns the server does not
+     * answer it without making an unnamed notification an error.
+     */
+    private void write(JsonNode id, Outcome outcome) {
+        if (id == null || id.isNull()) {
+            return;
+        }
+        switch (outcome) {
+            case Outcome.Answered answered -> respond(id, answered.result());
+            case Outcome.Cancelled _ ->
+                    respondError(id, REQUEST_CANCELLED, "the request was cancelled");
+            case Outcome.Failed failed -> respondError(id, failed.code(), failed.message());
+            case Outcome.Nothing _ -> { }
+            case Outcome.Stop _ -> { }
+        }
+    }
+
+    /**
+     * What one message comes to.
      *
      * <p>Naming the method is where a client learns the server does not answer it: nothing below
      * this point takes a spelling, so there is no second place a method could be refused, and none
      * where one could be answered without being declared.
      */
-    private boolean dispatch(String method, JsonNode id, JsonNode params) {
+    private Outcome dispatch(JsonNode body) {
+        String method = body.get("method").asString();
         LspMethod named = LspMethod.of(method).orElse(null);
         if (named == null) {
-            if (id != null && !id.isNull()) {
-                respondError(id, -32601, "method not found: " + method);
-            }
-            return false;   // a notification has no reply, so an unknown one is simply dropped
+            return new Outcome.Failed(METHOD_NOT_FOUND, "method not found: " + method);
         }
-        return answer(named, id, params);
+        return answer(named, body.get("id"), body.get("params"));
     }
 
     /**
@@ -148,58 +317,57 @@ public final class LspServer {
      * unhandled here does not compile. That is what makes the set of methods the server answers the
      * set written there, and so the set the handshake is built from.
      */
-    private boolean answer(LspMethod method, JsonNode id, JsonNode params) {
+    private Outcome answer(LspMethod method, JsonNode id, JsonNode params) {
         return switch (method) {
-            case INITIALIZE -> { captureRoots(params); respond(id, initializeResult()); yield false; }
-            case INITIALIZED -> { registerDynamically(); yield false; }
-            case SET_TRACE, DID_CHANGE_CONFIGURATION -> false;   // no-op
+            case INITIALIZE -> { captureRoots(params); yield new Outcome.Answered(initializeResult()); }
+            case INITIALIZED -> { registerDynamically(); yield NOTHING; }
+            case SET_TRACE, DID_CHANGE_CONFIGURATION -> NOTHING;   // no-op
             case DID_OPEN -> {
                 InboundDecoders.decode(InboundDecoders.DID_OPEN, params)
-                        .ifPresent(p -> { documents.open(p.uri(), p.text()); publishAll(); });
-                yield false;
+                        .ifPresent(p -> { documents.open(p.uri(), p.text()); diagnosticsAreStale = true; });
+                yield NOTHING;
             }
             case DID_CHANGE -> {
                 InboundDecoders.decode(InboundDecoders.DID_CHANGE, params)
-                        .ifPresent(p -> { documents.change(p.uri(), p.text()); publishAll(); });
-                yield false;
+                        .ifPresent(p -> { documents.change(p.uri(), p.text()); diagnosticsAreStale = true; });
+                yield NOTHING;
             }
             case DID_CLOSE -> {
                 InboundDecoders.decode(InboundDecoders.DOC_REF, params)
                         .ifPresent(p -> { documents.close(p.uri()); clearDiagnostics(p.uri()); });
-                yield false;
+                yield NOTHING;
             }
             case DID_CHANGE_WATCHED_FILES -> {
                 workspace.markChanged();   // a file changed on disk; drop the cached scan and re-read
-                publishAll();
-                yield false;
+                diagnosticsAreStale = true;
+                yield NOTHING;
             }
-            case DOCUMENT_SYMBOL -> { respond(id, documentSymbols(params)); yield false; }
-            case SEMANTIC_TOKENS_FULL -> { respond(id, semanticTokens(params)); yield false; }
-            case HOVER -> { respond(id, hover(params)); yield false; }
-            case DEFINITION -> { respond(id, definition(params)); yield false; }
-            case REFERENCES -> { respond(id, references(params)); yield false; }
-            case COMPLETION -> { respond(id, completion(params)); yield false; }
-            case INLAY_HINT -> { respond(id, inlayHints(params)); yield false; }
-            case DOCUMENT_HIGHLIGHT -> { respond(id, documentHighlights(params)); yield false; }
-            case SELECTION_RANGE -> { respond(id, selectionRanges(params)); yield false; }
-            case WORKSPACE_SYMBOL -> { respond(id, workspaceSymbols(params)); yield false; }
-            case SIGNATURE_HELP -> { respond(id, signatureHelp(params)); yield false; }
-            case CODE_ACTION -> { respond(id, codeActions(params)); yield false; }
-            case CODE_ACTION_RESOLVE -> { respond(id, codeActionResolve(params)); yield false; }
-            case CODE_LENS -> { respond(id, codeLenses(params)); yield false; }
-            case RENAME -> { respond(id, rename(params)); yield false; }
-            case FORMATTING -> { respond(id, formatting(params)); yield false; }
+            case DOCUMENT_SYMBOL -> new Outcome.Answered(documentSymbols(params));
+            case SEMANTIC_TOKENS_FULL -> new Outcome.Answered(semanticTokens(params));
+            case HOVER -> new Outcome.Answered(hover(params));
+            case DEFINITION -> new Outcome.Answered(definition(params));
+            case REFERENCES -> new Outcome.Answered(references(params));
+            case COMPLETION -> new Outcome.Answered(completion(params));
+            case INLAY_HINT -> new Outcome.Answered(inlayHints(params));
+            case DOCUMENT_HIGHLIGHT -> new Outcome.Answered(documentHighlights(params));
+            case SELECTION_RANGE -> new Outcome.Answered(selectionRanges(params));
+            case WORKSPACE_SYMBOL -> new Outcome.Answered(workspaceSymbols(params));
+            case SIGNATURE_HELP -> new Outcome.Answered(signatureHelp(params));
+            case CODE_ACTION -> new Outcome.Answered(codeActions(params));
+            case CODE_ACTION_RESOLVE -> new Outcome.Answered(codeActionResolve(params));
+            case CODE_LENS -> new Outcome.Answered(codeLenses(params));
+            case RENAME -> new Outcome.Answered(rename(params));
+            case FORMATTING -> new Outcome.Answered(formatting(params));
             // Only as the request it is. A `shutdown` written as a notification asked nothing, so
-            // there is nothing to reply to and nothing the exit code can hold the client to; the
-            // session still stops, because a client that wrote it is leaving either way.
+            // there is nothing to reply to and nothing the exit code can hold the client to.
             case SHUTDOWN -> {
-                if (id != null && !id.isNull()) {
-                    askedToShutDown = true;
-                    respond(id, null);
+                if (id == null || id.isNull()) {
+                    yield NOTHING;
                 }
-                yield false;
+                askedToShutDown = true;
+                yield new Outcome.Answered(null);
             }
-            case EXIT -> true;
+            case EXIT -> new Outcome.Stop();
         };
     }
 
@@ -784,12 +952,46 @@ public final class LspServer {
 
     // --- diagnostics ---
 
-    /** Recomputes diagnostics for the whole workspace and publishes each open document's set — an edit
-     * to one module can change what its importers report, so every open file is refreshed together. */
+    /**
+     * Brings the published diagnostics up to date with what the documents now say, giving way to
+     * anything that arrives while it runs.
+     *
+     * <p>Giving way costs nothing that was worth keeping. What a diagnose reaches is kept in the
+     * compile's store — an answer of this revision is an answer of this revision, however the walk
+     * that wanted it ended — so the diagnose that follows pays for what this one did not finish and
+     * for nothing else.
+     *
+     * <p>A diagnose that could not be carried out at all is not asked for again. The same documents
+     * would fail the same way, and a server retrying it would do nothing else for as long as they
+     * stood.
+     */
+    private void diagnose() {
+        diagnosticsAreStale = false;
+        stopWhen = inbox::anyWaiting;
+        try {
+            publishAll();
+        } catch (Abandoned _) {
+            diagnosticsAreStale = true;
+        } catch (RuntimeException | StackOverflowError _) {
+            // nothing to publish and nobody to tell: a diagnose is not a request
+        }
+    }
+
+    /**
+     * Recomputes diagnostics for the whole workspace and publishes each open document's set — an edit
+     * to one module can change what its importers report, so every open file is refreshed together.
+     *
+     * <p>Asked before each document whether what it is about to publish is still what the documents
+     * say. It stops short of promising the published set is never behind: what a client is told is
+     * decided here and read there, and nothing between the two is held. What it does hold is that a
+     * set published behind is followed by one that is not, because the diagnose that gave way is
+     * asked for again.
+     */
     private void publishAll() {
         ModuleGraph graph = workspace.snapshot(documents.openDocuments());
         Map<String, List<LspDiagnostic>> byUri = analyzer.diagnostics(graph, workspace.modulePath());
         for (String uri : documents.uris()) {
+            abandonment.stopIfAsked();
             publish(uri, byUri.getOrDefault(uri, List.of()));
         }
     }
