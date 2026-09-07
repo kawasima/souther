@@ -304,10 +304,17 @@ class EverySchemaWordIsAccountedForTest {
             // write, so a sixth of them has to teach this its word before the schema will pass;
             // only the spelling is written down here, the report's own switch being exhaustive over
             // the same sealed type.
-            new Vocabulary("branch.obligations[].rules[].writtenBy.kind",
-                    List.of("$defs", "armObligationId", "properties", "rules", "items",
-                            "properties", "writtenBy", "properties", "kind"),
+            // One shape and one place, since a fork's subject names what wrote it too.
+            new Vocabulary("writtenBy.kind",
+                    List.of("$defs", "writtenBy", "properties", "kind"),
                     List.of(souther.compiler.types.WrittenOwner.class), ownerWords(), Set.of()),
+            // Which of the measurements a behavior has one of, where a subject names one. Which
+            // kind of place a subject is, is not a field of this shape: a subject is written as the
+            // union it is, so each kind is the constant one branch turns on, and the words are held
+            // against the branches where the union is.
+            new Vocabulary("keptOpenBy[].about.measure",
+                    List.of("$defs", "subject", "oneOf", "13", "properties", "measure"),
+                    souther.compiler.publish.MeasureWord.class),
             new Vocabulary("findings[].disposition",
                     List.of("$defs", "findings", "items", "properties", "disposition"),
                     Adequacy.Finding.Disposition.class),
@@ -1290,7 +1297,10 @@ class EverySchemaWordIsAccountedForTest {
     private static JsonNode nodeAt(JsonNode schema, List<String> at) {
         JsonNode node = schema;
         for (String key : at) {
-            node = node.get(key);
+            // A step into a branch of a union is a number, and a union is where a shape that
+            // discriminates writes its arms — so a field of one is reached the way the shape is
+            // written rather than only where a shape is an object all the way down.
+            node = node.isArray() ? node.get(Integer.parseInt(key)) : node.get(key);
             assertNotNull(node, "the schema has no " + String.join("/", at));
         }
         return node;

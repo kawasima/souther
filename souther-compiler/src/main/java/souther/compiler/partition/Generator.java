@@ -252,7 +252,9 @@ public final class Generator {
      *
      * <p>{@code ALL_CANDIDATES_REJECTED} is not a proof that the combination is impossible. It says
      * every value this tried was refused, which is a fact about the values tried; another value of the
-     * same classes may well build. Nothing here writes into {@code provenInfeasible} for that reason.
+     * same classes may well build. So nothing anywhere records the combination as impossible: what
+     * a pair space holds is what the rows reach and what is unknown, and this compiler assesses
+     * reachability nowhere.
      *
      * @param said what the class said about itself where it said anything, in its own words. Kept
      *             beside the reason rather than folded into it: the reason is the category a reader

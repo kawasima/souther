@@ -393,7 +393,7 @@ class AnArmNothingReachesIsNotOwedARowTest {
         // where each arm stands is what the rows said, and a row through an arm went through it
         // however wrong a proof about the arm beside it turned out to be.
         assertEquals(new ArmCensus.Undecided(
-                        WeakeningSet.of(new Weakening.ProofContradicted("b", UNREACHED))),
+                        WeakeningSet.of(new Weakening.ProofContradicted(UNREACHED_ARM.obligation()))),
                 measured.arms().census(),
                 "the arm nothing reaches was proven unreachable and a row went through it");
         assertEquals(List.of(UNREACHED, TAKEN), probesOf(measured),
@@ -402,7 +402,7 @@ class AnArmNothingReachesIsNotOwedARowTest {
         assertEquals(MeasurementStatus.PARTIAL,
                 AdequacyReport.statusOf(measured.measured()),
                 "and no number here is given as though nothing had happened");
-        assertEquals(WeakeningSet.of(new Weakening.ProofContradicted("b", UNREACHED)),
+        assertEquals(WeakeningSet.of(new Weakening.ProofContradicted(UNREACHED_ARM.obligation())),
                 measured.measured().weakening(),
                 "and the measurement says which proof a row went against");
     }

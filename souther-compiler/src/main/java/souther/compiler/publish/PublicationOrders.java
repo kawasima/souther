@@ -362,6 +362,16 @@ public final class PublicationOrders {
                     NotMeasuredWord.NOT_ASKED,
                     NotMeasuredWord.ARMS_NOT_ASKED));
 
+    /**
+     * Where one kind of subject sits, in the order the words are declared.
+     *
+     * <p>Any order over them would do, since no reader acts on which kind sorts first. What it is
+     * for is that two entries alike in everything else are told apart by what they are about, and
+     * an order that stopped short of them would leave that to whichever was handed over first.
+     */
+    private static final CanonicalSelection.Order<SubjectWord> SUBJECT_WORDS =
+            CanonicalSelection.Order.overValues(List.of(SubjectWord.values()));
+
     /** Whether a wider run could answer it: the one it could, first. */
     private static final CanonicalSelection.Order<RunSensitivity> RUN_SENSITIVITIES =
             CanonicalSelection.Order.overValues(List.of(
@@ -384,7 +394,13 @@ public final class PublicationOrders {
                     .comparingInt((PublishedOpening each) -> kindRank(each.kind()))
                     .thenComparingInt(each -> each.reason()
                             .map(NOT_MEASURED_REASONS::rankOf).orElse(-1))
-                    .thenComparingInt(each -> RUN_SENSITIVITIES.rankOf(each.runSensitivity())));
+                    .thenComparingInt(each -> RUN_SENSITIVITIES.rankOf(each.runSensitivity()))
+                    // And what it is about, which is what tells apart entries alike in all of the
+                    // above. Taken over the identity and never over a reader-facing spelling: two
+                    // positions one path spells alike are two subjects, and an order reading the
+                    // path would leave them to whichever arrived first.
+                    .thenComparingInt(each -> SUBJECT_WORDS.rankOf(each.about().kind()))
+                    .thenComparing(each -> each.about().identity()));
 
     /** Where one kind sits, over the two vocabularies as one sequence. */
     private static int kindRank(PublishedOpening.Kind kind) {

@@ -18,8 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * What a document writes about a model two of whose sources were not read, written out.
  *
  * <p>Two sources nothing was observed from are two facts. They are the same word about the same
- * kind of thing, and what tells them apart is which source — so one array of this document writes
- * them as two entries a reader cannot tell apart, and the other as two entries a reader can.
+ * kind of thing, and what tells them apart is which source — which both arrays of this document now
+ * say. One of them did not: its entries carried the word and nothing about what the word was said
+ * of, so a reader was told how many things held the verdict open and none of what they were.
  *
  * <p><b>What is asked here is the wiring and not the order.</b> That an order is a total one over
  * what a document writes is asked of the order, over every sequence its members could be met in;
@@ -28,10 +29,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * on a model whose facts are met in one order, which is every model with one such source — so the
  * model here has two.
  *
- * <p><b>And that the two arrays disagree on purpose.</b> {@code keptOpenBy} counts facts, so two
- * facts one word covers are two entries and neither is folded away. {@code incompleteness} counts
- * kinds per module and says which source each was about, so the two are told apart there. A change
- * that made either behave like the other would pass one half of this and fail the other.
+ * <p><b>And that the two arrays disagree on purpose.</b> They no longer disagree about telling two
+ * facts apart, and that is the change: what they disagree about is what they count. {@code
+ * keptOpenBy} counts facts, so two facts one word covers are two entries and neither is folded
+ * away; {@code incompleteness} counts kinds per module. A change that folded either onto the
+ * other's unit would pass one half of this and fail the other.
  */
 class TwoFactsCalledOneThingAreTwoEntriesInTheDocumentsOrderTest {
 
@@ -79,20 +81,29 @@ class TwoFactsCalledOneThingAreTwoEntriesInTheDocumentsOrderTest {
             """);
 
     /**
-     * Both, and neither folded away.
+     * Both, neither folded away, and each saying which source it is about.
      *
-     * <p>The two entries are identical, which is what the array is for: its unit is the fact, and a
-     * reader counting it counts how many things hold the verdict open rather than how many words
-     * this document has for them.
+     * <p>The unit is the fact, so a reader counting these counts how many things hold the verdict
+     * open rather than how many words this document has for them. That much was always so. What is
+     * new is that the two are no longer written identically: an entry says what it is about, so a
+     * reader who has counted them can go on to look at one.
      */
     @Test
     void twoFactsOneWordCoversAreTwoEntriesOfThatWord() {
         assertEquals("""
                 [ {
                   "kind" : "observation_absent",
+                  "about" : {
+                    "kind" : "source",
+                    "source" : "1"
+                  },
                   "runSensitivity" : "unaffected"
                 }, {
                   "kind" : "observation_absent",
+                  "about" : {
+                    "kind" : "source",
+                    "source" : "2"
+                  },
                   "runSensitivity" : "unaffected"
                 } ]""",
                 written().get("keptOpenBy").toPrettyString());

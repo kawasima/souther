@@ -260,7 +260,7 @@ class GeneratorTest {
     /**
      * Every value refused is not a proof that the combination is impossible.
      *
-     * <p>Which is why it is reported as its own reason and never lands in {@code provenInfeasible}:
+     * <p>Which is why it is reported as its own reason and is counted as no kind of impossibility:
      * another value of the same two classes may well build, and nothing here has tried one.
      */
     @Test

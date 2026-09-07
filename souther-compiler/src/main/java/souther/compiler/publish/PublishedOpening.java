@@ -7,26 +7,32 @@ import java.util.Optional;
 /**
  * One entry of what a document says holds an adequacy verdict open, as the document writes it.
  *
- * <p>The whole of what the schema has room for: which kind of thing it is, the reason beside it
- * where the kind has one, and whether a wider run of this compiler could answer it. What the
- * verdict rests on and which measure raised it are how the entry came to be, and a reader is shown
- * none of it.
+ * <p>The whole of what the schema has room for: which kind of thing it is, what it is about, the
+ * reason beside it where the kind has one, and whether a wider run of this compiler could answer
+ * it. What the verdict rests on is how the entry came to be, and a reader is shown none of that.
  *
  * <p><b>Which is why two of these can be equal.</b> The array's unit is the fact, so two measures
  * that went without two rules this compiler could not read are two entries; the document calls both
  * of them the same thing, and it says it twice. Folded, the array would count kinds, which is what
  * the array beside it already does.
  *
+ * <p>Two alike are now two the document says the same thing about at the same place, which is a
+ * smaller set than it was: what an entry is about used to be left out of what a document writes, so
+ * every measure of one module that nobody made came out as one entry repeated.
+ *
  * <p>So an order over these tells apart everything a reader can and nothing a reader cannot, and
  * two entries it cannot tell apart are two entries a document writes alike
  * ({@link CanonicalArrangement}).
  */
 public record PublishedOpening(Kind kind, Optional<NotMeasuredWord> reason,
-                               RunSensitivity runSensitivity) {
+                               RunSensitivity runSensitivity, PublishedSubject about) {
 
     public PublishedOpening {
         if (kind == null || runSensitivity == null) {
             throw new IllegalArgumentException("a verdict held open by nothing is settled");
+        }
+        if (about == null) {
+            throw new IllegalArgumentException("a verdict is held open on something");
         }
         reason = reason == null ? Optional.empty() : reason;
     }
