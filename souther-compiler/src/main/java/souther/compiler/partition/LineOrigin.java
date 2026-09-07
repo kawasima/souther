@@ -315,6 +315,7 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
         }
 
         /** Which clause of which behavior — the rule and the whole of it. */
+        @Override
         public RuleRef.Ensures rule() {
             return which.statement().rule();
         }
