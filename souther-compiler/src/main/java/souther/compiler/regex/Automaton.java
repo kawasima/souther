@@ -417,9 +417,16 @@ final class Automaton {
      * does not stop. The steps do not move and neither does what each is numbered, so nothing is
      * built and nothing is charged.
      *
-     * <p>Which is why a caller holding the one machine for its strings ({@link #canonical}) gets
-     * the one machine for the rest: what makes a machine that one is read off the steps and the
-     * walk that numbers them, and neither asks where a walk may stop.
+     * <p><b>And a caller holding the one machine for its strings ({@link #canonical}) gets the one
+     * machine for the rest.</b> A string tells two states apart when a walk from one of them stops
+     * on it and a walk from the other does not. Turning the states over turns both of those answers
+     * over together, so a string that told two states apart tells them apart still and a string
+     * that told them nothing tells them nothing still — the strings a walk from a state stops on
+     * become the strings it does not, and which states no string separates is not a question those
+     * answers changed. A machine no two of whose states a string could tell apart still has none.
+     * The steps do not move, so the walk that numbers them meets the same states in the same order,
+     * and being smallest and being numbered that way are the whole of what makes a machine the one
+     * machine.
      *
      * <p><b>And why anything else has to be made deterministic first.</b> What a walk ends in has
      * to be one answer before the answer can be turned over, and a machine that steps for nothing
@@ -907,7 +914,6 @@ final class Automaton {
          * <p>Asked once, of the machine. Where nothing does, the states reachable without spending
          * a symbol are the states themselves, and the closure of a subset is that subset — so what
          * it comes to is a copy of what it was handed, made for every symbol out of every state.
-         * A machine that came from anything but a pattern has no such step at all.
          */
         private final boolean anyFree;
 

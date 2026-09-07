@@ -167,9 +167,11 @@ public final class Language {
      *
      * <p><b>Not made canonical afterwards, because it arrives that way.</b> What is held here is
      * the one machine for these strings, and the complement of such a machine is that machine with
-     * the states it stops at turned over ({@link Automaton#not}) — the steps are the same steps, so
-     * a machine already smallest and already numbered by a walk over its steps stays both. Made
-     * canonical again, the construction would arrive where it started, having paid for the walk.
+     * the states it stops at turned over ({@link Automaton#not}). A string that told two of its
+     * states apart tells them apart still, both of the answers it read having turned over together,
+     * so a machine no string could tell two states of stays one — and the steps not moving leaves
+     * the walk that numbers them where it was. Made canonical again, the construction would arrive
+     * where it started, having paid for the walk.
      *
      * <p>The sequences no string is read as still have to come out. A complement holds them like
      * anything else, which is why this ends where every other way to one of these ends.
