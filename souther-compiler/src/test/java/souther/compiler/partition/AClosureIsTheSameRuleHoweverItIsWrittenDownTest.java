@@ -235,23 +235,23 @@ class AClosureIsTheSameRuleHoweverItIsWrittenDownTest {
     }
 
     /**
-     * And one closure two calls share names the elements of neither.
+     * And one closure two calls share names the elements of both, and draws a line at neither.
      *
      * <p>One block handed to two operations has one parameter and two containers, so what arrives
-     * under that binding is not one sequence's elements. Kept as whichever call was met first, a
-     * rule inside the closure would be filed at a sequence it says nothing about, which an author
-     * cannot tell from a line their model states — so it is filed at neither.
+     * under that binding is an element of a different sequence on each run. Kept as whichever call
+     * was met first, a rule inside the closure would be filed at a sequence it says nothing about,
+     * which an author cannot tell from a line their model states.
      *
-     * <p><b>And nothing is said about it, which this pins and does not defend.</b> The rule is read
-     * and comes to no line, and what a report is owed about a rule that came to none is a finding —
-     * which needs a position to be filed at, and the position is exactly what could not be worked
-     * out. So the rule leaves the measurement silently. That is what a reading with no element
-     * binding has always done here; this makes the single-call spelling stop reaching it, and
-     * leaves the shared one where it was.
+     * <p><b>So no line, and a question at each sequence it may be about.</b> The rule is one the
+     * model states and the reading of it stopped, which is a finding filed where a reader can be
+     * sent to look — at both, because both are where it may be. Taken back out instead, the name
+     * would have read as one holding nothing of the input, the rule would have left the measurement
+     * without a word, and a model an author wrote about their input could come out adequate on the
+     * strength of a rule nobody read.
      */
     @Test
-    void aClosureTwoCallsShareNamesTheElementsOfNeither() {
-        assertEquals(new Read(0, 0, 0), read("""
+    void aClosureTwoCallsShareNamesTheElementsOfBoth() {
+        assertEquals(new Read(0, 0, 2), read("""
                 behavior pick : (xs: List<Int>, ys: List<Int>) -> Low | High
                 let pick (xs, ys) = {
                     let positive = (x) -> x > 0

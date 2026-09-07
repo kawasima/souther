@@ -9,6 +9,7 @@ import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 import souther.compiler.types.ModelOccurrence;
+import souther.compiler.types.WrittenOwner;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -89,7 +90,7 @@ class WhereARunThroughAConstructOfTheModelIsRecordedTest {
             ComparisonEmissionIndex index =
                     ComparisonEmissionIndex.of(each.bodies(), each.plan());
             for (ModelOccurrence states : constructsIn(each.bodies())) {
-                if (states.origin().owner() instanceof souther.compiler.types.WrittenOwner.Body body
+                if (states.origin().owner() instanceof WrittenOwner.Body body
                         && body.definition().equals("picked")) {
                     picked.add(states);
                     index.madeFor(states).forEach(one -> one.site().ifPresent(places::add));

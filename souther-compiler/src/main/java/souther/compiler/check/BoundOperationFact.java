@@ -3,6 +3,7 @@ package souther.compiler.check;
 import souther.compiler.core.DeclaredOperation;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.semantics.Accumulation;
+import souther.compiler.semantics.AnswerAspect;
 import souther.compiler.semantics.BuiltFrom;
 import souther.compiler.semantics.DefinitionCase;
 import souther.compiler.semantics.ElementShape;
@@ -138,7 +139,7 @@ sealed interface BoundOperationFact permits BoundOperationFact.OneAboutAnOperati
     /** What {@code argument} answers decides {@code aspect} of what the operation answers, which is
      *  the edge a rule written inside that argument reaches the call along. */
     record TurnsOnWhetherAnArgumentHolds(DeclaredOperation operation,
-                                        souther.compiler.semantics.AnswerAspect aspect,
+                                        AnswerAspect aspect,
                                         DeclaredArgument argument)
             implements OneAboutAnOperation {}
 

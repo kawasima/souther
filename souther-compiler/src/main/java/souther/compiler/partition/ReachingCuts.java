@@ -157,6 +157,11 @@ public record ReachingCuts(Map<ComparisonOccurrence, List<OnTheWay>> byCompariso
         TermPath scrutinee = switch (reads.pathOf(match.scrutinee(), ruleSource.symbols())) {
             case PathResolution.At(var stands) -> stands;
             case PathResolution.NotAPosition _ -> null;
+            // And declined for one of several as well. What a narrowing is composed against is one
+            // position; narrowing each of them would say a row reaching this arm stands at a case
+            // of every one of them, which is a region narrower than the rows that arrive — the one
+            // direction that takes a coverage item away.
+            case PathResolution.AtOneOfSeveral _ -> null;
         };
         // The position that is narrowed, and not the narrowed one. A case declaring no field has
         // nothing under it and this reading holds no position there, which is what it is for; what

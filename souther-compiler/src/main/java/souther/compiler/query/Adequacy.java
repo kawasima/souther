@@ -15,9 +15,11 @@ import souther.compiler.diag.DiagnosticCode;
 import souther.compiler.diag.msg.DeadBranchMessage;
 import souther.compiler.diag.msg.ExampleMessage;
 import souther.compiler.diag.Citation;
+import souther.compiler.diag.Localizable;
 import souther.compiler.examples.FixtureReader;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.AtomSpace;
+import souther.compiler.check.RuleRef;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.CheckSurface;
 import souther.compiler.check.Sig;
@@ -4897,15 +4899,15 @@ public final class Adequacy {
          * seal is total and not because a document writes one, and what holds the two words together
          * for a document that does is asked where such a document is written.
          */
-        private static souther.compiler.diag.Localizable whatItIs(
-                souther.compiler.check.RuleRef.Written rule) {
+        private static Localizable whatItIs(
+                RuleRef.Written rule) {
             return switch (rule) {
-                case souther.compiler.check.RuleRef.Comparison _ ->
-                        souther.compiler.diag.Localizable.of("construct.comparison");
-                case souther.compiler.check.RuleRef.Fork _ ->
-                        souther.compiler.diag.Localizable.of("construct.fork");
-                case souther.compiler.check.RuleRef.Predicate _ ->
-                        souther.compiler.diag.Localizable.of("construct.predicate");
+                case RuleRef.Comparison _ ->
+                        Localizable.of("construct.comparison");
+                case RuleRef.Fork _ ->
+                        Localizable.of("construct.fork");
+                case RuleRef.Predicate _ ->
+                        Localizable.of("construct.predicate");
             };
         }
 
@@ -4919,19 +4921,19 @@ public final class Adequacy {
          * construct added to the language arrives here as a case with no phrase rather than as one
          * quietly answered with a neighbour's.
          */
-        private static souther.compiler.diag.Localizable phraseFor(
+        private static Localizable phraseFor(
                 souther.compiler.coverage.CoverageSites.Site arm) {
             return switch (arm.name()) {
-                case THEN -> souther.compiler.diag.Localizable.of("arm.then");
-                case ELSE -> souther.compiler.diag.Localizable.of("arm.else");
-                case CONTINUED -> souther.compiler.diag.Localizable.of("arm.continued");
-                case KEPT -> souther.compiler.diag.Localizable.of("arm.kept");
-                case DROPPED -> souther.compiler.diag.Localizable.of("arm.dropped");
-                case CONSTRUCTED -> souther.compiler.diag.Localizable.of("arm.constructed");
-                case CASE -> souther.compiler.diag.Localizable.of("arm.case", casesOf(arm));
+                case THEN -> Localizable.of("arm.then");
+                case ELSE -> Localizable.of("arm.else");
+                case CONTINUED -> Localizable.of("arm.continued");
+                case KEPT -> Localizable.of("arm.kept");
+                case DROPPED -> Localizable.of("arm.dropped");
+                case CONSTRUCTED -> Localizable.of("arm.constructed");
+                case CASE -> Localizable.of("arm.case", casesOf(arm));
                 case DEPARTURE -> clauseOf(arm)
-                        .map(c -> souther.compiler.diag.Localizable.of("arm.departure.clause", c))
-                        .orElseGet(() -> souther.compiler.diag.Localizable.of("arm.departure"));
+                        .map(c -> Localizable.of("arm.departure.clause", c))
+                        .orElseGet(() -> Localizable.of("arm.departure"));
                 // Not an arm, so no warning is about one. Reaching this is the branch measure and
                 // this sentence disagreeing about what it counts.
                 case COMPARISON -> throw new IllegalStateException(

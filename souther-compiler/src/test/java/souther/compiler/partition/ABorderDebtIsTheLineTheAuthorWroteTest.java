@@ -1,5 +1,6 @@
 package souther.compiler.partition;
 
+import souther.compiler.coverage.ComparisonOccurrence;
 import souther.compiler.coverage.Numberings;
 import souther.compiler.types.WrittenOwner;
 import souther.compiler.coverage.SiteNumbering;
@@ -236,8 +237,8 @@ class ABorderDebtIsTheLineTheAuthorWroteTest {
                         rule,
                         souther.compiler.diag.Citation.of(
                                 new souther.compiler.diag.SourcePos(15, 16)),
-                        java.util.List.of(new LineOrigin.ComparisonOrigin.Watched(
-                                new souther.compiler.coverage.ComparisonOccurrence(
+                        List.of(new LineOrigin.ComparisonOrigin.Watched(
+                                new ComparisonOccurrence(
                                         "example.banding", "twice", occurrence),
                                 WHERE.comparison(occurrence)))),
                 new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(

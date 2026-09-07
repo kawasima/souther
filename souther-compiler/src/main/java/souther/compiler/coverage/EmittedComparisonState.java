@@ -2,6 +2,8 @@ package souther.compiler.coverage;
 
 import souther.compiler.reach.ComparisonArrival;
 
+import java.util.List;
+
 /**
  * What the tree that runs says about one construct the model states.
  *
@@ -35,11 +37,11 @@ public sealed interface EmittedComparisonState {
      * <p>Only the ones it numbered. A materialisation with no site is nowhere a run is watched, and
      * carrying it here would put a place in a list of places that has none.
      */
-    record Instrumented(java.util.List<Observation> observations)
+    record Instrumented(List<Observation> observations)
             implements EmittedComparisonState {
 
         public Instrumented {
-            observations = java.util.List.copyOf(observations);
+            observations = List.copyOf(observations);
             if (observations.isEmpty()) {
                 throw new IllegalArgumentException(
                         "a comparison the emitter numbered is watched somewhere");

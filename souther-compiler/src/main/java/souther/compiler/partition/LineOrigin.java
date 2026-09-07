@@ -2,7 +2,10 @@ package souther.compiler.partition;
 
 
 import souther.compiler.check.ComparisonClaim;
+import souther.compiler.check.DeclaredBorders;
 import souther.compiler.check.RuleRef;
+import souther.compiler.coverage.ComparisonEmissionSite;
+import souther.compiler.coverage.ComparisonOccurrence;
 import souther.compiler.diag.Citation;
 import souther.compiler.numeric.Endpoint;
 import souther.compiler.publish.PublishedRuleHandle;
@@ -10,6 +13,8 @@ import souther.compiler.publish.PublishedSentence;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 /**
  * A rule that drew a line, as a boundary reader met it.
@@ -148,8 +153,8 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
          * materialisation. Held as two lists, a reader could be handed a name from one build and a
          * place from another and nothing would say so.
          */
-        public record Watched(souther.compiler.coverage.ComparisonOccurrence comparison,
-                              souther.compiler.coverage.ComparisonEmissionSite recordedAt) {
+        public record Watched(ComparisonOccurrence comparison,
+                              ComparisonEmissionSite recordedAt) {
 
             public Watched {
                 if (comparison == null || recordedAt == null) {
@@ -195,14 +200,14 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
          *              an answer out of any of them got one out of the rule
          */
         public record Read(RuleRef.Comparison rule, Citation writtenAt,
-                           java.util.List<Watched> watched) {
+                           List<Watched> watched) {
 
             public Read {
                 if (rule == null || writtenAt == null) {
                     throw new IllegalArgumentException(
                             "a rule read off a comparison names one and cites it");
                 }
-                watched = java.util.List.copyOf(watched);
+                watched = List.copyOf(watched);
                 if (watched.isEmpty()) {
                     throw new IllegalArgumentException(
                             "a rule a row is held to is one a run through is written down"
@@ -211,12 +216,12 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
             }
 
             /** Every name the numbering gave a materialisation of this rule. */
-            public java.util.List<souther.compiler.coverage.ComparisonOccurrence> comparisons() {
+            public List<ComparisonOccurrence> comparisons() {
                 return watched.stream().map(Watched::comparison).toList();
             }
 
             /** Every place a run through it is written down. */
-            public java.util.List<souther.compiler.coverage.ComparisonEmissionSite> recordedAt() {
+            public List<ComparisonEmissionSite> recordedAt() {
                 return watched.stream().map(Watched::recordedAt).toList();
             }
 
@@ -228,7 +233,7 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
              * find no rule where one is — the decision it recorded is the rule's, whichever copy
              * made it.
              */
-            public boolean names(souther.compiler.coverage.ComparisonOccurrence which) {
+            public boolean names(ComparisonOccurrence which) {
                 return watched.stream().anyMatch(one -> one.comparison().equals(which));
             }
 
@@ -241,7 +246,7 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
              * materialisation — so the ways are one way under several names, and taking the first
              * is not a choice between answers.
              */
-            public souther.compiler.coverage.ComparisonOccurrence anyOfThem() {
+            public ComparisonOccurrence anyOfThem() {
                 return watched.get(0).comparison();
             }
 
@@ -402,7 +407,7 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
 
         @Override
         public int hashCode() {
-            return java.util.Objects.hash(bound, within);
+            return Objects.hash(bound, within);
         }
 
         @Override
@@ -576,10 +581,10 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      * reading that answered from its own arm would be a second answer to what the handle already
      * says.
      */
-    default java.util.Optional<Citation> citation() {
+    default Optional<Citation> citation() {
         return cited() instanceof souther.compiler.check.RuleCitation.WrittenAt written
-                ? java.util.Optional.of(written.at())
-                : java.util.Optional.empty();
+                ? Optional.of(written.at())
+                : Optional.empty();
     }
 
     /**
@@ -601,7 +606,7 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      * the end where it is — so there is no one of them to send a reader to, and the rule that placed
      * the end is where the line came from.
      */
-    default java.util.Optional<TypeSymbol> owedToTheDeclaration() {
+    default Optional<TypeSymbol> owedToTheDeclaration() {
         return authoredLine().owedToTheDeclaration();
     }
 
@@ -617,7 +622,7 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      * rule added later is then answered by whichever arm it was written beside. Both questions are
      * the rule's, so both are asked of it.
      */
-    default java.util.Optional<souther.compiler.check.DeclaredBorders.Key> declaredLine() {
+    default Optional<DeclaredBorders.Key> declaredLine() {
         return authoredLine().declaredLine();
     }
 
@@ -635,11 +640,11 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      * relation changes is the input written at it. For those, writing the value is the whole of what
      * there is to reach and there is no comparison to look at.
      */
-    default java.util.Optional<souther.compiler.coverage.ComparisonOccurrence> comparisonAt() {
+    default Optional<ComparisonOccurrence> comparisonAt() {
         return switch (this) {
-            case ComparisonOrigin g -> java.util.Optional.of(g.read().anyOfThem());
+            case ComparisonOrigin g -> Optional.of(g.read().anyOfThem());
             case NarrowedOrigin n -> n.bound().comparisonAt();
-            case InvariantOrigin _, EnsuresOrigin _ -> java.util.Optional.empty();
+            case InvariantOrigin _, EnsuresOrigin _ -> Optional.empty();
         };
     }
 
@@ -652,11 +657,11 @@ public sealed interface LineOrigin extends RuleEvidenceOrigin {
      * One projection for both would hand a reading the emitter's number and let it stand for the
      * comparison, which is how the two came to be one value.
      */
-    default java.util.List<souther.compiler.coverage.ComparisonEmissionSite> recordedAt() {
+    default List<ComparisonEmissionSite> recordedAt() {
         return switch (this) {
             case ComparisonOrigin g -> g.read().recordedAt();
             case NarrowedOrigin n -> n.bound().recordedAt();
-            case InvariantOrigin _, EnsuresOrigin _ -> java.util.List.of();
+            case InvariantOrigin _, EnsuresOrigin _ -> List.of();
         };
     }
 

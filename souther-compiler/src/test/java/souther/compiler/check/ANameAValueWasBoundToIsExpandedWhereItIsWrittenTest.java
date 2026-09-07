@@ -2,7 +2,10 @@ package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -42,9 +45,9 @@ class ANameAValueWasBoundToIsExpandedWhereItIsWrittenTest {
                 """, "Main");
         compilation.answerEverything();
 
-        assertEquals(java.util.List.of("m"), compilation.modules(),
+        assertEquals(List.of("m"), compilation.modules(),
                 "a lambda a `let` bound and a call was handed by name is a model this compiles");
-        assertTrue(compilation.db().ask(new souther.compiler.query.Bodies.Checked("m"))
+        assertTrue(compilation.db().ask(new Bodies.Checked("m"))
                         .value() != null,
                 "and its body is read, which is where the copy the name expands into is named");
     }

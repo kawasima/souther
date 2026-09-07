@@ -254,6 +254,10 @@ record AffineReading(LinearForm<NumericTerm> form, BigDecimal cut, ComparisonCla
                 boolean stands = switch (at.pathOf(fa.target(), ruleSource.symbols())) {
                     case PathResolution.At _ -> true;
                     case PathResolution.NotAPosition _ -> false;
+                    // A target standing at one of several stands at a position of the input, and
+                    // which is not for arithmetic to decide by walking into it. Read through, a
+                    // field of it would be a term over a place that is not one of the several.
+                    case PathResolution.AtOneOfSeveral _ -> true;
                 };
                 return !stands
                         && !Location.isStep(fa.target().type(), fa.field(), ruleSource.symbols());

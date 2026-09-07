@@ -2,6 +2,7 @@ package souther.compiler.partition;
 
 import souther.compiler.coverage.ComparisonEmissionSite;
 import souther.compiler.types.WrittenOwner;
+import souther.compiler.coverage.ComparisonOccurrence;
 import souther.compiler.coverage.Numberings;
 
 import org.junit.jupiter.api.Test;
@@ -203,8 +204,8 @@ class AClauseOfATypeDoesNotPartItsValuesTest {
                                         souther.compiler.types.SourceConstruct.BINARY)),
                         souther.compiler.diag.Citation.of(
                                 new souther.compiler.diag.SourcePos(3, 5)),
-                        java.util.List.of(new LineOrigin.ComparisonOrigin.Watched(
-                                new souther.compiler.coverage.ComparisonOccurrence(
+                        List.of(new LineOrigin.ComparisonOrigin.Watched(
+                                new ComparisonOccurrence(
                                         "example.weigh", "weigh", 0), WHERE))),
                 new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(Towards.BELOW, true)));
     }

@@ -17,8 +17,11 @@ import souther.compiler.types.BindingId;
 import souther.compiler.types.SourceConstructOrigin;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * One reading of the predicates a body applies to the strings at its positions.
@@ -51,7 +54,7 @@ import java.util.Map;
  * value of the model is ever on either side of. So a reading is made only where what is computed is
  * read on the way to the answer, which is the one thing carried down this walk.
  */
-record PredicateReadings(List<Reading> predicates, java.util.Set<Core> statedAt) {
+record PredicateReadings(List<Reading> predicates, Set<Core> statedAt) {
 
     PredicateReadings {
         predicates = List.copyOf(predicates);
@@ -136,8 +139,8 @@ record PredicateReadings(List<Reading> predicates, java.util.Set<Core> statedAt)
         // condition already state a rule. The node and not a fork: which parts a condition has is
         // cut in one place ({@link ConditionSkeleton}), and a walk that decided for itself which of
         // them it was inside would be a second cutting of the same shape.
-        java.util.Set<Core> statedAt =
-                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        Set<Core> statedAt =
+                Collections.newSetFromMap(new IdentityHashMap<>());
         if (body != null) {
             walk(body.core(), behavior, read,
                     InputReads.ofParametersWhereCallsStand(parameters, elements),
@@ -233,7 +236,7 @@ record PredicateReadings(List<Reading> predicates, java.util.Set<Core> statedAt)
      */
     private static void walk(Core e, String behavior, InputReading read, InputReads reads,
                              LiveFlow flow, boolean live, List<Reading> out,
-                             java.util.Set<Core> statedAt) {
+                             Set<Core> statedAt) {
         int before = out.size();
         if (live) {
             found(e, behavior, read, reads, out);

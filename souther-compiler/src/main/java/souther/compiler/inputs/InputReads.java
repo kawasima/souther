@@ -5,8 +5,10 @@ import souther.compiler.core.Core;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.CaseSelector;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * What a tree's names stand for, in terms of a behavior's input, where the reader has got to.
@@ -193,6 +195,10 @@ public final class InputReads {
         TermPath scrutinee = switch (pathOf(match.scrutinee(), symbols)) {
             case PathResolution.At(var at) -> at;
             case PathResolution.NotAPosition _ -> null;
+            // A scrutinee standing at one of several narrows nothing here either. What an arm
+            // narrows is one position, and narrowing each of them would say a value under this arm
+            // is a case of every one of them at once.
+            case PathResolution.AtOneOfSeveral _ -> null;
         };
         if (scrutinee == null) {
             return admitting(match, arm, symbols);
@@ -282,7 +288,7 @@ public final class InputReads {
      */
     private ReadMeaning.OneOf pluralityOf(Core e, Symbols symbols) {
         Denotation standing = standing(new Denotation(e, this), symbols,
-                new java.util.HashSet<>());
+                new HashSet<>());
         return standing.value() instanceof Core.Read name
                 && standing.at().meaningOf(name, symbols) instanceof ReadMeaning.OneOf one
                 ? one : null;
@@ -342,7 +348,7 @@ public final class InputReads {
      * positions walks into it, and neither is the other's rule.
      */
     public ReadMeaning meaningOf(Core.Read read, Symbols symbols) {
-        return meaningOf(read, symbols, new java.util.HashSet<>());
+        return meaningOf(read, symbols, new HashSet<>());
     }
 
     /**
@@ -374,7 +380,7 @@ public final class InputReads {
     public Denotation denotes(Core e, Symbols symbols) {
         Core at = e;
         InputReads reads = this;
-        java.util.Set<BindingId> met = new java.util.HashSet<>();
+        Set<BindingId> met = new HashSet<>();
         while (at instanceof Core.Read read) {
             if (!met.add(read.binding())
                     || !(reads.meaningOf(read, symbols) instanceof ReadMeaning.Through through)) {
@@ -395,7 +401,7 @@ public final class InputReads {
      * so what stops the walk is the bindings met and not a depth anybody chose.
      */
     private ReadMeaning meaningOf(Core.Read read, Symbols symbols,
-                                  java.util.Set<BindingId> met) {
+                                  Set<BindingId> met) {
         // A name is what it stands at where it stands at one, and where it stands at none the
         // answers below say what else it is.
         switch (pathOf(read, symbols)) {
@@ -403,6 +409,10 @@ public final class InputReads {
                 return new ReadMeaning.Position(at);
             }
             case PathResolution.NotAPosition _ -> { }
+            // A name standing at one of several is not the name of a position, and what it is
+            // instead is what the answers below say — an element, which is what it is however many
+            // containers it is an element of.
+            case PathResolution.AtOneOfSeveral _ -> { }
         }
         java.util.List<Denotation> narrowed = alternatives.get(read.binding());
         if (narrowed != null) {
@@ -414,6 +424,11 @@ public final class InputReads {
                         writtenElementsOf(new Denotation(container, this), symbols, met);
                 yield written == null ? new ReadMeaning.Element() : new ReadMeaning.OneOf(written);
             }
+            // An element of more than one container is an element, and what it may be is not the
+            // values of any one of them. Answered with what one container was written with, a name
+            // would stand for a value out of a sequence the run it is on never walked; answered
+            // with what all of them were, it would stand for a set no run puts there.
+            case BindingRole.ElementOfSeveral _ -> new ReadMeaning.Element();
             // Read in this environment. Bindings are added on the way down and each tells itself
             // from every other, so what was bound after this name does not answer for what it holds
             // — which is why the environment at the binder and the one at the read cannot be told
@@ -456,7 +471,7 @@ public final class InputReads {
      */
     private static java.util.List<Denotation> writtenElementsOf(Denotation container,
                                                                 Symbols symbols,
-                                                                java.util.Set<BindingId> met) {
+                                                                Set<BindingId> met) {
         Denotation standing = standing(container, symbols, met);
         if (!(standing.value() instanceof Core.ListLit written) || written.elements().isEmpty()) {
             return null;
@@ -485,7 +500,7 @@ public final class InputReads {
      * name that came round to itself is one already answered for.
      */
     private static Denotation standing(Denotation from, Symbols symbols,
-                                       java.util.Set<BindingId> met) {
+                                       Set<BindingId> met) {
         Denotation at = from;
         while (true) {
             switch (at.value()) {
@@ -523,7 +538,7 @@ public final class InputReads {
      * arithmetic over the values is not a question a naming answers.
      */
     public String writtenStringOf(Core e, Symbols symbols) {
-        return standing(new Denotation(e, this), symbols, new java.util.HashSet<>())
+        return standing(new Denotation(e, this), symbols, new HashSet<>())
                 .value() instanceof Core.Str written ? written.value() : null;
     }
 

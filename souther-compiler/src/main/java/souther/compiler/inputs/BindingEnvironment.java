@@ -5,6 +5,7 @@ import souther.compiler.core.Core;
 import souther.compiler.types.BindingId;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -65,9 +66,12 @@ final class BindingEnvironment {
         if (root != null) {
             return new BindingRole.Root(root);
         }
-        Core container = elements.containerOf(binding);
-        if (container != null) {
-            return new BindingRole.Element(container);
+        List<Core> containers = elements.containersOf(binding);
+        if (containers.size() == 1) {
+            return new BindingRole.Element(containers.get(0));
+        }
+        if (containers.size() > 1) {
+            return new BindingRole.ElementOfSeveral(containers);
         }
         Core value = bound.get(binding);
         return value == null ? new BindingRole.Unknown() : new BindingRole.Alias(value);

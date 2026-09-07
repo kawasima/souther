@@ -26,11 +26,18 @@ import souther.compiler.query.ReadingReasons;
 import souther.compiler.query.UnaskedReasons;
 import souther.compiler.query.WritabilityKnowledge;
 import souther.compiler.partition.ReadingGap;
+import souther.compiler.check.BehaviorContract;
 import souther.compiler.check.BehaviorImplementation;
+import souther.compiler.check.Clause;
+import souther.compiler.check.RuleRef;
 import souther.compiler.report.AdequacyReport;
 import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.RuleOrigin;
+import souther.compiler.types.TypeKey;
+import souther.compiler.types.ValueName;
+
+import java.util.Optional;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -318,7 +325,7 @@ class EverySchemaWordIsAccountedForTest {
             new Vocabulary("branch.obligations[].construct",
                     List.of("$defs", "branch", "properties", "obligations", "items", "properties",
                             "construct"),
-                    List.of(souther.compiler.types.SourceConstruct.class), constructWords(), Set.of()),
+                    List.of(SourceConstruct.class), constructWords(), Set.of()),
             // Where the arm account puts an arm, and why it leaves one out. Spelled by the writer
             // for the reason the obligations' are: which states a consumer must handle is a
             // decision about the contract, and a state renamed inside the compiler is not.
@@ -677,8 +684,8 @@ class EverySchemaWordIsAccountedForTest {
     void theWordsAGuardKeysOnAreTheStatusesOfAMeasurementWithAValue() {
         souther.compiler.query.WeakeningSet by = souther.compiler.query.WeakeningSet.of(
                 new souther.compiler.query.Weakening.ArmsUnsettled(
-                        new souther.compiler.types.SourceConstructOrigin(new WrittenOwner.Body("m", "b"), 0, 0,
-                                souther.compiler.types.SourceConstruct.IF)));
+                        new SourceConstructOrigin(new WrittenOwner.Body("m", "b"), 0, 0,
+                                SourceConstruct.IF)));
         Set<String> withAValue = new LinkedHashSet<>();
         for (souther.compiler.query.Measure<String> each : List.<
                 souther.compiler.query.Measure<String>>of(
@@ -830,10 +837,10 @@ class EverySchemaWordIsAccountedForTest {
     private static souther.compiler.inputs.StandingQuestion boundaryUndetermined() {
         return souther.compiler.inputs.StandingQuestion.BoundaryUndetermined.of(
                 new souther.compiler.check.RuleCitation.WrittenAt(
-                        new souther.compiler.check.RuleRef.Comparison("f",
-                                new souther.compiler.types.SourceConstructOrigin(
+                        new RuleRef.Comparison("f",
+                                new SourceConstructOrigin(
                                         new WrittenOwner.Body("m", "b"), 0, 0,
-                                        souther.compiler.types.SourceConstruct.IF)),
+                                        SourceConstruct.IF)),
                         souther.compiler.diag.Citation.of(
                                 new souther.compiler.diag.SourcePos(1, 1))),
                 souther.compiler.inputs.FilingCoordinate.at(
@@ -845,10 +852,10 @@ class EverySchemaWordIsAccountedForTest {
     private static souther.compiler.inputs.StandingQuestion unclassified() {
         return souther.compiler.inputs.StandingQuestion.NothingClassifiesIt.of(
                 new souther.compiler.check.RuleCitation.WrittenAt(
-                        new souther.compiler.check.RuleRef.Comparison("f",
-                                new souther.compiler.types.SourceConstructOrigin(
+                        new RuleRef.Comparison("f",
+                                new SourceConstructOrigin(
                                         new WrittenOwner.Body("m", "b"), 0, 0,
-                                        souther.compiler.types.SourceConstruct.IF)),
+                                        SourceConstruct.IF)),
                         souther.compiler.diag.Citation.of(
                                 new souther.compiler.diag.SourcePos(1, 1))),
                 souther.compiler.inputs.FilingCoordinate.at(
@@ -861,17 +868,17 @@ class EverySchemaWordIsAccountedForTest {
             souther.compiler.inputs.InputQuestion about) {
         return souther.compiler.inputs.StandingQuestion.Exact.of(
                 new souther.compiler.check.RuleCitation.WrittenAt(
-                        new souther.compiler.check.RuleRef.Comparison("f",
-                                new souther.compiler.types.SourceConstructOrigin(
+                        new RuleRef.Comparison("f",
+                                new SourceConstructOrigin(
                                         new WrittenOwner.Body("m", "b"), 0, 0,
-                                        souther.compiler.types.SourceConstruct.IF)),
+                                        SourceConstruct.IF)),
                         souther.compiler.diag.Citation.of(
                                 new souther.compiler.diag.SourcePos(1, 1))),
                 about,
                 new souther.compiler.inputs.WhatAQuestionStandsOn(
                         souther.compiler.inputs.RuleReasons.one(
                                 new souther.compiler.inputs.BlockReason.UnreadComparisonForm()),
-                        java.util.Optional.empty()));
+                        Optional.empty()));
     }
 
     /**
@@ -897,36 +904,36 @@ class EverySchemaWordIsAccountedForTest {
      * both being short. Held to the seal, a kind of rule added to the model is one this stops at
      * until somebody says which word a document writes for it.
      */
-    private static List<souther.compiler.check.RuleRef> oneRuleOfEachKind() {
+    private static List<RuleRef> oneRuleOfEachKind() {
         souther.compiler.types.TypeSymbol.AtModule on =
                 souther.compiler.types.TypeSymbols.declared(
-                        new souther.compiler.types.TypeKey("m", "L"));
+                        new TypeKey("m", "L"));
         WrittenOwner.Body body = new WrittenOwner.Body("m", "b");
-        List<souther.compiler.check.RuleRef> out = List.of(
-                new souther.compiler.check.RuleRef.Invariant(
-                        new souther.compiler.check.Clause.Ref(
-                                new souther.compiler.check.Clause.Id(on, 0),
-                                java.util.Optional.empty())),
-                new souther.compiler.check.RuleRef.Ensures(
-                        new souther.compiler.check.BehaviorContract.RuleId(
-                                new souther.compiler.types.ValueName.Behavior("m", "f"),
+        List<RuleRef> out = List.of(
+                new RuleRef.Invariant(
+                        new Clause.Ref(
+                                new Clause.Id(on, 0),
+                                Optional.empty())),
+                new RuleRef.Ensures(
+                        new BehaviorContract.RuleId(
+                                new ValueName.Behavior("m", "f"),
                                 0, 0, on), "Found"),
-                new souther.compiler.check.RuleRef.Comparison("f",
-                        new souther.compiler.types.SourceConstructOrigin(body, 0, 0,
-                                souther.compiler.types.SourceConstruct.BINARY)),
+                new RuleRef.Comparison("f",
+                        new SourceConstructOrigin(body, 0, 0,
+                                SourceConstruct.BINARY)),
                 // A rule a body writes as one of the language's own operations over the values at a
                 // position, which tells a set of them from the rest and draws no line. Its own word
                 // beside a comparison because what a reader does about them differs.
-                new souther.compiler.check.RuleRef.Predicate("f",
-                        new souther.compiler.types.SourceConstructOrigin(body, 1, 0,
-                                souther.compiler.types.SourceConstruct.CALL)),
+                new RuleRef.Predicate("f",
+                        new SourceConstructOrigin(body, 1, 0,
+                                SourceConstruct.CALL)),
                 // And a fork whose condition states none of those, which is the model dividing on
                 // something this compiler did not read.
-                new souther.compiler.check.RuleRef.Fork("f",
-                        new souther.compiler.types.SourceConstructOrigin(body, 2, 0,
-                                souther.compiler.types.SourceConstruct.IF)));
+                new RuleRef.Fork("f",
+                        new SourceConstructOrigin(body, 2, 0,
+                                SourceConstruct.IF)));
 
-        assertEquals(leavesOf(souther.compiler.check.RuleRef.class),
+        assertEquals(leavesOf(RuleRef.class),
                 out.stream().map(each -> (Class<?>) each.getClass())
                         .collect(java.util.stream.Collectors.toSet()),
                 "one rule of each kind the seal has, and no other");

@@ -194,6 +194,7 @@ public sealed interface RuleReasons {
             case BlockReason.PatternTooDeeplyNested _ -> 6;
             case BlockReason.PatternTooCostly _ -> 7;
             case BlockReason.OrderedExtentTooCostly _ -> 8;
+            case BlockReason.RuleAboutAnElementOfSeveralSequences _ -> 9;
         };
     }
 }

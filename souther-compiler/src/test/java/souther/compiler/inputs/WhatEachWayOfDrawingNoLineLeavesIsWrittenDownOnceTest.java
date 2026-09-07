@@ -73,6 +73,12 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
         table.put("UnreadComparisonDomain", "UNSUPPORTED_DOMAIN/UNAFFECTED");
         table.put("RuleAboutADerivedValue",
                 "RULE_ABOUT_A_DERIVED_VALUE/UNAFFECTED");
+        // And a rule about an element of one of several sequences, which is the same two measures
+        // short for a reason of its own: the rule was read and which of the sequences it is about
+        // is what nothing here works out, so what it divides and what it bounds are unknown at
+        // each of them. A run allowed more meets it again — nothing was compared against a figure.
+        table.put("RuleAboutAnElementOfSeveralSequences",
+                "RULE_ABOUT_AN_ELEMENT_OF_SEVERAL_SEQUENCES/UNAFFECTED");
         table.put("UnreadValueRule", "UNSUPPORTED_SYNTAX/UNAFFECTED");
         // A pattern read to the end and larger than this will make a machine of. Both measures are
         // short because both are read off the set it names: a class is a part of it and an end is
@@ -389,6 +395,7 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
                 new BlockReason.UnreadComparisonForm(),
                 new BlockReason.UnreadComparisonDomain(),
                 new BlockReason.RuleAboutADerivedValue(),
+                new BlockReason.RuleAboutAnElementOfSeveralSequences(),
                 new BlockReason.UnreadValueRule(),
                 new BlockReason.PatternTooCostly(),
                 new BlockReason.PatternTooDeeplyNested(),

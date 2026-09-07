@@ -10,6 +10,7 @@ import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.ExpansionLineage;
+import souther.compiler.types.WrittenOwner;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -183,7 +184,7 @@ class AComparisonOfACopyIsNotTheOneItWasCopiedFromTest {
     /** Whether {@code which} is a comparison the body of {@code module.definition} wrote — asked of
      *  the owner rather than of how it is spelled. */
     private static boolean wroteIt(ConstructOccurrence which, String module, String definition) {
-        return which.origin().owner() instanceof souther.compiler.types.WrittenOwner.Body body
+        return which.origin().owner() instanceof WrittenOwner.Body body
                 && body.module().equals(module) && body.definition().equals(definition);
     }
 

@@ -10,6 +10,7 @@ import souther.compiler.semantics.BuiltFrom;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.ValueName;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -136,6 +137,13 @@ final class InputPath {
             case Core.Read r -> switch (names.roleOf(r.binding())) {
                 case BindingRole.Root(var stands) -> new PathResolution.At(stands);
                 case BindingRole.Element _ -> elementOf(r.binding(), names);
+                // An element of more than one container is at one of their places and which is not
+                // settled. Answered with the first, a rule under this name would be filed at a
+                // sequence it says nothing about; answered with none, it would read as a name that
+                // holds nothing of the input, and a rule the author wrote about their input would
+                // leave the measurement without a word.
+                case BindingRole.ElementOfSeveral(var containers) ->
+                        oneOfTheElementsOf(r.binding(), containers, names);
                 case BindingRole.Alias(var held) ->
                         trail.through(r.binding(), () -> named(held, names));
                 case BindingRole.Unknown _ -> new PathResolution.NotAPosition();
@@ -192,6 +200,32 @@ final class InputPath {
         };
     }
 
+    /**
+     * Where an element of any of {@code containers} stands, where every one of them stands
+     * somewhere.
+     *
+     * <p>All of them or none. What this says is that a rule under the name is about one of these
+     * and nothing says which — a sentence that needs each of them to be a place a reader can be
+     * sent to. Where one of them is not, what the name stands at is not a set of places at all, and
+     * saying it was would send a reader to a shorter list than the rule is about.
+     */
+    private PathResolution oneOfTheElementsOf(BindingId binding, List<Core> containers,
+                                              BindingEnvironment names) {
+        List<TermPath> among = new ArrayList<>();
+        for (Core container : containers) {
+            if (!(trail.through(binding, () -> containerPath(container, names))
+                    instanceof PathResolution.At(var at))) {
+                return new PathResolution.NotAPosition();
+            }
+            TermPath element = at.element();
+            if (!among.contains(element)) {
+                among.add(element);
+            }
+        }
+        return among.size() == 1 ? new PathResolution.At(among.get(0))
+                : new PathResolution.AtOneOfSeveral(among);
+    }
+
     private PathResolution elementOf(BindingId binding, BindingEnvironment names) {
         if (!(names.roleOf(binding) instanceof BindingRole.Element(var container))) {
             return new PathResolution.NotAPosition();
@@ -227,6 +261,10 @@ final class InputPath {
             // Each is a way to the same place, and neither is asked unless the other came back
             // without it, so whichever reached a position is the answer.
             case PathResolution.NotAPosition _ -> elementsOf(e, names);
+            // A container standing at one of several places is where its elements are, and there
+            // are as many of those as there are of it. Read further for one of them, the elements
+            // would come back at a single place while the container they are of stands at more.
+            case PathResolution.AtOneOfSeveral among -> among;
         };
     }
 

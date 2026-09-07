@@ -2,9 +2,11 @@ package souther.compiler.check;
 
 import souther.compiler.DefaultStdlib;
 import souther.compiler.core.CompleteSignature;
+import souther.compiler.semantics.AnswerAspect;
 import souther.compiler.semantics.ArgumentRef;
 import souther.compiler.semantics.BuiltFrom;
 import souther.compiler.semantics.ElementLineage;
+import souther.compiler.semantics.OperationFact;
 import souther.compiler.semantics.SizeAgainstItsSource;
 import souther.compiler.types.ValueName;
 
@@ -56,11 +58,11 @@ class ARuleIsHeldToTheDeclarationItIsAboutTest {
     /** A rule saying a side of the answer turns on whether an argument holds, bound to the
      *  declaration it is about. */
     private static void bindTurnsOn(String operation,
-                                    souther.compiler.semantics.AnswerAspect aspect,
+                                    AnswerAspect aspect,
                                     ArgumentRef argument) {
         CompleteSignature declaration = declared(operation);
         OperationFactBinder.holdTurnsOn(declaration, declaration.declaring(),
-                new souther.compiler.semantics.OperationFact.TurnsOnWhetherAnArgumentHolds(
+                new OperationFact.TurnsOnWhetherAnArgumentHolds(
                         aspect, argument));
     }
 
@@ -81,14 +83,14 @@ class ARuleIsHeldToTheDeclarationItIsAboutTest {
     void aClosureAnsweringSomethingOtherThanATruthIsRefused() {
         IllegalStateException key = assertThrows(IllegalStateException.class,
                 () -> bindTurnsOn("List.distinctBy",
-                        souther.compiler.semantics.AnswerAspect.EMPTINESS,
+                        AnswerAspect.EMPTINESS,
                         new ArgumentRef.TheClosure()));
         assertTrue(key.getMessage().contains("whether it holds is not something to read"),
                 key.getMessage());
 
         IllegalStateException optional = assertThrows(IllegalStateException.class,
                 () -> bindTurnsOn("List.filterMap",
-                        souther.compiler.semantics.AnswerAspect.EMPTINESS,
+                        AnswerAspect.EMPTINESS,
                         new ArgumentRef.TheClosure()));
         assertTrue(optional.getMessage().contains("whether it holds is not something to read"),
                 optional.getMessage());
@@ -99,14 +101,14 @@ class ARuleIsHeldToTheDeclarationItIsAboutTest {
     void aSideTheAnswerDoesNotHaveIsRefused() {
         IllegalStateException truth = assertThrows(IllegalStateException.class,
                 () -> bindTurnsOn("List.filter",
-                        souther.compiler.semantics.AnswerAspect.TRUTH,
+                        AnswerAspect.TRUTH,
                         new ArgumentRef.TheClosure()));
         assertTrue(truth.getMessage().contains("no truth for an argument to decide"),
                 truth.getMessage());
 
         IllegalStateException empty = assertThrows(IllegalStateException.class,
                 () -> bindTurnsOn("List.any",
-                        souther.compiler.semantics.AnswerAspect.EMPTINESS,
+                        AnswerAspect.EMPTINESS,
                         new ArgumentRef.TheClosure()));
         assertTrue(empty.getMessage().contains("holds nothing for an argument to decide"),
                 empty.getMessage());
@@ -116,13 +118,13 @@ class ARuleIsHeldToTheDeclarationItIsAboutTest {
     @Test
     void theOnesTheLibraryStatesBind() {
         assertDoesNotThrow(() -> bindTurnsOn("List.filter",
-                souther.compiler.semantics.AnswerAspect.EMPTINESS,
+                AnswerAspect.EMPTINESS,
                 new ArgumentRef.TheClosure()));
         assertDoesNotThrow(() -> bindTurnsOn("List.any",
-                souther.compiler.semantics.AnswerAspect.TRUTH,
+                AnswerAspect.TRUTH,
                 new ArgumentRef.TheClosure()));
         assertDoesNotThrow(() -> bindTurnsOn("Bool.not",
-                souther.compiler.semantics.AnswerAspect.TRUTH, new ArgumentRef.At(0)));
+                AnswerAspect.TRUTH, new ArgumentRef.At(0)));
     }
 
     @Test

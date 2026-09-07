@@ -9,9 +9,13 @@ import souther.compiler.types.BinOp;
 import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.inputs.InputReading;
 import souther.compiler.inputs.InputReads;
+import souther.compiler.inputs.PathResolution;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 
 /**
  * One reading of a body's comparisons: where each stands, what its names point at, what a row had
@@ -87,7 +91,7 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
      *                   position's
      */
     record ForkMet(ConstructOccurrence occurrence, Core condition, Citation at, InputReads reads,
-                   List<Core> atoms, java.util.Set<Core> ownedHere) {
+                   List<Core> atoms, Set<Core> ownedHere) {
 
         ForkMet {
             if (occurrence == null || condition == null || at == null) {
@@ -261,8 +265,7 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
                     for (Core part : ConditionSkeleton.atoms(iff.cond())) {
                         atoms.add(reads.denotes(part, symbols).value());
                     }
-                    java.util.Set<Core> owned = java.util.Collections.newSetFromMap(
-                            new java.util.IdentityHashMap<>());
+                    Set<Core> owned = Collections.newSetFromMap(new IdentityHashMap<>());
                     for (Core atom : atoms) {
                         // A part with a comparison of the model in it, or one that is a position of
                         // the input. Both are this reading's answers about the part, asked of the
@@ -279,7 +282,7 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
                                         part -> comparisonAt(part) != null,
                                         one -> reads.denotes(one, symbols).value())
                                 || reads.pathOf(atom, symbols)
-                                        instanceof souther.compiler.inputs.PathResolution.At) {
+                                        instanceof PathResolution.At) {
                             owned.add(atom);
                         }
                     }

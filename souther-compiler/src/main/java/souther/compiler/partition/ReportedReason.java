@@ -125,6 +125,8 @@ public final class ReportedReason {
         return switch (reason) {
             case BlockReason.RuleAboutADerivedValue _ ->
                     UndividedPosition.Reason.RULE_ABOUT_A_DERIVED_VALUE;
+            case BlockReason.RuleAboutAnElementOfSeveralSequences _ ->
+                    UndividedPosition.Reason.RULE_ABOUT_AN_ELEMENT_OF_SEVERAL_SEQUENCES;
             case BlockReason.TypeUnresolved _ -> UndividedPosition.Reason.TYPE_UNRESOLVED;
             case BlockReason.RecursiveExpansion _ ->
                     UndividedPosition.Reason.RETURNS_TO_A_DECLARATION_ALREADY_READ;

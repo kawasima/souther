@@ -2,6 +2,7 @@ package souther.compiler.coverage;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.check.Comparison;
 import souther.compiler.core.Core;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
@@ -87,7 +88,7 @@ class AComparisonWrittenOnceIsWatchedWhereverTheOperationEvaluatesItTest {
     private static void walk(Core e, Set<ConstructOccurrence> out) {
         if (e instanceof Core.Binary binary && binary.occurrence() != null
                 && binary.origin() != null && binary.origin().isWritten()
-                && souther.compiler.check.Comparison.of(binary).isPresent()) {
+                && Comparison.of(binary).isPresent()) {
             out.add(binary.occurrence());
         }
         Core.forEachChild(e, child -> walk(child, out));

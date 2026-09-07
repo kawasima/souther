@@ -24,6 +24,7 @@ import souther.compiler.values.Sameness;
 import souther.compiler.types.BindingId;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -133,7 +134,7 @@ public final class BehaviorSetStatements {
                         "a fork that states a rule is one of the model's, written somewhere,"
                                 + " with what went unread of it");
             }
-            filed = java.util.Collections.unmodifiableSequencedMap(
+            filed = Collections.unmodifiableSequencedMap(
                     new LinkedHashMap<>(filed));
             if (filed.isEmpty()) {
                 // A fork every part of whose condition a reader took in states no rule of its own,

@@ -9,6 +9,7 @@ import souther.compiler.query.Compilation;
 import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.Type;
 
 import java.util.List;
 import java.util.Map;
@@ -294,11 +295,10 @@ class AnOutcomeIsNamedByWhatWasWrittenTest {
     @Test
     void anArmOfSomethingNoSourceWroteIsRefusedWhereItWouldBeNumbered() {
         souther.compiler.diag.SourcePos at = new souther.compiler.diag.SourcePos(1, 1);
-        Core answer = new Core.Int(1, souther.compiler.types.Type.INT, at);
-        Core fork = new Core.If(new Core.Bool(true, souther.compiler.types.Type.BOOL, at),
-                answer, new Core.Int(2, souther.compiler.types.Type.INT, at),
-                ConstructOccurrence.unwritten(), souther.compiler.types.Type.INT, at,
-                java.util.List.of());
+        Core answer = new Core.Int(1, Type.INT, at);
+        Core fork = new Core.If(new Core.Bool(true, Type.BOOL, at),
+                answer, new Core.Int(2, Type.INT, at),
+                ConstructOccurrence.unwritten(), Type.INT, at, List.of());
 
         IllegalStateException refused = assertThrows(IllegalStateException.class,
                 () -> CoverageSites.of(

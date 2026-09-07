@@ -1,9 +1,11 @@
 package souther.compiler.types;
 
 import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * One construct of the model, wherever a reading of a body meets it: which construct the source
@@ -67,7 +69,7 @@ public record ModelOccurrence(SourceConstructOrigin origin, ExpansionLineage lin
      * before the block it takes. A crossing out of it says the operation's body reached the code
      * that was handed over, and what stands after that belongs to whoever handed it.
      */
-    public static java.util.Optional<ModelOccurrence> statedAt(ConstructOccurrence occurrence) {
+    public static Optional<ModelOccurrence> statedAt(ConstructOccurrence occurrence) {
         // A term with its places taken out is a key for comparing two readings of one body and not
         // a construct of the model ({@link Core#withoutItsPlace}). Refused rather than met further
         // in: what such a walk would come back with is an answer about a node that says it stands
@@ -104,15 +106,15 @@ public record ModelOccurrence(SourceConstructOrigin origin, ExpansionLineage lin
         // reached under one. So a copy of the language's own code is one of these and a copy of a
         // model's code is not, whichever of them the call that made it was written in.
         if (open.stream().anyMatch(each -> each.expanded() instanceof ValueName.Stdlib.Operation)) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
         ExpansionLineage model = ExpansionLineage.ORIGINAL;
-        for (java.util.Iterator<ExpansionLineage.Expansion> outermost = open.descendingIterator();
+        for (Iterator<ExpansionLineage.Expansion> outermost = open.descendingIterator();
                 outermost.hasNext();) {
             ExpansionLineage.Expansion each = outermost.next();
             model = model.copiedInto(each.expanded(), each.at());
         }
-        return java.util.Optional.of(new ModelOccurrence(occurrence.origin(), model));
+        return Optional.of(new ModelOccurrence(occurrence.origin(), model));
     }
 
     /** The copies of {@code lineage}, outermost first. */

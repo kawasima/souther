@@ -6,7 +6,9 @@ import souther.compiler.check.Carrier;
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.inputs.NumericTerm;
 import souther.compiler.inputs.TermPath;
+import souther.compiler.inputs.TermOrdersFixtures;
 import souther.compiler.numeric.Count;
+import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.Towards;
 import souther.compiler.reach.ComparisonArrival;
@@ -42,7 +44,7 @@ class ALineIsDroppedByAProofAtEveryPlaceItIsWatchedTest {
         NumericTerm.FromOnePosition n = new NumericTerm.ValueOf(TermPath.of("n"));
         Cutting cutting = new Cutting(
                 new BorderQuantity.OfACoordinate("f", n,
-                        souther.compiler.inputs.TermOrdersFixtures.itself(n, WHOLE)),
+                        TermOrdersFixtures.itself(n, WHOLE)),
                 new Level.OnACarrier(WHOLE, new Count(BigDecimal.TEN)),
                 new ComparisonClaim.Cut(Towards.BELOW, false), null);
         return new ComparisonAssessment.AtAPosition(cutting, n, null,
@@ -53,7 +55,7 @@ class ALineIsDroppedByAProofAtEveryPlaceItIsWatchedTest {
     private static ComparisonArrival misses() {
         return new ComparisonArrival.Values(TermPath.of("n"),
                 new NumericDomain.Bounds(null,
-                        new souther.compiler.numeric.Endpoint(new Count(BigDecimal.ONE), true)));
+                        new Endpoint(new Count(BigDecimal.ONE), true)));
     }
 
     @Test

@@ -149,7 +149,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         return ReportMeasurement.statusOf(weakenedBy);
     }
 
-    public static final int SCHEMA_VERSION = 15;
+    public static final int SCHEMA_VERSION = 14;
 
     /**
      * Where the schema this writes documents ships.
@@ -1711,6 +1711,9 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case RULE_ABOUT_A_DERIVED_VALUE ->
                     "it is about a value made from this one, and what it says about the values here"
                             + " is not worked out";
+            case RULE_ABOUT_AN_ELEMENT_OF_SEVERAL_SEQUENCES ->
+                    "it is written inside a block handed to more than one walk, so it is about an"
+                            + " element of this position or of another and nothing says which";
             case RULE_CUTS_NOTHING ->
                     "it was read to the end and cuts nothing this position appears in";
             case RULE_TELLS_NOTHING_APART ->

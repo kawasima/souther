@@ -2,11 +2,16 @@ package souther.compiler.check;
 
 import souther.compiler.semantics.BuiltFrom;
 import souther.compiler.core.Core;
+import souther.compiler.inputs.ElementProjection;
 import souther.compiler.types.BindingId;
 import souther.compiler.types.ValueName;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Which of a body's bindings hold an element of a container, and of which container.
@@ -38,9 +43,10 @@ import java.util.Map;
  * container is not always one — it can be what another operation answered, which is where a reading
  * of provenance goes on rather than stopping ({@link ElementLineage}).
  */
-public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Core> held,
+public record ElementBindings(Map<BindingId, List<Core>> containers,
+                              Map<BindingId, Core> held,
                               ElementProvenance provenance,
-                              Map<BindingId, souther.compiler.inputs.ElementProjection> projected) {
+                              Map<BindingId, ElementProjection> projected) {
 
     /** Nothing was read, which is what a body with no combinator in it comes to. */
     public static final ElementBindings NONE =
@@ -60,7 +66,7 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
      * reader of a walk has: the answer to "which element does this walk hand out" is a binding, and
      * this is what was made of it. What the closure was is neither kept nor answerable from here.
      */
-    public souther.compiler.inputs.ElementProjection projectionAt(BindingId binding) {
+    public ElementProjection projectionAt(BindingId binding) {
         return binding == null ? null : projected.get(binding);
     }
 
@@ -77,10 +83,18 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
         return binding == null ? null : held.get(binding);
     }
 
-    /** The container an element at {@code binding} was taken from, or null where the binding holds
-     *  something else. */
-    public Core containerOf(BindingId binding) {
-        return binding == null ? null : containers.get(binding);
+    /**
+     * The containers an element at {@code binding} was taken from, empty where the binding holds
+     * something else.
+     *
+     * <p>More than one where one block was handed to more than one walk: the binding takes an
+     * element of a different container on each run, which is a fact about the model and not a
+     * reading that stopped. Answered as none, a name that plainly holds an element would read as a
+     * name from nowhere; answered as whichever came first, a rule inside the block would be filed
+     * at a container it says nothing about.
+     */
+    public List<Core> containersOf(BindingId binding) {
+        return binding == null ? List.of() : containers.getOrDefault(binding, List.of());
     }
 
     public boolean isEmpty() {
@@ -98,27 +112,34 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
      * model would be read two ways depending on whether the author bound the closure before handing
      * it over — and the rules inside it would be about no position at all.
      *
-     * <p><b>And a closure two calls share names no element.</b> One block handed to two operations
-     * has one parameter and two containers, so what arrives under that binding is not one
-     * container's elements. Kept as whichever call was met first, a rule inside the closure would
-     * be filed at a sequence it says nothing about; so the binding is taken back out and the
-     * closure names no element for either of them, which is what a reading that cannot tell them
-     * apart has to say.
+     * <p><b>And a closure two calls share names the elements of both.</b> One block handed to two
+     * operations has one parameter and two containers, so what arrives under that binding is an
+     * element of a different container on each run. Kept as whichever call was met first, a rule
+     * inside the closure would be filed at a sequence it says nothing about; taken back out, the
+     * name would read as one that holds nothing of the input at all, and a rule the author plainly
+     * wrote about their input would leave the measurement without a word. So both are kept, and
+     * which of them a rule inside the closure is about is what nothing here can say.
      */
     public static ElementBindings of(Core body, ElementProvenance provenance, Symbols symbols) {
-        Map<BindingId, Core> found = new LinkedHashMap<>();
+        Map<BindingId, List<Core>> found = new LinkedHashMap<>();
         Map<BindingId, Core> held = new LinkedHashMap<>();
         Map<BindingId, Core> answered = new LinkedHashMap<>();
         Map<BindingId, Core> standing = new LinkedHashMap<>();
-        java.util.Set<BindingId> shared = new java.util.LinkedHashSet<>();
-        walk(body, found, held, provenance, answered, standing, shared);
-        shared.forEach(found::remove);
-        shared.forEach(standing::remove);
-        Map<BindingId, souther.compiler.inputs.ElementProjection> projected =
+        walk(body, found, held, provenance, answered, standing);
+        // What one walk hands its closure is what a licence and a projection are about, and a
+        // binding taking elements of more than one container has no one walk to be about. The
+        // binding is still an element of each — what says so is what came back above — and what
+        // cannot be said is which, so nothing here that needs one container is said of it.
+        found.forEach((element, containers) -> {
+            if (containers.size() > 1) {
+                standing.remove(element);
+            }
+        });
+        Map<BindingId, ElementProjection> projected =
                 projections(answered, found, held, provenance, symbols);
         standing.forEach((element, closure) -> {
-            souther.compiler.inputs.ElementProjection was =
-                    souther.compiler.inputs.ElementProjection.read(closure, element, held, symbols);
+            ElementProjection was =
+                    ElementProjection.read(closure, element, held, symbols);
             if (was != null) {
                 projected.putIfAbsent(element, was);
             }
@@ -147,21 +168,26 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
      * other. That is not a reading lost but a rule attributed to a sequence it was not written
      * about, so the source is read and agreed with rather than discarded.
      */
-    private static Map<BindingId, souther.compiler.inputs.ElementProjection> projections(
-            Map<BindingId, Core> answered, Map<BindingId, Core> containers,
+    private static Map<BindingId, ElementProjection> projections(
+            Map<BindingId, Core> answered, Map<BindingId, List<Core>> containers,
             Map<BindingId, Core> held, ElementProvenance provenance, Symbols symbols) {
-        Map<BindingId, souther.compiler.inputs.ElementProjection> out = new LinkedHashMap<>();
+        Map<BindingId, ElementProjection> out = new LinkedHashMap<>();
         answered.forEach((parameter, body) -> {
             // The element the closure was applied to, which is what the parameter was bound to.
             if (!(held.get(parameter) instanceof Core.Read read) || read.binding() == null) {
                 return;
             }
-            if (!readsWhatIsHeldBy(containers.get(read.binding()),
-                    provenance.projectedFrom(parameter), held)) {
+            // Of the one container the walk is over. A binding taking elements of more than one
+            // has no one walk for a projection to be of, and which of them this answer is a place
+            // in is the very thing that could not be worked out.
+            List<Core> from =
+                    containers.getOrDefault(read.binding(), List.of());
+            if (from.size() != 1
+                    || !readsWhatIsHeldBy(from.get(0), provenance.projectedFrom(parameter), held)) {
                 return;
             }
-            souther.compiler.inputs.ElementProjection projected =
-                    souther.compiler.inputs.ElementProjection.read(body, parameter, held, symbols);
+            ElementProjection projected =
+                    ElementProjection.read(body, parameter, held, symbols);
             if (projected != null) {
                 out.put(read.binding(), projected);
             }
@@ -191,7 +217,7 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
         if (binding == null) {
             return false;
         }
-        java.util.Set<BindingId> met = new java.util.HashSet<>();
+        Set<BindingId> met = new HashSet<>();
         Core at = e;
         while (at != null) {
             if (at instanceof Core.LetIn let) {
@@ -208,9 +234,10 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
         return false;
     }
 
-    private static void walk(Core e, Map<BindingId, Core> found, Map<BindingId, Core> held,
+    private static void walk(Core e, Map<BindingId, List<Core>> found,
+                             Map<BindingId, Core> held,
                              ElementProvenance provenance, Map<BindingId, Core> answered,
-                             Map<BindingId, Core> standing, java.util.Set<BindingId> shared) {
+                             Map<BindingId, Core> standing) {
         if (e instanceof Core.LetIn let && let.binder() != null
                 && let.binder().binding() != null) {
             held.putIfAbsent(let.binder().binding(), let.value());
@@ -227,17 +254,16 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
         // expanded away, and the operation standing as itself where it has not. What is asked of it
         // is the same question, so it is asked once.
         if (e instanceof Core.Call call && call.fn() instanceof Core.Reached reached) {
-            handed(reached.denotes(), call.args(), found, null, held, shared);
+            handed(reached.denotes(), call.args(), found, null, held);
         }
         if (e instanceof Core.PreservedCall preserved) {
             // Where the operation still stands, what it answers of what it was handed is still
             // there to be asked, so the licence a run needs is read from the declaration rather
             // than from a fact an expansion would have had to leave behind.
-            handed(preserved.declared().operation(), preserved.args(), found, standing, held,
-                    shared);
+            handed(preserved.declared().operation(), preserved.args(), found, standing, held);
         }
         Core.forEachChild(e, child ->
-                walk(child, found, held, provenance, answered, standing, shared));
+                walk(child, found, held, provenance, answered, standing));
     }
 
     /**
@@ -254,9 +280,9 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
      * than anything the declaration is still here to say.
      */
     private static void handed(ValueName operation,
-                               java.util.List<Core> args, Map<BindingId, Core> found,
-                               Map<BindingId, Core> standing, Map<BindingId, Core> held,
-                               java.util.Set<BindingId> shared) {
+                               List<Core> args,
+                               Map<BindingId, List<Core>> found,
+                               Map<BindingId, Core> standing, Map<BindingId, Core> held) {
         Combinators.Handed handed = Combinators.handedTo(operation, args,
                 closure -> blockOf(closure, held));
         if (handed == null || handed.element().binding() == null) {
@@ -264,12 +290,13 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
         }
         BindingId element = handed.element().binding();
         // The nearest binding of a name stands, as everywhere else: a body binding one twice has
-        // two bindings, and each is answered where it is.
-        Core already = found.putIfAbsent(element, handed.container());
-        if (already != null && already != handed.container()) {
-            // One closure, two calls, two containers. What arrives under this binding is not one
-            // sequence's elements, so it is not one this can answer about at all.
-            shared.add(element);
+        // two bindings, and each is answered where it is. One closure handed to two calls is one
+        // binding taking elements of two containers, and both are kept — which of them a run is in
+        // is what the binding cannot say, and saying neither would lose the element as well.
+        List<Core> from =
+                found.computeIfAbsent(element, _ -> new ArrayList<>());
+        if (from.stream().noneMatch(each -> each == handed.container())) {
+            from.add(handed.container());
         }
         if (standing != null && answersOnePerElementOf(operation, handed.container(), args)) {
             standing.putIfAbsent(element, handed.step().body());
@@ -288,7 +315,7 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
      * set what was proved of a list.
      */
     private static boolean answersOnePerElementOf(ValueName operation,
-                                                  Core container, java.util.List<Core> args) {
+                                                  Core container, List<Core> args) {
         BuiltFrom<DeclaredArgument> built =
                 DefaultBoundOperationFacts.get().buildsItsResultFrom(operation);
         DeclaredArgument mapsEach =
@@ -316,7 +343,7 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
      */
     private static Core.Block blockOf(Core closure, Map<BindingId, Core> held) {
         Core at = closure;
-        java.util.Set<BindingId> met = new java.util.HashSet<>();
+        Set<BindingId> met = new HashSet<>();
         while (at instanceof Core.Read read) {
             if (!met.add(read.binding())) {
                 throw new IllegalStateException(

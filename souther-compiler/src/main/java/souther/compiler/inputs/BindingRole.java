@@ -2,6 +2,7 @@ package souther.compiler.inputs;
 
 import souther.compiler.core.Core;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -59,6 +60,26 @@ sealed interface BindingRole {
 
         public Element {
             Objects.requireNonNull(container, "an element came from a container");
+        }
+    }
+
+    /**
+     * Operations of the language handed the binding an element of each of {@code containers}.
+     *
+     * <p>One block handed to two walks. The binding has one name and takes an element of a
+     * different container on each run, so it is an element and no one container's — and both halves
+     * of that are said here, because a reader told only the second would have a name that came from
+     * nowhere and a reader told only the first would be sent to whichever container turned up
+     * first.
+     */
+    record ElementOfSeveral(List<Core> containers) implements BindingRole {
+
+        public ElementOfSeveral {
+            containers = List.copyOf(containers);
+            if (containers.size() < 2) {
+                throw new IllegalArgumentException(
+                        "an element of several came from more than one container");
+            }
         }
     }
 

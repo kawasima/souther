@@ -6,6 +6,7 @@ import souther.compiler.ast.Ast;
 import souther.compiler.ast.DefinitionName;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.AnalysisBody;
+import souther.compiler.check.Expansion;
 import souther.compiler.check.BehaviorChecker;
 import souther.compiler.check.SpecChecker;
 import souther.compiler.check.CheckSurface;
@@ -608,7 +609,7 @@ public final class Bodies {
 
         @Override
         public Answer<Set<ValueName.Behavior>> compute(Db db) {
-            Answer<souther.compiler.check.Expansion<Hir.FnDef>> body =
+            Answer<Expansion<Hir.FnDef>> body =
                     db.ask(new BodyForInvariantDischarge(module, behavior));
             Answer<Hir.SpecBehavior> spec = db.ask(new Spec(module, behavior));
             if (!body.present() || !spec.present()) {
@@ -1523,10 +1524,10 @@ public final class Bodies {
      * level the rules are written at.
      */
     public record BodyForInvariantDischarge(String module, String fn)
-            implements Key<souther.compiler.check.Expansion<Hir.FnDef>> {
+            implements Key<Expansion<Hir.FnDef>> {
 
         @Override
-        public Answer<souther.compiler.check.Expansion<Hir.FnDef>> compute(Db db) {
+        public Answer<Expansion<Hir.FnDef>> compute(Db db) {
             Answer<Hir.FnDef> def = db.ask(new SettledFn(module, fn));
             Answer<Expanding.Of> against = db.ask(new Expanding(module, InliningPolicy.DISCHARGE));
             Answer<Map<ValueName.Behavior, Integer>> behaviors =
@@ -1935,7 +1936,7 @@ public final class Bodies {
             Answer<Map<String, Type>> sigs = db.ask(new RecursiveCallSigs(module, InliningPolicy.FULL));
             Answer<Map<String, DataChecker.Constructs>> constructs =
                     db.ask(new RecursiveHelperConstructs(module));
-            Answer<souther.compiler.check.Expansion<Hir.FnDef>> discharge =
+            Answer<Expansion<Hir.FnDef>> discharge =
                     db.ask(new BodyForInvariantDischarge(module, behavior));
             // What the behaviors this body reaches state about their answers, and only those: a
             // relation declared by a behavior it does not call is no part of what it is checked

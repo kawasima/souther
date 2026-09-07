@@ -11,9 +11,12 @@ import souther.compiler.inputs.NumericTerm;
 import souther.compiler.inputs.Quantities;
 import souther.compiler.inputs.FilingCoordinate;
 import souther.compiler.numeric.Place;
+import souther.compiler.reach.ComparisonArrival;
 import souther.compiler.types.BindingId;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.SequencedMap;
 
 /**
  * What one comparison comes to on the input space: one reading, and everything read off it.
@@ -156,7 +159,7 @@ sealed interface ComparisonAssessment {
      *
      * <p>Only a proof lands here: the whole state at the comparison shown empty, or the values that
      * arrive shown to stop short of the line. A comparison nothing could project an arrival for
-     * keeps its line ({@link souther.compiler.reach.ComparisonArrival.NoProjection}).
+     * keeps its line ({@link ComparisonArrival.NoProjection}).
      */
     record NothingArrivesAtItsLine(Cutting cutting) implements ComparisonAssessment {
 
@@ -293,13 +296,13 @@ sealed interface ComparisonAssessment {
      * reading would be one no tree could answer on its own.
      *
      * <p>Only a proof drops a line. An arrival nothing could project restricts nothing and the line
-     * stands, which is what {@link souther.compiler.reach.ComparisonArrival.NoProjection} says —
+     * stands, which is what {@link ComparisonArrival.NoProjection} says —
      * and it is not what a comparison the emitter numbered nothing for says, because that one is
      * not asked this at all.
      */
     static ComparisonAssessment narrowedByWhatArrives(
             ComparisonAssessment read,
-            java.util.List<souther.compiler.reach.ComparisonArrival> arrivals,
+            List<ComparisonArrival> arrivals,
             boolean drawnByAnInvariant) {
         Cutting cutting = switch (read) {
             case AtAPosition at -> at.cutting();
@@ -328,13 +331,13 @@ sealed interface ComparisonAssessment {
         // Which is why one place that could not be projected leaves the line where it was: what a
         // walk did not settle is not a proof that nothing arrives, and the line has to be dropped by
         // a proof rather than by the absence of one.
-        for (souther.compiler.reach.ComparisonArrival arrival : arrivals) {
+        for (ComparisonArrival arrival : arrivals) {
             boolean reaches = switch (arrival) {
-                case souther.compiler.reach.ComparisonArrival.NothingArrives _ -> false;
-                case souther.compiler.reach.ComparisonArrival.Values values ->
+                case ComparisonArrival.NothingArrives _ -> false;
+                case ComparisonArrival.Values values ->
                         Border.reaches(cutting.at(), cutting.seam(), cutting.claim(),
                                 drawnByAnInvariant, cutting.withinGiven(values));
-                case souther.compiler.reach.ComparisonArrival.NoProjection _ -> true;
+                case ComparisonArrival.NoProjection _ -> true;
             };
             if (reaches) {
                 return read;
@@ -369,16 +372,10 @@ sealed interface ComparisonAssessment {
      */
     private static ComparisonAssessment aboutNoPosition(Comparison comparison, InputReads reads,
                                                         Symbols symbols) {
-        List<souther.compiler.inputs.TermPath> from = new java.util.ArrayList<>();
-        GuardThresholds.cameFrom(comparison, reads, symbols, from);
-        if (from.isEmpty()) {
-            return new NoInput();
-        }
-        java.util.SequencedMap<FilingCoordinate, BlockReason.RuleReadingStopped> why =
-                new java.util.LinkedHashMap<>();
-        from.forEach(each -> why.putIfAbsent(FilingCoordinate.at(each),
-                new BlockReason.RuleAboutADerivedValue()));
-        return new Unread(why);
+        SequencedMap<FilingCoordinate, BlockReason.RuleReadingStopped> why =
+                new LinkedHashMap<>();
+        GuardThresholds.cameFrom(comparison, reads, symbols, why);
+        return why.isEmpty() ? new NoInput() : new Unread(why);
     }
 
     /** What a line comes to on the input space, from the quantity it is on. */

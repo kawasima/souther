@@ -1,5 +1,6 @@
 package souther.compiler.inputs;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -52,4 +53,30 @@ public sealed interface PathResolution {
      * that it does not stand at one.
      */
     record NotAPosition() implements PathResolution {}
+
+    /**
+     * The expression stands at one of {@code among} and which is not settled.
+     *
+     * <p>A fact about this compiler and not about the model, which is why it is not the answer
+     * beside it. A block handed to two walks has one parameter and two containers, so a name inside
+     * it stands at one position of the input on one run and another on the next — the model is
+     * perfectly clear and what cannot be worked out is which of them a reader should be sent to.
+     *
+     * <p>Held apart because everything a reader does with the two differs. A rule about no position
+     * is one the model states nowhere and owes nothing; a rule about one of these is a rule the
+     * model states, whose obligation stands at whichever of them it turns out to be — so a measure
+     * over any of them is open until something says which. Answered alike, a rule an author wrote
+     * about their input left the measurement without a word, and every position it might have
+     * divided came back as one the model says nothing about.
+     */
+    record AtOneOfSeveral(List<TermPath> among) implements PathResolution {
+
+        public AtOneOfSeveral {
+            among = List.copyOf(among);
+            if (among.size() < 2) {
+                throw new IllegalArgumentException(
+                        "one of several is one of more than one: " + among);
+            }
+        }
+    }
 }

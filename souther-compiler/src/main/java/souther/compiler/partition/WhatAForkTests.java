@@ -7,7 +7,9 @@ import souther.compiler.core.Core;
 import souther.compiler.semantics.AnswerAspect;
 import souther.compiler.types.ValueName;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 
 /**
@@ -43,13 +45,12 @@ final class WhatAForkTests {
      */
     static boolean turnsOnSomething(Core atom, Predicate<Core> rule,
                                     java.util.function.UnaryOperator<Core> denotes) {
-        return turnsOn(atom, AnswerAspect.TRUTH, rule, denotes,
-                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>()));
+        return turnsOn(atom, AnswerAspect.TRUTH, rule, denotes, new HashSet<>());
     }
 
     private static boolean turnsOn(Core e, AnswerAspect aspect, Predicate<Core> rule,
                                    java.util.function.UnaryOperator<Core> denotes,
-                                   java.util.Set<Asked> met) {
+                                   Set<Asked> met) {
         // By what has been asked, which is what makes it stop. The tree is finite and so are the
         // library's edges, and a name a walk followed may lead back to where it started — so a
         // question already asked is one already answered rather than one to ask again. Not a depth:
@@ -165,7 +166,11 @@ final class WhatAForkTests {
     }
 
     /** One question this walk has been asked: an expression, and which side of what it answers.
-     *  Told apart by the node itself, so that two of one shape written twice are two questions. */
+     *  Told apart by the node itself, so that two of one shape written twice are two questions —
+     *  which is what this says, and what holds it is that whatever collects these asks it. A
+     *  collection comparing keys by identity would be answering with the identity of the question
+     *  rather than of the expression, and a question built afresh to ask with is a new object every
+     *  time. */
     private record Asked(Core e, AnswerAspect aspect) {
 
         @Override

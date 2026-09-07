@@ -7,6 +7,7 @@ import souther.compiler.conformance.ConformanceCorpus;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
+import souther.compiler.types.BindingOwner;
 import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.ExpansionLineage;
 import souther.compiler.types.ModelOccurrence;
@@ -177,7 +178,7 @@ class WhereTheTwoReadingsOfABodyPartIsAnOperationOfTheLanguageTest {
                     for (ExpansionLineage.Expansion step : stepsOf(which.lineage())) {
                         if (step.expanded() instanceof ValueName.Local local) {
                             owners.add(local.id().owner()
-                                    instanceof souther.compiler.types.BindingOwner.Expansion copy
+                                    instanceof BindingOwner.Expansion copy
                                     ? "a copy of " + copy.expanded()
                                     : local.id().owner().getClass().getSimpleName());
                         }

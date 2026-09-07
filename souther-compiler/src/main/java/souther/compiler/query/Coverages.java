@@ -1,6 +1,7 @@
 package souther.compiler.query;
 
 import souther.compiler.check.CoverageObligation;
+import souther.compiler.check.ElementBindings;
 import souther.compiler.check.ReadingPolicy;
 import souther.compiler.inputs.FilingCoordinate;
 import souther.compiler.inputs.InputQuestion;
@@ -13,6 +14,7 @@ import souther.compiler.check.PathReachability;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.numeric.Place;
 import souther.compiler.core.Core;
+import souther.compiler.coverage.ComparisonEmissionSite;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.coverage.SiteNumbering;
 import souther.compiler.observe.Classification;
@@ -104,9 +106,9 @@ final class Coverages {
         // The bindings an expansion wrote are the bindings of the tree it expanded: the two
         // representations of one body are two expansions with two sets of them, so `elements` —
         // which is the emitted tree's — is about bindings neither reader below has.
-        souther.compiler.check.ElementBindings standing = analysis == null
-                ? souther.compiler.check.ElementBindings.NONE
-                : souther.compiler.check.ElementBindings.of(analysis.core(), analysis.elements(),
+        ElementBindings standing = analysis == null
+                ? ElementBindings.NONE
+                : ElementBindings.of(analysis.core(), analysis.elements(),
                         read.symbols());
         // Whether there is a tree to read is the reading's own answer, so a body with no analysis
         // representation is handed over and comes back with nothing rather than being checked for
@@ -836,7 +838,7 @@ final class Coverages {
     private static OneShapeOfBorder reading(
             souther.compiler.partition.MeasuredInput.BorderReading line,
             ItemAssessment.WritabilityProjection projection) {
-        java.util.List<souther.compiler.coverage.ComparisonEmissionSite> site =
+        List<ComparisonEmissionSite> site =
                 line.border().origin().recordedAt();
         return new OneShapeOfBorder() {
 
@@ -890,7 +892,7 @@ final class Coverages {
         souther.compiler.partition.MeasuredInput.BorderReading line = input.at(border);
         souther.compiler.inputs.Quantities rules = input.quantities();
         BorderQuantity quantity = line.quantity();
-        java.util.List<souther.compiler.coverage.ComparisonEmissionSite> site =
+        List<ComparisonEmissionSite> site =
                 border.origin().recordedAt();
         // Built here and gone when the search is. What a row has to be to arrive is a way of asking
         // about values rather than something that says what it is, so it is what the walk runs
@@ -1050,7 +1052,7 @@ final class Coverages {
     private static StandingAtAPoint.Met standingThere(
             Probe probe, souther.compiler.partition.MeasuredInput.BorderReading line,
             Criterion criterion,
-            java.util.List<souther.compiler.coverage.ComparisonEmissionSite> site,
+            List<ComparisonEmissionSite> site,
             souther.compiler.partition.Generator.BoundaryAttempt.Built built) {
         souther.compiler.partition.ObservedInputs read =
                 probe.read(built.row().inputs()).asInputs();

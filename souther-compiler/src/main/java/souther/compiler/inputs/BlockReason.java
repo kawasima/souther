@@ -174,8 +174,8 @@ public sealed interface BlockReason {
     sealed interface RuleReadingStopped extends StoppedWithoutALine, QuestionStandingReason {
 
         /**
-         * One switch over the ten, and the reason for it being one: a division of these into two
-         * is only reviewable where all ten answers are visible together.
+         * One switch over the eleven, and the reason for it being one: a division of these into two
+         * is only reviewable where all eleven answers are visible together.
          */
         @Override
         default RunSensitivity runSensitivity() {
@@ -186,12 +186,14 @@ public sealed interface BlockReason {
                 // same rule.
                 case PatternTooCostly _, PatternTooDeeplyNested _,
                      OrderedExtentTooCostly _ -> RunSensitivity.MAY_CHANGE;
-                // And six where nothing was compared against anything. A form nothing takes apart,
-                // values no line can be drawn on, a rule about a value made from this one, a
-                // relation between two positions and a pairing nothing worked out are all met again
-                // by a run allowed more of everything.
+                // And seven where nothing was compared against anything. A form nothing takes
+                // apart, values no line can be drawn on, a rule about a value made from this one, a
+                // rule about an element of one of several sequences, a relation between two
+                // positions and a pairing nothing worked out are all met again by a run allowed
+                // more of everything.
                 case UnreadComparisonForm _, UnreadComparisonDomain _, RuleAboutADerivedValue _,
-                     UnreadValueRule _, ValueRuleRelatingTwoPositions _,
+                     RuleAboutAnElementOfSeveralSequences _, UnreadValueRule _,
+                     ValueRuleRelatingTwoPositions _,
                      CasePairingNotDetermined _ -> RunSensitivity.UNAFFECTED;
             };
         }
@@ -447,6 +449,21 @@ public sealed interface BlockReason {
      * a model whose predicate this cannot follow is one that states no rule.
      */
     record RuleAboutADerivedValue() implements RuleReadingStopped {}
+
+    /**
+     * A rule is written about an element of a sequence, in a block handed to more than one walk.
+     *
+     * <p>One block written once and given to two operations: the name it reads the element under
+     * holds an element of a different sequence on each run, so a rule inside it is about one of
+     * them and nothing here says which. It is filed at every one of them, because that is what is
+     * known — the rule is about one of these places and each is a place a reader can be sent to.
+     *
+     * <p>Its own case and not {@link RuleAboutADerivedValue}. Nothing was made out of the element
+     * and there is no operation to invert; an author told that one would go looking for a
+     * computation that is not there. What lifts this is telling the two walks apart, and what an
+     * author can do about it today is write the block twice.
+     */
+    record RuleAboutAnElementOfSeveralSequences() implements RuleReadingStopped {}
 
     /**
      * A rule naming which values the position may hold is written in a form no reader here takes

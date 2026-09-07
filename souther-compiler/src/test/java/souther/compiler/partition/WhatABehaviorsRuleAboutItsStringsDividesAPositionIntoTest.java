@@ -339,6 +339,6 @@ class WhatABehaviorsRuleAboutItsStringsDividesAPositionIntoTest {
                 inputs.parameterReads(), checked.elementBindings().get("f"));
         Allowance<NumericTerm.FromOnePosition> allowance = Allowance.of(budget);
         return BehaviorSetStatements.of("f", read, rules.symbols(), allowance,
-                java.util.List.of());
+                List.of());
     }
 }

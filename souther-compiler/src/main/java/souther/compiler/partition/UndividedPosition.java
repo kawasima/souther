@@ -267,6 +267,20 @@ public record UndividedPosition(TermPath at, Why why) {
          */
         RULE_ABOUT_A_DERIVED_VALUE,
         /**
+         * A rule is written about an element of a sequence, inside a block handed to more than one
+         * walk — so it is about this position or another and nothing here says which.
+         *
+         * <p>The rule was read and every position it might be about is known; each of them is told
+         * this. What is missing is not a reading of the rule but a way to tell the walks apart, and
+         * an author can see it in their own model: the block is written once and given to two
+         * operations over two sequences.
+         *
+         * <p>Its own word beside {@link #RULE_ABOUT_A_DERIVED_VALUE}, which says an operation made
+         * the value into something else. Nothing was made here — the value is the element — and a
+         * reader told the other would go looking for a computation to invert that is not there.
+         */
+        RULE_ABOUT_AN_ELEMENT_OF_SEVERAL_SEQUENCES,
+        /**
          * A rule naming this position was read to the end and cuts nothing at all: what it compares
          * is a number the position does not appear in.
          *

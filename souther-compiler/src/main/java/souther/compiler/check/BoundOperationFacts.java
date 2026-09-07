@@ -2,6 +2,7 @@ package souther.compiler.check;
 
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.semantics.Accumulation;
+import souther.compiler.semantics.AnswerAspect;
 import souther.compiler.semantics.BuiltFrom;
 import souther.compiler.semantics.DefinitionCase;
 import souther.compiler.semantics.NumericResult;
@@ -244,7 +245,7 @@ public final class BoundOperationFacts {
     /** Which argument {@code aspect} of {@code operation}'s answer turns on, or null where the
      *  library says nothing about what decides it. */
     public BoundOperationFact.TurnsOnWhetherAnArgumentHolds turnsOnWhetherAnArgumentHolds(
-            ValueName operation, souther.compiler.semantics.AnswerAspect aspect) {
+            ValueName operation, AnswerAspect aspect) {
         BoundOperationFact.TurnsOnWhetherAnArgumentHolds held =
                 one(BoundOperationFact.TurnsOnWhetherAnArgumentHolds.class, operation);
         return held == null || held.aspect() != aspect ? null : held;
