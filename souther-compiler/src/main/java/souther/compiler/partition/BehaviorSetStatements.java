@@ -360,7 +360,7 @@ public final class BehaviorSetStatements {
             // part unsaid — a model reported as fully read over a condition half of which nobody
             // took in.
             List<Core> untaken = new ArrayList<>();
-            for (Core atom : each.leftTo(java.util.Set.of())) {
+            for (Core atom : each.leftHere()) {
                 if (!ComparisonReadings.turnsOnAPredicate(atom, read)) {
                     untaken.add(atom);
                 }

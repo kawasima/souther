@@ -18,12 +18,18 @@ import java.util.List;
  * already satisfied to get there, whether a line may be drawn on it, and what it came to where one
  * may.
  *
- * <p><b>Of the body the backend emits, which is the tree the comparisons of a module are numbered
- * in.</b> A rule stated as one of the language's own operations is not in this tree at all — it has
- * been expanded into what it does — and is read where such operations still stand
- * ({@link souther.compiler.check.AnalysisBody}) by a reading of its own. Two trees and two readings,
- * which is not the same thing as one tree read twice: what each of them carries is where a rule
- * stands in the tree it is in.
+ * <p><b>Of the body the analysis reads, which is the tree the language's own operations stand
+ * in.</b> A rule written over what such an operation answers is a rule of the model, and the tree
+ * the backend emits from has the operation expanded into what it does — so a reading made there
+ * met the comparison after the call was gone, while the rules about strings in the same body were
+ * read where they stand. Two facts about one position came from two walks of two trees, and a
+ * reader wanting both had to know which tree each came from.
+ *
+ * <p>Which leaves the comparisons inside such an operation out, and that is what it means to leave
+ * them out: they are that operation's implementation, and a caller answers for the rules a caller
+ * wrote. Where a run through a comparison is recorded is still the emitted tree's, and the two are
+ * joined on the construct of the model they agree about
+ * ({@link souther.compiler.types.ModelOccurrence}).
  *
  * <p><b>Each comparison is read once, here, and what it came to travels with it.</b> A reader that
  * reports why a comparison bears no line reads the answer off the standing and never reads the
@@ -90,25 +96,29 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
             atoms = List.copyOf(atoms);
         }
 
-        /** The parts of this fork nothing here owns, given what the other readers claim. Compared
-         *  by being the nodes the walk met and never by what they hold. */
-        List<Core> leftTo(java.util.Set<Core> alsoOwned) {
+        /**
+         * The parts of this fork this reading does not answer for.
+         *
+         * <p>What the other readers claim is subtracted by whoever holds their answers, which is
+         * where the three meet ({@link BehaviorSetStatements}); this says only which parts are left
+         * over from what was found here.
+         *
+         * <p>Compared by being the nodes the walk met and never by what they hold: a condition
+         * writing one comparison twice writes two parts, and parts compared by their contents would
+         * be one.
+         */
+        List<Core> leftHere() {
             List<Core> out = new ArrayList<>();
             for (Core each : atoms) {
-                if (!has(ownedHere, each) && !has(alsoOwned, each)) {
+                boolean owned = false;
+                for (Core one : ownedHere) {
+                    owned |= one == each;
+                }
+                if (!owned) {
                     out.add(each);
                 }
             }
             return out;
-        }
-
-        private static boolean has(java.util.Set<Core> owned, Core one) {
-            for (Core each : owned) {
-                if (each == one) {
-                    return true;
-                }
-            }
-            return false;
         }
     }
 

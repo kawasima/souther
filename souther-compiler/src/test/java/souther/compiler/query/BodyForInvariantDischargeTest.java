@@ -35,11 +35,7 @@ class BodyForInvariantDischargeTest {
             let shift (b) = List.map(x -> doubled(x), b.items)
             """;
 
-    private static Hir.Expr body(Key<Hir.FnDef> key) {
-        return db().ask(key).value().writtenBody();
-    }
-
-    /** The same, for a body that answers with what its expansion could not remove beside it. */
+    /** The body a reading answers with, for a body its expansion could not remove everything from. */
     private static Hir.Expr lowered(Key<souther.compiler.check.Expansion<Hir.FnDef>> key) {
         return db().ask(key).value().value().writtenBody();
     }

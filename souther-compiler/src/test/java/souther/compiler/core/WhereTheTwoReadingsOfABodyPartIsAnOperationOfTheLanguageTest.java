@@ -198,18 +198,6 @@ class WhereTheTwoReadingsOfABodyPartIsAnOperationOfTheLanguageTest {
         return out;
     }
 
-    private static String armOf(ValueName expanded) {
-        return switch (expanded) {
-            case ValueName.Stdlib.Operation _ -> "Stdlib.Operation";
-            case ValueName.Stdlib.Namespace _ -> "Stdlib.Namespace";
-            case ValueName.Helper _ -> "Helper";
-            case ValueName.Behavior _ -> "Behavior";
-            case ValueName.Local _ -> "Local";
-            case ValueName.OfType _ -> "OfType";
-            case ValueName.Builtin _ -> "Builtin";
-        };
-    }
-
     private static List<BothReadings> everyBodyBothWays() {
         List<List<String>> sources = new ArrayList<>();
         ConformanceCorpus.all().forEach(corpus -> sources.add(corpus.sources()));
