@@ -2,6 +2,8 @@ package souther.compiler.publish;
 
 import souther.compiler.source.SourceId;
 
+import java.util.List;
+
 import tools.jackson.databind.node.ObjectNode;
 
 /**
@@ -168,12 +170,21 @@ public sealed interface PublishedSubject {
     /**
      * One rule, at the position it was read at.
      *
-     * <p>The identity and the place, and not the words a person is shown for the rule. Those are
-     * what the rule handles write wherever this document names a rule, through the one surface that
-     * knows how to render a handle — spelled again here, a document would have two answers to what
-     * a rule is called and no way to say which of them moved.
+     * <p>The place, what tells one rule from another, and what stopped the reading of it. All
+     * three, because what a reader is told to do with such an entry is read the rule and what
+     * stopped it — and an entry that named neither sent them to another array to find both, which
+     * is the join this one was written to spare them.
+     *
+     * <p>The words a person is shown for the rule are not here. Those are what the rule handles
+     * write wherever this document names a rule, through the one surface that renders a handle;
+     * spelled again, a document would have two answers to what a rule is called.
      */
-    record AtARule(String at, ObjectNode ruleId) implements PublishedSubject {
+    record AtARule(String at, ObjectNode ruleId, List<String> stopped)
+            implements PublishedSubject {
+
+        public AtARule {
+            stopped = List.copyOf(stopped);
+        }
 
         @Override
         public SubjectWord kind() {
@@ -186,7 +197,13 @@ public sealed interface PublishedSubject {
         }
     }
 
-    /** One line the rules drew. */
+    /**
+     * One line the rules drew.
+     *
+     * <p>{@code label} is what a person is shown and {@code line} is what tells two apart. One rule
+     * draws more than one line — a clause of an invariant draws one at each end of what it admits —
+     * so a border identified by the rule it came from would be two borders under one identity.
+     */
     record AtABorder(String label, ObjectNode line) implements PublishedSubject {
 
         @Override

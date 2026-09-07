@@ -1430,15 +1430,12 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // Not a finding: nothing is owed here, and what the line says is what the model already
             // decided rather than something the rows left undone.
             for (PartitionEvidence.AxisCoverage axis : partition.axes()) {
-                // A position divided into more classes than this behavior's rules composed. What
-                // the rest came from is the input's own shape — the cases of a sum are classes
-                // whether or not a rule here looks at them — so a combination they take part in is
-                // one no row of this behavior can reach, and a count of those read as work owed.
-                //
-                // The rules that composed the classes and not the lines the behavior draws. A line
-                // is where a row is owed at either side of it; what put a value in a class is the
-                // axis's own answer, and the two part exactly where this sentence is about.
-                if (!axis.cutOrParted() && axis.divides().size() < axis.classes().size()) {
+                // A position divided into more classes than this behavior's rules composed, whose
+                // classes take part in a relation no row reaches. Asked of the one thing that
+                // answers it, which is what the decision this leaves a reader is read from: worked
+                // out again here, the line and the decision would be two answers to one question.
+                if (ReaderDisposition.widerThanTheyAreSeparated(partition.pairs(), partition.axes())
+                        .contains(axis)) {
                     out.append(String.format("      · %s holds %d classes and this behavior's rules"
                                     + " compose %d of them%n",
                             axis.name(), axis.classes().size(), axis.divides().size()));
@@ -1481,8 +1478,25 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // arm is what makes the condition something to spell rather than something to inherit.
         if (partitioned.counted()) {
             String combinations = combinations(partition.pairs());
+            List<String> relations = new ArrayList<>();
+            if (partition.pairs().counted().made().isPresent()) {
+                for (PartitionEvidence.PairSpace.AxisPair pair : partition.pairs().space()) {
+                    if (partition.pairs().unknown(pair) > 0) {
+                        relations.add(String.format("      · %s × %s: %d covered, %d unknown%n",
+                                pair.between().one().term(), pair.between().other().term(),
+                                partition.pairs().counts().covered(pair.between()),
+                                partition.pairs().unknown(pair)));
+                    }
+                }
+            }
             if (!combinations.isEmpty()) {
                 out.append(String.format("    combination %s%n", combinations));
+                // And which relations hold what no row reaches. Summed, the count says how much of
+                // the product the rows cover and nothing about where it is: most of it sitting in
+                // the two relations one position takes part in is the whole of what a reader acts
+                // on, and it is invisible in one number. Only the relations with something unknown,
+                // since a relation the rows cover has nothing here to say.
+                relations.forEach(out::append);
             }
         }
         // Counted over the obligations and named as such. A border owes a row at up to four points,
@@ -4082,10 +4096,14 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case PublishedSubject.AtARule it -> {
                 into.put("at", it.at());
                 into.set("ruleId", it.ruleId());
+                if (!it.stopped().isEmpty()) {
+                    ArrayNode stopped = into.putArray("stopped");
+                    it.stopped().forEach(stopped::add);
+                }
             }
             case PublishedSubject.AtABorder it -> {
                 into.put("label", it.label());
-                into.set("ruleId", it.line());
+                into.set("line", it.line());
             }
             case PublishedSubject.AtAPoint it -> into.set("obligationId", it.obligationId());
             case PublishedSubject.AtAFork it -> {
@@ -4133,7 +4151,14 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case Subject.AtASpelledPosition it -> it.behavior() + "/" + it.path();
             case Subject.AtAPosition it -> it.behavior() + "/" + it.at();
             case Subject.AtAnInput it -> "input " + it.at() + " of " + it.behavior();
-            case Subject.AtARule it -> new PartitionEvidence.Unanswered(it.question()).at();
+            // The position and what stopped the reading there. A line telling a reader to read
+            // the rule and what stopped it, and naming neither, sends them to another array for
+            // both.
+            case Subject.AtARule it -> {
+                PartitionEvidence.Unanswered asked = new PartitionEvidence.Unanswered(it.question());
+                yield asked.at() + " (" + whyStanding(asked).written().stream()
+                        .map(AdequacyReport::whyUnread).collect(Collectors.joining("; ")) + ")";
+            }
             case Subject.AtABorder it -> it.border().label();
             // Composed here and not by what writes a point beside a line, which takes the account
             // of the point: which of the four roles it is and which side it is on are the line's
@@ -4232,11 +4257,20 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 PartitionEvidence.Unanswered asked = new PartitionEvidence.Unanswered(it.question());
                 ObjectNode id = JSON.createObjectNode();
                 ruleId(id, asked.rule());
-                yield new PublishedSubject.AtARule(asked.at(), id);
+                // And what stopped the reading, in the words the questions themselves are written
+                // under. What a reader does with this entry is read the rule and what stopped it,
+                // and an entry naming neither is one that says what to do and hands over none of
+                // the material to do it with.
+                yield new PublishedSubject.AtARule(asked.at(), id,
+                        whyStanding(asked).written().stream().map(AdequacyReport::word).toList());
             }
             case Subject.AtABorder it -> {
+                // The line the rules drew, as this document identifies one. Named by the rule
+                // alone, two lines of one clause — the ends of what an invariant admits — come out
+                // under one identity, and the arrangement is left to write two entries it cannot
+                // tell apart.
                 ObjectNode id = JSON.createObjectNode();
-                ruleId(id, it.border().origin().rule());
+                authoredLineId(id, it.border().origin().authoredLine());
                 yield new PublishedSubject.AtABorder(it.border().label(), id);
             }
             case Subject.AtAPoint it -> {

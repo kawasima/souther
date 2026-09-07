@@ -3305,7 +3305,7 @@
             "required": [
               "kind",
               "label",
-              "ruleId"
+              "line"
             ]
           }
         },
@@ -3506,6 +3506,17 @@
         "axis": {
           "type": "string",
           "description": "The position, as `axes` names it."
+        },
+        "line": {
+          "$ref": "#/$defs/authoredLineId",
+          "description": "Which of the rule's lines this is. One rule draws more than one."
+        },
+        "stopped": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ruleStoppedReadingReason"
+          },
+          "description": "What stopped the reading of the rule, in the words the questions themselves are written under. Absent where nothing stopped it."
         }
       }
     }

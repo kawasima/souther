@@ -30,33 +30,33 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 class PairCombinationsAreNotRowObligationsTest {
 
     /**
-     * Every kind of gap this compiler can find, and none of them is about a combination.
+     * Every kind of gap this compiler can find, named, and none of them is about a combination.
      *
-     * <p>Read off the seal rather than off a list kept beside it: an arm added to {@link About}
-     * arrives here whether or not anybody remembered this test exists.
+     * <p>The kinds are written out rather than matched on their names. A name says what somebody
+     * called an arm and not what it is about, so a finding about a combination added under another
+     * word would pass a sweep for the word — and this is a law about what a row is owed at, which a
+     * spelling does not settle.
      *
-     * <p>Held on the names, which is as far as a test can see without deciding for itself what a
-     * shape is about. A finding named for a pair, a combination, or two classes together is what
-     * this is looking for, and one added under a name that hides it is a change nobody wrote down.
+     * <p>So an arm added to {@link About} arrives here as a kind nobody has said anything about,
+     * and whoever adds it answers the question this test is named for: is a row owed at one? The
+     * answer may be yes. The decision is #967's and may be revisited; what it may not be is made
+     * without saying so.
      */
     @Test
-    void noKindOfGapIsAboutACombination() {
+    void everyKindOfGapIsOneOfTheseAndNoneIsAboutACombination() {
         List<String> every = new ArrayList<>();
         walk(About.class, every);
-        List<String> named = every.stream()
-                .filter(name -> name.toLowerCase(java.util.Locale.ROOT).contains("pair")
-                        || name.toLowerCase(java.util.Locale.ROOT).contains("combination"))
-                .toList();
 
-        assertEquals(List.of(), named,
-                "a gap about a combination is a row somebody is owed at one, which is what the"
-                        + " report says nobody is");
-        // And the walk found the kinds. A sweep over a seal that came back with nothing passes
-        // this whatever the arms are, which is the one way a check of this shape goes quietly
-        // wrong — and a sweep of the arms directly under it misses the ones an arm of its own
-        // holds.
-        assertEquals(16, every.size(),
-                () -> "the kinds of gap this compiler can find, which is what was swept: " + every);
+        // Two of them twice: a rule with no line and a rule nothing classified are each reached
+        // under two of the seals above, and the walk says so rather than folding what it found.
+        assertEquals(List.of(
+                "ACaseNoRowExpects", "ACaseNothingWasSeenToProduce", "ACaseNoRowAppliesItTo",
+                "AClassNoRowIsIn", "APointOfABorder", "APointOfADeclaredBorder",
+                "AnArmNoRowGoesThrough", "ARuleWithoutALine", "ARuleNothingClassified",
+                "AQuestionNothingAnswered", "ARuleWithoutALine", "ARuleNothingClassified",
+                "APositionThisCouldNotRead", "APositionNoLineDivides",
+                "APositionReadWiderThanItsRules", "APositionWhoseRulesWereNotReached"), every,
+                "a kind of gap this compiler finds that this law says nothing about");
     }
 
     /** Every kind under {@code from}, however many seals deep it is written. */

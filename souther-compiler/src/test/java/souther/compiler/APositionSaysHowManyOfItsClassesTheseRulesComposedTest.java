@@ -217,6 +217,58 @@ class APositionSaysHowManyOfItsClassesTheseRulesComposedTest {
                 () -> "every position is divided by its own rules: " + partition.pairs());
     }
 
+    /**
+     * And a position whose own relations the rows all reach is not raised by another's.
+     *
+     * <p>Three positions, and what is unknown is between two of them. A position wider than its
+     * rules separate is nothing to weigh where every relation it is in was reached: what makes one
+     * worth a reader's time is that some of what it carries is out of every row's reach, and that
+     * is a fact about a relation. Read off the space, a position covered throughout would be raised
+     * because two others left something unknown.
+     */
+    @Test
+    void aPositionWhoseOwnRelationsAreCoveredIsNotRaisedByAnothers() {
+        var compilation = compiled("""
+                module example.three
+
+                data Yes
+                data No
+                data Flag = Yes | No
+
+                data A1
+                data A2
+                data A3
+                data Wide = A1 | A2 | A3
+
+                data Ok = { n: Int }
+
+                behavior judge : (a: Flag, b: Flag, c: Wide) -> Ok
+                    constructs Ok
+
+                let judge (a, b, c) = Ok { n = 0 }
+
+                example judge
+                    | (Yes, Yes, A1) -> Ok { n = 0 }
+                    | (Yes, No, A2) -> Ok { n = 0 }
+                    | (Yes, Yes, A3) -> Ok { n = 0 }
+                    | (No, Yes, A1) -> Ok { n = 0 }
+                    | (No, No, A2) -> Ok { n = 0 }
+                    | (No, Yes, A3) -> Ok { n = 0 }
+                """);
+        var partition = compilation.db()
+                .ask(new Adequacy.Coverage("example.three")).value().get("judge");
+        List<String> raised = ReaderDisposition
+                .widerThanTheyAreSeparated(partition.pairs(), partition.axes()).stream()
+                .map(each -> each.at().term()).toList();
+
+        // Every relation `a` is in was reached, and `b` and `c` leave one between them unknown.
+        assertFalse(raised.contains("a"),
+                () -> "every relation `a` takes part in is covered, so it is not raised: "
+                        + raised + " over " + partition.pairs());
+        assertTrue(raised.contains("b") && raised.contains("c"),
+                () -> "the two that leave a relation unknown are raised: " + raised);
+    }
+
     private static Compilation compiled(String model) {
         return Compiler.analyzedModules(List.of(model), ModulePath.EMPTY, new ArrayList<>(),
                 Adequacy.Asked.fullReport());

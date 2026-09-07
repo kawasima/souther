@@ -5,6 +5,7 @@ import souther.compiler.query.NotMeasuredReason;
 import souther.compiler.query.PartitionEvidence;
 import souther.compiler.publish.WeakeningVocabulary;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -160,23 +161,47 @@ public sealed interface ReaderDisposition {
      */
     static ReaderDisposition of(PartitionEvidence.PairSpace pairs,
                                 List<PartitionEvidence.AxisCoverage> axes) {
-        if (pairs.counted().made().isEmpty() || pairs.unknown() == 0) {
-            return new Settled();
+        return widerThanTheyAreSeparated(pairs, axes).isEmpty()
+                ? new Settled()
+                : new ReconsiderWhatThisBehaviorNeedsToDistinguish(new Subject.OfABehavior(
+                        widerThanTheyAreSeparated(pairs, axes).getFirst().at().behavior()));
+    }
+
+    /**
+     * The positions a behavior takes wider than its own rules separate, and whose classes take part
+     * in a relation no row reaches.
+     *
+     * <p>Both halves, and the second of them per relation. A position with more classes than the
+     * rules composed is nothing to weigh where every relation it is in was reached: what makes it
+     * worth a reader's time is that some of what it carries is out of every row's reach, and that
+     * is a fact about one relation and not about the space. Asked of the space, a position whose
+     * own relations are all covered would be raised because another two positions left something
+     * unknown.
+     *
+     * <p>Here rather than beside the sentence that prints them. The line under a behavior's
+     * combinations and the decision this leaves a reader are one answer, and worked out twice they
+     * are two that can differ.
+     */
+    static List<PartitionEvidence.AxisCoverage> widerThanTheyAreSeparated(
+            PartitionEvidence.PairSpace pairs, List<PartitionEvidence.AxisCoverage> axes) {
+        if (pairs.counted().made().isEmpty()) {
+            return List.of();
         }
+        List<PartitionEvidence.AxisCoverage> out = new ArrayList<>();
         for (PartitionEvidence.AxisCoverage axis : axes) {
-            if (!axis.cutOrParted() && axis.divides().size() < axis.classes().size()
-                    && pairs.space().stream().anyMatch(pair ->
-                            pair.between().one().equals(axis.at())
-                                    || pair.between().other().equals(axis.at()))) {
-                // The behavior, and not whichever of its positions this walk reached first. A
-                // behavior may take more than one position wider than it separates, and a reader
-                // sent to one of them was sent to the one that happened to be handed over first.
-                // Which positions those are is said on the positions, a line each.
-                return new ReconsiderWhatThisBehaviorNeedsToDistinguish(
-                        new Subject.OfABehavior(axis.at().behavior()));
+            if (axis.cutOrParted() || axis.divides().size() >= axis.classes().size()) {
+                continue;
+            }
+            for (PartitionEvidence.PairSpace.AxisPair pair : pairs.space()) {
+                boolean here = pair.between().one().equals(axis.at())
+                        || pair.between().other().equals(axis.at());
+                if (here && pairs.unknown(pair) > 0) {
+                    out.add(axis);
+                    break;
+                }
             }
         }
-        return new Settled();
+        return List.copyOf(out);
     }
 
     /** What the weakening behind an entry is called, asked of the one projection that names it. */
