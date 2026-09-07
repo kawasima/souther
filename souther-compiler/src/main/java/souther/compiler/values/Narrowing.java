@@ -56,8 +56,11 @@ final class Narrowing<A> {
     private Closure<A> from(Domains<A> domains) {
         Set<Provenance.Removal<A>> taken = new LinkedHashSet<>();
         Domains<A> here = domains;
-        // A reading handed in with a block already holding nothing is that block's own answer and
-        // not something a round found, so it is answered with nothing taken.
+        // A block already holding nothing before any round has run. Answered here because the rule
+        // a round applies is about what a neighbour leaves room for, and a block holding nothing
+        // leaves room for no value at all — so a round reading one would take every value from
+        // every neighbour of it, and what came back would be blocks the relation does not empty.
+        // Nothing is carried, since no round took anything.
         if (here.holdNothingSomewhere()) {
             return new Closure.Contradicted<>(here.leftNothing(), Provenance.nothing());
         }

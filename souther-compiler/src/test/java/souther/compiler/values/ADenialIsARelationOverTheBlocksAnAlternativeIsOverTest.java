@@ -323,11 +323,12 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         Apartness<String> triangle = Apartness.of("p", "q")
                 .and(Apartness.of("q", "r")).and(Apartness.of("r", "p"));
 
-        assertEquals(Set.of(Set.of(P, Q, R)), triangle.everySetWorthWalkingFor().orElseThrow(),
+        assertEquals(List.of(Set.of(P, Q, R)), triangle.everySetWorthWalkingFor().orElseThrow(),
                 "one set, and not every part of it nor every order its blocks come in");
 
         Apartness<String> chain = Apartness.of("p", "q").and(Apartness.of("q", "r"));
-        assertEquals(Set.of(Set.of(P, Q), Set.of(Q, R)), chain.everySetWorthWalkingFor().orElseThrow(),
+        assertEquals(Set.of(Set.of(P, Q), Set.of(Q, R)),
+                new LinkedHashSet<>(chain.everySetWorthWalkingFor().orElseThrow()),
                 "and a chain is two of them, neither of which the other holds");
     }
 
@@ -387,7 +388,9 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         RelationalLack<String> shown = refusedBy(butOne.reduce(holding(java.util.Map.of())));
         assertInstanceOf(RelationalLack.NoAssignmentTellsThemApart.class, shown,
                 "which the walk is as cheap on, so it is counted too");
-        assertEquals(named.size(), shown.blocks().size(), "and the lack is about all of them");
+        Set<Sameness.Block<String>> every = new LinkedHashSet<>();
+        named.forEach(position -> every.add(Sameness.Block.of(position)));
+        assertEquals(every, shown.blocks(), "and the lack is about all of them");
     }
 
     /**

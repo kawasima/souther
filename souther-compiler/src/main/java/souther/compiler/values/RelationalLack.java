@@ -141,9 +141,17 @@ public sealed interface RelationalLack<A> {
      * relation is asked about: a lack at one block is that block's own answer and is reached before
      * anything asks what the denials between blocks come to.
      *
-     * @param blocks the blocks an assignment was looked for over, which are those whose values are
-     *               written down: a block holding more of them than the relation has blocks was
-     *               never going to run out and is not part of what has nothing
+     * <p><b>Shown of blocks an assignment was looked for over, or of blocks holding a set that was
+     * looked over.</b> Three arguments reach this. A search over the whole relation runs out; a
+     * matching over blocks all stated to differ runs out, where a count of their values came out
+     * even and some part of them is short all the same; and blocks that several such sets are
+     * short of together are refused by any one of those sets being short. So what the blocks are is
+     * that no assignment gives all of them values telling every stated pair apart, and not that
+     * each of them was a step of one walk.
+     *
+     * @param blocks the blocks no assignment tells apart, which are those whose values are written
+     *               down: a block holding more of them than the relation has blocks was never going
+     *               to run out and is not part of what has nothing
      */
     record NoAssignmentTellsThemApart<A>(
             Set<Sameness.Block<A>> blocks) implements RelationalLack<A> {

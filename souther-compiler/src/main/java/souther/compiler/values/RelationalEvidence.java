@@ -44,9 +44,4 @@ public record RelationalEvidence<A>(Provenance<A> takenAway) {
     public <B> RelationalEvidence<B> renamed(Function<A, B> naming) {
         return new RelationalEvidence<>(takenAway.renamed(naming));
     }
-
-    /** Whether nothing was read beyond the blocks a lack names. */
-    public boolean isNone() {
-        return takenAway.removals().isEmpty();
-    }
 }

@@ -392,15 +392,21 @@ public final class Apartness<A> {
      * the sets it happened to reach would decide a declaration by how far it got, and the same
      * relation written the other way round would be answered differently.
      *
-     * <p>A set of them and not a list. Which of these a walk reaches first is a fact about the
-     * walk, so an order over them is an order a reader could take an answer from — and what a
-     * reader wants of them is every one, which is what a set is.
+     * <p>Which of these a walk reaches first is a fact about the walk, so nothing may read the
+     * order they come in. They are handed back in one all the same: each is reached once, so there
+     * is nothing for a set to do but hash every one of them against every other — and a set of
+     * blocks hashes as the sum of what it holds, which is a figure the subsets of one relation
+     * share. Measured on the shape the bound above admits, that is thirty times what the walk
+     * itself costs.
+     *
+     * <p>So what keeps the order out of an answer is the reading that takes these, which collects
+     * what it finds rather than stopping at the first of them.
      */
-    Optional<Set<Set<Sameness.Block<A>>>> everySetWorthWalkingFor() {
+    Optional<List<Set<Sameness.Block<A>>>> everySetWorthWalkingFor() {
         return extent().admitsCounting() ? Optional.of(everyPairwiseApartSet()) : Optional.empty();
     }
 
-    private Set<Set<Sameness.Block<A>>> everyPairwiseApartSet() {
+    private List<Set<Sameness.Block<A>>> everyPairwiseApartSet() {
         Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart = new LinkedHashMap<>();
         for (Edge<A> edge : edges) {
             if (edge.isOfOneBlock()) {
@@ -409,10 +415,10 @@ public final class Apartness<A> {
             apart.computeIfAbsent(edge.one(), _ -> new LinkedHashSet<>()).add(edge.other());
             apart.computeIfAbsent(edge.other(), _ -> new LinkedHashSet<>()).add(edge.one());
         }
-        Set<Set<Sameness.Block<A>>> found = new LinkedHashSet<>();
+        List<Set<Sameness.Block<A>>> found = new ArrayList<>();
         grow(new LinkedHashSet<>(), new LinkedHashSet<>(apart.keySet()), new LinkedHashSet<>(),
                 apart, found);
-        return Collections.unmodifiableSet(found);
+        return Collections.unmodifiableList(found);
     }
 
     /**
@@ -432,7 +438,7 @@ public final class Apartness<A> {
     private void grow(Set<Sameness.Block<A>> sofar, Set<Sameness.Block<A>> may,
                       Set<Sameness.Block<A>> taken,
                       Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart,
-                      Set<Set<Sameness.Block<A>>> found) {
+                      List<Set<Sameness.Block<A>>> found) {
         if (may.isEmpty()) {
             if (taken.isEmpty() && sofar.size() > 1) {
                 found.add(Collections.unmodifiableSet(new LinkedHashSet<>(sofar)));
@@ -686,7 +692,7 @@ public final class Apartness<A> {
      * they are said by — and a set that shares a block with none is said as the shortage it is.
      */
     private Set<RelationalLack<A>> counting(Domains<A> left) {
-        Optional<Set<Set<Sameness.Block<A>>>> walked = everySetWorthWalkingFor();
+        Optional<List<Set<Sameness.Block<A>>>> walked = everySetWorthWalkingFor();
         if (walked.isEmpty()) {
             return Set.of();
         }
@@ -845,7 +851,7 @@ public final class Apartness<A> {
             }
 
             /** These lacks, shown of blocks the argument read and did not name. */
-            Nothing(Set<RelationalLack<A>> lacks) {
+            public Nothing(Set<RelationalLack<A>> lacks) {
                 this(lacks, RelationalEvidence.none());
             }
         }
