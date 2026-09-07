@@ -2928,7 +2928,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // every document since the fifth version has carried — and what is new is the facts that
         // word is open on, which is a second thing to read and not a different spelling of the
         // first.
-        keptOpenBy(root);
+        keptOpenBy(root, sources);
         ArrayNode modulesOut = root.putArray("modules");
         for (ModuleReport module : modules) {
             ObjectNode m = modulesOut.addObject();
@@ -3982,7 +3982,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * what keeps the status undetermined, so a satisfied model has none and a refused one has none
      * either — a build refused over a gap has a verdict, whatever else went unmeasured.
      */
-    private void keptOpenBy(ObjectNode root) {
+    private void keptOpenBy(ObjectNode root, DocumentSources sources) {
         ArrayNode out = root.putArray("keptOpenBy");
         List<PublishedOpening> said = new ArrayList<>();
         for (AdequacyOpening each : whatKeepsTheVerdictOpen()) {
@@ -3991,14 +3991,84 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // measure has no number — so a reader meets one vocabulary and not two.
             Optional<NotMeasuredWord> why = each instanceof AdequacyOpening.NotMeasured it
                     ? Optional.of(NotMeasuredWord.of(it.why())) : Optional.empty();
-            said.add(new PublishedOpening(kindOf(each), why, each.runSensitivity()));
+            said.add(new PublishedOpening(kindOf(each), why, each.runSensitivity(),
+                    publishedSubject(each.subject(), sources)));
         }
         for (PublishedOpening each : PublicationOrders.WHAT_HOLDS_A_VERDICT_OPEN
                 .arrange(said).written()) {
             ObjectNode fact = out.addObject();
             fact.put("kind", kindWord(each.kind()));
+            // What it is about, under a word of its own rather than under `subject`. This document
+            // already calls two other things that: what a standing question asks about, and what an
+            // incompleteness is attributed to. Neither is this, and neither is shaped like it.
+            about(fact.putObject("about"), each.about());
             each.reason().ifPresent(reason -> fact.put("reason", word(reason)));
             fact.put("runSensitivity", word(each.runSensitivity()));
+        }
+    }
+
+    /**
+     * One subject, written out.
+     *
+     * <p>A {@code switch} with no {@code default}, for the reason the projection above has none.
+     * What each arm writes is what that arm holds and no more: a shape with every field of every
+     * kind would leave a consumer reading which of them are filled in to find out what it has.
+     */
+    private static void about(ObjectNode into, PublishedSubject about) {
+        into.put("kind", word(about.kind()));
+        switch (about) {
+            case PublishedSubject.OfAModule it -> into.put("module", it.module());
+            case PublishedSubject.OfABehavior it -> into.put("behavior", it.behavior());
+            case PublishedSubject.OfASource it -> into.put("source", it.source());
+            case PublishedSubject.OfARow it -> {
+                into.put("behavior", it.behavior());
+                into.put("source", it.source());
+                if (it.name() == null) {
+                    into.put("ordinal", it.ordinal());
+                } else {
+                    into.put("name", it.name());
+                }
+            }
+            case PublishedSubject.AtASpelledPosition it -> {
+                into.put("behavior", it.behavior());
+                into.put("path", it.path());
+            }
+            case PublishedSubject.AtAPosition it -> {
+                into.put("behavior", it.behavior());
+                into.put("path", it.path());
+                into.put("positionId", it.positionId());
+            }
+            case PublishedSubject.AtAnInput it -> {
+                into.put("behavior", it.behavior());
+                into.put("at", it.at());
+            }
+            case PublishedSubject.AtARule it -> {
+                into.put("at", it.at());
+                into.set("ruleId", it.ruleId());
+            }
+            case PublishedSubject.AtABorder it -> {
+                into.put("label", it.label());
+                into.set("ruleId", it.line());
+            }
+            case PublishedSubject.AtAPoint it -> into.set("obligationId", it.obligationId());
+            case PublishedSubject.AtAFork it -> {
+                into.put("module", it.module());
+                into.set("writtenBy", it.writtenBy());
+                into.put("construct", it.construct());
+                into.put("lowered", it.lowered());
+                into.put("said", it.said());
+            }
+            case PublishedSubject.AtAnArm it -> into.set("armId", it.armId());
+            case PublishedSubject.OfAMeasure it -> {
+                into.put("module", it.module());
+                into.put("behavior", it.behavior());
+                into.put("measure", word(it.measure()));
+            }
+            case PublishedSubject.OfAnAxisMeasure it -> {
+                into.put("module", it.module());
+                into.put("behavior", it.behavior());
+                into.put("axis", it.axis());
+            }
         }
     }
 
