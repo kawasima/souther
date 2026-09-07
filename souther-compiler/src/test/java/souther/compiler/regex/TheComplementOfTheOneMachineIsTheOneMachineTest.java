@@ -31,6 +31,16 @@ class TheComplementOfTheOneMachineIsTheOneMachineTest {
         return new Meter(100_000, 10_000_000);
     }
 
+    private static Automaton canonicalMachineOf(String regex, Meter meter) {
+        PatternSyntax syntax =
+                assertInstanceOf(PatternRead.Read.class, PatternParser.read(regex), regex).syntax();
+        Automaton made = Automaton.of(syntax, meter);
+        assertNotNull(made, regex);
+        Automaton one = made.canonical(meter);
+        assertNotNull(one, regex);
+        return one;
+    }
+
     private static Language language(String regex, Meter meter) {
         PatternSyntax syntax =
                 assertInstanceOf(PatternRead.Read.class, PatternParser.read(regex), regex).syntax();
@@ -40,26 +50,47 @@ class TheComplementOfTheOneMachineIsTheOneMachineTest {
     }
 
     /**
-     * What a complement of the one machine costs is the states it turned over.
+     * What a complement of the one machine costs is nothing.
      *
-     * <p>Made deterministic first, it would be the subsets as well — a machine of the same states
-     * discovered a second time, and charged for. The meter is what says which happened: it counts
-     * where the states are made, so a construction that made them twice spent twice.
+     * <p>A meter counts the states a construction makes, and this one makes none: the steps are the
+     * steps that were there and so is what each is numbered, and the answer to where a walk may
+     * stop is what is built. Made deterministic first, it would be the subsets and then a machine
+     * written out of them — the same states discovered a second time and charged for both.
      */
     @Test
-    void turningTheStatesOverCostsTheStatesAndNothingElse() {
+    void turningTheStatesOverCostsNothing() {
         Meter meter = roomy();
-        PatternSyntax syntax = assertInstanceOf(PatternRead.Read.class,
-                PatternParser.read("[ab]+"), "[ab]+").syntax();
-        Automaton one = Automaton.of(syntax, meter).canonical(meter);
-        assertNotNull(one);
+        Automaton one = canonicalMachineOf("[ab]+", meter);
         int before = meter.left();
 
         Automaton turned = one.not(meter);
 
         assertNotNull(turned);
         assertEquals(one.size(), turned.size(), "the same states");
-        assertEquals(one.size(), before - meter.left(), "and the states are what it spent");
+        assertEquals(before, meter.left(), "and none of them was made, so none was charged");
+    }
+
+    /**
+     * And it is made where there is nothing left to make a state with.
+     *
+     * <p>Which is the half a reader has to be able to see. A construction that shares what it was
+     * handed is not one an allowance has anything to say about, and a complement asked for with
+     * nothing left is answered — where charging it for the states it did not make would refuse an
+     * answer that costs this compiler nothing.
+     */
+    @Test
+    void aComplementIsMadeWithNothingLeftToMakeAStateWith() {
+        // As much in all as one machine may hold, so that what is left can be taken in one ask.
+        Meter meter = new Meter(100_000, 100_000);
+        Automaton one = canonicalMachineOf("[ab]+", meter);
+        // Everything the meter had, so that a state asked for now is refused.
+        assertTrue(meter.making().states(meter.left()), "the allowance is spent down to nothing");
+        assertEquals(0, meter.left());
+
+        Automaton turned = one.not(meter);
+
+        assertNotNull(turned, "the complement is still answered");
+        assertEquals(one.size(), turned.size());
     }
 
     /**
@@ -72,10 +103,7 @@ class TheComplementOfTheOneMachineIsTheOneMachineTest {
     @Test
     void aComplementOfTheOneMachineNeedsNoMaking() {
         Meter meter = roomy();
-        PatternSyntax syntax = assertInstanceOf(PatternRead.Read.class,
-                PatternParser.read("[ab]+"), "[ab]+").syntax();
-        Automaton one = Automaton.of(syntax, meter).canonical(meter);
-        assertNotNull(one);
+        Automaton one = canonicalMachineOf("[ab]+", meter);
 
         Automaton turned = one.not(meter);
         Automaton again = turned == null ? null : turned.canonical(meter);

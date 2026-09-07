@@ -51,7 +51,8 @@ public final class Language {
      * compiler can afford to answer exactly, and a half-made answer handed out is one whose next
      * question does the rest of the work somewhere nobody is counting.
      *
-     * <p><b>The sequences no string is read as are taken out here, and nowhere else.</b> A machine
+     * <p><b>The sequences no string is read as are taken out by {@link #holdingOnlyStrings}, and
+     * nowhere else.</b> Every way to one of these ends there, this one and {@link #not}. A machine
      * steps over what a matcher reads, and a high surrogate followed by a low one is one symbol
      * rather than two — so there are sequences of symbols no string is written as, and a complement
      * holds them like anything else. Left in, two machines telling each other apart only over those
@@ -84,8 +85,9 @@ public final class Language {
      * sequences it stops on.
      *
      * <p>Beside {@link #canonical} rather than inside it, because there is a way to a canonical
-     * machine that is not a construction: see {@link #not}. What the two share is this, and the
-     * account of why it is done and where it is skipped is on {@link #canonical}.
+     * machine that is not a construction: see {@link #not}. Both end here, which is what makes this
+     * the one place the sequences come out; why they have to and where the walk is skipped is
+     * written on {@link #canonical}, which is where a reader arrives from.
      */
     private static Language holdingOnlyStrings(Automaton one, Meter meter) {
         if (!one.mayStopHavingReadALoneSurrogatePair()) {
@@ -170,7 +172,7 @@ public final class Language {
      * canonical again, the construction would arrive where it started, having paid for the walk.
      *
      * <p>The sequences no string is read as still have to come out. A complement holds them like
-     * anything else, and that is where this spends what it spends.
+     * anything else, which is why this ends where every other way to one of these ends.
      */
     public Language not(Meter meter) {
         Automaton turned = machine.not(meter);

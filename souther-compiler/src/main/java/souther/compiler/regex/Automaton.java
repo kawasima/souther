@@ -411,23 +411,26 @@ final class Automaton {
     /**
      * Everything it does not accept.
      *
-     * <p>The one operation that has to make the machine deterministic first, because what a walk
-     * ends in has to be one answer before the answer can be turned over. Acceptance never needs it,
-     * and neither do the two questions about holding nothing and holding everything: a language is
-     * kept as {@link #canonical}, where being deterministic has already been paid for, and both are
-     * read off the one state such a machine has.
+     * <p><b>The states a walk may stop at, turned over.</b> Which is the whole of it where a walk
+     * is only ever in one state and every symbol takes it somewhere: a string ends in one state and
+     * every string ends somewhere, so the ones this does not accept are the ones ending where it
+     * does not stop. The steps do not move and neither does what each is numbered, so nothing is
+     * built and nothing is charged.
      *
-     * <p><b>Where it is already deterministic and complete, the states it stops at are turned over
-     * and nothing else happens.</b> A walk over such a machine ends in one state whatever it reads,
-     * and every string ends somewhere — so the strings it does not accept are the ones ending where
-     * it does not stop, and that is the same table with the other states stopped at. The steps do
-     * not move, which is why a caller holding the one machine for its strings ({@link #canonical})
-     * gets the one machine for the rest: what makes it the one machine is read off the steps and
-     * the walk that numbers them, and neither asks where a walk may stop.
+     * <p>Which is why a caller holding the one machine for its strings ({@link #canonical}) gets
+     * the one machine for the rest: what makes a machine that one is read off the steps and the
+     * walk that numbers them, and neither asks where a walk may stop.
+     *
+     * <p><b>And why anything else has to be made deterministic first.</b> What a walk ends in has
+     * to be one answer before the answer can be turned over, and a machine that steps for nothing
+     * or twice over a symbol has not said what a string ends in. That is the one place this
+     * construction is needed — acceptance never needs it, and neither do the two questions about
+     * holding nothing and holding everything, both of which are read off the one state a canonical
+     * machine has.
      */
     Automaton not(Meter meter) {
         if (everySymbolLeadsOneWay()) {
-            return turnedOver(meter.making());
+            return turnedOver();
         }
         try {
             Subsets subsets = new Subsets(meter.making());
@@ -490,12 +493,15 @@ final class Automaton {
         return true;
     }
 
-    /** The same machine with the states it stops at turned over — see {@link #not}. */
-    private Automaton turnedOver(Meter.Making making) {
-        // A state apiece and the count is known, the states being the ones already here.
-        if (!making.states(size())) {
-            return null;
-        }
+    /**
+     * The same machine with the states it stops at turned over — see {@link #not}.
+     *
+     * <p>Nothing is asked of an allowance, because no state is made. The steps are the steps that
+     * were already there and so is what each one is numbered, and what is built is the answer to
+     * one question about each of them. A meter counts the states a construction makes, and a
+     * construction that shares the ones it was handed made none.
+     */
+    private Automaton turnedOver() {
         BitSet stops = new BitSet();
         stops.set(0, size());
         stops.andNot(accepting);
@@ -866,10 +872,10 @@ final class Automaton {
     /**
      * The machine read as one where a walk is only ever in one state, made as it is asked for.
      *
-     * <p>Every question that needs a walk's end to be one answer comes through here: what a language
-     * leaves out, and whether it leaves anything out. Grown a subset at a time, because both of them
-     * usually have their answer within a step or two and the whole of a deterministic machine is
-     * what the worst case costs.
+     * <p>Where a machine has not already said what a string ends in, this is what says it: a
+     * complement of one that steps for nothing or twice over a symbol, and the one machine any
+     * language is kept as. Grown a subset at a time, because the whole of a deterministic machine
+     * is what the worst case costs and a walk usually meets far fewer.
      *
      * <p><b>Complete, the subset of no states among them.</b> A symbol with nowhere to go is a walk
      * that ends outside the language, and a machine that simply had no step there would leave every
