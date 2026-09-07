@@ -1,7 +1,9 @@
 package souther.compiler.report;
 
+import souther.compiler.coverage.SiteNumbering;
 import souther.compiler.observe.Target;
 import souther.compiler.partition.ClosureGap;
+import souther.compiler.query.Weakening;
 
 /**
  * What each thing a report can be about is about, projected to the one vocabulary a reader is sent
@@ -21,6 +23,46 @@ import souther.compiler.partition.ClosureGap;
 final class Subjects {
 
     private Subjects() {
+    }
+
+    /**
+     * Where one thing a measure went without leaves a reader.
+     *
+     * <p>Each arm answers with what it holds and no more. Five of them name a behavior and nothing
+     * else, and that is the fact's own identity rather than a shortage: what a measure of that
+     * behavior went without is one thing however many measures noticed it, and a subject naming the
+     * measure would make it as many facts as the behavior has measures.
+     *
+     * <p>What is not the subject is what happened. A border read in two ways is one line and two
+     * reasons; a position the walk did not reach into is one place and one of five stops. Those
+     * travel beside the subject, so the entries stay two and the reader is sent to one place.
+     */
+    static Subject of(Weakening cause) {
+        return switch (cause) {
+            // The fact is the incompleteness, and the incompleteness says which half of it is the
+            // place. Where it was met is evidence and is no part of either.
+            case Weakening.ObservationIncomplete it -> of(it.met().fact().target());
+            case Weakening.OutputCasesUnreadable it -> new Subject.OfABehavior(it.behavior());
+            // The input as well as the behavior. Two of a behavior's inputs whose cases could not
+            // be read are two facts, and the position among them is what says so.
+            case Weakening.InputCasesUnreadable it ->
+                    new Subject.AtAnInput(it.behavior(), it.at());
+            case Weakening.BorderValueUnreadable it -> new Subject.AtABorder(it.border());
+            case Weakening.ModelReadingIncomplete it -> of(it.cause());
+            case Weakening.BodiesNotElaborated it -> new Subject.OfAModule(it.module());
+            case Weakening.BoundaryNotDerived it -> new Subject.OfABehavior(it.behavior());
+            case Weakening.InputNotRead it -> new Subject.OfABehavior(it.behavior());
+            // The behavior, and not how large the space was or what it was walked against. Those
+            // are what the walk met and are the reason; a behavior has one pair space, so they
+            // tell no two of these apart.
+            case Weakening.PairSpaceTruncated it -> new Subject.OfABehavior(it.behavior());
+            // The arm, resolved where arms are named. The probe is the number a run through it was
+            // recorded at and says of itself that it is an address and not the arm's identity, so
+            // a reader handed the number would be sent to the vocabulary rather than to the place.
+            case Weakening.ProofContradicted it -> new Subject.AtAnArm(
+                    SiteNumbering.of(it.probe().numbering()).addressOf(it.probe()));
+            case Weakening.ArmsUnsettled it -> new Subject.AtAFork(it.fork());
+        };
     }
 
     /**

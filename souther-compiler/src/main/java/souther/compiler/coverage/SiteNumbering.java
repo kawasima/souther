@@ -67,6 +67,36 @@ public final class SiteNumbering {
         return new ArmProbe(identity, raw);
     }
 
+    /**
+     * The arm {@code probe} was issued for.
+     *
+     * <p>The way back across the crossing {@link #arm(int)} makes. A probe is where a run through
+     * an arm is recorded and says so: the number is the vocabulary a recording is written in, and
+     * which arm it is about is a place in a body. Both directions are the numbering's, and only one
+     * of them could be asked for — so a holder of a probe had what names the arm and no way to say
+     * it.
+     *
+     * <p>A probe and not a number, which is the whole of what this opens. Every probe was handed
+     * out by some numbering, so nothing here reaches an address that was not issued; a caller
+     * passing a bare number could invent one.
+     *
+     * <p>Refused where the probe is another numbering's, for the reason {@link #align} refuses a
+     * recording of one: a number means a place under the numbering that handed it out, and read
+     * under another it names a place the run was never near.
+     */
+    public SiteAddress.Arm addressOf(ArmProbe probe) {
+        if (!identity.equals(probe.numbering())) {
+            throw new IllegalArgumentException("a probe handed out by " + probe.numbering()
+                    + " is being read under " + identity
+                    + "; a number means a place under the numbering that handed it out");
+        }
+        if (!(at(probe.raw()) instanceof SiteAddress.Arm arm)) {
+            throw new IllegalStateException(probe.raw() + " is an arm probe and " + identity
+                    + " issued it for " + at(probe.raw()));
+        }
+        return arm;
+    }
+
     /** The same, for a comparison. */
     public ComparisonEmissionSite comparison(int raw) {
         if (!(at(raw) instanceof SiteAddress.Comparison)) {
