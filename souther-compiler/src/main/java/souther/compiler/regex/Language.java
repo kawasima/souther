@@ -76,9 +76,18 @@ public final class Language {
             return null;
         }
         Automaton one = made.canonical(meter);
-        if (one == null) {
-            return null;
-        }
+        return one == null ? null : holdingOnlyStrings(one, meter);
+    }
+
+    /**
+     * The strings {@code one} stops on, where {@code one} is already the one machine for the
+     * sequences it stops on.
+     *
+     * <p>Beside {@link #canonical} rather than inside it, because there is a way to a canonical
+     * machine that is not a construction: see {@link #not}. What the two share is this, and the
+     * account of why it is done and where it is skipped is on {@link #canonical}.
+     */
+    private static Language holdingOnlyStrings(Automaton one, Meter meter) {
         if (!one.mayStopHavingReadALoneSurrogatePair()) {
             return new Language(one);
         }
@@ -151,9 +160,21 @@ public final class Language {
         return canonical(machine.or(other.machine, meter), meter);
     }
 
-    /** The strings this does not hold, on the same terms. */
+    /**
+     * The strings this does not hold, on the same terms.
+     *
+     * <p><b>Not made canonical afterwards, because it arrives that way.</b> What is held here is
+     * the one machine for these strings, and the complement of such a machine is that machine with
+     * the states it stops at turned over ({@link Automaton#not}) — the steps are the same steps, so
+     * a machine already smallest and already numbered by a walk over its steps stays both. Made
+     * canonical again, the construction would arrive where it started, having paid for the walk.
+     *
+     * <p>The sequences no string is read as still have to come out. A complement holds them like
+     * anything else, and that is where this spends what it spends.
+     */
     public Language not(Meter meter) {
-        return canonical(machine.not(meter), meter);
+        Automaton turned = machine.not(meter);
+        return turned == null ? null : holdingOnlyStrings(turned, meter);
     }
 
     /**

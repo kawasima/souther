@@ -416,8 +416,19 @@ final class Automaton {
      * and neither do the two questions about holding nothing and holding everything: a language is
      * kept as {@link #canonical}, where being deterministic has already been paid for, and both are
      * read off the one state such a machine has.
+     *
+     * <p><b>Where it is already deterministic and complete, the states it stops at are turned over
+     * and nothing else happens.</b> A walk over such a machine ends in one state whatever it reads,
+     * and every string ends somewhere — so the strings it does not accept are the ones ending where
+     * it does not stop, and that is the same table with the other states stopped at. The steps do
+     * not move, which is why a caller holding the one machine for its strings ({@link #canonical})
+     * gets the one machine for the rest: what makes it the one machine is read off the steps and
+     * the walk that numbers them, and neither asks where a walk may stop.
      */
     Automaton not(Meter meter) {
+        if (everySymbolLeadsOneWay()) {
+            return turnedOver(meter.making());
+        }
         try {
             Subsets subsets = new Subsets(meter.making());
             Meter.Making making = meter.making();
@@ -441,6 +452,54 @@ final class Automaton {
         } catch (TooMany _) {
             return null;
         }
+    }
+
+    /**
+     * Whether a walk over this is only ever in one state, and every symbol takes it somewhere.
+     *
+     * <p>Asked of the machine and not of where it came from. A machine carries no account of what
+     * was done to it, and a reader that took one operation's word for the shape of its answer would
+     * be reading the caller rather than the thing in front of it.
+     *
+     * <p>The labels out of a state say both. Together they are every symbol there is, so nothing
+     * leads nowhere; and they are as wide apart as they are wide, so no symbol is on two of them.
+     * A step costing no symbol is a second state to be in and there are none of those either.
+     *
+     * <p>Those steps are looked for first, over the whole machine. A machine that has one is one
+     * this is going to say no about, and finding that out costs a length where the labels cost
+     * every symbol they hold — so what a pattern's machine pays to be turned down is a walk over
+     * the states and nothing more.
+     */
+    private boolean everySymbolLeadsOneWay() {
+        for (int[] each : free) {
+            if (each.length > 0) {
+                return false;
+            }
+        }
+        for (int at = 0; at < steps.size(); at++) {
+            CodePoints together = CodePoints.NONE;
+            long apart = 0;
+            for (Step each : steps.get(at)) {
+                together = together.or(each.over());
+                apart += each.over().size();
+            }
+            if (!together.isEverything() || apart != together.size()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** The same machine with the states it stops at turned over — see {@link #not}. */
+    private Automaton turnedOver(Meter.Making making) {
+        // A state apiece and the count is known, the states being the ones already here.
+        if (!making.states(size())) {
+            return null;
+        }
+        BitSet stops = new BitSet();
+        stops.set(0, size());
+        stops.andNot(accepting);
+        return new Automaton(steps, free, stops);
     }
 
     /**
