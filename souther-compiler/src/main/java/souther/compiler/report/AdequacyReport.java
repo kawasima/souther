@@ -4117,10 +4117,10 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case Subject.OfAModule it -> "module " + it.module();
             case Subject.OfABehavior it -> it.behavior();
             case Subject.OfASource it -> "source " + names.nameOf(it.source());
-            case Subject.OfARow it -> switch (it.row().identity()) {
-                case RowIdentity.Named named -> "row `" + named.name() + "` of " + it.row().behavior();
+            case Subject.OfARow it -> switch (it.rowRef().identity()) {
+                case RowIdentity.Named named -> "row `" + named.name() + "` of " + it.rowRef().behavior();
                 case RowIdentity.Unnamed unnamed ->
-                        "row " + unnamed.shown() + " of " + it.row().behavior();
+                        "row " + unnamed.shown() + " of " + it.rowRef().behavior();
             };
             case Subject.AtASpelledPosition it -> it.behavior() + "/" + it.path();
             case Subject.AtAPosition it -> it.behavior() + "/" + it.at();
@@ -4192,11 +4192,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // Named where the row has a name, and which of its behavior's rows in that source
             // where it has none: a row without a name says of itself that nothing outside this
             // compiler can address it by a number.
-            case Subject.OfARow it -> switch (it.row().identity()) {
-                case RowIdentity.Named named -> new PublishedSubject.OfARow(it.row().behavior(),
-                        sources.written(it.row().source()), named.name(), null);
+            case Subject.OfARow it -> switch (it.rowRef().identity()) {
+                case RowIdentity.Named named -> new PublishedSubject.OfARow(it.rowRef().behavior(),
+                        sources.written(it.rowRef().source()), named.name(), null);
                 case RowIdentity.Unnamed unnamed -> new PublishedSubject.OfARow(
-                        it.row().behavior(), sources.written(it.row().source()), null,
+                        it.rowRef().behavior(), sources.written(it.rowRef().source()), null,
                         unnamed.ordinal());
             };
             case Subject.AtASpelledPosition it ->

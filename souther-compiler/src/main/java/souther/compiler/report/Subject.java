@@ -61,7 +61,7 @@ public sealed interface Subject {
      * <p>Its own arm rather than the behavior it is a row of. Two rows of one behavior that did not
      * come back are two facts, and named by the behavior they would be one.
      */
-    record OfARow(RowRef row) implements Subject {}
+    record OfARow(RowRef rowRef) implements Subject {}
 
     /**
      * A position inside a behavior's input, as a path an author would recognise.
