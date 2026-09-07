@@ -83,7 +83,8 @@ class HowAlternativesRelateTwoPositionsIsPartOfWhatAReadingCostsTest {
                 List.of(1, 2, 0), List.of(2, 0, 1), List.of(2, 1, 0))) {
             Allowance<String> by = AsACompilationAllows.forAdmittedValues();
             List<AdmissibleValues<String>> read = List.of(related(false, by), related(true, by),
-                    AdmissibleValues.at("left", ValueSet.just(Value.text("x"))));
+                    PlannedValues.at("left", AdmittedPlan.of(ValueSet.just(Value.text("x"))))
+                            .resolve(by).values());
             AdmissibleValues<String> made =
                     AdmissibleValues.metAll(order.stream().map(read::get).toList(), by);
 

@@ -10,6 +10,8 @@ import souther.compiler.numeric.OrderedIntervals;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.Rel;
 import souther.compiler.values.AdmissibleValues;
+import souther.compiler.values.AdmittedPlan;
+import souther.compiler.values.PlannedValues;
 import souther.compiler.values.Value;
 import souther.compiler.values.ValueSet;
 
@@ -136,9 +138,15 @@ class WhetherAValueExistsIsAskedOfEveryDomainTest {
         souther.compiler.values.Allowance<FactSubject> sets =
                 souther.compiler.values.AsACompilationAllows.forAdmittedValues();
         return ConstraintState.<FactSubject>top().takingRead(Confinement.Worked.of(
-                AdmissibleValues.at(A_POSITION, ValueSet.just(Value.text("A")))
-                        .meet(AdmissibleValues.at(A_POSITION, ValueSet.just(Value.text("B"))),
-                                sets), OrderedIntervals.top(), Map.of()), sets);
+                says("A", sets).meet(says("B", sets), sets),
+                OrderedIntervals.top(), Map.of()), sets);
+    }
+
+    /** One rule about the position, worked out, which is how a reading is come by. */
+    private static AdmissibleValues<FactSubject> says(String text,
+            souther.compiler.values.Allowance<FactSubject> sets) {
+        return PlannedValues.at(A_POSITION, AdmittedPlan.of(ValueSet.just(Value.text(text))))
+                .resolve(sets).values();
     }
 
     private static ConstraintState<FactSubject> orderedAtBottom() {
@@ -154,7 +162,7 @@ class WhetherAValueExistsIsAskedOfEveryDomainTest {
         souther.compiler.values.Allowance<FactSubject> sets =
                 souther.compiler.values.AsACompilationAllows.forAdmittedValues();
         return ConstraintState.<FactSubject>top().takingRead(Confinement.Worked.of(
-                AdmissibleValues.at(A_POSITION, ValueSet.just(Value.text("A"))),
+                says("A", sets),
                 OrderedIntervals.at(A_POSITION, new OrderedInterval(
                         Endpoint.inclusive(souther.compiler.numeric.Text.of("B")), null)),
                 Map.of(A_POSITION, Carrier.TEXT)), sets);

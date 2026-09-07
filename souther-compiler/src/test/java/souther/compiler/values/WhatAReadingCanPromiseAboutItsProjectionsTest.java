@@ -39,8 +39,9 @@ class WhatAReadingCanPromiseAboutItsProjectionsTest {
     private static final Value ZERO = Value.text("0");
     private static final Value ONE = Value.text("1");
 
+    /** One rule worked out, which is how a reading of one position is come by. */
     private static AdmissibleValues<String> says(String atom, Value value) {
-        return AdmissibleValues.at(atom, ValueSet.just(value));
+        return built(plans(atom, value));
     }
 
     /** What puts the sets of these readings together. Every set here is values written out, so
@@ -145,7 +146,7 @@ class WhatAReadingCanPromiseAboutItsProjectionsTest {
     void aPositionNoLostCorrelationReachesKeepsItsPromise() {
         AdmissibleValues<String> one = built(pair(FIVE, ZERO).joinLive(pair(SIX, ONE)));
         AdmissibleValues<String> two = built(pair(FIVE, ZERO).joinLive(pair(SIX, ZERO)));
-        AdmissibleValues<String> apart = AdmissibleValues.at(C, ValueSet.just(ZERO));
+        AdmissibleValues<String> apart = says(C, ZERO);
 
         AdmissibleValues<String> all = one.meet(two, SETS).meet(apart, SETS);
 

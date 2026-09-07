@@ -43,11 +43,11 @@ class WhatIsGuaranteedIsNeverMoreThanWhatIsAdmittedTest {
     private static final Allowance<String> SETS = AsACompilationAllows.forAdmittedValues();
 
     private static AdmissibleValues<String> says(String atom, Value value) {
-        return AdmissibleValues.at(atom, ValueSet.just(value));
+        return built(plans(atom, value));
     }
 
     private static AdmissibleValues<String> unreadable(Set<String> named) {
-        return AdmissibleValues.unreadable(named, UnreadReason.FORM_NOT_READ);
+        return built(plansUnreadable(named));
     }
 
     private static Arguments made(String how, AdmissibleValues<String> state) {
@@ -101,9 +101,9 @@ class WhatIsGuaranteedIsNeverMoreThanWhatIsAdmittedTest {
                         built(plans(VALUE, A).meet(plans(OTHER, A))
                                 .joinLive(plans(VALUE, B).meet(plans(OTHER, B))))
                                 .meet(says(VALUE, A), SETS)),
-                made("heldApart", AdmissibleValues.heldApart(VALUE, OTHER)),
+                made("heldApart", built(PlannedValues.heldApart(VALUE, OTHER))),
                 made("meet with heldApart",
-                        says(VALUE, A).meet(AdmissibleValues.heldApart(VALUE, OTHER), SETS)),
+                        says(VALUE, A).meet(built(PlannedValues.heldApart(VALUE, OTHER)), SETS)),
                 made("join with heldApart",
                         built(plans(VALUE, A).joinLive(PlannedValues.heldApart(VALUE, OTHER)))),
                 made("join nested under a join",
@@ -146,7 +146,7 @@ class WhatIsGuaranteedIsNeverMoreThanWhatIsAdmittedTest {
      */
     @Test
     void aPositionHeldApartFromAnotherIsGuaranteedNothing() {
-        AdmissibleValues<String> apart = AdmissibleValues.heldApart(VALUE, OTHER);
+        AdmissibleValues<String> apart = built(PlannedValues.heldApart(VALUE, OTHER));
 
         assertEquals(ValueSet.NONE, apart.guaranteedAt(VALUE));
         assertEquals(ValueSet.NONE, apart.guaranteedAt(OTHER));
@@ -163,7 +163,8 @@ class WhatIsGuaranteedIsNeverMoreThanWhatIsAdmittedTest {
 
     static Stream<Arguments> admittingNothing() {
         return Stream.of(
-                made("a position left no value", AdmissibleValues.at(VALUE, ValueSet.NONE)),
+                made("a position left no value",
+                        built(PlannedValues.at(VALUE, AdmittedPlan.of(ValueSet.NONE)))),
                 made("two rules leaving nothing", says(VALUE, A).meet(says(VALUE, B), SETS)),
                 made("a meet under a wider one",
                         says(OTHER, A).meet(says(VALUE, A), SETS).meet(says(VALUE, B), SETS)),
@@ -217,8 +218,7 @@ class WhatIsGuaranteedIsNeverMoreThanWhatIsAdmittedTest {
         assertTrue(state.meet(says(OTHER, B), SETS).guaranteedTogether(),
                 "met with a rule about one position");
         assertTrue(state.meet(state, SETS).guaranteedTogether(), "and met with itself");
-        assertTrue(state.meet(AdmissibleValues.<String>unreadable(Set.of(VALUE),
-                UnreadReason.FORM_NOT_READ), SETS).guaranteedTogether(),
+        assertTrue(state.meet(unreadable(Set.of(VALUE)), SETS).guaranteedTogether(),
                 "and met with a rule nothing could read");
     }
 

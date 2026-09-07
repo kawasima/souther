@@ -142,7 +142,8 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
                         .anyAlternativeAdmits((_, _) -> Emptiness.NONEMPTY) == Emptiness.EMPTY,
                 "the choice states it, so an equality read beside it refuses");
         assertTrue(planned.resolve(sets).values()
-                        .meet(AdmissibleValues.holdingAsOne("p", "r"), sets).isBottom(),
+                        .meet(PlannedValues.<String>holdingAsOne("p", "r")
+                                .resolve(sets).values(), sets).isBottom(),
                 "and it is still stated once the values are worked out");
     }
 
@@ -268,8 +269,9 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
     @Test
     void aConjunctionEmptiedByItsRelationHoldsNothingAndSaysWhat() {
         Allowance<String> sets = AsACompilationAllows.forAdmittedValues();
-        AdmissibleValues<String> both = AdmissibleValues.<String>holdingAsOne("p", "r")
-                .meet(AdmissibleValues.heldApart("p", "r"), sets);
+        AdmissibleValues<String> both = PlannedValues.<String>holdingAsOne("p", "r")
+                .resolve(sets).values()
+                .meet(PlannedValues.<String>heldApart("p", "r").resolve(sets).values(), sets);
 
         assertTrue(both.isBottom(), "no value of these rules can be written");
 
