@@ -391,9 +391,10 @@ public final class Db implements StoreWork {
      * this answer was made. Asking each of them is what settles that, and each of those may settle
      * the same way without running anything.
      *
-     * <p>Every step of it is an {@link #ask}, which is where a store that was told to stop stops. So
-     * a verification walk is abandoned wherever it has got to, without this loop asking again on its
-     * own account.
+     * <p>Told to stop, it stops where it has got to. What it walks is a graph and what it does at
+     * each step may be nothing at all — a dependency another question has already verified is a
+     * lookup — so the step is this loop's, and asking is left to this loop rather than to what it
+     * calls.
      */
     private boolean stillHolds(Memo memo) {
         // Verification is not a read: a key being checked is not a dependency of whoever happened to
@@ -401,6 +402,11 @@ public final class Db implements StoreWork {
         frames.push(new LinkedHashSet<>());
         try {
             for (Key<?> read : memo.reads()) {
+                // Here, and not left to the ask below. A dependency already verified at this
+                // revision is answered before that one gets as far as asking, so a walk over a graph
+                // that another question has already been through would go the whole way without
+                // being asked once — which is the walk this is, most of the time.
+                abandonment.stopIfAsked();
                 ask(read);
                 Memo dependency = memos.get(read);
                 if (dependency == null || dependency.changedAt() > memo.verifiedAt()) {
@@ -436,6 +442,7 @@ public final class Db implements StoreWork {
     public List<Found> allReports() {
         Map<Told, Found> found = new LinkedHashMap<>();
         for (Key<?> key : spoke) {
+            abandonment.stopIfAsked();
             Memo memo = memos.get(key);
             if (memo == null || memo.verifiedAt() != revision) {
                 continue;

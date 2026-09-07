@@ -208,11 +208,14 @@ public final class LspServer {
     /**
      * Carries out what arrives, and diagnoses the workspace whenever nothing else is waiting.
      *
-     * <p>Which is the whole of the scheduling. A diagnose is what this thread does with a moment in
-     * which no client is waiting to be answered: it gives way to any message, and a run of keystrokes
-     * therefore costs one diagnose at the end of it rather than one each. What it does not do is
-     * guarantee it ever runs — a client that never stopped asking would never be told anything, and
-     * that is what asking without pause means, not a case to write a threshold for.
+     * <p>Which is the whole of the scheduling, and it has no exception in it. A diagnose is what this
+     * thread does with a moment in which nothing is waiting: it gives way to whatever arrives, so a
+     * run of keystrokes costs one diagnose at the end of it rather than one each, and once the stream
+     * has ended nothing more is published, because the end of a stream is something that arrived.
+     *
+     * <p>What it does not do is guarantee a diagnose ever runs — a client that never stopped asking
+     * would never be told anything, and that is what asking without pause means, not a case to write
+     * a threshold for.
      */
     private int carryOutWhatArrives() {
         while (true) {
@@ -227,13 +230,6 @@ public final class LspServer {
             switch (next) {
                 case Inbound.ReaderFailed failed -> throw new ConnectionLost(failed.cause());
                 case Inbound.EndOfInput _ -> {
-                    // The end of the stream asks for nothing, so a diagnose does not give way to it
-                    // and one that is still owed is carried out before the session ends. `exit` is
-                    // not this: that is a client saying stop now, and a server told to stop now has
-                    // nothing more to publish.
-                    if (diagnosticsAreStale) {
-                        diagnose();
-                    }
                     return exitCode();
                 }
                 case Inbound.Message message -> {
@@ -976,7 +972,7 @@ public final class LspServer {
      */
     private void diagnose() {
         diagnosticsAreStale = false;
-        stopWhen = inbox::aMessageIsWaiting;
+        stopWhen = inbox::anyWaiting;
         try {
             publishAll();
         } catch (Abandoned _) {

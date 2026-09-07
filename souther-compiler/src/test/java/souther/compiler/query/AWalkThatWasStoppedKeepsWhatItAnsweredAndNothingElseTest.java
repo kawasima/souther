@@ -3,6 +3,7 @@ package souther.compiler.query;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -81,8 +82,57 @@ class AWalkThatWasStoppedKeepsWhatItAnsweredAndNothingElseTest {
         assertEquals(1, INNER_RUNS.get(), "nor was anything under it");
     }
 
+    @Test
+    void theWalkIsStoppedPartWayThroughEvenWhereEveryStepLeftIsALookup() {
+        Db db = new Db();
+        db.set(new Untouched(), "first");
+        // Two questions over the same dependencies. Asking the second at a new revision is what
+        // leaves those dependencies verified there, so the first one's walk over them is a walk of
+        // lookups — the case where a stop that waited for something to be worked out never comes.
+        db.ask(new OverManyThings(1));
+        db.ask(new OverManyThings(2));
+        db.set(new Untouched(), "second");
+        db.ask(new OverManyThings(2));
+
+        db.abandonWhen(new Abandonment(new BooleanSupplier() {
+            private boolean walkHasBegun;
+
+            @Override
+            public boolean getAsBoolean() {
+                boolean wasAskedBefore = walkHasBegun;
+                walkHasBegun = true;
+                return wasAskedBefore;   // not yet as the walk begins; yes once it is under way
+            }
+        }));
+
+        assertThrows(Abandoned.class, () -> db.ask(new OverManyThings(1)),
+                "a walk of a graph another question has already been through is still a walk");
+    }
+
     /** An input this graph does not read, so setting it moves the revision and nothing else. */
     private record Untouched() implements Input<String> {
+    }
+
+    /** A question over enough dependencies that walking them is the work, and each is a lookup. */
+    private record OverManyThings(int which) implements Key<String> {
+
+        @Override
+        public Answer<String> compute(Db db) {
+            StringBuilder read = new StringBuilder();
+            for (int i = 0; i < 8; i++) {
+                read.append(db.ask(new OneThing(i)).value());
+            }
+            return Answer.of(read.toString());
+        }
+    }
+
+    /** Answers without reading anything, so it is verified by being looked at and nothing else. */
+    private record OneThing(int which) implements Key<String> {
+
+        @Override
+        public Answer<String> compute(Db db) {
+            return Answer.of("thing " + which);
+        }
     }
 
     /** Asks the inner question, and then a second one — which is where the stop falls. */

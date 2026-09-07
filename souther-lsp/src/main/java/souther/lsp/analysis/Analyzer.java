@@ -173,8 +173,15 @@ public final class Analyzer {
      */
     private Abandonment abandonment = Abandonment.NEVER;
 
-    /** What makes the work this analyzer does from now on stop short of its answer. Set as a unit of
-     * work begins, and read by everything that unit reaches — the compile's walk included. */
+    /**
+     * What makes the work this analyzer does from now on stop short of its answer. Set as a unit of
+     * work begins, and read by everything that unit reaches — the compile's walk included.
+     *
+     * <p>Asked at the turn of every walk over the workspace here, and not left to the store's own
+     * asking. A question already answered at this revision comes back without the store getting as
+     * far as asking, so a loop over every file that reads one each time would go the whole way
+     * without being asked once — and a loop over every file that parses one is the work itself.
+     */
     public void abandonWhen(Abandonment abandonment) {
         this.abandonment = abandonment;
     }
@@ -412,6 +419,7 @@ public final class Analyzer {
         Map<String, String> joining = new LinkedHashMap<>();
         Set<String> broken = new HashSet<>();
         for (String uri : graph.uris()) {
+            abandonment.stopIfAsked();
             String text = graph.text(uri);
             Reading reading = readingOf(uri, text);
             if (reading.parses()) {
@@ -1102,6 +1110,7 @@ public final class Analyzer {
 
         List<Location> out = new ArrayList<>();
         for (String u : graph.uris()) {
+            abandonment.stopIfAsked();
             String t = graph.text(u);
             boolean owns = definingModule.equals(moduleOf(compilation, graph, u));
             if (!owns && !definingModule.equals(importedFrom(t, name))) {
@@ -1391,6 +1400,7 @@ public final class Analyzer {
             declarationOf(compilation, target, graph).ifPresent(out::add);
         }
         for (String module : compilation.modules()) {
+            abandonment.stopIfAsked();
             String moduleUri = uriOf(compilation.sourceIdOf(module));
             for (Resolve.TypeUse use
                     : compilation.db().ask(new Names.UsesOf(module, target)).value()) {
@@ -1423,6 +1433,7 @@ public final class Analyzer {
             out.addAll(valueDeclarationsOf(compilation, target, uri, graph));
         }
         for (String module : compilation.modules()) {
+            abandonment.stopIfAsked();
             String moduleUri = uriOf(compilation.sourceIdOf(module));
             for (Resolve.ValueUse use
                     : compilation.db().ask(new Names.ValueUsesOf(module, target)).value()) {
@@ -1442,6 +1453,7 @@ public final class Analyzer {
                                            String definingModule, ModuleGraph graph,
                                            Map<String, List<Range>> byUri) {
         for (String u : graph.uris()) {
+            abandonment.stopIfAsked();
             String t = graph.text(u);
             SyntaxNode root = CstParser.parse(t).root();
             LineIndex lines = new LineIndex(t);
@@ -1723,6 +1735,7 @@ public final class Analyzer {
     public List<WorkspaceSymbol> workspaceSymbols(String query, ModuleGraph graph) {
         List<WorkspaceSymbol> found = new ArrayList<>();
         for (String uri : graph.uris()) {
+            abandonment.stopIfAsked();
             String text = graph.text(uri);
             if (text == null) {
                 continue;
@@ -2497,6 +2510,7 @@ public final class Analyzer {
             return declared;
         }
         for (String uri : graph.uris()) {
+            abandonment.stopIfAsked();
             if (moduleName.equals(Compiler.moduleNameFromHeader(graph.text(uri)))) {
                 return uri;
             }

@@ -13,6 +13,11 @@ import java.util.function.BooleanSupplier;
  * <p>Asking is not a place to do anything else. A supplier that throws is throwing what the work
  * should stop for, and this passes it through: the caller that built this decides both what stopping
  * means and what stopping raises.
+ *
+ * <p>Where to ask is once per turn of a walk, and not once per operation that looks expensive. What
+ * costs is enumerating, and a walk enumerating a thousand things that each cost nothing costs as
+ * much as one enumerating a thousand that each cost something. A step that goes on to call something
+ * which asks is covered; a step that may do nothing at all is not, and is where the asking has to be.
  */
 public final class Abandonment {
 
