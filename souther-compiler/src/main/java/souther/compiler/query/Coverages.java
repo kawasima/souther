@@ -498,7 +498,7 @@ final class Coverages {
         }
         SequencedMap<PartitionEvidence.PairSpace.Between, Integer> counts = new LinkedHashMap<>();
         reached.forEach((between, in) -> counts.put(between, in.size()));
-        PartitionEvidence.PairSpace.Reached made = new PartitionEvidence.PairSpace.Reached(counts);
+        PartitionEvidence.PairSpace.CoveredBetween made = new PartitionEvidence.PairSpace.CoveredBetween(counts);
         WeakeningSet by = readings.weakening(read);
         return new PartitionEvidence.PairSpace(space, by.isEmpty()
                 ? new Measurement.Complete<>(made) : new Measurement.Partial<>(made, by));

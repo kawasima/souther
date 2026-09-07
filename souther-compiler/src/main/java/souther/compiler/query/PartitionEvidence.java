@@ -510,7 +510,7 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
      * kept in step with a status beside it (#951 added the check that did it). A space too large to
      * walk is now said once, as what weakened the measurement.
      */
-    public record PairSpace(List<AxisPair> space, Measurement<Reached> counted) {
+    public record PairSpace(List<AxisPair> space, Measurement<CoveredBetween> counted) {
 
         /**
          * Both sides are over one set of pairs, in one order, and this is what says so.
@@ -523,7 +523,7 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
         public PairSpace {
             space = List.copyOf(space);
             List<Between> asked = space.stream().map(AxisPair::between).toList();
-            for (Reached made : counted.made().stream().toList()) {
+            for (CoveredBetween made : counted.made().stream().toList()) {
                 if (!List.copyOf(made.byPair().sequencedKeySet()).equals(asked)) {
                     throw new IllegalArgumentException(
                             "a count of the pairs is a count of these pairs, in this order: "
@@ -565,6 +565,10 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
         /**
          * What the rows reached of the space, where anybody counted.
          *
+         * <p>Named for what it holds and not for what the position measure beside it calls its
+         * own count: one file with two {@code Reached} in it is two things a reader has to keep
+         * apart by where they are written.
+         *
          * <p>Per pair, because that is what was counted: a row sits in the combinations of each
          * relation it reaches, and a sum of them is an answer about no relation in particular.
          *
@@ -573,9 +577,9 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
          * outside — so {@link PairSpace#unknown()} answers that, and nothing here keeps a second
          * copy of the sizes to answer it from.
          */
-        public record Reached(SequencedMap<Between, Integer> byPair) {
+        public record CoveredBetween(SequencedMap<Between, Integer> byPair) {
 
-            public Reached {
+            public CoveredBetween {
                 byPair = Collections.unmodifiableSequencedMap(new LinkedHashMap<>(byPair));
             }
 
@@ -607,7 +611,7 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
         }
 
         public static final PairSpace NONE = new PairSpace(List.of(),
-                new Measurement.Complete<>(new Reached(new LinkedHashMap<>())));
+                new Measurement.Complete<>(new CoveredBetween(new LinkedHashMap<>())));
 
         /** A space nobody counted. It keeps its pairs, which the model settles, and has no counts. */
         public static PairSpace noRows(List<AxisPair> space) {
@@ -637,7 +641,7 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
                                           int limit) {
             SequencedMap<Between, Integer> none = new LinkedHashMap<>();
             space.forEach(pair -> none.put(pair.between(), 0));
-            return new PairSpace(space, new Measurement.Partial<>(new Reached(none),
+            return new PairSpace(space, new Measurement.Partial<>(new CoveredBetween(none),
                     WeakeningSet.of(new Weakening.PairSpaceTruncated(behavior, size, limit))));
         }
 
@@ -660,7 +664,7 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
          * zero would be the thing this type was introduced to remove — a reader would get an answer
          * and no sign that nobody measured it.
          */
-        public Reached counts() {
+        public CoveredBetween counts() {
             return counted.made().orElseThrow(() -> new IllegalStateException(
                     "a pair space nobody counted was read for its counts"));
         }
@@ -693,7 +697,7 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
         /** Whether a single ratio would say anything. With unknowns in the denominator it would not,
          *  and a measurement that is not complete has them whether or not they were counted. */
         public boolean decided() {
-            return counted instanceof Measurement.Complete<Reached> && unknown() == 0;
+            return counted instanceof Measurement.Complete<CoveredBetween> && unknown() == 0;
         }
     }
 
