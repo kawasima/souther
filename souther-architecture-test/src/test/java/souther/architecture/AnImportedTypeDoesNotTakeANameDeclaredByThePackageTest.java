@@ -103,6 +103,20 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
     private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
 
     /**
+     * The repository's sources, parsed on the first question and kept for the rest.
+     *
+     * <p>What the rules here are about is one population, read the same way whichever of them is
+     * asking: every source under every root, as this compiler's own parser sees it. Parsing it
+     * where it is asked for makes that reading again for each of them, and what the second one
+     * costs is the whole of the first.
+     *
+     * <p>Kept as the parsed units and not as an answer, so each rule still reads them for itself.
+     * The units are immutable and the parse depends on nothing a test sets, so the reading a later
+     * question gets is the one it would have made.
+     */
+    private static List<Unit> sources;
+
+    /**
      * Every source this repository holds, and not its main sources alone.
      *
      * <p>The reversal is the same wherever it is written. A test in {@code souther.compiler.partition}
@@ -554,6 +568,14 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
 
     /** The sources this repository holds, read a root at a time. */
     private static List<Unit> repositorySources() {
+        if (sources == null) {
+            sources = parsedRepositorySources();
+        }
+        return sources;
+    }
+
+    /** The parse itself, which is what is worth doing once. */
+    private static List<Unit> parsedRepositorySources() {
         List<Unit> out = new ArrayList<>();
         JavaCompiler compiler = compiler();
         try (StandardJavaFileManager files =
