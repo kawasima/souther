@@ -62,10 +62,10 @@ public record ModelOccurrence(SourceConstructOrigin origin, ExpansionLineage lin
      * be written into that tree more than once, and each of those may or may not be numbered. They
      * are answered by different things so that none can be read off another.
      *
-     * <p>An envelope left open at the end is what says it: the construct stands inside an
-     * operation's own body, either because the operation takes no block or because this stands
-     * before the block it takes. A closed one says the operation's body reached the code its caller
-     * handed over, and what stands after that is the caller's again.
+     * <p>A copy of an operation left open at the end is what says it: the construct stands inside
+     * the operation's own body, either because the operation takes no block or because this stands
+     * before the block it takes. A crossing out of it says the operation's body reached the code
+     * that was handed over, and what stands after that belongs to whoever handed it.
      */
     public static java.util.Optional<ModelOccurrence> statedAt(ConstructOccurrence occurrence) {
         // A term with its places taken out is a key for comparing two readings of one body and not
