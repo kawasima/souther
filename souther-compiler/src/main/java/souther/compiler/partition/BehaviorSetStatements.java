@@ -128,9 +128,10 @@ public final class BehaviorSetStatements {
                                        BlockReason.RuleReadingStopped> filed) {
 
         public ForkOfItsOwn {
-            if (cited == null) {
+            if (cited == null || filed == null) {
                 throw new IllegalArgumentException(
-                        "a fork that states a rule is one of the model's, written somewhere");
+                        "a fork that states a rule is one of the model's, written somewhere,"
+                                + " with what went unread of it");
             }
             filed = java.util.Collections.unmodifiableSequencedMap(
                     new LinkedHashMap<>(filed));
@@ -360,7 +361,7 @@ public final class BehaviorSetStatements {
             // took in.
             List<Core> untaken = new ArrayList<>();
             for (Core atom : each.leftTo(java.util.Set.of())) {
-                if (!read.statesOneIn(atom)) {
+                if (!ComparisonReadings.turnsOnAPredicate(atom, read)) {
                     untaken.add(atom);
                 }
             }

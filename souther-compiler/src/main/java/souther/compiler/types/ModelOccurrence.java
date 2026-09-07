@@ -61,6 +61,14 @@ public record ModelOccurrence(SourceConstructOrigin origin, ExpansionLineage lin
      * handed over, and what stands after that is the caller's again.
      */
     public static java.util.Optional<ModelOccurrence> statedAt(ConstructOccurrence occurrence) {
+        // A term with its places taken out is a key for comparing two readings of one body and not
+        // a construct of the model ({@link Core#withoutItsPlace}). Refused rather than met further
+        // in: what such a walk would come back with is an answer about a node that says it stands
+        // nowhere, and every caller here is walking a tree whose places are still on it.
+        if (occurrence == null) {
+            throw new IllegalArgumentException(
+                    "a construct with no place is no occurrence of the model");
+        }
         Deque<ExpansionLineage.Expansion> open = new ArrayDeque<>();
         ExpansionLineage model = ExpansionLineage.ORIGINAL;
         for (ExpansionLineage.Expansion step : copiesIn(occurrence.lineage())) {

@@ -236,6 +236,30 @@ public final class OperationFacts {
                             new ElementLineage.Source<>(CONTAINER, 1)), SizeAgainstItsSource.AT_MOST))),
             about("Set", "map", maps(CONTAINER, SizeAgainstItsSource.AT_MOST)),
 
+            // Which side of an answer the closure decides, said and not read off a size. That a
+            // filter answers at most as many as it walked is the size fact above; that the
+            // closure's truth is why it answers fewer is this one, and a take or a distinct shows
+            // they are different statements — both answer at most as many, and neither of those
+            // asks a closure anything about it. So the edge is written for the operations whose
+            // answer the closure really does decide, and everything else says nothing.
+            //
+            // A mapping is the case this is for. `List.map` answers one per element whatever the
+            // closure said, so a rule written inside it decides what the answers are and not how
+            // many there are — and a fork on whether the mapping is empty turns on neither.
+            about("List", "filter", turnsOn(AnswerAspect.CARDINALITY)),
+            about("Set", "filter", turnsOn(AnswerAspect.CARDINALITY)),
+            about("Map", "filterEntries", turnsOn(AnswerAspect.CARDINALITY)),
+            about("List", "filterMap", turnsOn(AnswerAspect.CARDINALITY)),
+            // Two elements the closure sends to one key are one element of the answer, so how many
+            // it answers is what the closure made of them.
+            about("List", "distinctBy", turnsOn(AnswerAspect.CARDINALITY)),
+            // And the two whose whole answer is what the closure said of the elements.
+            about("List", "any", turnsOn(AnswerAspect.TRUTH)),
+            about("List", "all", turnsOn(AnswerAspect.TRUTH)),
+            // And a negation, whose whole answer is the truth of what it was given. Not a closure,
+            // which is why the fact names an argument rather than one kind of one.
+            about("Bool", "not", turnsOn(AnswerAspect.TRUTH, at(0))),
+
             // The containers a construction's result is never smaller than. A union answers one of
             // what both sides hold and an insert of something already there adds nothing, so
             // neither answers the sum of what it read; appending does, and stating it for that one
@@ -557,7 +581,18 @@ public final class OperationFacts {
         return new OperationFact.MeansTheSameAsASizeOfNought(ValueName.Stdlib.operation(module, size));
     }
 
+    /** What an argument decides, for the operations whose answer turns on it. */
+    private static OperationFact turnsOn(AnswerAspect aspect) {
+        return new OperationFact.TurnsOnWhatAnArgumentAnswers(aspect, new ArgumentRef.TheClosure());
+    }
+
+    /** The same, where the argument is not a closure. */
+    private static OperationFact turnsOn(AnswerAspect aspect, ArgumentRef argument) {
+        return new OperationFact.TurnsOnWhatAnArgumentAnswers(aspect, argument);
+    }
+
     /** The answer holds the very elements {@code source} held. */
+
     private static OperationFact keeps(ArgumentRef source, SizeAgainstItsSource size) {
         return new OperationFact.BuildsItsResultFrom(new BuiltFrom<>(
                 new ElementLineage.SameAs<>(new ElementLineage.Source<>(source, 1)), size));

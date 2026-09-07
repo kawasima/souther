@@ -9,7 +9,10 @@ import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleRef;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourceNameResolver;
+import souther.compiler.Compiler;
 import souther.compiler.diag.SourcePos;
+import souther.compiler.jvm.ClassFileImage;
+import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.BehaviorEvidence;
 import souther.compiler.query.BorderAssessment;
@@ -25,6 +28,7 @@ import souther.compiler.types.WrittenOwner;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -134,6 +138,10 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
     private static List<PublishedRuleHandle> everyHandle() {
         List<PublishedRuleHandle> out = new ArrayList<>(
                 everyShapeOfSentence().stream().map(PublishedRuleHandle::of).toList());
+        for (PublishedRuleKind kind : PublishedRuleKind.values()) {
+            out.add(new PublishedRuleHandle.ReachedOutOfSight(kind, "Int.clamp"));
+            out.add(new PublishedRuleHandle.ReachedOutOfSight(kind, "Int.abs"));
+        }
         return List.copyOf(out);
     }
 
@@ -179,35 +187,165 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
                         Citation.of(new SourcePos(10, 1, WHERE))),
                 new RuleCitation.WrittenAt(COMPARISON,
                         Citation.of(new SourcePos(9, 1)))));
+        for (Citation each : reachedFromHere()) {
+            out.add(new RuleCitation.WrittenAt(COMPARISON, each));
+            out.add(new RuleCitation.WrittenAt(PREDICATE, each));
+        }
         return List.copyOf(out);
     }
 
+    /**
+     * That the population varies each part of a sentence about code reached from here.
+     *
+     * <p>Said out loud because the sentence has three parts and only one of them varies by being
+     * put there: a handle is made of a citation and a rule, so the kind varies by pairing the same
+     * citation with both, and the place and what reaches it vary only if the compilation happened to
+     * offer two that differ. Left to happen, a comparison of that part could be dropped and this
+     * would stay green on whatever the fixture came back with.
+     */
+    @Test
+    void thePopulationVariesEachPartOfASentenceAboutCodeReachedFromHere() {
+        List<PublishedRuleHandle.Reached> reached = everyShapeOfSentence().stream()
+                .map(PublishedRuleHandle::of)
+                .filter(PublishedRuleHandle.Reached.class::isInstance)
+                .map(PublishedRuleHandle.Reached.class::cast).toList();
+
+        assertTrue(variedAlone(reached, Part.WHAT_THE_RULE_IS),
+                () -> "two that differ in what the rule is and in nothing else: " + reached);
+        assertTrue(reached.stream().map(Part.WHAT_REACHES_IT::of).distinct().count() > 1,
+                () -> "and two reached by different code: " + reached);
+    }
+
+    /**
+     * And each part of such a sentence on its own tells two handles apart.
+     *
+     * <p>Built here rather than taken from a compilation. Where the code is and what reaches it move
+     * together in what a compile offers — a second declaration is a second place — so a pair varying
+     * one of them alone is not something a model can be written to produce, and a property left to
+     * what a fixture happens to emit is a property about the fixture.
+     *
+     * <p>Which is the whole of what this adds: the parts a document writes are the parts the order
+     * is over, so dropping any one of them from the comparison makes two sentences a reader can tell
+     * apart into one value.
+     */
+    @Test
+    void eachPartOfSuchASentenceTellsTwoHandlesApart() {
+        PublishedRuleHandle.Place here =
+                new PublishedRuleHandle.Place.Unplaced(1, 1);
+        PublishedRuleHandle.Place there =
+                new PublishedRuleHandle.Place.Unplaced(2, 1);
+        PublishedRuleHandle.Reached said = new PublishedRuleHandle.Reached(
+                PublishedRuleKind.COMPARISON, here, "Int.clamp");
+
+        assertNotEquals(0, Integer.signum(said.compareTo(new PublishedRuleHandle.Reached(
+                        PublishedRuleKind.PREDICATE, here, "Int.clamp"))),
+                "what the rule is");
+        assertNotEquals(0, Integer.signum(said.compareTo(new PublishedRuleHandle.Reached(
+                        PublishedRuleKind.COMPARISON, there, "Int.clamp"))),
+                "where the code is");
+        assertNotEquals(0, Integer.signum(said.compareTo(new PublishedRuleHandle.Reached(
+                        PublishedRuleKind.COMPARISON, here, "Int.abs"))),
+                "and what reaches it");
+        assertEquals(0, said.compareTo(new PublishedRuleHandle.Reached(
+                        PublishedRuleKind.COMPARISON, here, "Int.clamp")),
+                "and two alike in every part are one value");
+    }
+
+    /**
+     * The parts of a sentence about code reached from here.
+     *
+     * <p>Named rather than passed as functions, so that "the rest" is the rest: two lambdas reading
+     * one part are two objects, and a walk that told them apart by identity would be asking whether
+     * every part differs.
+     */
+    private enum Part {
+
+        WHAT_THE_RULE_IS,
+
+        WHERE_THE_CODE_IS,
+
+        WHAT_REACHES_IT;
+
+        String of(PublishedRuleHandle.Reached said) {
+            return switch (this) {
+                case WHAT_THE_RULE_IS -> said.kind().word();
+                case WHERE_THE_CODE_IS -> said.at().toString();
+                case WHAT_REACHES_IT -> said.reachedBy();
+            };
+        }
+    }
+
+    /**
+     * Whether {@code these} hold two that differ in {@code part} and agree on the rest.
+     *
+     * <p>Agreeing on the rest is what makes the pair say something about that part. Two that differ
+     * everywhere are told apart by whichever part is compared first, so a projection that had
+     * dropped one of them would tell them apart all the same.
+     */
+    private static boolean variedAlone(List<PublishedRuleHandle.Reached> these, Part part) {
+        for (PublishedRuleHandle.Reached one : these) {
+            for (PublishedRuleHandle.Reached other : these) {
+                if (part.of(one).equals(part.of(other))) {
+                    continue;
+                }
+                boolean restAgrees = true;
+                for (Part each : Part.values()) {
+                    if (each != part && !each.of(one).equals(each.of(other))) {
+                        restAgrees = false;
+                    }
+                }
+                if (restAgrees) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 
     /**
      * The citations of code this compile reaches rather than holds, taken from a compilation.
      *
      * <p>Made where a source is placed, and only there. So this reads a model whose rules are in a
-     * library the compile did not open, and keeps what the readings offered — which is the one way
+     * module the compile did not open, and keeps what the readings offered — which is the one way
      * to have such a citation out here, and is what makes the arm this type has for one something
      * the property below is asked over.
+     *
+     * <p><b>A module put on the path, and not the standard library.</b> Which code stands in for
+     * somewhere else is decided by the text a body was quoted from being one this compile cannot
+     * show ({@code HelperInliner.whereTheBodyIs}) — any published module, not the one this compiler
+     * ships. A population taken from a model that only calls the library says nothing about the
+     * rest of that domain: the library writes its operations in this language, a reading of rules
+     * leaves those standing rather than taking them in, and a model built only of those has no such
+     * citation at all. So the module is built here and put on the path, which is the shape the
+     * domain actually has.
      */
     private static List<Citation> reachedFromHere() {
+        Map<String, ClassFileImage> published = Compiler.compile("""
+                module lib exposing ( big, small )
+
+                let big (n: Int): Bool = n > 10
+
+                let small (n: Int): Bool = n < 3
+                """);
         String model = """
                 module m
+
+                import lib ( big, small )
 
                 data Low
                 data Accepted = { at: Int }
 
-                behavior classify : (n: Int) -> Accepted | Low
+                behavior classify : (n: Int, m: Int) -> Accepted | Low
                     constructs Accepted
 
-                let classify (n) = {
-                    guard Int.clamp(0, 100, n) > 70 else Low
-                    guard Int.abs(n) > 3 else Low
+                let classify (n, m) = {
+                    guard big(n) else Low
+                    guard small(m) else Low
                     Accepted { at = n }
                 }
                 """;
-        Compilation compilation = Compilation.ofSource(model, "Main");
+        Compilation compilation =
+                Compilation.ofSources(List.of(model), ModulePath.of(published));
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         BehaviorEvidence behavior =
@@ -248,31 +386,14 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
                         PublishedRuleHandle.NumberedInvariant.class,
                         PublishedRuleHandle.NamedEnsures.class,
                         PublishedRuleHandle.WholeEnsures.class,
-                        PublishedRuleHandle.Written.class),
+                        PublishedRuleHandle.Written.class,
+                        PublishedRuleHandle.Reached.class,
+                        PublishedRuleHandle.ReachedOutOfSight.class),
                 Set.of(PublishedRuleHandle.class.getPermittedSubclasses()),
                 "the kinds of sentence this type has");
         for (Class<?> each : PublishedRuleHandle.class.getPermittedSubclasses()) {
             assertTrue(handles.stream().anyMatch(each::isInstance),
                     () -> "and each of them is in what the property above is asked over: " + each);
         }
-    }
-
-    /**
-     * And no rule of a compiled model is cited out of sight, which is why there is no sentence for
-     * one that is.
-     *
-     * <p>The only thing that ever made such a citation was a library operation written in this
-     * language being spliced into whoever called it: the reading a rule is taken from keeps such an
-     * operation standing, so the comparisons inside it are that operation's implementation and no
-     * caller answers for them.
-     *
-     * <p>Asked of a compile and not of the type. That the seal has the forms it has is a fact about
-     * the code; that nothing produces another is a fact about what this compiler reads, and only a
-     * model that calls out of sight can show it.
-     */
-    @Test
-    void noRuleOfACompiledModelIsCitedOutOfSight() {
-        assertEquals(List.of(), reachedFromHere(),
-                "a caller answers for the rules a caller wrote");
     }
 }

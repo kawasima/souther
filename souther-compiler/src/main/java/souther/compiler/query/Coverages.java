@@ -101,8 +101,16 @@ final class Coverages {
         // implements it: a clause is written against the declaration, so an injected behavior draws
         // its lines like any other and there is no body for them to have come out of.
         EnsuresThresholds.Clauses clauses = EnsuresThresholds.of(stated, read);
+        // What the analysis tree binds to the elements of what, built once for both readers of it.
+        // The bindings an expansion wrote are the bindings of the tree it expanded: the two
+        // representations of one body are two expansions with two sets of them, so `elements` —
+        // which is the emitted tree's — is about bindings neither reader below has.
+        souther.compiler.check.ElementBindings standing = analysis == null
+                ? souther.compiler.check.ElementBindings.NONE
+                : souther.compiler.check.ElementBindings.of(analysis.core(), analysis.elements(),
+                        read.symbols());
         GuardThresholds.Guards guards = body == null ? GuardThresholds.Guards.NONE
-                : GuardThresholds.of(behavior.name(), analysis, body, plan, read, elements, arrives);
+                : GuardThresholds.of(behavior.name(), analysis, body, plan, read, standing, arrives);
         // And what the declarations state between two of this input's positions. Such a rule places
         // no end at either of them, so the reading of ends has nothing to draw it from; read here,
         // it is a line like the two above and is arranged with them.
@@ -114,7 +122,7 @@ final class Coverages {
         // be two measures of it, each told nothing of the other's.
         souther.compiler.partition.BehaviorSetStatements.Read sets =
                 souther.compiler.partition.BehaviorSetStatements.of(behavior.name(), analysis, stated, read,
-                        read.domain().parameterReads(), elements, distinctions, guards.forks());
+                        read.domain().parameterReads(), standing, distinctions, guards.forks());
         List<souther.compiler.partition.LineDrawn> declared =
                 souther.compiler.partition.DeclaredThresholds.between(behavior.name(), read);
         // Every producer of one kind of line, put together before the position is divided. Two

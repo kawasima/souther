@@ -50,6 +50,13 @@ final class RuleHandleSentence {
             case PublishedRuleHandle.WholeEnsures it -> "ensures " + it.behavior();
             case PublishedRuleHandle.Written it ->
                     it.kind().word() + "@" + place(it.at(), names, sectionSource);
+            // Written somewhere else and reached from here: the rule is one and the reader is sent
+            // to two places, which the sentence keeps apart.
+            case PublishedRuleHandle.Reached it -> it.kind().word() + " in `" + it.reachedBy() + "`"
+                    + ", reached at " + place(it.at(), names, sectionSource);
+            // And with no position to send them to, the declaration is the whole of it.
+            case PublishedRuleHandle.ReachedOutOfSight it ->
+                    it.kind().word() + " in `" + it.reachedBy() + "`";
         };
     }
 

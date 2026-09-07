@@ -883,29 +883,54 @@ class EverySchemaWordIsAccountedForTest {
      */
     @Test
     void theFourthFieldWithNoEnumBehindItIsWrittenFromWhichKindOfRuleItIs() {
+        assertEquals(
+                oneRuleOfEachKind().stream().map(AdequacyReport::schemaRuleKind)
+                        .collect(java.util.stream.Collectors.toSet()),
+                allowedAt(schema(), List.of("$defs", "ruleId", "properties", "kind")));
+    }
+
+    /**
+     * One rule of every kind the seal has, held to being that.
+     *
+     * <p>The words above are read off these, so a kind missing here is a word the schema is never
+     * asked about — and the schema is not asked about it either, which is two lists agreeing by
+     * both being short. Held to the seal, a kind of rule added to the model is one this stops at
+     * until somebody says which word a document writes for it.
+     */
+    private static List<souther.compiler.check.RuleRef> oneRuleOfEachKind() {
         souther.compiler.types.TypeSymbol.AtModule on =
                 souther.compiler.types.TypeSymbols.declared(
-                new souther.compiler.types.TypeKey("m", "L"));
-        assertEquals(Set.of(
-                        AdequacyReport.schemaRuleKind(new souther.compiler.check.RuleRef.Invariant(
-                                new souther.compiler.check.Clause.Ref(
-                                        new souther.compiler.check.Clause.Id(on, 0),
-                                        java.util.Optional.empty()))),
-                        AdequacyReport.schemaRuleKind(new souther.compiler.check.RuleRef.Ensures(
-                                new souther.compiler.check.BehaviorContract.RuleId(
-                                        new souther.compiler.types.ValueName.Behavior("m", "f"),
-                                        0, 0, on), "Found")),
-                        AdequacyReport.schemaRuleKind(new souther.compiler.check.RuleRef.Comparison("f",
-                                new souther.compiler.types.SourceConstructOrigin(new WrittenOwner.Body("m", "b"), 0, 0,
-                                        souther.compiler.types.SourceConstruct.IF))),
-                        // A rule a body writes as one of the language's own operations over the
-                        // values at a position, which tells a set of them from the rest and draws
-                        // no line. Its own word beside a comparison because what a reader does
-                        // about them differs.
-                        AdequacyReport.schemaRuleKind(new souther.compiler.check.RuleRef.Predicate("f",
-                                new souther.compiler.types.SourceConstructOrigin(new WrittenOwner.Body("m", "b"), 1, 0,
-                                        souther.compiler.types.SourceConstruct.CALL)))),
-                allowedAt(schema(), List.of("$defs", "ruleId", "properties", "kind")));
+                        new souther.compiler.types.TypeKey("m", "L"));
+        WrittenOwner.Body body = new WrittenOwner.Body("m", "b");
+        List<souther.compiler.check.RuleRef> out = List.of(
+                new souther.compiler.check.RuleRef.Invariant(
+                        new souther.compiler.check.Clause.Ref(
+                                new souther.compiler.check.Clause.Id(on, 0),
+                                java.util.Optional.empty())),
+                new souther.compiler.check.RuleRef.Ensures(
+                        new souther.compiler.check.BehaviorContract.RuleId(
+                                new souther.compiler.types.ValueName.Behavior("m", "f"),
+                                0, 0, on), "Found"),
+                new souther.compiler.check.RuleRef.Comparison("f",
+                        new souther.compiler.types.SourceConstructOrigin(body, 0, 0,
+                                souther.compiler.types.SourceConstruct.BINARY)),
+                // A rule a body writes as one of the language's own operations over the values at a
+                // position, which tells a set of them from the rest and draws no line. Its own word
+                // beside a comparison because what a reader does about them differs.
+                new souther.compiler.check.RuleRef.Predicate("f",
+                        new souther.compiler.types.SourceConstructOrigin(body, 1, 0,
+                                souther.compiler.types.SourceConstruct.CALL)),
+                // And a fork whose condition states none of those, which is the model dividing on
+                // something this compiler did not read.
+                new souther.compiler.check.RuleRef.Fork("f",
+                        new souther.compiler.types.SourceConstructOrigin(body, 2, 0,
+                                souther.compiler.types.SourceConstruct.IF)));
+
+        assertEquals(leavesOf(souther.compiler.check.RuleRef.class),
+                out.stream().map(each -> (Class<?>) each.getClass())
+                        .collect(java.util.stream.Collectors.toSet()),
+                "one rule of each kind the seal has, and no other");
+        return out;
     }
 
     /**

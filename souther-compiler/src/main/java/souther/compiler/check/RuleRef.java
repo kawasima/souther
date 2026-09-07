@@ -176,7 +176,7 @@ public sealed interface RuleRef permits RuleRef.Named, RuleRef.Written {
     }
 
     /**
-     * A fork a definition wrote whose condition states no rule this compiler read.
+     * A fork a definition wrote, for the part of what it tests that states no rule anything read.
      *
      * <p>The fork itself and not what it tests, which is where this parts from {@link Comparison}.
      * That one is the rule and the fork around it is where the rule was met; here there is no such
@@ -185,17 +185,18 @@ public sealed interface RuleRef permits RuleRef.Named, RuleRef.Written {
      * something about its input by forking, so the question the fork raises is raised whether or not
      * anything worked out what it says.
      *
-     * <p><b>Only where the condition is not itself a rule.</b> {@code if x > 0} states its rule as a
-     * comparison, and that comparison is what a question about it is filed under; a fork here as
-     * well would be one construct raising two questions and a report telling a reader twice. So this
-     * is the arm for a fork nothing else answers for, and which of the two a fork is turns on what
-     * the reading of its condition found rather than on the shape of the fork.
+     * <p><b>Only for the parts of a condition nothing else answers for.</b> {@code if x > 0} states
+     * its rule as a comparison, and that comparison is what a question about it is filed under; a
+     * fork there as well would be one construct raising two questions and a report telling a reader
+     * twice. A condition is several things at once — {@code a > 0 && List.isEmpty(xs)} states a
+     * comparison and something nothing read — so one fork may stand beside a comparison of the same
+     * condition, each answering for its own part of it.
      *
-     * <p><b>What it is filed at is a separate matter, and may be nothing.</b> The condition of such
-     * a fork can be a call whose argument this cannot follow back to a position, and there is then
-     * no coordinate to file the question at. That is a fact about the reading and never about the
-     * rule: the fork was written, so the question stands, and where a report may put it is asked
-     * afterwards ({@link souther.compiler.inputs.FilingCoordinate}).
+     * <p><b>And only about the input.</b> Where no part of what such a fork tests names a position,
+     * the fork states nothing about the input and is no rule of it — which is the answer a
+     * comparison of the same shape already gets. Where a part does name one, the question is filed
+     * there and not at a number of it: which number of the position the fork is about is exactly
+     * what went unread ({@link souther.compiler.inputs.FilingCoordinate.AtPosition}).
      *
      * @param behavior whose body it is written in, as a comparison's is: two behaviors calling one
      *                 helper each read its fork, and the readings are what a question is raised per

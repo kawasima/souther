@@ -17,7 +17,6 @@ import souther.compiler.types.ParameterSlot;
 import souther.compiler.types.ReferenceOrigin;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.SourceReferenceOrigin;
-import souther.compiler.types.EtaOrigin;
 import souther.compiler.types.Type;
 import souther.compiler.types.ReachName;
 import souther.compiler.types.ValueName;

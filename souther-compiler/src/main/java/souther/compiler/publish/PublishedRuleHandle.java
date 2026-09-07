@@ -99,13 +99,48 @@ public sealed interface PublishedRuleHandle extends Comparable<PublishedRuleHand
     }
 
     /**
+     * It has no name, the code is out of sight, and this compile met it at a place: what is said is
+     * what it is, what reaches it, and where it came from.
+     */
+    record Reached(PublishedRuleKind kind, Place at, String reachedBy)
+            implements PublishedRuleHandle {
+
+        public Reached {
+            if (kind == null || reachedBy == null || reachedBy.isEmpty() || at == null) {
+                throw new IllegalArgumentException("code out of sight met at a place is said as what"
+                        + " it is, what reaches it and where it came from: " + kind + " in "
+                        + reachedBy + " at " + at);
+            }
+        }
+    }
+
+    /**
+     * The same with no place at all, which is what a report says of code it never met a position in.
+     *
+     * <p>Its own form rather than a place that says nothing. Carried as an arm of {@link Place}, the
+     * one thing a report cannot write would be the one thing every reader of a place has to handle,
+     * and what the sentence does about it — leave the place out — would be a case the spelling
+     * refuses at a point the types said it could reach.
+     */
+    record ReachedOutOfSight(PublishedRuleKind kind, String reachedBy)
+            implements PublishedRuleHandle {
+
+        public ReachedOutOfSight {
+            if (kind == null || reachedBy == null || reachedBy.isEmpty()) {
+                throw new IllegalArgumentException("code with no position is said as what it is and"
+                        + " what reaches it: " + kind + " in " + reachedBy);
+            }
+        }
+    }
+
+    /**
      * Where a report says the rule is, as it says it.
      *
      * <p>Two, and every one of them is somewhere a sentence can put. A place in a file this compile
      * holds is what a reader can be sent to; a position in a text it cannot name is still printed,
-     * line and column, because whoever is showing the report knows which text it is. There is no
-     * third: a rule of a model is written where the reader can be sent, which is what narrows the
-     * citations {@link #written} takes.
+     * line and column, because whoever is showing the report knows which text it is. Code this
+     * compile met no position in has no place, and says so by being a form of its own
+     * ({@link ReachedOutOfSight}) rather than by holding a place that is not one.
      *
      * <p>Not {@link PublishedAt} alone, which is the shape the document's own {@code at} field
      * takes and so has nothing for the second one. Borrowed for this, two rules the report prints
@@ -164,27 +199,22 @@ public sealed interface PublishedRuleHandle extends Comparable<PublishedRuleHand
     /**
      * Which sentence a rule the author wrote rather than named is written as.
      *
-     * <p>Where the code is, which is the citation's answer and is asked here.
-     *
-     * <p><b>Not every citation there is.</b> A rule of a model is written in a source this compile
-     * holds: what a reading of rules takes in is what the author wrote, and a library operation
-     * written in this language stays standing rather than being spliced into whoever called it —
-     * so the comparisons inside it are that operation's implementation and no caller's rule. The
-     * three citations that say the code is elsewhere are what such a splice used to produce, and
-     * they reach no rule now.
-     *
-     * <p>So the domain is narrowed here rather than answered with a sentence nothing writes. A form
-     * kept for them would be one every reader of a handle has to handle and nothing ever builds,
-     * which is a shape the projection promises and the model cannot state.
+     * <p>Where the code is, and whether this compile met a position in it. The two questions are the
+     * citation's and are asked here rather than left to a place that answers the second by being
+     * something a sentence cannot write.
      */
     private static PublishedRuleHandle written(RuleRef.Written rule, Citation cited) {
         PublishedRuleKind kind = PublishedRuleKind.of(rule);
         return switch (cited) {
             case Citation.Written it -> new Written(kind, placeOf(it, it.at()));
             case Citation.Unplaced it -> new Written(kind, placeOf(it, it.at()));
-            case Citation.Elsewhere it -> throw new IllegalArgumentException(
-                    "a rule of a model is written where the reader can be sent, and this one is"
-                            + " cited in " + it.provenance().reachedBy());
+            case Citation.Reached it ->
+                    new Reached(kind, placeOf(it, it.at()), it.provenance().reachedBy());
+            // Out of sight, and where this compiler met it is no part of what a reader is shown:
+            // such code is said as what reaches it, whether or not there was a position to drop.
+            case Citation.UnplacedElsewhere it ->
+                    new ReachedOutOfSight(kind, it.provenance().reachedBy());
+            case Citation.OutOfSight it -> new ReachedOutOfSight(kind, it.provenance().reachedBy());
         };
     }
 
@@ -265,6 +295,20 @@ public sealed interface PublishedRuleHandle extends Comparable<PublishedRuleHand
                 int word = it.kind().compareTo(also.kind());
                 yield word != 0 ? word : it.at().compareTo(also.at());
             }
+            case Reached it -> {
+                Reached also = (Reached) other;
+                int word = it.kind().compareTo(also.kind());
+                if (word != 0) {
+                    yield word;
+                }
+                int by = it.reachedBy().compareTo(also.reachedBy());
+                yield by != 0 ? by : it.at().compareTo(also.at());
+            }
+            case ReachedOutOfSight it -> {
+                ReachedOutOfSight also = (ReachedOutOfSight) other;
+                int word = it.kind().compareTo(also.kind());
+                yield word != 0 ? word : it.reachedBy().compareTo(also.reachedBy());
+            }
         };
     }
 
@@ -277,6 +321,8 @@ public sealed interface PublishedRuleHandle extends Comparable<PublishedRuleHand
             case NamedEnsures _ -> 2;
             case WholeEnsures _ -> 3;
             case Written _ -> 4;
+            case Reached _ -> 5;
+            case ReachedOutOfSight _ -> 6;
         };
     }
 }

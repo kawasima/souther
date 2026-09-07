@@ -181,6 +181,41 @@ public sealed interface OperationFact {
     }
 
     /**
+     * What the closure answered decides {@code aspect} of what the operation answers.
+     *
+     * <p><b>Said, and never read off a size.</b> That {@code List.filter} answers at most as many
+     * as it walked is one fact ({@link BuiltFrom}); that the closure's truth is <em>why</em> it
+     * answers fewer is another, and the first does not state the second. An operation whose result
+     * is smaller for a reason of its own — a take, a distinct — is one whose closure decides
+     * nothing, and a reading that took the size for the cause would say a rule inside such a call
+     * decides what the call comes to.
+     *
+     * <p>Which is what a reader wants it for. A rule written inside a closure reaches a fork
+     * testing the call only along an edge declared here: {@code List.isEmpty(List.filter(p, xs))}
+     * turns on what {@code p} answered, and {@code List.isEmpty(List.map(p, xs))} does not — the
+     * mapping answers one per element whatever the closure said, so a rule inside it says nothing
+     * about whether the answer is empty.
+     *
+     * <p><b>Nothing here is about the type of what stands there.</b> What is stated is about the
+     * answer, and a closure and a truth are both things that answer; which argument may carry the
+     * fact is what naming it holds it to.
+     *
+     * <p><b>Silence is the answer for everything else.</b> An operation with no such fact is one
+     * this compiler cannot follow to the answer, and a reader stops there rather than
+     * guessing — which leaves a fork stating a rule of its own, and is the safe way round: a rule
+     * credited to nobody leaves a measure open, and one credited to the wrong owner reports a model
+     * nothing read as one read to the end.
+     */
+    record TurnsOnWhatAnArgumentAnswers(AnswerAspect aspect, ArgumentRef argument)
+            implements OperationFact {
+
+        public TurnsOnWhatAnArgumentAnswers {
+            java.util.Objects.requireNonNull(aspect, "this one names a side of the answer");
+            java.util.Objects.requireNonNull(argument, "this one names an argument");
+        }
+    }
+
+    /**
      * The predicate is stated over a projection of each element, and {@code projection} is where it
      * is written.
      *

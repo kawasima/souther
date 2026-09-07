@@ -32,7 +32,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * <p><b>Which is why the negative cases are the point of this.</b> Read as "no comparison, so a
  * fork", the rule would file a second question at every condition an owner already answers for: a
  * fork on a {@code Bool} of the input tests the values standing there and its arms are their two
- * classes, and one on {@code String.isEmpty(s)} is a predicate this compiler reads perfectly well.
+ * classes, and one on {@code String.contains("x", s)} is a predicate this compiler reads perfectly
+ * well.
  * Both would come back as rules nothing interpreted, and a model stating them completely would be
  * reported as one this compiler could not read.
  *
@@ -158,25 +159,6 @@ class AForkStatesARuleOnlyWhereNothingInItDoesTest {
     }
 
     /**
-     * And a rule written inside a part is that part's, closure and all.
-     *
-     * <p>{@code x > 0} is a rule about the elements {@code List.filter} walks, and what the fork
-     * tests is what the operations answer of those elements — so the line that rule draws is what
-     * answers for this fork. Read as belonging only to the operation it is written in, the fork
-     * would raise a question over a model whose rule about {@code xs} was read and drawn.
-     *
-     * <p>Which is a different thing from the conjunction below it. A rule in one part says nothing
-     * about another part, and that is why the parts are asked one at a time; asked once of the
-     * whole condition, a rule in either would answer for both.
-     */
-    @Test
-    void aRuleWrittenInsideAPartIsThatPartsRule() {
-        assertEquals(new Owned(1, 0), read("""
-                behavior pick : (xs: List<Int>) -> Low | High
-                let pick (xs) = if List.isEmpty(List.filter(x -> x > 0, xs)) then High else Low"""));
-    }
-
-    /**
      * And a name standing for a condition is a part nothing owns, which is the honest answer.
      *
      * <p>What the name holds is not read: following it would make the parts of a condition depend
@@ -212,6 +194,43 @@ class AForkStatesARuleOnlyWhereNothingInItDoesTest {
         assertEquals(new Owned(0, 0), read("""
                 behavior pick : (n: Int) -> Low | High
                 let pick (n) = if List.isEmpty([1, 2, 3]) then High else Low"""));
+    }
+
+    /**
+     * A rule reaches a fork along what the library says the answer turns on, and no further.
+     *
+     * <p><b>The pair this rests on.</b> {@code filter} and {@code map} are the same shape, and a
+     * reading that looked through the tree for a rule would credit both alike. Filtering answers
+     * fewer for exactly the reason the closure says; a mapping answers one per element whatever
+     * the closure said, so what a rule inside it decides is what the answers are and never how many
+     * — and a fork on whether the mapping is empty turns on neither.
+     *
+     * <p>Which is why the size the two declare is not what is asked. Both answer at most as many as
+     * they walked, and so do a take and a distinct whose closures decide nothing; the fact read
+     * here is the one that says the closure is the reason
+     * ({@link souther.compiler.semantics.OperationFact.TurnsOnWhatItsClosureAnswered}).
+     */
+    @Test
+    void aRuleReachesAForkAlongWhatTheAnswerTurnsOn() {
+        assertEquals(new Owned(1, 0), read("""
+                behavior pick : (xs: List<Int>) -> Low | High
+                let pick (xs) = if List.isEmpty(List.filter(x -> x > 0, xs)) then High else Low"""),
+                "filtering answers fewer for the reason the closure gives");
+        assertEquals(new Owned(1, 1), read("""
+                behavior pick : (xs: List<Int>) -> Low | High
+                let pick (xs) = if List.isEmpty(List.map(x -> x > 0, xs)) then High else Low"""),
+                "and a mapping answers as many either way, so the fork is owed a rule of its own");
+    }
+
+    /** And an operation whose whole answer is what the closure said of the elements. */
+    @Test
+    void aForkOnWhatAQuantifierAnsweredIsTheRuleInsideIt() {
+        assertEquals(new Owned(1, 0), read("""
+                behavior pick : (xs: List<Int>) -> Low | High
+                let pick (xs) = if List.any(x -> x > 0, xs) then High else Low"""));
+        assertEquals(new Owned(1, 0), read("""
+                behavior pick : (xs: List<Int>) -> Low | High
+                let pick (xs) = if List.all(x -> x > 0, xs) then High else Low"""));
     }
 
     /** Nothing this compiler composed is one of these: the forks are the ones an author wrote. */

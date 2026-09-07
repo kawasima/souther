@@ -52,24 +52,22 @@ record PredicateReadings(List<Reading> predicates, java.util.Set<Core> statedAt)
     }
 
     /**
-     * Whether one of these was read anywhere inside {@code e}.
+     * Whether one of these was read at {@code e}.
      *
-     * <p>The nodes themselves and never ones holding the same thing: a body writing one predicate
-     * twice writes two rules, and either of them may be part of a condition the other is not.
+     * <p>The node itself and never one holding the same thing: a body writing one predicate twice
+     * writes two rules, and either of them may be part of a condition the other is not.
      *
-     * <p>Inside and not at, for the reason a comparison is asked the same way: a rule written in a
-     * closure one of the language's operations is handed is a rule about what that operation walks,
-     * and what the operation answers of it is what a fork testing the call tests.
+     * <p>At and not inside. Which expressions inside a call its answer turns on is the library's to
+     * say ({@link WhatAForkTests}), and a reader that went looking through the tree for one would
+     * credit a predicate inside a mapping with deciding whether the mapping is empty.
      */
-    boolean statesOneIn(Core e) {
+    boolean statesOneAt(Core e) {
         for (Core each : statedAt) {
             if (each == e) {
                 return true;
             }
         }
-        boolean[] found = {false};
-        Core.forEachChild(e, child -> found[0] |= statesOneIn(child));
-        return found[0];
+        return false;
     }
 
     /**

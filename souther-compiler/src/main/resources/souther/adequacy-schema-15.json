@@ -90,7 +90,7 @@
   "$defs": {
     "ruleHandle": {
       "type": "string",
-      "description": "How a reader finds a rule, written once here for every field that carries one. A rule the author named is found by that name: a clause of an invariant they called something is `invariant Amount (cap)`, one they named nothing is counted from the top of the declaration as `invariant Amount #2`, a clause of an `ensures` is `ensures charge (refunded)`, and a clause stating one rule over every answer is `ensures charge`. A rule they wrote rather than named has no name to look up and is found by where it is: `comparison@billing.sou:14:22` in a source this document's `sources` table names, and `comparison@7:3` where the file is the reader's to know. A rule of a model is always written in a source this compile holds, so there is no other form: the words in front of a place are the words `ruleId.kind` uses for a rule with no name, and each of them is written this way \u2014 `predicate@billing.sou:14:22`, `predicate@7:3`, `fork@billing.sou:14:22`, `fork@7:3`. These words are how an author acts on a rule and never what tells one rule from another — two arms of one `ensures` clause may name the same case — which is `ruleId`.",
+      "description": "How a reader finds a rule, written once here for every field that carries one. A rule the author named is found by that name: a clause of an invariant they called something is `invariant Amount (cap)`, one they named nothing is counted from the top of the declaration as `invariant Amount #2`, a clause of an `ensures` is `ensures charge (refunded)`, and a clause stating one rule over every answer is `ensures charge`. A rule they wrote rather than named has no name to look up and is found by where it is: `comparison@billing.sou:14:22` in a source this document's `sources` table names, and `comparison@7:3` where the file is the reader's to know. Code this compile reads from somewhere it holds no file for is said by what reaches it — `comparison in `Money`, reached at billing.sou:14:22`, or `comparison in `Money`, reached at 7:3`, or `comparison in `Money`` where there was no position to give. The word in front of a place says what kind of rule it is, and is one of the words `ruleId.kind` uses for a rule with no name: `predicate@billing.sou:14:22`, `predicate@7:3`, `predicate in `Money`, reached at billing.sou:14:22`, `predicate in `Money`, reached at 7:3`, `predicate in `Money``, and `fork@billing.sou:14:22`, `fork@7:3`, `fork in `Money`, reached at billing.sou:14:22`, `fork in `Money`, reached at 7:3`, `fork in `Money``. These words are how an author acts on a rule and never what tells one rule from another — two arms of one `ensures` clause may name the same case — which is `ruleId`.",
       "examples": [
         "invariant Amount (cap)",
         "invariant Amount #2",
@@ -98,10 +98,19 @@
         "ensures charge",
         "comparison@billing.sou:14:22",
         "comparison@7:3",
+        "comparison in `Money`, reached at billing.sou:14:22",
+        "comparison in `Money`, reached at 7:3",
+        "comparison in `Money`",
         "predicate@billing.sou:14:22",
         "predicate@7:3",
+        "predicate in `Money`, reached at billing.sou:14:22",
+        "predicate in `Money`, reached at 7:3",
+        "predicate in `Money`",
         "fork@billing.sou:14:22",
-        "fork@7:3"
+        "fork@7:3",
+        "fork in `Money`, reached at billing.sou:14:22",
+        "fork in `Money`, reached at 7:3",
+        "fork in `Money`"
       ]
     },
     "runSensitivity": {
@@ -1240,9 +1249,10 @@
             "invariant",
             "ensures",
             "comparison",
+            "fork",
             "predicate"
           ],
-          "description": "Which kind of rule of the model this is, and so which coordinates below are written. A `predicate` is a rule a body writes as one of the language\u0027s own operations over the values at a position — `String.startsWith(\"JP\", code)` — which tells a set of them from the rest and draws no line; a behavior states one in its body and in its own `ensures` alike, and it is identified by the application the author wrote together with what wrote it, which `writtenIn` says. A rule of a body is a comparison and not the construct it is written in: it may stand in the condition of an `if` or a `guard`, be given a name above the fork that tests it, or be what the behavior answers with, and it is one rule in all of those. Documents of version 3 wrote `guard` here, from the days when a rule was found by finding a fork."
+          "description": "Which kind of rule of the model this is, and so which coordinates below are written. A `predicate` is a rule a body writes as one of the language\u0027s own operations over the values at a position — `String.startsWith(\"JP\", code)` — which tells a set of them from the rest and draws no line; a behavior states one in its body and in its own `ensures` alike, and it is identified by the application the author wrote together with what wrote it, which `writtenIn` says. A rule of a body is a comparison and not the construct it is written in: it may stand in the condition of an `if` or a `guard`, be given a name above the fork that tests it, or be what the behavior answers with, and it is one rule in all of those. Documents of version 3 wrote `guard` here, from the days when a rule was found by finding a fork. A `fork` is the other way round and is not that word come back: it is a fork whose condition states none of the kinds above, so what the model divides on there is something this compiler did not read, and the fork itself is what a question about it is filed under."
         },
         "declaredIn": {
           "type": "string",

@@ -140,8 +140,13 @@ public final class GuardThresholds {
     public static Guards of(String behavior, AnalysisBody states, Core emitted,
                             CoverageSites.Plan plan,
                             InputDomain inputs, RuleReadingSource source) {
+        // The elements of this tree, read here rather than handed in as nothing. A caller with no
+        // reading of its own still asks about a body that walks something, and answered with none
+        // it would be told a rule over a run is a rule about nothing.
         return of(behavior, states, emitted, plan, inputs.reading(source),
-                souther.compiler.check.ElementBindings.NONE,
+                states == null ? souther.compiler.check.ElementBindings.NONE
+                        : souther.compiler.check.ElementBindings.of(states.core(),
+                                states.elements(), source.symbols()),
                 souther.compiler.check.PathReachability.Answers.NONE);
     }
 
@@ -174,12 +179,10 @@ public final class GuardThresholds {
         //
         // Where the elements of what a binding holds came from is read off this tree too. That fact
         // is written by the expansion that made the binding, and the two representations of one body
-        // are two expansions with two sets of bindings — so the other one's answer is about bindings
-        // this tree does not have.
+        // are two expansions with two sets of bindings — so `elements` is the reading of this tree
+        // and the other one's answer would be about bindings this tree does not have.
         ComparisonReadings comparisons = ComparisonReadings.of(behavior, states.core(), read,
-                InputReads.ofParametersWhereCallsStand(inputs.parameterReads(),
-                        souther.compiler.check.ElementBindings.of(states.core(), states.elements(),
-                                read.symbols())));
+                InputReads.ofParametersWhereCallsStand(inputs.parameterReads(), elements));
         // And what the tree that runs says about each of them, joined on the construct of the model
         // the two readings agree about.
         souther.compiler.coverage.ComparisonEmissionIndex index =
@@ -188,15 +191,22 @@ public final class GuardThresholds {
                 souther.compiler.coverage.LegacyComparisonAddresses.of(index);
         ReachingCuts.Collected cuts = new ReachingCuts.Collected();
         for (ComparisonReadings.Reading each : comparisons.comparisons()) {
-            ModelOccurrence states1 = ModelOccurrence.statedAt(each.occurrence()).orElse(null);
-            // A comparison the analysis reads and the emitted tree does not hold is the two readings
-            // disagreeing about the body. Nothing here answers around it.
-            if (states1 == null || !named.holds(states1)) {
-                continue;
-            }
-            ComparisonOccurrence which = named.of(states1);
+            // Which comparison of the model this is. Total over what this walk reads: the tree it
+            // read keeps the language's operations standing, so no copy of one is open at a
+            // comparison in it and every occurrence it met is one the model states. A reading that
+            // came back with nothing here is the two trees disagreeing about the body, and it is
+            // raised — dropped, the rule would leave the measurement and the report could still
+            // call it complete.
+            ModelOccurrence stated = ModelOccurrence.statedAt(each.occurrence())
+                    .orElseThrow(() -> new IllegalStateException("`" + behavior + "` reads a"
+                            + " comparison at " + each.at() + " that states no construct of the"
+                            + " model, in a tree where the language's operations stand"));
+            // And where the emitted tree holds it, which {@link LegacyComparisonAddresses} raises
+            // for rather than answering around. The absence that is not a disagreement is the one
+            // below: a construct both trees hold, with no place a run through it is recorded.
+            ComparisonOccurrence which = named.of(stated);
             souther.compiler.coverage.EmittedComparisonState placed =
-                    index.siteOf(states1)
+                    index.siteOf(stated)
                             .<souther.compiler.coverage.EmittedComparisonState>map(site ->
                                     new souther.compiler.coverage.EmittedComparisonState
                                             .Instrumented(site, arrives.arrivalAt(which)))

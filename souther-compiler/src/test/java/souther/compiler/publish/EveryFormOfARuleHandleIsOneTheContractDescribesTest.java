@@ -82,6 +82,9 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
         for (PublishedRuleKind kind : PublishedRuleKind.values()) {
             out.add(new PublishedRuleHandle.Written(kind, inASourceThisCompileHolds()));
             out.add(new PublishedRuleHandle.Written(kind, inATextWithNoName()));
+            out.add(new PublishedRuleHandle.Reached(kind, inASourceThisCompileHolds(), "Money"));
+            out.add(new PublishedRuleHandle.Reached(kind, inATextWithNoName(), "Money"));
+            out.add(new PublishedRuleHandle.ReachedOutOfSight(kind, "Money"));
         }
         return List.copyOf(out);
     }
@@ -113,6 +116,7 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
                 Set.of(PublishedRuleKind.values()),
                 everyForm().stream().flatMap(each -> switch (each) {
                     case PublishedRuleHandle.Written it -> Stream.of(it.kind());
+                    case PublishedRuleHandle.Reached it -> Stream.of(it.kind());
                     default -> Stream.<PublishedRuleKind>of();
                 }).collect(Collectors.toSet()),
                 "and every published word a rule with no name is called by");
@@ -120,6 +124,7 @@ class EveryFormOfARuleHandleIsOneTheContractDescribesTest {
                 Set.of(PublishedRuleHandle.Place.class.getPermittedSubclasses()),
                 everyForm().stream().flatMap(each -> switch (each) {
                     case PublishedRuleHandle.Written it -> Stream.of(it.at());
+                    case PublishedRuleHandle.Reached it -> Stream.of(it.at());
                     default -> Stream.<PublishedRuleHandle.Place>of();
                 }).map(each -> (Class<?>) each.getClass()).collect(Collectors.toSet()),
                 "and every kind of place a report says such a rule is at");

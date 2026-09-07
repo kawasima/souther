@@ -241,6 +241,15 @@ public final class BoundOperationFacts {
         return ones(BoundOperationFact.ReadsItsContainer.class);
     }
 
+    /** Which argument {@code aspect} of {@code operation}'s answer turns on, or null where the
+     *  library says nothing about what decides it. */
+    public BoundOperationFact.TurnsOnWhatAnArgumentAnswers turnsOnWhatAnArgumentAnswers(
+            ValueName operation, souther.compiler.semantics.AnswerAspect aspect) {
+        BoundOperationFact.TurnsOnWhatAnArgumentAnswers held =
+                one(BoundOperationFact.TurnsOnWhatAnArgumentAnswers.class, operation);
+        return held == null || held.aspect() != aspect ? null : held;
+    }
+
     /** Where {@code operation}'s predicate is stated over a projection, or null where it is stated
      *  over the element itself. */
     public DeclaredArgument isStatedOverAProjection(ValueName operation) {

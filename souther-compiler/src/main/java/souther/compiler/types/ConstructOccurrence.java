@@ -4,16 +4,22 @@ package souther.compiler.types;
  * One construct of one body, wherever a reader meets it: which construct the source wrote, and which
  * copy of it this is.
  *
- * <p>What a reading of a construct joins on. A rule read off it, a line drawn on it and a run
- * recorded at it are three readers of one place, and each needs the same answer to "which one is
- * this" — an answer that holds across the representations of a body, because what a rule states is
- * read from the tree the operations stand in and where a run is recorded is numbered over the tree
- * that runs.
+ * <p>Which materialisation of a construct a reader is holding, in the tree that reader walks. A
+ * rule read off it, a line drawn on it and a run recorded at it are three readers of one place, and
+ * each needs an answer to "which one is this" — the two representations of a body are two
+ * expansions, and each of them copies what it copies.
+ *
+ * <p><b>Not what the two trees agree about, and never join two readings on it.</b> A body whose
+ * language operations stand and one whose operations have been expanded into what they do copy
+ * different things, so a construct inside such an operation has a lineage in one tree and is absent
+ * from the other. What the two agree about is which construct <em>of the model</em> a
+ * materialisation is one of, which is a partial projection of this
+ * ({@link ModelOccurrence#statedAt}) — partial because a copy made inside a library operation is
+ * that operation's and no construct the caller's model states.
  *
  * <p><b>Neither half answers on its own.</b> The origin alone puts every copy of a spliced helper's
  * construct under one name, so a reading of one call's copy would be a reading of the other's. The
- * lineage alone puts every construct of one copy under one name. Together they are what the two
- * trees agree about, which is the whole of what this is for.
+ * lineage alone puts every construct of one copy under one name.
  *
  * <p><b>Not where a run through it is recorded.</b> That is a number the emitter hands out over the
  * tree it emits, and only for what it instruments — a construct behind an abort has none. Held as

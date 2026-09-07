@@ -253,14 +253,14 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
                         // part rather than of the condition: a fork testing two things owns one of
                         // them and leaves the other, and an answer about the whole would lose that.
                         //
-                        // Anywhere in the part and not only at its top. A rule written in a closure
-                        // one of the language's operations is handed is a rule about the elements
-                        // the operation walks, and what the operation answers of them is what the
-                        // fork tests — so `List.any(x -> x < 100000, xs)` is answered for by the
-                        // line that rule draws. Which is not the whole condition being asked: two
-                        // conjuncts are two parts, and a rule in one of them says nothing about the
-                        // other.
-                        if (holdsAComparison(atom)
+                        // Along what the part's answer turns on and not down its tree. A rule
+                        // written in a closure one of the language's operations is handed reaches
+                        // the fork only where the library says the answer turns on what that
+                        // closure said ({@link WhatAForkTests}) — a filter answers fewer for
+                        // exactly that reason and a mapping does not, and the two calls are the
+                        // same shape.
+                        if (WhatAForkTests.turnsOnSomething(atom,
+                                        part -> comparisonAt(part) != null)
                                 || reads.pathOf(atom, symbols)
                                         instanceof souther.compiler.inputs.PathResolution.At) {
                             owned.add(atom);
@@ -348,16 +348,6 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
                 && binary.origin().isWritten() ? Comparison.of(binary).orElse(null) : null;
     }
 
-    /** Whether a comparison of the model is written anywhere inside {@code e}. */
-    private static boolean holdsAComparison(Core e) {
-        if (comparisonAt(e) != null) {
-            return true;
-        }
-        boolean[] found = {false};
-        Core.forEachChild(e, child -> found[0] |= holdsAComparison(child));
-        return found[0];
-    }
-
     /**
      * What {@code e} stands for, through however many names were given to it.
      *
@@ -379,5 +369,11 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
             where = through.denotes().at();
         }
         return at;
+    }
+
+    /** Whether the truth of {@code atom} turns on a predicate {@code read} took in, which is the
+     *  same walk a comparison is looked for along and is here so that the two agree about it. */
+    static boolean turnsOnAPredicate(Core atom, PredicateReadings read) {
+        return WhatAForkTests.turnsOnSomething(atom, read::statesOneAt);
     }
 }
