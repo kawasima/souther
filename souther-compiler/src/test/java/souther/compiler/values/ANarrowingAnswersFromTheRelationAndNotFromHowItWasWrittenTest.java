@@ -3,7 +3,6 @@ package souther.compiler.values;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -42,28 +41,43 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
     private static final int BLOCKS = 4;
 
     /**
-     * One relation written any way round is answered the same way.
+     * One relation written any way round, and handed over in any order, is answered the same way.
      *
-     * <p>Every relation over these blocks, every way of leaving its blocks values, and every
-     * writing of its denials — asked as the writings that swap one neighbouring pair with the next,
-     * because every ordering of the pairs is a run of those. A rotation and a reversal are two
-     * orderings out of as many as there are ways to write the pairs down; these are what says the
-     * answer is the same for all of them.
+     * <p>Every ordering of the pairs and not the ones a swap away from the order they were built
+     * in. A law asked of the writings one swap from this one says that those are this one's answer,
+     * and says nothing of a writing two swaps away — the writings between are never asked, so the
+     * run of swaps that reaches an arbitrary ordering runs through readings this never held. Asked
+     * of every ordering, there is nothing between.
+     *
+     * <p>And the blocks are handed over in the order that writing names them, which is where
+     * {@link Apartness#reduce} gets them. The order the pairs are read in is one thing a narrowing
+     * could answer from; the order the blocks arrive in is the other, and a law that reordered the
+     * pairs while handing the blocks over as they were would be holding one of the two.
      *
      * <p>What is compared is the whole answer — which blocks were left nothing, and which removals
      * left them so — because a reading that agreed about the verdict and not about the lack would
      * still be answering a report from how the rules were written.
+     *
+     * <p><b>Asked of one relation for each shape.</b> A relation this leaves out is one of these
+     * with its blocks called by other names, and two writings of it are two writings of this one
+     * called the same way — so what {@link #andRenamingTheBlocksRenamesTheAnswer} says of one
+     * carries what this says of the other. Which of the relations of a shape is asked is settled by
+     * taking the one that reads least, as the way of calling the values is.
      */
     @Test
     void oneRelationWrittenAnyWayRoundIsAnsweredTheSameWay() {
-        overEveryRelation((written, domains) -> {
+        overEveryShape((written, domains) -> {
             Closure<String> said = Narrowing.of(written.relation(), domains);
-            List<Apartness<String>> swapped = written.byASwapOfPairs();
-            for (int at = 0; at < swapped.size(); at++) {
-                int pair = at;
-                assertEquals(said, Narrowing.of(swapped.get(at), domains),
-                        () -> "the same relation, with its " + pair
-                                + "th pair written after the next");
+            List<Writing> writings = written.everyWriting();
+            for (int at = 0; at < writings.size(); at++) {
+                Writing writing = writings.get(at);
+                Map<Sameness.Block<String>, Admits> left = new LinkedHashMap<>();
+                for (Sameness.Block<String> block : writing.blocks()) {
+                    left.put(block, domains.of(block));
+                }
+                int which = at;
+                assertEquals(said, Narrowing.of(writing.relation(), new Domains<>(left)),
+                        () -> "the same relation, written its " + which + "th way round");
             }
         });
     }
@@ -414,7 +428,22 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      * it takes to write a relation down.
      */
     private static void overEveryRelation(Asked asking) {
-        for (Written written : EVERY_RELATION) {
+        overThese(EVERY_RELATION, asking);
+    }
+
+    /**
+     * One relation for each shape, and every way of leaving its blocks values.
+     *
+     * <p>A relation left out is one of these with its blocks called by other names, so a law asked
+     * here is carried to it by {@link #andRenamingTheBlocksRenamesTheAnswer} — which is asked of
+     * every relation and not only of these.
+     */
+    private static void overEveryShape(Asked asking) {
+        overThese(EVERY_SHAPE, asking);
+    }
+
+    private static void overThese(List<Written> relations, Asked asking) {
+        for (Written written : relations) {
             List<Sameness.Block<String>> blocks = written.blocks();
             for (int[] pick : CANONICAL.get(blocks.size())) {
                 Map<Sameness.Block<String>, Admits> left = new LinkedHashMap<>();
@@ -430,6 +459,11 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      *  against. */
     private static final List<Written> EVERY_RELATION = everyRelation();
 
+    /** One of them for each shape, which is the one whose pairs read least among the ways of
+     *  calling its blocks. */
+    private static final List<Written> EVERY_SHAPE = EVERY_RELATION.stream()
+            .filter(written -> written.readsLeast()).toList();
+
     /** Every non-empty set of values a block may be left. What a law is asked of is which values a
      *  block holds, and a set built for each reading would be one more thing a run measures. */
     private static final List<Admits> THESE = everyValueSet();
@@ -441,6 +475,7 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
                 pairs.add(new Pair(one, other));
             }
         }
+        List<int[]> callings = everyCallingOfBlocks();
         List<Written> out = new ArrayList<>();
         for (int mask = 1; mask < (1 << pairs.size()); mask++) {
             List<Pair> stated = new ArrayList<>();
@@ -449,19 +484,58 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
                     stated.add(pairs.get(at));
                 }
             }
-            out.add(written(stated));
+            out.add(written(stated, readsLeast(stated, pairs, callings)));
         }
         return out;
     }
 
-    private static Written written(List<Pair> stated) {
-        Apartness<String> relation = relating(stated);
-        List<Apartness<String>> byASwapOfPairs = new ArrayList<>();
-        for (int at = 0; at + 1 < stated.size(); at++) {
-            List<Pair> swapped = new ArrayList<>(stated);
-            Collections.swap(swapped, at, at + 1);
-            byASwapOfPairs.add(relating(swapped));
+    /** Whether no way of calling the blocks leaves {@code stated} reading less than it does, which
+     *  is what makes it the one relation of its shape these laws are asked of. */
+    private static boolean readsLeast(List<Pair> stated, List<Pair> pairs, List<int[]> callings) {
+        int mine = 0;
+        for (Pair pair : stated) {
+            mine |= 1 << pairs.indexOf(pair);
         }
+        for (int[] calling : callings) {
+            int under = 0;
+            for (Pair pair : stated) {
+                under |= 1 << pairs.indexOf(new Pair(
+                        Math.min(calling[pair.one()], calling[pair.other()]),
+                        Math.max(calling[pair.one()], calling[pair.other()])));
+            }
+            if (under < mine) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Every way of calling the blocks by each other's names, as which block each becomes. */
+    private static List<int[]> everyCallingOfBlocks() {
+        List<int[]> out = new ArrayList<>();
+        growBlockCallings(new int[BLOCKS], 0, new boolean[BLOCKS], out);
+        return out;
+    }
+
+    private static void growBlockCallings(int[] sofar, int at, boolean[] taken, List<int[]> out) {
+        if (at == sofar.length) {
+            out.add(sofar.clone());
+            return;
+        }
+        for (int each = 0; each < sofar.length; each++) {
+            if (!taken[each]) {
+                taken[each] = true;
+                sofar[at] = each;
+                growBlockCallings(sofar, at + 1, taken, out);
+                taken[each] = false;
+            }
+        }
+    }
+
+    private static Written written(List<Pair> stated, boolean readsLeast) {
+        Apartness<String> relation = relating(stated);
+        List<Writing> everyWriting = new ArrayList<>();
+        growWritings(new ArrayList<>(), new boolean[stated.size()], stated, everyWriting);
         List<Called> byASwapOfBlocks = new ArrayList<>();
         for (int swapped = 0; swapped + 1 < BLOCKS; swapped++) {
             Map<String, String> naming = new LinkedHashMap<>();
@@ -484,7 +558,28 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
             apart[one][other] = true;
             apart[other][one] = true;
         }
-        return new Written(stated, relation, byASwapOfPairs, byASwapOfBlocks, blocks, apart);
+        return new Written(stated, relation, everyWriting, byASwapOfBlocks, blocks,
+                apart, readsLeast);
+    }
+
+    /** Every ordering of {@code stated}, as the relation it writes and the order that writing
+     *  names its blocks in. */
+    private static void growWritings(List<Pair> sofar, boolean[] taken, List<Pair> stated,
+                                     List<Writing> out) {
+        if (sofar.size() == stated.size()) {
+            Apartness<String> relation = relating(sofar);
+            out.add(new Writing(relation, List.copyOf(relation.blocks())));
+            return;
+        }
+        for (int each = 0; each < stated.size(); each++) {
+            if (!taken[each]) {
+                taken[each] = true;
+                sofar.add(stated.get(each));
+                growWritings(sofar, taken, stated, out);
+                sofar.removeLast();
+                taken[each] = false;
+            }
+        }
     }
 
     /**
@@ -608,14 +703,20 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      *
      * @param stated the pairs it was built from
      * @param relation the relation itself
-     * @param byASwapOfPairs it, written with one neighbouring pair after the next
+     * @param everyWriting every ordering of its pairs, as the relation each writes
      * @param byASwapOfBlocks it, with two neighbouring blocks called by each other's names
      * @param blocks its blocks, in the order the pairs name them
      * @param apart which of those blocks are stated to differ, indexed as they are
+     * @param readsLeast whether it is the one relation of its shape that reads least
      */
     private record Written(List<Pair> stated, Apartness<String> relation,
-                           List<Apartness<String>> byASwapOfPairs, List<Called> byASwapOfBlocks,
-                           List<Sameness.Block<String>> blocks, boolean[][] apart) {}
+                           List<Writing> everyWriting, List<Called> byASwapOfBlocks,
+                           List<Sameness.Block<String>> blocks, boolean[][] apart,
+                           boolean readsLeast) {}
+
+    /** One writing of one relation, and the order it names its blocks in — which is the order
+     *  {@link Apartness#reduce} hands them over in. */
+    private record Writing(Apartness<String> relation, List<Sameness.Block<String>> blocks) {}
 
     /** One relation under one calling of its blocks, and the calling. */
     private record Called(Apartness<String> relation, Map<String, String> naming,

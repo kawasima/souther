@@ -35,6 +35,28 @@ public sealed interface RelationalLack<A> {
     /** Every block the lack is about, which is what a report has to name to say what has nothing. */
     Set<Sameness.Block<A>> blocks();
 
+    /**
+     * A number for a set of blocks that two different sets rarely share.
+     *
+     * <p>A set's own is the sum of what it holds, and the sets of blocks one relation is short of
+     * are all drawn from the same few blocks — so their sums fall together, and a reader that filed
+     * these under it would compare nearly every one of them with every other. Each block's number is
+     * scattered before the sum is taken, which leaves the sum as free of the order they come in as
+     * it was and the sets as far apart as they are.
+     *
+     * <p>Which is a thing a lack works out for itself and not a thing a caller does to it. A lack
+     * is what a refusal is looked up by, so where it is filed is settled by the lack rather than by
+     * whoever is filing it.
+     */
+    static int scattering(Set<?> these) {
+        int out = 0;
+        for (Object each : these) {
+            int mixed = each.hashCode() * 0x9E3779B9;
+            out += mixed ^ (mixed >>> 16);
+        }
+        return out;
+    }
+
     /** The same argument about the blocks {@code naming} calls these. */
     default <B> RelationalLack<B> renamed(java.util.function.Function<A, B> naming) {
         return switch (this) {
@@ -113,6 +135,18 @@ public sealed interface RelationalLack<A> {
                         + " being fewer values than blocks, and " + blocks + " have " + available);
             }
         }
+
+        /** The blocks and the values, scattered — see {@link #scattering}. */
+        @Override
+        public int hashCode() {
+            return 31 * scattering(blocks) + scattering(available);
+        }
+
+        @Override
+        public boolean equals(Object said) {
+            return said instanceof TooFewValuesBetweenThem<?> it && blocks.equals(it.blocks)
+                    && available.equals(it.available);
+        }
     }
 
     /**
@@ -141,13 +175,11 @@ public sealed interface RelationalLack<A> {
      * relation is asked about: a lack at one block is that block's own answer and is reached before
      * anything asks what the denials between blocks come to.
      *
-     * <p><b>Shown of blocks an assignment was looked for over, or of blocks holding a set that was
-     * looked over.</b> Three arguments reach this. A search over the whole relation runs out; a
-     * matching over blocks all stated to differ runs out, where a count of their values came out
-     * even and some part of them is short all the same; and blocks that several such sets are
-     * short of together are refused by any one of those sets being short. So what the blocks are is
-     * that no assignment gives all of them values telling every stated pair apart, and not that
-     * each of them was a step of one walk.
+     * <p><b>Two arguments reach this.</b> A search over the whole relation runs out, and a matching
+     * over blocks all stated to differ runs out where a count of their values came out even and
+     * some part of them is short all the same. So what the blocks are is that no assignment gives
+     * all of them values telling every stated pair apart, and not that each of them was a step of
+     * one walk.
      *
      * @param blocks the blocks no assignment tells apart, which are those whose values are written
      *               down: a block holding more of them than the relation has blocks was never going
@@ -158,6 +190,17 @@ public sealed interface RelationalLack<A> {
 
         public NoAssignmentTellsThemApart {
             blocks = Collections.unmodifiableSet(new LinkedHashSet<>(blocks));
+        }
+
+        /** The blocks, scattered — see {@link #scattering}. */
+        @Override
+        public int hashCode() {
+            return scattering(blocks);
+        }
+
+        @Override
+        public boolean equals(Object said) {
+            return said instanceof NoAssignmentTellsThemApart<?> it && blocks.equals(it.blocks);
         }
     }
 }

@@ -285,7 +285,7 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
             throw new AssertionError("refused by what its blocks are held as: " + both.refusedBy());
         }
         assertInstanceOf(RelationalLack.ABlockApartFromItself.class,
-                together.lacks().each().getFirst().lack());
+                together.lacks().only().lack());
         assertEquals(Set.of(Sameness.of("p", "r").blockOf("p")), both.refusedBy().blocks());
     }
 
@@ -293,7 +293,7 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
     private static RelationalLack<String> refusedBy(Apartness.Reduction<String> said) {
         Lacks<String> lacks = everyLackOf(said);
         assertEquals(1, lacks.size(), "one lack, and this shows several: " + lacks);
-        return lacks.each().getFirst().lack();
+        return lacks.only().lack();
     }
 
     /** Every lack a reduction that refused shows. */

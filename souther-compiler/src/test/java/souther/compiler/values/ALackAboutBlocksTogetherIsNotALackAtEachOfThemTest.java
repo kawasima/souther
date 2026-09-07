@@ -124,6 +124,50 @@ class ALackAboutBlocksTogetherIsNotALackAtEachOfThemTest {
                                 left, Value.text("A"), 1, Set.of(by)))))));
     }
 
+    /**
+     * And two readings of the largest relation a count is taken of are put together by asking one
+     * lack apiece.
+     *
+     * <p>Thirty blocks in groups of three, every pair across the groups stated to differ and none
+     * within one — which is the shape that has the most sets of blocks all stated to differ that
+     * the count is admitted for, one for each way of taking a block from each group. Two values
+     * apiece leaves every one of those sets short, so what the count shows is a lack for each of
+     * them.
+     *
+     * <p>Put together by walking, that is every lack of one reading against every lack of the
+     * other, and this relation is inside what a declaration may ask for. So a lack says where it is
+     * filed ({@link RelationalLack#scattering}) and two readings are put together by asking: the
+     * sets of blocks one relation is short of are drawn from the same few blocks, and a number that
+     * is their sum is one nearly all of them share.
+     *
+     * <p>Held by being here rather than by a figure. A run that asked this by walking takes long
+     * enough to be the whole of what the suite costs, which is what a reader of a broken one sees.
+     */
+    @Test
+    void andTwoReadingsOfTheLargestCountedRelationArePutTogetherByAsking() {
+        Apartness<String> partite = Apartness.nothing();
+        for (int one = 0; one < 30; one++) {
+            for (int other = one + 1; other < 30; other++) {
+                if (one / 3 != other / 3) {
+                    partite = partite.and(Apartness.of("p" + one, "p" + other));
+                }
+            }
+        }
+        Apartness.WhatABlockAdmits<String> two =
+                (_, _) -> new Admits.These(Set.of(Value.text("A"), Value.text("B")));
+
+        Apartness.Reduction<String> said = partite.reduce(two);
+        assertInstanceOf(Apartness.Reduction.Nothing.class, said);
+        Lacks<String> lacks = ((Apartness.Reduction.Nothing<String>) said).lacks();
+
+        assertEquals(partite.everySetWorthWalkingFor().orElseThrow().size(), lacks.size(),
+                "every set the count was taken of is short, and each of them is its own lack");
+        assertEquals(new Refusal.OfThemTogether<>(lacks),
+                Refusal.shownByBoth(new Refusal.OfThemTogether<>(lacks),
+                        new Refusal.OfThemTogether<>(lacks)),
+                "and two readings that show them all show them all");
+    }
+
     /** A lack about blocks together and a lack at blocks are not one another, whatever they name. */
     @Test
     void andALackAtBlocksSaysNothingAboutALackAboutThemTogether() {

@@ -2,9 +2,10 @@ package souther.compiler.values;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -12,29 +13,55 @@ import java.util.function.Predicate;
 /**
  * What one argument about a relation showed, which is every lack it showed and not one of them.
  *
- * <p>Nothing here reads the order these come in. An argument that walks the sets a count is taken
- * of reaches them in the order the pairs were written, and two writings of one relation are one
- * relation — so what is equal to what is settled by which lacks these are and how each was
- * reached, and by nothing about where in the walk each was found.
+ * <p>Nothing here is in an order. An argument that walks the sets a count is taken of reaches them
+ * in the order the pairs were written, and two writings of one relation are one relation — so what
+ * these are equal to is settled by which lacks they are and how each was reached, and by nothing
+ * about where in a walk each was found.
  *
  * <p>Each lack once, with every route that reached it. Two readings put together can show one lack
  * by taking a block's values through different rules, and both lots of rules are what an author has
  * to answer for.
  *
- * <p><b>Which is not the same as holding them in a {@link Set}.</b> A lack about several blocks
- * hashes through the set of blocks it names, and a set of blocks hashes as the sum of what it
- * holds; the sets of blocks one relation is short of are subsets of the same few blocks, so their
- * sums fall together and every one of them would be compared with every other on the way in.
- * Measured on the shape the walk is admitted at, putting them in a set was what a reduction cost
- * rather than a part of it.
+ * <p><b>Which is why what is inside is not what is handed out.</b> These are held in the order they
+ * arrived, because a lack about several blocks hashes through the set of blocks it names and the
+ * sets of blocks one relation is short of fall together — measured on the shape the walk is
+ * admitted at, putting them somewhere that hashes them on the way in was what a reduction cost
+ * rather than a part of it. An order nobody may read is not an order a value may show, so nothing
+ * here answers with one: a reader asks what was claimed, what a report may name, or whether every
+ * lack is of some kind.
+ *
+ * <p>And what a lack claims is what these are looked up by, which is a question asked of every lack
+ * of one of these against every lack of another wherever two are put together. Asked by walking,
+ * that is the square of a relation's sets on a relation admitted for as many of them as the bound
+ * allows — so which of these claims what is worked out once, when they are made.
  *
  * @param <A> what a position is called
- * @param each the lacks, in whatever order the argument that showed them reached them
  */
-public record Lacks<A>(List<Shown<A>> each) {
+public final class Lacks<A> {
 
-    public Lacks {
-        each = List.copyOf(each);
+    /** In the order they arrived, which nothing reads. */
+    private final List<Shown<A>> each;
+
+    /** Which of them claims what, so that putting two of these together is a lookup apiece rather
+     *  than a walk. */
+    private final Map<RelationalLack<A>, Integer> claiming;
+
+    private Lacks(List<Shown<A>> each) {
+        this.each = List.copyOf(each);
+        Map<RelationalLack<A>, Integer> claiming = new HashMap<>(this.each.size() * 2);
+        for (int at = 0; at < this.each.size(); at++) {
+            if (claiming.put(this.each.get(at).lack(), at) != null) {
+                throw new IllegalArgumentException(
+                        "a lack is claimed once, with every route that reached it: "
+                                + this.each.get(at).lack());
+            }
+        }
+        this.claiming = claiming;
+    }
+
+    /** These lacks, each of them claimed once. */
+    static <A> Lacks<A> of(List<Shown<A>> each) {
+        return new Lacks<>(each);
     }
 
     /** None of them, which is what an argument that refused nothing showed. */
@@ -62,11 +89,22 @@ public record Lacks<A>(List<Shown<A>> each) {
         return each.size();
     }
 
+    /**
+     * The one lack these are, where they are one.
+     *
+     * @throws IllegalStateException where they are not one, since a reader that asked this of
+     *         several would be reading whichever arrived first
+     */
+    public Shown<A> only() {
+        if (each.size() != 1) {
+            throw new IllegalStateException("one lack was asked for, and these are " + each);
+        }
+        return each.getFirst();
+    }
+
     /** What each of them claims, less how any of them was reached. */
     public Set<RelationalLack<A>> claimed() {
-        Set<RelationalLack<A>> out = new LinkedHashSet<>();
-        each.forEach(shown -> out.add(shown.lack()));
-        return Collections.unmodifiableSet(out);
+        return Collections.unmodifiableSet(claiming.keySet());
     }
 
     /** Every block a report may name: what the lacks are about, and what the routes to them read. */
@@ -87,32 +125,27 @@ public record Lacks<A>(List<Shown<A>> each) {
     /** Both of these: every lack either shows, each with every route that reached it. */
     public Lacks<A> and(Lacks<A> other) {
         List<Shown<A>> out = new ArrayList<>(each);
-        other.each.forEach(shown -> put(out, shown));
+        other.each.forEach(shown -> {
+            Integer at = claiming.get(shown.lack());
+            if (at == null) {
+                out.add(shown);
+            } else {
+                out.set(at, out.get(at).alsoReachedBy(shown));
+            }
+        });
         return new Lacks<>(out);
     }
 
     /** The lacks both of these claim, each with the routes both of them reached it by. */
     public Lacks<A> sharedWith(Lacks<A> other) {
         List<Shown<A>> out = new ArrayList<>();
-        each.forEach(shown -> other.showing(shown.lack())
-                .ifPresent(theirs -> put(out, shown.alsoReachedBy(theirs))));
-        return new Lacks<>(out);
-    }
-
-    /** How {@code lack} was reached here, or nothing where it is not claimed. */
-    private Optional<Shown<A>> showing(RelationalLack<A> lack) {
-        return each.stream().filter(shown -> shown.lack().equals(lack)).findFirst();
-    }
-
-    /** {@code shown} into {@code out}, put together with what already claims its lack. */
-    private static <A> void put(List<Shown<A>> out, Shown<A> shown) {
-        for (int at = 0; at < out.size(); at++) {
-            if (out.get(at).lack().equals(shown.lack())) {
-                out.set(at, out.get(at).alsoReachedBy(shown));
-                return;
+        for (Shown<A> shown : each) {
+            Integer at = other.claiming.get(shown.lack());
+            if (at != null) {
+                out.add(shown.alsoReachedBy(other.each.get(at)));
             }
         }
-        out.add(shown);
+        return new Lacks<>(out);
     }
 
     /** The same lacks about the blocks {@code naming} calls these. */
@@ -122,17 +155,19 @@ public record Lacks<A>(List<Shown<A>> each) {
         return new Lacks<>(out);
     }
 
-    /**
-     * The same lacks whichever order the argument reached them in.
-     *
-     * <p>Asked by holding each of one against the other, and not by putting them somewhere that
-     * hashes them: what these hold hashes alike across one relation, so a reader that asked this
-     * question by building a set would pay for the collisions here as well as where they were made.
-     */
+    /** The same lacks, each reached the same way, whichever order they arrived in. */
     @Override
     public boolean equals(Object said) {
-        return said instanceof Lacks<?> it && each.size() == it.each.size()
-                && each.containsAll(it.each);
+        if (!(said instanceof Lacks<?> it) || each.size() != it.each.size()) {
+            return false;
+        }
+        for (Shown<?> shown : it.each) {
+            Integer at = claiming.get(shown.lack());
+            if (at == null || !each.get(at).equals(shown)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override

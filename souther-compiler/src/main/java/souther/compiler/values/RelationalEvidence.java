@@ -29,13 +29,19 @@ import java.util.function.Function;
  * <p>Only narrowing has a route. Reading the rule, counting and looking for an assignment each show
  * their lack of the blocks the lack itself names, so what is carried for them is no route at all.
  *
+ * <p>Held in the order they arrived, which nothing reads: an order nobody may read is not an order
+ * a value may show, so these are not handed out. What a reader wants of them is where an author is
+ * sent, which is {@link #restingOn}.
+ *
  * @param <A> what a position is called
- * @param routes each of them the removals of one narrowing, in whatever order they arrived
  */
-public record RelationalEvidence<A>(List<Provenance<A>> routes) {
+public final class RelationalEvidence<A> {
 
-    public RelationalEvidence {
-        routes = List.copyOf(routes);
+    /** Each of them the removals of one narrowing, in whatever order they arrived. */
+    private final List<Provenance<A>> routes;
+
+    private RelationalEvidence(List<Provenance<A>> routes) {
+        this.routes = List.copyOf(routes);
     }
 
     /** Nothing was read beyond the blocks the lack names. */
@@ -48,7 +54,13 @@ public record RelationalEvidence<A>(List<Provenance<A>> routes) {
         return new RelationalEvidence<>(List.of(route));
     }
 
-    /** Every route either of these has, each of them once. */
+    /**
+     * Every route either of these has, each of them once.
+     *
+     * <p>Walked rather than looked up. How many routes a lack has is how many readings were put
+     * together to show it, which is how many alternatives a choice was written with — where the
+     * lacks a route reaches are as many as a relation has sets of blocks all stated to differ.
+     */
     public RelationalEvidence<A> and(RelationalEvidence<A> other) {
         List<Provenance<A>> out = new ArrayList<>(routes);
         other.routes.forEach(route -> {
@@ -79,6 +91,11 @@ public record RelationalEvidence<A>(List<Provenance<A>> routes) {
     public boolean equals(Object said) {
         return said instanceof RelationalEvidence<?> it && routes.size() == it.routes.size()
                 && routes.containsAll(it.routes);
+    }
+
+    @Override
+    public String toString() {
+        return routes.toString();
     }
 
     @Override

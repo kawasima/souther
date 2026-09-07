@@ -161,7 +161,7 @@ public final class Apartness<A> {
                 out.add(Shown.of(new RelationalLack.ABlockApartFromItself<>(edge.one())));
             }
         });
-        return new Lacks<>(out);
+        return Lacks.of(out);
     }
 
     /** How much walking this relation is, before any of it is walked. */
@@ -624,7 +624,7 @@ public final class Apartness<A> {
         List<Shown<A>> lacks = new ArrayList<>();
         narrowed.leftNothing().forEach(block -> lacks.add(
                 new Shown<>(new RelationalLack.NoValueLeftForIt<>(block), reached)));
-        return new Reduction.Nothing<>(new Lacks<>(lacks));
+        return new Reduction.Nothing<>(Lacks.of(lacks));
     }
 
     /** What the two arguments after a narrowing make of what it left. */
@@ -764,7 +764,7 @@ public final class Apartness<A> {
                 found.add(Shown.of(why));
             }
         }
-        return new Lacks<>(found);
+        return Lacks.of(found);
     }
 
     /**
