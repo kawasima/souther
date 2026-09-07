@@ -41,7 +41,7 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
     private static final int BLOCKS = 4;
 
     /**
-     * One relation written any way round, and handed over in any order, is answered the same way.
+     * One relation written any way round is answered the same way.
      *
      * <p>Every ordering of the pairs and not the ones a swap away from the order they were built
      * in. A law asked of the writings one swap from this one says that those are this one's answer,
@@ -50,9 +50,10 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      * of every ordering, there is nothing between.
      *
      * <p>And the blocks are handed over in the order that writing names them, which is where
-     * {@link Apartness#reduce} gets them. The order the pairs are read in is one thing a narrowing
-     * could answer from; the order the blocks arrive in is the other, and a law that reordered the
-     * pairs while handing the blocks over as they were would be holding one of the two.
+     * {@link Apartness#reduce} gets them — so what is asked here is one relation written another
+     * way, and not a writing whose blocks arrive as the first writing's did. Which orders the
+     * blocks can arrive in at all is what {@link #andHandedOverInAnyOrderIsAnsweredTheSameWay}
+     * asks, and it asks every one of them.
      *
      * <p>What is compared is the whole answer — which blocks were left nothing, and which removals
      * left them so — because a reading that agreed about the verdict and not about the lack would
@@ -78,6 +79,35 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
                 int which = at;
                 assertEquals(said, Narrowing.of(writing.relation(), new Domains<>(left)),
                         () -> "the same relation, written its " + which + "th way round");
+            }
+        });
+    }
+
+    /**
+     * And a relation handed over with its blocks in any order is answered the same way.
+     *
+     * <p>Two things a narrowing could answer from and not one. The order the pairs were written in
+     * is what the law above asks; the order the blocks arrive in is this one, and the two are not
+     * each other — a pair states two blocks and says nothing about which of them a reading names
+     * first, so one writing can be handed over in any order its blocks can be put in.
+     *
+     * <p>Every order and not the ones a writing happens to induce. A pair is unordered, so the same
+     * pair written the other way round names its blocks the other way round; a reading is built by
+     * whoever holds the values, and what it hands over is a map of them. Asked of the orders one
+     * relation's writings reach, a law would be about how these blocks happen to have been written
+     * down.
+     */
+    @Test
+    void andHandedOverInAnyOrderIsAnsweredTheSameWay() {
+        overEveryShape((written, domains) -> {
+            Closure<String> said = Narrowing.of(written.relation(), domains);
+            for (List<Sameness.Block<String>> order : written.everyOrder()) {
+                Map<Sameness.Block<String>, Admits> left = new LinkedHashMap<>();
+                for (Sameness.Block<String> block : order) {
+                    left.put(block, domains.of(block));
+                }
+                assertEquals(said, Narrowing.of(written.relation(), new Domains<>(left)),
+                        () -> "the same relation, with its blocks handed over as " + order);
             }
         });
     }
@@ -558,8 +588,29 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
             apart[one][other] = true;
             apart[other][one] = true;
         }
+        List<List<Sameness.Block<String>>> everyOrder = new ArrayList<>();
+        growOrders(new ArrayList<>(), new boolean[blocks.size()], blocks, everyOrder);
         return new Written(stated, relation, everyWriting, byASwapOfBlocks, blocks,
-                apart, readsLeast);
+                everyOrder, apart, readsLeast);
+    }
+
+    /** Every order {@code blocks} can be handed over in. */
+    private static void growOrders(List<Sameness.Block<String>> sofar, boolean[] taken,
+                                   List<Sameness.Block<String>> blocks,
+                                   List<List<Sameness.Block<String>>> out) {
+        if (sofar.size() == blocks.size()) {
+            out.add(List.copyOf(sofar));
+            return;
+        }
+        for (int each = 0; each < blocks.size(); each++) {
+            if (!taken[each]) {
+                taken[each] = true;
+                sofar.add(blocks.get(each));
+                growOrders(sofar, taken, blocks, out);
+                sofar.removeLast();
+                taken[each] = false;
+            }
+        }
     }
 
     /** Every ordering of {@code stated}, as the relation it writes and the order that writing
@@ -706,12 +757,14 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      * @param everyWriting every ordering of its pairs, as the relation each writes
      * @param byASwapOfBlocks it, with two neighbouring blocks called by each other's names
      * @param blocks its blocks, in the order the pairs name them
+     * @param everyOrder every order those blocks can be handed over in
      * @param apart which of those blocks are stated to differ, indexed as they are
      * @param readsLeast whether it is the one relation of its shape that reads least
      */
     private record Written(List<Pair> stated, Apartness<String> relation,
                            List<Writing> everyWriting, List<Called> byASwapOfBlocks,
-                           List<Sameness.Block<String>> blocks, boolean[][] apart,
+                           List<Sameness.Block<String>> blocks,
+                           List<List<Sameness.Block<String>>> everyOrder, boolean[][] apart,
                            boolean readsLeast) {}
 
     /** One writing of one relation, and the order it names its blocks in — which is the order
