@@ -1,5 +1,7 @@
 package souther.compiler.publish;
 
+import souther.compiler.source.SourceId;
+
 import tools.jackson.databind.node.ObjectNode;
 
 /**
@@ -64,8 +66,15 @@ public sealed interface PublishedSubject {
         }
     }
 
-    /** One source, under the name this document gives it. */
-    record OfASource(String source) implements PublishedSubject {
+    /**
+     * One source, as the compilation identifies it.
+     *
+     * <p>The identity and not the name this document gives it. What a document calls a source is
+     * recorded as the document writes it, so a name taken here would be taken while the entries
+     * were still being arranged — and the table of sources would come out in the order they were
+     * projected rather than the order they are written.
+     */
+    record OfASource(SourceId source) implements PublishedSubject {
 
         @Override
         public SubjectWord kind() {
@@ -74,7 +83,7 @@ public sealed interface PublishedSubject {
 
         @Override
         public String identity() {
-            return source;
+            return source.value();
         }
     }
 

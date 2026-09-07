@@ -4027,7 +4027,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // What it is about, under a word of its own rather than under `subject`. This document
             // already calls two other things that: what a standing question asks about, and what an
             // incompleteness is attributed to. Neither is this, and neither is shaped like it.
-            about(fact.putObject("about"), each.about());
+            about(fact.putObject("about"), each.about(), sources);
             each.reason().ifPresent(reason -> fact.put("reason", word(reason)));
             fact.put("runSensitivity", word(each.runSensitivity()));
         }
@@ -4040,12 +4040,16 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * What each arm writes is what that arm holds and no more: a shape with every field of every
      * kind would leave a consumer reading which of them are filled in to find out what it has.
      */
-    static void about(ObjectNode into, PublishedSubject about) {
+    static void about(ObjectNode into, PublishedSubject about, DocumentSources sources) {
         into.put("kind", word(about.kind()));
         switch (about) {
             case PublishedSubject.OfAModule it -> into.put("module", it.module());
             case PublishedSubject.OfABehavior it -> into.put("behavior", it.behavior());
-            case PublishedSubject.OfASource it -> into.put("source", it.source());
+            // Named as it is written, which is what puts it in the table of sources this document
+            // owes an explanation of. Named while the entries were being arranged, the table would
+            // follow the order they were projected in.
+            case PublishedSubject.OfASource it ->
+                    into.put("source", sources.written(it.source()));
             case PublishedSubject.OfARow it -> {
                 into.put("behavior", it.behavior());
                 into.put("source", it.source());
@@ -4187,8 +4191,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         return switch (subject) {
             case Subject.OfAModule it -> new PublishedSubject.OfAModule(it.module());
             case Subject.OfABehavior it -> new PublishedSubject.OfABehavior(it.behavior());
-            case Subject.OfASource it ->
-                    new PublishedSubject.OfASource(sources.written(it.source()));
+            case Subject.OfASource it -> new PublishedSubject.OfASource(it.source());
             // Named where the row has a name, and which of its behavior's rows in that source
             // where it has none: a row without a name says of itself that nothing outside this
             // compiler can address it by a number.

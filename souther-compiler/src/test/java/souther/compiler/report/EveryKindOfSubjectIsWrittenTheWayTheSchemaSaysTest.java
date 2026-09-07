@@ -1,6 +1,7 @@
 package souther.compiler.report;
 
 import souther.compiler.DocumentShape;
+import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.publish.MeasureWord;
 import souther.compiler.publish.PublishedSubject;
 import souther.compiler.publish.SubjectWord;
@@ -79,7 +80,7 @@ class EveryKindOfSubjectIsWrittenTheWayTheSchemaSaysTest {
         return List.of(
                 new PublishedSubject.OfAModule("m"),
                 new PublishedSubject.OfABehavior("b"),
-                new PublishedSubject.OfASource("0"),
+                new PublishedSubject.OfASource(new souther.compiler.source.SourceId("0")),
                 new PublishedSubject.OfARow("b", "0", "named", null),
                 new PublishedSubject.OfARow("b", "0", null, 1),
                 new PublishedSubject.AtASpelledPosition("b", "r.cost"),
@@ -127,7 +128,7 @@ class EveryKindOfSubjectIsWrittenTheWayTheSchemaSaysTest {
             entry.put("kind", "not_measured");
             entry.put("reason", "no_rows");
             entry.put("runSensitivity", "unaffected");
-            AdequacyReport.about(entry.putObject("about"), subject);
+            AdequacyReport.about(entry.putObject("about"), subject, new DocumentSources(SourceNameResolver.identity()));
 
             DocumentShape.of(document).wrong().forEach(said ->
                     wrong.add(subject.kind() + ": " + said));
@@ -151,7 +152,7 @@ class EveryKindOfSubjectIsWrittenTheWayTheSchemaSaysTest {
         List<String> wrong = new ArrayList<>();
         for (PublishedSubject each : oneOfEach()) {
             ObjectNode written = JSON.createObjectNode();
-            AdequacyReport.about(written, each);
+            AdequacyReport.about(written, each, new DocumentSources(SourceNameResolver.identity()));
             for (JsonNode branch : subject.get("allOf")) {
                 String of = branch.get("if").get("properties").get("kind").get("const").asString();
                 if (!of.equals(written.get("kind").asString())) {
