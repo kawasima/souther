@@ -93,6 +93,31 @@ final class Narrowing<A> {
     }
 
     /**
+     * What narrowing comes to, and the removals that reached it where it reached a refusal.
+     *
+     * <p><b>A walk holds a round and the one before it, and nothing else.</b> What a narrowing
+     * takes is worked out against the reading a round was handed, so two readings are what it needs
+     * at once — and a chain of blocks each left two values is narrowed one block per round, so a
+     * walk that kept what every round left would hold a reading of the whole relation for every
+     * block of it. That the rounds are what a narrowing is said in is a fact about the operation
+     * and not a reason to keep them.
+     *
+     * <p>So a report's removals are read by walking again. Nothing is written down while an answer
+     * is being reached, and where the answer is that a block is left nothing — which is where a
+     * reader has a report to write — the same walk is made again and asked to say what it takes as
+     * it takes it. What that costs is one walk, on the answer that is about to be written up.
+     */
+    private Closure<A> from(Domains<A> domains) {
+        Walked<A> said = walk(domains, null);
+        if (said.emptied() == null) {
+            return new Closure.Stable<>(said.reading());
+        }
+        List<Provenance.Removal<A>> taken = new ArrayList<>();
+        walk(domains, taken);
+        return new Closure.Contradicted<>(said.emptied(), Provenance.of(taken));
+    }
+
+    /**
      * Round after round, until nothing moves or a round leaves a block nothing.
      *
      * <p>A round that takes nothing writes nothing. What the blocks are left is read from one round
@@ -100,19 +125,16 @@ final class Narrowing<A> {
      * relation whose blocks all leave each other room is most of what a compilation reads, and for
      * one of those this walks the pairs and hands back the reading it was given.
      *
-     * <p><b>And what took what is read off the rounds where a report wants it.</b> Which values
-     * went in a round is the difference between what the blocks were left before it and after, and
-     * what blocked one of them is read off the round before — so the rounds are what is kept, and
-     * a narrowing that ends with every block holding something writes down no removal at all.
+     * @param taken where each removal is written down as it is made, or null for a walk that is
+     *              only being asked what the relation comes to
      */
-    private Closure<A> from(Domains<A> domains) {
+    private Walked<A> walk(Domains<A> domains, List<Provenance.Removal<A>> taken) {
         Admits[] left = new Admits[blocks.size()];
         for (int at = 0; at < left.length; at++) {
             left[at] = domains.of(blocks.get(at));
         }
-        List<Admits[]> rounds = new ArrayList<>();
-        rounds.add(left);
-        while (true) {
+        boolean anythingWent = false;
+        for (int round = 1; ; round++) {
             Admits[] next = null;
             Set<Sameness.Block<A>> emptied = null;
             for (int at = 0; at < left.length; at++) {
@@ -123,6 +145,9 @@ final class Narrowing<A> {
                 for (Value value : it.values()) {
                     if (!blocked(left, at, value)) {
                         keeping.add(value);
+                    } else if (taken != null) {
+                        taken.add(new Provenance.Removal<>(
+                                blocks.get(at), value, round, blocking(left, at, value)));
                     }
                 }
                 if (next == null) {
@@ -137,43 +162,24 @@ final class Narrowing<A> {
                 }
             }
             if (next == null) {
-                return new Closure.Stable<>(rounds.size() == 1 ? domains : reading(left));
+                return new Walked<>(anythingWent ? reading(left) : domains, null);
             }
-            rounds.add(next);
             if (emptied != null) {
-                return new Closure.Contradicted<>(emptied, removals(rounds));
+                return new Walked<>(null, emptied);
             }
             left = next;
+            anythingWent = true;
         }
     }
 
     /**
-     * Which values each round took from which blocks, and what left them nowhere to go.
+     * What one walk came to: the reading nothing more can be taken from, or the blocks a round left
+     * nothing.
      *
-     * <p>Read off what the blocks were left before a round and after it. A value that went in a
-     * round was there before it, so the difference is the removals; and what blocked one of them is
-     * asked of the round before, which is where the rule that took it was read.
+     * @param reading what the blocks are left, where no round emptied one
+     * @param emptied the blocks the first round to empty anything emptied, or null where none did
      */
-    private Provenance<A> removals(List<Admits[]> rounds) {
-        Set<Provenance.Removal<A>> out = new LinkedHashSet<>();
-        for (int round = 1; round < rounds.size(); round++) {
-            Admits[] before = rounds.get(round - 1);
-            Admits[] after = rounds.get(round);
-            for (int at = 0; at < before.length; at++) {
-                if (!(before[at] instanceof Admits.These was)
-                        || !(after[at] instanceof Admits.These now)) {
-                    continue;
-                }
-                for (Value value : was.values()) {
-                    if (!now.values().contains(value)) {
-                        out.add(new Provenance.Removal<>(
-                                blocks.get(at), value, round, blocking(before, at, value)));
-                    }
-                }
-            }
-        }
-        return new Provenance<>(out);
-    }
+    private record Walked<A>(Domains<A> reading, Set<Sameness.Block<A>> emptied) {}
 
     /** What the blocks are left, as a reading for whoever is answered with one. */
     private Domains<A> reading(Admits[] left) {

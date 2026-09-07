@@ -214,6 +214,41 @@ class WhatHoldsANarrowingToWhatItIsForTest {
         assertThrows(IllegalArgumentException.class, () -> new Domains<>(nothing));
     }
 
+    /**
+     * And a run of blocks each left two values is narrowed a block per round, holding one round and
+     * the one before it.
+     *
+     * <p>The first block holds one value, and every block after it holds two. A round takes that
+     * value from the second, which leaves the second one value for the round after to take from the
+     * third — so the rounds are as many as the blocks, and every one of them leaves every block
+     * holding something.
+     *
+     * <p>Which is the shape a walk that kept what each round left would hold a reading of the whole
+     * relation for every block of it. It is a run of blocks and not a relation anybody had to
+     * contrive, so what a walk holds at once is one round and the one before it.
+     */
+    @Test
+    void andARunOfBlocksIsNarrowedABlockPerRoundWithoutKeepingTheRounds() {
+        int many = 400;
+        Apartness<String> run = Apartness.nothing();
+        for (int each = 0; each + 1 < many; each++) {
+            run = run.and(Apartness.of("p" + each, "p" + (each + 1)));
+        }
+        Apartness.WhatABlockAdmits<String> left = (block, _) ->
+                new Admits.These(block.equals(block("p0")) ? Set.of(A) : Set.of(A, B));
+
+        Closure<String> said = Narrowing.of(run,
+                Domains.of(run.blocks(), left, run.blocks().size()));
+
+        assertInstanceOf(Closure.Stable.class, said);
+        Domains<String> narrowed = ((Closure.Stable<String>) said).domains();
+        for (int each = 0; each < many; each++) {
+            assertEquals(new Admits.These(Set.of(each % 2 == 0 ? A : B)),
+                    narrowed.of(block("p" + each)),
+                    "the run holds one value apiece, taking them in turn");
+        }
+    }
+
     /** What narrowing {@code relation} against what {@code left} says its blocks hold comes to,
      *  where that leaves a block nothing. */
     private static Closure.Contradicted<String> refusing(

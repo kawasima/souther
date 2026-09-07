@@ -4,6 +4,7 @@ import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -32,6 +33,11 @@ public record Provenance<A>(Set<Removal<A>> removals) {
 
     public Provenance {
         removals = Collections.unmodifiableSet(new LinkedHashSet<>(removals));
+    }
+
+    /** The removals one walk made, in the order it made them, which nothing reads. */
+    static <A> Provenance<A> of(List<Removal<A>> made) {
+        return new Provenance<>(new LinkedHashSet<>(made));
     }
 
     /** Nothing was taken from anything, which is what a relation narrowed by no round has. */
