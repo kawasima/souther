@@ -8,6 +8,9 @@ import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
 import souther.compiler.semantics.BuiltFrom;
 import souther.compiler.types.BindingId;
+import souther.compiler.types.ValueName;
+
+import java.util.List;
 
 /**
  * Which position of a behavior's input an expression names, and that it names none where it names
@@ -253,17 +256,42 @@ final class InputPath {
                 }
             };
         }
-        // Or through an operation the language keeps standing that answers what it was given.
-        if (!(e instanceof Core.Call call) || !(call.fn() instanceof Core.Reached reached)) {
-            return new PathResolution.NotAPosition();
+        // Or through an operation that answers what it was given, in either of the two shapes a
+        // representation gives an application: the call a name reached where the operation has been
+        // expanded away, and the operation standing as itself where it has not. What the library
+        // says its answer holds is said of the operation, so it is asked once of that.
+        ValueName operation;
+        List<Core> args;
+        switch (e) {
+            case Core.Call call when call.fn() instanceof Core.Reached reached -> {
+                operation = reached.denotes();
+                args = call.args();
+            }
+            case Core.PreservedCall kept -> {
+                operation = kept.declared().operation();
+                args = kept.args();
+            }
+            default -> {
+                return new PathResolution.NotAPosition();
+            }
         }
         BuiltFrom<DeclaredArgument> built =
-                DefaultBoundOperationFacts.get().buildsItsResultFrom(reached.denotes());
+                DefaultBoundOperationFacts.get().buildsItsResultFrom(operation);
         DeclaredArgument holds = built == null ? null : built.holdsTheElementsOf();
-        // The call is the runnable tree's and not a kept one, so its argument count is checked
+        // What is made from a position came from it and is not it, so an answer holding only that
+        // is crossed by the walk after where a value came from and not by the walk after which
+        // position an expression names — the same two licences an edge written by an expansion
+        // carries ({@link souther.compiler.check.ElementProvenance#stepFrom}), read here from the
+        // declaration that states them because the operation is still standing to be asked.
+        DeclaredArgument which = holds != null ? holds
+                : switch (asked) {
+                    case VALUE_ORIGIN -> built == null ? null : built.derivesItsElementsFrom();
+                    case NAMED_POSITION -> null;
+                };
+        // The call may be the runnable tree's and not a kept one, so its argument count is checked
         // here rather than by a kept call's own constructor.
-        int argument = holds == null ? -1 : CallArguments.positionOf(holds, reached.denotes());
-        return argument < 0 || argument >= call.args().size() ? new PathResolution.NotAPosition()
-                : containerPath(call.args().get(argument), names);
+        int argument = which == null ? -1 : CallArguments.positionOf(which, operation);
+        return argument < 0 || argument >= args.size() ? new PathResolution.NotAPosition()
+                : containerPath(args.get(argument), names);
     }
 }

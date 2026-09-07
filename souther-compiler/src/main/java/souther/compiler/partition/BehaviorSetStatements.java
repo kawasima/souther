@@ -1,6 +1,10 @@
 package souther.compiler.partition;
 
 import souther.compiler.check.AnalysisBody;
+import souther.compiler.check.RuleCitation;
+import souther.compiler.check.RuleRef;
+import souther.compiler.check.UnreadComparison;
+import souther.compiler.core.Core;
 import souther.compiler.check.ElementBindings;
 import souther.compiler.check.PredicateStatement;
 import souther.compiler.check.StatedContract;
@@ -24,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.SequencedMap;
 import java.util.Set;
 
 /**
@@ -89,12 +94,59 @@ public final class BehaviorSetStatements {
      *                by it would be held open by a rule that never reached the position
      */
     public record Read(List<RuleEvidence> statements, List<ClassingBlocker> blocked,
-                       List<RuleWithoutALine> saying) {
+                       List<RuleWithoutALine> saying, List<ForkOfItsOwn> forks) {
 
         public Read {
             statements = List.copyOf(statements);
             blocked = List.copyOf(blocked);
             saying = List.copyOf(saying);
+            forks = List.copyOf(forks);
+        }
+    }
+
+    /**
+     * A fork of the model that states a rule of its own, because nothing in what it tests does.
+     *
+     * <p><b>The fallback owner and not a fourth kind of condition.</b> A condition raises a
+     * question about the input, and which rule of the model that question is filed under is settled
+     * by whichever reader owns what the condition states: a comparison of the values, the position
+     * the condition is, or a predicate over the strings there. Where all of them say nothing, what
+     * the author wrote is a fork and the question is the fork's — so this is the answer of last
+     * resort rather than a shape recognised on its own.
+     *
+     * <p>Which means an owner added later takes forks out of this list and needs nothing here
+     * changed. A reading that learns to say what {@code List.isEmpty} does to the position it walks
+     * makes that fork a rule of whatever reader learned it, and the definition of what belongs here
+     * — no owner claimed it — is the same definition it was.
+     *
+     * @param filed where the reading of what the fork tests got to. A part naming a position is
+     *              filed there and not at a number of it: which number of the position such a fork
+     *              is about is exactly what was not read
+     */
+    public record ForkOfItsOwn(RuleCitation cited,
+                               SequencedMap<FilingCoordinate,
+                                       BlockReason.RuleReadingStopped> filed) {
+
+        public ForkOfItsOwn {
+            if (cited == null) {
+                throw new IllegalArgumentException(
+                        "a fork that states a rule is one of the model's, written somewhere");
+            }
+            filed = java.util.Collections.unmodifiableSequencedMap(
+                    new LinkedHashMap<>(filed));
+            if (filed.isEmpty()) {
+                // A fork every part of whose condition a reader took in states no rule of its own,
+                // and neither does one whose parts name no position of the input. Built with
+                // nothing filed, it would be a question about a condition this compiler read from
+                // end to end, or one about an input the fork says nothing of.
+                throw new IllegalArgumentException(
+                        "a fork states a rule about some position it left unread");
+            }
+        }
+
+        /** Which rule of the model this is. */
+        public RuleRef.Fork rule() {
+            return (RuleRef.Fork) cited.rule();
         }
     }
 
@@ -136,9 +188,10 @@ public final class BehaviorSetStatements {
     public static Read of(String behavior, AnalysisBody body, StatedContract stated,
                           InputReading read,
                           Map<BindingId, String> parameters, ElementBindings elements,
-                          Allowance<NumericTerm.FromOnePosition> allowance) {
-        return of(PredicateReadings.of(behavior, body, stated, read, parameters, elements),
-                read.symbols(), allowance);
+                          Allowance<NumericTerm.FromOnePosition> allowance,
+                          List<ComparisonReadings.ForkMet> forks) {
+        return of(behavior, PredicateReadings.of(behavior, body, stated, read, parameters, elements),
+                read.symbols(), allowance, forks);
     }
 
     /**
@@ -149,8 +202,9 @@ public final class BehaviorSetStatements {
      * one of these rules has been expanded into what it does, so the behavior would come back
      * stating nothing about the strings at any of its positions.
      */
-    static Read of(PredicateReadings read, Symbols symbols,
-                   Allowance<NumericTerm.FromOnePosition> allowance) {
+    static Read of(String behavior, PredicateReadings read, Symbols symbols,
+                   Allowance<NumericTerm.FromOnePosition> allowance,
+                   List<ComparisonReadings.ForkMet> forks) {
         List<Asked> asked = new ArrayList<>();
         List<ClassingBlocker> blocked = new ArrayList<>();
         List<RuleWithoutALine> saying = new ArrayList<>();
@@ -182,7 +236,8 @@ public final class BehaviorSetStatements {
         for (Asked each : asked) {
             state(each, answers.get(each.term()), statements, blocked);
         }
-        return new Read(statements, blocked, saying);
+        return new Read(statements, blocked, saying,
+                ofTheirOwn(behavior, read, symbols, forks));
     }
 
     /**
@@ -280,5 +335,82 @@ public final class BehaviorSetStatements {
         }
         statements.add(new RuleEvidence.BySet(new SetStatement(each.term(),
                 built.of(each.whenTrue()), built.of(each.whenFalse()), each.states(), each.by())));
+    }
+
+    /**
+     * The forks among {@code forks} that state a rule of their own.
+     *
+     * <p>Where the three readers of a condition meet. Two of the answers were found by the walk of
+     * the comparisons — whether a comparison came out of the condition, and whether the condition
+     * is a position — and the third is this reading's, which is the reason the join is here: a
+     * predicate is what this walk reads, and a reader that asked it from outside would be reading
+     * the body a second time to find out.
+     *
+     * <p>Said as no owner claiming it rather than as a shape. {@link ForkOfItsOwn} says why.
+     */
+    private static List<ForkOfItsOwn> ofTheirOwn(String behavior, PredicateReadings read,
+                                                 Symbols symbols,
+                                                 List<ComparisonReadings.ForkMet> forks) {
+        List<ForkOfItsOwn> out = new ArrayList<>();
+        for (ComparisonReadings.ForkMet each : forks) {
+            // The parts of what it tests that no reader answers for. Asked part by part and not of
+            // the fork: `a > 0 && List.isEmpty(xs)` states a comparison and something nothing read,
+            // and a fork answered for by one owner having claimed one part would leave the other
+            // part unsaid — a model reported as fully read over a condition half of which nobody
+            // took in.
+            List<Core> untaken = new ArrayList<>();
+            for (Core atom : each.leftTo(java.util.Set.of())) {
+                if (!read.statesOneIn(atom)) {
+                    untaken.add(atom);
+                }
+            }
+            if (untaken.isEmpty()) {
+                continue;
+            }
+            ForkOfItsOwn asked = asked(behavior, each, untaken, symbols);
+            if (asked != null) {
+                out.add(asked);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * One fork's question: why each part of it went unread, and where a reading got to.
+     *
+     * <p>Both answers come from the reading of what the part is made of
+     * ({@link GuardThresholds#namesIn}), which is the same reading a comparison's stop is described
+     * by. Written apart, a fork on {@code List.isEmpty(xs)} and a comparison against what the same
+     * call answers would be two accounts of one shape, and an author reading them would be sent
+     * after two different pieces of work.
+     *
+     * <p>Filed at the positions the walk met inside the part and never at a number of one. Which
+     * number of the position such a fork is about is precisely what was not read, and a term made
+     * up for it would be this compiler naming an operation the model never wrote
+     * ({@link FilingCoordinate.AtPosition}).
+     *
+     * <p><b>Null where no part of it names a position of the input.</b> Such a fork is not a rule
+     * this compiler failed to read: it is a rule about something the input has no part in —
+     * {@code List.isEmpty([1, 2, 3])} says nothing about any position, so there is no position for
+     * a question to be about. The same threshold a comparison is held to, decided by the same
+     * reading ({@link ComparisonAssessment.NoInput}), so a fork and a comparison over one shape do
+     * not disagree about whether the model states anything.
+     *
+     * <p>Which is not a question disappearing for want of a coordinate. What decides it is the
+     * subject — whether the rule is about the input at all — and never how far the reading got: a
+     * part that does name a position is filed there, however little else was worked out about it.
+     */
+    private static ForkOfItsOwn asked(String behavior, ComparisonReadings.ForkMet fork,
+                                      List<Core> untaken, Symbols symbols) {
+        SequencedMap<FilingCoordinate, BlockReason.RuleReadingStopped> filed =
+                new LinkedHashMap<>();
+        for (Core part : untaken) {
+            GuardThresholds.Names names = GuardThresholds.namesIn(part, fork.reads(), symbols);
+            BlockReason.RuleReadingStopped why =
+                    UnreadComparison.notAboutOwnValues(names.origin());
+            names.met().keySet().forEach(at -> filed.putIfAbsent(FilingCoordinate.at(at), why));
+        }
+        return filed.isEmpty() ? null : new ForkOfItsOwn(new RuleCitation.WrittenAt(
+                new RuleRef.Fork(behavior, fork.occurrence().origin()), fork.at()), filed);
     }
 }

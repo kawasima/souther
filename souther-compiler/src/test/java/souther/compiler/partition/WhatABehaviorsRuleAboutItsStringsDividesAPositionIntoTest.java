@@ -338,6 +338,7 @@ class WhatABehaviorsRuleAboutItsStringsDividesAPositionIntoTest {
         PredicateReadings read = PredicateReadings.of("f", body, stated, inputs.reading(rules),
                 inputs.parameterReads(), checked.elementBindings().get("f"));
         Allowance<NumericTerm.FromOnePosition> allowance = Allowance.of(budget);
-        return BehaviorSetStatements.of(read, rules.symbols(), allowance);
+        return BehaviorSetStatements.of("f", read, rules.symbols(), allowance,
+                java.util.List.of());
     }
 }

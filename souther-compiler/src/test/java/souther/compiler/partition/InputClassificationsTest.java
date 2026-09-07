@@ -85,7 +85,7 @@ class InputClassificationsTest {
         Partitions.Partitioning partitioning = Partitions.withThresholds(
                 Partitions.of(spec.name(), read, rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES),
                 read.quantities(rules),
-                GuardThresholds.of("submit", body, plan,
+                GuardThresholds.of("submit", checked.analysisBodies().get("submit"), body, plan,
                 compilation.db().ask(new souther.compiler.query.Adequacy.Inputs(module)).value().get("submit"), rules).thresholds(),
                 rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES,
                 souther.compiler.values.Allowance.of(souther.compiler.regex.PatternPlan.Budget.OF_BEHAVIOR_DISTINCTIONS));

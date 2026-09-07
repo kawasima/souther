@@ -45,10 +45,31 @@ import java.util.Map;
  * value of the model is ever on either side of. So a reading is made only where what is computed is
  * read on the way to the answer, which is the one thing carried down this walk.
  */
-record PredicateReadings(List<Reading> predicates) {
+record PredicateReadings(List<Reading> predicates, java.util.Set<Core> statedAt) {
 
     PredicateReadings {
         predicates = List.copyOf(predicates);
+    }
+
+    /**
+     * Whether one of these was read anywhere inside {@code e}.
+     *
+     * <p>The nodes themselves and never ones holding the same thing: a body writing one predicate
+     * twice writes two rules, and either of them may be part of a condition the other is not.
+     *
+     * <p>Inside and not at, for the reason a comparison is asked the same way: a rule written in a
+     * closure one of the language's operations is handed is a rule about what that operation walks,
+     * and what the operation answers of it is what a fork testing the call tests.
+     */
+    boolean statesOneIn(Core e) {
+        for (Core each : statedAt) {
+            if (each == e) {
+                return true;
+            }
+        }
+        boolean[] found = {false};
+        Core.forEachChild(e, child -> found[0] |= statesOneIn(child));
+        return found[0];
     }
 
     /**
@@ -107,10 +128,16 @@ record PredicateReadings(List<Reading> predicates) {
                                 InputReading read, Map<BindingId, String> parameters,
                                 ElementBindings elements) {
         List<Reading> predicates = new ArrayList<>();
+        // Where each of these was read, for the reader that decides which parts of a fork's
+        // condition already state a rule. The node and not a fork: which parts a condition has is
+        // cut in one place ({@link ConditionSkeleton}), and a walk that decided for itself which of
+        // them it was inside would be a second cutting of the same shape.
+        java.util.Set<Core> statedAt =
+                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         if (body != null) {
             walk(body.core(), behavior, read,
                     InputReads.ofParametersWhereCallsStand(parameters, elements),
-                    LiveFlow.of(body.core()), true, predicates);
+                    LiveFlow.of(body.core()), true, predicates, statedAt);
         }
         // And what the behavior states about its own answer, which is the same kind of rule written
         // somewhere else. Two walks and one list: a body and an `ensures` may write a rule about one
@@ -147,7 +174,7 @@ record PredicateReadings(List<Reading> predicates) {
                 }
             }
         }
-        return new PredicateReadings(predicates);
+        return new PredicateReadings(predicates, statedAt);
     }
 
     /**
@@ -201,32 +228,38 @@ record PredicateReadings(List<Reading> predicates) {
      *             nothing either
      */
     private static void walk(Core e, String behavior, InputReading read, InputReads reads,
-                             LiveFlow flow, boolean live, List<Reading> out) {
+                             LiveFlow flow, boolean live, List<Reading> out,
+                             java.util.Set<Core> statedAt) {
+        int before = out.size();
         if (live) {
             found(e, behavior, read, reads, out);
+        }
+        if (out.size() != before) {
+            statedAt.add(e);
         }
         switch (e) {
             // What a `let` computes is read on the way to the answer only where the name is read;
             // everywhere else a value stands in a body it is consumed by what it stands in. And its
             // body is where the name stands for what was bound to it.
             case Core.LetIn let -> {
-                walk(let.value(), behavior, read, reads, flow, live && flow.reads(let), out);
+                walk(let.value(), behavior, read, reads, flow, live && flow.reads(let), out,
+                        statedAt);
                 walk(let.body(), behavior, read, reads.and(let.binder(), let.value()), flow, live,
-                        out);
+                        out, statedAt);
             }
             // And each arm under what the arm says the value it matched turned out to be. A name
             // the arm binds is the scrutinee's position narrowed to that case, so a predicate
             // written inside an arm is about a position the reading of the input has — read
             // without it, every rule an author writes inside a `match` was about nothing.
             case Core.Match match -> {
-                walk(match.scrutinee(), behavior, read, reads, flow, live, out);
+                walk(match.scrutinee(), behavior, read, reads, flow, live, out, statedAt);
                 for (Core.Case arm : match.cases()) {
                     walk(arm.body(), behavior, read, reads.insideArm(match, arm, read.symbols()),
-                            flow, live, out);
+                            flow, live, out, statedAt);
                 }
             }
             default -> Core.forEachChild(e, child ->
-                    walk(child, behavior, read, reads, flow, live, out));
+                    walk(child, behavior, read, reads, flow, live, out, statedAt));
         }
     }
 }

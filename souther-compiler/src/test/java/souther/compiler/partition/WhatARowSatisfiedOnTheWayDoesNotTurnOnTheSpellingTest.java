@@ -77,7 +77,8 @@ class WhatARowSatisfiedOnTheWayDoesNotTurnOnTheSpellingTest {
         Map<String, souther.compiler.inputs.InputDomain> inputs =
                 compilation.db().ask(new Adequacy.Inputs(module)).value();
         GuardThresholds.Guards guards =
-                GuardThresholds.of(behavior, body, plan, inputs.get(behavior), rules);
+                GuardThresholds.of(behavior, checked.analysisBodies().get(behavior), body, plan,
+                        inputs.get(behavior), rules);
         // By what the walk came to and not by which site it is filed under, nor by where the
         // conditions are written. Two spellings number their comparisons differently and write
         // them in different places, and what they state is the same.

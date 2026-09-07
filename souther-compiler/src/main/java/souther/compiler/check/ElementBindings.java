@@ -1,8 +1,9 @@
 package souther.compiler.check;
 
-import souther.compiler.semantics.Combinator;
+import souther.compiler.semantics.BuiltFrom;
 import souther.compiler.core.Core;
 import souther.compiler.types.BindingId;
+import souther.compiler.types.ValueName;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -101,9 +102,17 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
         Map<BindingId, Core> found = new LinkedHashMap<>();
         Map<BindingId, Core> held = new LinkedHashMap<>();
         Map<BindingId, Core> answered = new LinkedHashMap<>();
-        walk(body, found, held, provenance, answered);
+        Map<BindingId, Core> standing = new LinkedHashMap<>();
+        walk(body, found, held, provenance, answered, standing);
         Map<BindingId, souther.compiler.inputs.ElementProjection> projected =
                 projections(answered, found, held, provenance, symbols);
+        standing.forEach((element, closure) -> {
+            souther.compiler.inputs.ElementProjection was =
+                    souther.compiler.inputs.ElementProjection.read(closure, element, held, symbols);
+            if (was != null) {
+                projected.putIfAbsent(element, was);
+            }
+        });
         return found.isEmpty() && provenance.isEmpty() ? NONE
                 : new ElementBindings(found, held, provenance, projected);
     }
@@ -190,7 +199,8 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
     }
 
     private static void walk(Core e, Map<BindingId, Core> found, Map<BindingId, Core> held,
-                             ElementProvenance provenance, Map<BindingId, Core> answered) {
+                             ElementProvenance provenance, Map<BindingId, Core> answered,
+                             Map<BindingId, Core> standing) {
         if (e instanceof Core.LetIn let && let.binder() != null
                 && let.binder().binding() != null) {
             held.putIfAbsent(let.binder().binding(), let.value());
@@ -202,22 +212,73 @@ public record ElementBindings(Map<BindingId, Core> containers, Map<BindingId, Co
                 answered.putIfAbsent(let.binder().binding(), let.body());
             }
         }
-        if (e instanceof Core.Call call
-                && call.fn() instanceof Core.Reached reached) {
-            Combinator handed = Combinators.of(reached.denotes());
-            if (handed != null
-                    && handed.closureArg() < call.args().size()
-                    && handed.containerArg() < call.args().size()
-                    && call.args().get(handed.closureArg()) instanceof Core.Block step
-                    && handed.elementParam() < step.params().size()) {
-                BindingId element = step.params().get(handed.elementParam()).binding();
-                if (element != null) {
-                    // The nearest binding of a name stands, as everywhere else: a body binding one
-                    // twice has two bindings, and each is answered where it is.
-                    found.putIfAbsent(element, call.args().get(handed.containerArg()));
-                }
-            }
+        // An application of one of the language's own operations, in either of the two shapes a
+        // representation gives one: a call to what the name reached where the operation has been
+        // expanded away, and the operation standing as itself where it has not. What is asked of it
+        // is the same question, so it is asked once.
+        if (e instanceof Core.Call call && call.fn() instanceof Core.Reached reached) {
+            handed(reached.denotes(), call.args(), found, null);
         }
-        Core.forEachChild(e, child -> walk(child, found, held, provenance, answered));
+        if (e instanceof Core.PreservedCall preserved) {
+            // Where the operation still stands, what it answers of what it was handed is still
+            // there to be asked, so the licence a run needs is read from the declaration rather
+            // than from a fact an expansion would have had to leave behind.
+            handed(preserved.declared().operation(), preserved.args(), found, standing);
+        }
+        Core.forEachChild(e, child -> walk(child, found, held, provenance, answered, standing));
+    }
+
+    /**
+     * What one application gives its closure, where the arguments bear it out.
+     *
+     * <p>A closure written as anything but a block is not read. What such an argument stands for is
+     * a value some other binding holds, and the parameter an element arrives on is that value's,
+     * not this call's to name — two calls handed one named lambda would otherwise be two containers
+     * put on one binding.
+     *
+     * <p>{@code standing} is where the run licence goes, and is null for an application the
+     * operation has been expanded out of: what such a tree holds is a walk the rewrite left, and
+     * what it answers per element is the fact the expansion wrote ({@link ElementProvenance}) rather
+     * than anything the declaration is still here to say.
+     */
+    private static void handed(ValueName operation,
+                               java.util.List<Core> args, Map<BindingId, Core> found,
+                               Map<BindingId, Core> standing) {
+        Combinators.Handed handed = Combinators.handedTo(operation, args,
+                closure -> closure instanceof Core.Block block ? block : null);
+        if (handed == null || handed.element().binding() == null) {
+            return;
+        }
+        BindingId element = handed.element().binding();
+        // The nearest binding of a name stands, as everywhere else: a body binding one twice has
+        // two bindings, and each is answered where it is.
+        found.putIfAbsent(element, handed.container());
+        if (standing != null && answersOnePerElementOf(operation, handed.container(), args)) {
+            standing.putIfAbsent(element, handed.step().body());
+        }
+    }
+
+    /**
+     * Whether {@code operation} answers exactly one value per element of what it hands its closure.
+     *
+     * <p>Two statements about one operation and both of them wanted. That the closure is handed the
+     * contents of an argument is the signature's ({@link Combinators}); that the answer holds one
+     * result per element of an argument is the declaration's
+     * ({@link BuiltFrom#mapsEachElementOf}) — and they are the same
+     * licence only where the argument each names is the same one. {@code Set.map} hands its closure
+     * elements and answers no run of them, and a reading that asked only the first would state of a
+     * set what was proved of a list.
+     */
+    private static boolean answersOnePerElementOf(ValueName operation,
+                                                  Core container, java.util.List<Core> args) {
+        BuiltFrom<DeclaredArgument> built =
+                DefaultBoundOperationFacts.get().buildsItsResultFrom(operation);
+        DeclaredArgument mapsEach =
+                built == null ? null : built.mapsEachElementOf();
+        if (mapsEach == null) {
+            return false;
+        }
+        int at = CallArguments.positionOf(mapsEach, operation);
+        return at >= 0 && at < args.size() && args.get(at) == container;
     }
 }

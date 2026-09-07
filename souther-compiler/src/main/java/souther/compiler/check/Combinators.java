@@ -64,15 +64,42 @@ final class Combinators {
      * on which bindings it is under, so it is asked per call and not once per body.
      */
     static Handed handedTo(Core.PreservedCall call, Denotations at) {
-        Combinator rule = of(call.operation());
-        if (rule == null) {
+        return handedTo(call, closure -> Terms.blockOf(closure, at));
+    }
+
+    /**
+     * The same, told how to reach the block a closure is.
+     *
+     * <p>What a closure is written as is the one thing a reader of this needs that differs between
+     * readers: a walk inside a check has the denotations it built, and a reading of the input has
+     * its own answer about what a name stands for. What the operation hands over does not differ, so
+     * it is read once here and the difference is a parameter.
+     */
+    static Handed handedTo(Core.PreservedCall call,
+                           java.util.function.Function<Core, Core.Block> blockOf) {
+        return handedTo(call.operation(), call.args(), blockOf);
+    }
+
+    /**
+     * The same, of an application named by the operation it applies and the arguments it passes.
+     *
+     * <p>Which of the two shapes a representation gives an application is not a difference this
+     * table has anything to say about: the rule is about the operation, and the arguments are the
+     * arguments. So the question is asked once, of the two things it is about, and a reader holding
+     * either shape hands over the operation it resolved to and the arguments it carries.
+     */
+    static Handed handedTo(ValueName operation, List<Core> args,
+                           java.util.function.Function<Core, Core.Block> blockOf) {
+        Combinator rule = of(operation);
+        if (rule == null || rule.closureArg() >= args.size()
+                || rule.containerArg() >= args.size()) {
             return null;
         }
-        Core closure = call.args().get(rule.closureArg());
-        Core.Block step = Terms.blockOf(closure, at);
-        return step == null ? null
+        Core closure = args.get(rule.closureArg());
+        Core.Block step = blockOf.apply(closure);
+        return step == null || rule.elementParam() >= step.params().size() ? null
                 : new Handed(closure, step, step.params().get(rule.elementParam()),
-                        call.args().get(rule.containerArg()));
+                        args.get(rule.containerArg()));
     }
 
     /**

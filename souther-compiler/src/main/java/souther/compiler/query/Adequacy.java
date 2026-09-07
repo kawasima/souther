@@ -4905,6 +4905,8 @@ public final class Adequacy {
             return switch (rule) {
                 case souther.compiler.check.RuleRef.Comparison _ ->
                         souther.compiler.diag.Localizable.of("construct.comparison");
+                case souther.compiler.check.RuleRef.Fork _ ->
+                        souther.compiler.diag.Localizable.of("construct.fork");
                 case souther.compiler.check.RuleRef.Predicate _ ->
                         souther.compiler.diag.Localizable.of("construct.predicate");
             };

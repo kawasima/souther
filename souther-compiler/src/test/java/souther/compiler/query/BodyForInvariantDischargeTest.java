@@ -65,14 +65,14 @@ class BodyForInvariantDischargeTest {
 
     @Test
     void theAnalysisBodyKeepsTheOperationsTheLanguageDefines() {
-        List<String> fns = calls(body(new Bodies.BodyForInvariantDischarge("m.a", "shift")));
+        List<String> fns = calls(lowered(new Bodies.BodyForInvariantDischarge("m.a", "shift")));
         assertTrue(fns.contains("List.map"),
                 "a standard-library operation is what the rules are written about: " + fns);
     }
 
     @Test
     void theAnalysisBodyExpandsTheModulesOwnHelpers() {
-        List<String> fns = calls(body(new Bodies.BodyForInvariantDischarge("m.a", "shift")));
+        List<String> fns = calls(lowered(new Bodies.BodyForInvariantDischarge("m.a", "shift")));
         assertFalse(fns.contains("doubled"),
                 "a helper of this module carries no such rule, and does not travel: " + fns);
     }

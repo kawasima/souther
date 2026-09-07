@@ -461,7 +461,8 @@ public final class SpecChecker {
             throw inv.errors().get(0);
         }
         return new Checked(elaboratedBody,
-                dischargeBody == null ? null : new AnalysisBody(dischargeBody));
+                dischargeBody == null ? null
+                        : new AnalysisBody(dischargeBody, discharge.elements()));
     }
 
     /**

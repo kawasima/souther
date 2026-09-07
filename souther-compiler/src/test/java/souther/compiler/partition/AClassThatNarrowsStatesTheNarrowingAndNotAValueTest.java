@@ -93,7 +93,8 @@ class AClassThatNarrowsStatesTheNarrowingAndNotAValueTest {
         // declarations state and no lines beside them, which is the whole of what one of these
         // models is for.
         if (body != null) {
-            GuardThresholds.Guards guards = GuardThresholds.of("use", body,
+            GuardThresholds.Guards guards = GuardThresholds.of("use",
+                    checked.analysisBodies().get("use"), body,
                     checked.plan(),
                     compilation.db().ask(new Adequacy.Inputs(module)).value().get("use"), rules);
             axes = Partitions.withThresholds(axes, domain.quantities(rules), guards.thresholds(),

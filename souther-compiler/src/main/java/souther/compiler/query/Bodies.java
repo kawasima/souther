@@ -608,16 +608,17 @@ public final class Bodies {
 
         @Override
         public Answer<Set<ValueName.Behavior>> compute(Db db) {
-            Answer<Hir.FnDef> body = db.ask(new BodyForInvariantDischarge(module, behavior));
+            Answer<souther.compiler.check.Expansion<Hir.FnDef>> body =
+                    db.ask(new BodyForInvariantDischarge(module, behavior));
             Answer<Hir.SpecBehavior> spec = db.ask(new Spec(module, behavior));
             if (!body.present() || !spec.present()) {
                 return Answer.absent();
             }
             Map<BindingId, ValueName.Behavior> injected =
-                    SpecChecker.dependencyBindings(spec.value(), body.value());
+                    SpecChecker.dependencyBindings(spec.value(), body.value().value());
             Set<ValueName.Behavior> reached = new LinkedHashSet<>();
             List<Hir.Expr> todo = new ArrayList<>();
-            todo.add(body.value().writtenBody());
+            todo.add(body.value().value().writtenBody());
             while (!todo.isEmpty()) {
                 Hir.Expr at = todo.remove(todo.size() - 1);
                 if (at == null) {
@@ -1521,10 +1522,11 @@ public final class Bodies {
      * about what {@code List.map} does to a length has nothing to match. This is the same body at the
      * level the rules are written at.
      */
-    public record BodyForInvariantDischarge(String module, String fn) implements Key<Hir.FnDef> {
+    public record BodyForInvariantDischarge(String module, String fn)
+            implements Key<souther.compiler.check.Expansion<Hir.FnDef>> {
 
         @Override
-        public Answer<Hir.FnDef> compute(Db db) {
+        public Answer<souther.compiler.check.Expansion<Hir.FnDef>> compute(Db db) {
             Answer<Hir.FnDef> def = db.ask(new SettledFn(module, fn));
             Answer<Expanding.Of> against = db.ask(new Expanding(module, InliningPolicy.DISCHARGE));
             Answer<Map<ValueName.Behavior, Integer>> behaviors =
@@ -1543,7 +1545,7 @@ public final class Bodies {
             try {
                 return Answer.of(Lower.body(def.value(),
                         inliner.namingBehaviors(behaviors.value()),
-                        recursive, dependencyParams(db, module, fn)).value());
+                        recursive, dependencyParams(db, module, fn)));
             } catch (CompileException e) {
                 return Answer.absent(e);
             }
@@ -1933,7 +1935,8 @@ public final class Bodies {
             Answer<Map<String, Type>> sigs = db.ask(new RecursiveCallSigs(module, InliningPolicy.FULL));
             Answer<Map<String, DataChecker.Constructs>> constructs =
                     db.ask(new RecursiveHelperConstructs(module));
-            Answer<Hir.FnDef> discharge = db.ask(new BodyForInvariantDischarge(module, behavior));
+            Answer<souther.compiler.check.Expansion<Hir.FnDef>> discharge =
+                    db.ask(new BodyForInvariantDischarge(module, behavior));
             // What the behaviors this body reaches state about their answers, and only those: a
             // relation declared by a behavior it does not call is no part of what it is checked
             // against, and depending on one would re-check this body whenever that one was edited.
@@ -1956,7 +1959,8 @@ public final class Bodies {
             // names.
             InvariantChecker.Source dischargeSource =
                     discharge.present()
-                    ? new InvariantChecker.Source(discharge.value().writtenBody(),
+                    ? new InvariantChecker.Source(discharge.value().value().writtenBody(),
+                            discharge.value().provenance(),
                             Shapes.expandedClauses(db), db.readings(),
                             contracts.present() ? contracts.value() : Map.of())
                     : null;

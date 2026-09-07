@@ -70,6 +70,8 @@ class EveryKindOfRuleADocumentCanNameHasAnIdentityAndAWordTest {
                         new BehaviorContract.RuleId(new ValueName.Behavior("m", "b"), 0, 0, null),
                         "c"),
                 new RuleRef.Comparison("b", written),
+                new RuleRef.Fork("b", new SourceConstructOrigin(body, 3, 0,
+                        SourceConstruct.IF)),
                 new RuleRef.Predicate("b", new SourceConstructOrigin(body, 2, 0,
                         SourceConstruct.CALL)));
     }
@@ -208,6 +210,19 @@ class EveryKindOfRuleADocumentCanNameHasAnIdentityAndAWordTest {
                         SourceConstruct.BINARY)),
                 new RuleRef.Comparison("b", new SourceConstructOrigin(body, 1, 1,
                         SourceConstruct.BINARY)),
+
+                new RuleRef.Fork("b", new SourceConstructOrigin(body, 1, 0,
+                        SourceConstruct.IF)),
+                new RuleRef.Fork("other", new SourceConstructOrigin(body, 1, 0,
+                        SourceConstruct.IF)),
+                new RuleRef.Fork("b", new SourceConstructOrigin(
+                        new WrittenOwner.Body("other", "b"), 1, 0, SourceConstruct.IF)),
+                new RuleRef.Fork("b", new SourceConstructOrigin(
+                        new WrittenOwner.Body("m", "helper"), 1, 0, SourceConstruct.IF)),
+                new RuleRef.Fork("b", new SourceConstructOrigin(body, 2, 0,
+                        SourceConstruct.IF)),
+                new RuleRef.Fork("b", new SourceConstructOrigin(body, 1, 1,
+                        SourceConstruct.IF)),
 
                 new RuleRef.Predicate("b", new SourceConstructOrigin(body, 1, 0,
                         SourceConstruct.CALL)),

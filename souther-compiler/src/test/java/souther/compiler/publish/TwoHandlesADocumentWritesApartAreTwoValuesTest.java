@@ -129,11 +129,11 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
      * these that a document writes alike are the pair either of which may be chosen, and every
      * other pair is one it has to tell apart.
      *
-     * <p>Code reached from here is among them, taken from a compilation rather than written. A
-     * citation of it is made where a source is placed and that is the one way there is, on purpose —
-     * so what this needs is one of the real ones, and a handle is then made of it and each kind of
-     * rule. Left out because it could not be written, the arm this type has for it would be the one
-     * arm whose reason for existing nothing checks.
+     * <p>Code reached from here is not among them, and the test below says why it cannot be. There
+     * was a third sentence for it: a comparison inside a library operation written in this language
+     * was spliced into whoever called it, so a caller's model held rules whose code the reader does
+     * not have. A caller answers for the rules a caller wrote, so a rule of a model is written in a
+     * source the compile holds and there are two kinds of sentence rather than three.
      */
     private static List<RuleCitation> everyShapeOfSentence() {
         RuleRef.Named named = new RuleRef.Invariant(new Clause.Ref(
@@ -151,120 +151,9 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
                         Citation.of(new SourcePos(10, 1, WHERE))),
                 new RuleCitation.WrittenAt(COMPARISON,
                         Citation.of(new SourcePos(9, 1)))));
-        for (Citation each : reachedFromHere()) {
-            out.add(new RuleCitation.WrittenAt(COMPARISON, each));
-            out.add(new RuleCitation.WrittenAt(PREDICATE, each));
-        }
         return List.copyOf(out);
     }
 
-    /**
-     * That the population varies each part of a sentence about code reached from here.
-     *
-     * <p>Said out loud because the sentence has three parts and only one of them varies by being
-     * put there: a handle is made of a citation and a rule, so the kind varies by pairing the same
-     * citation with both, and the place and what reaches it vary only if the compilation happened to
-     * offer two that differ. Left to happen, a comparison of that part could be dropped and this
-     * would stay green on whatever the fixture came back with.
-     */
-    @Test
-    void thePopulationVariesEachPartOfASentenceAboutCodeReachedFromHere() {
-        List<PublishedRuleHandle.Reached> reached = everyShapeOfSentence().stream()
-                .map(PublishedRuleHandle::of)
-                .filter(PublishedRuleHandle.Reached.class::isInstance)
-                .map(PublishedRuleHandle.Reached.class::cast).toList();
-
-        assertTrue(variedAlone(reached, Part.WHAT_THE_RULE_IS),
-                () -> "two that differ in what the rule is and in nothing else: " + reached);
-        assertTrue(reached.stream().map(Part.WHAT_REACHES_IT::of).distinct().count() > 1,
-                () -> "and two reached by different code: " + reached);
-    }
-
-    /**
-     * And each part of such a sentence on its own tells two handles apart.
-     *
-     * <p>Built here rather than taken from a compilation. Where the code is and what reaches it move
-     * together in what a compile offers — a second declaration is a second place — so a pair varying
-     * one of them alone is not something a model can be written to produce, and a property left to
-     * what a fixture happens to emit is a property about the fixture.
-     *
-     * <p>Which is the whole of what this adds: the parts a document writes are the parts the order
-     * is over, so dropping any one of them from the comparison makes two sentences a reader can tell
-     * apart into one value.
-     */
-    @Test
-    void eachPartOfSuchASentenceTellsTwoHandlesApart() {
-        PublishedRuleHandle.Place here =
-                new PublishedRuleHandle.Place.Unplaced(1, 1);
-        PublishedRuleHandle.Place there =
-                new PublishedRuleHandle.Place.Unplaced(2, 1);
-        PublishedRuleHandle.Reached said =
-                new PublishedRuleHandle.Reached("comparison", here, "Int.clamp");
-
-        assertNotEquals(0, Integer.signum(said.compareTo(
-                        new PublishedRuleHandle.Reached("predicate", here, "Int.clamp"))),
-                "what the rule is");
-        assertNotEquals(0, Integer.signum(said.compareTo(
-                        new PublishedRuleHandle.Reached("comparison", there, "Int.clamp"))),
-                "where the code is");
-        assertNotEquals(0, Integer.signum(said.compareTo(
-                        new PublishedRuleHandle.Reached("comparison", here, "Int.abs"))),
-                "and what reaches it");
-        assertEquals(0, said.compareTo(
-                        new PublishedRuleHandle.Reached("comparison", here, "Int.clamp")),
-                "and two alike in every part are one value");
-    }
-
-    /**
-     * The parts of a sentence about code reached from here.
-     *
-     * <p>Named rather than passed as functions, so that "the rest" is the rest: two lambdas reading
-     * one part are two objects, and a walk that told them apart by identity would be asking whether
-     * every part differs.
-     */
-    private enum Part {
-
-        WHAT_THE_RULE_IS,
-
-        WHERE_THE_CODE_IS,
-
-        WHAT_REACHES_IT;
-
-        String of(PublishedRuleHandle.Reached said) {
-            return switch (this) {
-                case WHAT_THE_RULE_IS -> said.kind();
-                case WHERE_THE_CODE_IS -> said.at().toString();
-                case WHAT_REACHES_IT -> said.reachedBy();
-            };
-        }
-    }
-
-    /**
-     * Whether {@code these} hold two that differ in {@code part} and agree on the rest.
-     *
-     * <p>Agreeing on the rest is what makes the pair say something about that part. Two that differ
-     * everywhere are told apart by whichever part is compared first, so a projection that had
-     * dropped one of them would tell them apart all the same.
-     */
-    private static boolean variedAlone(List<PublishedRuleHandle.Reached> these, Part part) {
-        for (PublishedRuleHandle.Reached one : these) {
-            for (PublishedRuleHandle.Reached other : these) {
-                if (part.of(one).equals(part.of(other))) {
-                    continue;
-                }
-                boolean restAgrees = true;
-                for (Part each : Part.values()) {
-                    if (each != part && !each.of(one).equals(each.of(other))) {
-                        restAgrees = false;
-                    }
-                }
-                if (restAgrees) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
 
     /**
      * The citations of code this compile reaches rather than holds, taken from a compilation.
@@ -316,7 +205,8 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
      *
      * <p>Both, because the property is over pairs and a population of one shape is a population of
      * one pair. An arm missing here is an arm whose reason for existing nothing asks about, which is
-     * how the third one came to be left out the first time.
+     * how the third one came to be left out the first time — and, once nothing produced it any
+     * more, what said it had to go rather than stay as a shape nothing writes.
      */
     @Test
     void thePopulationHoldsEveryKindOfSentenceADocumentWrites() {
@@ -329,13 +219,31 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
                 "a population a document writes one sentence for says nothing about telling two"
                         + " apart");
         assertEquals(
-                Set.of(PublishedRuleHandle.Named.class, PublishedRuleHandle.Written.class,
-                        PublishedRuleHandle.Reached.class),
+                Set.of(PublishedRuleHandle.Named.class, PublishedRuleHandle.Written.class),
                 Set.of(PublishedRuleHandle.class.getPermittedSubclasses()),
-                "the three kinds of sentence this type has");
+                "the two kinds of sentence this type has");
         for (Class<?> each : PublishedRuleHandle.class.getPermittedSubclasses()) {
             assertTrue(handles.stream().anyMatch(each::isInstance),
                     () -> "and each of them is in what the property above is asked over: " + each);
         }
+    }
+
+    /**
+     * And no rule of a compiled model is cited out of sight, which is why there are two.
+     *
+     * <p>The arm this type used to have was for a rule whose code the reader does not hold, and the
+     * only thing that ever made one was a library operation written in this language being spliced
+     * into whoever called it. The reading a rule is taken from keeps such an operation standing, so
+     * the comparisons inside it are that operation's implementation and no caller is answerable for
+     * them.
+     *
+     * <p>Asked of a compile and not of the type. That the seal has two arms is a fact about the
+     * code; that nothing produces a third is a fact about what this compiler reads, and only a model
+     * that calls out of sight can show it.
+     */
+    @Test
+    void noRuleOfACompiledModelIsCitedOutOfSight() {
+        assertEquals(List.of(), reachedFromHere(),
+                "a caller answers for the rules a caller wrote");
     }
 }

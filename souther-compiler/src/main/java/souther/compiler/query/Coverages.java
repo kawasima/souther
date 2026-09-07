@@ -102,7 +102,7 @@ final class Coverages {
         // its lines like any other and there is no body for them to have come out of.
         EnsuresThresholds.Clauses clauses = EnsuresThresholds.of(stated, read);
         GuardThresholds.Guards guards = body == null ? GuardThresholds.Guards.NONE
-                : GuardThresholds.of(behavior.name(), body, plan, read, elements, arrives);
+                : GuardThresholds.of(behavior.name(), analysis, body, plan, read, elements, arrives);
         // And what the declarations state between two of this input's positions. Such a rule places
         // no end at either of them, so the reading of ends has nothing to draw it from; read here,
         // it is a line like the two above and is arranged with them.
@@ -114,7 +114,7 @@ final class Coverages {
         // be two measures of it, each told nothing of the other's.
         souther.compiler.partition.BehaviorSetStatements.Read sets =
                 souther.compiler.partition.BehaviorSetStatements.of(behavior.name(), analysis, stated, read,
-                        read.domain().parameterReads(), elements, distinctions);
+                        read.domain().parameterReads(), elements, distinctions, guards.forks());
         List<souther.compiler.partition.LineDrawn> declared =
                 souther.compiler.partition.DeclaredThresholds.between(behavior.name(), read);
         // Every producer of one kind of line, put together before the position is divided. Two
@@ -165,6 +165,12 @@ final class Coverages {
         // operation made from a position is about that value — so they are said and nothing waits
         // on them.
         sets.saying().forEach(found::add);
+        // And the forks whose condition no reader took in. A question for each and no finding: what
+        // a report is owed about such a rule is that nothing worked out what it states, which the
+        // question says, and where it says it is what the reading got to rather than what the fork
+        // is about.
+        sets.forks().forEach(each ->
+                each.filed().forEach((at, why) -> found.unclassified(each.cited(), at, why)));
         return clauses.noLine().and(guards.noLine()).and(filed.notPlaced()).and(found.found());
     }
 

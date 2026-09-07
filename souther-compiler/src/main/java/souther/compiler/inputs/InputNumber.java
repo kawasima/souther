@@ -112,7 +112,7 @@ public final class InputNumber {
             where = through.denotes().at();
         }
         souther.compiler.types.BindingId element =
-                souther.compiler.core.GrowingFold.elementBindingOf(walk);
+                souther.compiler.check.WalkElements.elementBindingOf(walk, where, symbols);
         if (element == null) {
             return null;
         }

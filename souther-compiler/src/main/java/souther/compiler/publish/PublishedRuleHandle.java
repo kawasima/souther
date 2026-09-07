@@ -55,20 +55,6 @@ public sealed interface PublishedRuleHandle extends Comparable<PublishedRuleHand
         }
     }
 
-    /** It has no name and the code is out of sight, so what is said is what it is, where it came
-     *  from, and what reaches it. */
-    record Reached(String kind, Place at, String reachedBy) implements PublishedRuleHandle {
-
-        public Reached {
-            if (kind == null || kind.isEmpty() || at == null
-                    || reachedBy == null || reachedBy.isEmpty()) {
-                throw new IllegalArgumentException("code out of sight is said as what it is, where"
-                        + " it came from and what reaches it: " + kind + " at " + at + " by "
-                        + reachedBy);
-            }
-        }
-    }
-
     /**
      * Where a report says the rule is, as it says it.
      *
@@ -126,10 +112,15 @@ public sealed interface PublishedRuleHandle extends Comparable<PublishedRuleHand
     static PublishedRuleHandle of(RuleCitation cited) {
         return switch (cited) {
             case RuleCitation.Named it -> new Named(it.rule().citedName());
-            case RuleCitation.WrittenAt it -> it.at() instanceof Citation.Elsewhere out
-                    ? new Reached(it.rule().whatItIs(), placeOf(it.at()),
-                            out.provenance().reachedBy())
-                    : new Written(it.rule().whatItIs(), placeOf(it.at()));
+            // A rule with no name is written where the reader can be sent, and there is no third
+            // sentence for one that is not. There was: a comparison inside a library operation
+            // written in this language was spliced into whoever called it, so a caller's model held
+            // rules whose code the reader does not have — said as what they are, where they came
+            // from, and what reached them. A caller answers for the rules a caller wrote, so the
+            // rules of a model are written in sources the compile holds and this is total over
+            // them.
+            case RuleCitation.WrittenAt it ->
+                    new Written(it.rule().whatItIs(), placeOf(it.at()));
         };
     }
 
@@ -186,25 +177,15 @@ public sealed interface PublishedRuleHandle extends Comparable<PublishedRuleHand
                 int word = it.kind().compareTo(also.kind());
                 yield word != 0 ? word : it.at().compareTo(also.at());
             }
-            case Reached it -> {
-                Reached also = (Reached) other;
-                int word = it.kind().compareTo(also.kind());
-                if (word != 0) {
-                    yield word;
-                }
-                int by = it.reachedBy().compareTo(also.reachedBy());
-                yield by != 0 ? by : it.at().compareTo(also.at());
-            }
         };
     }
 
-    /** Which of the three kinds of sentence comes first, written out rather than read off how the
+    /** Which of the two kinds of sentence comes first, written out rather than read off how the
      *  arms happen to be declared. */
     private static int rank(PublishedRuleHandle handle) {
         return switch (handle) {
             case Named _ -> 0;
             case Written _ -> 1;
-            case Reached _ -> 2;
         };
     }
 }

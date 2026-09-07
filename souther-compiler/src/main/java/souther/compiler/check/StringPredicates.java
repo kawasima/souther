@@ -41,9 +41,14 @@ import java.util.List;
  * language would mean one thing under an invariant, whose other side is refused at construction, and
  * another under a behavior, where both sides stand.
  *
- * <p>{@code String.isEmpty} is not here, and is not missing. It is written in the library as
- * {@code String.length(s) == 0} and arrives as that comparison, which is a question about a number
- * and is answered where numbers are.
+ * <p>{@code String.isEmpty} is not here, and is not missing. The library writes it as
+ * {@code String.length(s) == 0}, so what it states is a question about a number and is answered
+ * where numbers are — and not by a table of the sets of strings a call names.
+ *
+ * <p>What that comes to for a reader is what the library writing an operation in this language
+ * comes to everywhere: the reading a rule is taken from keeps the operation standing, so a caller's
+ * rule about what {@code String.isEmpty} answers is a rule about a value an operation made. The
+ * comparison the library wrote inside it is that operation's, and a caller does not answer for it.
  */
 public enum StringPredicates {
 

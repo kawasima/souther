@@ -202,11 +202,11 @@ class AWrittenConstructIsMaterialisedOnceUnderOneExpansionTest {
                     }
                 }
                 for (String behavior : checked.behaviorBodies().keySet()) {
-                    Hir.FnDef discharge = compilation.db()
+                    var discharge = compilation.db()
                             .ask(new Bodies.BodyForInvariantDischarge(module, behavior)).value();
                     if (discharge != null) {
                         out.add(walked("analysis " + module + "." + behavior,
-                                discharge.writtenBody()));
+                                discharge.value().writtenBody()));
                     }
                 }
             }
