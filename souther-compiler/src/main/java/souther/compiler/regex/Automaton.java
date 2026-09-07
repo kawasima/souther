@@ -835,10 +835,31 @@ final class Automaton {
          *  a machine — one this throws away, and one whose states were made all the same. */
         private final Meter.Making making;
 
+        /**
+         * Whether anything here steps for nothing, which is whether the closure has anything to
+         * add.
+         *
+         * <p>Asked once, of the machine. Where nothing does, the states reachable without spending
+         * a symbol are the states themselves, and the closure of a subset is that subset — so what
+         * it comes to is a copy of what it was handed, made for every symbol out of every state.
+         * A machine that came from anything but a pattern has no such step at all.
+         */
+        private final boolean anyFree;
+
         Subsets(Meter.Making making) {
             this.making = making;
+            boolean found = false;
+            for (int[] each : free) {
+                found = found || each.length > 0;
+            }
+            this.anyFree = found;
             cutTheAlphabet();
-            at(closure(only(START)));
+            at(reached(only(START)));
+        }
+
+        /** The subset a walk is in, having got to {@code these}. */
+        private BitSet reached(BitSet these) {
+            return anyFree ? closure(these) : these;
         }
 
         int count() {
@@ -873,7 +894,7 @@ final class Automaton {
                         }
                     }
                 }
-                out.add(new Move(run, at(closure(next))));
+                out.add(new Move(run, at(reached(next))));
             }
             moves.set(state, out);
             return out;
