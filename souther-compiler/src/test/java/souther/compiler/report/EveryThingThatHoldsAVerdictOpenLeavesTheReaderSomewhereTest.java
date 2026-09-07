@@ -30,13 +30,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class EveryThingThatHoldsAVerdictOpenLeavesTheReaderSomewhereTest {
 
-    /** Every opening every model here produces, which is where a claim about them has to be held. */
+    /**
+     * Every opening every model here produces, which is where a claim about them has to be held.
+     *
+     * <p>Built once for the class, as the population underneath it is. What these cost is the
+     * models being answered, which is paid once per run of the tests whatever asks for it first.
+     */
+    private static final List<AdequacyOpening> OPENINGS = everyOpening();
+
     private static List<AdequacyOpening> everyOpening() {
         List<AdequacyOpening> out = new ArrayList<>();
         for (Compilation compilation : RepositoryModels.all()) {
             out.addAll(AdequacyReport.of(compilation).whatKeepsTheVerdictOpen());
         }
-        return out;
+        return List.copyOf(out);
     }
 
     /**
@@ -47,7 +54,7 @@ class EveryThingThatHoldsAVerdictOpenLeavesTheReaderSomewhereTest {
      */
     @Test
     void everyOpeningReachesADisposition() {
-        List<AdequacyOpening> openings = everyOpening();
+        List<AdequacyOpening> openings = OPENINGS;
 
         assertFalse(openings.isEmpty(), "the models here hold verdicts open, which is what this is"
                 + " a law about");
@@ -66,7 +73,7 @@ class EveryThingThatHoldsAVerdictOpenLeavesTheReaderSomewhereTest {
      */
     @Test
     void aWiderRunIsOfferedExactlyWhereItWouldAnswer() {
-        for (AdequacyOpening each : everyOpening()) {
+        for (AdequacyOpening each : OPENINGS) {
             boolean offered = ReaderDisposition.of(each) instanceof ReaderDisposition.WidenTheRun;
 
             assertEquals(each.runSensitivity() == RunSensitivity.MAY_CHANGE, offered,
@@ -86,7 +93,7 @@ class EveryThingThatHoldsAVerdictOpenLeavesTheReaderSomewhereTest {
     @Test
     void theModelsHereReachTheseDispositions() {
         Set<String> reached = new LinkedHashSet<>();
-        for (AdequacyOpening each : everyOpening()) {
+        for (AdequacyOpening each : OPENINGS) {
             reached.add(ReaderDisposition.of(each).getClass().getSimpleName());
         }
 

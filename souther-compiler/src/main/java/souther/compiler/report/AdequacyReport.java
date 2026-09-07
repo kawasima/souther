@@ -3330,7 +3330,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             said.put("total", pair.total());
             if (partition.pairs().counted().made().isPresent()) {
                 said.put("covered", partition.pairs().counts().covered(pair.between()));
-                said.put("unknown", partition.pairs().unknown(pair.between()));
+                said.put("unknown", partition.pairs().unknown(pair));
             }
         }
         // The two numbers over the whole space, and neither of them worked out here. What is left

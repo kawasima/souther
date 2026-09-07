@@ -470,13 +470,23 @@ final class Coverages {
         SequencedMap<PartitionEvidence.PairSpace.Between, Set<String>> reached =
                 new LinkedHashMap<>();
         space.forEach(pair -> reached.put(pair.between(), new LinkedHashSet<>()));
+        // Which relation each pair of positions is, worked out once. Which two positions they are
+        // does not turn on the row, and made inside the walk over the rows it is a name built and
+        // thrown away for every row the behavior has.
+        Map<Long, Set<String>> byPositions = new LinkedHashMap<>();
+        for (int i = 0; i < axes.size(); i++) {
+            for (int j = i + 1; j < axes.size(); j++) {
+                Set<String> here = reached.get(new PartitionEvidence.PairSpace.Between(
+                        axes.get(i).id(), axes.get(j).id()));
+                if (here != null) {
+                    byPositions.put((long) i * axes.size() + j, here);
+                }
+            }
+        }
         for (Readings.WhereARowSat where : readings.byRow()) {
             for (int i = 0; i < axes.size(); i++) {
                 for (int j = i + 1; j < axes.size(); j++) {
-                    PartitionEvidence.PairSpace.Between between =
-                            new PartitionEvidence.PairSpace.Between(
-                                    axes.get(i).id(), axes.get(j).id());
-                    Set<String> here = reached.get(between);
+                    Set<String> here = byPositions.get((long) i * axes.size() + j);
                     if (here == null) {
                         continue;
                     }

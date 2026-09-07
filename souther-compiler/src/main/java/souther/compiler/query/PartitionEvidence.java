@@ -681,7 +681,18 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
             return total() - counts().covered();
         }
 
-        /** The same of one relation. */
+        /**
+         * The same of one relation, where the caller is holding it.
+         *
+         * <p>Takes the pair rather than what names it. A reader walking the space has the size in
+         * hand, and looking it up again by name is a walk of the space per relation — which is the
+         * space walked once for every pair it holds.
+         */
+        public long unknown(AxisPair pair) {
+            return pair.total() - counts().covered(pair.between());
+        }
+
+        /** The same for a caller that has only the name, which costs a look through the space. */
         public long unknown(Between between) {
             return sizeOf(between) - counts().covered(between);
         }
