@@ -4040,7 +4040,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * What each arm writes is what that arm holds and no more: a shape with every field of every
      * kind would leave a consumer reading which of them are filled in to find out what it has.
      */
-    private static void about(ObjectNode into, PublishedSubject about) {
+    static void about(ObjectNode into, PublishedSubject about) {
         into.put("kind", word(about.kind()));
         switch (about) {
             case PublishedSubject.OfAModule it -> into.put("module", it.module());
@@ -4066,7 +4066,10 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             }
             case PublishedSubject.AtAnInput it -> {
                 into.put("behavior", it.behavior());
-                into.put("at", it.at());
+                // `input` and not `at`: what a rule was read at is a position and what this names
+                // is which of the behavior's inputs, and one key cannot be both a string and a
+                // number in one object.
+                into.put("input", it.at());
             }
             case PublishedSubject.AtARule it -> {
                 into.put("at", it.at());
