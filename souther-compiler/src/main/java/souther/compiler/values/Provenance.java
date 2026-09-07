@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * Which values a narrowing took from which blocks, and what left them nowhere else to go.
@@ -89,6 +90,18 @@ public record Provenance<A>(Set<Removal<A>> removals) {
         }
         out.remove(block);
         return Collections.unmodifiableSet(out);
+    }
+
+    /** The same removals, about the blocks {@code naming} calls these. */
+    public <B> Provenance<B> renamed(Function<A, B> naming) {
+        Set<Removal<B>> out = new LinkedHashSet<>();
+        for (Removal<A> removal : removals) {
+            Set<Sameness.Block<B>> blockers = new LinkedHashSet<>();
+            removal.blockers().forEach(block -> blockers.add(block.renamed(naming)));
+            out.add(new Removal<>(removal.block().renamed(naming), removal.value(),
+                    removal.round(), blockers));
+        }
+        return new Provenance<>(out);
     }
 
     /** One block, asked of the rounds before {@code before}. */

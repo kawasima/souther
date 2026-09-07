@@ -10,7 +10,7 @@ import souther.compiler.values.Allowance;
 import souther.compiler.values.ConjoinedAdmissibleValues;
 import souther.compiler.values.StringMachineAnswers;
 import souther.compiler.values.Refusal;
-import souther.compiler.values.RelationalWitness;
+import souther.compiler.values.RelationalLack;
 
 import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
@@ -308,7 +308,7 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
             // the kind.
             case POSITIONS_HELD_APART -> shown.site() instanceof Refusal.OfThemTogether<A> it
                     && it.lacks().stream().allMatch(
-                            lack -> lack instanceof RelationalWitness.ABlockApartFromItself)
+                            lack -> lack instanceof RelationalLack.ABlockApartFromItself)
                     ? new Emptiness.PositionsHeldAsOneAreHeldApart()
                     : new Emptiness.NoDistinctValuesForPositionsHeldApart();
             case NOTHING_SHOWN, VALUES, RULES_TOGETHER -> null;

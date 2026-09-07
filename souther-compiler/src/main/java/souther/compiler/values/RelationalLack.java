@@ -5,38 +5,42 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
- * Why the denials between an alternative's blocks leave nothing.
+ * What the denials between an alternative's blocks leave nothing of.
  *
- * <p>A lack about several blocks together and not about any of them. Each of the blocks named here
- * is left values of its own; what has nothing is an assignment to all of them at once, so a proof
- * naming one of them would send an author to a place whose own rules are fine with what they leave
- * it.
+ * <p>A claim and not the argument that reached it. Which blocks were read to show a lack, and in
+ * what order their values went, is how it was reached; what it says is that these blocks are left
+ * nothing. Two readings that reach one claim along different routes have shown one thing, and it is
+ * the claim that {@link Refusal#shownByBoth} keeps — a route carried in here would make them two
+ * claims and a choice between the readings would be answered as though neither had shown anything.
+ * Where a route is wanted, it is {@link RelationalEvidence}'s.
+ *
+ * <p>A lack about several blocks together and not about any of them, in all but one of these. Each
+ * of the blocks named is left values of its own; what has nothing is an assignment to all of them
+ * at once, so a claim naming one of them would send an author to a place whose own rules are fine
+ * with what they leave it. {@link NoValueLeftForIt} is the one that does name a block, and it says
+ * of that block that the denials leave it nothing.
  *
  * <p><b>Not one shape, because it is not one argument.</b> A block stated to differ from itself is
- * refused by reading the rule; a block left no value by its neighbours is refused by taking values
- * away; a set of blocks with fewer values between them than there are blocks is refused by counting;
- * and blocks no assignment of what they hold tells apart are refused by looking for one. Held as the
- * counting one alone, the others would be reported as a shortage of values that no count was taken
- * of — and a reduction learned later is a case added here rather than a sentence somebody has to
- * rewrite.
+ * refused by reading the rule; a block its neighbours leave no room for anything is refused by
+ * narrowing; a set of blocks with fewer values between them than there are blocks is refused by
+ * counting; and blocks no assignment of what they hold tells apart are refused by looking for one.
+ * Held as the counting one alone, the others would be reported as a shortage of values that no
+ * count was taken of — and a reduction learned later is a case added here rather than a sentence
+ * somebody has to rewrite.
  *
  * @param <A> what a position is called
  */
-public sealed interface RelationalWitness<A> {
+public sealed interface RelationalLack<A> {
 
     /** Every block the lack is about, which is what a report has to name to say what has nothing. */
     Set<Sameness.Block<A>> blocks();
 
     /** The same argument about the blocks {@code naming} calls these. */
-    default <B> RelationalWitness<B> renamed(java.util.function.Function<A, B> naming) {
+    default <B> RelationalLack<B> renamed(java.util.function.Function<A, B> naming) {
         return switch (this) {
             case ABlockApartFromItself<A> it ->
                     new ABlockApartFromItself<>(it.block().renamed(naming));
-            case NoValueLeftBetweenThem<A> it -> {
-                Set<Sameness.Block<B>> by = new LinkedHashSet<>();
-                it.by().forEach(block -> by.add(block.renamed(naming)));
-                yield new NoValueLeftBetweenThem<>(it.block().renamed(naming), by);
-            }
+            case NoValueLeftForIt<A> it -> new NoValueLeftForIt<>(it.block().renamed(naming));
             case TooFewValuesBetweenThem<A> it -> {
                 Set<Sameness.Block<B>> blocks = new LinkedHashSet<>();
                 it.blocks().forEach(block -> blocks.add(block.renamed(naming)));
@@ -56,7 +60,7 @@ public sealed interface RelationalWitness<A> {
      * <p>One block and a lack about it all the same: what has nothing is the value those positions
      * are, and each of them is left everything on its own.
      */
-    record ABlockApartFromItself<A>(Sameness.Block<A> block) implements RelationalWitness<A> {
+    record ABlockApartFromItself<A>(Sameness.Block<A> block) implements RelationalLack<A> {
 
         @Override
         public Set<Sameness.Block<A>> blocks() {
@@ -65,38 +69,24 @@ public sealed interface RelationalWitness<A> {
     }
 
     /**
-     * A block whose neighbours take every value it was left.
+     * A block the denials leave no value at all.
      *
-     * <p><b>Every block the argument rests on, and not the ones that took the last values.</b> A
-     * neighbour holding one value may hold it because a rule said so or because its own neighbours
-     * left it that, and the second kind is not a reason on its own — {@code q} left at one value by
-     * {@code p} takes that value from {@code r}, and {@code q} with {@code r} alone is satisfiable.
-     * Named as the neighbours in hand, this would say a lack is about two blocks where nothing is
-     * refused until three of them are read, which is a sentence sending an author to a pair whose
-     * own rules are fine.
+     * <p>The block and nothing beside it, because that is the whole of what is claimed. Which
+     * blocks took its values, and which took theirs, is how the claim was reached — a route, and
+     * two readings that reach one claim by two routes have shown the same thing. Carried here, the
+     * route would be part of what {@link Refusal#shownByBoth} compares, and a choice between two
+     * readings that each leave this block nothing would be answered as though neither had.
      *
-     * <p>Which is also what makes two of these comparable. {@link Refusal#shownByBoth} keeps a
-     * collective lack where two readings show the same one, and that is only sound where the
-     * witness is the whole argument — two lacks reached through different blocks are two lacks, and
-     * they say so by naming them.
+     * <p>Where a report has to send an author somewhere, the blocks to read are asked of
+     * {@link RelationalEvidence}, which is what carries the route.
      *
      * @param block the block left nothing
-     * @param by every other block the argument rests on, which is what forced the values out of it
-     *           and what forced those in turn
      */
-    record NoValueLeftBetweenThem<A>(Sameness.Block<A> block,
-                                     Set<Sameness.Block<A>> by) implements RelationalWitness<A> {
-
-        public NoValueLeftBetweenThem {
-            by = Collections.unmodifiableSet(new LinkedHashSet<>(by));
-        }
+    record NoValueLeftForIt<A>(Sameness.Block<A> block) implements RelationalLack<A> {
 
         @Override
         public Set<Sameness.Block<A>> blocks() {
-            Set<Sameness.Block<A>> out = new LinkedHashSet<>();
-            out.add(block);
-            out.addAll(by);
-            return Collections.unmodifiableSet(out);
+            return Set.of(block);
         }
     }
 
@@ -113,7 +103,7 @@ public sealed interface RelationalWitness<A> {
      * @param available every value any of them may hold
      */
     record TooFewValuesBetweenThem<A>(Set<Sameness.Block<A>> blocks,
-                                      Set<Value> available) implements RelationalWitness<A> {
+                                      Set<Value> available) implements RelationalLack<A> {
 
         public TooFewValuesBetweenThem {
             blocks = Collections.unmodifiableSet(new LinkedHashSet<>(blocks));
@@ -156,7 +146,7 @@ public sealed interface RelationalWitness<A> {
      *               never going to run out and is not part of what has nothing
      */
     record NoAssignmentTellsThemApart<A>(
-            Set<Sameness.Block<A>> blocks) implements RelationalWitness<A> {
+            Set<Sameness.Block<A>> blocks) implements RelationalLack<A> {
 
         public NoAssignmentTellsThemApart {
             blocks = Collections.unmodifiableSet(new LinkedHashSet<>(blocks));

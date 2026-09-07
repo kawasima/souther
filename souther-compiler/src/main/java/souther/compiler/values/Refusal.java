@@ -59,7 +59,8 @@ public sealed interface Refusal<A> {
      * <p>Several of them, because one argument can show a lack about several lots of blocks at
      * once and the relation says nothing about which of them to carry.
      */
-    record OfThemTogether<A>(Set<RelationalWitness<A>> lacks) implements Refusal<A> {
+    record OfThemTogether<A>(Set<RelationalLack<A>> lacks,
+                             RelationalEvidence<A> evidence) implements Refusal<A> {
 
         public OfThemTogether {
             lacks = Collections.unmodifiableSet(new LinkedHashSet<>(lacks));
@@ -68,9 +69,41 @@ public sealed interface Refusal<A> {
                         "a lack about blocks together is shown by an argument, and none was given");
             }
         }
+
+        /** These lacks, shown of blocks the argument read and did not name. */
+        public OfThemTogether(Set<RelationalLack<A>> lacks) {
+            this(lacks, RelationalEvidence.none());
+        }
+
+        /**
+         * What was shown, and never how it was reached.
+         *
+         * <p>Two readings that leave one block no value have shown that block has none, whatever
+         * took the values in each of them. Compared by the route as well, the two would be two
+         * refusals and {@link #shownByBoth} would keep neither — which is to say that a choice
+         * between two readings that both hold nothing would be reported as holding something.
+         */
+        @Override
+        public boolean equals(Object said) {
+            return said instanceof OfThemTogether<?> it && lacks.equals(it.lacks);
+        }
+
+        @Override
+        public int hashCode() {
+            return lacks.hashCode();
+        }
     }
 
-    /** The blocks the lack is about, for a reader that only has to name places. */
+    /**
+     * The blocks a report may name, which is what the lack is about and what it was reached
+     * through.
+     *
+     * <p>The route as well as the claim, and here rather than in the lack. What an author is sent
+     * to read is the rules that leave the blocks nothing, and a block left nothing because its
+     * neighbours were left one value each is a place whose own rules are fine with what they leave
+     * it — so a report naming it alone would send the author nowhere useful. What two lacks are
+     * compared by is the claim, which is what {@link #shownByBoth} asks and this does not.
+     */
     default Set<Sameness.Block<A>> blocks() {
         return switch (this) {
             case Nowhere<A> _ -> Set.of();
@@ -78,6 +111,7 @@ public sealed interface Refusal<A> {
             case OfThemTogether<A> it -> {
                 Set<Sameness.Block<A>> out = new LinkedHashSet<>();
                 it.lacks().forEach(lack -> out.addAll(lack.blocks()));
+                out.addAll(it.evidence().restingOn(it.lacks()));
                 yield Collections.unmodifiableSet(out);
             }
         };
@@ -98,9 +132,9 @@ public sealed interface Refusal<A> {
                 yield new AtEachOf<>(out);
             }
             case OfThemTogether<A> it -> {
-                Set<RelationalWitness<B>> out = new LinkedHashSet<>();
+                Set<RelationalLack<B>> out = new LinkedHashSet<>();
                 it.lacks().forEach(lack -> out.add(lack.renamed(naming)));
-                yield new OfThemTogether<>(out);
+                yield new OfThemTogether<>(out, it.evidence().renamed(naming));
             }
         };
     }
@@ -135,9 +169,9 @@ public sealed interface Refusal<A> {
             return new AtEachOf<>(both);
         }
         if (one instanceof OfThemTogether<A> mine && other instanceof OfThemTogether<A> theirs) {
-            Set<RelationalWitness<A>> both = new LinkedHashSet<>(mine.lacks());
+            Set<RelationalLack<A>> both = new LinkedHashSet<>(mine.lacks());
             both.addAll(theirs.lacks());
-            return new OfThemTogether<>(both);
+            return new OfThemTogether<>(both, reachedAlike(mine, theirs));
         }
         return one.equals(other) ? one : new Nowhere<>();
     }
@@ -166,10 +200,24 @@ public sealed interface Refusal<A> {
             return atEachOf(both);
         }
         if (one instanceof OfThemTogether<A> mine && other instanceof OfThemTogether<A> theirs) {
-            Set<RelationalWitness<A>> both = new LinkedHashSet<>(mine.lacks());
+            Set<RelationalLack<A>> both = new LinkedHashSet<>(mine.lacks());
             both.retainAll(theirs.lacks());
-            return both.isEmpty() ? new Nowhere<>() : new OfThemTogether<>(both);
+            return both.isEmpty() ? new Nowhere<>()
+                    : new OfThemTogether<>(both, reachedAlike(mine, theirs));
         }
         return one.equals(other) ? one : new Nowhere<>();
+    }
+
+    /**
+     * The route two refusals were reached along, where it is one route.
+     *
+     * <p>Nothing where the two were reached differently. What a route is for is sending an author
+     * to the rules that were read, and two readings that read different rules leave nothing to
+     * send them to — the lack they both show is still theirs, which is what is kept beside this.
+     */
+    private static <A> RelationalEvidence<A> reachedAlike(OfThemTogether<A> one,
+                                                          OfThemTogether<A> other) {
+        return one.evidence().equals(other.evidence()) ? one.evidence()
+                : RelationalEvidence.none();
     }
 }

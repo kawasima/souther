@@ -24,7 +24,7 @@ class ALackAboutBlocksTogetherIsNotALackAtEachOfThemTest {
 
     private static Refusal<String> together(Sameness.Block<String> one,
                                             Sameness.Block<String> other) {
-        return new Refusal.OfThemTogether<>(Set.of(new RelationalWitness.TooFewValuesBetweenThem<>(
+        return new Refusal.OfThemTogether<>(Set.of(new RelationalLack.TooFewValuesBetweenThem<>(
                 Set.of(one, other), Set.of(Value.text("A")))));
     }
 
@@ -55,6 +55,43 @@ class ALackAboutBlocksTogetherIsNotALackAtEachOfThemTest {
     @Test
     void andTwoOfThemThatAreOneLackAreThatLack() {
         assertEquals(together(P, Q), Refusal.shownByBoth(together(P, Q), together(P, Q)));
+    }
+
+    /**
+     * And two readings that leave one block nothing have shown that, whatever took its values.
+     *
+     * <p>One reading's rules take {@code q}'s values through {@code p} and the other's through
+     * {@code r}, so the two are reached along different routes and neither route is the pair's. But
+     * each of them leaves {@code q} no value, and a choice between them leaves {@code q} no value —
+     * which is what both showed and what is kept.
+     *
+     * <p>Compared by the route as well, the two would be two refusals and the choice would be
+     * reported as refused nowhere in particular, which is a reading holding something where both of
+     * its alternatives hold nothing.
+     */
+    @Test
+    void andTwoReadingsThatLeaveOneBlockNothingHaveShownThatHoweverTheyReachedIt() {
+        Refusal<String> one = leaving(Q, P);
+        Refusal<String> other = leaving(Q, R);
+
+        assertEquals(Set.of(P, Q), one.blocks(), "the route is what a report may name");
+        assertEquals(Set.of(Q, R), other.blocks());
+
+        Refusal<String> both = Refusal.shownByBoth(one, other);
+
+        assertEquals(Set.of(new RelationalLack.NoValueLeftForIt<>(Q)),
+                assertInstanceOf(Refusal.OfThemTogether.class, both).lacks());
+        assertEquals(Set.of(Q), both.blocks(),
+                "and what may be named is what both of them read, which is the block itself");
+    }
+
+    /** {@code left} holding nothing, reached by {@code by} being left one value in an earlier
+     *  round. */
+    private static Refusal<String> leaving(Sameness.Block<String> left,
+                                           Sameness.Block<String> by) {
+        return new Refusal.OfThemTogether<>(Set.of(new RelationalLack.NoValueLeftForIt<>(left)),
+                new RelationalEvidence<>(new Provenance<>(Set.of(new Provenance.Removal<>(
+                        left, Value.text("A"), 1, Set.of(by))))));
     }
 
     /** A lack about blocks together and a lack at blocks are not one another, whatever they name. */

@@ -155,11 +155,11 @@ public final class Apartness<A> {
      * two blocks, and which of them a reader is handed would otherwise be settled by which pair was
      * written first.
      */
-    public Set<RelationalWitness<A>> apartFromThemselves() {
-        Set<RelationalWitness<A>> out = new LinkedHashSet<>();
+    public Set<RelationalLack<A>> apartFromThemselves() {
+        Set<RelationalLack<A>> out = new LinkedHashSet<>();
         edges.forEach(edge -> {
             if (edge.isOfOneBlock()) {
-                out.add(new RelationalWitness.ABlockApartFromItself<>(edge.one()));
+                out.add(new RelationalLack.ABlockApartFromItself<>(edge.one()));
             }
         });
         return Collections.unmodifiableSet(out);
@@ -543,7 +543,7 @@ public final class Apartness<A> {
         if (isEmpty()) {
             return new Reduction.Standing<>();
         }
-        Set<RelationalWitness<A>> stated = apartFromThemselves();
+        Set<RelationalLack<A>> stated = apartFromThemselves();
         if (!stated.isEmpty()) {
             return new Reduction.Nothing<>(stated);
         }
@@ -551,23 +551,22 @@ public final class Apartness<A> {
         // there are: its neighbours take fewer values than that between them, so one is left.
         int atMost = blocks().size();
         return switch (Narrowing.of(this, Domains.of(blocks(), admitting, atMost))) {
-            case Closure.Contradicted<A> it -> new Reduction.Nothing<>(emptied(it));
+            case Closure.Contradicted<A> it -> emptied(it);
             case Closure.Stable<A> it -> whatIsLeftComesTo(it.domains());
         };
     }
 
-    /** A lack at each block a narrowing left no value, said of the blocks that took them. */
-    private Set<RelationalWitness<A>> emptied(Closure.Contradicted<A> narrowed) {
-        Set<RelationalWitness<A>> lacks = new LinkedHashSet<>();
-        narrowed.leftNothing().forEach(block -> lacks.add(
-                new RelationalWitness.NoValueLeftBetweenThem<>(
-                        block, narrowed.provenance().restingOn(block))));
-        return lacks;
+    /** A lack at each block a narrowing left no value, beside the removals that left them so. */
+    private Reduction<A> emptied(Closure.Contradicted<A> narrowed) {
+        Set<RelationalLack<A>> lacks = new LinkedHashSet<>();
+        narrowed.leftNothing()
+                .forEach(block -> lacks.add(new RelationalLack.NoValueLeftForIt<>(block)));
+        return new Reduction.Nothing<>(lacks, new RelationalEvidence<>(narrowed.provenance()));
     }
 
     /** What the two arguments after a narrowing make of what it left. */
     private Reduction<A> whatIsLeftComesTo(Domains<A> left) {
-        Set<RelationalWitness<A>> counted = counting(left);
+        Set<RelationalLack<A>> counted = counting(left);
         if (!counted.isEmpty()) {
             return new Reduction.Nothing<>(counted);
         }
@@ -600,7 +599,7 @@ public final class Apartness<A> {
         // day a lack names blocks nothing was looked for over.
         return over.isSatisfiable() ? found
                 : new Reduction.Nothing<>(Set.of(
-                        new RelationalWitness.NoAssignmentTellsThemApart<>(over.blocks())));
+                        new RelationalLack.NoAssignmentTellsThemApart<>(over.blocks())));
     }
 
     /**
@@ -678,17 +677,17 @@ public final class Apartness<A> {
      * them, and sets sharing none are the two lacks they are.
      *
      * <p>Which is a lack about blocks not all of which are stated to differ, and so is not a
-     * shortage: {@link RelationalWitness.TooFewValuesBetweenThem} is a count taken of blocks each
+     * shortage: {@link RelationalLack.TooFewValuesBetweenThem} is a count taken of blocks each
      * of which needs a value no other takes, and blocks merely reached from one another are not
      * that. What is true of them together is that no assignment tells them apart, which is what
      * they are said by — and a set that shares a block with none is said as the shortage it is.
      */
-    private Set<RelationalWitness<A>> counting(Domains<A> left) {
+    private Set<RelationalLack<A>> counting(Domains<A> left) {
         Optional<List<Set<Sameness.Block<A>>>> walked = everySetWorthWalkingFor();
         if (walked.isEmpty()) {
             return Set.of();
         }
-        List<RelationalWitness<A>> found = new ArrayList<>();
+        List<RelationalLack<A>> found = new ArrayList<>();
         for (Set<Sameness.Block<A>> apart : walked.get()) {
             Map<Sameness.Block<A>, Set<Value>> counted = new LinkedHashMap<>();
             apart.forEach(block -> {
@@ -699,7 +698,7 @@ public final class Apartness<A> {
             if (counted.size() < 2) {
                 continue;
             }
-            RelationalWitness<A> why = shortage(counted);
+            RelationalLack<A> why = shortage(counted);
             if (why != null) {
                 found.add(why);
             }
@@ -715,15 +714,15 @@ public final class Apartness<A> {
      * apart; two that share none are lacks in two places, and a reader sent to one of them would
      * be reading rules the other's blocks are nowhere in.
      */
-    private Set<RelationalWitness<A>> sharingABlock(List<RelationalWitness<A>> found) {
+    private Set<RelationalLack<A>> sharingABlock(List<RelationalLack<A>> found) {
         // What each group is about, beside the group. Asked of a group's blocks rather than of its
         // lacks one at a time, because a relation nearly all of whose sets are short has as many
         // lacks here as it has sets, and the question is about the blocks either way.
         List<Set<Sameness.Block<A>>> about = new ArrayList<>();
-        List<List<RelationalWitness<A>>> groups = new ArrayList<>();
-        for (RelationalWitness<A> lack : found) {
+        List<List<RelationalLack<A>>> groups = new ArrayList<>();
+        for (RelationalLack<A> lack : found) {
             Set<Sameness.Block<A>> blocks = new LinkedHashSet<>(lack.blocks());
-            List<RelationalWitness<A>> joined = new ArrayList<>(List.of(lack));
+            List<RelationalLack<A>> joined = new ArrayList<>(List.of(lack));
             // Backwards, so that removing a group leaves the ones not yet asked where they were.
             // A group these blocks reach only through another group is not one this misses: the
             // groups share no block before this lack arrives, which is what makes them groups.
@@ -736,10 +735,10 @@ public final class Apartness<A> {
             about.add(blocks);
             groups.add(joined);
         }
-        Set<RelationalWitness<A>> out = new LinkedHashSet<>();
+        Set<RelationalLack<A>> out = new LinkedHashSet<>();
         for (int at = 0; at < groups.size(); at++) {
             out.add(groups.get(at).size() == 1 ? groups.get(at).getFirst()
-                    : new RelationalWitness.NoAssignmentTellsThemApart<>(about.get(at)));
+                    : new RelationalLack.NoAssignmentTellsThemApart<>(about.get(at)));
         }
         return out;
     }
@@ -760,16 +759,16 @@ public final class Apartness<A> {
      * whichever blocks it happened to walk through. Both lacks here are read off the set and its
      * values alone.
      */
-    private RelationalWitness<A> shortage(Map<Sameness.Block<A>, Set<Value>> counted) {
+    private RelationalLack<A> shortage(Map<Sameness.Block<A>, Set<Value>> counted) {
         Set<Value> available = new LinkedHashSet<>();
         counted.values().forEach(available::addAll);
         if (available.size() < counted.size()) {
-            return new RelationalWitness.TooFewValuesBetweenThem<>(counted.keySet(), available);
+            return new RelationalLack.TooFewValuesBetweenThem<>(counted.keySet(), available);
         }
         Map<Value, Sameness.Block<A>> taken = new LinkedHashMap<>();
         for (Sameness.Block<A> block : counted.keySet()) {
             if (!given(block, counted, taken, new LinkedHashSet<>())) {
-                return new RelationalWitness.NoAssignmentTellsThemApart<>(counted.keySet());
+                return new RelationalLack.NoAssignmentTellsThemApart<>(counted.keySet());
             }
         }
         return null;
@@ -831,7 +830,8 @@ public final class Apartness<A> {
          * it names and never the whole of what was shown, and choosing between several would be
          * choosing by something the relation does not hold.
          */
-        record Nothing<A>(Set<RelationalWitness<A>> lacks) implements Reduction<A> {
+        record Nothing<A>(Set<RelationalLack<A>> lacks,
+                          RelationalEvidence<A> evidence) implements Reduction<A> {
 
             public Nothing {
                 lacks = Collections.unmodifiableSet(new LinkedHashSet<>(lacks));
@@ -841,11 +841,9 @@ public final class Apartness<A> {
                 }
             }
 
-            /** Every block some lack of this one is about. */
-            public Set<Sameness.Block<A>> blocks() {
-                Set<Sameness.Block<A>> out = new LinkedHashSet<>();
-                lacks.forEach(lack -> out.addAll(lack.blocks()));
-                return Collections.unmodifiableSet(out);
+            /** These lacks, shown of blocks the argument read and did not name. */
+            Nothing(Set<RelationalLack<A>> lacks) {
+                this(lacks, RelationalEvidence.none());
             }
         }
 
