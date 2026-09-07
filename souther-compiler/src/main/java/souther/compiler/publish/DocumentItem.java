@@ -24,7 +24,7 @@ public final class DocumentItem {
     }
 
     /** One of these, for a row of a part that knows which part it is. */
-    static DocumentItem at(ObjectNode node, String schemaPath) {
+    public static DocumentItem at(ObjectNode node, String schemaPath) {
         if (node == null || schemaPath == null || !schemaPath.startsWith("/")) {
             throw new IllegalArgumentException("an object of the document is a node and what the"
                     + " schema calls it: " + schemaPath);

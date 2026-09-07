@@ -3,7 +3,6 @@ package souther.compiler.publish;
 import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.source.SourceId;
 
-import tools.jackson.databind.node.ObjectNode;
 
 /**
  * A field of the adequacy document that carries a rule handle.
@@ -93,21 +92,6 @@ public enum RuleHandleSurface {
                     "this field writes a sentence with a handle in it: " + this);
         }
         into.node().put(here(into), RuleHandleSentence.said(handle, names, sectionSource));
-    }
-
-    /**
-     * The same, written straight into an object this surface is the field of.
-     *
-     * <p>For a field of an object the document does not reach through a part: what says where it is
-     * written is this declaration, which is the same thing the check below compares against, so
-     * there is nothing here for a caller to get wrong and nothing for it to state twice.
-     */
-    public void put(ObjectNode into, PublishedRuleHandle handle, SourceNameResolver names,
-                    SourceId sectionSource) {
-        // The object this field is declared on, which is what the field's own path names less the
-        // two steps that name the field: an item says where it is and adds `/properties/<key>`.
-        String object = schemaPath.substring(0, schemaPath.length() - ("/properties/" + key).length());
-        put(DocumentItem.at(into, object), handle, names, sectionSource);
     }
 
     /**

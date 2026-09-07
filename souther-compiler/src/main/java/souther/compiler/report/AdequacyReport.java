@@ -4096,7 +4096,13 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             case PublishedSubject.AtARule it -> {
                 into.put("at", it.at());
                 into.set("ruleId", it.ruleId());
-                RuleHandleSurface.OPENING_RULE.put(into, it.rule(), sources::written, null);
+                // Through the surface, and told which object of the schema this is. Everything
+                // that writes a handle says where it is writing it; a way in that worked the place
+                // out for the caller would be the surface writing into itself, which is what this
+                // document has one for.
+                RuleHandleSurface.OPENING_RULE.put(
+                        DocumentItem.at(into, "/$defs/subject/oneOf/8"), it.rule(),
+                        sources::written, null);
                 if (!it.stopped().isEmpty()) {
                     ArrayNode stopped = into.putArray("stopped");
                     it.stopped().forEach(stopped::add);
