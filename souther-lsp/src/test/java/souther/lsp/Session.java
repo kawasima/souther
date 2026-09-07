@@ -40,8 +40,6 @@ final class Session implements AutoCloseable {
 
     private final Thread serving;
 
-    private volatile int code = -1;
-
     private volatile Throwable stopped;
 
     Session() {
@@ -53,7 +51,7 @@ final class Session implements AutoCloseable {
         }
         serving = Thread.ofPlatform().name("souther-lsp-under-test").start(() -> {
             try {
-                code = LspServer.serve(in, fromServer);
+                LspServer.serve(in, fromServer);
             } catch (Throwable t) {
                 stopped = t;
             }
@@ -137,11 +135,6 @@ final class Session implements AutoCloseable {
                 lastChange = System.currentTimeMillis();
             }
         }
-    }
-
-    /** What the session ended with, once the stream has been closed. */
-    int code() {
-        return code;
     }
 
     @Override

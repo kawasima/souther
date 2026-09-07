@@ -40,6 +40,10 @@ import java.util.function.BooleanSupplier;
  * by method, and answers requests / publishes diagnostics. Inbound payloads are decoded with Raoh
  * ({@link InboundDecoders}); outbound trees are built as maps and serialised with Jackson. The
  * language work is delegated to the {@link Analyzer}, which knows nothing of the protocol.
+ *
+ * <p>Two threads, and one of them owns everything: a session reads frames on a thread of its own and
+ * carries them out on the thread it was started on, which holds the documents, the workspace and the
+ * analyzer. {@link #run} says what that buys and why it is that way round.
  */
 public final class LspServer {
 
@@ -57,6 +61,10 @@ public final class LspServer {
      * message, and it says it while that message is being worked on. Handed over like the rest, it
      * would be read after the request it names had been answered — which is every request it could
      * have stopped.
+     *
+     * <p>Acted on only where it is a notification, which is what the protocol says it is. Written
+     * with an id it is a request, and every request is owed a reply; this server has no reply for
+     * one, so it goes on to be answered the way a method nobody declared is.
      */
     private static final String CANCEL_REQUEST = "$/cancelRequest";
 
@@ -181,7 +189,8 @@ public final class LspServer {
                 if (methodNode == null || methodNode.isNull()) {
                     continue;   // a response to a server-initiated request; nothing to do
                 }
-                if (CANCEL_REQUEST.equals(methodNode.asString())) {
+                JsonNode id = m.get("id");
+                if (CANCEL_REQUEST.equals(methodNode.asString()) && (id == null || id.isNull())) {
                     JsonNode params = m.get("params");
                     inbox.cancel(params == null ? null : params.get("id"));
                     continue;
