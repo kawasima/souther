@@ -97,7 +97,7 @@ public final class Lacks<A> {
      */
     public Shown<A> only() {
         if (each.size() != 1) {
-            throw new IllegalStateException("one lack was asked for, and these are " + each);
+            throw new IllegalStateException("one lack was asked for, and these are " + this);
         }
         return each.getFirst();
     }
@@ -179,8 +179,11 @@ public final class Lacks<A> {
         return out;
     }
 
+    /** Written in one order whichever they arrived in, which is what a set of them written out
+     *  twice has to read alike. Which order that is settled here and nowhere any of these is
+     *  compared. */
     @Override
     public String toString() {
-        return each.toString();
+        return each.stream().map(String::valueOf).sorted().toList().toString();
     }
 }

@@ -48,7 +48,7 @@ public sealed interface RelationalLack<A> {
      * is what a refusal is looked up by, so where it is filed is settled by the lack rather than by
      * whoever is filing it.
      */
-    static int scattering(Set<?> these) {
+    private static int scattering(Set<?> these) {
         int out = 0;
         for (Object each : these) {
             int mixed = each.hashCode() * 0x9E3779B9;
