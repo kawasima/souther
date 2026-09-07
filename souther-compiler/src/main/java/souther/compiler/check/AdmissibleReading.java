@@ -41,7 +41,7 @@ import java.util.Set;
  * through the obligations would turn "some reading took this in" into "a construction may be held
  * to it", and a row would be offered at an edge promised by nothing.
  *
- * <p>Everything this cannot read is {@link AdmissibleValues#unreadable}, which widens and never
+ * <p>Everything this cannot read is {@code PlannedValues.unreadable}, which widens and never
  * narrows. That is the whole discipline: a reading that answered "no value" from a clause it did
  * not read would refuse a model somebody can write. A denial is turned into what it leaves where
  * the values can be written out ({@link ValueUniverse}) and is kept as a denial where they cannot,
@@ -165,7 +165,7 @@ final class AdmissibleReading {
      * is reaching the position and the written text and turning the answer into a plan — so a
      * predicate this reading learns is a row in that table and not an arm added here.
      *
-     * <p>Null and not {@link AdmissibleValues#unreadable} wherever the leaf's own account is the
+     * <p>Null and not {@code PlannedValues.unreadable} wherever the leaf's own account is the
      * right one, so that the one place a reading gives up stays where it is: what a rule this could
      * not read costs is worked out there, and a second answer to it here would be a second account
      * of the same thing. That is every leaf that is not one of these, and every one of these whose
