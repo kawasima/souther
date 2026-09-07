@@ -1,5 +1,6 @@
 package souther.compiler.partition;
 
+import souther.compiler.coverage.AlignedObservation;
 import souther.compiler.coverage.ComparisonEmissionSite;
 import souther.compiler.inputs.TermPath;
 import souther.compiler.observe.ObservedValue;
@@ -140,10 +141,7 @@ public final class StandingAtAPoint {
                 }
                 switch (one.watched()) {
                     case Generator.Watched.Ran(var account) -> {
-                        // Any of them, because they are one rule: a row that got an answer out of
-                        // one copy of a comparison got one out of the comparison, and asking for
-                        // all of them would owe a row through copies the operation makes.
-                        if (watched.stream().anyMatch(account::reached)) {
+                        if (gotAnAnswerOutOfTheRule(watched, account)) {
                             return Met.REACHED;
                         }
                     }
@@ -308,4 +306,21 @@ public final class StandingAtAPoint {
     private static final int MOST_READINGS = 256;
 
     private StandingAtAPoint() {}
+
+    /**
+     * Whether a run got an answer out of the rule, given every place the rule is watched at.
+     *
+     * <p><b>Any of them, because they are one rule.</b> A library operation may evaluate a closure
+     * it was handed more than once — {@code List.distinctBy} asks its key twice — so a comparison
+     * the author wrote once is written into the tree that runs more than once and each copy is
+     * watched. Which of them ran is the operation's business; what the model states is the one rule,
+     * and a run that got an answer out of any copy got one out of it.
+     *
+     * <p>Asked for all of them, a row would owe a run through every copy an operation happens to
+     * make — a debt against how the library is written rather than against anything the model says.
+     */
+    static boolean gotAnAnswerOutOfTheRule(List<ComparisonEmissionSite> watched,
+                                           AlignedObservation account) {
+        return watched.stream().anyMatch(account::reached);
+    }
 }

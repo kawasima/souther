@@ -40,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * it, and a thing to notice if the two ever answer differently.
  */
 @Tag("population")
-class EveryRuleTheAnalysisReadsHasOnePlaceItsRunIsRecordedTest {
+class EveryRuleTheAnalysisReadsHasSomewhereItsRunIsRecordedTest {
 
     /** The comparisons of one behavior, in each reading of its body. */
     private record BothReadings(String behavior, Set<ConstructOccurrence> emitted,
@@ -53,7 +53,6 @@ class EveryRuleTheAnalysisReadsHasOnePlaceItsRunIsRecordedTest {
     @Test
     void eachComparisonTheAnalysisReadsIsReachedByOneOfTheEmittedTree() {
         List<String> unreached = new ArrayList<>();
-        Map<String, List<String>> reachedTwice = new LinkedHashMap<>();
         int[] reached = new int[1];
         int[] onlyEmitted = new int[1];
         for (BothReadings both : everyBodyBothWays()) {
@@ -69,17 +68,13 @@ class EveryRuleTheAnalysisReadsHasOnePlaceItsRunIsRecordedTest {
                 }
             }
             for (ModelOccurrence read : stated) {
-                List<ConstructOccurrence> from = arriving.get(read);
-                if (from == null) {
+                if (arriving.containsKey(read)) {
+                    reached[0]++;
+                } else {
                     unreached.add(both.behavior() + "\n  analysis: " + read + "\n  emitted:  "
                             + both.emitted().stream()
                                     .filter(each -> each.origin().equals(read.origin()))
                                     .map(String::valueOf).toList());
-                } else if (from.size() > 1) {
-                    reachedTwice.put(both.behavior() + " " + read,
-                            from.stream().map(String::valueOf).toList());
-                } else {
-                    reached[0]++;
                 }
             }
         }
@@ -89,14 +84,10 @@ class EveryRuleTheAnalysisReadsHasOnePlaceItsRunIsRecordedTest {
                 () -> "a comparison the analysis reads is reached by none of the emitted tree, so a"
                         + " rule it states has no place a run through it is recorded. Reached: "
                         + reached[0]);
-        assertEquals(Map.of(), reachedTwice,
-                () -> "two comparisons of the emitted tree reach one the analysis reads, over "
-                        + reached[0] + " reached and " + onlyEmitted[0]
-                        + " standing only where the operations are expanded");
     }
 
     /**
-     * Each construct of the model the analysis reads has one place a run through it is recorded.
+     * Each construct of the model the analysis reads has somewhere a run through it is recorded.
      *
      * <p>The whole crossing, measured end to end: what the analysis states, through the comparisons
      * the backend emits, to the numbers a probe writes. Two places and nothing says which of them a
@@ -174,10 +165,10 @@ class EveryRuleTheAnalysisReadsHasOnePlaceItsRunIsRecordedTest {
         assertEquals(List.of(), statedButUnplaced,
                 () -> "the model states a construct that reaches no comparison of the emitted tree"
                         + " at all: " + sitesPerModel);
-        assertEquals(List.of("0", "1"), List.copyOf(sitesPerModel.keySet()),
-                () -> "a construct the model states has more than one place a run through it is"
-                        + " recorded: " + sitesPerModel + ", emitted " + sitesPerEmitted
-                        + ", only in the emitted tree " + onlyEmitted[0]);
+        // Nothing is said about how many places a construct is watched at. A library operation
+        // evaluating a closure it was handed twice writes the comparison twice, so one rule may be
+        // watched in more than one place — and that this really happens is held where a model is
+        // written for it rather than over whatever this corpus turns out to call.
         assertEquals(List.of("0", "1"), List.copyOf(sitesPerEmitted.keySet()),
                 () -> "a comparison of the emitted tree has more than one address: "
                         + sitesPerEmitted);

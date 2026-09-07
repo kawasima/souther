@@ -101,12 +101,23 @@ class WhereTheTwoReadingsOfABodyPartIsAnOperationOfTheLanguageTest {
                                 Set<ConstructOccurrence> analysis) {}
 
     /**
-     * Every comparison the analysis reads is reached by exactly one of the emitted reading.
+     * Every comparison the analysis reads is reached by at least one of the emitted reading.
      *
-     * <p>The direction a reader wants, and the cardinality of it. A rule is read where the
-     * operations stand and a run through it is recorded where they are expanded, so what has to hold
-     * is that each rule read there has one place to look for its run: none, and a rule the analysis
-     * states could not be measured; two, and nothing says which of them a row was owed for.
+     * <p>The direction a reader wants. A rule is read where the operations stand and a run through
+     * it is recorded where they are expanded, so what has to hold is that each rule read there has
+     * somewhere to look for its run: none, and a rule the analysis states could not be measured at
+     * all.
+     *
+     * <p><b>And more than one is allowed.</b> A library operation may evaluate a closure it was
+     * handed more than once, so a comparison the author wrote once is written into the tree that
+     * runs more than once — one rule, several places it is watched at. This was written as exactly
+     * one, over a corpus that called no such operation, and the day a model called one the compile
+     * stopped.
+     *
+     * <p>That more than one really happens is not asked here. This walks whatever the corpus holds,
+     * and a property that needed a shape to be in it would be one the corpus decides; the shape is
+     * held to where a model is written for it
+     * ({@code AComparisonWrittenOnceIsWatchedWhereverTheOperationEvaluatesItTest}).
      *
      * <p>Nothing is asked of the comparisons only the emitted reading holds. A comparison written in
      * an operation's own body is one the analysis never enters and states no rule about, and
@@ -116,7 +127,6 @@ class WhereTheTwoReadingsOfABodyPartIsAnOperationOfTheLanguageTest {
     @Test
     void everyComparisonTheAnalysisReadsIsReachedByOneOfTheOther() {
         List<String> unreached = new ArrayList<>();
-        Map<String, List<String>> reachedTwice = new LinkedHashMap<>();
         int[] reached = new int[1];
         int[] onlyEmitted = new int[1];
         for (BothReadings both : everyBodyBothWays()) {
@@ -132,14 +142,10 @@ class WhereTheTwoReadingsOfABodyPartIsAnOperationOfTheLanguageTest {
                 }
             }
             for (ModelOccurrence read : stated) {
-                List<ConstructOccurrence> from = arriving.get(read);
-                if (from == null) {
-                    unreached.add(both.behavior() + " " + read);
-                } else if (from.size() > 1) {
-                    reachedTwice.put(both.behavior() + " " + read,
-                            from.stream().map(String::valueOf).toList());
-                } else {
+                if (arriving.containsKey(read)) {
                     reached[0]++;
+                } else {
+                    unreached.add(both.behavior() + " " + read);
                 }
             }
         }
@@ -147,9 +153,7 @@ class WhereTheTwoReadingsOfABodyPartIsAnOperationOfTheLanguageTest {
         assertTrue(reached[0] > 0, "no comparison of the analysis reading was reached at all");
         assertEquals(List.of(), unreached,
                 () -> "a comparison the analysis reads is reached by none of the emitted reading,"
-                        + " so a rule it states has no place a run through it is recorded");
-        assertEquals(Map.of(), reachedTwice,
-                () -> "two comparisons of the emitted reading reach one the analysis reads, over "
+                        + " so a rule it states has no place a run through it is recorded, over "
                         + reached[0] + " reached and " + onlyEmitted[0]
                         + " standing only where the operations are expanded");
     }
