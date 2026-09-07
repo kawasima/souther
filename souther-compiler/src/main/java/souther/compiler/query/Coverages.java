@@ -43,6 +43,7 @@ import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.SequencedMap;
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -430,33 +431,55 @@ final class Coverages {
         // position under another are not in one value, so their classes make no combination: counted
         // as the product, the measure of a behavior taking a sum would fall by however many
         // combinations the model does not have.
-        long total = 0;
+        //
+        // Kept as the pairs they were worked out between, rather than added up here. Which two
+        // positions a combination is between is what the walk knows at the moment it counts, and a
+        // sum is the one projection of that from which no reader can get it back.
+        List<PartitionEvidence.PairSpace.AxisPair> space = new ArrayList<>();
         for (int i = 0; i < axes.size(); i++) {
             for (int j = i + 1; j < axes.size(); j++) {
-                total += combinationsOf(axes.get(i), axes.get(j));
+                long between = combinationsOf(axes.get(i), axes.get(j));
+                if (between > 0) {
+                    space.add(new PartitionEvidence.PairSpace.AxisPair(
+                            new PartitionEvidence.PairSpace.Between(
+                                    axes.get(i).id(), axes.get(j).id()), between));
+                }
             }
         }
-        if (total == 0) {
+        if (space.isEmpty()) {
             return PartitionEvidence.PairSpace.NONE;
         }
         // Before anything about the rows, because there are none to be about: a build that asked for
-        // no measurement read no row, and how large the space is stays what the model says it is.
+        // no measurement read no row, and what the model holds stays what the model says it is.
         if (!asked) {
-            return PartitionEvidence.PairSpace.notAsked((int) Math.min(total, Integer.MAX_VALUE));
+            return PartitionEvidence.PairSpace.notAsked(space);
         }
         // Before the size of the space is worth mentioning. A combination nothing tried to sit in is
         // not a combination left untried by anybody, and how many of them there are says nothing
         // about a behavior no row names.
         if (readings.noRows() && !readings.someRowsUnseen()) {
-            return PartitionEvidence.PairSpace.noRows((int) Math.min(total, Integer.MAX_VALUE));
+            return PartitionEvidence.PairSpace.noRows(space);
         }
+        long total = space.stream().mapToLong(PartitionEvidence.PairSpace.AxisPair::total).sum();
         if (total > budget.pairSpace()) {
-            return PartitionEvidence.PairSpace.truncated(behavior, total, budget.pairSpace());
+            return PartitionEvidence.PairSpace.truncated(behavior, space, total,
+                    budget.pairSpace());
         }
-        Set<String> covered = new LinkedHashSet<>();
+        // One set of combinations per relation, in the order the relations were worked out. What is
+        // counted is the same as it was; where the count goes is what changed.
+        SequencedMap<PartitionEvidence.PairSpace.Between, Set<String>> reached =
+                new LinkedHashMap<>();
+        space.forEach(pair -> reached.put(pair.between(), new LinkedHashSet<>()));
         for (Readings.WhereARowSat where : readings.byRow()) {
             for (int i = 0; i < axes.size(); i++) {
                 for (int j = i + 1; j < axes.size(); j++) {
+                    PartitionEvidence.PairSpace.Between between =
+                            new PartitionEvidence.PairSpace.Between(
+                                    axes.get(i).id(), axes.get(j).id());
+                    Set<String> here = reached.get(between);
+                    if (here == null) {
+                        continue;
+                    }
                     // Every pairing the row reaches, and only those. A row whose list holds
                     // elements either side of a line stands in both classes there, and which of
                     // them went with what the position beside it holds is settled by which element
@@ -464,21 +487,21 @@ final class Coverages {
                     // none of its elements is in.
                     for (Map.Entry<String, String> pair : Classification.pairsOf(
                             where.at().get(i), where.at().get(j))) {
-                        // Which positions, and not only which classes. A class id is unique within
-                        // its axis and not across axes — three `Flag` inputs all have a `Yes` — so
-                        // a key of two class names alone collapses every pair one row covers into
-                        // one.
-                        covered.add(i + "/" + pair.getKey() + " " + j + "/" + pair.getValue());
+                        // Which classes, within the relation that holds them. The relation is the
+                        // key above and a class id is unique within its axis, so what is written
+                        // here needs to tell two combinations of these two positions apart and no
+                        // more.
+                        here.add(pair.getKey() + " " + pair.getValue());
                     }
                 }
             }
         }
-        int reached = covered.size();
-        PartitionEvidence.PairSpace.PairCounts counts = new PartitionEvidence.PairSpace.PairCounts(
-                reached, reached, 0, (int) total - reached);
+        SequencedMap<PartitionEvidence.PairSpace.Between, Integer> counts = new LinkedHashMap<>();
+        reached.forEach((between, in) -> counts.put(between, in.size()));
+        PartitionEvidence.PairSpace.Reached made = new PartitionEvidence.PairSpace.Reached(counts);
         WeakeningSet by = readings.weakening(read);
-        return new PartitionEvidence.PairSpace((int) total, by.isEmpty()
-                ? new Measurement.Complete<>(counts) : new Measurement.Partial<>(counts, by));
+        return new PartitionEvidence.PairSpace(space, by.isEmpty()
+                ? new Measurement.Complete<>(made) : new Measurement.Partial<>(made, by));
     }
 
     /**

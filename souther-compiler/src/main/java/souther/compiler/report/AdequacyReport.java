@@ -1866,16 +1866,20 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 .anyMatch(Weakening.PairSpaceTruncated.class::isInstance)) {
             return String.format("pairs %d, too many to enumerate", pairs.total());
         }
-        PartitionEvidence.PairSpace.PairCounts counts = pairs.counted().made().orElseThrow();
-        boolean whole = pairs.counted() instanceof Measurement.Complete<?>;
         if (pairs.decided()) {
-            return String.format("pairs %d/%d", counts.covered(), pairs.total());
+            return String.format("pairs %d/%d", pairs.counts().covered(), pairs.total());
         }
-        // Untried where every row was read, undecided where some were not: a combination an unread
-        // row may sit in has not been left untried by anybody.
-        return String.format("pairs %d reached / %d known reachable, %d %s",
-                counts.covered(), counts.witnessedFeasible(), counts.unknown(),
-                whole ? "untried" : "undecided");
+        // Two numbers, because there are two facts. What the rows reach is counted, and what is
+        // left is not known: nothing tried to build a row for it, so it has not been shown
+        // unreachable either. `unknown` is the word the document writes, and it is written here
+        // too — `untried` reads as an instruction to try, which is what nobody is asked to do.
+        //
+        // And whose rows, where not all of them were read. A combination none of the rows seen
+        // reaches is not one none of the rows reaches, and the same number means the smaller thing.
+        boolean whole = pairs.counted() instanceof Measurement.Complete<?>;
+        return String.format("pairs %d covered, %d unknown%s",
+                pairs.counts().covered(), pairs.unknown(),
+                whole ? "" : " of the rows that were read");
     }
 
     /**
@@ -3254,11 +3258,26 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // counts are the measurement's and are written only where one was made; `truncated` is gone
         // from here entirely, since a space too large to walk says so under `weakening`.
         pairs.put("total", partition.pairs().total());
+        // Which two positions each of them is between, and how many of that relation the rows
+        // reach. The sizes are the model's and are written whether or not anybody counted; the
+        // counts are the measurement's and are written where one was made.
+        ArrayNode between = pairs.putArray("between");
+        for (PartitionEvidence.PairSpace.AxisPair pair : partition.pairs().space()) {
+            ObjectNode said = between.addObject();
+            said.put("one", pair.between().one().toString());
+            said.put("other", pair.between().other().toString());
+            said.put("total", pair.total());
+            if (partition.pairs().counted().made().isPresent()) {
+                said.put("covered", partition.pairs().counts().covered(pair.between()));
+                said.put("unknown", partition.pairs().unknown(pair.between()));
+            }
+        }
+        // The two numbers over the whole space, and neither of them worked out here. What is left
+        // needs the sizes and the counts together, and a writer that subtracted them would be the
+        // second mechanism for one fact.
         measured(pairs, partition.pairs().counted(), (node, counts) -> {
             node.put("covered", counts.covered());
-            node.put("witnessedFeasible", counts.witnessedFeasible());
-            node.put("provenInfeasible", counts.provenInfeasible());
-            node.put("unknown", counts.unknown());
+            node.put("unknown", partition.pairs().unknown());
         });
         // Both arrays either way. An absent one and an empty one read the same to a person and not
         // to a reader that checks whether the field is there, and this document's shape is what the

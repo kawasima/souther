@@ -213,7 +213,7 @@ class CompileAdequacyShapesTest {
 
         assertEquals(12, evidence.pairs().total(), "three positions of two classes");
         assertEquals(3, evidence.pairs().counts().covered(), "one row sits in three of the pairs");
-        assertEquals(9, evidence.pairs().counts().unknown());
+        assertEquals(9, evidence.pairs().unknown());
     }
 
     /**
