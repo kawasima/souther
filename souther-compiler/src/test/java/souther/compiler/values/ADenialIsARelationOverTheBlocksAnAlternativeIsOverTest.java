@@ -323,11 +323,11 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         Apartness<String> triangle = Apartness.of("p", "q")
                 .and(Apartness.of("q", "r")).and(Apartness.of("r", "p"));
 
-        assertEquals(List.of(Set.of(P, Q, R)), triangle.everySetWorthWalkingFor().orElseThrow(),
+        assertEquals(Set.of(Set.of(P, Q, R)), triangle.everySetWorthWalkingFor().orElseThrow(),
                 "one set, and not every part of it nor every order its blocks come in");
 
         Apartness<String> chain = Apartness.of("p", "q").and(Apartness.of("q", "r"));
-        assertEquals(List.of(Set.of(P, Q), Set.of(Q, R)), chain.everySetWorthWalkingFor().orElseThrow(),
+        assertEquals(Set.of(Set.of(P, Q), Set.of(Q, R)), chain.everySetWorthWalkingFor().orElseThrow(),
                 "and a chain is two of them, neither of which the other holds");
     }
 
@@ -563,7 +563,8 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         Set<Value> three = new LinkedHashSet<>(Set.of(A, B));
         three.add(C);
 
-        assertEquals(2, made.everySetWorthWalkingFor().orElseThrow().getFirst().size(),
+        assertEquals(2, made.everySetWorthWalkingFor().orElseThrow().stream()
+                        .mapToInt(Set::size).max().orElseThrow(),
                 "the largest set of blocks all stated to differ is a pair");
         assertInstanceOf(RelationalLack.NoAssignmentTellsThemApart.class,
                 refusedBy(made.reduce((_, _) -> new Admits.These(three))),
