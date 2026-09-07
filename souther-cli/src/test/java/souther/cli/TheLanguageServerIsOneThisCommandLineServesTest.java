@@ -6,6 +6,10 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.io.UncheckedIOException;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -15,6 +19,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -33,15 +39,20 @@ class TheLanguageServerIsOneThisCommandLineServesTest {
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
     @Test
-    void aLineNamingTheCommandIsAnsweredWithTheHandshake() {
-        Answer answer = run(frames(
-                message(1, "initialize", Map.of()),
-                message(null, "initialized", Map.of()),
-                message(null, "textDocument/didOpen", Map.of(
-                        "textDocument", Map.of("uri", "file:///t.sou",
-                                "text", "module demo\ndata M = { name: Missing }\n"))),
-                message(2, "shutdown", Map.of()),
-                message(null, "exit", Map.of())));
+    void aLineNamingTheCommandIsAnsweredWithTheHandshake() throws Exception {
+        Answer answer = converse(said -> {
+            said.send(
+                    message(1, "initialize", Map.of()),
+                    message(null, "initialized", Map.of()),
+                    message(null, "textDocument/didOpen", Map.of(
+                            "textDocument", Map.of("uri", "file:///t.sou",
+                                    "text", "module demo\ndata M = { name: Missing }\n"))));
+            // Read what the analysis published before saying goodbye. Diagnostics are what the
+            // server does with a moment nothing was asked of it, so shutting it down in the same
+            // breath as opening the document is shutting it down before it has had one.
+            said.awaitNotification("textDocument/publishDiagnostics");
+            said.send(message(2, "shutdown", Map.of()), message(null, "exit", Map.of()));
+        });
 
         assertEquals(0, answer.code(), "a session its client shut down is this command finishing");
 
@@ -68,7 +79,9 @@ class TheLanguageServerIsOneThisCommandLineServesTest {
     private record Answer(int code, List<JsonNode> written, String said) {
 
         JsonNode replyTo(int id) {
-            return written.stream().filter(m -> m.has("id") && m.get("id").asInt() == id)
+            return written.stream()
+                    .filter(m -> m.has("id") && m.get("id").isNumber()
+                            && m.get("id").asInt() == id)
                     .findFirst().orElseThrow(() -> new AssertionError("no reply to request " + id));
         }
 
@@ -76,6 +89,106 @@ class TheLanguageServerIsOneThisCommandLineServesTest {
             return written.stream()
                     .filter(m -> m.has("method") && m.get("method").asString().equals(method))
                     .findFirst().orElseThrow(() -> new AssertionError("no " + method));
+        }
+    }
+
+    /**
+     * Runs {@code souther lsp} while {@code conversation} talks to it, on streams of this test's own.
+     *
+     * <p>A stream that stays open, because what is being watched for here is published rather than
+     * replied to, and this server publishes in a moment when nothing has been asked of it. A run of
+     * frames written all at once and then ended leaves no such moment.
+     */
+    private static Answer converse(Consumer<Said> conversation) throws Exception {
+        PipedOutputStream toServer = new PipedOutputStream();
+        PipedInputStream serverIn = new PipedInputStream(toServer, 1 << 16);
+        ByteArrayOutputStream wrote = new ByteArrayOutputStream();
+        ByteArrayOutputStream complained = new ByteArrayOutputStream();
+        InputStream in = System.in;
+        PrintStream out = System.out;
+        PrintStream err = System.err;
+        AtomicInteger code = new AtomicInteger(-1);
+        try {
+            System.setIn(serverIn);
+            System.setOut(new PrintStream(wrote, true, StandardCharsets.UTF_8));
+            System.setErr(new PrintStream(complained, true, StandardCharsets.UTF_8));
+            Thread serving = Thread.ofPlatform().name("souther-lsp-under-test")
+                    .start(() -> code.set(Main.dispatch(new String[] {"lsp"})));
+            conversation.accept(new Said(toServer, wrote));
+            toServer.close();
+            serving.join(WAIT_MILLIS);
+        } finally {
+            System.setIn(in);
+            System.setOut(out);
+            System.setErr(err);
+        }
+        return new Answer(code.get(), framesSoFar(wrote.toByteArray()),
+                complained.toString(StandardCharsets.UTF_8));
+    }
+
+    /** Long enough that a slow machine is not a failure, short enough to be a test. */
+    private static final long WAIT_MILLIS = 60_000;
+
+    /** What a test says to a session, and what it waits to hear back. */
+    private record Said(PipedOutputStream toServer, ByteArrayOutputStream wrote) {
+
+        void send(String... messages) {
+            try {
+                toServer.write(frames(messages));
+                toServer.flush();
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+
+        void awaitNotification(String method) {
+            long until = System.currentTimeMillis() + WAIT_MILLIS;
+            while (System.currentTimeMillis() < until) {
+                boolean heard = framesSoFar(wrote.toByteArray()).stream()
+                        .anyMatch(m -> m.has("method") && m.get("method").asString().equals(method));
+                if (heard) {
+                    return;
+                }
+                try {
+                    Thread.sleep(2);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new AssertionError(e);
+                }
+            }
+            throw new AssertionError("the server never sent " + method);
+        }
+    }
+
+    /**
+     * The messages in {@code wrote} that can be read whole.
+     *
+     * <p>Read while the writing is going on, so the last frame may be a header with its body still
+     * to come. That one is not a message yet and is left for the next read.
+     */
+    private static List<JsonNode> framesSoFar(byte[] wrote) {
+        List<JsonNode> messages = new ArrayList<>();
+        int at = 0;
+        while (true) {
+            int blank = -1;
+            for (int i = at; i + 3 < wrote.length; i++) {
+                if (wrote[i] == '\r' && wrote[i + 1] == '\n'
+                        && wrote[i + 2] == '\r' && wrote[i + 3] == '\n') {
+                    blank = i;
+                    break;
+                }
+            }
+            if (blank < 0) {
+                return messages;
+            }
+            String header = new String(wrote, at, blank - at, StandardCharsets.US_ASCII);
+            int length = Integer.parseInt(header.substring(header.indexOf(':') + 1).trim());
+            int body = blank + 4;
+            if (body + length > wrote.length) {
+                return messages;
+            }
+            messages.add(JSON.readTree(new String(wrote, body, length, StandardCharsets.UTF_8)));
+            at = body + length;
         }
     }
 

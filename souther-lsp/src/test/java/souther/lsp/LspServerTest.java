@@ -20,40 +20,38 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** Drives the server end to end over an in-memory connection: an initialize handshake and an opened
- * document with a syntax error, checking the capabilities response and the published diagnostics. */
+/**
+ * Drives the server end to end over a connection: an initialize handshake and an opened document with
+ * a syntax error, checking the capabilities response and the published diagnostics.
+ *
+ * <p>What is asked and answered in one breath is handed over as a stream that ends. What is published
+ * because the workspace was left alone for a moment is not: diagnostics are what this server does
+ * with an idle moment, and a stream that is already at its end never leaves one. Those cases run
+ * against a {@link Session}, which holds the connection open and waits for what comes back.
+ */
 class LspServerTest {
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
     @Test
     void initializeAndDiagnosticsFlowOverTheConnection() {
-        String didOpen = message(null, "textDocument/didOpen", Map.of(
-                "textDocument", Map.of("uri", "file:///t.sou",
-                        "text", "module demo\ndata M = { name String }\n")));   // missing `:`
+        String uri = "file:///t.sou";
+        try (Session session = new Session()) {
+            session.send(
+                    Session.message(1, "initialize", Map.of()),
+                    Session.message(null, "initialized", Map.of()),
+                    Session.message(null, "textDocument/didOpen", Map.of(
+                            "textDocument", Map.of("uri", uri,
+                                    "text", "module demo\ndata M = { name String }\n"))));   // missing `:`
 
-        byte[] input = frames(
-                message(1, "initialize", Map.of()),
-                message(null, "initialized", Map.of()),
-                didOpen);
+            JsonNode initResult = session.await(Session.replyTo(1), "an answer to initialize");
+            assertTrue(initResult.get("result").get("capabilities").has("textDocumentSync"));
 
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        new LspServer(new MessageConnection(new ByteArrayInputStream(input), out)).run();
-
-        List<JsonNode> messages = readFrames(out.toByteArray());
-
-        JsonNode initResult = messages.stream()
-                .filter(m -> m.has("id") && m.get("id").asInt() == 1).findFirst().orElseThrow();
-        assertTrue(initResult.get("result").get("capabilities").has("textDocumentSync"));
-
-        JsonNode publish = messages.stream()
-                .filter(m -> m.has("method")
-                        && m.get("method").asString().equals("textDocument/publishDiagnostics"))
-                .findFirst().orElse(null);
-        assertNotNull(publish, "expected a publishDiagnostics notification");
-        JsonNode diagnostics = publish.get("params").get("diagnostics");
-        assertTrue(diagnostics.size() > 0, "expected at least one diagnostic");
-        assertEquals("souther", diagnostics.get(0).get("source").asString());
+            JsonNode publish = session.await(Session.publishedFor(uri), "diagnostics for the document");
+            JsonNode diagnostics = publish.get("params").get("diagnostics");
+            assertTrue(diagnostics.size() > 0, "expected at least one diagnostic");
+            assertEquals("souther", diagnostics.get(0).get("source").asString());
+        }
     }
 
     @Test
@@ -67,25 +65,19 @@ class LspServerTest {
         Files.writeString(b, bText);
         String bUri = b.toUri().toString();
 
-        byte[] input = frames(
-                message(1, "initialize", Map.of("rootUri", dir.toUri().toString())),
-                message(null, "initialized", Map.of()),
-                message(null, "textDocument/didOpen", Map.of(
-                        "textDocument", Map.of("uri", bUri, "text", bText))));
+        try (Session session = new Session()) {
+            session.send(
+                    Session.message(1, "initialize", Map.of("rootUri", dir.toUri().toString())),
+                    Session.message(null, "initialized", Map.of()),
+                    Session.message(null, "textDocument/didOpen", Map.of(
+                            "textDocument", Map.of("uri", bUri, "text", bText))));
 
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        new LspServer(new MessageConnection(new ByteArrayInputStream(input), out)).run();
-
-        // the importing module used to bail; now it resolves a against the root and reports E1905
-        JsonNode publish = readFrames(out.toByteArray()).stream()
-                .filter(m -> m.has("method")
-                        && m.get("method").asString().equals("textDocument/publishDiagnostics"))
-                .filter(m -> m.get("params").get("uri").asString().equals(bUri))
-                .reduce((first, second) -> second).orElse(null);   // the latest publish for b
-        assertNotNull(publish, "expected a publishDiagnostics for b");
-        JsonNode diagnostics = publish.get("params").get("diagnostics");
-        assertTrue(diagnostics.size() > 0, "the cross-module compile surfaces the failing example");
-        assertEquals("E1905", diagnostics.get(0).get("code").asString());
+            // the importing module used to bail; now it resolves a against the root and reports E1905
+            JsonNode publish = session.await(Session.publishedFor(bUri), "diagnostics for b");
+            JsonNode diagnostics = publish.get("params").get("diagnostics");
+            assertTrue(diagnostics.size() > 0, "the cross-module compile surfaces the failing example");
+            assertEquals("E1905", diagnostics.get(0).get("code").asString());
+        }
     }
 
     @Test
@@ -95,7 +87,8 @@ class LspServerTest {
         new LspServer(new MessageConnection(new ByteArrayInputStream(input), out)).run();
 
         JsonNode caps = readFrames(out.toByteArray()).stream()
-                .filter(m -> m.has("id") && m.get("id").asInt() == 1).findFirst().orElseThrow()
+                .filter(m -> m.has("id") && m.get("id").isNumber() && m.get("id").asInt() == 1)
+                .findFirst().orElseThrow()
                 .get("result").get("capabilities");
         assertTrue(caps.get("referencesProvider").asBoolean(), "references is advertised");
     }
@@ -128,7 +121,8 @@ class LspServerTest {
         new LspServer(new MessageConnection(new ByteArrayInputStream(input), out)).run();
 
         JsonNode caps = readFrames(out.toByteArray()).stream()
-                .filter(m -> m.has("id") && m.get("id").asInt() == 1).findFirst().orElseThrow()
+                .filter(m -> m.has("id") && m.get("id").isNumber() && m.get("id").asInt() == 1)
+                .findFirst().orElseThrow()
                 .get("result").get("capabilities");
         assertTrue(caps.get("documentFormattingProvider").asBoolean(), "formatting is advertised");
         assertTrue(caps.get("renameProvider").asBoolean(), "rename is advertised");

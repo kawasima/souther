@@ -6,6 +6,7 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import souther.compiler.meta.ModulePath;
+import souther.compiler.query.Abandonment;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -23,6 +24,16 @@ public final class Workspace {
     private static final String SUFFIX = ".sou";
 
     private final List<Path> roots = new ArrayList<>();
+
+    /** What stops a walk of the workspace short. Reading the files under a root is not a question put
+     * to a store, so what abandons the compile does not reach it; this is where it is asked, at every
+     * path a walk reaches rather than at the ones it was looking for. */
+    private Abandonment abandonment = Abandonment.NEVER;
+
+    /** What makes reading this workspace stop short of an answer. */
+    public void abandonWhen(Abandonment abandonment) {
+        this.abandonment = abandonment;
+    }
 
     /** The last on-disk scan ({@code uri -> text}), or {@code null} when it must be re-read. Cached so
      * an edit to an open buffer does not re-walk and re-read the whole workspace on every keystroke. */
@@ -83,7 +94,15 @@ public final class Workspace {
                 continue;
             }
             try (Stream<Path> walk = Files.walk(root, CLASS_OUTPUT_DEPTH)) {
-                walk.filter(Files::isDirectory).filter(Workspace::isClassOutput).forEach(outputs::add);
+                // Asked of every path the walk reaches, and not of the ones that turn out to be
+                // what is wanted. What costs time is the walk, and a root with no class output in
+                // it is a root this would read to the end after being told to stop.
+                walk.forEach(path -> {
+                    abandonment.stopIfAsked();
+                    if (Files.isDirectory(path) && isClassOutput(path)) {
+                        outputs.add(path);
+                    }
+                });
             } catch (IOException _) {
                 // a root that cannot be walked contributes nothing; the workspace still works
             }
@@ -110,9 +129,14 @@ public final class Workspace {
                 continue;
             }
             try (Stream<Path> walk = Files.walk(root)) {
-                walk.filter(Files::isRegularFile)
-                        .filter(p -> p.getFileName().toString().endsWith(SUFFIX))
-                        .forEach(p -> sources.put(p.toUri().toString(), readOrEmpty(p)));
+                // Every path, as above: the walk is what a workspace of a hundred thousand files
+                // spends its time on, and how many of them end in `.sou` says nothing about that.
+                walk.forEach(path -> {
+                    abandonment.stopIfAsked();
+                    if (Files.isRegularFile(path) && path.getFileName().toString().endsWith(SUFFIX)) {
+                        sources.put(path.toUri().toString(), readOrEmpty(path));
+                    }
+                });
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }

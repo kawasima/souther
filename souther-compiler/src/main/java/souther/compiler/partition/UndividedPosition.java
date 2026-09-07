@@ -189,32 +189,6 @@ public record UndividedPosition(TermPath at, Why why) {
         /** The values the comparison is against are not ones a line can be drawn on here. */
         UNSUPPORTED_DOMAIN,
         /**
-         * The rule states where a number of this position stops, and the position is measured at no
-         * number: its rules leave more than one in play.
-         *
-         * <p>Not {@link #UNSUPPORTED_SYNTAX}, which is where a rule was read and could not be
-         * used: this one was read and used perfectly well, and what is missing is a rule for which
-         * of a position's numbers it is measured at. Said as the first, an author was sent looking
-         * for a form this compiler reads.
-         *
-         * <p>Said of the rule and not of the pair that left the question open. Every rule with an
-         * end at such a position gets this word, including ones written after the question was
-         * already open — what they share is that no line could be filed here, and an author told
-         * their clause competes with one other would go looking for a pair that is not there. What
-         * a reader acts on is the position: its rules are about more than one of its numbers.
-         */
-        COMPETING_COORDINATES,
-        /**
-         * The rule is about one of the position's numbers, and the position is measured at another.
-         *
-         * <p>Not {@link #COMPETING_COORDINATES}, which is where no number could be chosen. Here one
-         * was, the rules about it draw their lines, and this rule states where a different number
-         * of the same place stops — so what a reader acts on is that its end holds the values here
-         * without dividing them, and told the other word they would go looking for a clause that is
-         * competing with this one.
-         */
-        RULE_ABOUT_ANOTHER_COORDINATE,
-        /**
          * The line reaches positions under the cases each side of it, and which of them go together
          * is not worked out.
          *

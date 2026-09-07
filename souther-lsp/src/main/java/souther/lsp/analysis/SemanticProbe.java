@@ -8,6 +8,7 @@ import souther.compiler.cst.SyntaxKind;
 import souther.compiler.diag.Region;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.meta.ModulePath;
+import souther.compiler.query.Abandonment;
 import souther.compiler.query.Compilation;
 import souther.compiler.source.SourceId;
 
@@ -235,7 +236,7 @@ final class SemanticProbe {
      * reading of it here would be a second answer free to differ.
      */
     Reading of(Map<String, String> joining, Set<String> broken, ModulePath path, String uri,
-               String text, int cursor) {
+               String text, int cursor, Abandonment abandonment) {
         Repair repair = repair(text, cursor);
         if (repair == null) {
             return null;
@@ -248,6 +249,7 @@ final class SemanticProbe {
         } else {
             compile.update(sources, broken);
         }
+        compile.abandonWhen(abandonment);
         // In the document it was inserted into, and said so: a place that names no text is in the
         // same text as nothing, and every extent would compare as being somewhere else — which
         // reads as "the author wrote this" about all of them.

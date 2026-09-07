@@ -6,6 +6,7 @@ import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.Place;
 import souther.compiler.numeric.Towards;
+import souther.compiler.publish.PublishedSentence;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -417,10 +418,9 @@ public record Border(BoundaryTarget cut, LineOrigin origin, Map<DomainPoint, Poi
         return criterion == null ? null : criterion.written(cut.of());
     }
 
-    /** The rule that drew this line, as a report about {@code sectionSource} writes it. */
-    public String describe(souther.compiler.diag.SourceNameResolver names,
-                           souther.compiler.source.SourceId sectionSource) {
-        return origin.describe(names, sectionSource);
+    /** The rule that drew this line, as what a report writes about it. */
+    public PublishedSentence describe() {
+        return origin.describe();
     }
 
     /**

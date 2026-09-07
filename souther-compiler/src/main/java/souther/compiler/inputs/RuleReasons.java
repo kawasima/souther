@@ -188,13 +188,12 @@ public sealed interface RuleReasons {
             case BlockReason.UnreadComparisonForm _ -> 0;
             case BlockReason.UnreadComparisonDomain _ -> 1;
             case BlockReason.ValueRuleRelatingTwoPositions _ -> 2;
-            case BlockReason.CompetingCoordinates _ -> 3;
-            case BlockReason.CasePairingNotDetermined _ -> 4;
-            case BlockReason.RuleAboutADerivedValue _ -> 5;
-            case BlockReason.UnreadValueRule _ -> 6;
-            case BlockReason.PatternTooDeeplyNested _ -> 7;
-            case BlockReason.PatternTooCostly _ -> 8;
-            case BlockReason.OrderedExtentTooCostly _ -> 9;
+            case BlockReason.CasePairingNotDetermined _ -> 3;
+            case BlockReason.RuleAboutADerivedValue _ -> 4;
+            case BlockReason.UnreadValueRule _ -> 5;
+            case BlockReason.PatternTooDeeplyNested _ -> 6;
+            case BlockReason.PatternTooCostly _ -> 7;
+            case BlockReason.OrderedExtentTooCostly _ -> 8;
         };
     }
 }

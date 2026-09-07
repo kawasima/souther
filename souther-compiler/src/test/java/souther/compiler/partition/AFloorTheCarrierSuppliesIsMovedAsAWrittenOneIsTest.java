@@ -8,6 +8,8 @@ import souther.compiler.check.RuleReadings;
 import souther.compiler.check.Prepared;
 import souther.compiler.check.Sig;
 import souther.compiler.inputs.InputDomain;
+import souther.compiler.inputs.NumericTerm;
+import souther.compiler.inputs.Position;
 import souther.compiler.inputs.TermPath;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.query.Adequacy;
@@ -73,10 +75,10 @@ class AFloorTheCarrierSuppliesIsMovedAsAWrittenOneIsTest {
     /** The geometry is one answer, whichever floor the model wrote. */
     @Test
     void theRulesLeaveThePositionTheSameRangeEitherWay() {
-        assertEquals(rangeOf(CARRIERS), rangeOf(WRITTEN));
-        assertEquals(rangeOf(CARRIERS), rangeOf(TURNED));
+        assertEquals(lengthRangeOf(CARRIERS), lengthRangeOf(WRITTEN));
+        assertEquals(lengthRangeOf(CARRIERS), lengthRangeOf(TURNED));
         assertEquals("Bounds[min=Endpoint[at=1, inclusive=true], max=null]",
-                rangeOf(CARRIERS).toString(), "and the range is the one the rules leave");
+                lengthRangeOf(CARRIERS).toString(), "and the range is the one the rules leave");
     }
 
     /**
@@ -315,8 +317,28 @@ class AFloorTheCarrierSuppliesIsMovedAsAWrittenOneIsTest {
         return boundaries.values().stream().flatMap(List::stream).toList();
     }
 
-    /** What the rules leave the position, once every one of them has been read. */
+    /** Where the length of the string at {@code n} is left, which is the number these clauses are
+     *  about. */
+    private static NumericDomain.Bounds lengthRangeOf(String declaration) {
+        return rangeOf(declaration, NumericTerm.TakenOf.class);
+    }
+
+    /** And where the value standing at {@code n} is left. */
     private static NumericDomain.Bounds rangeOf(String declaration) {
+        return rangeOf(declaration, NumericTerm.ValueOf.class);
+    }
+
+    /** Where one of the position's numbers is left, named by which kind of number it is. */
+    private static NumericDomain.Bounds rangeOf(String declaration,
+                                                Class<? extends NumericTerm> kind) {
+        Position at = positionOf(declaration);
+        NumericTerm.FromOnePosition term = at.numbers().stream().filter(kind::isInstance)
+                .findFirst().orElseThrow(() -> new AssertionError(
+                        "the position has no " + kind.getSimpleName() + " among " + at.numbers()));
+        return at.boundsFor(term).rangeLeft();
+    }
+
+    private static Position positionOf(String declaration) {
         Compilation compilation = Compilation.ofSource(sourceOf(declaration), "Main");
         compilation.answerEverything();
         String module = compilation.modules().get(0);
@@ -326,7 +348,7 @@ class AFloorTheCarrierSuppliesIsMovedAsAWrittenOneIsTest {
                 .filter(b -> b.name().equals("take")).findFirst().orElseThrow();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
         return InputDomain.of(spec, sigs.get("take"), rules, ReadAs.THE_COMPILATION_DOES)
-                .at(TermPath.of("n")).rangeLeft();
+                .at(TermPath.of("n"));
     }
 
     private static String sourceOf(String declaration) {

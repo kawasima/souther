@@ -80,8 +80,7 @@ class AnOpenPositionIsWhatThisReadingFoundTest {
     /** A type that states cases divides the position, and no line is drawn through them. */
     @Test
     void classesAndNoLineIsADivision() {
-        LocalPartition.Divided found =
-                assertInstanceOf(LocalPartition.Divided.class, partitionOf("Stage"));
+        DeclaredMeasure found = theOneMeasure("Stage");
 
         assertEquals(List.of("Prospecting", "Qualified", "Won"),
                 found.classes().stream().map(PartitionClass::id).toList());
@@ -92,8 +91,7 @@ class AnOpenPositionIsWhatThisReadingFoundTest {
      *  line — everything outside it is refused at construction. */
     @Test
     void aLineAndNoClassIsADivisionToo() {
-        LocalPartition.Divided found =
-                assertInstanceOf(LocalPartition.Divided.class, partitionOf("Amount"));
+        DeclaredMeasure found = theOneMeasure("Amount");
 
         assertEquals(List.of(), found.classes());
         assertInstanceOf(CutEvidence.Present.class, found.cuts());
@@ -104,10 +102,18 @@ class AnOpenPositionIsWhatThisReadingFoundTest {
      *  and was read by nothing. */
     @Test
     void theValuesARuleNamesAreADivisionAsWell() {
-        LocalPartition.Divided found =
-                assertInstanceOf(LocalPartition.Divided.class, partitionOf("Gender"));
+        DeclaredMeasure found = theOneMeasure("Gender");
 
         assertEquals(2, found.classes().size(), found.classes().toString());
+    }
+
+    /** The one measure the reading of {@code type} made, where it made one. */
+    private DeclaredMeasure theOneMeasure(String type) {
+        LocalPartition.Divided found =
+                assertInstanceOf(LocalPartition.Divided.class, partitionOf(type));
+        assertEquals(1, found.measures().size(),
+                () -> type + " is measured at one number: " + found.measures());
+        return found.measures().get(0);
     }
 
     /** Nothing written about the position, read to the end: the model divides it no way, and that
@@ -145,7 +151,7 @@ class AnOpenPositionIsWhatThisReadingFoundTest {
     void theReadingIsTheSameValueWhicheverAnswerItIs() {
         for (String type : List.of("Stage", "Amount", "Plain", "Slot", "Gender", "Email")) {
             Position position = read(type);
-            assertNotNull(position.term(), type + " is measured at some term");
+            assertTrue(!position.numbers().isEmpty(), type + " has a number of its own");
             assertNotNull(position.reading(), type + " says which values it may hold");
             assertNotNull(position.completeness(), type + " says how much of its rules was read");
             assertNotNull(position.rulesWithoutALine(), type + " says which of its rules went unread");
@@ -156,7 +162,33 @@ class AnOpenPositionIsWhatThisReadingFoundTest {
     @Test
     void anEmptyDivisionIsNotAnAnswer() {
         assertThrows(IllegalArgumentException.class,
-                () -> new LocalPartition.Divided(List.of(), new CutEvidence.None()));
+                () -> new LocalPartition.Divided(List.of()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new DeclaredMeasure(new souther.compiler.inputs.NumericTerm.ValueOf(
+                        TermPath.of("x")), List.of(), new CutEvidence.None(),
+                        souther.compiler.check.NarrowedBounds.NOTHING),
+                "and neither can a measure of a number nothing measured");
+    }
+
+    /**
+     * A class of one number cannot be filed under another.
+     *
+     * <p>The negative control for what the reading above is for. Every class the declarations state
+     * is a class of what stands at the position, and a reading that handed one to the measure of a
+     * count taken of that position would be labelling it with a number it was never about — which
+     * is what a measure holding both would have to do to hold them.
+     */
+    @Test
+    void aClassIsNotFiledUnderANumberItIsNotAClassOf() {
+        DeclaredMeasure found = theOneMeasure("Gender");
+        souther.compiler.inputs.NumericTerm.FromOnePosition length =
+                read("Gender").numbers().stream()
+                        .filter(souther.compiler.inputs.NumericTerm.TakenOf.class::isInstance)
+                        .findFirst().orElseThrow();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new DeclaredMeasure(length, found.classes(), found.cuts(),
+                        found.narrowed()));
     }
 
     /**

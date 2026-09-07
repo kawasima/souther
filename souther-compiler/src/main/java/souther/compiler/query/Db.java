@@ -189,14 +189,26 @@ public final class Db implements StoreWork {
 
 
     /** What this store answers about {@code declaration}'s string machines, for a reading to
-     *  borrow — nothing, where it has no answer for the declaration at all. */
+     *  borrow — nothing to borrow, where it has no answer for the declaration at all. Either way
+     *  the reading keeps what it builds: that is what its own counterfactual is handed. */
     private StringMachineAnswers machinesOf(TypeKey declaration) {
         Answer<StringFacts> facts = ask(new Machines.OfDeclaration(declaration));
         return facts.present()
-                ? StringMachineAnswers.borrowing(facts.value()) : StringMachineAnswers.NONE;
+                ? StringMachineAnswers.borrowing(facts.value()) : StringMachineAnswers.unborrowed();
     }
 
     private final Map<Key<?>, Memo> memos = new HashMap<>();
+    /**
+     * Whether whoever set this walk going has since stopped wanting the answer. Asked where a
+     * question is about to be answered and nowhere else, so a walk stops between two questions and
+     * never inside one.
+     *
+     * <p>Being asked to stop is not an input changing. The answers already reached are answers of
+     * this revision and stay: nothing can move an input while a walk is running, because the walk is
+     * what the one thread holding this store is doing. Only the key that never returned a value is
+     * left without a memo, which is what {@link #ask} does with a throw either way.
+     */
+    private Abandonment abandonment = Abandonment.NEVER;
     /** The keys being answered right now, outermost first — the chain a cycle is found on. */
     private final Set<Key<?>> inProgress = new LinkedHashSet<>();
     /** The reads of each in-progress key, innermost frame last. */
@@ -305,6 +317,19 @@ public final class Db implements StoreWork {
         spoke.removeIf(key -> !memos.containsKey(key));
     }
 
+    /**
+     * Says what makes a walk of this store stop short: while {@code asked} answers true, the next
+     * question that has to be answered raises {@link Abandoned} instead.
+     *
+     * <p>What is left behind is what was answered. A key whose computation was cut through leaves no
+     * memo — it never returned a value — while every key that answered inside it keeps one, because
+     * an answer of this revision is an answer of this revision however the walk that wanted it
+     * ended. The next walk pays for what this one did not finish and for nothing else.
+     */
+    public void abandonWhen(Abandonment abandonment) {
+        this.abandonment = abandonment;
+    }
+
     /** Answers {@code key}, computing it if nothing kept from before still holds. */
     @SuppressWarnings("unchecked")
     public <T> Answer<T> ask(Key<T> key) {
@@ -318,6 +343,12 @@ public final class Db implements StoreWork {
             throughCycle.addAll(inProgress);
             return key.onCycle(List.copyOf(inProgress));
         }
+        // Before either of the two things that cost anything, and after the one that does not. An
+        // answer already verified at this revision is a lookup and a return; checking what is left
+        // is a walk of everything the answer read, and working one out is a walk of whatever it
+        // reaches. A store told to stop while it is re-verifying a graph nothing moved is a store
+        // being asked its cheapest question over and over, and that is the question an edit asks.
+        abandonment.stopIfAsked();
         if (memo != null && stillHolds(memo)) {
             memos.put(key, memo.verifiedAt(revision));
             return (Answer<T>) memo.answer();
@@ -359,6 +390,11 @@ public final class Db implements StoreWork {
      * Whether {@code memo}'s answer can be kept: everything it read still answers what it did when
      * this answer was made. Asking each of them is what settles that, and each of those may settle
      * the same way without running anything.
+     *
+     * <p>Told to stop, it stops where it has got to. What it walks is a graph and what it does at
+     * each step may be nothing at all — a dependency another question has already verified is a
+     * lookup — so the step is this loop's, and asking is left to this loop rather than to what it
+     * calls.
      */
     private boolean stillHolds(Memo memo) {
         // Verification is not a read: a key being checked is not a dependency of whoever happened to
@@ -366,6 +402,11 @@ public final class Db implements StoreWork {
         frames.push(new LinkedHashSet<>());
         try {
             for (Key<?> read : memo.reads()) {
+                // Here, and not left to the ask below. A dependency already verified at this
+                // revision is answered before that one gets as far as asking, so a walk over a graph
+                // that another question has already been through would go the whole way without
+                // being asked once — which is the walk this is, most of the time.
+                abandonment.stopIfAsked();
                 ask(read);
                 Memo dependency = memos.get(read);
                 if (dependency == null || dependency.changedAt() > memo.verifiedAt()) {
@@ -401,6 +442,7 @@ public final class Db implements StoreWork {
     public List<Found> allReports() {
         Map<Told, Found> found = new LinkedHashMap<>();
         for (Key<?> key : spoke) {
+            abandonment.stopIfAsked();
             Memo memo = memos.get(key);
             if (memo == null || memo.verifiedAt() != revision) {
                 continue;

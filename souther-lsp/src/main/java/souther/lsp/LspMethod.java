@@ -22,6 +22,10 @@ import java.util.Optional;
  * <p>What a method is advertised by is not a name derived from the method's own: three notifications
  * share one capability, one method is registered after the handshake instead, and the lifecycle is
  * announced by nothing. Each of those is a value here rather than a row missing from a table.
+ *
+ * <p>Answered is what this is a set of. {@code $/cancelRequest} is not among them and is not missing
+ * from them: it is not answered, it says something about another message while that message is being
+ * worked on, and it is acted on where the frames are read.
  */
 public enum LspMethod {
 

@@ -56,7 +56,13 @@ public final class DocumentShape {
             "type", "enum", "const", "minimum", "pattern", "minItems", "maxItems",
             "uniqueItems", "contains", "minContains", "maxContains",
             // prose and plumbing
-            "description", "title", "$schema", "$id", "$defs");
+            "description", "title", "$schema", "$id", "$defs", "examples",
+            // and one annotation of this compiler's, which says that a string has a handle inside
+            // it rather than being one. No part of what a document must satisfy — a reader that
+            // does not know the word ignores it, which is what makes it safe to write here — and
+            // what holds it to the writer is the check that reads it
+            // (`EveryFormOfARuleHandleIsOneTheContractDescribes`)
+            "x-souther-contains");
 
     /** What a walk of one document came to: how much of it was reached, and what the schema
      *  refuses. */

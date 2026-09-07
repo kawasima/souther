@@ -8,6 +8,7 @@ import souther.compiler.check.RuleReadings;
 import souther.compiler.check.Prepared;
 import souther.compiler.check.Sig;
 import souther.compiler.inputs.InputDomain;
+import souther.compiler.inputs.NumericTerm;
 import souther.compiler.inputs.TermPath;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.query.Adequacy;
@@ -113,7 +114,8 @@ class WrappingAValueDoesNotChangeWhatItsRulesAccountForTest {
         return boundaries.values().stream().flatMap(List::stream).toList();
     }
 
-    /** What the rules leave the position, once every one of them has been read. */
+    /** What the rules leave the value standing at the position, once every one of them has been
+     *  read. The clauses here are about that number and nothing counts an {@code Int}. */
     private static NumericDomain.Bounds rangeOf(String declarations) {
         Compilation compilation = Compilation.ofSource(sourceOf(declarations), "Main");
         compilation.answerEverything();
@@ -123,8 +125,9 @@ class WrappingAValueDoesNotChangeWhatItsRulesAccountForTest {
         Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().stream()
                 .filter(b -> b.name().equals("take")).findFirst().orElseThrow();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
+        TermPath path = TermPath.of("n");
         return InputDomain.of(spec, sigs.get("take"), rules, ReadAs.THE_COMPILATION_DOES)
-                .at(TermPath.of("n")).rangeLeft();
+                .at(path).boundsFor(new NumericTerm.ValueOf(path)).rangeLeft();
     }
 
     private static String sourceOf(String declarations) {

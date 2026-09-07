@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import souther.compiler.ast.Hir;
 import souther.compiler.meta.ModulePath;
+import souther.compiler.query.Abandonment;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Names;
 
@@ -147,7 +148,7 @@ class SemanticProbeBenchmark {
         rest.remove(edited);
         String text = byId.get(edited) + halfWritten(round);
         SemanticProbe.Reading reading = probe.of(rest, Set.of(), ModulePath.EMPTY, edited, text,
-                text.length());
+                text.length(), Abandonment.NEVER);
         if (reading == null) {
             throw new IllegalStateException("the half-written line is one the probe finishes off");
         }

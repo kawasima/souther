@@ -224,33 +224,6 @@ class EveryNotReadReasonIsWrittenBySomeCompilationTest {
                 behavior f : (a: Bool, b: Bool) -> Answer
                 let f (a, b) = if a == b then Yes else No
                 """.formatted(ANSWER)));
-        // A string is the one thing two numbers can be taken of — its own order and its length —
-        // and a declaration placing an end on each leaves neither able to be the one the position
-        // is measured at.
-        out.put(UndividedPosition.Reason.COMPETING_COORDINATES, of("""
-                module m
-                %s
-                data Parcel = { label: String }
-                    invariant lower = label >= "m"
-                    invariant long = String.length(label) >= 3
-
-                behavior f : (parcel: Parcel) -> Answer
-                let f (parcel) = Yes
-                """.formatted(ANSWER)));
-        // The other half of that, where the choice was made. The name's own clause is about the
-        // string's own order, so that is what the position is measured at, and the record's clause
-        // states where a length stops — read to the end, at a number this position is not divided
-        // along.
-        out.put(UndividedPosition.Reason.RULE_ABOUT_ANOTHER_COORDINATE, of("""
-                module m
-                %s
-                data Label = String invariant lower = value >= "m"
-                data Parcel = { label: Label }
-                    invariant long = String.length(label.value) >= 3
-
-                behavior f : (parcel: Parcel) -> Answer
-                let f (parcel) = Yes
-                """.formatted(ANSWER)));
         // Each name of the line stands at a position under every case of the sum, and which of
         // those pair off is what nothing worked out. The record both cases spread is what puts one
         // name at more than one position while leaving the field writable without a match.

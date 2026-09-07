@@ -18,7 +18,11 @@ import java.util.List;
  *
  * @param position   what the location is and what its reading came to, true of it once however many
  *                   numbers measure it
- * @param axes       the measures made of it, in the order the rules name the numbers
+ * @param axes       the measures made of it, in the order the reading that produced them settled.
+ *                   Not an order the rules decide: which numbers a location has comes off its type,
+ *                   so writing the length rule above the one about the order leaves the measures
+ *                   where they were. What the order is good for is that two runs over one model
+ *                   answer alike, and what tells two measures apart is the number each is of
  * @param inspection what the rules written about this location came to, over every number it is
  *                   measured at. One sentence for the location because that is what a report says
  *                   about one: written per measure, a location measured at two numbers is told

@@ -28,32 +28,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * rule.
  *
  * <p><b>Asked of every reader that can file one.</b> Which of them owes a question is a decision
- * each of them makes where it files: the accounting of a declaration's clauses raises it, a body's
- * comparison and a clause of an {@code ensures} say instead that nothing classifies them, and the
- * walk that cannot choose which number a position is measured at says so itself. Nothing in the
- * types holds those four to the same answer, so this does — a reader added, or one that starts
- * filing a stop where it used to file a statement, fails here rather than taking a measure quietly
- * with it.
+ * each of them makes where it files: the accounting of a declaration's clauses raises it, and a
+ * body's comparison and a clause of an {@code ensures} say instead that nothing classifies them.
+ * Nothing in the types holds them to the same answer, so this does — a reader added, or one that
+ * starts filing a stop where it used to file a statement, fails here rather than taking a measure
+ * quietly with it.
  *
- * <p>Over the models this repository carries and over three written for the readers the corpora do
+ * <p>Over the models this repository carries and over two written for the readers the corpora do
  * not exercise, since what is being checked is a property of the readers rather than of any one
  * model.
  */
 @Tag("population")
 class ARuleWhoseReadingStoppedLeavesAQuestionTest {
-
-    /** A position whose two coordinates are both spoken for, which no accounting decides. */
-    private static final String COMPETING_COORDINATES = """
-            module probe.competing
-
-            data V = { s: String }
-                invariant low = s >= "a"
-                invariant long = String.length(s) >= 3
-
-            data Ok
-
-            behavior f : (v: V) -> Ok
-            """;
 
     /** A comparison in a body that no reading takes apart. */
     private static final String A_COMPARISON_NOBODY_READS = """
@@ -117,11 +103,10 @@ class ARuleWhoseReadingStoppedLeavesAQuestionTest {
         assertTrue(stopped > 0, "no reading stopped anywhere, so this checked nothing");
     }
 
-    /** The models this repository carries, and the three readers they do not exercise. */
+    /** The models this repository carries, and the two readers they do not exercise. */
     private static List<Compilation> every() {
         List<Compilation> out = new ArrayList<>(RepositoryModels.all());
-        for (String each : List.of(COMPETING_COORDINATES, A_COMPARISON_NOBODY_READS,
-                AN_ENSURES_NOBODY_READS)) {
+        for (String each : List.of(A_COMPARISON_NOBODY_READS, AN_ENSURES_NOBODY_READS)) {
             Compilation one = Compilation.ofSource(each, "Main");
             one.measure(Adequacy.Asked.fullReport());
             one.answerEverything();

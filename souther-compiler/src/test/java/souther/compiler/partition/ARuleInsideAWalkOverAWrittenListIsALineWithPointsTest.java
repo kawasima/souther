@@ -3,6 +3,7 @@ package souther.compiler.partition;
 import org.junit.jupiter.api.Test;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
+import souther.compiler.publish.RuleHandleProse;
 import souther.compiler.report.AdequacyReport;
 
 import java.util.stream.Collectors;
@@ -211,7 +212,8 @@ class ARuleInsideAWalkOverAWrittenListIsALineWithPointsTest {
                 .map(each -> each.at() + " " + each.reason())
                 .collect(Collectors.joining(", "))
                 + "] points [" + read.account().stream()
-                .map(point -> point.said(souther.compiler.source.SourceId::value, null))
+                .map(point -> RuleHandleProse.said(point.said(),
+                        souther.compiler.source.SourceId::value, null))
                 .collect(Collectors.joining(", ")) + "]";
     }
 }

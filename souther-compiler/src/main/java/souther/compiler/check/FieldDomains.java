@@ -9,12 +9,14 @@ import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.Rel;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.values.AdmissibleSet;
+import souther.compiler.values.StringFacts;
 import souther.compiler.values.StringMachineAnswers;
 import souther.compiler.values.UnreadReason;
 import souther.compiler.values.ValueSet;
 
 import souther.compiler.numeric.Count;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import souther.compiler.types.ValueName;
@@ -66,13 +68,13 @@ public final class FieldDomains {
      */
     public static final FieldDomains NONE =
             new FieldDomains(Map.of(), Map.of(), Map.of(), Map.of(), Set.of(), List.of(), List.of(),
-                    List.of(), List.of(), List.of(), PartsLeftOut.NONE, Map.of(),
+                    List.of(), List.of(), PartsLeftOut.NONE, Map.of(),
                     Map.of(), Map.of(), new ReadingEvidence(), Map.of(),
                     Map.of(RuleKey.THE_VALUE, Set.of(new RulesMissed.NoReadingWasMade())), Set.of(),
                     NOTHING_NAMED,
                     ConstraintState.<FactSubject>top(), null, null, null, null, Map.of(),
                     Set.of(RuleKey.THE_VALUE),
-                    Map.of(), Map.of(), Map.of(), Map.of());
+                    Map.of(), Map.of(), Map.of(), Map.of(), StringFacts.NONE);
 
     private final Map<RuleKey, NumericDomain.Bounds> byName;
     /** The ends the record's own clauses place, which is a different question from the range they
@@ -86,16 +88,6 @@ public final class FieldDomains {
     private final List<WithoutAnEnd> withoutAnEnd;
     /** The conjuncts whose quantity is over one number — see {@link #aboutOneCoordinate}. */
     private final List<AboutOneCoordinate> aboutOneCoordinate;
-    /**
-     * The conjuncts stating a rule about the strings at one number.
-     *
-     * <p>Beside the list above and read by one question of the two that one answers. Both say which
-     * number a conjunct is written about, and only the first are candidates for working out which
-     * conjuncts account for where the values stop — a candidate that placed no end turns that
-     * working out on for every conjunct about the number, and each of those readings reads the
-     * declaration again. A conjunct stating a run states its own ends and needs no such attribution.
-     */
-    private final List<AboutOneCoordinate> aboutTheStrings;
     /**
      * Which conjunct this reading was asked to leave out, so that a reading standing in for a
      * counterfactual is not asked one of its own.
@@ -179,6 +171,30 @@ public final class FieldDomains {
     /** How each atom's values are spaced, so that settling one afterwards states the same equality
      *  the reading would have stated for it. */
     private final Map<FactSubject, souther.compiler.numeric.Granularity> spacing;
+    /**
+     * The string machines this reading answered from and made.
+     *
+     * <p>A value, and the one a store keeps under the declaration. What it holds is a fact about a
+     * plan, a set or a language beside a stretch, and which reading built it does not enter into
+     * what it says — so a counterfactual of this reading is handed it rather than building the same
+     * machines again ({@link #counterfactual}). Leaving rules out changes which plans a reading
+     * meets, not what any one of them admits.
+     *
+     * <p>The facts and not the lender they came from. A lender asks a store, and this is reachable
+     * from an answer: what a {@link NarrowedBounds} defers its names to is a reading of this, so a
+     * store's capability kept here would be kept in an answer.
+     */
+    private final StringFacts stringMachines;
+
+    /**
+     * The counterfactual readings this one has been asked for, kept under what each leaves out
+     * ({@link #counterfactual}).
+     *
+     * <p>Beside the state rather than part of it. Each is the reading this already is, read out for
+     * what one rule did, so nothing here answers anything the rules of this value do not already
+     * say.
+     */
+    private final Map<LeftOut, FieldDomains> counterfactuals = new HashMap<>();
 
     private FieldDomains(Map<RuleKey, NumericDomain.Bounds> byName,
                          Map<RuleKey, NumericDomain.Bounds> heldByName,
@@ -187,7 +203,6 @@ public final class FieldDomains {
                          Set<RuleKey> notSeparatedByName,
                          List<InvariantChecker.Direct> directs, List<NoLine> noLines,
                          List<WithoutAnEnd> withoutAnEnd, List<AboutOneCoordinate> aboutOneCoordinate,
-                         List<AboutOneCoordinate> aboutTheStrings,
                          PartsLeftOut withoutParts,
                          Map<RuleRef.Invariant, Required> raised,
                          Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
@@ -201,7 +216,9 @@ public final class FieldDomains {
                          Set<RuleKey> unreadOfEveryValue,
                          Map<RuleKey, FactSubject> atomAt, Map<RuleKey, Counted> countAt,
                          Map<RuleRef.Invariant, Map<Core, InvariantChecker.PartRead>> readBy,
-                         Map<FactSubject, souther.compiler.numeric.Granularity> spacing) {
+                         Map<FactSubject, souther.compiler.numeric.Granularity> spacing,
+                         StringFacts stringMachines) {
+        this.stringMachines = stringMachines;
         this.byName = byName;
         this.heldByName = heldByName;
         this.admittedByName = admittedByName;
@@ -211,7 +228,6 @@ public final class FieldDomains {
         this.noLines = noLines;
         this.withoutAnEnd = List.copyOf(withoutAnEnd);
         this.aboutOneCoordinate = List.copyOf(aboutOneCoordinate);
-        this.aboutTheStrings = List.copyOf(aboutTheStrings);
         this.withoutParts = withoutParts;
         this.raised = raised;
         this.raisedByPart = raisedByPart;
@@ -421,7 +437,6 @@ public final class FieldDomains {
                 Map.copyOf(seeded.unreadAt()), Set.copyOf(seeded.notSeparated()),
                 seeded.reading().directs(), seeded.reading().noLines(),
                 seeded.reading().withoutAnEnd(), seeded.reading().aboutOneCoordinate(),
-                seeded.reading().aboutTheStrings(),
                 reach.withoutParts(),
                 seeded.reading().raised(), seeded.reading().raisedByPart(),
                 seeded.reading().standing(), seeded.took(),
@@ -429,7 +444,7 @@ public final class FieldDomains {
                 seeded.notGathered(), seeded.handedOn(), placeOf,
                 seeded.constraints(), named, data, source, policy, settled,
                 seeded.unreadOfEveryValue(), seeded.atoms(), seeded.held(),
-                seeded.readBy(), seeded.spacing());
+                seeded.readBy(), seeded.spacing(), seeded.stringMachines());
     }
 
     /**
@@ -674,14 +689,93 @@ public final class FieldDomains {
      * standing one up is a second place for that comparison to be written a different way round.
      */
     private Endpoint endWithout(Set<TypeSymbol.AtModule> removed, RuleKey path, boolean lower) {
-        NumericDomain.Bounds bounds = without(removed::contains).byName.get(path);
+        NumericDomain.Bounds bounds = withoutClausesOf(removed).byName.get(path);
         return bounds == null ? null : lower ? bounds.min() : bounds.max();
     }
 
-    /** This value read again without the clauses of the declarations {@code skip} names. */
-    private FieldDomains without(java.util.function.Predicate<TypeSymbol> skip) {
-        return of(named, data, source, policy, settled,
-                InvariantChecker.Reach.withoutClausesOf(skip), DeclarationReadings.NONE);
+    /** This value read again without the clauses of the declarations {@code removed} names. */
+    private FieldDomains withoutClausesOf(Set<TypeSymbol.AtModule> removed) {
+        return counterfactual(new LeftOut.ClausesOf(removed));
+    }
+
+    /**
+     * What a counterfactual reading leaves out, which is the whole of what decides what it comes
+     * to.
+     *
+     * <p>Two kinds of omission and one identity. A declaration's clauses are left out to ask which
+     * declaration is holding an end, and authored conjuncts are left out to ask what those
+     * conjuncts were holding — and what either reading comes to is decided by which rules are gone:
+     * not by the name the question was asked at, and not by which side of a coordinate is being
+     * attributed. Said as a value, that is what a reading is kept under, and a third thing to leave
+     * out has to say what it leaves out before it can be one of these at all.
+     */
+    private sealed interface LeftOut {
+
+        /** How far the reading that leaves this out reaches. */
+        InvariantChecker.Reach reach();
+
+        /** Everything these declarations wrote, wherever it was read. */
+        record ClausesOf(Set<TypeSymbol.AtModule> declarations) implements LeftOut {
+
+            public ClausesOf {
+                declarations = Set.copyOf(declarations);
+            }
+
+            @Override
+            public InvariantChecker.Reach reach() {
+                return InvariantChecker.Reach.withoutClausesOf(declarations::contains);
+            }
+        }
+
+        /** These conjuncts of the rules, everything else the declaration says being read. */
+        record Conjuncts(Set<PartId> parts) implements LeftOut {
+
+            public Conjuncts {
+                parts = Set.copyOf(parts);
+            }
+
+            @Override
+            public InvariantChecker.Reach reach() {
+                return InvariantChecker.Reach.withoutParts(parts);
+            }
+        }
+    }
+
+    /**
+     * This value read again with {@code omitted} left out, made when the first question asks for
+     * it.
+     *
+     * <p>The one place a counterfactual of this reading is stood up, so that what one is — the
+     * declaration, its source, what it may spend, what it leaves out, and what it is handed rather
+     * than builds ({@link #borrowingMachines}) — is settled once. The
+     * questions that leave the same rules out get the reading that was made: both ends of a
+     * coordinate leave the same rules out, a declaration reaching several of a record's names
+     * leaves them out again at each of them, and the questions {@link EndNarrowing} puts ask for
+     * the reading without every candidate and the one without a single candidate, which where
+     * there is one candidate are the same reading.
+     */
+    private FieldDomains counterfactual(LeftOut omitted) {
+        return counterfactuals.computeIfAbsent(omitted,
+                left -> of(named, data, source, policy, settled, left.reach(), borrowingMachines()));
+    }
+
+    /**
+     * What a counterfactual of this reading borrows: this declaration's machines as this reading
+     * came to them, and nothing else.
+     *
+     * <p>This declaration's, because they are what is here. Another declaration's are a store's
+     * answer about it, and asking for one takes a store, which a reading standing inside a
+     * comparison has no way to reach — so a reading of one of those borrows nothing and keeps what
+     * it builds, which is what {@link StringMachineAnswers#unborrowed()} is.
+     *
+     * <p>Nothing of the reading itself is lent. What a counterfactual is depends on what it leaves
+     * out, so no counterfactual is the declaration's canonical reading and none is kept as one —
+     * which is what {@link InvariantChecker#seedFields} settles by looking at the reach it was
+     * handed.
+     */
+    private DeclarationReadings borrowingMachines() {
+        return declaration -> declaration.equals(named.key())
+                ? StringMachineAnswers.borrowing(stringMachines) : StringMachineAnswers.unborrowed();
     }
 
     /**
@@ -1217,7 +1311,7 @@ public final class FieldDomains {
     /** Where the coordinate stops on one side with these conjuncts taken away. */
     private Endpoint sideWithout(Set<AboutOneCoordinate> removed, NumberAt<RuleKey> at,
                                  boolean lower) {
-        NumericDomain.Bounds without = without(removed).leftAt(at.position(), at.of());
+        NumericDomain.Bounds without = withoutConjuncts(removed).leftAt(at.position(), at.of());
         return without == null ? null : lower ? without.min() : without.max();
     }
 
@@ -1287,35 +1381,6 @@ public final class FieldDomains {
     }
 
     /**
-     * Which numbers of the value its own rules are about, whatever each of them came to.
-     *
-     * <p>Off the canonical quantity, which is the one thing that says what a rule is about.
-     * {@code String.length(value) * 2 >= 4} is about the length of the string; a reader looking for
-     * a bare name or a bare measure on one side finds neither, and answers that the model writes
-     * about no number of the value at all — which is how a position with a rule about its length
-     * came to be measured on the string's own order.
-     *
-     * <p>Both the conjuncts an end was read from and the ones none was. Whether a clause came to an
-     * end is a fact about the clauses beside it and about this compiler's arithmetic; which number
-     * it is about is neither, and a reader choosing what a position is measured on wants the second.
-     *
-     * <p>A set and not a choice. Two numbers of one value can both be written about, which is a
-     * model with nothing here to pick between — said as a set, the reader that has to choose is the
-     * one that knows what it does where there is no choice to make.
-     */
-    public Set<NumberAt<RuleKey>> writtenAbout() {
-        Set<NumberAt<RuleKey>> out = new java.util.LinkedHashSet<>();
-        directs.forEach(each -> out.add(each.at()));
-        aboutOneCoordinate.forEach(each -> out.add(each.at()));
-        // And the numbers a rule about the strings is written about. Which number such a rule is
-        // about is settled by the call it is written as, so it is here whatever the reading made of
-        // the strings — a reader choosing which of a position's numbers it is measured at wants
-        // every rule written about one, and a rule read no further than the call is one of them.
-        aboutTheStrings.forEach(each -> out.add(each.at()));
-        return java.util.Collections.unmodifiableSet(out);
-    }
-
-    /**
      * The conjuncts whose quantity is over one number, in the order they were read.
      *
      * <p>Every shape of rule alike, whatever the reading of ends made of it. Which of them accounts
@@ -1350,13 +1415,16 @@ public final class FieldDomains {
                 .toList();
     }
 
-    /** This value read again without some conjuncts of its rules. */
-    private FieldDomains without(Set<AboutOneCoordinate> removed) {
-        return of(named, data, source, policy, settled,
-                InvariantChecker.Reach.withoutParts(removed.stream()
-                        .map(AboutOneCoordinate::part)
-                        .collect(java.util.stream.Collectors.toSet())),
-                DeclarationReadings.NONE);
+    /**
+     * This value read again without some conjuncts of its rules.
+     *
+     * <p>Which conjuncts, and not which candidates named them: two sets of candidates writing the
+     * same conjuncts leave the same rules out, and are one reading.
+     */
+    private FieldDomains withoutConjuncts(Set<AboutOneCoordinate> removed) {
+        return counterfactual(new LeftOut.Conjuncts(removed.stream()
+                .map(AboutOneCoordinate::part)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet())));
     }
 
     /**

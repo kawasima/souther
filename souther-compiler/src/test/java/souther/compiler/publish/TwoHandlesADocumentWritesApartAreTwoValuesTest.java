@@ -2,6 +2,7 @@ package souther.compiler.publish;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.check.BehaviorContract;
 import souther.compiler.check.Clause;
 import souther.compiler.check.ClauseName;
 import souther.compiler.check.RuleCitation;
@@ -19,6 +20,7 @@ import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbols;
+import souther.compiler.types.ValueName;
 import souther.compiler.types.WrittenOwner;
 
 import java.util.ArrayList;
@@ -105,21 +107,34 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
      */
     @Test
     void twoHandlesAreOneValueExactlyWhereADocumentWritesThemAlike() {
-        List<RuleCitation> population = everyShapeOfSentence();
-        for (RuleCitation one : population) {
-            for (RuleCitation other : population) {
-                PublishedRuleHandle here = PublishedRuleHandle.of(one);
-                PublishedRuleHandle there = PublishedRuleHandle.of(other);
-                boolean written = said(one).equals(said(other));
+        List<PublishedRuleHandle> population = everyHandle();
+        for (PublishedRuleHandle here : population) {
+            for (PublishedRuleHandle there : population) {
+                boolean written = said(here).equals(said(there));
 
                 assertEquals(written, here.equals(there),
                         () -> "one value exactly where a document writes them alike: "
-                                + said(one) + " and " + said(other));
+                                + said(here) + " and " + said(there));
                 assertEquals(written, here.compareTo(there) == 0,
                         () -> "and the order agrees with the equality: "
-                                + said(one) + " and " + said(other));
+                                + said(here) + " and " + said(there));
             }
         }
+    }
+
+    /**
+     * The handles the property above is asked over.
+     *
+     * <p>What a compilation offers, and beside it the one form no compilation here writes: code out
+     * of sight with no position at all is met where a body is put back together out of what a module
+     * published, which none of these fixtures does. Left to the fixtures, that arm would be the one
+     * whose ordering nothing asks about — and it was, while it was an arm of the place instead of a
+     * sentence of its own and the checks below were satisfied by the placed one beside it.
+     */
+    private static List<PublishedRuleHandle> everyHandle() {
+        List<PublishedRuleHandle> out = new ArrayList<>(
+                everyShapeOfSentence().stream().map(PublishedRuleHandle::of).toList());
+        return List.copyOf(out);
     }
 
     /**
@@ -129,11 +144,11 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
      * these that a document writes alike are the pair either of which may be chosen, and every
      * other pair is one it has to tell apart.
      *
-     * <p>Code reached from here is not among them, and the test below says why it cannot be. There
-     * was a third sentence for it: a comparison inside a library operation written in this language
-     * was spliced into whoever called it, so a caller's model held rules whose code the reader does
-     * not have. A caller answers for the rules a caller wrote, so a rule of a model is written in a
-     * source the compile holds and there are two kinds of sentence rather than three.
+     * <p>Code reached from here is among them, taken from a compilation rather than written. A
+     * citation of it is made where a source is placed and that is the one way there is, on purpose —
+     * so what this needs is one of the real ones, and a handle is then made of it and each kind of
+     * rule. Left out because it could not be written, the arm this type has for it would be the one
+     * arm whose reason for existing nothing checks.
      */
     private static List<RuleCitation> everyShapeOfSentence() {
         RuleRef.Named named = new RuleRef.Invariant(new Clause.Ref(
@@ -142,9 +157,22 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
         RuleRef.Named alsoNamed = new RuleRef.Invariant(new Clause.Ref(
                 new Clause.Id(TypeSymbols.declared(new TypeKey("m", "Amount")), 1),
                 Optional.of(new ClauseName("floor"))));
+        // A clause the author named nothing, which a reader counts to, and the two sentences an
+        // `ensures` has: the words the author gave the clause, and a clause over every answer that
+        // the behavior's name is the whole of.
+        RuleRef.Named counted = new RuleRef.Invariant(new Clause.Ref(
+                new Clause.Id(TypeSymbols.declared(new TypeKey("m", "Amount")), 2),
+                Optional.empty()));
+        RuleRef.Named clauseOfAnEnsures = new RuleRef.Ensures(
+                new BehaviorContract.RuleId(new ValueName.Behavior("m", "b"), 0, 0, null), "c");
+        RuleRef.Named everyAnswer = new RuleRef.Ensures(
+                new BehaviorContract.RuleId(new ValueName.Behavior("m", "b"), 0, 0, null), "");
         List<RuleCitation> out = new ArrayList<>(List.of(
                 new RuleCitation.Named(named),
                 new RuleCitation.Named(alsoNamed),
+                new RuleCitation.Named(counted),
+                new RuleCitation.Named(clauseOfAnEnsures),
+                new RuleCitation.Named(everyAnswer),
                 new RuleCitation.WrittenAt(COMPARISON, AT),
                 new RuleCitation.WrittenAt(PREDICATE, AT),
                 new RuleCitation.WrittenAt(COMPARISON,
@@ -195,8 +223,8 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
         return out;
     }
 
-    private static String said(RuleCitation cited) {
-        return cited.said(SourceNameResolver.identity(), null);
+    private static String said(PublishedRuleHandle handle) {
+        return RuleHandleProse.said(handle, SourceNameResolver.identity(), null);
     }
 
     /**
@@ -205,23 +233,24 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
      *
      * <p>Both, because the property is over pairs and a population of one shape is a population of
      * one pair. An arm missing here is an arm whose reason for existing nothing asks about, which is
-     * how the third one came to be left out the first time — and, once nothing produced it any
-     * more, what said it had to go rather than stay as a shape nothing writes.
+     * how the third one came to be left out the first time.
      */
     @Test
     void thePopulationHoldsEveryKindOfSentenceADocumentWrites() {
-        List<PublishedRuleHandle> handles = everyShapeOfSentence().stream()
-                .map(PublishedRuleHandle::of).toList();
+        List<PublishedRuleHandle> handles = everyHandle();
 
-        assertTrue(everyShapeOfSentence().stream().map(
-                        TwoHandlesADocumentWritesApartAreTwoValuesTest::said)
+        assertTrue(handles.stream().map(TwoHandlesADocumentWritesApartAreTwoValuesTest::said)
                 .distinct().count() > 1,
                 "a population a document writes one sentence for says nothing about telling two"
                         + " apart");
         assertEquals(
-                Set.of(PublishedRuleHandle.Named.class, PublishedRuleHandle.Written.class),
+                Set.of(PublishedRuleHandle.NamedInvariant.class,
+                        PublishedRuleHandle.NumberedInvariant.class,
+                        PublishedRuleHandle.NamedEnsures.class,
+                        PublishedRuleHandle.WholeEnsures.class,
+                        PublishedRuleHandle.Written.class),
                 Set.of(PublishedRuleHandle.class.getPermittedSubclasses()),
-                "the two kinds of sentence this type has");
+                "the kinds of sentence this type has");
         for (Class<?> each : PublishedRuleHandle.class.getPermittedSubclasses()) {
             assertTrue(handles.stream().anyMatch(each::isInstance),
                     () -> "and each of them is in what the property above is asked over: " + each);
@@ -229,17 +258,17 @@ class TwoHandlesADocumentWritesApartAreTwoValuesTest {
     }
 
     /**
-     * And no rule of a compiled model is cited out of sight, which is why there are two.
+     * And no rule of a compiled model is cited out of sight, which is why there is no sentence for
+     * one that is.
      *
-     * <p>The arm this type used to have was for a rule whose code the reader does not hold, and the
-     * only thing that ever made one was a library operation written in this language being spliced
-     * into whoever called it. The reading a rule is taken from keeps such an operation standing, so
-     * the comparisons inside it are that operation's implementation and no caller is answerable for
-     * them.
+     * <p>The only thing that ever made such a citation was a library operation written in this
+     * language being spliced into whoever called it: the reading a rule is taken from keeps such an
+     * operation standing, so the comparisons inside it are that operation's implementation and no
+     * caller answers for them.
      *
-     * <p>Asked of a compile and not of the type. That the seal has two arms is a fact about the
-     * code; that nothing produces a third is a fact about what this compiler reads, and only a model
-     * that calls out of sight can show it.
+     * <p>Asked of a compile and not of the type. That the seal has the forms it has is a fact about
+     * the code; that nothing produces another is a fact about what this compiler reads, and only a
+     * model that calls out of sight can show it.
      */
     @Test
     void noRuleOfACompiledModelIsCitedOutOfSight() {
