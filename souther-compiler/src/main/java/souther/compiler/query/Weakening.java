@@ -1,6 +1,6 @@
 package souther.compiler.query;
 
-import souther.compiler.coverage.ArmProbe;
+import souther.compiler.coverage.CoverageSites;
 import souther.compiler.observe.Incompleteness;
 import souther.compiler.observe.RunSensitivity;
 import souther.compiler.partition.ClosureGap;
@@ -252,8 +252,15 @@ public sealed interface Weakening {
      * <p>Nothing about the model is wrong here — the proof is. So this is not missing evidence: it
      * is evidence that an analysis the numbers were computed with does not hold, which is why it is
      * an arm of its own and never one of {@link ObservationIncomplete}.
+     *
+     * <p><b>The arm the source wrote, and not the number a run through it was recorded at.</b> Those
+     * are two identities: a probe is what a recording is written in and says of itself that it
+     * reaches no further, and which arm it is about is what the sites hold. The two are told apart
+     * where both are in hand, which is where the arms of the behavior are, and what travels from
+     * there is the one a reader can be sent to. Carried as the number, every later projection had a
+     * token nobody outside the numbering could read.
      */
-    record ProofContradicted(String behavior, ArmProbe probe) implements Weakening {
+    record ProofContradicted(CoverageSites.Obligation arm) implements Weakening {
 
         /** An analysis that does not hold is one that does not hold however much a run allows. */
         @Override

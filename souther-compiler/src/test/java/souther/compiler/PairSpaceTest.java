@@ -70,9 +70,9 @@ class PairSpaceTest {
         assertEquals(1, pairs.counts().covered());
     }
 
-    /** The row is the proof. Nothing else here proves anything. */
+    /** The row is the proof. Nothing else here proves anything, and nothing here says it does. */
     @Test
-    void aCombinationARowSitsInIsProvenReachableAndTheRestAreUntried() {
+    void aCombinationARowSitsInIsCoveredAndWhatIsLeftIsUnknown() {
         PartitionEvidence.PairSpace pairs = evidence(MODEL + """
 
                 example submit
@@ -81,11 +81,32 @@ class PairSpaceTest {
                 """, "submit").pairs();
 
         assertEquals(2, pairs.counts().covered());
-        assertEquals(2, pairs.counts().witnessedFeasible());
-        assertEquals(0, pairs.counts().provenInfeasible(),
-                "nothing has tried to build the other two, so nothing is known to be impossible");
-        assertEquals(2, pairs.counts().unknown());
-        assertFalse(pairs.decided(), "with untried combinations a single ratio would say nothing");
+        assertEquals(2, pairs.unknown(),
+                "nothing has tried to build the other two, so nothing is known about them");
+        assertFalse(pairs.decided(), "with unknown combinations a single ratio would say nothing");
+    }
+
+    /**
+     * And the two numbers are of the two positions the combinations are between.
+     *
+     * <p>What a reader is sent to. Summed, twenty-one unknown combinations across four positions
+     * are as consistent with one relation nothing reaches as with six each missing a little, and
+     * the two send an author to different places.
+     */
+    @Test
+    void whatIsCoveredAndWhatIsUnknownIsSaidOfEachRelation() {
+        PartitionEvidence.PairSpace pairs = evidence(MODEL + """
+
+                example submit
+                    | (Request { kind = Domestic, cost = Amount(50) })  -> Submitted
+                    | (Request { kind = Overseas, cost = Amount(500) }) -> Waiting
+                """, "submit").pairs();
+
+        assertEquals(1, pairs.space().size(), "two divided positions make one relation");
+        PartitionEvidence.PairSpace.Between between = pairs.space().getFirst().between();
+        assertEquals(4, pairs.sizeOf(between));
+        assertEquals(2, pairs.counts().covered(between));
+        assertEquals(2, pairs.unknown(between));
     }
 
     @Test
@@ -100,7 +121,7 @@ class PairSpaceTest {
                 """, "submit").pairs();
 
         assertEquals(4, pairs.counts().covered());
-        assertEquals(0, pairs.counts().unknown());
+        assertEquals(0, pairs.unknown());
         assertTrue(pairs.decided());
     }
 
@@ -141,6 +162,6 @@ class PairSpaceTest {
                 """, "submit").pairs();
 
         assertEquals(1, pairs.counts().covered(), "one row, one pair");
-        assertEquals(3, pairs.counts().unknown());
+        assertEquals(3, pairs.unknown());
     }
 }

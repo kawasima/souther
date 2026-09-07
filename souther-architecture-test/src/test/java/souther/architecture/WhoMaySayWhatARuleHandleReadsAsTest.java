@@ -71,6 +71,7 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
                     + " BorderAssessment, SourceNameResolver, SourceId, PointRole, RoleAnswer)",
             "souther/compiler/report/AdequacyReport#partition(StringBuilder,"
                     + " AdequacyReport$BehaviorReport, SourceId, SourceNameResolver)",
+            "souther/compiler/report/AdequacyReport#said(Subject, SourceNameResolver)",
             "souther/compiler/report/GeneratedRows#about(Adequacy$Finding)");
 
     /**
@@ -80,6 +81,8 @@ class WhoMaySayWhatARuleHandleReadsAsTest {
      * writers of one document are two vocabularies for a consumer to learn.
      */
     private static final List<String> WRITING_IT_INTO_THE_DOCUMENT = List.of(
+            "souther/compiler/report/AdequacyReport"
+                    + "#about(ObjectNode, PublishedSubject, DocumentSources)",
             "souther/compiler/report/AdequacyReport#findings(DocumentArray, List, DocumentSources)",
             "souther/compiler/report/AdequacyReport"
                     + "#obligations(DocumentArray, List, Map, DocumentSources)",

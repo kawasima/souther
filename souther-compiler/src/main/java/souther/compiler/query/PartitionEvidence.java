@@ -11,10 +11,15 @@ import souther.compiler.inputs.StandingQuestion;
 import souther.compiler.inputs.WhatAQuestionStandsOn;
 import souther.compiler.observe.Incompleteness;
 import souther.compiler.observe.MeasureReason;
+import souther.compiler.partition.AxisId;
 import souther.compiler.partition.ReportedReason;
+import souther.compiler.partition.RuleEvidenceOrigin;
 import souther.compiler.partition.UndividedPosition;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.SequencedMap;
 import java.util.Set;
 
 /**
@@ -483,34 +488,116 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
     }
 
     /**
-     * How many two-class combinations the rows reach, and how much is known about the rest.
+     * How many two-class combinations the rows reach, taken between the two positions each is
+     * between.
      *
-     * <p>Three numbers rather than a percentage, because the denominator is not known. A combination
-     * a row reaches is proven reachable — the row is the proof. A combination no row reaches has not
-     * been shown impossible; nothing has tried to build one. Calling those unreachable would flatter
-     * the coverage, and calling them missing would send the author after rows that may not exist.
+     * <p>Counts rather than a ratio, because the denominator is not known. A combination a row
+     * reaches is proven reachable — the row is the proof. A combination no row reaches has not been
+     * shown impossible; nothing has tried to build one. Calling those unreachable would flatter the
+     * coverage, and calling them missing would send the author after rows that may not exist.
      *
-     * <p>{@code total} is outside the measurement because it is a fact about the model: the product
-     * of what a row can be written at is that whether or not anybody counted. What was counted is
-     * inside, and a space nobody counted has no counts at all — it used to have four zeroes, which
-     * read exactly like a space where nothing was reached.
+     * <p><b>The pairs, and not their sum.</b> A sum says how many combinations there are and
+     * nothing about which two positions each is between, so a reader told twenty-one are unknown
+     * cannot tell one relation from six. The space is therefore the pairs, and {@link #total()} is
+     * read off them rather than kept beside them — kept, the two would be a second thing to hold
+     * true.
+     *
+     * <p>{@code space} is outside the measurement because it is a fact about the model: what a row
+     * can be written at is that whether or not anybody counted. What was counted is inside, and a
+     * space nobody counted has no counts at all.
      *
      * <p>The other thing that used to sit out here was {@code truncated}, a boolean that had to be
      * kept in step with a status beside it (#951 added the check that did it). A space too large to
      * walk is now said once, as what weakened the measurement.
      */
-    public record PairSpace(int total, Measurement<PairCounts> counted) {
+    public record PairSpace(List<AxisPair> space, Measurement<CoveredBetween> counted) {
+
+        /**
+         * Both sides are over one set of pairs, in one order, and this is what says so.
+         *
+         * <p>Sequence equality and not two containments. What is written of a pair is written
+         * against the pair beside it in the other list, so an order that differs is two readers
+         * disagreeing about which pair a number is of — which a check on the members alone lets
+         * through.
+         */
+        public PairSpace {
+            space = List.copyOf(space);
+            List<Between> asked = space.stream().map(AxisPair::between).toList();
+            for (CoveredBetween made : counted.made().stream().toList()) {
+                if (!List.copyOf(made.byPair().sequencedKeySet()).equals(asked)) {
+                    throw new IllegalArgumentException(
+                            "a count of the pairs is a count of these pairs, in this order: "
+                                    + asked + " counted as " + made.byPair().sequencedKeySet());
+                }
+            }
+        }
+
+        /**
+         * The two positions a combination is between, which is the whole of what names one.
+         *
+         * <p>How many combinations they make between them is not part of it. That is what the
+         * model says of the pair and is read from the pair; taken into the name, two readings of
+         * one relation that came to different sizes would be two relations.
+         */
+        public record Between(AxisId one, AxisId other) {
+
+            public Between {
+                if (one == null || other == null) {
+                    throw new IllegalArgumentException("a combination is between two positions");
+                }
+            }
+        }
+
+        /** One relation of the model, and how many combinations it holds. */
+        public record AxisPair(Between between, long total) {
+
+            public AxisPair {
+                if (between == null) {
+                    throw new IllegalArgumentException("a size is a size of some two positions");
+                }
+                if (total < 0) {
+                    throw new IllegalArgumentException("a relation holds no negative number of"
+                            + " combinations: " + total);
+                }
+            }
+        }
 
         /**
          * What the rows reached of the space, where anybody counted.
          *
-         * <p>{@code provenInfeasible} is what a search settled: a combination whose values were
-         * tried and refused for a reason that is about the combination, or one ruled out by a
-         * constraint. Nothing fills it until something builds candidates, and a candidate that
-         * failed to build is not it — another value of the same two classes may well have built.
+         * <p>Named for what it holds and not for what the position measure beside it calls its
+         * own count: one file with two {@code Reached} in it is two things a reader has to keep
+         * apart by where they are written.
+         *
+         * <p>Per pair, because that is what was counted: a row sits in the combinations of each
+         * relation it reaches, and a sum of them is an answer about no relation in particular.
+         *
+         * <p><b>It answers no further than what it holds.</b> How many of a relation are left is a
+         * question about the size as well as the count, and the size is the model's and sits
+         * outside — so {@link PairSpace#unknown()} answers that, and nothing here keeps a second
+         * copy of the sizes to answer it from.
          */
-        public record PairCounts(int covered, int witnessedFeasible, int provenInfeasible,
-                                 int unknown) {}
+        public record CoveredBetween(SequencedMap<Between, Integer> byPair) {
+
+            public CoveredBetween {
+                byPair = Collections.unmodifiableSequencedMap(new LinkedHashMap<>(byPair));
+            }
+
+            /** How many combinations the rows reach of one relation. */
+            public int covered(Between between) {
+                Integer said = byPair.get(between);
+                if (said == null) {
+                    throw new IllegalArgumentException(
+                            "a relation this count is not over was read for its count: " + between);
+                }
+                return said;
+            }
+
+            /** And of all of them, which is the one number the whole space is spoken of by. */
+            public int covered() {
+                return byPair.values().stream().mapToInt(Integer::intValue).sum();
+            }
+        }
 
         /** Why the combinations have no numbers. */
         public enum NoRows implements NotMeasuredReason {
@@ -523,52 +610,105 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
             }
         }
 
-        public static final PairSpace NONE =
-                new PairSpace(0, new Measurement.Complete<>(new PairCounts(0, 0, 0, 0)));
+        public static final PairSpace NONE = new PairSpace(List.of(),
+                new Measurement.Complete<>(new CoveredBetween(new LinkedHashMap<>())));
 
-        /** A space nobody counted. It keeps its size, which the model settles, and has no counts. */
-        public static PairSpace noRows(int total) {
-            return new PairSpace(total, new Measurement.NotMeasured<>(PairSpace.NoRows.NO_ROWS));
+        /** A space nobody counted. It keeps its pairs, which the model settles, and has no counts. */
+        public static PairSpace noRows(List<AxisPair> space) {
+            return new PairSpace(space, new Measurement.NotMeasured<>(PairSpace.NoRows.NO_ROWS));
         }
 
         /** The same, where nobody asked for a measurement at all. */
-        public static PairSpace notAsked(int total) {
-            return new PairSpace(total, new Measurement.NotMeasured<>(NothingWasAsked.NOT_ASKED));
+        public static PairSpace notAsked(List<AxisPair> space) {
+            return new PairSpace(space, new Measurement.NotMeasured<>(NothingWasAsked.NOT_ASKED));
         }
 
-        /** A space whose size was never worked out, because the positions it is a product over
-         *  were not. What it is short of is what every measure of that behavior is short of. */
+        /** A space whose pairs were never worked out, because the positions they are between were
+         *  not. What it is short of is what every measure of that behavior is short of. */
         public static PairSpace notMeasurable(BoundaryForMeasurement.NotDerived why,
                                               String behavior) {
-            return new PairSpace(0, why.failed(behavior));
+            return new PairSpace(List.of(), why.failed(behavior));
         }
 
-        /** A space too large to walk to the end of. What it is measured in part by is the fact that
-         *  stopped it, said once. */
-        public static PairSpace truncated(String behavior, long size, int limit) {
-            int total = (int) Math.min(size, Integer.MAX_VALUE);
-            return new PairSpace(total, new Measurement.Partial<>(
-                    new PairCounts(0, 0, 0, total),
+        /**
+         * A space too large to walk to the end of.
+         *
+         * <p>The pairs are known and none of them was walked, so what is written of each is what
+         * was reached of it: none. What it is measured in part by is the fact that stopped it, said
+         * once.
+         */
+        public static PairSpace truncated(String behavior, List<AxisPair> space, long size,
+                                          int limit) {
+            SequencedMap<Between, Integer> none = new LinkedHashMap<>();
+            space.forEach(pair -> none.put(pair.between(), 0));
+            return new PairSpace(space, new Measurement.Partial<>(new CoveredBetween(none),
                     WeakeningSet.of(new Weakening.PairSpaceTruncated(behavior, size, limit))));
         }
 
         /**
-         * The numbers, where a measurement was made.
+         * How many combinations the model has across every relation.
+         *
+         * <p>Clamped, because a document writes it as one number a consumer reads. A space this
+         * large is one the walk was never going to finish, and what it is short of is said as what
+         * weakened the measurement rather than by a number that wrapped.
+         */
+        public int total() {
+            long sum = space.stream().mapToLong(AxisPair::total).sum();
+            return (int) Math.min(sum, Integer.MAX_VALUE);
+        }
+
+        /**
+         * The counts, where a measurement was made.
          *
          * <p>Throws where none was. A measure with no number has none, and an accessor that answered
          * zero would be the thing this type was introduced to remove — a reader would get an answer
          * and no sign that nobody measured it.
          */
-        public PairCounts counts() {
+        public CoveredBetween counts() {
             return counted.made().orElseThrow(() -> new IllegalStateException(
                     "a pair space nobody counted was read for its counts"));
+        }
+
+        /**
+         * How many combinations no row reaches, over the whole space and over one relation.
+         *
+         * <p>Here and nowhere else. It is the one answer that needs both halves — the sizes the
+         * model settles and the counts a measurement made — and a reader that subtracted them for
+         * itself would be a second mechanism for one fact, which is what the pair of numbers this
+         * type used to publish already was.
+         */
+        public int unknown() {
+            return total() - counts().covered();
+        }
+
+        /**
+         * The same of one relation, where the caller is holding it.
+         *
+         * <p>Takes the pair rather than what names it. A reader walking the space has the size in
+         * hand, and looking it up again by name is a walk of the space per relation — which is the
+         * space walked once for every pair it holds.
+         */
+        public long unknown(AxisPair pair) {
+            return pair.total() - counts().covered(pair.between());
+        }
+
+        /** The same for a caller that has only the name, which costs a look through the space. */
+        public long unknown(Between between) {
+            return sizeOf(between) - counts().covered(between);
+        }
+
+        /** What the model says one relation holds, which is the model's answer and not a count. */
+        public long sizeOf(Between between) {
+            return space.stream().filter(pair -> pair.between().equals(between))
+                    .mapToLong(AxisPair::total).findFirst().orElseThrow(
+                            () -> new IllegalArgumentException(
+                                    "a relation this space is not over: " + between));
         }
 
         /** Whether a single ratio would say anything. With unknowns in the denominator it would not,
          *  and a measurement that is not complete has them whether or not they were counted. */
         public boolean decided() {
-            return counted instanceof Measurement.Complete<PairCounts> whole
-                    && whole.value().unknown() == 0;
+            return counted instanceof Measurement.Complete<CoveredBetween> && unknown() == 0;
         }
     }
 
@@ -585,9 +725,10 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
      *                status saying so, which reads exactly like a position every class of which
      *                went unreached
      */
-    public record AxisCoverage(souther.compiler.partition.AxisId at, String path,
-                               List<String> classes, Reading read,
-                               Measurement<Reached> reached) {
+    public record AxisCoverage(AxisId at, String path,
+                               List<String> classes, List<RuleEvidenceOrigin> divides,
+                               boolean cutOrParted,
+                               Reading read, Measurement<Reached> reached) {
 
         /**
          * What a document calls this measure, which is the number it is of.
@@ -683,21 +824,24 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
 
         /** Which classes there are is a fact about the model, and no row has to exist for it to be
          *  so — which is why a position nothing was measured at still names them. */
-        public static AxisCoverage noRows(souther.compiler.partition.AxisId at, String path,
-                                          List<String> classes, Reading read) {
-            return new AxisCoverage(at, path, classes, read,
+        public static AxisCoverage noRows(AxisId at, String path, List<String> classes,
+                                          List<RuleEvidenceOrigin> divides, boolean cutOrParted,
+                                          Reading read) {
+            return new AxisCoverage(at, path, classes, divides, cutOrParted, read,
                     new Measurement.NotMeasured<>(AxisCoverage.NoRows.NO_ROWS));
         }
 
         /** The same, where nobody asked for a measurement at all. */
-        public static AxisCoverage notAsked(souther.compiler.partition.AxisId at, String path,
-                                            List<String> classes, Reading read) {
-            return new AxisCoverage(at, path, classes, read,
+        public static AxisCoverage notAsked(AxisId at, String path, List<String> classes,
+                                            List<RuleEvidenceOrigin> divides, boolean cutOrParted,
+                                            Reading read) {
+            return new AxisCoverage(at, path, classes, divides, cutOrParted, read,
                     new Measurement.NotMeasured<>(NothingWasAsked.NOT_ASKED));
         }
 
         public AxisCoverage {
             classes = List.copyOf(classes);
+            divides = List.copyOf(divides);
             if (read == null) {
                 throw new IllegalArgumentException(
                         "a position with no account of what was read about its values: " + path);

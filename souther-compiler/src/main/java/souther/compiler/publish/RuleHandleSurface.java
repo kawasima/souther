@@ -3,6 +3,7 @@ package souther.compiler.publish;
 import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.source.SourceId;
 
+
 /**
  * A field of the adequacy document that carries a rule handle.
  *
@@ -26,6 +27,16 @@ public enum RuleHandleSurface {
     /** The rule a standing question is about. */
     UNANSWERED_RULE("/$defs/partition/properties/unanswered/items/properties/rule",
             "rule", Carries.THE_HANDLE_ALONE),
+
+    /**
+     * The rule an entry holding a verdict open is about.
+     *
+     * <p>The same handle the questions themselves publish, written where the entry is. What such an
+     * entry tells a reader to do is read the rule and what stopped it, and one that named neither
+     * sent them to the questions to find both — which is the join this array was written to spare
+     * them.
+     */
+    OPENING_RULE("/$defs/subject/oneOf/8/properties/rule", "rule", Carries.THE_HANDLE_ALONE),
 
     /** The rule a reading could not turn into a line. */
     NOT_READ_RULE("/$defs/partition/properties/notRead/items/properties/rule",

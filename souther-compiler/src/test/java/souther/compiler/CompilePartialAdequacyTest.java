@@ -671,10 +671,10 @@ class CompilePartialAdequacyTest {
     }
 
     /**
-     * A combination an unread row may sit in has not been left untried by anybody.
+     * A combination an unread row may sit in is unknown over the rows that were read, and says so.
      *
      * <p>The other measures each say whether their numbers are over all the rows or some of them; the
-     * pair space was the one that could not, so its count of untried combinations read as a finding.
+     * pair space was the one that could not, so its count read as a count over all of them.
      */
     @Test
     void thePairSpaceSaysWhetherItSawEveryRow() {
@@ -703,8 +703,9 @@ class CompilePartialAdequacyTest {
         assertEquals(4, partition.pairs().total());
         assertEquals(MeasurementStatus.PARTIAL, AdequacyReport.statusOf(partition.pairs().counted()),
                 "the one row could not be placed at either position");
-        assertFalse(AdequacyReport.of(compilation).human(SourceNameResolver.identity()).contains("untried"),
-                AdequacyReport.of(compilation).human(SourceNameResolver.identity()));
+        String human = AdequacyReport.of(compilation).human(SourceNameResolver.identity());
+        assertTrue(human.contains("unknown of the rows that were read"),
+                () -> "the count is over the rows that came back, and the line says so: " + human);
     }
 
     /**

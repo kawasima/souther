@@ -229,8 +229,8 @@ class AdequacyNeverAssertsFromPartOfTheRowsTest {
                 }
             }
             if (partition.pairs().counted() instanceof Measurement.Complete<?>
-                    && partition.pairs().counts().unknown() > 0) {
-                wrong.add("pairs: " + partition.pairs().counts().unknown() + " untried");
+                    && partition.pairs().unknown() > 0) {
+                wrong.add("pairs: " + partition.pairs().unknown() + " unknown");
             }
 
             // Per arm, the way the boundary above is per point: an arm this account calls unmet is
@@ -330,7 +330,7 @@ class AdequacyNeverAssertsFromPartOfTheRowsTest {
                         .made().orElseGet(List::of).stream()
                         .anyMatch(p -> !p.owed().hasRowWitness()),
                 "a boundary nothing is at");
-        assertTrue(partition.pairs().counts().unknown() > 0, "a combination nothing reaches");
+        assertTrue(partition.pairs().unknown() > 0, "a combination nothing reaches");
         assertFalse(compilation.db().ask(new Adequacy.BranchCoverage(module)).value()
                 .get("take").arms().unmet().isEmpty(), "an arm nothing goes through");
         assertFalse(GeneratedRows.of(Adequacy.offeredFor(compilation.db(),

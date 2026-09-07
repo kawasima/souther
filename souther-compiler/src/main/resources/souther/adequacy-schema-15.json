@@ -1,0 +1,3492 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://souther-lang.org/schema/adequacy-15.json",
+  "title": "Souther adequacy report",
+  "description": "How well a model's `example`s cover it. Emitted by `souther examples --format json`. A reader keys on `schemaVersion`: a change that removes or renames anything here raises it, and something added since does not — a key added since is optional, and a word added to an enumerated field is one no earlier document carried, so a document written before either existed is still a document of this version. That is one direction: every object here is closed, so an older copy of this schema refuses a document carrying a key added since. A reader that has to accept newer documents wants the newer schema, not a higher number.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "compilerVersion",
+    "status",
+    "adequacy",
+    "keptOpenBy",
+    "modules"
+  ],
+  "allOf": [
+    {
+      "description": "An open verdict names what it is open on, and a settled one is open on nothing. Written as a shape and not only as a sentence: the conformance corpus produced `undetermined` beside an empty array the day the field existed, and a description saying that cannot happen is a description a renderer can go on contradicting.",
+      "if": {
+        "properties": {
+          "adequacy": {
+            "const": "undetermined"
+          }
+        },
+        "required": [
+          "adequacy"
+        ]
+      },
+      "then": {
+        "properties": {
+          "keptOpenBy": {
+            "minItems": 1
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "keptOpenBy": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 15
+    },
+    "compilerVersion": {
+      "type": "string",
+      "description": "The compiler that produced the report, or `unreleased` when it ran from class files."
+    },
+    "weakening": {
+      "$ref": "#/$defs/weakening"
+    },
+    "status": {
+      "$ref": "#/$defs/status",
+      "description": "The weakest status among the modules. `partial` means something could not be read, so an absent number is not evidence of a gap."
+    },
+    "adequacy": {
+      "enum": [
+        "satisfied",
+        "not_satisfied",
+        "undetermined"
+      ],
+      "description": "Whether the rows meet what the asked measures require, which is not what `status` says. `undetermined` is a measure that was not asked for or could not be made; a build that gates on this refuses `not_satisfied` and nothing else."
+    },
+    "keptOpenBy": {
+      "type": "array",
+      "description": "The facts keeping `adequacy` undetermined, one entry each. Empty for a settled verdict, `satisfied` or `not_satisfied` alike: a build refused over a gap has an answer whatever else went unmeasured, so what is here is what holds the word open and never a list of everything that fell short. Not `weakening`, which is a different question at a different unit — that one is about one measure or one module, its unit is the published kind, and it says each kind once. This one is about the verdict and its unit is a fact, so two things this document calls by the same word are two entries, and the entries are not folded on what they are printed as. The one fold there is happens before: two measures that went without the same fact went without one fact.",
+      "items": {
+        "$ref": "#/$defs/adequacyOpening"
+      }
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/module"
+      }
+    },
+    "sources": {
+      "type": "object",
+      "description": "What each source identity written elsewhere in this document is called, keyed on the identity. Every identity the document carries has an entry — a `source` subject, and the `sourceId` of every `at`. Not a list of what the compile was handed: a source this report says nothing about has no entry, so this says which files the report is about rather than which files were read. The names are the ones the same run's diagnostics use, which are chosen from the set of files in front of a reader and are neither stable across runs nor a key — which is why they are here and not in place of the identities. Not in `required`: a document written before this field existed is still a document of this version.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "$defs": {
+    "ruleHandle": {
+      "type": "string",
+      "description": "How a reader finds a rule, written once here for every field that carries one. A rule the author named is found by that name: a clause of an invariant they called something is `invariant Amount (cap)`, one they named nothing is counted from the top of the declaration as `invariant Amount #2`, a clause of an `ensures` is `ensures charge (refunded)`, and a clause stating one rule over every answer is `ensures charge`. A rule they wrote rather than named has no name to look up and is found by where it is: `comparison@billing.sou:14:22` in a source this document's `sources` table names, and `comparison@7:3` where the file is the reader's to know. Code this compile reads from somewhere it holds no file for is said by what reaches it — `comparison in `Money`, reached at billing.sou:14:22`, or `comparison in `Money`, reached at 7:3`, or `comparison in `Money`` where there was no position to give. The word in front of a place says what kind of rule it is, and is one of the words `ruleId.kind` uses for a rule with no name: `predicate@billing.sou:14:22`, `predicate@7:3`, `predicate in `Money`, reached at billing.sou:14:22`, `predicate in `Money`, reached at 7:3`, `predicate in `Money``, and `fork@billing.sou:14:22`, `fork@7:3`, `fork in `Money`, reached at billing.sou:14:22`, `fork in `Money`, reached at 7:3`, `fork in `Money``. These words are how an author acts on a rule and never what tells one rule from another — two arms of one `ensures` clause may name the same case — which is `ruleId`.",
+      "examples": [
+        "invariant Amount (cap)",
+        "invariant Amount #2",
+        "ensures charge (refunded)",
+        "ensures charge",
+        "comparison@billing.sou:14:22",
+        "comparison@7:3",
+        "comparison in `Money`, reached at billing.sou:14:22",
+        "comparison in `Money`, reached at 7:3",
+        "comparison in `Money`",
+        "predicate@billing.sou:14:22",
+        "predicate@7:3",
+        "predicate in `Money`, reached at billing.sou:14:22",
+        "predicate in `Money`, reached at 7:3",
+        "predicate in `Money`",
+        "fork@billing.sou:14:22",
+        "fork@7:3",
+        "fork in `Money`, reached at billing.sou:14:22",
+        "fork in `Money`, reached at 7:3",
+        "fork in `Money`"
+      ]
+    },
+    "runSensitivity": {
+      "enum": [
+        "may_change",
+        "unaffected"
+      ],
+      "description": "Whether a wider run of this compiler could come to a different answer about one thing it fell short of. A wider run is the same sources, the same compiler build, the same dependencies and the same host, with one or more of the allowances this compiler stops under widened and none of them narrowed — an allowance being a figure it compared something against and stopped on: the steps a row is evaluated for, the depth a recursion may reach, the clock it is held to, the nodes an observation keeps, the combinations a measure walks, the states a pattern is built into. Whether a caller can set the figure today is not the question; several of them are constants, and which knobs exist is a fact about this month rather than about the stop. `may_change` does not promise that a wider run finishes the measure — a reading past one figure may be stopped by the next — it says the stop that produced this need not happen again. `unaffected` is the stronger of the two and the one to act on: no allowance widens it, so measuring the same model again with more allowed finds the same thing. Neither says anything about what a later version of this compiler could read, or about writing the model another way; both are outside what a run is. The host is not an allowance either: a stack that ran out and classes that would not link are met again by a wider run on the same machine, and a run on another machine is a different host rather than a wider run of this one."
+    },
+    "adequacyOpening": {
+      "type": "object",
+      "description": "One thing keeping the adequacy verdict undetermined, projected to what a document may say of it: the kind it is, and whether a wider run could answer it. Only one of the ways a verdict stays open is a measure going without something. A measure that could have found a gap and was never made weakens nothing, and neither does a point the rows are read out at where nothing could show a row can be written — whether one can be is a second question, settled from what showed it rather than from what the rows covered. So a list of what fell short says nothing at all about a model nobody has written rows for, or about a point nothing promised, while the verdict over each stays open. Every entry says what it is about: a document naming only the kind told a reader how many things held the verdict open and none of what they were.",
+      "required": [
+        "kind",
+        "about",
+        "runSensitivity"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "not_measured"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "reason"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "reason"
+              ]
+            }
+          }
+        }
+      ],
+      "properties": {
+        "kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/weakening/items"
+            },
+            {
+              "const": "not_measured",
+              "description": "A measure the verdict rests on was never made, so a gap it could have found is one nobody looked for. Nothing fell short here, which is why it is not one of the words above: those say what a measurement went without, and this says there was no measurement."
+            },
+            {
+              "const": "showing_stopped",
+              "description": "The rows are read out, no row is at a point the model owes one at, and what was read to show a row can be written there did not come back. The obligation stays: what did not arrive is a showing, not the model taking the point back."
+            },
+            {
+              "const": "nothing_was_composed",
+              "description": "The same point, where this compiler declined to compose a candidate for it at all — a figure of its own decided that, which is why this is its own word beside `showing_stopped` and why a wider run may get past it."
+            },
+            {
+              "const": "nothing_showed_it",
+              "description": "The same point again, where nothing was stopped and nothing arrived: no showing was made, so there is no limit to raise and nothing to name. Told apart from the two above because a reader sent after what stopped it would be looking for something nobody met."
+            }
+          ],
+          "description": "What kind of thing this is, in two vocabularies. A measure that went without something writes the word `weakening` already has for it, where one word covers more than one thing this compiler can meet — a pattern too large to build and a rule about a value made from another are both `rule_unread` — so this says which kind it was and not which of them. The four beside them are the ways a verdict stays open that no weakening covers. Two entries alike are two things rather than one said twice, whichever vocabulary they are in."
+        },
+        "reason": {
+          "$ref": "#/$defs/notMeasuredReason"
+        },
+        "runSensitivity": {
+          "$ref": "#/$defs/runSensitivity"
+        },
+        "about": {
+          "$ref": "#/$defs/subject"
+        }
+      }
+    },
+    "notMeasuredReason": {
+      "enum": [
+        "no_rows",
+        "not_asked",
+        "arms_not_asked"
+      ],
+      "description": "What a measure nobody made was waiting for, in the words this document already writes wherever a measure has no number. Written only beside `not_measured`, and one entry per measure rather than one per reason: two measures both waiting on rows are two measures nobody made, and a model with one behavior unmeasured is not the same news as a model with forty."
+    },
+    "weakening": {
+      "type": "array",
+      "minItems": 1,
+      "description": "What left this measurement weaker than its numbers look, one word per fact. Present exactly where something did, and absent where nothing did. This is what makes four status words carry five states: `unavailable` with a `reason` of `not measured` and no `weakening` is a measurement nobody asked for, and the same with a `weakening` is one that was asked for, started, and could not be finished. Beside a `partial` it says which reading fell short, which a reader used to have to find somewhere else on the page or not at all.",
+      "items": {
+        "enum": [
+          "value_unreadable",
+          "value_truncated",
+          "row_undecided",
+          "row_evaluation_limit_reached",
+          "answerer_not_established",
+          "linkage_failed",
+          "observation_absent",
+          "instrumentation_absent",
+          "probe_mapping_lost",
+          "output_cases_unreadable",
+          "input_cases_unreadable",
+          "row_did_not_finish",
+          "border_value_unreadable",
+          "border_value_absent",
+          "border_observation_unavailable",
+          "rule_unread",
+          "position_not_read",
+          "question_unanswered",
+          "rules_not_reached",
+          "bodies_not_elaborated",
+          "behavior_boundary_not_derived",
+          "behavior_input_not_read",
+          "pair_space_truncated",
+          "proof_contradicted",
+          "arms_unsettled"
+        ]
+      }
+    },
+    "ruleStoppedReadingReason": {
+      "description": "A rule this compiler read and could not use, which is what both surfaces below share. Such a rule is at a position — so a position's reading is short of it — and it is a shortfall about the rule, so a question the rule raised stands on it. Written once because the two surfaces really do share it, and not because their vocabularies happen to look alike. `exact_values_too_costly` is what a reader is told where working the values out was more than this compiler does. It is one published word over two facts this compiler tells apart: one rule names a set of strings whose machine it will not make, which is about that rule; or every rule was made into the set it names and what those come to between them was not, which is about the answer and names no rule. Sharing a word is not sharing a capability — what a document may say about the second is not what it may say about the first — so a reader is told what stopped and never which rule to go and change, and which of the two it was stays this compiler's question. `pattern_too_deeply_nested` is a rule written more deeply nested than the reading goes, which reached no values at all — its own word because every construct in such a rule is one this reads, so an author sent after a form or after the size of an answer would be looking for neither.",
+      "enum": [
+        "unsupported_syntax",
+        "unsupported_domain",
+        "unsupported_partition_shape",
+        "unresolved_case_pairing",
+        "rule_about_a_derived_value",
+        "rule_about_an_element_of_several_sequences",
+        "exact_values_too_costly",
+        "pattern_too_deeply_nested"
+      ]
+    },
+    "answerRealizationStoppedReason": {
+      "description": "What the answer at a position was short of, which is a fact about what the rules of that position come to between them and about none of them: the same rules met in another order would have been built. Its own vocabulary because it names no rule, so nothing written in one of these sends a reader to a clause. It is one word with something a document could name a rule for — `exact_values_too_costly` is written here and in `ruleStoppedReadingReason`, where it is a rule naming a set of strings whose machine this will not make — and the two stay apart because the fields do: a question carries one of each where it is short in both ways, and which field a word is in says which of the two facts it is about. `behavior_distinctions_too_costly` is the other half of the same kind and stays apart from `exact_values_too_costly` because the two bound different questions: that one is what the position admits coming out wider than its declarations leave it, and this one is what a behavior's own rules about the position tell apart, so a position answered to the letter by its declaration still carries it. Schema 12 had `questionStoppedReason`, one vocabulary over both facts, and with it `rule_not_interpreted_here`; a document of that version may carry that word, nothing writes it now, and the state it was written for is an answer that was not built.",
+      "enum": [
+        "exact_values_too_costly",
+        "behavior_distinctions_too_costly"
+      ]
+    },
+    "notReadReason": {
+      "description": "Why a reading is short of the rules. `unsupported_syntax` is a rule that was read and could not be used — an expression the terms do not name; `rules_not_read_at_all` is a position whose rules the reading never arrived at — no rule is named because none was seen — with which limit stopped the walk neither recorded nor promised;  `unsupported_domain` is a comparison against values no line can be drawn on; `unsupported_partition_shape` is a comparison relating two positions rather than dividing one; `depth_limit` is the walk stopping after a count of steps, which nothing writes any more; `returns_to_a_declaration_already_read` is the input returning at this position to a declaration the path had already opened, so what is under it is what is under that one and was not read again; `type_unresolved` is a type at the position that could not be worked out; `unsupported_traversal` is values held inside something the walk does not reach into; `rule_about_a_derived_value` is a rule read and placed, written about a value an operation made from what stands at the position — where the values came from is known and what the rule says about the values here is not; `rule_about_an_element_of_several_sequences` is a rule read and placed, written inside a block handed to more than one walk, so the name it reads an element under holds an element of a different sequence on each run and which of them the rule is about is not worked out — every position it may be about is told this one, including where some of those runs walk something the input has no part in, and unlike `rule_about_a_derived_value` nothing was made out of the element and there is no operation to read the rule back through; `rule_cuts_nothing` is a rule read from end to end whose quantity the position does not appear in, so there was no line in it to draw; `rule_cuts_outside_what_the_quantity_holds` is a rule read from end to end whose line falls where the quantity it cuts never runs — a length compared against a negative — so there is no value either side of it and no class the position is divided into; `nothing_arrives_at_the_rules_line` is a rule read from end to end whose line the declarations do leave values at, while no row that arrives at the comparison holds one of them — the conditions on the way there rule them out, a guard shadowed by a stricter guard above it — so the classes the line would make hold nothing that gets there; `rule_about_a_run` is a rule read from end to end whose line is drawn on a number taken over the values at this position rather than on any one of them — two of them either side of a total are on the line as surely as one is — so it divides the position into no classes while its border stands. `unresolved_case_pairing` is a rule read from end to end that draws a line, where each of the names it is between stands at more than one position — a field every case of a sum spreads is written once and a row writes it under one case — and which of those positions the line runs between is not worked out. `position_restricted_to_what_a_rule_admits` is a rule read from end to end that holds the position to the values it admits and places no end on them — a format states which strings stand there — where everything outside them is refused at construction, so there is no class away from them for a row to be owed at; what a reader acts on is that the value written here is one the rule admits, and whether the position is also divided is said by the classes rather than here. `rule_tells_nothing_apart` is a rule read from end to end, written about this position, that puts every value the position holds on one side of itself — a predicate over the strings here that no value satisfies, or that every value satisfies — so the model draws no line between any two of them and there is no second class for a row to be owed at; unlike `rule_cuts_nothing` the rule is about this position, and unlike `position_restricted_to_what_a_rule_admits` it leaves the values where it found them. `classes_not_composed` is every rule about this position having been read, with what they say not all sayable as one list of classes: a rule puts a line on the order the values are counted on or tells a set of them from the rest, and a class written in one of those cannot be written in the other, so a position both kinds reach has no single denominator here — unlike the two costly words nothing fell short, and a run allowed more meets it again; what the rules cut and where they part the position are unaffected and are reported as before. `behavior_distinctions_too_costly` is a behavior's rules about this position having been read, with working out what they tell apart costing more than this compiler does — its own word beside `exact_values_too_costly`, which is what the position admits coming out wider than its declarations leave it, because a position answered to the letter by its declaration still carries this one and an author told the other would go and simplify a declaration that was never the matter; the rules of a position are worked out as one group so that which of them a reader hears about does not follow the order they were walked in, and no rule of the group is named as the expensive one. `rule_cuts_nothing`, `rule_cuts_outside_what_the_quantity_holds`, `nothing_arrives_at_the_rules_line`, `position_restricted_to_what_a_rule_admits`, `rule_tells_nothing_apart` and `unsupported_partition_shape` are facts about the model or about what this measure represents, and nothing is owed on their account; the rest are facts about the compiler.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ruleStoppedReadingReason"
+        },
+        {
+          "enum": [
+            "rules_not_read_at_all",
+            "depth_limit",
+            "type_unresolved",
+            "unsupported_traversal",
+            "rule_cuts_nothing",
+            "rule_cuts_outside_what_the_quantity_holds",
+            "nothing_arrives_at_the_rules_line",
+            "rule_about_a_run",
+            "position_restricted_to_what_a_rule_admits",
+            "rule_tells_nothing_apart",
+            "classes_not_composed",
+            "behavior_distinctions_too_costly",
+            "returns_to_a_declaration_already_read"
+          ]
+        }
+      ]
+    },
+    "location": {
+      "type": "object",
+      "description": "Where on the quantity's order a point of a border is, which is what identifies it within its line. `at_the_line` is the value the rule wrote, which every line has one of. `beside_the_line` is the nearest value on one side of it, where the values there fall in another class than that value does — one side for a rule that orders the values, and both sides for one that names a value. `in_the_region` is a row away from the line, in the run on one side of it. Which of the four points each of these is follows from the place and from whether the rule holds there, and is published beside this rather than in it: a border can have two points in one role, and the role tells those two apart nowhere.",
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "at_the_line",
+            "beside_the_line",
+            "in_the_region"
+          ]
+        },
+        "side": {
+          "enum": [
+            "below",
+            "above"
+          ],
+          "description": "Which way from the line, on the order the quantity's own values sit on and never on the way the rule was written. Present for every place but the value the rule wrote, which is on the line and so on neither side of it."
+        }
+      },
+      "allOf": [
+        {
+          "description": "Every place but the line's own value is on a side of it.",
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "at_the_line"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "side"
+              ]
+            }
+          },
+          "else": {
+            "required": [
+              "side"
+            ]
+          }
+        }
+      ]
+    },
+    "level": {
+      "type": "object",
+      "description": "A level of whatever a line was drawn on, in the words of what it is a level of and never of where it was read. `on_a_carrier` is a place of the carrier a coordinate is ordered by, written the way that carrier writes one. `a_count` is a number the quantity itself counts to — how far two positions stand apart, or what an arithmetic form comes to — which is on no carrier. A quantity writes a level in the terms of where it was met, and a value owed once wherever it is read cannot take its words from one of them.",
+      "required": [
+        "kind",
+        "at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "on_a_carrier",
+            "a_count"
+          ]
+        },
+        "carrier": {
+          "$ref": "#/$defs/carrier",
+          "description": "Present exactly where `kind` is `on_a_carrier`."
+        },
+        "at": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "description": "A level of a coordinate is on the order that coordinate is counted on; a number the quantity itself counts to is on none.",
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "on_a_carrier"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "carrier"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "carrier"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "typeId": {
+      "type": "object",
+      "description": "Which declaration a type is. The module and the name, because that pair is what a type's identity is: two modules may each declare a `Status` and they are two types. Not one word — a module name has dots in it, so a joined spelling cannot be taken apart again. A type the language declares has no module: it is one of a closed set the language fixes, and its name is its identity.",
+      "required": [
+        "kind",
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "declared",
+            "primitive",
+            "language_case"
+          ]
+        },
+        "module": {
+          "type": "string",
+          "description": "Present exactly where `kind` is `declared`."
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "description": "Only a declaration of a module has one to name.",
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "declared"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "module"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "module"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "carrier": {
+      "type": "object",
+      "description": "Which order a level is counted on, said in this document's own words rather than in whatever a compiler calls one to itself. `ordinal` carries the enumeration and the cases it declares, because two enumerations are two orders however alike their cases count and where a case comes in the declaration is what the order is.",
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "whole",
+            "dense",
+            "days",
+            "seconds",
+            "seconds_of_day",
+            "nanos",
+            "text",
+            "ordinal"
+          ]
+        },
+        "enumeration": {
+          "$ref": "#/$defs/typeId"
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/typeId"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "description": "The enumeration and its cases are written exactly for an order a `data` of cases gives.",
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "ordinal"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "enumeration",
+              "cases"
+            ]
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "enumeration"
+                  ]
+                },
+                {
+                  "required": [
+                    "cases"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "authoredLineId": {
+      "type": "object",
+      "description": "One line of the model: which rule drew it, and which of that rule's lines it is. A clause places as many lines as it has ends, so `conjunct` is part of this. Two lines of one rule at one place are told apart by what each says about its own value — `value >= 5 && value <= 5` puts a minimum and a maximum at five and they are two lines — which is `facts`. `narrowedWithin` is the declarations that took an end in: a bound another type narrowed is not the bound it narrows.",
+      "required": [
+        "rule",
+        "conjunct",
+        "facts",
+        "narrowedWithin"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "rule": {
+          "$ref": "#/$defs/ruleId"
+        },
+        "conjunct": {
+          "type": "integer"
+        },
+        "facts": {
+          "type": "object",
+          "description": "What the rule placed on the values either side of what it wrote. A rule that orders them says which side its own value belongs to; one that names a value orders nothing either side of it and says no side at all, which is why `valueBelongsBelow` is written exactly where `singles` is false.",
+          "required": [
+            "holdsAtTheValue",
+            "singles"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "valueBelongsBelow": {
+              "type": "boolean"
+            },
+            "holdsAtTheValue": {
+              "type": "boolean"
+            },
+            "singles": {
+              "type": "boolean"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "required": [
+                  "singles"
+                ],
+                "properties": {
+                  "singles": {
+                    "const": false
+                  }
+                }
+              },
+              "then": {
+                "required": [
+                  "valueBelongsBelow"
+                ]
+              },
+              "else": {
+                "not": {
+                  "required": [
+                    "valueBelongsBelow"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "narrowedWithin": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/typeId"
+              },
+              {
+                "properties": {
+                  "kind": {
+                    "const": "declared"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            ]
+          },
+          "description": "The declarations that took an end in, each by its identity and in their own order — a set, so which reading was met first does not move them. Always a declaration of a module: a type the language fixes narrows nothing."
+        }
+      }
+    },
+    "obligationId": {
+      "type": "object",
+      "description": "What tells one thing a row is owed for from every other, which is not what a reader is shown. A key within this document: a `partition.obligations` entry carries it and so does every finding about one, and a consumer joins them on it. Which of the four points it is is not in here — a rule that names a value owes a row outside it on each side, so two of these can be the same `role` and the role tells them apart nowhere. What does is where the point is (`location`) and, for a run, where it stops (`stops`): a guard on a name two cases spread, whose cases stop the run in different places, owes two runs of one rule at one level on one side.",
+      "required": [
+        "line",
+        "level",
+        "location"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "line": {
+          "$ref": "#/$defs/authoredLineId"
+        },
+        "level": {
+          "$ref": "#/$defs/level"
+        },
+        "location": {
+          "$ref": "#/$defs/location"
+        },
+        "stops": {
+          "type": "object",
+          "description": "What settled where the run stops. `at_a_line` is a rule that put a line there, named by the line and the place it parts the values. `at_the_domain` is what every rule about the position leaves together, which is a place and no one rule. `at_the_order_end` is nothing stopping it, so the run goes as far as the order does.",
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "at_a_line",
+                "at_the_domain",
+                "at_the_order_end"
+              ]
+            },
+            "line": {
+              "$ref": "#/$defs/authoredLineId"
+            },
+            "where": {
+              "type": "string"
+            },
+            "at": {
+              "$ref": "#/$defs/level"
+            },
+            "per": {
+              "type": "string"
+            },
+            "inclusive": {
+              "type": "boolean"
+            },
+            "towards": {
+              "enum": [
+                "above",
+                "below"
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "description": "A line that stopped the run is named by the line and the place it parts the values.",
+              "if": {
+                "properties": {
+                  "kind": {
+                    "const": "at_a_line"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "required": [
+                  "line",
+                  "where"
+                ]
+              },
+              "else": {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "line"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "where"
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "description": "An end the rules leave together is a place and how much of the quantity it is a place of.",
+              "if": {
+                "properties": {
+                  "kind": {
+                    "const": "at_the_domain"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "required": [
+                  "at",
+                  "per",
+                  "inclusive"
+                ]
+              },
+              "else": {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "at"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "per"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "inclusive"
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "description": "An end nothing stopped is which way the run goes.",
+              "if": {
+                "properties": {
+                  "kind": {
+                    "const": "at_the_order_end"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "required": [
+                  "towards"
+                ]
+              },
+              "else": {
+                "not": {
+                  "required": [
+                    "towards"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "description": "A point away from the line asks for a row in the run beside it, and where that run stops is part of what the point is. A point at a value of the quantity has no run.",
+          "if": {
+            "properties": {
+              "location": {
+                "properties": {
+                  "kind": {
+                    "const": "in_the_region"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            },
+            "required": [
+              "location"
+            ]
+          },
+          "then": {
+            "required": [
+              "stops"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "stops"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "obligations": {
+      "type": "array",
+      "description": "What a set of obligations comes to: one entry per thing a row is owed for, once each however many positions read the line, with every reading of it. A behavior's account and the declarations' are two projections of one relation and are written in this one shape, so a consumer joins a finding to either by `obligationId`.",
+      "items": {
+        "type": "object",
+        "required": [
+          "obligationId",
+          "point",
+          "rule",
+          "ruleId",
+          "relation",
+          "knownWritable",
+          "status",
+          "readings"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "obligationId": {
+            "$ref": "#/$defs/obligationId"
+          },
+          "point": {
+            "enum": [
+              "on",
+              "off",
+              "in",
+              "out"
+            ]
+          },
+          "rule": {
+            "$ref": "#/$defs/ruleHandle",
+            "description": "The rule that drew the line this point is owed for. The handle and nothing else, where the `boundaries` entry for the same line writes the declarations that took its ends in beside it."
+          },
+          "ruleId": {
+            "$ref": "#/$defs/ruleId"
+          },
+          "relation": {
+            "type": "string",
+            "description": "How a row's value relates to what it is against, the word `boundaries[].items[].relation` uses."
+          },
+          "knownWritable": {
+            "type": "boolean"
+          },
+          "writableBecause": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "the_rules_prove_it",
+                "a_row_is_at_it",
+                "a_value_was_built"
+              ]
+            }
+          },
+          "disposition": {
+            "description": "What became of this obligation, which the evidence beside it is why. All three are in the count: whether a row is owed at a point is the model's answer, and nothing this compiler failed to read, compose or represent changes it. `unmet` says the absence is established, so it is a finding; whether the bar the build asked for refuses over that finding is a separate question and is answered under `findings[].disposition`. `undecided` says nobody could decide it and names the open questions under `undecidedAbout`. Every document this compiler writes carries this. Not in `required`: a document written before this field existed is still a document of this version.",
+            "enum": [
+              "met",
+              "unmet",
+              "undecided"
+            ]
+          },
+          "undecidedAbout": {
+            "description": "Every question about this obligation that nothing answered, written where `disposition` is `undecided` and never elsewhere. Both can hold of one obligation, and they are lifted by different work: the first by rows being read, the second by this compiler being able to compose, keep or represent more than it does.",
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "whether_a_row_is_at_it",
+                "whether_a_row_can_be_written"
+              ]
+            }
+          },
+          "status": {
+            "$ref": "#/$defs/status"
+          },
+          "reason": {
+            "enum": [
+              "not_asked",
+              "arms_not_asked",
+              "arms_unreadable",
+              "no_rows",
+              "no_arm_witnesses_it"
+            ]
+          },
+          "weakening": {
+            "$ref": "#/$defs/weakening"
+          },
+          "hit": {
+            "type": "boolean",
+            "description": "Whether some row stands at the point, under any reading of it. Present exactly where `status` is not `unavailable`."
+          },
+          "readings": {
+            "type": "array",
+            "description": "Every position that read the line, as an unordered bag. Two entries that print alike are two readings.",
+            "items": {
+              "type": "object",
+              "required": [
+                "behavior",
+                "axis",
+                "relation",
+                "against",
+                "status"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "behavior": {
+                  "type": "string"
+                },
+                "axis": {
+                  "type": "string",
+                  "description": "The position this reading met the line at, as `boundaries[].axis` names it."
+                },
+                "relation": {
+                  "type": "string"
+                },
+                "against": {
+                  "type": "string",
+                  "description": "What a row at this reading has to do, in this position's terms — `boundaries[].items[].against` for the same border and point."
+                },
+                "status": {
+                  "$ref": "#/$defs/status"
+                },
+                "reason": {
+                  "enum": [
+                    "not_asked",
+                    "arms_not_asked",
+                    "arms_unreadable",
+                    "no_rows",
+                    "no_arm_witnesses_it"
+                  ]
+                },
+                "weakening": {
+                  "$ref": "#/$defs/weakening"
+                },
+                "hit": {
+                  "type": "boolean",
+                  "description": "Whether some row stands at the point as read here."
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "anyOf": [
+                      {
+                        "properties": {
+                          "status": {
+                            "const": "complete"
+                          }
+                        },
+                        "required": [
+                          "status"
+                        ]
+                      },
+                      {
+                        "properties": {
+                          "status": {
+                            "const": "partial"
+                          }
+                        },
+                        "required": [
+                          "status"
+                        ]
+                      }
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "hit"
+                    ]
+                  },
+                  "else": {
+                    "not": {
+                      "required": [
+                        "hit"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "status": {
+                        "const": "unavailable"
+                      }
+                    },
+                    "required": [
+                      "status"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "reason"
+                    ]
+                  },
+                  "else": {
+                    "not": {
+                      "required": [
+                        "reason"
+                      ]
+                    }
+                  }
+                }
+              ],
+              "description": "One position that read the line, and what a row there has to do in that position's terms. A bag and not a set: two readings that print alike are two readings — what tells them apart is where the line was met, which this document does not carry — so a consumer may count these but may not deduplicate them. The order is not a contract."
+            },
+            "minItems": 1
+          },
+          "axis": {
+            "type": "string",
+            "description": "What the line is on, in the words the declaration wrote — `String.length(value)`. Present exactly where the obligation is one a declaration owns: a line a body's rule drew has no such word, since each reading names the position it met the line at and none can stand for the rest."
+          },
+          "against": {
+            "type": "string",
+            "description": "What a row here has to do, on `axis`. Present exactly with it."
+          }
+        },
+        "allOf": [
+          {
+            "description": "What the line is on and what a row has to do on it are the author's words, and only a line a declaration drew has them.",
+            "if": {
+              "required": [
+                "axis"
+              ]
+            },
+            "then": {
+              "required": [
+                "against"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "against"
+                ]
+              }
+            }
+          },
+          {
+            "description": "Whether some row stands at the point is written exactly where the measurement has a value.",
+            "if": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "status": {
+                      "const": "complete"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                },
+                {
+                  "properties": {
+                    "status": {
+                      "const": "partial"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              ]
+            },
+            "then": {
+              "required": [
+                "hit"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "hit"
+                ]
+              }
+            }
+          },
+          {
+            "description": "Why there is no answer is written exactly where there is none.",
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "unavailable"
+                }
+              },
+              "required": [
+                "status"
+              ]
+            },
+            "then": {
+              "required": [
+                "reason"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          },
+          {
+            "description": "A ground is named exactly where one was established.",
+            "if": {
+              "required": [
+                "knownWritable",
+                "writableBecause"
+              ],
+              "properties": {
+                "knownWritable": {
+                  "const": true
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "writableBecause": {
+                  "minItems": 1
+                }
+              }
+            }
+          },
+          {
+            "description": "And none where none was.",
+            "if": {
+              "required": [
+                "knownWritable",
+                "writableBecause"
+              ],
+              "properties": {
+                "knownWritable": {
+                  "const": false
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "writableBecause": {
+                  "maxItems": 0
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "ruleId": {
+      "type": "object",
+      "description": "What tells one rule of the model from every other, which is not what a reader is shown. The coordinates differ by kind because rules are told apart by different things, and every part of an identity is written: a declaration is its module and its name — two modules may each declare an `Amount`, and they are two types — and a comparison is the construct a definition wrote, numbered from zero within that definition, so which definition is part of which construct. A document written before the numbering was counted within a definition carries no `definition` and numbers over the whole source instead, which is what its absence says. A predicate carries one where a definition's body wrote it and says so in `writtenIn`, since a behavior writes such a rule in its body and in its own clauses alike; the remaining kinds never carry one. Each kind names the coordinates it carries and takes no others, which is why none of them lists what it may not have: a coordinate a later version adds for one kind is refused by the rest for not having been named there, rather than by somebody remembering to forbid it in each. A key within this document rather than a name; a consumer groups by it and shows `rule`. It names the rule and not the question — one rule raises more than one, and `question` and `subject` beside it are what tell those apart.",
+      "required": [
+        "kind",
+        "declaredIn"
+      ],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "invariant"
+            },
+            "declaredIn": true,
+            "declaredOn": true,
+            "clause": true
+          },
+          "additionalProperties": false,
+          "required": [
+            "declaredOn",
+            "clause"
+          ]
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "ensures"
+            },
+            "declaredIn": true,
+            "behavior": true,
+            "clause": true,
+            "arm": true
+          },
+          "additionalProperties": false,
+          "required": [
+            "behavior",
+            "clause",
+            "arm"
+          ]
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "comparison"
+            },
+            "declaredIn": true,
+            "definition": true,
+            "behavior": true,
+            "ordinal": true,
+            "lowered": true
+          },
+          "additionalProperties": false,
+          "required": [
+            "behavior",
+            "ordinal",
+            "lowered"
+          ]
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "fork"
+            },
+            "declaredIn": true,
+            "definition": true,
+            "behavior": true,
+            "ordinal": true,
+            "lowered": true
+          },
+          "additionalProperties": false,
+          "required": [
+            "behavior",
+            "ordinal",
+            "lowered"
+          ]
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "predicate"
+            },
+            "declaredIn": true,
+            "definition": true,
+            "writtenIn": true,
+            "behavior": true,
+            "ordinal": true,
+            "lowered": true
+          },
+          "additionalProperties": false,
+          "required": [
+            "behavior",
+            "writtenIn",
+            "ordinal",
+            "lowered"
+          ],
+          "if": {
+            "properties": {
+              "writtenIn": {
+                "const": "body"
+              }
+            },
+            "required": [
+              "writtenIn"
+            ]
+          },
+          "then": {
+            "required": [
+              "definition"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "definition"
+              ]
+            }
+          }
+        }
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "invariant",
+            "ensures",
+            "comparison",
+            "fork",
+            "predicate"
+          ],
+          "description": "Which kind of rule of the model this is, and so which coordinates below are written. A `predicate` is a rule a body writes as one of the language's own operations over the values at a position — `String.startsWith(\"JP\", code)` — which tells a set of them from the rest and draws no line; a behavior states one in its body and in its own `ensures` alike, and it is identified by the application the author wrote together with what wrote it, which `writtenIn` says. A rule of a body is a comparison and not the construct it is written in: it may stand in the condition of an `if` or a `guard`, be given a name above the fork that tests it, or be what the behavior answers with, and it is one rule in all of those. Documents of version 3 wrote `guard` here, from the days when a rule was found by finding a fork. A `fork` is the other way round and is not that word come back: it is a fork whose condition states none of the kinds above, so what the model divides on there is something this compiler did not read, and the fork itself is what a question about it is filed under."
+        },
+        "declaredIn": {
+          "type": "string",
+          "description": "The module the rule is written in. Part of every identity here: names are unique within a module and not across them, and a construct's number starts again in each definition."
+        },
+        "declaredOn": {
+          "type": "string",
+          "description": "The declaration an invariant's clause is written on."
+        },
+        "behavior": {
+          "type": "string",
+          "description": "The behavior an `ensures` clause reads, or the one whose answer a body's comparison or predicate is read for. For a comparison this is not where it is written: a helper's comparison is read by every behavior that calls it, and `definition` says which definition wrote it. The same holds for a predicate `writtenIn` says a body wrote; for one its own clauses wrote, this is the behavior that wrote it as well, which is why the name is written once."
+        },
+        "definition": {
+          "type": "string",
+          "description": "The definition whose source wrote the construct, present in a document whose `ordinal` is counted within one. For a comparison, a document written before construct numbering became a count within a definition has none, and its `ordinal` is a count over the whole source instead — so which of the two a number means is read from whether this is here. For a predicate, what counted the ordinal is said by `writtenIn`, and this is written exactly where that is `body`."
+        },
+        "writtenIn": {
+          "enum": [
+            "body",
+            "stated"
+          ],
+          "description": "What wrote the application a predicate is, which is what its `ordinal` was counted within. A behavior states such a rule in a definition's body and in its own `ensures`, the constructs of the two are numbered apart, and both start at zero — so without this the first of each is one identity. `body` writes `definition` beside it; `stated` is the behavior's own statement of itself, which `behavior` already names."
+        },
+        "clause": {
+          "type": "integer",
+          "description": "Where the clause sits among the ones written beside it, counted from zero."
+        },
+        "arm": {
+          "type": "integer",
+          "description": "Where the rule sits among the arms of its `ensures` clause, counted from zero. Two arms may name one case and are two rules."
+        },
+        "ordinal": {
+          "type": "integer",
+          "description": "The construct the rule was written as, counted from zero among the constructs written by whatever counted it. For a comparison that is `definition`, and where `definition` is absent the document is an earlier one and this counts the constructs of the whole source. For a predicate it is what `writtenIn` names: the definition `definition` names, or the behavior's own statement of itself, whose name is `behavior`."
+        },
+        "lowered": {
+          "type": "integer",
+          "description": "Which of the comparisons one written construct lowered to this is, for a construct that lowers to more than one."
+        }
+      }
+    },
+    "coverageQuestion": {
+      "description": "What a rule of the model leaves that something has to answer. `admitted_values` is which values may stand at a position, and `boundary` is a border rows are owed at. The other two are rules this compiler did not read far enough to classify, and they are not one word because they are not one state: `boundaryNotDetermined` is a rule read far enough to say it restricts the values where it was filed and not far enough to say whether it also puts an end there — the classes are settled and only the border measure waits on it — while `notDetermined` is a rule nothing worked out at all, which holds both measures. Neither names a subject, since working one out is part of what did not happen, and the `stopped` beside either says what would have to be read further. Those four are what this compiler issues, and a word arrives here in the same change that starts raising it. `singleton` and `partition` are retired: a comparison this compiler reads owes the row at the value it singles out and the rows in the classes its line makes, and it owes them by having been read — so they are carried as the partition's own geometry rather than as questions standing against an answer. They are kept because reports of this version carried them, and a reader of an older document still meets them.",
+      "enum": [
+        "admitted_values",
+        "boundary",
+        "boundaryNotDetermined",
+        "notDetermined",
+        "singleton",
+        "partition"
+      ]
+    },
+    "status": {
+      "description": "Whether a measure has a number. `unavailable` says only that it has none; the `reason` beside it says why, and the two are not read off one another.",
+      "enum": [
+        "complete",
+        "partial",
+        "unavailable"
+      ]
+    },
+    "module": {
+      "type": "object",
+      "required": [
+        "module",
+        "status",
+        "incompleteness",
+        "behaviors"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "module": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "weakening": {
+          "$ref": "#/$defs/weakening"
+        },
+        "incompleteness": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/incompleteness"
+          }
+        },
+        "behaviors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/behavior"
+          }
+        },
+        "declarations": {
+          "type": "array",
+          "description": "What each of the module's own declarations is owed and is short of. A line an `invariant` drew is a fact about the type wherever the type is carried, so it is owed once and is not any behavior's: published under one of them it would be published under whichever a walk reached first. Grouped by who owes it, since a line two declarations took an end in together is owed to both. Not in `required`: a document written before this array existed is still a document of this version.",
+          "items": {
+            "type": "object",
+            "required": [
+              "owners",
+              "name",
+              "obligations",
+              "findings"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "What a report calls the owners above. A rendering and never a key: two sets of declarations a report writes alike are two sets."
+              },
+              "obligations": {
+                "allOf": [
+                  {
+                    "$ref": "#/$defs/obligations"
+                  },
+                  {
+                    "items": {
+                      "required": [
+                        "axis",
+                        "against"
+                      ]
+                    }
+                  }
+                ],
+                "description": "What these declarations' lines are owed, once each however many positions carry the type — the declarations' side of the same relation a behavior's `partition.obligations` is the body's side of, and where a finding of kind `boundary_unmet` or `domain_point_uncovered` about one of them joins. Every one of them and not only what the module is short of: a line a row already stands at raises no finding, so a section written from the findings alone could not tell a module whose declarations owe nothing from one whose every line is answered. Each carries `axis`, the words the declaration wrote for what its line is on."
+              },
+              "findings": {
+                "$ref": "#/$defs/findings"
+              },
+              "owners": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/typeId"
+                    },
+                    {
+                      "properties": {
+                        "kind": {
+                          "const": "declared"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    }
+                  ]
+                },
+                "description": "Which of the module's declarations owe the lines below, in their own order. A list, because a line two declarations took an end in together is owed to both and is one entry here — `name` beside it is how a report says such a pair and is not the name of a declaration. Ordered by the declarations themselves and not by which reading of the line was met first, so the entry a reader finds them under does not turn on a walk."
+              }
+            }
+          }
+        }
+      }
+    },
+    "behavior": {
+      "type": "object",
+      "required": [
+        "name",
+        "implementation",
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "implementation": {
+          "enum": [
+            "implemented",
+            "unimplemented",
+            "injected"
+          ],
+          "description": "Where the body comes from. `injected` is Java's to supply; `unimplemented` is Souther's to write and not written. Neither has a body here, so the rows of either are recorded rather than evaluated."
+        },
+        "rows": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many example rows name this behavior, across every source that writes one. Present exactly where this behavior's rows were read, and absent where they were not: a source nobody could evaluate leaves no row to count, and a build that reads no rows counted none of them. So `0` is a behavior whose rows were read and numbered none, which is what an author acts on differently from rows nobody looked at — the two were one number until this version, and a model being migrated onto read as one with no rows written. Which of the ways it was is `status` and `weakening` beside it."
+        },
+        "pending": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many of those rows are recorded rather than evaluated. Present and absent exactly where `rows` is, and for the same reason."
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "weakening": {
+          "$ref": "#/$defs/weakening"
+        },
+        "signature": {
+          "$ref": "#/$defs/signature"
+        },
+        "partition": {
+          "$ref": "#/$defs/partition"
+        },
+        "branch": {
+          "$ref": "#/$defs/branch"
+        },
+        "findings": {
+          "$ref": "#/$defs/findings"
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "description": "Everything the measures found about one subject and nothing filled, and what a build does about each. The measures above each say what they measured; this says which findings came out of them and which of those a build refuses over, which no measure's own object can say. Not in `required`: a document written before this array existed is still a document of this version.",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "disposition",
+          "subject"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "partition_not_read"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "required": [
+                "reason"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "rule_unaccounted"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "required": [
+                "ruleId"
+              ]
+            },
+            "else": {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "const": "partition_not_read"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": true,
+              "else": {
+                "not": {
+                  "required": [
+                    "ruleId"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "description": "Which thing a row is owed for is written exactly for the kinds that are about one, and its shape is the shape that account keeps.",
+            "if": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "boundary_unmet"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "domain_point_uncovered"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                }
+              ]
+            },
+            "then": {
+              "required": [
+                "obligationId"
+              ],
+              "properties": {
+                "obligationId": {
+                  "$ref": "#/$defs/obligationId"
+                }
+              }
+            },
+            "else": {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "const": "arm_unreached"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              },
+              "then": {
+                "required": [
+                  "obligationId"
+                ],
+                "properties": {
+                  "obligationId": {
+                    "$ref": "#/$defs/armObligationId"
+                  }
+                }
+              },
+              "else": {
+                "not": {
+                  "required": [
+                    "obligationId"
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "properties": {
+          "kind": {
+            "description": "What the measure established. `output_case_unspecified` is a case of the output no row expects and `output_case_unverified` is one some row expects and nothing was seen to produce; `input_case_unspecified` is a case of an input no row applies the behavior to and `axis_class_uncovered` is a class of a derived position no row is in — the two read alike about one class and only one of them is refused over. `boundary_unmet` is a line some rule draws that no row sits on, `arm_unreached` an arm of the body no row goes through. `partition_not_derivable`, `partition_not_read` and `partition_rules_not_reached` are positions the model divides no way, what a reading did not read, and positions the axes did measure whose rules the walk never reached. `partition_values_not_separated` is none of those: every rule about the position arrived and every one was read, and what the reading holds is one set per position standing for a relation two of them cannot state — so the values it reports may be wider than the rules leave the position, and a class made out of them may be one no value can be in. It carries no `reason` and no `ruleId`, because no rule is answerable for it and what would lift it is a reading that keeps the alternatives apart. A `partition_not_read` is one of two things and `ruleId` says which: with it, a rule this read and could not turn into a line, named because the reader that stopped knows which rule; without it, a position whose rules the reading never arrived at, where no rule is named because none was seen. `reason` is on both, and says which limit is in the way. `rule_unaccounted` is one question a rule raised that nothing answered — said whether or not an axis came back for the position it is about, since a rule this compiler could not read is exactly the one no axis is derived from, and named for the question rather than for a measure because which section a reader meets it under follows from what it asks.",
+            "enum": [
+              "output_case_unspecified",
+              "input_case_unspecified",
+              "boundary_unmet",
+              "arm_unreached",
+              "output_case_unverified",
+              "axis_class_uncovered",
+              "domain_point_uncovered",
+              "partition_not_derivable",
+              "partition_not_read",
+              "rule_unaccounted",
+              "partition_rules_not_reached",
+              "partition_values_not_separated"
+            ]
+          },
+          "disposition": {
+            "description": "What a build does about this one. `refused` is a gap `--strict` and a warned build refuse over; `reported` is a kind neither refuses over, whatever its measurement managed; `undecided` is a kind they would refuse over, from a measurement that came to no answer — telling an author to write a row they may already have written is worse than saying nothing, so it is named and not refused.",
+            "enum": [
+              "refused",
+              "undecided",
+              "reported"
+            ]
+          },
+          "obligationId": {
+            "description": "Which thing a row is owed for the finding is about, written for every kind that is about one and for no other. What a consumer joins the finding to its obligation by — in `partition.obligations` where a body's rule drew the line, in `declarations[].obligations` where one of the module's declarations owns it, and in `branch.obligations` where it is an arm of the body. Its shape is the shape that account keeps, and which one follows from `kind`: a point of a line for `boundary_unmet` and `domain_point_uncovered`, an arm for `arm_unreached`. `subject` beside it is what a reader is shown, and two obligations are shown the same words where what differs is not in the words: one rule at one level in one role owes two `in` points when two cases stop the run in different places, and a fork whose caller supplies the rule owes one arm per rule handed in, at one place and under one label.",
+            "oneOf": [
+              {
+                "$ref": "#/$defs/obligationId"
+              },
+              {
+                "$ref": "#/$defs/armObligationId"
+              }
+            ]
+          },
+          "ruleId": {
+            "$ref": "#/$defs/ruleId",
+            "description": "Which rule the finding is about, where it is about one. `subject` beside it is what a reader is shown, and two rules an author named alike are shown the same words — so this is what says they are two. It names the rule and not the question: one rule raises more than one, and `subject` beside it is what tells those apart. Written for `rule_unaccounted`, and for `partition_not_read` where that entry is about a rule rather than about a position the reading never arrived at — which is why it is required for the first and only allowed for the second. The other kinds are not about a rule and never carry it."
+          },
+          "reason": {
+            "$ref": "#/$defs/notReadReason",
+            "description": "Which limit stopped the reading, present exactly on `partition_not_read`. The same word the `partition.notRead` entry this came from carries, and what a consumer joins the two by. Written because a rule can be stopped at one position by two limits at once — one conjunct of a clause relating two positions and the conjunct beside it in a form nothing reads — and the findings are then two, differing here and nowhere else."
+          },
+          "subject": {
+            "type": "string",
+            "x-souther-contains": "#/$defs/ruleHandle",
+            "description": "What the finding is about, written to name what is already in this document: a class name is one of an axis's `classes`, an arm's label one in `branch.obligations`, `axis = value` names the point of a declaration's line the way the declaration wrote it, and `ON point of comparison@billing.sou:14:22` says which of the four points a boundary finding is about and which rule drew the line — the rule as a `ruleHandle`, and a line a body drew is owed once wherever it is read and has no one quantity to be named by, so what a row there has to do is under the obligation's `readings`. A finding about a question nothing answered leads with the same handle and says what was asked after it. These words are a presentation and never a key: which obligation such a finding is about is `obligationId`. An input's case carries its position — `C (in #1)` — because two parameters of one type give two findings a class name alone cannot tell apart."
+          },
+          "code": {
+            "type": "string",
+            "description": "The code a build is told this under, present exactly where the kind has one. A kind a build is never told about carries no code rather than an empty one.",
+            "pattern": "^E[0-9]{4}$"
+          },
+          "at": {
+            "description": "Where the finding is, present exactly where its place is its own rather than the declaration it sits under — `arm_unreached` and nothing else. A behavior with two `guard`s has two arms labelled `else`, so the place is what tells two of these apart, and it is the same place under the same key as the matching `branch.obligations` entry, whose `disposition` is `unmet`. The other kinds are cited at the behavior's own declaration, which the entry above already names.",
+            "$ref": "#/$defs/at"
+          }
+        }
+      }
+    },
+    "armObligationId": {
+      "type": "object",
+      "description": "What tells one arm of a behavior from every other, which is not what a reader is shown. A key within this document: a consumer joins one run's arms against another run's on it. Neither `label` nor `at` is one — a body spliced in from out of sight has its copies at as many places as there are call sites, and two arms of two forks are both spelled `else`. Not a name anything outside one compilation can be matched by: `construct` is the reader's own count over what `definition` names, and what identity needs is that the numbering be a function of that definition's syntax and that no two constructs of it share a number — the definition and the number together are what tell one construct from every other, and two definitions' first constructs are two constructs. A document written before that count was kept within a definition carries no `definition` and counts the whole source instead.",
+      "required": [
+        "module",
+        "construct",
+        "lowered",
+        "part",
+        "decidedBy"
+      ],
+      "additionalProperties": false,
+      "if": {
+        "required": [
+          "decidedBy"
+        ],
+        "properties": {
+          "decidedBy": {
+            "const": "the_caller"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "rules"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "rules"
+          ]
+        }
+      },
+      "properties": {
+        "module": {
+          "type": "string",
+          "description": "The module whose source wrote the construct, which is what keeps a prelude helper's forks apart from those of the module expanding it."
+        },
+        "definition": {
+          "type": "string",
+          "description": "The definition whose source wrote the construct, present in a document whose `construct` is counted within one. A document written before construct numbering became a count within a definition has none, and its `construct` counts the whole source instead."
+        },
+        "construct": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Which construct of whatever `definition` names, by the reader's own count over it. Where `definition` is absent the document is an earlier one and this counts the constructs of the whole source."
+        },
+        "lowered": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Which fork of that construct, where a lowering makes more than one out of it — a comprehension's guards by their place in the list. Zero is the construct's own fork, which is every fork an author writes as one."
+        },
+        "part": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Which arm of the fork, by its place among the fork's arms."
+        },
+        "decidedBy": {
+          "description": "What settles which rule this fork decides by, which is part of what one arm is. `the_declaration` is a fork that decides for itself, and every copy of it spliced into a body is one arm. `the_caller` is a fork whose declaration says the caller decides, and then it is one arm per rule a caller handed in — two of those are the same construct at the same place and are two things to cover. `not_said` is the same declaration where which rule reached here could not be worked out, and such an arm is `not_counted`.",
+          "enum": [
+            "the_declaration",
+            "the_caller",
+            "not_said"
+          ]
+        },
+        "rules": {
+          "type": "array",
+          "description": "The rules the caller handed in, in the order the declaration names the parameters, present exactly where `decidedBy` is `the_caller`. A rule named at the call site is written as the declaration it names; a rule the source wrote out is written as the block of that source it is. Naming one declaration twice hands in one rule; writing the same expression twice is two.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "declaration": {
+                "type": "string",
+                "description": "The declaration a call site named. A declaration and never a binding: there are as many bindings as there are copies of the body that put the rule there."
+              },
+              "module": {
+                "type": "string",
+                "description": "The module whose source wrote the rule out, for a rule that has no name of its own."
+              },
+              "writtenBy": {
+                "$ref": "#/$defs/writtenBy"
+              },
+              "block": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Which block of whatever `writtenBy` names the rule is, by the reader's own count over that. Where `writtenBy` is absent the document is an earlier one and this counts the blocks of the whole source."
+              }
+            }
+          }
+        }
+      }
+    },
+    "branch": {
+      "type": "object",
+      "description": "Which arms of the behavior's body the rows go through. Branch-arm coverage, not path coverage: going through both arms of two nested conditions says nothing about their combinations.",
+      "required": [
+        "status"
+      ],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "complete",
+              "partial"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "obligations",
+          "denominatorSettled"
+        ]
+      },
+      "else": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "obligations"
+              ]
+            },
+            {
+              "required": [
+                "denominatorSettled"
+              ]
+            }
+          ]
+        }
+      },
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "weakening": {
+          "$ref": "#/$defs/weakening"
+        },
+        "reason": {
+          "description": "Why there is no number, present exactly where `status` is `unavailable`. The first two are a behavior with no arm to measure at all rather than arms nothing measured, and no row would give it one: `no_body` is a `>->` composition or a behavior with no `let`, and `no_arm_obligations` is a body that owes no arm — one that forks nowhere a row can be in or out of, or whose every fork the model's own rules prove nothing arrives at. Both are claims about what the model says. The rest are a behavior that does owe arms: `not_asked` is a build that did not ask for them; `unreadable` is a run whose instrumentation could not be tied back to the body; `no_rows` is a behavior no row names; `bodies_not_elaborated` is the model saying a body is written here and nothing having made it, so what the behavior owes was not read — named for the absence rather than for any of the things that stop a module being elaborated, which nothing here can tell apart. It is what `no_body` used to be answered with, and the two are a claim about the model and a claim about this compile.",
+          "enum": [
+            "no_body",
+            "no_arm_obligations",
+            "not_asked",
+            "unreadable",
+            "no_rows",
+            "bodies_not_elaborated"
+          ]
+        },
+        "denominatorSettled": {
+          "type": "boolean",
+          "description": "Whether the arms below are all the arms this behavior owes a row for. Which arms it owes is worked out from the model's own proofs about what can reach what: an arm nothing arrives at is instrumented — a probe is what would show such a proof wrong — and is not owed, because no row can light it. False where a row went through one of those anyway: nothing about the model is wrong there and the proof is, so the arms stand where they stand and what is in doubt is the set they are counted out of. Present exactly where `obligations` is, since it qualifies that array. Which proof it was is `weakening`, as `proof_contradicted`."
+        },
+        "obligations": {
+          "type": "array",
+          "description": "Every arm this behavior is owed a row for, one entry per arm the author wrote rather than per occurrence of it: a helper spliced under three call sites has its arms counted once, and an arm the model's own rules prove nothing reaches is not owed and is not here. The canonical form of this measure and the only place an arm's state is written: how many arms there are and how many a row goes through are folds of this array, and `disposition` is what each arm came to. Present exactly where the measurement has a value, which is where `status` is `complete` or `partial`. A behavior with no arms to measure has no array here rather than an empty one — read as one, a measure that does not apply would divide into a covered count of zero and answer a question nobody put.",
+          "items": {
+            "type": "object",
+            "required": [
+              "obligationId",
+              "label",
+              "kind",
+              "construct",
+              "at",
+              "disposition"
+            ],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "description": "An arm says where it stands once, and beside it whatever left it open. `undecided` is the reading that stopped, so it carries `weakening`; `not_counted` is the fork nothing tells apart, so it carries `notCountedBecause`; the two settled states are settled by the rows and carry neither. Nothing here re-encodes the disposition: a status and a hit beside it would be the same answer twice, free to disagree with the first.",
+                "if": {
+                  "required": [
+                    "disposition"
+                  ],
+                  "properties": {
+                    "disposition": {
+                      "const": "not_counted"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "notCountedBecause"
+                  ],
+                  "not": {
+                    "required": [
+                      "weakening"
+                    ]
+                  }
+                },
+                "else": {
+                  "not": {
+                    "required": [
+                      "notCountedBecause"
+                    ]
+                  }
+                }
+              },
+              {
+                "if": {
+                  "required": [
+                    "disposition"
+                  ],
+                  "properties": {
+                    "disposition": {
+                      "const": "undecided"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "weakening"
+                  ]
+                },
+                "else": {
+                  "not": {
+                    "required": [
+                      "weakening"
+                    ]
+                  }
+                }
+              }
+            ],
+            "properties": {
+              "obligationId": {
+                "$ref": "#/$defs/armObligationId"
+              },
+              "disposition": {
+                "description": "Where this arm stands in the account. `met` is a row goes through it; `unmet` is no row does and every row was read, which is the one state a build refuses over and the one a finding of kind `arm_unreached` is made of; `undecided` is no row was seen to and a reading that could have been holding one did not run to the end, which is counted and is never a finding; `not_counted` is an arm outside the two numbers, with `notCountedBecause` saying why. The first three make a partition of what the count holds, so a consumer that folds them has said what the difference between the numbers is.",
+                "enum": [
+                  "met",
+                  "unmet",
+                  "undecided",
+                  "not_counted"
+                ]
+              },
+              "notCountedBecause": {
+                "description": "Why this arm is outside the count, present exactly where `disposition` is `not_counted`. `occurrences_not_told_apart` is a fork whose declaration says the caller decides where which rule that was could not be worked out: one place can stand for as many arms as there are rules reaching it, so a row through it may or may not be a row through this one. Both arms of such a fork are out together, and `weakening` says `arms_unsettled`.",
+                "enum": [
+                  "occurrences_not_told_apart"
+                ]
+              },
+              "weakening": {
+                "$ref": "#/$defs/weakening",
+                "description": "What the reading of this behavior's rows went without, present exactly where `disposition` is `undecided`. It is why nobody can say whether a row goes through this arm — a row that could have gone through it did not come back — and not a second way of saying that nobody can: what the arm came to is `disposition`, and it is said once."
+              },
+              "label": {
+                "type": "string"
+              },
+              "kind": {
+                "description": "What this way through the construct is. `then` and `else` are the arms of an `if`; `continued` is the body past a `guard` whose condition held, which the author writes no word for; `kept` and `dropped` are the element a comprehension yields and the empty list it yields instead; `case` is an arm of a `match`; `constructed` and `departure` are the two ways out of an attempted construction. Read beside `construct`: the same outcome under two constructs is two things, and an `else` written under a `guard` is not the `else` of an `if`.",
+                "enum": [
+                  "then",
+                  "else",
+                  "case",
+                  "constructed",
+                  "departure",
+                  "continued",
+                  "kept",
+                  "dropped"
+                ]
+              },
+              "construct": {
+                "description": "What the author wrote this an outcome of. The meaning of an arm is the pair: an `else` written under an `if` and one written under a `guard` are the same outcome of two constructs, and a consumer told only the outcome cannot tell them apart.",
+                "enum": [
+                  "if",
+                  "guard",
+                  "comprehension",
+                  "match"
+                ]
+              },
+              "at": {
+                "$ref": "#/$defs/at"
+              }
+            }
+          }
+        }
+      }
+    },
+    "partition": {
+      "type": "object",
+      "description": "How much of what the model distinguishes about this behavior's inputs the rows reach. Absent where there were no positions to write: the positions here are the ones the model divides, worked out from the behavior's boundary and the rules written about it, and no declaration gives them — so a boundary that did not work out leaves nothing to divide and an empty `axes` would say the model divides none of them. Said as `behavior_boundary_not_derived` in the behavior's `weakening`. A `>->` composition is not this — it is measured at its stages and carries a section saying so.",
+      "required": [
+        "axes",
+        "boundaries",
+        "obligations",
+        "pairs",
+        "notDerivable"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "axesMeasure": {
+          "type": "object",
+          "description": "Whether the positions were measured at all, which the `axes` array cannot say: an empty one is what a behavior with no position to divide has and what a behavior whose positions could not be read has. Not in `required`: a document written before this field existed is still a document of this version.",
+          "required": [
+            "status"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "$ref": "#/$defs/status"
+            },
+            "weakening": {
+              "$ref": "#/$defs/weakening"
+            },
+            "reason": {
+              "description": "Why there is no measure, present exactly where `status` is `unavailable`. `the_reading_did_not_run_out` is a reading that produced no position and was short of something it answers for, so the model is not thereby known to divide none; `nothing_is_divided` is a reading that answered everything it answers for and found no position the model divides, which no row would change; `no_feasible_input` is the declarations leaving the behavior no value to be measured at all, so this measure has no subject rather than having found none — a class is a set of values a row can be written at, and there are none; `no_subject` is a behavior with no positions of its own, a `>->` composition, which is measured at its stages. `no_axis_derived` is what the first was called while it also stood for the second, and is retired rather than gone.",
+              "enum": [
+                "the_reading_did_not_run_out",
+                "nothing_is_divided",
+                "no_feasible_input",
+                "no_subject",
+                "no_axis_derived"
+              ]
+            }
+          }
+        },
+        "boundariesMeasure": {
+          "type": "object",
+          "description": "The same for the lines. An empty `boundaries` array is what a model with no bound has and what a model whose bounds the reading could not reach has.",
+          "required": [
+            "status"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "$ref": "#/$defs/status"
+            },
+            "weakening": {
+              "$ref": "#/$defs/weakening"
+            },
+            "reason": {
+              "description": "Why there is no measure, present exactly where `status` is `unavailable`. `the_reading_did_not_run_out` is a reading that produced no line and was short of something it answers for, so the model is not thereby known to draw none; `no_rule_draws_a_line` is a reading that answered everything it answers for and found no rule drawing a line, which no row would change since a row cannot make a line; `no_feasible_input` is the declarations leaving the behavior no value to be measured at all, so this measure has no subject rather than having found no rule — a line is a place rows part, and there are no rows to part; `no_subject` is a behavior with no positions of its own. `no_lines_derived` is what the first was called while it also stood for the second, and is retired rather than gone.",
+              "enum": [
+                "the_reading_did_not_run_out",
+                "no_rule_draws_a_line",
+                "no_feasible_input",
+                "no_subject",
+                "no_lines_derived"
+              ]
+            }
+          }
+        },
+        "axes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "axis",
+              "path",
+              "classes",
+              "status"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "axis": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string",
+                "description": "The input position, as a parameter and the fields read off it. A newtype's `value` is never a step."
+              },
+              "read": {
+                "type": "object",
+                "description": "How far this measure got with the rules about this position. It qualifies `classes` and nothing else says it: a rule nothing took in may yet refuse a value one of the classes holds, so `classes` is the denominator the model states and not one every member of which is known to stand. The questions themselves are in `unanswered` beside the measures — the model raises them and every measure here is one reader of them, so a position no axis came back for still has whatever was written about it. This says only whether the questions *this* measure answers were answered: which values may stand somewhere is what classes are made of, and where a line falls is the border measure's, counted there.",
+                "required": [
+                  "extent"
+                ],
+                "additionalProperties": false,
+                "oneOf": [
+                  {
+                    "properties": {
+                      "extent": {
+                        "const": "complete"
+                      }
+                    },
+                    "not": {
+                      "required": [
+                        "rulesNotReached"
+                      ]
+                    }
+                  },
+                  {
+                    "properties": {
+                      "extent": {
+                        "const": "partial"
+                      }
+                    }
+                  }
+                ],
+                "properties": {
+                  "extent": {
+                    "enum": [
+                      "complete",
+                      "partial"
+                    ],
+                    "description": "Whether anything this measure reads about this position is left standing: a rule out of sight, or a question about which values may stand here that nothing answered. `partial` where either holds. A question about where the values stop does not make this `partial` — it is not this measure's to answer, and counting it here would put back a number `partition` and `border` were separated into."
+                  },
+                  "rulesNotReached": {
+                    "const": true,
+                    "description": "The walk never reached some of the rules written about this position, so what is written there is not known. Written only where that is so. Its own axis beside the questions and not exclusive with them: a rule can have arrived and gone unaccounted for while a subtree beside it was never entered, and both are said."
+                  }
+                }
+              },
+              "classes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "The classes a row can be written at: what the model divides this position into, less what its own rules refuse."
+              },
+              "covered": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "excluded": {
+                "type": "array",
+                "description": "Classes the position's own rules refuse, that the body also answers `unreachable` for. Out of `classes` because no value of one can be constructed, and named here because the type still has them.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "class",
+                    "reasons"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "class": {
+                      "type": "string"
+                    },
+                    "reasons": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "The reasons written at the `unreachable`s this class leads to — one, unless several paths abort for different reasons."
+                    }
+                  }
+                }
+              },
+              "unprovenClaims": {
+                "type": "array",
+                "description": "Classes the body answers `unreachable` for that nothing settled. Still in `classes` and still owed a row: what removes an obligation is a proof, and a row written at one may reach the `unreachable` and be refused.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "class",
+                    "reasons",
+                    "why"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "class": {
+                      "type": "string"
+                    },
+                    "reasons": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "The reasons written at the `unreachable`s this class leads to."
+                    },
+                    "why": {
+                      "description": "What stopped the answer.",
+                      "enum": [
+                        "a_rule_went_unread",
+                        "the_rules_leave_the_position_nothing",
+                        "nothing_was_read_about_the_case",
+                        "the_fork_is_not_known_to_be_reached",
+                        "the_alternatives_were_not_kept_apart"
+                      ]
+                    }
+                  }
+                }
+              },
+              "unclassifiedRows": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "status": {
+                "$ref": "#/$defs/status"
+              },
+              "weakening": {
+                "$ref": "#/$defs/weakening"
+              },
+              "reason": {
+                "description": "Why there is no number, present exactly where `status` is `unavailable`. A behavior no row names was not measured here, so the classes nothing sits in are not classes nothing reaches. `not_asked` is a build that asked for no measurement at all, which reads no row anywhere.",
+                "enum": [
+                  "no_rows",
+                  "not_asked"
+                ]
+              }
+            }
+          }
+        },
+        "boundaries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "axis",
+              "origin",
+              "value",
+              "items"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "axis": {
+                "type": "string"
+              },
+              "origin": {
+                "type": "string",
+                "x-souther-contains": "#/$defs/ruleHandle",
+                "description": "The rule that drew this line, as a `ruleHandle`, and after it the declarations that took an end of the line in where any did. The handle alone where none did, which is what the `obligations` entry for a point of this line carries. Not itself a handle, because those words are about the line rather than about the rule; what a consumer keys on is the `ruleId` under that entry."
+              },
+              "kind": {
+                "enum": [
+                  "at_value",
+                  "between_positions",
+                  "over_a_form"
+                ],
+                "description": "What this line is a line at. `at_value` is a place of the position `axis` names, which is what an invariant's bound and a guard against a constant draw. `between_positions` is a guard comparing one position against another: the line is where the two hold the same place, `axis` names the left of it and `value` the other position rather than a value. `over_a_form` is a rule over an arithmetic form across several positions: the line is where the form comes to `value`, `axis` names the form as an author would write it and `value` is a number the form takes rather than a value any position holds. Reading `value` without reading this reads a position's name as a value. Absent in a document written before this key existed, where every line was at a value."
+              },
+              "value": {
+                "type": "string",
+                "description": "Where the line is, as an author would write it: a value where `kind` is `at_value` or absent; the other position, and how far from it where the rule holds them apart, where it is `between_positions`; and a number the form comes to where it is `over_a_form`. Not what any one of the border's points asks for — three of the four ask for something else, and each says so itself."
+              },
+              "items": {
+                "type": "array",
+                "description": "The coverage items this border owes, keyed on the border the way the technique keys them (ISTQB CTAL-TA v4.0 §3.1.1). One per point the line has and each exactly once, told apart by `location`: a rule that orders the values has four, and a rule that names a value has five — the value it names, the nearest value on each side of it, and the run either way. How many of them a border owes a row at is the rule's answer and not a constant, so a point it owes none at carries `notOwed` rather than being left out; a document short of one would read as this compiler being short of an item the technique asks for.\n\nEvery border has a value against the line inside it and one outside it, so an `on` and an `off` are always here. The other two roles are not: a rule that names a value puts both its runs in one class, so `x == 10` has two `out` items and no `in`, and `x /= 10` the other way about.",
+                "minItems": 4,
+                "uniqueItems": true,
+                "allOf": [
+                  {
+                    "contains": {
+                      "required": [
+                        "point"
+                      ],
+                      "properties": {
+                        "point": {
+                          "const": "on"
+                        }
+                      }
+                    },
+                    "minContains": 1
+                  },
+                  {
+                    "contains": {
+                      "required": [
+                        "point"
+                      ],
+                      "properties": {
+                        "point": {
+                          "const": "off"
+                        }
+                      }
+                    },
+                    "minContains": 1
+                  }
+                ],
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "point",
+                    "location"
+                  ],
+                  "additionalProperties": false,
+                  "oneOf": [
+                    {
+                      "description": "A point no row is owed at carries which point it is and why, and nothing else. Closed rather than listing what it may not have: the list was the keys of the owed side written a second time, and a field added to that side was a field somebody had to remember to forbid here. Two went unforbidden that way — `weakening`, which no measurement of a point owing no row can produce, and `writableBecause`, which is evidence about a row nobody is owed.",
+                      "required": [
+                        "notOwed"
+                      ],
+                      "properties": {
+                        "point": {},
+                        "location": {},
+                        "notOwed": {}
+                      },
+                      "additionalProperties": false
+                    },
+                    {
+                      "required": [
+                        "relation",
+                        "against",
+                        "knownWritable",
+                        "status"
+                      ],
+                      "not": {
+                        "required": [
+                          "notOwed"
+                        ]
+                      }
+                    }
+                  ],
+                  "if": {
+                    "required": [
+                      "status"
+                    ],
+                    "properties": {
+                      "status": {
+                        "enum": [
+                          "complete",
+                          "partial"
+                        ]
+                      }
+                    }
+                  },
+                  "then": {
+                    "required": [
+                      "hit"
+                    ]
+                  },
+                  "else": {
+                    "not": {
+                      "required": [
+                        "hit"
+                      ]
+                    }
+                  },
+                  "allOf": [
+                    {
+                      "description": "The verdict and the grounds are one answer written twice, so this says they cannot differ. Where the array is there and `knownWritable` is `true`, some ground is in it.",
+                      "if": {
+                        "required": [
+                          "knownWritable",
+                          "writableBecause"
+                        ],
+                        "properties": {
+                          "knownWritable": {
+                            "const": true
+                          }
+                        }
+                      },
+                      "then": {
+                        "properties": {
+                          "writableBecause": {
+                            "minItems": 1
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "description": "And where it is there and `knownWritable` is `false`, none is. Both are conditional on the array being present, because an absent one is a producer that predates it rather than a point with no grounds.",
+                      "if": {
+                        "required": [
+                          "knownWritable",
+                          "writableBecause"
+                        ],
+                        "properties": {
+                          "knownWritable": {
+                            "const": false
+                          }
+                        }
+                      },
+                      "then": {
+                        "properties": {
+                          "writableBecause": {
+                            "maxItems": 0
+                          }
+                        }
+                      }
+                    }
+                  ],
+                  "properties": {
+                    "point": {
+                      "enum": [
+                        "on",
+                        "off",
+                        "in",
+                        "out"
+                      ],
+                      "description": "Which of the four coverage items of this border this entry is, in the words domain testing gives them. `on` is inside the equivalence partition the border bounds and closest to it, `off` is outside it and closest to it, `in` is inside it and away from it, and `out` is outside it and away from it. Which one the line's own value serves as turns on whether the border is closed or open, so the same place is the `on` point of `x <= 100` and the `off` point of `x < 100`. Not what tells one item of a border from another: two of them can carry one of these words, and `location` is what they differ by."
+                    },
+                    "location": {
+                      "$ref": "#/$defs/location"
+                    },
+                    "notOwed": {
+                      "enum": [
+                        "the_rules_refuse_it",
+                        "the_carrier_names_no_neighbour"
+                      ],
+                      "description": "Why no row is owed here, present exactly when one is not. `the_rules_refuse_it` is the model's own answer — nothing outside an invariant's bound can be constructed, so the points out there are excluded and counted out, and a side the rules leave one value wide has no `in` point for the same reason. `the_carrier_names_no_neighbour` is this language having no name for the value one step from the line, which a `Decimal`, a `DateTime` and a `String` do not — at a place, and at the difference two terms of a line between them stand at. The two ask different things of a reader — one is the model having settled the point and the other is a limit of this language — which is why the key is a word and not a flag."
+                    },
+                    "relation": {
+                      "type": "string",
+                      "description": "How a row here has to stand to what `against` names: `=` for a place, `in` for a run of the quantity's values, `/=` for every value but one. Present exactly where a row is owed. Two of the four items ask for a place and two ask for a run of values, so `against` is read together with this: under `=` and `/=` it is a value, and under `in` it is the run written whole. A document carrying a value for all four would name a witness of a run as though it were the run. `<` and `>` were written here by compilers that read a point away from the line as everything past it rather than as the partition the border bounds; a run is written under `in` now."
+                    },
+                    "against": {
+                      "type": "string",
+                      "description": "What that relation is against, as an author would write it. Under `=` and `/=` it is one value: a value of the position where the border's `kind` is `at_value`; the other position, stepped where the point is not where the two meet, where it is `between_positions`; and a number the form comes to where it is `over_a_form`. Under `in` it is a run of the quantity's values written whole — `10 < n <= 20` — because a run has two ends and one of them alone would name a value inside it as though it were the run."
+                    },
+                    "hit": {
+                      "type": "boolean",
+                      "description": "Whether a row this coverage measurement read stands at the point. Present exactly where the measurement has a value, which is where `status` is `complete` or `partial`. `false` is what the measurement found — no row that could be read is at the point — and never stands for a measurement that was not made or could not be finished: those have no answer here and the key is absent. Under `partial` the `false` is over what was observed, and `weakening` beside it says why that is not a complete absence."
+                    },
+                    "knownWritable": {
+                      "type": "boolean",
+                      "description": "Whether anything has shown that a row can be written at this point: `true` where at least one ground established it, `false` where none did. `false` never says the point cannot be written at — what says that is the border refusing to owe a row at the point at all, which is `notOwed`. Which grounds hold is `writableBecause`, and the causes of there being none are not listed here: each belongs to the evidence its ground comes from, and a list of them written into this sentence is one that goes stale whenever any of them moves. This is its own body of evidence and not this measurement's answer, so it is written whether or not the coverage measurement has a value: a point nobody measured whose rules prove it inhabited carries `true` beside a `status` of `unavailable`, and the two are consistent."
+                    },
+                    "writableBecause": {
+                      "type": "array",
+                      "uniqueItems": true,
+                      "items": {
+                        "enum": [
+                          "the_rules_prove_it",
+                          "a_row_is_at_it",
+                          "a_value_was_built"
+                        ]
+                      },
+                      "description": "Which grounds established that a row can be written at this point, empty where none did. A set: more than one holds at once wherever more than one was found, and no word here stands above another. `the_rules_prove_it` is the one ground about the model rather than about this run — every rule reaching the value this position sits in was read in full and leaves the point inside what they admit — so it stands whatever any search afterwards makes of the point, where the other two are what this run came to. `a_row_is_at_it` is a row this compilation read standing at the point, and holds exactly where `hit` is `true`. `a_value_was_built` is a value at the point built through the module's own decoders, and it is in no other field of this document: what the search itself came to is what the human-readable report and `--generate` carry. The order is fixed to the order the words are listed here so that two runs finding the same grounds write the same document; it carries no meaning, and a reader comparing these compares them as sets. Not in `required`: a document written before this field existed is still a document of this version, and an absent array is such a document — not a point with no grounds, which is written as an empty array. Where the field is present it is present at every point a row is owed at, and `knownWritable` is `true` exactly where it is non-empty."
+                    },
+                    "status": {
+                      "$ref": "#/$defs/status"
+                    },
+                    "weakening": {
+                      "$ref": "#/$defs/weakening"
+                    },
+                    "reason": {
+                      "description": "Why there is no answer, present exactly where `status` is `unavailable`. `not_asked` is a build that asked for no measurement, which every line of every kind says. `arms_not_asked` and `arms_unreadable` belong to a line a fork of a body drew, which is met by getting the comparison to produce a value rather than by writing the value — and that holds of all four of its points. An invariant's line is met by writing the value and is never waiting on the instrumentation. `no_arm_witnesses_it` was a guard's line whose comparison sat inside a condition whose arms did not separate the rows that reached it from the rows that did not — the second operand of an `&&` on the side where it is false. No compiler writes it any more: the comparison carries a site of its own and is observed where it runs. It is here because reports of this version were written carrying it, and a version says what its documents may carry rather than what is emitted today.",
+                      "enum": [
+                        "not_asked",
+                        "arms_not_asked",
+                        "arms_unreadable",
+                        "no_rows",
+                        "no_arm_witnesses_it"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "obligations": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/obligations"
+            },
+            {
+              "items": {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "axis"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "against"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "description": "What this behavior is owed a row for at the lines its own rules drew, once per point however many of its positions read the line — a guard on a name every case of a sum spreads is one entry here and one `boundaries` entry per case. The account, beside the geometry: `boundaries` is the lines at coordinates and this is the work, and the two are not one multiplied. No `axis`: a body's rule has no authored word for what its line is on, and each reading names the position it met it at. A line one of the module's declarations owns is in no behavior's account and is under `declarations` instead."
+        },
+        "pairs": {
+          "type": "object",
+          "description": "Two-class combinations, kept as the relations they are between. Counts rather than a ratio: a combination no row reaches has not been shown unreachable, only unknown, so the denominator is not known.",
+          "required": [
+            "total",
+            "status",
+            "between"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "total": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "covered": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Combinations a row sits in. Proven reachable, each by the row that sits in it."
+            },
+            "unknown": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Combinations no row sits in. Not shown unreachable and not owed: nothing tried to build one, and no bar asks for a row at a combination."
+            },
+            "weakening": {
+              "$ref": "#/$defs/weakening"
+            },
+            "status": {
+              "$ref": "#/$defs/status",
+              "description": "`partial` where some rows were not read at all: a combination none of the rows seen reaches has not been left untried by anybody."
+            },
+            "reason": {
+              "description": "Why there are no numbers, present exactly where `status` is `unavailable`. How large the space is says nothing about a behavior no row names, nor about a build that asked for no measurement (`not_asked`).",
+              "enum": [
+                "no_rows",
+                "not_asked"
+              ]
+            },
+            "between": {
+              "type": "array",
+              "description": "The relations the combinations are between, one entry per pair of positions. A sum over them says how many there are and nothing about which two positions each is between, so a reader told some are unknown could not tell one relation from several.",
+              "items": {
+                "type": "object",
+                "required": [
+                  "one",
+                  "other",
+                  "total"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "one": {
+                    "type": "string",
+                    "description": "One of the two positions, as `axes` names it."
+                  },
+                  "other": {
+                    "type": "string",
+                    "description": "The other."
+                  },
+                  "total": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "How many combinations the model has between them."
+                  },
+                  "covered": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "How many of them the rows reach, where a measurement was made."
+                  },
+                  "unknown": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "And how many are left."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "unanswered": {
+          "type": "array",
+          "description": "The questions this behavior's rules raise about its input positions that nothing answered, each naming the rule. Beside the measures rather than inside one: the model raises them and every measure in this object is one reader of them, so a position no axis could be derived at still has whatever was written about it. Written only where there is one. Under the earlier version these sat inside each axis, which meant a rule whose line this compiler could not read left a question standing and was reported as a model with nothing to answer for, because no axis survived to carry it. Which section of a human report a reader meets one in follows from `question`.",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "at",
+              "rule",
+              "ruleId",
+              "question",
+              "subject"
+            ],
+            "anyOf": [
+              {
+                "required": [
+                  "stopped"
+                ]
+              },
+              {
+                "required": [
+                  "answerStopped"
+                ]
+              }
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "at": {
+                "type": "string",
+                "description": "The position the rule is written about, as a report names it."
+              },
+              "stopped": {
+                "type": "array",
+                "description": "What the parts of the rule that raised this question left, in the order they were written: one or more distinct reasons. Not what is wrong with the model — every word here is a limit of this compiler or a statement of what a rule places, and lifting one is what would let the question be answered. A question stands until every part that asked it has been read, so a part standing behind another is a second thing to lift and is a second entry here; two parts one limit stopped are one thing to lift and are one entry. Where every one of them was written in one source text, the order is part of what this says: it is the order the places they stand on were written in, and a consumer sorting it would answer by a precedence nothing in the model decides. Where they were written across texts there is no such order — nothing an author did says which file comes before another — and the entries are in an order that is steady from run to run and means nothing else. Absent where nothing about the rule itself was short and `answerStopped` says what was. The same words the human report writes for this question, from the same projection — a document that carried fewer of them than the report says would be the report and the document disagreeing about one question. Under schema 12 this also held `answerStopped`'s word, at a place in the order that came from which of this compiler's stores a reason was recorded in rather than from anything the model says.",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "#/$defs/ruleStoppedReadingReason"
+                }
+              },
+              "answerStopped": {
+                "description": "What the answer at this question's position was short of, where it was short of anything. Its own field and not an entry in `stopped`: this is about what the rules of the position come to between them and about none of them, so there is no part of the rule for it to stand before or after, and a place among them would be a precedence read off which store a reason came out of. A reader has no rule to go and look at here — the same rules met in another order would have been built — and what would lift it is an allowance. Both fields where a rule is short in both ways: rewriting the form `stopped` names leaves this one where it was. One word rather than an array, because there is one such limit; a second would be two with no order between them either, and what a document should then write is a decision to take when there is one to take.",
+                "$ref": "#/$defs/answerRealizationStoppedReason"
+              },
+              "rule": {
+                "$ref": "#/$defs/ruleHandle",
+                "description": "How a reader finds the rule this question is about. The same handle the `boundaries` entry for a line the same rule drew carries, and the same one a `notRead` entry carries for a rule it could not read. What the forms are is `ruleHandle`; what tells one rule from another is `ruleId` beside this, because two arms of one `ensures` clause may name the same case and a handle is what an author acts on rather than what a consumer groups by."
+              },
+              "ruleId": {
+                "$ref": "#/$defs/ruleId"
+              },
+              "question": {
+                "$ref": "#/$defs/coverageQuestion"
+              },
+              "subject": {
+                "type": "object",
+                "description": "What the question is about, or where a reader is sent to look where nothing worked that out. The two answered questions do not share a subject: which values may stand somewhere is about the position, and a border on one position is about a number of it — the position's own values, or what an operation answers of them. A `filedAt` subject is neither: the rule's reading did not finish, so what the rule is about is the part that was not read, and the path is where the walk was looking when it stopped. A border between two things that both move with the row is on neither of them, and is not here: a comparison this compiler reads owes the rows either side of its line by having been read, so no such question is ever outstanding, and what it owes is carried as the partition's own geometry.",
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false,
+                "oneOf": [
+                  {
+                    "properties": {
+                      "kind": {
+                        "const": "position"
+                      }
+                    },
+                    "not": {
+                      "required": [
+                        "at"
+                      ]
+                    },
+                    "required": [
+                      "path"
+                    ]
+                  },
+                  {
+                    "properties": {
+                      "kind": {
+                        "const": "filedAt"
+                      }
+                    },
+                    "not": {
+                      "required": [
+                        "at"
+                      ]
+                    },
+                    "required": [
+                      "path"
+                    ]
+                  },
+                  {
+                    "properties": {
+                      "kind": {
+                        "const": "comparison"
+                      }
+                    },
+                    "not": {
+                      "anyOf": [
+                        {
+                          "required": [
+                            "path"
+                          ]
+                        },
+                        {
+                          "required": [
+                            "measure"
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "position",
+                      "filedAt",
+                      "comparison"
+                    ],
+                    "description": "`position` is a position of an input or a number taken of one. `filedAt` is where a reader is sent to look at a rule this compiler did not read far enough to classify — a place and not a subject, since what such a rule states there is what nothing worked out. It is one word for both of those questions, because where to look is one thing however much of the rule was classified; which of them it is, is what the entry's `question` says. `comparison` is retired: it was to have been the place a comparison of two moving things draws, and no compiler ever wrote it — such a line owes its rows by having been read, so it never stands as a question. It is kept because this version promised it, and a reader holding the schema still meets the word."
+                  },
+                  "path": {
+                    "type": "string",
+                    "description": "The position, spelled as the entry's `at` is. Written for a `position` subject, and for a `filedAt` one, where it is the place the reading stopped rather than what the rule is about."
+                  },
+                  "measure": {
+                    "type": "string",
+                    "description": "The number the line falls on, where it falls on a count rather than on the position's own values — `String.length(code)` beside a `path` of `code`. Written where the question is about a count, and for a `filedAt` subject where the walk had named a number before it stopped, which is what tells two of those apart at one path."
+                  },
+                  "at": {
+                    "$ref": "#/$defs/at",
+                    "description": "Where the comparison is written, for a `comparison` subject this document can point at. Retired with the word it belongs to."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "claimsOffAxis": {
+          "type": "array",
+          "description": "Claims about positions this report has no axis for — a position deeper than the walk goes, or one whose rules the reading never arrived at. Named by position, and carrying `why` exactly where nothing settled the claim.",
+          "items": {
+            "type": "object",
+            "required": [
+              "at",
+              "class",
+              "reasons"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "at": {
+                "type": "string"
+              },
+              "class": {
+                "type": "string"
+              },
+              "reasons": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "why": {
+                "description": "What stopped the answer, present exactly where nothing settled the claim.",
+                "enum": [
+                  "a_rule_went_unread",
+                  "the_rules_leave_the_position_nothing",
+                  "nothing_was_read_about_the_case",
+                  "the_fork_is_not_known_to_be_reached",
+                  "the_alternatives_were_not_kept_apart"
+                ]
+              }
+            }
+          }
+        },
+        "notDerivable": {
+          "type": "array",
+          "description": "Positions the reading ran to the end at and divided no way. Not a finding: no boundary obligation was established here, so nothing is reported against the rows. Not a statement that nothing is owed either — a bound one type away from the position a behavior takes lands in this list, and the reading cannot tell that from a position nothing bounds. A position something is written about that the reading could not take apart is in `notRead` instead, and used to be in this one. Read `boundariesMeasure` for whether the measure was made.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notRead": {
+          "type": "array",
+          "description": "What this reading could not read, each entry with the position it is at and what stopped it. What separates them from `notDerivable` is that the model does state something here — which limit stopped each one is what says whose work it is to lift. Not a statement that the position was not measured: a position with an axis and classes can carry a rule nothing read, and whether the reading of a position ran to the end is what that axis's `read` says. Two shapes, told apart by whether `rule` is there: an entry with one is a rule this read and could not turn into a line, and an entry without one is a position whose rules the reading never arrived at, where there is no rule to name because none was observed. Not in `required`: a document written before this field existed is still a document of this version.",
+          "items": {
+            "type": "object",
+            "required": [
+              "position",
+              "reason"
+            ],
+            "additionalProperties": false,
+            "dependentRequired": {
+              "rule": [
+                "ruleId"
+              ],
+              "ruleId": [
+                "rule"
+              ]
+            },
+            "properties": {
+              "position": {
+                "type": "string"
+              },
+              "reason": {
+                "$ref": "#/$defs/notReadReason"
+              },
+              "rule": {
+                "$ref": "#/$defs/ruleHandle",
+                "description": "How a reader finds the rule this could not turn into a line. The same handle an `unanswered` entry and a `boundaries` entry carry for the same rule, and its forms are `ruleHandle`. Present exactly where the entry is about a rule; a position the reading never reached has none, and a placeholder here would say a rule had been looked at that nothing saw. Not what tells one rule from another: `ruleId` beside this is."
+              },
+              "ruleId": {
+                "$ref": "#/$defs/ruleId",
+                "description": "Which rule the entry is about, present exactly with `rule`. A key within this document: a consumer groups by it and shows `rule`. Two rules stopped by one limit at one position are two entries and differ here — keyed on the position and the reason alone, they were one."
+              }
+            }
+          }
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "description": "What the rows establish about the cases of the behavior's inputs and its output. Absent where the behavior has no signature to read, which includes a declaration resting on a name that resolved to nothing. There is no section in that case whether or not the positions themselves are known: a declared behavior's are its parameters and are known from the declaration, but without a boundary nothing was read of the cases at any of them, and a `>->` composition takes what its first stage takes and so has no known layout either. What that left unmeasured is the behavior's `weakening`, as `behavior_boundary_not_derived`; which name went unresolved is a compile error reported where it was written.",
+      "required": [
+        "status",
+        "output",
+        "inputs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "weakening": {
+          "$ref": "#/$defs/weakening"
+        },
+        "reason": {
+          "description": "Why there is no number, present exactly where `status` is `unavailable`. `no_rows` is a behavior no row names; `not_a_sum` is a signature with no sum anywhere in it, which no row could give a case to cover; `not_asked` is a build that asked for no measurement, which every measure that reads the rows says and which the sets under it say too.",
+          "enum": [
+            "no_rows",
+            "not_a_sum",
+            "not_asked"
+          ]
+        },
+        "output": {
+          "type": "object",
+          "required": [
+            "declared",
+            "status"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "declared": {
+              "$ref": "#/$defs/caseNames"
+            },
+            "specified": {
+              "$ref": "#/$defs/caseNames",
+              "description": "Cases a row expects. Somebody wrote down that the model owes this answer."
+            },
+            "observed": {
+              "$ref": "#/$defs/caseNames",
+              "description": "Cases the behavior was seen to answer with, including from a row that expected something else."
+            },
+            "verified": {
+              "$ref": "#/$defs/caseNames",
+              "description": "Cases a row expected and the behavior produced."
+            },
+            "unclassifiedRows": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Rows whose case could not be read. Above zero, a missing case is undecided rather than missing."
+            },
+            "status": {
+              "$ref": "#/$defs/status",
+              "description": "Whether the rows were counted here at all. `unavailable` where the position is not a sum, and where no row names the behavior — in both, the sets below are absent rather than empty, since a set nobody filled and a set nothing reached read alike."
+            },
+            "reason": {
+              "enum": [
+                "not_a_sum",
+                "no_rows",
+                "not_asked"
+              ]
+            },
+            "weakening": {
+              "$ref": "#/$defs/weakening"
+            }
+          }
+        },
+        "inputs": {
+          "type": "array",
+          "description": "One entry per parameter, in order. A parameter that is not a sum has nothing to cover and reports empty sets.",
+          "items": {
+            "type": "object",
+            "required": [
+              "declared",
+              "status"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "declared": {
+                "$ref": "#/$defs/caseNames"
+              },
+              "specified": {
+                "$ref": "#/$defs/caseNames"
+              },
+              "executed": {
+                "$ref": "#/$defs/caseNames",
+                "description": "Cases the behavior was applied to. Not `observed`: nothing is claimed about what came back."
+              },
+              "verified": {
+                "$ref": "#/$defs/caseNames"
+              },
+              "excluded": {
+                "$ref": "#/$defs/caseNames",
+                "description": "Cases the position's own rules refuse. Declared and not coverable: no value of one can be constructed, so they are counted out of what the rows are held to."
+              },
+              "unclassifiedRows": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "status": {
+                "$ref": "#/$defs/status",
+                "description": "Whether the rows were counted here at all. `unavailable` where the position is not a sum, and where no row names the behavior — in both, the sets below are absent rather than empty, since a set nobody filled and a set nothing reached read alike."
+              },
+              "reason": {
+                "enum": [
+                  "not_a_sum",
+                  "no_rows",
+                  "not_asked"
+                ]
+              },
+              "weakening": {
+                "$ref": "#/$defs/weakening"
+              }
+            }
+          }
+        }
+      }
+    },
+    "caseNames": {
+      "type": "array",
+      "description": "Case names, sorted, so that two runs of the same model compare.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "incompleteness": {
+      "type": "object",
+      "required": [
+        "code",
+        "scope",
+        "subject"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "scope": {
+          "enum": [
+            "behavior",
+            "source",
+            "module",
+            "position",
+            "row"
+          ],
+          "description": "What `subject` names, and so what the reason counts against. A `behavior`, a `position` and a `row` count against the behavior they are in, and each is in one. A `row` says which row of it, as the behavior, the source it is written in and the row's own name: a row written with no name is numbered within its source, so the source is part of saying which row, and two rows of one behavior that did not come back are two things to go and look at. A `module` counts against every behavior in it, because that is what a module holds. A `source` counts against every behavior too, and not for that reason: one is written only where the source was not evaluated, so which behaviors had rows in it is exactly what could not be read."
+        },
+        "code": {
+          "description": "`observation_absent` is a source none of whose rows were observed, whatever stopped them — the diagnostics say what. `linkage_failed` is the generated classes not linking: the case it exists for is the runtime being off the host's classpath, and the JVM raises the same error for a class it will not verify or accept the format of, which is why the word is the error and not one of its causes. One place writes it, an example whose evaluation raised one and observed nothing, so the rows behind it did not run and that is part of what it says. It had three, and the other two were a value being built after the rows had been read — those are the generator's to report and are not written here. `instrumentation_absent` is the classes an arm-measuring evaluation needs not having been made, named for the absence rather than for a backend that failed or inputs that were not there, which nothing here can tell apart. `answerer_not_established` is a row that was not handed to what answers its behavior, because nothing could establish that what answers it was built against this model — either the two builds say different things about something a value crossing between them depends on, or what the answer carries could not be read at all. The rows behind it were read: they were built and held to their invariants, and what is missing is only what the running would have decided. `row_undecided` is a row that did not come back, because the evaluation had no answer for it. `row_evaluation_limit_reached` is the same loss from the other cause: a figure this compiler evaluates rows under — the counted steps, the recursion depth, the clock — stopped the row before it decided anything. Two words because what a reader may do about them differs: a run that allows more keeps the second and meets the first again. One word covers the three figures, since what the measure lost is the same for all of them and the row's own diagnostic says which; a stack the host ran out of is not among them, because nothing here compared anything against it, and it is written as `row_undecided`. `probe_mapping_lost` is what it was called, and no compiler writes it any more: it is here because reports of this version were written carrying it, and a version says what its documents may carry rather than what is emitted today.",
+          "enum": [
+            "value_unreadable",
+            "value_truncated",
+            "row_undecided",
+            "row_evaluation_limit_reached",
+            "answerer_not_established",
+            "observation_absent",
+            "linkage_failed",
+            "instrumentation_absent",
+            "probe_mapping_lost"
+          ]
+        },
+        "subject": {
+          "type": "string",
+          "description": "What the reason is about, as an identity. A `behavior`, a `module` and a `position` are named as the author wrote them. A `source` is named as the compile was handed it, which is the caller's own identity for the file and not a name to show a reader: a build passing a list of files gets that file's position in the list, and an editor keyed on document URIs gets the URI. What to call a source in front of a person is decided where a report is rendered, since it depends on which other files are being read beside it — and `sources` says what this run decided, so the identity can be looked up without holding what was handed over."
+        },
+        "at": {
+          "$ref": "#/$defs/at"
+        }
+      }
+    },
+    "at": {
+      "type": "object",
+      "description": "Where in which source. A position alone cannot say which file, since a module's rows are written across its own source and any attached ones. It says where this compile met the code, which `writtenAt` says whether to read as where the code is written.",
+      "required": [
+        "sourceId",
+        "line",
+        "column"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sourceId": {
+          "type": "string",
+          "description": "The source, as an identity, read the way a `source` subject is. `sources` says what it is called."
+        },
+        "line": {
+          "type": "integer"
+        },
+        "column": {
+          "type": "integer"
+        },
+        "writtenAt": {
+          "$ref": "#/$defs/writtenAt"
+        }
+      }
+    },
+    "writtenAt": {
+      "type": "object",
+      "description": "Whether the position beside this is where the code it names is written. A body is copied into everything that calls it, and a copy from a module this compile has no source for is given the call site, since the positions it was written at name a file nobody holds. Absent in a document written before this key existed, which is not the same as `here`: such a document does not answer the question.",
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "here",
+            "outOfSight"
+          ]
+        },
+        "declaration": {
+          "type": "string",
+          "description": "The name a reader of the file the position is in reaches that code by — `List.filter`. Written where `kind` is `outOfSight` and never otherwise. How it is reached and not which module declares it: a name reached from out of sight is qualified, so it is already enough to look the code up by."
+        }
+      },
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "outOfSight"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "declaration"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "declaration"
+          ]
+        }
+      }
+    },
+    "writtenBy": {
+      "type": "object",
+      "description": "Which of the module's writings wrote the rule out. A caller handing a rule in is whatever wrote the expression there, and that is not only a definition's body: a clause of a `data`, a behavior's statement of itself and a value written in an `example` row each write one as readily. Present in a document whose `block` is counted within one of them; a document written before the count was kept that way carries none, and its `block` counts the blocks of the whole source instead.",
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "declaration"
+            }
+          },
+          "required": [
+            "declaredOn"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "behavior"
+                ]
+              },
+              {
+                "required": [
+                  "definition"
+                ]
+              },
+              {
+                "required": [
+                  "sourceId"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "stated"
+            }
+          },
+          "required": [
+            "behavior"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "declaredOn"
+                ]
+              },
+              {
+                "required": [
+                  "definition"
+                ]
+              },
+              {
+                "required": [
+                  "sourceId"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "body"
+            }
+          },
+          "required": [
+            "definition"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "declaredOn"
+                ]
+              },
+              {
+                "required": [
+                  "behavior"
+                ]
+              },
+              {
+                "required": [
+                  "sourceId"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "example_rows"
+            }
+          },
+          "required": [
+            "behavior",
+            "sourceId"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "declaredOn"
+                ]
+              },
+              {
+                "required": [
+                  "definition"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "stand_in"
+            }
+          },
+          "required": [
+            "behavior",
+            "sourceId"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "declaredOn"
+                ]
+              },
+              {
+                "required": [
+                  "definition"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "kind": {
+          "description": "What wrote it. `example_rows` and `stand_in` are the two a module may write more than one of for one behavior, and they say which source as well: an attached file's rows are counted apart from the model file's, and the two written for one behavior in one source are two writings.",
+          "enum": [
+            "declaration",
+            "stated",
+            "body",
+            "example_rows",
+            "stand_in"
+          ]
+        },
+        "declaredOn": {
+          "type": "string",
+          "description": "The declaration whose clauses wrote it."
+        },
+        "behavior": {
+          "type": "string",
+          "description": "The behavior whose statement of itself wrote it, or the one whose rows or stand-in did."
+        },
+        "definition": {
+          "type": "string",
+          "description": "The definition whose body wrote it."
+        },
+        "sourceId": {
+          "type": "string",
+          "description": "The source the rows or the stand-in are written in, read the way a `source` subject is. `sources` says what it is called."
+        }
+      }
+    },
+    "subject": {
+      "description": "What one entry is about: the thing a reader is sent back to, and never what happened to it. What happened is the entry's own word and the reason beside it, so one place met in two ways is two entries about one place. Every kind carries what names it and the others carry something else; three of them name a position — as a reason spells it for a person, as the reading of the model addresses it, and as one of a behavior's declared inputs — and those are three vocabularies rather than one said three ways. Written as the union it is: a document cannot carry a place made of one kind's fields and another's, because no such place is one this compiler can build.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "module"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "module"
+            },
+            "module": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "behavior"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "behavior"
+            },
+            "behavior": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "source"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "source"
+            },
+            "source": {
+              "type": "string",
+              "description": "The source, under the name this document gives it."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "behavior",
+            "source",
+            "name"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "row"
+            },
+            "behavior": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string",
+              "description": "The source, under the name this document gives it."
+            },
+            "name": {
+              "type": "string",
+              "description": "The row's name, where it was written with one. A row without a name is not addressable from outside this compiler, so what is written for it is `ordinal` and a reader is not handed a number to look it up by."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "behavior",
+            "source",
+            "ordinal"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "row"
+            },
+            "behavior": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string",
+              "description": "The source, under the name this document gives it."
+            },
+            "ordinal": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Which of its behavior's rows in that source it is, where it has no name."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "behavior",
+            "path"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "position"
+            },
+            "behavior": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string",
+              "description": "The position as an author would recognise it. Two positions this compiler holds apart can be spelled alike here, which is what `positionId` is for."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "behavior",
+            "path",
+            "positionId"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "read_position"
+            },
+            "behavior": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string",
+              "description": "The position as an author would recognise it. Two positions this compiler holds apart can be spelled alike here, which is what `positionId` is for."
+            },
+            "positionId": {
+              "type": "string",
+              "description": "What tells apart two positions `path` spells alike. Within this document, and not a name to show a reader."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "behavior",
+            "input"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "input"
+            },
+            "behavior": {
+              "type": "string"
+            },
+            "input": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Which of the behavior's declared inputs, counted from zero."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "at",
+            "ruleId",
+            "rule"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "rule"
+            },
+            "at": {
+              "type": "string",
+              "description": "The position the rule was read at."
+            },
+            "ruleId": {
+              "$ref": "#/$defs/ruleId"
+            },
+            "stopped": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ruleStoppedReadingReason"
+              },
+              "description": "What stopped the reading of the rule, in the words the questions themselves are written under. Absent where nothing stopped it."
+            },
+            "rule": {
+              "$ref": "#/$defs/ruleHandle",
+              "description": "The rule, as a person is shown one wherever this document names a rule."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "label",
+            "line"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "border"
+            },
+            "label": {
+              "type": "string",
+              "description": "What a person is shown for the line."
+            },
+            "line": {
+              "$ref": "#/$defs/authoredLineId",
+              "description": "Which of the rule's lines this is. One rule draws more than one."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "obligationId"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "point"
+            },
+            "obligationId": {
+              "$ref": "#/$defs/obligationId"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "module",
+            "writtenBy",
+            "construct",
+            "lowered",
+            "said"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "fork"
+            },
+            "module": {
+              "type": "string"
+            },
+            "writtenBy": {
+              "$ref": "#/$defs/writtenBy"
+            },
+            "construct": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Which of that body's constructs the fork is."
+            },
+            "lowered": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "said": {
+              "type": "string",
+              "description": "What the author wrote the fork as."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "armId"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "arm"
+            },
+            "armId": {
+              "$ref": "#/$defs/armObligationId"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "module",
+            "behavior",
+            "measure"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "measure"
+            },
+            "module": {
+              "type": "string"
+            },
+            "behavior": {
+              "type": "string"
+            },
+            "measure": {
+              "enum": [
+                "reading",
+                "signature",
+                "branch",
+                "boundary",
+                "partition"
+              ],
+              "description": "Which of the measurements a behavior has exactly one of. What the rows reach of a position is measured once per position and is named by that position instead (`axis_measure`)."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "kind",
+            "module",
+            "behavior",
+            "axis"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "axis_measure"
+            },
+            "module": {
+              "type": "string"
+            },
+            "behavior": {
+              "type": "string"
+            },
+            "axis": {
+              "type": "string",
+              "description": "The position, as `axes` names it."
+            }
+          }
+        }
+      ]
+    }
+  }
+}
