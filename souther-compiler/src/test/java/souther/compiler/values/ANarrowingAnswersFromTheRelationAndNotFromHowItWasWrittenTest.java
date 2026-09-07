@@ -9,6 +9,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -55,13 +56,14 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      */
     @Test
     void oneRelationWrittenAnyWayRoundIsAnsweredTheSameWay() {
-        overEveryRelation((written, stated, domains) -> {
-            Closure<String> said = Narrowing.of(written, domains);
-            for (int at = 0; at + 1 < stated.size(); at++) {
-                List<Pair> swapped = new ArrayList<>(stated);
-                Collections.swap(swapped, at, at + 1);
-                assertEquals(said, Narrowing.of(relating(swapped), domains),
-                        "the same relation, with its " + at + "th pair written after the next");
+        overEveryRelation((written, domains) -> {
+            Closure<String> said = Narrowing.of(written.relation(), domains);
+            List<Apartness<String>> swapped = written.byASwapOfPairs();
+            for (int at = 0; at < swapped.size(); at++) {
+                int pair = at;
+                assertEquals(said, Narrowing.of(swapped.get(at), domains),
+                        () -> "the same relation, with its " + pair
+                                + "th pair written after the next");
             }
         });
     }
@@ -82,24 +84,19 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      */
     @Test
     void andRenamingTheBlocksRenamesTheAnswer() {
-        overEveryRelation((written, stated, domains) -> {
-            Closure<String> said = Narrowing.of(written, domains);
-            for (int first = 0; first + 1 < BLOCKS; first++) {
-                int swapped = first;
-                Map<String, String> naming = new LinkedHashMap<>();
-                for (int each = 0; each < BLOCKS; each++) {
-                    naming.put(named(each), named(calling(each, swapped)));
-                }
-                List<Pair> under = new ArrayList<>();
-                stated.forEach(pair -> under.add(new Pair(
-                        calling(pair.one(), swapped), calling(pair.other(), swapped))));
+        overEveryRelation((written, domains) -> {
+            Closure<String> said = Narrowing.of(written.relation(), domains);
+            List<Called> callings = written.byASwapOfBlocks();
+            for (int at = 0; at < callings.size(); at++) {
+                Called calling = callings.get(at);
                 Map<Sameness.Block<String>, Admits> left = new LinkedHashMap<>();
                 domains.byBlock().forEach((block, admits) ->
-                        left.put(block.renamed(naming::get), admits));
-                assertEquals(renamed(said, naming),
-                        Narrowing.of(relating(under), new Domains<>(left)),
-                        "the same relation, with its " + swapped + "th block called by the next"
-                                + " one's name");
+                        left.put(calling.blocks().get(block), admits));
+                int called = at;
+                assertSameUnder(said, Narrowing.of(calling.relation(), new Domains<>(left)),
+                        calling.blocks(),
+                        () -> "the same relation, with its " + called
+                                + "th block called by the next one's name");
             }
         });
     }
@@ -123,8 +120,9 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      */
     @Test
     void whatANarrowingLeavesIsInsideWhatItWasHandedAndIsAllItCanTake() {
-        overEveryRelation((written, stated, domains) -> {
-            if (!(Narrowing.of(written, domains) instanceof Closure.Stable<String> stable)) {
+        overEveryRelation((written, domains) -> {
+            if (!(Narrowing.of(written.relation(), domains)
+                    instanceof Closure.Stable<String> stable)) {
                 return;
             }
             stable.domains().byBlock().forEach((block, admits) -> {
@@ -134,7 +132,7 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
                             "no value the block was not left");
                 }
             });
-            assertEquals(stable, Narrowing.of(written, stable.domains()),
+            assertEquals(stable, Narrowing.of(written.relation(), stable.domains()),
                     "and narrowing what it left takes nothing");
         });
     }
@@ -149,13 +147,15 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      */
     @Test
     void andEveryDenialLeavesRoomForWhatEachOfItsBlocksIsLeft() {
-        overEveryRelation((written, stated, domains) -> {
-            if (!(Narrowing.of(written, domains) instanceof Closure.Stable<String> stable)) {
+        overEveryRelation((written, domains) -> {
+            if (!(Narrowing.of(written.relation(), domains)
+                    instanceof Closure.Stable<String> stable)) {
                 return;
             }
-            for (Apartness.Edge<String> edge : written.edges()) {
+            for (Apartness.Edge<String> edge : written.relation().edges()) {
                 assertTrue(roomForEachOther(stable.domains(), edge.one(), edge.other()),
-                        "each of " + edge + " is left something the other leaves room for");
+                        () -> "each of " + edge
+                                + " is left something the other leaves room for");
                 assertTrue(roomForEachOther(stable.domains(), edge.other(), edge.one()));
             }
         });
@@ -171,11 +171,11 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      */
     @Test
     void andABlockLeftNothingIsARelationNoAssignmentSatisfies() {
-        overEveryRelation((written, stated, domains) -> {
-            if (Narrowing.of(written, domains) instanceof Closure.Contradicted<String>) {
-                assertFalse(satisfiable(stated, domains,
-                                new ArrayList<>(domains.blocks()), 0, new LinkedHashMap<>()),
-                        "a block left nothing, and an assignment found: " + stated + " " + domains);
+        overEveryRelation((written, domains) -> {
+            if (Narrowing.of(written.relation(), domains) instanceof Closure.Contradicted<String>) {
+                assertFalse(satisfiable(written, domains),
+                        () -> "a block left nothing, and an assignment found: "
+                                + written.stated() + " " + domains);
             }
         });
     }
@@ -195,8 +195,9 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      */
     @Test
     void andWhatTookAValueHeldOnlyItWhenItWent() {
-        overEveryRelation((written, stated, domains) -> {
-            if (!(Narrowing.of(written, domains) instanceof Closure.Contradicted<String> refused)) {
+        overEveryRelation((written, domains) -> {
+            if (!(Narrowing.of(written.relation(), domains)
+                    instanceof Closure.Contradicted<String> refused)) {
                 return;
             }
             Set<Provenance.Removal<String>> removals = refused.provenance().removals();
@@ -204,7 +205,7 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
                 for (Sameness.Block<String> blocker : removal.blockers()) {
                     assertEquals(Set.of(removal.value()),
                             leftBefore(blocker, removal.round(), domains, removals),
-                            blocker + " held nothing but " + removal.value()
+                            () -> blocker + " held nothing but " + removal.value()
                                     + " when it took it from " + removal.block());
                 }
             }
@@ -237,46 +238,81 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
                 .allMatch(value -> theirs.values().stream().anyMatch(each -> !each.equals(value)));
     }
 
-    /** The same answer about the blocks {@code swapping} calls these. */
-    private static Closure<String> renamed(Closure<String> said, Map<String, String> swapping) {
-        return switch (said) {
-            case Closure.Stable<String> it -> {
-                Map<Sameness.Block<String>, Admits> under = new LinkedHashMap<>();
-                it.domains().byBlock().forEach((block, admits) ->
-                        under.put(block.renamed(swapping::get), admits));
-                yield new Closure.Stable<>(new Domains<>(under));
-            }
-            case Closure.Contradicted<String> it -> {
-                Set<Sameness.Block<String>> blocks = new LinkedHashSet<>();
-                it.leftNothing().forEach(block -> blocks.add(block.renamed(swapping::get)));
-                yield new Closure.Contradicted<>(blocks,
-                        it.provenance().renamed(swapping::get));
-            }
-        };
+    /**
+     * That one answer is the other about the blocks {@code called} calls these.
+     *
+     * <p>Held against each other block by block rather than by building the one from the other.
+     * What the law says is that the two answers are the same relation's, and a reading made to say
+     * so is a reading this walk pays for on every relation it asks about.
+     */
+    private static void assertSameUnder(Closure<String> said, Closure<String> other,
+                                        Map<Sameness.Block<String>, Sameness.Block<String>> called,
+                                        Supplier<String> why) {
+        if (said instanceof Closure.Stable<String> mine
+                && other instanceof Closure.Stable<String> theirs) {
+            assertEquals(mine.domains().blocks().size(), theirs.domains().blocks().size(), why);
+            mine.domains().byBlock().forEach((block, admits) ->
+                    assertEquals(admits, theirs.domains().of(called.get(block)), why));
+            return;
+        }
+        if (said instanceof Closure.Contradicted<String> mine
+                && other instanceof Closure.Contradicted<String> theirs) {
+            assertEquals(mine.leftNothing().size(), theirs.leftNothing().size(), why);
+            mine.leftNothing().forEach(block ->
+                    assertTrue(theirs.leftNothing().contains(called.get(block)), why));
+            assertEquals(mine.provenance().removals().size(),
+                    theirs.provenance().removals().size(), why);
+            mine.provenance().removals().forEach(removal -> {
+                Set<Sameness.Block<String>> blockers = new LinkedHashSet<>();
+                removal.blockers().forEach(block -> blockers.add(called.get(block)));
+                assertTrue(theirs.provenance().removals().contains(new Provenance.Removal<>(
+                                called.get(removal.block()), removal.value(),
+                                removal.round(), blockers)),
+                        why);
+            });
+            return;
+        }
+        assertEquals(said.getClass(), other.getClass(), why);
     }
 
-    /** Whether some way of giving the blocks values tells every stated pair apart. */
-    private static boolean satisfiable(List<Pair> stated, Domains<String> domains,
-                                       List<Sameness.Block<String>> order, int at,
-                                       Map<Sameness.Block<String>, Value> given) {
-        if (at == order.size()) {
+    /**
+     * Whether some way of giving the blocks values tells every stated pair apart.
+     *
+     * <p>Walked over the blocks as the numbers a relation was built from, so that nothing is made
+     * while a branch is being tried. What an assignment is asked about is which pairs are stated,
+     * and a walk that built a block to ask that of would be measuring itself.
+     */
+    private static boolean satisfiable(Written written, Domains<String> domains) {
+        List<Sameness.Block<String>> blocks = written.blocks();
+        Value[][] left = new Value[blocks.size()][];
+        for (int at = 0; at < blocks.size(); at++) {
+            left[at] = ((Admits.These) domains.of(blocks.get(at))).values().toArray(new Value[0]);
+        }
+        return given(written.apart(), left, new Value[blocks.size()], 0);
+    }
+
+    /** Whether the blocks from {@code at} on can be given values no pair stated between them
+     *  shares. */
+    private static boolean given(boolean[][] apart, Value[][] left, Value[] taken, int at) {
+        if (at == taken.length) {
             return true;
         }
-        Sameness.Block<String> block = order.get(at);
-        for (Value value : ((Admits.These) domains.of(block)).values()) {
-            boolean clash = stated.stream().anyMatch(pair ->
-                    (blockOf(pair.one()).equals(block)
-                            && value.equals(given.get(blockOf(pair.other()))))
-                            || (blockOf(pair.other()).equals(block)
-                            && value.equals(given.get(blockOf(pair.one())))));
+        for (Value value : left[at]) {
+            boolean clash = false;
+            for (int other = 0; other < at; other++) {
+                if (apart[at][other] && value.equals(taken[other])) {
+                    clash = true;
+                    break;
+                }
+            }
             if (!clash) {
-                given.put(block, value);
-                if (satisfiable(stated, domains, order, at + 1, given)) {
+                taken[at] = value;
+                if (given(apart, left, taken, at + 1)) {
                     return true;
                 }
-                given.remove(block);
             }
         }
+        taken[at] = null;
         return false;
     }
 
@@ -287,33 +323,25 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      * a block left all of them are each asked about beside every other. A block left none is not
      * among them: that is the block's own answer and is reached before a relation is asked what its
      * denials come to.
+     *
+     * <p>What every reading of one relation is held against is built once for that relation, which
+     * is what these laws are about: the relation written another way round, and the relation with
+     * two of its blocks called by each other's names. Built inside the readings, each would be made
+     * again for every way its blocks can be left values, and what a run measured would be how long
+     * it takes to write a relation down.
      */
     private static void overEveryRelation(Asked asking) {
-        List<Pair> pairs = new ArrayList<>();
-        for (int one = 0; one < BLOCKS; one++) {
-            for (int other = one + 1; other < BLOCKS; other++) {
-                pairs.add(new Pair(one, other));
-            }
-        }
-        for (int mask = 1; mask < (1 << pairs.size()); mask++) {
-            List<Pair> stated = new ArrayList<>();
-            for (int at = 0; at < pairs.size(); at++) {
-                if ((mask & (1 << at)) != 0) {
-                    stated.add(pairs.get(at));
-                }
-            }
-            Apartness<String> written = relating(stated);
-            Set<Sameness.Block<String>> blocks = written.blocks();
+        for (Written written : EVERY_RELATION) {
+            List<Sameness.Block<String>> blocks = written.blocks();
             int[] pick = new int[blocks.size()];
             while (true) {
                 Map<Sameness.Block<String>, Admits> left = new LinkedHashMap<>();
-                int at = 0;
-                for (Sameness.Block<String> block : blocks) {
-                    left.put(block, new Admits.These(valuesFor(pick[at++])));
+                for (int at = 0; at < blocks.size(); at++) {
+                    left.put(blocks.get(at), THESE.get(pick[at]));
                 }
-                asking.of(written, stated, new Domains<>(left));
-                at = 0;
-                while (at < pick.length && ++pick[at] == (1 << VALUES.size()) - 1) {
+                asking.of(written, new Domains<>(left));
+                int at = 0;
+                while (at < pick.length && ++pick[at] == THESE.size()) {
                     pick[at] = 0;
                     at++;
                 }
@@ -324,22 +352,77 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
         }
     }
 
-    /** What each relation and each way of leaving its blocks values is asked. */
-    @FunctionalInterface
-    private interface Asked {
+    /** Every relation over {@link #BLOCKS} blocks, beside what each of these laws holds it
+     *  against. */
+    private static final List<Written> EVERY_RELATION = everyRelation();
 
-        /** @param written the relation, built once for every reading it is asked about
-         *  @param stated the pairs it was built from, for a caller writing them another way */
-        void of(Apartness<String> written, List<Pair> stated, Domains<String> domains);
+    /** Every non-empty set of values a block may be left. What a law is asked of is which values a
+     *  block holds, and a set built for each reading would be one more thing a run measures. */
+    private static final List<Admits> THESE = everyValueSet();
+
+    private static List<Written> everyRelation() {
+        List<Pair> pairs = new ArrayList<>();
+        for (int one = 0; one < BLOCKS; one++) {
+            for (int other = one + 1; other < BLOCKS; other++) {
+                pairs.add(new Pair(one, other));
+            }
+        }
+        List<Written> out = new ArrayList<>();
+        for (int mask = 1; mask < (1 << pairs.size()); mask++) {
+            List<Pair> stated = new ArrayList<>();
+            for (int at = 0; at < pairs.size(); at++) {
+                if ((mask & (1 << at)) != 0) {
+                    stated.add(pairs.get(at));
+                }
+            }
+            out.add(written(stated));
+        }
+        return out;
     }
 
-    /** The {@code which}th non-empty set of values, counting from none. */
-    private static Set<Value> valuesFor(int which) {
-        Set<Value> out = new LinkedHashSet<>();
-        for (int bit = 0; bit < VALUES.size(); bit++) {
-            if (((which + 1) & (1 << bit)) != 0) {
-                out.add(VALUES.get(bit));
+    private static Written written(List<Pair> stated) {
+        Apartness<String> relation = relating(stated);
+        List<Apartness<String>> byASwapOfPairs = new ArrayList<>();
+        for (int at = 0; at + 1 < stated.size(); at++) {
+            List<Pair> swapped = new ArrayList<>(stated);
+            Collections.swap(swapped, at, at + 1);
+            byASwapOfPairs.add(relating(swapped));
+        }
+        List<Called> byASwapOfBlocks = new ArrayList<>();
+        for (int swapped = 0; swapped + 1 < BLOCKS; swapped++) {
+            Map<String, String> naming = new LinkedHashMap<>();
+            Map<Sameness.Block<String>, Sameness.Block<String>> called = new LinkedHashMap<>();
+            for (int each = 0; each < BLOCKS; each++) {
+                naming.put(named(each), named(calling(each, swapped)));
+                called.put(blockOf(each), blockOf(calling(each, swapped)));
             }
+            List<Pair> under = new ArrayList<>();
+            for (Pair pair : stated) {
+                under.add(new Pair(calling(pair.one(), swapped), calling(pair.other(), swapped)));
+            }
+            byASwapOfBlocks.add(new Called(relating(under), naming, called));
+        }
+        List<Sameness.Block<String>> blocks = new ArrayList<>(relation.blocks());
+        boolean[][] apart = new boolean[blocks.size()][blocks.size()];
+        for (Pair pair : stated) {
+            int one = blocks.indexOf(blockOf(pair.one()));
+            int other = blocks.indexOf(blockOf(pair.other()));
+            apart[one][other] = true;
+            apart[other][one] = true;
+        }
+        return new Written(stated, relation, byASwapOfPairs, byASwapOfBlocks, blocks, apart);
+    }
+
+    private static List<Admits> everyValueSet() {
+        List<Admits> out = new ArrayList<>();
+        for (int which = 1; which < (1 << VALUES.size()); which++) {
+            Set<Value> values = new LinkedHashSet<>();
+            for (int bit = 0; bit < VALUES.size(); bit++) {
+                if ((which & (1 << bit)) != 0) {
+                    values.add(VALUES.get(bit));
+                }
+            }
+            out.add(new Admits.These(values));
         }
         return out;
     }
@@ -358,6 +441,30 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
 
     private static String named(int block) {
         return "p" + block;
+    }
+
+    /**
+     * One relation, and what each of these laws holds it against.
+     *
+     * @param stated the pairs it was built from
+     * @param relation the relation itself
+     * @param byASwapOfPairs it, written with one neighbouring pair after the next
+     * @param byASwapOfBlocks it, with two neighbouring blocks called by each other's names
+     * @param blocks its blocks, in the order the pairs name them
+     * @param apart which of those blocks are stated to differ, indexed as they are
+     */
+    private record Written(List<Pair> stated, Apartness<String> relation,
+                           List<Apartness<String>> byASwapOfPairs, List<Called> byASwapOfBlocks,
+                           List<Sameness.Block<String>> blocks, boolean[][] apart) {}
+
+    /** One relation under one calling of its blocks, and the calling. */
+    private record Called(Apartness<String> relation, Map<String, String> naming,
+                          Map<Sameness.Block<String>, Sameness.Block<String>> blocks) {}
+
+    /** What each relation and each way of leaving its blocks values is asked. */
+    @FunctionalInterface
+    private interface Asked {
+        void of(Written written, Domains<String> domains);
     }
 
     /** Two blocks stated to differ, as the numbers a relation is built from here. */

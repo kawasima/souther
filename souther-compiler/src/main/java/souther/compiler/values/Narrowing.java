@@ -1,7 +1,10 @@
 package souther.compiler.values;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -28,106 +31,187 @@ import java.util.Set;
  * for no value at all, so it would take every value from every neighbour, and which blocks ended up
  * empty would be settled by which of them was emptied first.
  *
+ * <p><b>Walked over the blocks as numbers.</b> A round asks what each block's neighbours are left,
+ * which is a question about the same few blocks over and over; read through the blocks themselves
+ * it is a lookup apiece, and a reading built for each round is a map of them all copied for what a
+ * round changed. So the blocks are numbered once, what they are left is an array, and a reading is
+ * made where one is answered with — which is where a reader has one.
+ *
  * @param <A> what a position is called
  */
 final class Narrowing<A> {
 
-    /** Which blocks each is stated to differ from, less the pairs whose ends are one block. A
-     *  block stated to differ from itself is refused by reading the rule, and read as a neighbour
-     *  of its own it would be a block taking its values from itself. */
-    private final Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart;
+    /** The blocks, in the order the reading gives them. */
+    private final List<Sameness.Block<A>> blocks;
 
-    private Narrowing(Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart) {
+    /** Which blocks each is stated to differ from, as their numbers here, and less the pairs whose
+     *  ends are one block. A block stated to differ from itself is refused by reading the rule, and
+     *  read as a neighbour of its own it would be a block taking its values from itself. */
+    private final int[][] apart;
+
+    private Narrowing(List<Sameness.Block<A>> blocks, int[][] apart) {
+        this.blocks = blocks;
         this.apart = apart;
     }
 
     /** What narrowing {@code domains} against {@code relation} comes to. */
     static <A> Closure<A> of(Apartness<A> relation, Domains<A> domains) {
-        // Walked once over the pairs rather than asked of each block, which reads them all again
-        // per block. What a block is stated to differ from is the same answer either way.
-        Map<Sameness.Block<A>, Set<Sameness.Block<A>>> apart = new LinkedHashMap<>();
-        domains.blocks().forEach(block -> apart.put(block, new LinkedHashSet<>()));
+        List<Sameness.Block<A>> blocks = new ArrayList<>(domains.blocks());
+        Map<Sameness.Block<A>, Integer> numbered = new HashMap<>(blocks.size() * 2);
+        for (int at = 0; at < blocks.size(); at++) {
+            numbered.put(blocks.get(at), at);
+        }
+        // The pairs read once, as the two blocks each names and how many pairs name each block.
+        // Which blocks a block is stated to differ from is then filled in without asking what a
+        // block is called again: a block is a set of positions, so asking is what this walk costs.
+        int[] ends = new int[2 * relation.edges().size()];
+        int[] many = new int[blocks.size()];
+        int said = 0;
         for (Apartness.Edge<A> edge : relation.edges()) {
             if (edge.isOfOneBlock()) {
                 continue;
             }
-            apart.get(edge.one()).add(edge.other());
-            apart.get(edge.other()).add(edge.one());
+            int one = numbered.get(edge.one());
+            int other = numbered.get(edge.other());
+            ends[said++] = one;
+            ends[said++] = other;
+            many[one]++;
+            many[other]++;
         }
-        return new Narrowing<>(apart).from(domains);
+        int[][] apart = new int[blocks.size()][];
+        for (int at = 0; at < apart.length; at++) {
+            apart[at] = new int[many[at]];
+            many[at] = 0;
+        }
+        for (int at = 0; at < said; at += 2) {
+            int one = ends[at];
+            int other = ends[at + 1];
+            apart[one][many[one]++] = other;
+            apart[other][many[other]++] = one;
+        }
+        return new Narrowing<>(blocks, apart).from(domains);
     }
 
     /**
      * Round after round, until nothing moves or a round leaves a block nothing.
      *
-     * <p>A round that takes nothing writes nothing. What the blocks are left is read from one
-     * reading and written into the next, and a round asks first whether it has anything to write:
-     * a relation whose blocks all leave each other room is most of what a compilation reads, and
-     * for one of those this walks the pairs and allocates nothing at all.
+     * <p>A round that takes nothing writes nothing. What the blocks are left is read from one round
+     * and written into the next, and a round asks first whether it has anything to write: a
+     * relation whose blocks all leave each other room is most of what a compilation reads, and for
+     * one of those this walks the pairs and hands back the reading it was given.
+     *
+     * <p><b>And what took what is read off the rounds where a report wants it.</b> Which values
+     * went in a round is the difference between what the blocks were left before it and after, and
+     * what blocked one of them is read off the round before — so the rounds are what is kept, and
+     * a narrowing that ends with every block holding something writes down no removal at all.
      */
     private Closure<A> from(Domains<A> domains) {
-        Set<Provenance.Removal<A>> taken = new LinkedHashSet<>();
-        Domains<A> here = domains;
-        for (int round = 1; ; round++) {
-            Map<Sameness.Block<A>, Admits> writing = null;
+        Admits[] left = new Admits[blocks.size()];
+        for (int at = 0; at < left.length; at++) {
+            left[at] = domains.of(blocks.get(at));
+        }
+        List<Admits[]> rounds = new ArrayList<>();
+        rounds.add(left);
+        while (true) {
+            Admits[] next = null;
             Set<Sameness.Block<A>> emptied = null;
-            for (Sameness.Block<A> block : here.blocks()) {
-                if (!(here.of(block) instanceof Admits.These it) || !anythingGoesFrom(here, block)) {
+            for (int at = 0; at < left.length; at++) {
+                if (!(left[at] instanceof Admits.These it) || !anythingGoesFrom(left, at)) {
                     continue;
                 }
                 Set<Value> keeping = new LinkedHashSet<>();
                 for (Value value : it.values()) {
-                    Set<Sameness.Block<A>> blockers = blocking(here, block, value);
-                    if (blockers.isEmpty()) {
+                    if (!blocked(left, at, value)) {
                         keeping.add(value);
-                    } else {
-                        taken.add(new Provenance.Removal<>(block, value, round, blockers));
                     }
                 }
-                if (writing == null) {
-                    writing = new LinkedHashMap<>(here.byBlock());
+                if (next == null) {
+                    next = left.clone();
                 }
-                writing.put(block, new Admits.These(keeping));
+                next[at] = new Admits.These(keeping);
                 if (keeping.isEmpty()) {
-                    // Read off what is being written and not off a reading, because a block left
-                    // nothing is not one a reading may hold: which blocks a round emptied is what
-                    // this answers with, and every block of the reading it hands on is left a value.
                     if (emptied == null) {
                         emptied = new LinkedHashSet<>();
                     }
-                    emptied.add(block);
+                    emptied.add(blocks.get(at));
                 }
             }
+            if (next == null) {
+                return new Closure.Stable<>(rounds.size() == 1 ? domains : reading(left));
+            }
+            rounds.add(next);
             if (emptied != null) {
-                return new Closure.Contradicted<>(emptied, new Provenance<>(taken));
+                return new Closure.Contradicted<>(emptied, removals(rounds));
             }
-            if (writing == null) {
-                return new Closure.Stable<>(here);
-            }
-            here = new Domains<>(writing);
+            left = next;
         }
     }
 
-    /** Whether any value {@code block} is left is one a neighbour leaves it no room for, which is
-     *  asked before anything is built for the round to write. */
-    private boolean anythingGoesFrom(Domains<A> here, Sameness.Block<A> block) {
-        for (Value value : ((Admits.These) here.of(block)).values()) {
-            for (Sameness.Block<A> next : apart.get(block)) {
-                if (!leavesRoomFor(here.of(next), value)) {
-                    return true;
+    /**
+     * Which values each round took from which blocks, and what left them nowhere to go.
+     *
+     * <p>Read off what the blocks were left before a round and after it. A value that went in a
+     * round was there before it, so the difference is the removals; and what blocked one of them is
+     * asked of the round before, which is where the rule that took it was read.
+     */
+    private Provenance<A> removals(List<Admits[]> rounds) {
+        Set<Provenance.Removal<A>> out = new LinkedHashSet<>();
+        for (int round = 1; round < rounds.size(); round++) {
+            Admits[] before = rounds.get(round - 1);
+            Admits[] after = rounds.get(round);
+            for (int at = 0; at < before.length; at++) {
+                if (!(before[at] instanceof Admits.These was)
+                        || !(after[at] instanceof Admits.These now)) {
+                    continue;
                 }
+                for (Value value : was.values()) {
+                    if (!now.values().contains(value)) {
+                        out.add(new Provenance.Removal<>(
+                                blocks.get(at), value, round, blocking(before, at, value)));
+                    }
+                }
+            }
+        }
+        return new Provenance<>(out);
+    }
+
+    /** What the blocks are left, as a reading for whoever is answered with one. */
+    private Domains<A> reading(Admits[] left) {
+        Map<Sameness.Block<A>, Admits> out = new LinkedHashMap<>();
+        for (int at = 0; at < left.length; at++) {
+            out.put(blocks.get(at), left[at]);
+        }
+        return new Domains<>(out);
+    }
+
+    /** Whether any value the block numbered {@code at} is left is one a neighbour leaves it no room
+     *  for, which is asked before anything is built for the round to write. */
+    private boolean anythingGoesFrom(Admits[] left, int at) {
+        for (Value value : ((Admits.These) left[at]).values()) {
+            if (blocked(left, at, value)) {
+                return true;
             }
         }
         return false;
     }
 
-    /** The neighbours of {@code block} that leave {@code value} nowhere to go, which are the ones
-     *  left no value other than it. */
-    private Set<Sameness.Block<A>> blocking(Domains<A> here, Sameness.Block<A> block, Value value) {
+    /** Whether a neighbour of the block numbered {@code at} leaves {@code value} nowhere to go. */
+    private boolean blocked(Admits[] left, int at, Value value) {
+        for (int next : apart[at]) {
+            if (!leavesRoomFor(left[next], value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The neighbours of the block numbered {@code at} that leave {@code value} nowhere to go,
+     *  which are the ones left no value other than it. */
+    private Set<Sameness.Block<A>> blocking(Admits[] left, int at, Value value) {
         Set<Sameness.Block<A>> out = new LinkedHashSet<>();
-        for (Sameness.Block<A> next : apart.get(block)) {
-            if (!leavesRoomFor(here.of(next), value)) {
-                out.add(next);
+        for (int next : apart[at]) {
+            if (!leavesRoomFor(left[next], value)) {
+                out.add(blocks.get(next));
             }
         }
         return out;
@@ -146,8 +230,10 @@ final class Narrowing<A> {
             // Asked of how many there are and of whether this is one of them, which is the same
             // question as whether some value here is not this one and is two lookups rather than a
             // walk over the values.
-            case Admits.These it -> it.values().size() > 1
-                    || (it.values().size() == 1 && !it.values().contains(value));
+            case Admits.These it -> {
+                int many = it.values().size();
+                yield many > 1 || (many == 1 && !it.values().contains(value));
+            }
             case Admits.MoreThanCounted _ -> true;
             case Admits.NotKnown _ -> true;
         };
