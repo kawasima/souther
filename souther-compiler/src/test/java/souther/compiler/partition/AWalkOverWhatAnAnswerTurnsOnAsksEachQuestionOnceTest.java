@@ -8,8 +8,9 @@ import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.ValueName;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * A walk over what a fork's answer turns on asks each question once.
@@ -51,7 +52,8 @@ class AWalkOverWhatAnAnswerTurnsOnAsksEachQuestionOnceTest {
     @Timeout(10)
     void aClosureThatAnswersWithWhatItWasHandedToIsAskedOnce() {
         Core.PreservedCall call = anyOverAClosure();
-        assertFalse(WhatAForkTests.turnsOnSomething(call, _ -> false, e -> e == call ? e : call),
+        assertEquals(List.of(call),
+                WhatAForkTests.partsOfTheAnswer(call, e -> e == call ? e : call),
                 "a reading that leads back to the question it came from answers it once");
     }
 
@@ -64,8 +66,7 @@ class AWalkOverWhatAnAnswerTurnsOnAsksEachQuestionOnceTest {
     @Test
     void aClosureIsStillReadForWhatItDecides() {
         Core.PreservedCall call = anyOverAClosure();
-        Core closure = call.args().get(0);
-        assertTrue(WhatAForkTests.turnsOnSomething(call, e -> e == closure, e -> e),
+        assertEquals(List.of(call.args().get(0)), WhatAForkTests.partsOfTheAnswer(call, e -> e),
                 "what the answer turns on is reached");
     }
 }

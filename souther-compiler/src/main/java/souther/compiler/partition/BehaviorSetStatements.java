@@ -424,17 +424,20 @@ public final class BehaviorSetStatements {
         List<Standing> standing = standingRules(behavior, read, symbols, forks);
         List<ForkOfItsOwn> out = new ArrayList<>();
         for (Standing each : standing) {
-            List<Core> left = new ArrayList<>();
-            for (Core part : each.untaken()) {
-                if (standing.stream().noneMatch(other -> other != each
-                        && each.turnsOnTheConditionOf(part, other, symbols))) {
-                    left.add(part);
+            List<Unread> left = new ArrayList<>();
+            for (Unread was : each.unread()) {
+                List<Core> parts = was.parts().stream()
+                        .filter(part -> standing.stream().noneMatch(other -> other != each
+                                && other.states(part)))
+                        .toList();
+                if (!parts.isEmpty()) {
+                    left.add(new Unread(was.atom(), parts));
                 }
             }
             if (left.isEmpty()) {
                 continue;
             }
-            ForkOfItsOwn asked = asked(behavior, each.fork(), left, read, symbols);
+            ForkOfItsOwn asked = asked(behavior, each.fork(), left, symbols);
             if (asked != null) {
                 out.add(asked);
             }
@@ -442,21 +445,36 @@ public final class BehaviorSetStatements {
         return out;
     }
 
+    /** One part of a condition that no reader answers for, and the parts of what it decides that
+     *  the reading was left with. */
+    private record Unread(Core atom, List<Core> parts) {}
+
     /** One fork that states a rule of its own, before any of its parts is asked whether another
      *  one's rule is what it states. */
-    private record Standing(ComparisonReadings.ForkMet fork, List<Core> untaken,
+    private record Standing(ComparisonReadings.ForkMet fork, List<Unread> unread,
                             ForkOfItsOwn rule) {
 
         /**
-         * Whether {@code part} of what this fork tests turns on the condition of {@code other}.
+         * Whether the rule this fork states is what {@code part} decides.
          *
-         * <p>Along the same edges every other owner is looked for along, and asked of one part: a
-         * fork owned for one part and stating another is answered for where it is answered for, and
-         * this is about the part in hand and not about the rest of the condition.
+         * <p>Asked of the part, so that a fork owned for one part of what it decides still states
+         * another: an owner taken for the whole would carry off the parts nobody claimed, which is
+         * the same partial ownership every other reader is asked at.
+         *
+         * <p><b>Of what this fork's own condition is written out of, and not of what it turns
+         * on.</b> A fork whose answer turns on another's condition holds that condition among its
+         * parts as much as the fork it was written in does, and a reader that took either for the
+         * owner would have the two owning each other — both would go, and the rule written in the
+         * first would go with them. What tells them apart is which of the two the source wrote it
+         * inside, which is the condition it is a part of.
          */
-        boolean turnsOnTheConditionOf(Core part, Standing other, Symbols symbols) {
-            return WhatAForkTests.turnsOnSomething(part, it -> it == other.fork().condition(),
-                    one -> fork.reads().denotes(one, symbols).value());
+        boolean states(Core part) {
+            for (Unread each : unread) {
+                if (each.atom() == part) {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
@@ -470,18 +488,20 @@ public final class BehaviorSetStatements {
             // and a fork answered for by one owner having claimed one part would leave the other
             // part unsaid — a model reported as fully read over a condition half of which nobody
             // took in.
-            List<Core> untaken = new ArrayList<>();
+            List<Unread> unread = new ArrayList<>();
             for (Core atom : each.leftHere()) {
-                if (!ComparisonReadings.turnsOnAPredicate(atom, read, each.reads(), symbols)) {
-                    untaken.add(atom);
+                List<Core> parts =
+                        ComparisonReadings.leftUnread(atom, read, each.reads(), symbols);
+                if (!parts.isEmpty()) {
+                    unread.add(new Unread(atom, parts));
                 }
             }
-            if (untaken.isEmpty()) {
+            if (unread.isEmpty()) {
                 continue;
             }
-            ForkOfItsOwn asked = asked(behavior, each, untaken, read, symbols);
+            ForkOfItsOwn asked = asked(behavior, each, unread, symbols);
             if (asked != null) {
-                out.add(new Standing(each, untaken, asked));
+                out.add(new Standing(each, unread, asked));
             }
         }
         return out;
@@ -513,11 +533,10 @@ public final class BehaviorSetStatements {
      * part that does name a position is filed there, however little else was worked out about it.
      */
     private static ForkOfItsOwn asked(String behavior, ComparisonReadings.ForkMet fork,
-                                      List<Core> untaken, PredicateReadings read,
-                                      Symbols symbols) {
+                                      List<Unread> unread, Symbols symbols) {
         SequencedMap<FilingCoordinate, BlockReason.RuleReadingStopped> filed =
                 new LinkedHashMap<>();
-        for (Core atom : untaken) {
+        for (Unread each : unread) {
             // Where the unread question is, which is the parts of what the atom decides that
             // nobody answers for. A reader sent to the whole atom would be sent to the positions
             // an owned part is about as well — a comparison beside it inside one closure — for a
@@ -527,10 +546,9 @@ public final class BehaviorSetStatements {
             // fork turns on is still what the atom reaches: a closure that says nothing about the
             // element leaves the fork turning on the sequence it walks, and that is where a reader
             // is owed the question.
-            List<Core> unread =
-                    ComparisonReadings.leftUnread(atom, read, fork.reads(), symbols);
-            List<Core> places = unread.stream()
-                    .anyMatch(one -> namesSomething(one, fork, symbols)) ? unread : List.of(atom);
+            List<Core> places = each.parts().stream()
+                    .anyMatch(one -> namesSomething(one, fork, symbols))
+                    ? each.parts() : List.of(each.atom());
             for (Core part : places) {
             // Where the part stands at places this could not choose between, those are the places,
             // and they are what the walk below cannot give: it reads a part as one term over the

@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Predicate;
 
 /**
  * Which expressions a fork's answer turns on, following only what the library says it does.
@@ -52,25 +51,18 @@ final class WhatAForkTests {
      * states the second whoever owns the first. Answered as "something in there is owned", the
      * second went with the first — and that is the same partial ownership a condition's own parts
      * are cut along, lost one step past the operation.
+     *
+     * <p><b>And there is no answer here that says only whether.</b> One was, for a reader with a
+     * question about the atom rather than about the parts, and every owner that went through it
+     * lost the parts again — the whole of what this is for is that they are asked one at a time. A
+     * caller wanting an answer about the atom composes it from the parts, where the composing is
+     * written down.
      */
     static List<Core> partsOfTheAnswer(Core atom,
                                        java.util.function.UnaryOperator<Core> denotes) {
         List<Core> out = new ArrayList<>();
         turnsOn(atom, AnswerAspect.TRUTH, denotes, new HashSet<>(), out);
         return out;
-    }
-
-    /**
-     * The same, as a question about one thing: whether {@code rule} holds of any part of the
-     * answer.
-     *
-     * <p>For a reader whose question is about the atom rather than about the parts — whether what
-     * a fork tests reaches some rule at all. A reader deciding what to do with each part asks for
-     * the parts.
-     */
-    static boolean turnsOnSomething(Core atom, Predicate<Core> rule,
-                                    java.util.function.UnaryOperator<Core> denotes) {
-        return partsOfTheAnswer(atom, denotes).stream().anyMatch(rule);
     }
 
     private static void turnsOn(Core e, AnswerAspect aspect,

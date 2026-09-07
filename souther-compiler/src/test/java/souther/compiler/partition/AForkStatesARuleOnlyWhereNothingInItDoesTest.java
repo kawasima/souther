@@ -221,6 +221,29 @@ class AForkStatesARuleOnlyWhereNothingInItDoesTest {
                         then High else Low"""));
     }
 
+    /**
+     * And a fork rule owning one part past the operation leaves the other part too.
+     *
+     * <p>The last of the four owners asked at the grain the other three are. The closure states two
+     * things: an inner fork, which is a rule of its own, and something nothing here reads. Asked as
+     * "is any part of what the outer fork tests owned by another fork's rule", the second went with
+     * the first — the same partial ownership, lost at the one authority that was still answered
+     * whole.
+     */
+    @Test
+    void aForkRuleOwningOnePartPastTheOperationLeavesTheOther() {
+        assertEquals(List.of("xs[*].tags", "xs[*].other"), filedAt("""
+                data Row = { tags: List<Int>, other: List<Int> }
+
+                behavior pick : (xs: List<Row>) -> Low | High
+                let pick (xs) =
+                    if List.any(
+                            p -> (if List.isEmpty(p.tags) then true else false)
+                                    && List.isEmpty(p.other),
+                            xs)
+                        then High else Low"""));
+    }
+
     /** And a fork on a predicate is the predicate's, which is a rule this compiler reads. */
     @Test
     void aForkOnAPredicateIsThePredicatesRule() {
