@@ -1,5 +1,5 @@
 {
-  "schemaVersion" : 15,
+  "schemaVersion" : 16,
   "compilerVersion" : "<version>",
   "status" : "complete",
   "adequacy" : "undetermined",
@@ -9,15 +9,17 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
+          "which" : {
             "kind" : "comparison",
-            "declaredIn" : "conformance.staffing",
-            "definition" : "grantLeave",
-            "behavior" : "grantLeave",
-            "ordinal" : 1,
-            "lowered" : 0
+            "rule" : {
+              "kind" : "comparison",
+              "declaredIn" : "conformance.staffing",
+              "definition" : "grantLeave",
+              "behavior" : "grantLeave",
+              "ordinal" : 1,
+              "lowered" : 0
+            }
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : false,
             "holdsAtTheValue" : true,
@@ -45,15 +47,17 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
+          "which" : {
             "kind" : "comparison",
-            "declaredIn" : "conformance.staffing",
-            "definition" : "grantLeave",
-            "behavior" : "grantLeave",
-            "ordinal" : 1,
-            "lowered" : 0
+            "rule" : {
+              "kind" : "comparison",
+              "declaredIn" : "conformance.staffing",
+              "definition" : "grantLeave",
+              "behavior" : "grantLeave",
+              "ordinal" : 1,
+              "lowered" : 0
+            }
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : false,
             "holdsAtTheValue" : true,
@@ -82,15 +86,17 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
+          "which" : {
             "kind" : "comparison",
-            "declaredIn" : "conformance.staffing",
-            "definition" : "grantLeave",
-            "behavior" : "grantLeave",
-            "ordinal" : 1,
-            "lowered" : 0
+            "rule" : {
+              "kind" : "comparison",
+              "declaredIn" : "conformance.staffing",
+              "definition" : "grantLeave",
+              "behavior" : "grantLeave",
+              "ordinal" : 1,
+              "lowered" : 0
+            }
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : false,
             "holdsAtTheValue" : true,
@@ -131,15 +137,17 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
+          "which" : {
             "kind" : "comparison",
-            "declaredIn" : "conformance.staffing",
-            "definition" : "grantLeave",
-            "behavior" : "grantLeave",
-            "ordinal" : 1,
-            "lowered" : 0
+            "rule" : {
+              "kind" : "comparison",
+              "declaredIn" : "conformance.staffing",
+              "definition" : "grantLeave",
+              "behavior" : "grantLeave",
+              "ordinal" : 1,
+              "lowered" : 0
+            }
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : false,
             "holdsAtTheValue" : true,
@@ -180,15 +188,17 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
+          "which" : {
             "kind" : "comparison",
-            "declaredIn" : "conformance.staffing",
-            "definition" : "grantLeave",
-            "behavior" : "grantLeave",
-            "ordinal" : 5,
-            "lowered" : 0
+            "rule" : {
+              "kind" : "comparison",
+              "declaredIn" : "conformance.staffing",
+              "definition" : "grantLeave",
+              "behavior" : "grantLeave",
+              "ordinal" : 5,
+              "lowered" : 0
+            }
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : false,
             "holdsAtTheValue" : true,
@@ -216,15 +226,17 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
+          "which" : {
             "kind" : "comparison",
-            "declaredIn" : "conformance.staffing",
-            "definition" : "grantLeave",
-            "behavior" : "grantLeave",
-            "ordinal" : 5,
-            "lowered" : 0
+            "rule" : {
+              "kind" : "comparison",
+              "declaredIn" : "conformance.staffing",
+              "definition" : "grantLeave",
+              "behavior" : "grantLeave",
+              "ordinal" : 5,
+              "lowered" : 0
+            }
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : false,
             "holdsAtTheValue" : true,
@@ -265,15 +277,17 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
+          "which" : {
             "kind" : "comparison",
-            "declaredIn" : "conformance.staffing",
-            "definition" : "grantLeave",
-            "behavior" : "grantLeave",
-            "ordinal" : 5,
-            "lowered" : 0
+            "rule" : {
+              "kind" : "comparison",
+              "declaredIn" : "conformance.staffing",
+              "definition" : "grantLeave",
+              "behavior" : "grantLeave",
+              "ordinal" : 5,
+              "lowered" : 0
+            }
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : false,
             "holdsAtTheValue" : true,
@@ -314,15 +328,17 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
+          "which" : {
             "kind" : "comparison",
-            "declaredIn" : "conformance.staffing",
-            "definition" : "judgeHours",
-            "behavior" : "judgeHours",
-            "ordinal" : 1,
-            "lowered" : 0
+            "rule" : {
+              "kind" : "comparison",
+              "declaredIn" : "conformance.staffing",
+              "definition" : "judgeHours",
+              "behavior" : "judgeHours",
+              "ordinal" : 1,
+              "lowered" : 0
+            }
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : true,
             "holdsAtTheValue" : false,
@@ -350,15 +366,17 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
+          "which" : {
             "kind" : "comparison",
-            "declaredIn" : "conformance.staffing",
-            "definition" : "judgeHours",
-            "behavior" : "judgeHours",
-            "ordinal" : 1,
-            "lowered" : 0
+            "rule" : {
+              "kind" : "comparison",
+              "declaredIn" : "conformance.staffing",
+              "definition" : "judgeHours",
+              "behavior" : "judgeHours",
+              "ordinal" : 1,
+              "lowered" : 0
+            }
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : true,
             "holdsAtTheValue" : false,
@@ -387,15 +405,17 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
+          "which" : {
             "kind" : "comparison",
-            "declaredIn" : "conformance.staffing",
-            "definition" : "judgeHours",
-            "behavior" : "judgeHours",
-            "ordinal" : 1,
-            "lowered" : 0
+            "rule" : {
+              "kind" : "comparison",
+              "declaredIn" : "conformance.staffing",
+              "definition" : "judgeHours",
+              "behavior" : "judgeHours",
+              "ordinal" : 1,
+              "lowered" : 0
+            }
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : true,
             "holdsAtTheValue" : false,
@@ -436,15 +456,17 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
+          "which" : {
             "kind" : "comparison",
-            "declaredIn" : "conformance.staffing",
-            "definition" : "judgeHours",
-            "behavior" : "judgeHours",
-            "ordinal" : 1,
-            "lowered" : 0
+            "rule" : {
+              "kind" : "comparison",
+              "declaredIn" : "conformance.staffing",
+              "definition" : "judgeHours",
+              "behavior" : "judgeHours",
+              "ordinal" : 1,
+              "lowered" : 0
+            }
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : true,
             "holdsAtTheValue" : false,
@@ -466,15 +488,17 @@
         "stops" : {
           "kind" : "at_a_line",
           "line" : {
-            "rule" : {
+            "which" : {
               "kind" : "comparison",
-              "declaredIn" : "conformance.staffing",
-              "definition" : "judgeHours",
-              "behavior" : "judgeHours",
-              "ordinal" : 4,
-              "lowered" : 0
+              "rule" : {
+                "kind" : "comparison",
+                "declaredIn" : "conformance.staffing",
+                "definition" : "judgeHours",
+                "behavior" : "judgeHours",
+                "ordinal" : 4,
+                "lowered" : 0
+              }
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : true,
               "holdsAtTheValue" : false,
@@ -494,15 +518,17 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
+          "which" : {
             "kind" : "comparison",
-            "declaredIn" : "conformance.staffing",
-            "definition" : "judgeHours",
-            "behavior" : "judgeHours",
-            "ordinal" : 4,
-            "lowered" : 0
+            "rule" : {
+              "kind" : "comparison",
+              "declaredIn" : "conformance.staffing",
+              "definition" : "judgeHours",
+              "behavior" : "judgeHours",
+              "ordinal" : 4,
+              "lowered" : 0
+            }
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : true,
             "holdsAtTheValue" : false,
@@ -530,15 +556,17 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
+          "which" : {
             "kind" : "comparison",
-            "declaredIn" : "conformance.staffing",
-            "definition" : "judgeHours",
-            "behavior" : "judgeHours",
-            "ordinal" : 4,
-            "lowered" : 0
+            "rule" : {
+              "kind" : "comparison",
+              "declaredIn" : "conformance.staffing",
+              "definition" : "judgeHours",
+              "behavior" : "judgeHours",
+              "ordinal" : 4,
+              "lowered" : 0
+            }
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : true,
             "holdsAtTheValue" : false,
@@ -567,15 +595,17 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
+          "which" : {
             "kind" : "comparison",
-            "declaredIn" : "conformance.staffing",
-            "definition" : "judgeHours",
-            "behavior" : "judgeHours",
-            "ordinal" : 4,
-            "lowered" : 0
+            "rule" : {
+              "kind" : "comparison",
+              "declaredIn" : "conformance.staffing",
+              "definition" : "judgeHours",
+              "behavior" : "judgeHours",
+              "ordinal" : 4,
+              "lowered" : 0
+            }
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : true,
             "holdsAtTheValue" : false,
@@ -597,15 +627,17 @@
         "stops" : {
           "kind" : "at_a_line",
           "line" : {
-            "rule" : {
+            "which" : {
               "kind" : "comparison",
-              "declaredIn" : "conformance.staffing",
-              "definition" : "judgeHours",
-              "behavior" : "judgeHours",
-              "ordinal" : 1,
-              "lowered" : 0
+              "rule" : {
+                "kind" : "comparison",
+                "declaredIn" : "conformance.staffing",
+                "definition" : "judgeHours",
+                "behavior" : "judgeHours",
+                "ordinal" : 1,
+                "lowered" : 0
+              }
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : true,
               "holdsAtTheValue" : false,
@@ -625,15 +657,17 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
+          "which" : {
             "kind" : "comparison",
-            "declaredIn" : "conformance.staffing",
-            "definition" : "judgeHours",
-            "behavior" : "judgeHours",
-            "ordinal" : 4,
-            "lowered" : 0
+            "rule" : {
+              "kind" : "comparison",
+              "declaredIn" : "conformance.staffing",
+              "definition" : "judgeHours",
+              "behavior" : "judgeHours",
+              "ordinal" : 4,
+              "lowered" : 0
+            }
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : true,
             "holdsAtTheValue" : false,
@@ -674,13 +708,16 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
-            "kind" : "invariant",
-            "declaredIn" : "conformance.staffing",
-            "declaredOn" : "Hours",
-            "clause" : 0
+          "which" : {
+            "kind" : "part",
+            "rule" : {
+              "kind" : "invariant",
+              "declaredIn" : "conformance.staffing",
+              "declaredOn" : "Hours",
+              "clause" : 0
+            },
+            "part" : 0
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : false,
             "holdsAtTheValue" : true,
@@ -708,13 +745,16 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
-            "kind" : "invariant",
-            "declaredIn" : "conformance.staffing",
-            "declaredOn" : "Hours",
-            "clause" : 0
+          "which" : {
+            "kind" : "part",
+            "rule" : {
+              "kind" : "invariant",
+              "declaredIn" : "conformance.staffing",
+              "declaredOn" : "Hours",
+              "clause" : 0
+            },
+            "part" : 0
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : false,
             "holdsAtTheValue" : true,
@@ -736,15 +776,17 @@
         "stops" : {
           "kind" : "at_a_line",
           "line" : {
-            "rule" : {
+            "which" : {
               "kind" : "comparison",
-              "declaredIn" : "conformance.staffing",
-              "definition" : "judgeHours",
-              "behavior" : "judgeHours",
-              "ordinal" : 4,
-              "lowered" : 0
+              "rule" : {
+                "kind" : "comparison",
+                "declaredIn" : "conformance.staffing",
+                "definition" : "judgeHours",
+                "behavior" : "judgeHours",
+                "ordinal" : 4,
+                "lowered" : 0
+              }
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : true,
               "holdsAtTheValue" : false,
@@ -764,13 +806,16 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
-            "kind" : "invariant",
-            "declaredIn" : "conformance.staffing",
-            "declaredOn" : "Hours",
-            "clause" : 0
+          "which" : {
+            "kind" : "part",
+            "rule" : {
+              "kind" : "invariant",
+              "declaredIn" : "conformance.staffing",
+              "declaredOn" : "Hours",
+              "clause" : 0
+            },
+            "part" : 1
           },
-          "conjunct" : 1,
           "facts" : {
             "valueBelongsBelow" : true,
             "holdsAtTheValue" : true,
@@ -798,13 +843,16 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
-            "kind" : "invariant",
-            "declaredIn" : "conformance.staffing",
-            "declaredOn" : "Hours",
-            "clause" : 0
+          "which" : {
+            "kind" : "part",
+            "rule" : {
+              "kind" : "invariant",
+              "declaredIn" : "conformance.staffing",
+              "declaredOn" : "Hours",
+              "clause" : 0
+            },
+            "part" : 1
           },
-          "conjunct" : 1,
           "facts" : {
             "valueBelongsBelow" : true,
             "holdsAtTheValue" : true,
@@ -826,15 +874,17 @@
         "stops" : {
           "kind" : "at_a_line",
           "line" : {
-            "rule" : {
+            "which" : {
               "kind" : "comparison",
-              "declaredIn" : "conformance.staffing",
-              "definition" : "judgeHours",
-              "behavior" : "judgeHours",
-              "ordinal" : 1,
-              "lowered" : 0
+              "rule" : {
+                "kind" : "comparison",
+                "declaredIn" : "conformance.staffing",
+                "definition" : "judgeHours",
+                "behavior" : "judgeHours",
+                "ordinal" : 1,
+                "lowered" : 0
+              }
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : true,
               "holdsAtTheValue" : false,
@@ -854,13 +904,16 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
-            "kind" : "invariant",
-            "declaredIn" : "conformance.staffing",
-            "declaredOn" : "Rate",
-            "clause" : 0
+          "which" : {
+            "kind" : "part",
+            "rule" : {
+              "kind" : "invariant",
+              "declaredIn" : "conformance.staffing",
+              "declaredOn" : "Rate",
+              "clause" : 0
+            },
+            "part" : 0
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : false,
             "holdsAtTheValue" : true,
@@ -888,13 +941,16 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
-            "kind" : "invariant",
-            "declaredIn" : "conformance.staffing",
-            "declaredOn" : "Rate",
-            "clause" : 0
+          "which" : {
+            "kind" : "part",
+            "rule" : {
+              "kind" : "invariant",
+              "declaredIn" : "conformance.staffing",
+              "declaredOn" : "Rate",
+              "clause" : 0
+            },
+            "part" : 0
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : false,
             "holdsAtTheValue" : true,
@@ -916,15 +972,17 @@
         "stops" : {
           "kind" : "at_a_line",
           "line" : {
-            "rule" : {
+            "which" : {
               "kind" : "comparison",
-              "declaredIn" : "conformance.staffing",
-              "definition" : "grantLeave",
-              "behavior" : "grantLeave",
-              "ordinal" : 5,
-              "lowered" : 0
+              "rule" : {
+                "kind" : "comparison",
+                "declaredIn" : "conformance.staffing",
+                "definition" : "grantLeave",
+                "behavior" : "grantLeave",
+                "ordinal" : 5,
+                "lowered" : 0
+              }
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : false,
               "holdsAtTheValue" : true,
@@ -944,13 +1002,16 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
-            "kind" : "invariant",
-            "declaredIn" : "conformance.staffing",
-            "declaredOn" : "Rate",
-            "clause" : 0
+          "which" : {
+            "kind" : "part",
+            "rule" : {
+              "kind" : "invariant",
+              "declaredIn" : "conformance.staffing",
+              "declaredOn" : "Rate",
+              "clause" : 0
+            },
+            "part" : 1
           },
-          "conjunct" : 1,
           "facts" : {
             "valueBelongsBelow" : true,
             "holdsAtTheValue" : true,
@@ -978,13 +1039,16 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
-            "kind" : "invariant",
-            "declaredIn" : "conformance.staffing",
-            "declaredOn" : "Rate",
-            "clause" : 0
+          "which" : {
+            "kind" : "part",
+            "rule" : {
+              "kind" : "invariant",
+              "declaredIn" : "conformance.staffing",
+              "declaredOn" : "Rate",
+              "clause" : 0
+            },
+            "part" : 1
           },
-          "conjunct" : 1,
           "facts" : {
             "valueBelongsBelow" : true,
             "holdsAtTheValue" : true,
@@ -1006,15 +1070,17 @@
         "stops" : {
           "kind" : "at_a_line",
           "line" : {
-            "rule" : {
+            "which" : {
               "kind" : "comparison",
-              "declaredIn" : "conformance.staffing",
-              "definition" : "grantLeave",
-              "behavior" : "grantLeave",
-              "ordinal" : 5,
-              "lowered" : 0
+              "rule" : {
+                "kind" : "comparison",
+                "declaredIn" : "conformance.staffing",
+                "definition" : "grantLeave",
+                "behavior" : "grantLeave",
+                "ordinal" : 5,
+                "lowered" : 0
+              }
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : false,
               "holdsAtTheValue" : true,
@@ -1034,13 +1100,16 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
-            "kind" : "invariant",
-            "declaredIn" : "conformance.staffing",
-            "declaredOn" : "WorkDays",
-            "clause" : 0
+          "which" : {
+            "kind" : "part",
+            "rule" : {
+              "kind" : "invariant",
+              "declaredIn" : "conformance.staffing",
+              "declaredOn" : "WorkDays",
+              "clause" : 0
+            },
+            "part" : 0
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : false,
             "holdsAtTheValue" : true,
@@ -1068,13 +1137,16 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
-            "kind" : "invariant",
-            "declaredIn" : "conformance.staffing",
-            "declaredOn" : "WorkDays",
-            "clause" : 0
+          "which" : {
+            "kind" : "part",
+            "rule" : {
+              "kind" : "invariant",
+              "declaredIn" : "conformance.staffing",
+              "declaredOn" : "WorkDays",
+              "clause" : 0
+            },
+            "part" : 0
           },
-          "conjunct" : 0,
           "facts" : {
             "valueBelongsBelow" : false,
             "holdsAtTheValue" : true,
@@ -1096,15 +1168,17 @@
         "stops" : {
           "kind" : "at_a_line",
           "line" : {
-            "rule" : {
+            "which" : {
               "kind" : "comparison",
-              "declaredIn" : "conformance.staffing",
-              "definition" : "grantLeave",
-              "behavior" : "grantLeave",
-              "ordinal" : 1,
-              "lowered" : 0
+              "rule" : {
+                "kind" : "comparison",
+                "declaredIn" : "conformance.staffing",
+                "definition" : "grantLeave",
+                "behavior" : "grantLeave",
+                "ordinal" : 1,
+                "lowered" : 0
+              }
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : false,
               "holdsAtTheValue" : true,
@@ -1124,13 +1198,16 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
-            "kind" : "invariant",
-            "declaredIn" : "conformance.staffing",
-            "declaredOn" : "WorkDays",
-            "clause" : 0
+          "which" : {
+            "kind" : "part",
+            "rule" : {
+              "kind" : "invariant",
+              "declaredIn" : "conformance.staffing",
+              "declaredOn" : "WorkDays",
+              "clause" : 0
+            },
+            "part" : 1
           },
-          "conjunct" : 1,
           "facts" : {
             "valueBelongsBelow" : true,
             "holdsAtTheValue" : true,
@@ -1158,13 +1235,16 @@
       "kind" : "point",
       "obligationId" : {
         "line" : {
-          "rule" : {
-            "kind" : "invariant",
-            "declaredIn" : "conformance.staffing",
-            "declaredOn" : "WorkDays",
-            "clause" : 0
+          "which" : {
+            "kind" : "part",
+            "rule" : {
+              "kind" : "invariant",
+              "declaredIn" : "conformance.staffing",
+              "declaredOn" : "WorkDays",
+              "clause" : 0
+            },
+            "part" : 1
           },
-          "conjunct" : 1,
           "facts" : {
             "valueBelongsBelow" : true,
             "holdsAtTheValue" : true,
@@ -1186,15 +1266,17 @@
         "stops" : {
           "kind" : "at_a_line",
           "line" : {
-            "rule" : {
+            "which" : {
               "kind" : "comparison",
-              "declaredIn" : "conformance.staffing",
-              "definition" : "grantLeave",
-              "behavior" : "grantLeave",
-              "ordinal" : 1,
-              "lowered" : 0
+              "rule" : {
+                "kind" : "comparison",
+                "declaredIn" : "conformance.staffing",
+                "definition" : "grantLeave",
+                "behavior" : "grantLeave",
+                "ordinal" : 1,
+                "lowered" : 0
+              }
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : false,
               "holdsAtTheValue" : true,
@@ -1263,13 +1345,16 @@
       "obligations" : [ {
         "obligationId" : {
           "line" : {
-            "rule" : {
-              "kind" : "invariant",
-              "declaredIn" : "conformance.staffing",
-              "declaredOn" : "WorkDays",
-              "clause" : 0
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.staffing",
+                "declaredOn" : "WorkDays",
+                "clause" : 0
+              },
+              "part" : 0
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : false,
               "holdsAtTheValue" : true,
@@ -1316,13 +1401,16 @@
       }, {
         "obligationId" : {
           "line" : {
-            "rule" : {
-              "kind" : "invariant",
-              "declaredIn" : "conformance.staffing",
-              "declaredOn" : "WorkDays",
-              "clause" : 0
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.staffing",
+                "declaredOn" : "WorkDays",
+                "clause" : 0
+              },
+              "part" : 1
             },
-            "conjunct" : 1,
             "facts" : {
               "valueBelongsBelow" : true,
               "holdsAtTheValue" : true,
@@ -1378,13 +1466,16 @@
       "obligations" : [ {
         "obligationId" : {
           "line" : {
-            "rule" : {
-              "kind" : "invariant",
-              "declaredIn" : "conformance.staffing",
-              "declaredOn" : "Rate",
-              "clause" : 0
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.staffing",
+                "declaredOn" : "Rate",
+                "clause" : 0
+              },
+              "part" : 0
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : false,
               "holdsAtTheValue" : true,
@@ -1431,13 +1522,16 @@
       }, {
         "obligationId" : {
           "line" : {
-            "rule" : {
-              "kind" : "invariant",
-              "declaredIn" : "conformance.staffing",
-              "declaredOn" : "Rate",
-              "clause" : 0
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.staffing",
+                "declaredOn" : "Rate",
+                "clause" : 0
+              },
+              "part" : 1
             },
-            "conjunct" : 1,
             "facts" : {
               "valueBelongsBelow" : true,
               "holdsAtTheValue" : true,
@@ -1493,13 +1587,16 @@
       "obligations" : [ {
         "obligationId" : {
           "line" : {
-            "rule" : {
-              "kind" : "invariant",
-              "declaredIn" : "conformance.staffing",
-              "declaredOn" : "Hours",
-              "clause" : 0
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.staffing",
+                "declaredOn" : "Hours",
+                "clause" : 0
+              },
+              "part" : 0
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : false,
               "holdsAtTheValue" : true,
@@ -1546,13 +1643,16 @@
       }, {
         "obligationId" : {
           "line" : {
-            "rule" : {
-              "kind" : "invariant",
-              "declaredIn" : "conformance.staffing",
-              "declaredOn" : "Hours",
-              "clause" : 0
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.staffing",
+                "declaredOn" : "Hours",
+                "clause" : 0
+              },
+              "part" : 1
             },
-            "conjunct" : 1,
             "facts" : {
               "valueBelongsBelow" : true,
               "holdsAtTheValue" : true,
@@ -1933,13 +2033,16 @@
         "obligations" : [ {
           "obligationId" : {
             "line" : {
-              "rule" : {
-                "kind" : "invariant",
-                "declaredIn" : "conformance.staffing",
-                "declaredOn" : "WorkDays",
-                "clause" : 0
+              "which" : {
+                "kind" : "part",
+                "rule" : {
+                  "kind" : "invariant",
+                  "declaredIn" : "conformance.staffing",
+                  "declaredOn" : "WorkDays",
+                  "clause" : 0
+                },
+                "part" : 0
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : false,
                 "holdsAtTheValue" : true,
@@ -1961,15 +2064,17 @@
             "stops" : {
               "kind" : "at_a_line",
               "line" : {
-                "rule" : {
+                "which" : {
                   "kind" : "comparison",
-                  "declaredIn" : "conformance.staffing",
-                  "definition" : "grantLeave",
-                  "behavior" : "grantLeave",
-                  "ordinal" : 1,
-                  "lowered" : 0
+                  "rule" : {
+                    "kind" : "comparison",
+                    "declaredIn" : "conformance.staffing",
+                    "definition" : "grantLeave",
+                    "behavior" : "grantLeave",
+                    "ordinal" : 1,
+                    "lowered" : 0
+                  }
                 },
-                "conjunct" : 0,
                 "facts" : {
                   "valueBelongsBelow" : false,
                   "holdsAtTheValue" : true,
@@ -2006,13 +2111,16 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
-                "kind" : "invariant",
-                "declaredIn" : "conformance.staffing",
-                "declaredOn" : "WorkDays",
-                "clause" : 0
+              "which" : {
+                "kind" : "part",
+                "rule" : {
+                  "kind" : "invariant",
+                  "declaredIn" : "conformance.staffing",
+                  "declaredOn" : "WorkDays",
+                  "clause" : 0
+                },
+                "part" : 1
               },
-              "conjunct" : 1,
               "facts" : {
                 "valueBelongsBelow" : true,
                 "holdsAtTheValue" : true,
@@ -2034,15 +2142,17 @@
             "stops" : {
               "kind" : "at_a_line",
               "line" : {
-                "rule" : {
+                "which" : {
                   "kind" : "comparison",
-                  "declaredIn" : "conformance.staffing",
-                  "definition" : "grantLeave",
-                  "behavior" : "grantLeave",
-                  "ordinal" : 1,
-                  "lowered" : 0
+                  "rule" : {
+                    "kind" : "comparison",
+                    "declaredIn" : "conformance.staffing",
+                    "definition" : "grantLeave",
+                    "behavior" : "grantLeave",
+                    "ordinal" : 1,
+                    "lowered" : 0
+                  }
                 },
-                "conjunct" : 0,
                 "facts" : {
                   "valueBelongsBelow" : false,
                   "holdsAtTheValue" : true,
@@ -2079,15 +2189,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.staffing",
-                "definition" : "grantLeave",
-                "behavior" : "grantLeave",
-                "ordinal" : 1,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.staffing",
+                  "definition" : "grantLeave",
+                  "behavior" : "grantLeave",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : false,
                 "holdsAtTheValue" : true,
@@ -2134,15 +2246,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.staffing",
-                "definition" : "grantLeave",
-                "behavior" : "grantLeave",
-                "ordinal" : 1,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.staffing",
+                  "definition" : "grantLeave",
+                  "behavior" : "grantLeave",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : false,
                 "holdsAtTheValue" : true,
@@ -2190,15 +2304,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.staffing",
-                "definition" : "grantLeave",
-                "behavior" : "grantLeave",
-                "ordinal" : 1,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.staffing",
+                  "definition" : "grantLeave",
+                  "behavior" : "grantLeave",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : false,
                 "holdsAtTheValue" : true,
@@ -2258,15 +2374,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.staffing",
-                "definition" : "grantLeave",
-                "behavior" : "grantLeave",
-                "ordinal" : 1,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.staffing",
+                  "definition" : "grantLeave",
+                  "behavior" : "grantLeave",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : false,
                 "holdsAtTheValue" : true,
@@ -2326,13 +2444,16 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
-                "kind" : "invariant",
-                "declaredIn" : "conformance.staffing",
-                "declaredOn" : "Rate",
-                "clause" : 0
+              "which" : {
+                "kind" : "part",
+                "rule" : {
+                  "kind" : "invariant",
+                  "declaredIn" : "conformance.staffing",
+                  "declaredOn" : "Rate",
+                  "clause" : 0
+                },
+                "part" : 0
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : false,
                 "holdsAtTheValue" : true,
@@ -2354,15 +2475,17 @@
             "stops" : {
               "kind" : "at_a_line",
               "line" : {
-                "rule" : {
+                "which" : {
                   "kind" : "comparison",
-                  "declaredIn" : "conformance.staffing",
-                  "definition" : "grantLeave",
-                  "behavior" : "grantLeave",
-                  "ordinal" : 5,
-                  "lowered" : 0
+                  "rule" : {
+                    "kind" : "comparison",
+                    "declaredIn" : "conformance.staffing",
+                    "definition" : "grantLeave",
+                    "behavior" : "grantLeave",
+                    "ordinal" : 5,
+                    "lowered" : 0
+                  }
                 },
-                "conjunct" : 0,
                 "facts" : {
                   "valueBelongsBelow" : false,
                   "holdsAtTheValue" : true,
@@ -2399,13 +2522,16 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
-                "kind" : "invariant",
-                "declaredIn" : "conformance.staffing",
-                "declaredOn" : "Rate",
-                "clause" : 0
+              "which" : {
+                "kind" : "part",
+                "rule" : {
+                  "kind" : "invariant",
+                  "declaredIn" : "conformance.staffing",
+                  "declaredOn" : "Rate",
+                  "clause" : 0
+                },
+                "part" : 1
               },
-              "conjunct" : 1,
               "facts" : {
                 "valueBelongsBelow" : true,
                 "holdsAtTheValue" : true,
@@ -2427,15 +2553,17 @@
             "stops" : {
               "kind" : "at_a_line",
               "line" : {
-                "rule" : {
+                "which" : {
                   "kind" : "comparison",
-                  "declaredIn" : "conformance.staffing",
-                  "definition" : "grantLeave",
-                  "behavior" : "grantLeave",
-                  "ordinal" : 5,
-                  "lowered" : 0
+                  "rule" : {
+                    "kind" : "comparison",
+                    "declaredIn" : "conformance.staffing",
+                    "definition" : "grantLeave",
+                    "behavior" : "grantLeave",
+                    "ordinal" : 5,
+                    "lowered" : 0
+                  }
                 },
-                "conjunct" : 0,
                 "facts" : {
                   "valueBelongsBelow" : false,
                   "holdsAtTheValue" : true,
@@ -2472,15 +2600,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.staffing",
-                "definition" : "grantLeave",
-                "behavior" : "grantLeave",
-                "ordinal" : 5,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.staffing",
+                  "definition" : "grantLeave",
+                  "behavior" : "grantLeave",
+                  "ordinal" : 5,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : false,
                 "holdsAtTheValue" : true,
@@ -2527,15 +2657,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.staffing",
-                "definition" : "grantLeave",
-                "behavior" : "grantLeave",
-                "ordinal" : 5,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.staffing",
+                  "definition" : "grantLeave",
+                  "behavior" : "grantLeave",
+                  "ordinal" : 5,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : false,
                 "holdsAtTheValue" : true,
@@ -2595,15 +2727,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.staffing",
-                "definition" : "grantLeave",
-                "behavior" : "grantLeave",
-                "ordinal" : 5,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.staffing",
+                  "definition" : "grantLeave",
+                  "behavior" : "grantLeave",
+                  "ordinal" : 5,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : false,
                 "holdsAtTheValue" : true,
@@ -2932,13 +3066,16 @@
         "obligations" : [ {
           "obligationId" : {
             "line" : {
-              "rule" : {
-                "kind" : "invariant",
-                "declaredIn" : "conformance.staffing",
-                "declaredOn" : "Hours",
-                "clause" : 0
+              "which" : {
+                "kind" : "part",
+                "rule" : {
+                  "kind" : "invariant",
+                  "declaredIn" : "conformance.staffing",
+                  "declaredOn" : "Hours",
+                  "clause" : 0
+                },
+                "part" : 0
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : false,
                 "holdsAtTheValue" : true,
@@ -2960,15 +3097,17 @@
             "stops" : {
               "kind" : "at_a_line",
               "line" : {
-                "rule" : {
+                "which" : {
                   "kind" : "comparison",
-                  "declaredIn" : "conformance.staffing",
-                  "definition" : "judgeHours",
-                  "behavior" : "judgeHours",
-                  "ordinal" : 4,
-                  "lowered" : 0
+                  "rule" : {
+                    "kind" : "comparison",
+                    "declaredIn" : "conformance.staffing",
+                    "definition" : "judgeHours",
+                    "behavior" : "judgeHours",
+                    "ordinal" : 4,
+                    "lowered" : 0
+                  }
                 },
-                "conjunct" : 0,
                 "facts" : {
                   "valueBelongsBelow" : true,
                   "holdsAtTheValue" : false,
@@ -3005,13 +3144,16 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
-                "kind" : "invariant",
-                "declaredIn" : "conformance.staffing",
-                "declaredOn" : "Hours",
-                "clause" : 0
+              "which" : {
+                "kind" : "part",
+                "rule" : {
+                  "kind" : "invariant",
+                  "declaredIn" : "conformance.staffing",
+                  "declaredOn" : "Hours",
+                  "clause" : 0
+                },
+                "part" : 1
               },
-              "conjunct" : 1,
               "facts" : {
                 "valueBelongsBelow" : true,
                 "holdsAtTheValue" : true,
@@ -3033,15 +3175,17 @@
             "stops" : {
               "kind" : "at_a_line",
               "line" : {
-                "rule" : {
+                "which" : {
                   "kind" : "comparison",
-                  "declaredIn" : "conformance.staffing",
-                  "definition" : "judgeHours",
-                  "behavior" : "judgeHours",
-                  "ordinal" : 1,
-                  "lowered" : 0
+                  "rule" : {
+                    "kind" : "comparison",
+                    "declaredIn" : "conformance.staffing",
+                    "definition" : "judgeHours",
+                    "behavior" : "judgeHours",
+                    "ordinal" : 1,
+                    "lowered" : 0
+                  }
                 },
-                "conjunct" : 0,
                 "facts" : {
                   "valueBelongsBelow" : true,
                   "holdsAtTheValue" : false,
@@ -3078,15 +3222,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.staffing",
-                "definition" : "judgeHours",
-                "behavior" : "judgeHours",
-                "ordinal" : 1,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.staffing",
+                  "definition" : "judgeHours",
+                  "behavior" : "judgeHours",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : true,
                 "holdsAtTheValue" : false,
@@ -3134,15 +3280,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.staffing",
-                "definition" : "judgeHours",
-                "behavior" : "judgeHours",
-                "ordinal" : 1,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.staffing",
+                  "definition" : "judgeHours",
+                  "behavior" : "judgeHours",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : true,
                 "holdsAtTheValue" : false,
@@ -3189,15 +3337,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.staffing",
-                "definition" : "judgeHours",
-                "behavior" : "judgeHours",
-                "ordinal" : 1,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.staffing",
+                  "definition" : "judgeHours",
+                  "behavior" : "judgeHours",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : true,
                 "holdsAtTheValue" : false,
@@ -3257,15 +3407,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.staffing",
-                "definition" : "judgeHours",
-                "behavior" : "judgeHours",
-                "ordinal" : 1,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.staffing",
+                  "definition" : "judgeHours",
+                  "behavior" : "judgeHours",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : true,
                 "holdsAtTheValue" : false,
@@ -3287,15 +3439,17 @@
             "stops" : {
               "kind" : "at_a_line",
               "line" : {
-                "rule" : {
+                "which" : {
                   "kind" : "comparison",
-                  "declaredIn" : "conformance.staffing",
-                  "definition" : "judgeHours",
-                  "behavior" : "judgeHours",
-                  "ordinal" : 4,
-                  "lowered" : 0
+                  "rule" : {
+                    "kind" : "comparison",
+                    "declaredIn" : "conformance.staffing",
+                    "definition" : "judgeHours",
+                    "behavior" : "judgeHours",
+                    "ordinal" : 4,
+                    "lowered" : 0
+                  }
                 },
-                "conjunct" : 0,
                 "facts" : {
                   "valueBelongsBelow" : true,
                   "holdsAtTheValue" : false,
@@ -3334,15 +3488,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.staffing",
-                "definition" : "judgeHours",
-                "behavior" : "judgeHours",
-                "ordinal" : 4,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.staffing",
+                  "definition" : "judgeHours",
+                  "behavior" : "judgeHours",
+                  "ordinal" : 4,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : true,
                 "holdsAtTheValue" : false,
@@ -3390,15 +3546,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.staffing",
-                "definition" : "judgeHours",
-                "behavior" : "judgeHours",
-                "ordinal" : 4,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.staffing",
+                  "definition" : "judgeHours",
+                  "behavior" : "judgeHours",
+                  "ordinal" : 4,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : true,
                 "holdsAtTheValue" : false,
@@ -3445,15 +3603,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.staffing",
-                "definition" : "judgeHours",
-                "behavior" : "judgeHours",
-                "ordinal" : 4,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.staffing",
+                  "definition" : "judgeHours",
+                  "behavior" : "judgeHours",
+                  "ordinal" : 4,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : true,
                 "holdsAtTheValue" : false,
@@ -3475,15 +3635,17 @@
             "stops" : {
               "kind" : "at_a_line",
               "line" : {
-                "rule" : {
+                "which" : {
                   "kind" : "comparison",
-                  "declaredIn" : "conformance.staffing",
-                  "definition" : "judgeHours",
-                  "behavior" : "judgeHours",
-                  "ordinal" : 1,
-                  "lowered" : 0
+                  "rule" : {
+                    "kind" : "comparison",
+                    "declaredIn" : "conformance.staffing",
+                    "definition" : "judgeHours",
+                    "behavior" : "judgeHours",
+                    "ordinal" : 1,
+                    "lowered" : 0
+                  }
                 },
-                "conjunct" : 0,
                 "facts" : {
                   "valueBelongsBelow" : true,
                   "holdsAtTheValue" : false,
@@ -3522,15 +3684,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.staffing",
-                "definition" : "judgeHours",
-                "behavior" : "judgeHours",
-                "ordinal" : 4,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.staffing",
+                  "definition" : "judgeHours",
+                  "behavior" : "judgeHours",
+                  "ordinal" : 4,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : true,
                 "holdsAtTheValue" : false,

@@ -64,8 +64,11 @@ class EveryKindOfSubjectIsWrittenTheWayTheSchemaSaysTest {
         armId.put("part", 0);
         armId.put("decidedBy", "the_body");
         ObjectNode line = JSON.createObjectNode();
-        line.set("rule", ruleId.deepCopy());
-        line.put("conjunct", 0);
+        // A comparison written in a body, which is a rule apiece: the rule is the whole of what
+        // names a line of it, and there is nothing under it to be one of.
+        ObjectNode which = line.putObject("which");
+        which.put("kind", "comparison");
+        which.set("rule", ruleId.deepCopy());
         ObjectNode facts = line.putObject("facts");
         facts.put("valueBelongsBelow", false);
         facts.put("holdsAtTheValue", true);

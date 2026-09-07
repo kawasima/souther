@@ -152,7 +152,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         return ReportMeasurement.statusOf(weakenedBy);
     }
 
-    public static final int SCHEMA_VERSION = 15;
+    public static final int SCHEMA_VERSION = 16;
 
     /**
      * Where the schema this writes documents ships.
