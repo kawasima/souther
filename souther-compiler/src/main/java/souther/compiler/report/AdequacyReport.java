@@ -74,6 +74,7 @@ import souther.compiler.publish.NotMeasuredWord;
 import souther.compiler.publish.PublicationOrders;
 import souther.compiler.publish.PublishedAt;
 import souther.compiler.publish.PublishedIncompleteness;
+import souther.compiler.publish.MeasureWord;
 import souther.compiler.publish.PublishedOpening;
 import souther.compiler.publish.DocumentArray;
 import souther.compiler.publish.DocumentItem;
@@ -740,10 +741,10 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // the second and then reach past it for a list of reasons, which is the bar's decision
         // taken away from it: a reason about a measure this build is not held to held the verdict
         // open, and a reason no measure carried held it open on nobody's authority (issue #996).
-        return Stream.concat(requiredSupport().stream(),
-                                requiredEvidence().stream())
+        return Stream.concat(requiredSupport().stream(), requiredEvidence().stream())
+                        .map(Owned::value)
                         .allMatch(m -> m instanceof Measurement.Complete<?>)
-                        && requiredObligations().stream().noneMatch(
+                        && requiredObligations().stream().map(Owned::value).noneMatch(
                                 owed -> owed.disposition() instanceof ObligationDisposition.Undecided)
                 ? AdequacyStatus.SATISFIED : AdequacyStatus.UNDETERMINED;
     }
@@ -777,19 +778,19 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // one thing, and putting them together is what says so.
         WeakeningSet facts = WeakeningSet.none();
         List<AdequacyOpening> rest = new ArrayList<>();
-        for (Measurement<?> each : requiredSupport()) {
-            facts = facts.union(each.weakening());
-            openedBy(rest, each);
+        for (Owned<Measurement<?>> each : requiredSupport()) {
+            facts = facts.union(each.value().weakening());
+            openedBy(rest, each.subject(), each.value());
         }
-        for (Measure<?> each : requiredEvidence()) {
-            facts = facts.union(each.weakening());
-            if (each instanceof Measurement<?> measured) {
-                openedBy(rest, measured);
+        for (Owned<Measure<?>> each : requiredEvidence()) {
+            facts = facts.union(each.value().weakening());
+            if (each.value() instanceof Measurement<?> measured) {
+                openedBy(rest, each.subject(), measured);
             }
         }
-        for (ObligationAssessment each : requiredObligations()) {
-            facts = facts.union(each.weakening());
-            openedBy(rest, each.disposition());
+        for (Owned<ObligationAssessment> each : requiredObligations()) {
+            facts = facts.union(each.value().weakening());
+            openedBy(rest, each.subject(), each.value().disposition());
         }
         List<AdequacyOpening> out = new ArrayList<>();
         facts.causes().forEach(each -> out.add(new AdequacyOpening.ByWeakening(each)));
@@ -809,10 +810,10 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * two that are short of something refuse an empty {@code WeakeningSet} at construction, so the
      * union above already holds at least one fact for each of them.
      */
-    static void openedBy(List<AdequacyOpening> out, Measurement<?> measured) {
+    static void openedBy(List<AdequacyOpening> out, Subject subject, Measurement<?> measured) {
         switch (measured) {
             case Measurement.NotMeasured<?> never ->
-                    out.add(new AdequacyOpening.NotMeasured(never.why()));
+                    out.add(new AdequacyOpening.NotMeasured(subject, never.why()));
             case Measurement.Complete<?> _, Measurement.Partial<?> _,
                  Measurement.FailedToMeasure<?> _ -> { }
         }
@@ -834,7 +835,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * <p>{@code Undecided} refuses an empty list at construction and every arm below yields an
      * entry, so an obligation that holds the verdict open cannot come back with nothing.
      */
-    static void openedBy(List<AdequacyOpening> out, ObligationDisposition disposition) {
+    static void openedBy(List<AdequacyOpening> out, Subject subject,
+                         ObligationDisposition disposition) {
         if (!(disposition instanceof ObligationDisposition.Undecided undecided)) {
             return;
         }
@@ -844,12 +846,12 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 // One opening, which says one reason. What the readings gave is a set, and asking
                 // for it as one is where an opening with no room for the second says so.
                 case ObligationDisposition.Uncertainty.WhetherARowIsThere.NothingWasRead it ->
-                        out.add(new AdequacyOpening.NotMeasured(it.why().asOne()));
+                        out.add(new AdequacyOpening.NotMeasured(subject, it.why().asOne()));
                 case ObligationDisposition.Uncertainty.WhetherARowCanBeWritten.Stopped it ->
                         it.by().by().written().forEach(gap ->
-                                out.add(new AdequacyOpening.ShowingStopped(gap)));
+                                out.add(new AdequacyOpening.ShowingStopped(subject, gap)));
                 case ObligationDisposition.Uncertainty.WhetherARowCanBeWritten.NothingShowedIt _ ->
-                        out.add(new AdequacyOpening.NothingShowedARowCanBeWritten());
+                        out.add(new AdequacyOpening.NothingShowedARowCanBeWritten(subject));
             }
         }
     }
@@ -920,13 +922,14 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * well, a build that measures nothing would be undetermined about a model the bar can refuse
      * nothing about, which is the answer #955 took out.
      */
-    private List<Measurement<?>> requiredSupport() {
-        List<Measurement<?>> support = new ArrayList<>();
+    private List<Owned<Measurement<?>>> requiredSupport() {
+        List<Owned<Measurement<?>>> support = new ArrayList<>();
         for (ModuleReport module : modules) {
             for (BehaviorReport behavior : module.behaviors()) {
                 Measurement<?> reading = behavior.reading().measured();
                 if (!(reading instanceof Measurement.NotMeasured<?>)) {
-                    support.add(reading);
+                    support.add(new Owned<>(new Subject.OfAMeasure(module.module(),
+                            behavior.name(), MeasureWord.READING), reading));
                 }
             }
         }
@@ -954,18 +957,20 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * that was made and found nothing, so a report reading them back would call the first adequate
      * and the second covered.
      */
-    private List<Measure<?>> requiredEvidence() {
-        List<Measure<?>> measures = new ArrayList<>();
+    private List<Owned<Measure<?>>> requiredEvidence() {
+        List<Owned<Measure<?>>> measures = new ArrayList<>();
         for (ModuleReport module : modules) {
             for (BehaviorReport behavior : module.behaviors()) {
                 // The cases of the signature, which every bar refuses over.
                 if (behavior.signature() != null
                         && (refuses(Adequacy.Kind.OUTPUT_CASE_UNSPECIFIED)
                                 || refuses(Adequacy.Kind.INPUT_CASE_UNSPECIFIED))) {
-                    add(measures, behavior.signature().counted());
+                    add(measures, new Subject.OfAMeasure(module.module(), behavior.name(),
+                            MeasureWord.SIGNATURE), behavior.signature().counted());
                 }
                 if (behavior.branch() != null && refuses(Adequacy.Kind.ARM_UNREACHED)) {
-                    add(measures, behavior.branch().measured());
+                    add(measures, new Subject.OfAMeasure(module.module(), behavior.name(),
+                            MeasureWord.BRANCH), behavior.branch().measured());
                 }
                 if (behavior.partition() == null) {
                     continue;
@@ -982,7 +987,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 // that was.
                 if (refuses(Adequacy.Kind.BOUNDARY_UNMET)
                         || refuses(Adequacy.Kind.DOMAIN_POINT_UNCOVERED)) {
-                    add(measures, behavior.boundaryReadings());
+                    add(measures, new Subject.OfAMeasure(module.module(), behavior.name(),
+                            MeasureWord.BOUNDARY), behavior.boundaryReadings());
                 }
                 // What the rows reach of each position, which finds a class no row is in — a gap
                 // the `classes` bar refuses over and no other does. A bar that asks nothing about
@@ -998,8 +1004,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 // divides nothing answers {@code NotApplicable} and is dropped below, so this holds
                 // nothing open that was never going to be measured.
                 if (refuses(Adequacy.Kind.AXIS_CLASS_UNCOVERED)) {
-                    add(measures, behavior.partition().partitioned());
-                    behavior.partition().axes().forEach(axis -> add(measures, axis.reached()));
+                    add(measures, new Subject.OfAMeasure(module.module(), behavior.name(),
+                            MeasureWord.PARTITION), behavior.partition().partitioned());
+                    behavior.partition().axes().forEach(axis -> add(measures,
+                            new Subject.OfAnAxisMeasure(module.module(), behavior.name(),
+                                    axis.at()), axis.reached()));
                 }
                 // And of what this behavior is owed a row for, the points the bar asks for. A line
                 // the declarations are owed is answered once for the module below, from every
@@ -1044,8 +1053,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * and not their findings, since a line a row already stands at has no finding and a denominator
      * made of the findings is a denominator made of the gaps.
      */
-    private List<ObligationAssessment> requiredObligations() {
-        List<ObligationAssessment> owed = new ArrayList<>();
+    private List<Owned<ObligationAssessment>> requiredObligations() {
+        List<Owned<ObligationAssessment>> owed = new ArrayList<>();
         for (ModuleReport module : modules) {
             for (BehaviorReport behavior : module.behaviors()) {
                 if (behavior.partition() == null) {
@@ -1053,11 +1062,13 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 }
                 behavior.account().stream()
                         .filter(point -> held.requires(point.role()))
-                        .forEach(point -> owed.add(point.owed()));
+                        .forEach(point -> owed.add(new Owned<>(
+                                new Subject.AtAPoint(point.point()), point.owed())));
             }
             for (Adequacy.DeclaredDebt debt : module.debts()) {
                 if (held.requires(debt.debt().role())) {
-                    owed.add(debt.debt().owed());
+                    owed.add(new Owned<>(new Subject.AtAPoint(debt.debt().point()),
+                            debt.debt().owed()));
                 }
             }
         }
@@ -1079,9 +1090,27 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * counted and is exactly what stops a verdict of satisfied: it is the case where a gap could have
      * been found and nobody looked.
      */
-    private void add(List<Measure<?>> measures, Measure<?> measure) {
+    private void add(List<Owned<Measure<?>>> measures, Subject subject, Measure<?> measure) {
         if (measure != null && !(measure instanceof Measure.NotApplicable<?>)) {
-            measures.add(measure);
+            measures.add(new Owned<>(subject, measure));
+        }
+    }
+
+    /**
+     * One thing the verdict rests on, together with what it is a thing about.
+     *
+     * <p>Handed over as a pair because the walk is where the second half is. A measurement carries
+     * what it was waiting for and an obligation's disposition what is undecided about it; which
+     * measure and which point they are of is known here, at the loop that reached them, and
+     * nowhere afterwards. Passed on alone, they arrive at the reader as many facts a document
+     * calls one thing and spells the same way (issue #1437).
+     */
+    private record Owned<T>(Subject subject, T value) {
+
+        private Owned {
+            if (subject == null || value == null) {
+                throw new IllegalArgumentException("a thing the verdict rests on is about something");
+            }
         }
     }
 

@@ -41,6 +41,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class EveryWayTheVerdictStaysOpenNamesSomethingTest {
 
     /**
+     * What the walk would have handed in, standing for whichever point it reached.
+     *
+     * <p>Any subject does here. What is held below is that whatever was handed in comes back on
+     * every opening the way yields, and no way is entitled to answer with one of its own: a
+     * disposition holds what is undecided about a point and never which point, so an opening that
+     * named a subject of its own would have made it up.
+     */
+    private static final Subject HANDED_IN = new Subject.OfABehavior("submit");
+
+    /**
      * Every way, and what it opens the verdict on.
      *
      * <p>Written as the openers each yields, as {@code kind/sensitivity}. A way that yields none
@@ -78,7 +88,7 @@ class EveryWayTheVerdictStaysOpenNamesSomethingTest {
         Map<String, List<String>> said = new LinkedHashMap<>();
         everyWay().forEach((name, why) -> {
             List<AdequacyOpening> out = new ArrayList<>();
-            AdequacyReport.openedBy(out, ObligationDisposition.Undecided.about(List.of(why)));
+            AdequacyReport.openedBy(out, HANDED_IN, ObligationDisposition.Undecided.about(List.of(why)));
             said.put(name, out.stream()
                     .map(each -> each.getClass().getSimpleName() + "/" + each.runSensitivity())
                     .toList());
@@ -120,13 +130,21 @@ class EveryWayTheVerdictStaysOpenNamesSomethingTest {
     void anUndecidedObligationIsAlwaysOpenOnSomething() {
         for (ObligationDisposition.Uncertainty each : everyWay().values()) {
             List<AdequacyOpening> out = new ArrayList<>();
-            AdequacyReport.openedBy(out, ObligationDisposition.Undecided.about(List.of(each)));
+            AdequacyReport.openedBy(out, HANDED_IN, ObligationDisposition.Undecided.about(List.of(each)));
             boolean readings =
                     each instanceof ObligationDisposition.Uncertainty.WhetherARowIsThere
                             .ReadingsStopped;
 
             assertTrue(readings || !out.isEmpty(),
                     () -> each + " holds the verdict open and names nothing");
+            // And names the point the walk reached it at, which is the half a disposition does not
+            // hold. Handed over and dropped, every one of these came out as the same entry however
+            // many points the module owed a row at (issue #1437).
+            for (AdequacyOpening opened : out) {
+                assertEquals(HANDED_IN, opened.subject(),
+                        () -> each + " opened the verdict on something other than the point it is"
+                                + " about");
+            }
         }
         assertThrows(IllegalArgumentException.class,
                 () -> new ObligationCoverage.Undecided(WeakeningSet.none()),

@@ -33,6 +33,17 @@ public sealed interface AdequacyOpening {
     RunSensitivity runSensitivity();
 
     /**
+     * What this is about, as a reader is sent back to it.
+     *
+     * <p>Answered by the arm and not worked out from the payload. One of these carries a fact that
+     * names its own subject; the other three carry what a measurement or an obligation went
+     * without, and neither of those holds the measure or the point it is of. Those subjects belong
+     * to the walk that found them and arrive with the arm, which is why they are fields here rather
+     * than a projection somebody could write later ({@link Subject}).
+     */
+    Subject subject();
+
+    /**
      * A measure was made and went without something.
      *
      * <p>One per fact, and the facts have already been folded: two measures that went without the
@@ -52,6 +63,12 @@ public sealed interface AdequacyOpening {
         public RunSensitivity runSensitivity() {
             return cause.runSensitivity();
         }
+
+        /** The fact's own, which every weakening names for itself. */
+        @Override
+        public Subject subject() {
+            return Subjects.of(cause);
+        }
     }
 
     /**
@@ -66,9 +83,12 @@ public sealed interface AdequacyOpening {
      * does is a row, and a row is a change to the model rather than a wider run of this compiler
      * over it. What a person may go on to do is the reason's, which is why it travels.
      */
-    record NotMeasured(NotMeasuredReason why) implements AdequacyOpening {
+    record NotMeasured(Subject subject, NotMeasuredReason why) implements AdequacyOpening {
 
         public NotMeasured {
+            if (subject == null) {
+                throw new IllegalArgumentException("a measure nobody made is some measure");
+            }
             if (why == null) {
                 throw new IllegalArgumentException("a measure nobody made says why");
             }
@@ -92,9 +112,12 @@ public sealed interface AdequacyOpening {
      * read for it that did not come back, and a composing for another that never started — and what
      * a reader wants is everything that would have to give.
      */
-    record ShowingStopped(EstablishmentGap by) implements AdequacyOpening {
+    record ShowingStopped(Subject subject, EstablishmentGap by) implements AdequacyOpening {
 
         public ShowingStopped {
+            if (subject == null) {
+                throw new IllegalArgumentException("a showing that was stopped was of some point");
+            }
             if (by == null) {
                 throw new IllegalArgumentException("a showing that was stopped says what stopped it");
             }
@@ -127,7 +150,13 @@ public sealed interface AdequacyOpening {
      * something; here nothing arrived at all, and a reader told a limit stopped it would go looking
      * for a limit nobody hit. Nothing was compared against a figure, so no allowance changes it.
      */
-    record NothingShowedARowCanBeWritten() implements AdequacyOpening {
+    record NothingShowedARowCanBeWritten(Subject subject) implements AdequacyOpening {
+
+        public NothingShowedARowCanBeWritten {
+            if (subject == null) {
+                throw new IllegalArgumentException("nothing showed a row at some point");
+            }
+        }
 
         @Override
         public RunSensitivity runSensitivity() {
