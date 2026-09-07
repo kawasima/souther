@@ -111,6 +111,82 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
     }
 
     /**
+     * And renaming the values renames the answer, which is what lets one reading answer for the
+     * rest.
+     *
+     * <p>Nothing here reads a value for anything but whether it is another value: a block loses one
+     * where a neighbour is left no other, and what "other" means is that the two are not equal. So
+     * a reading and the same reading with two of its values called by each other's names are one
+     * question, and the answer to one is the answer to the other with its values renamed.
+     *
+     * <p><b>Which is what the rest of these laws rest on.</b> They are asked of one reading for
+     * each way of calling the values — the one that reads least — and every reading left out is
+     * this one under some calling. So this is asked of every calling and not of the two that
+     * generate them: an argument from those to the rest would run through readings that were left
+     * out, which is what there would be nothing to say about.
+     */
+    @Test
+    void andRenamingTheValuesRenamesTheAnswer() {
+        overEveryRelation((written, domains) -> {
+            Closure<String> said = Narrowing.of(written.relation(), domains);
+            for (int at = 0; at < CALLINGS.size(); at++) {
+                List<Value> calling = CALLINGS.get(at);
+                Map<Value, Value> called = new LinkedHashMap<>();
+                for (int each = 0; each < VALUES.size(); each++) {
+                    called.put(VALUES.get(each), calling.get(each));
+                }
+                Map<Sameness.Block<String>, Admits> left = new LinkedHashMap<>();
+                domains.byBlock().forEach((block, admits) ->
+                        left.put(block, under(admits, called)));
+                int which = at;
+                assertSameCalling(said, Narrowing.of(written.relation(), new Domains<>(left)),
+                        called, () -> "the same reading, under the " + which + "th calling of its"
+                                + " values");
+            }
+        });
+    }
+
+    /**
+     * That one answer is the other with its values called what {@code called} calls them.
+     *
+     * <p>Held block by block rather than by building the one from the other, which is a reading
+     * this walk would pay for on every relation it asks about.
+     */
+    private static void assertSameCalling(Closure<String> said, Closure<String> other,
+                                          Map<Value, Value> called, Supplier<String> why) {
+        if (said instanceof Closure.Stable<String> mine
+                && other instanceof Closure.Stable<String> theirs) {
+            mine.domains().byBlock().forEach((block, admits) ->
+                    assertEquals(under(admits, called), theirs.domains().of(block), why));
+            return;
+        }
+        if (said instanceof Closure.Contradicted<String> mine
+                && other instanceof Closure.Contradicted<String> theirs) {
+            assertEquals(mine.leftNothing(), theirs.leftNothing(), why);
+            assertEquals(mine.provenance().removals().size(),
+                    theirs.provenance().removals().size(), why);
+            mine.provenance().removals().forEach(removal ->
+                    assertTrue(theirs.provenance().removals().contains(new Provenance.Removal<>(
+                                    removal.block(), called.get(removal.value()),
+                                    removal.round(), removal.blockers())),
+                            why));
+            return;
+        }
+        assertEquals(said.getClass(), other.getClass(), why);
+    }
+
+    /** What a block left {@code admits} is left where its values are called what {@code called}
+     *  calls them. */
+    private static Admits under(Admits admits, Map<Value, Value> called) {
+        if (!(admits instanceof Admits.These it)) {
+            return admits;
+        }
+        Set<Value> out = new LinkedHashSet<>();
+        it.values().forEach(value -> out.add(called.get(value)));
+        return new Admits.These(out);
+    }
+
+    /**
      * A narrowing takes values away and never adds one, and taking them again takes none.
      *
      * <p>The two together are what "nothing more can be taken" means. Without the first, a reading
@@ -324,6 +400,13 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
      * among them: that is the block's own answer and is reached before a relation is asked what its
      * denials come to.
      *
+     * <p><b>One reading for each way of calling the values.</b> Nothing here reads a value for
+     * anything but whether it is another value, so a reading and the same reading with two of its
+     * values called by each other's names are one question asked twice — and there are as many
+     * ways to call three values as there are orders to put them in. Which of them is asked is
+     * settled by taking the one that reads least, and that the rest are it is what
+     * {@link #andRenamingTheValuesRenamesTheAnswer} holds.
+     *
      * <p>What every reading of one relation is held against is built once for that relation, which
      * is what these laws are about: the relation written another way round, and the relation with
      * two of its blocks called by each other's names. Built inside the readings, each would be made
@@ -333,21 +416,12 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
     private static void overEveryRelation(Asked asking) {
         for (Written written : EVERY_RELATION) {
             List<Sameness.Block<String>> blocks = written.blocks();
-            int[] pick = new int[blocks.size()];
-            while (true) {
+            for (int[] pick : CANONICAL.get(blocks.size())) {
                 Map<Sameness.Block<String>, Admits> left = new LinkedHashMap<>();
                 for (int at = 0; at < blocks.size(); at++) {
                     left.put(blocks.get(at), THESE.get(pick[at]));
                 }
                 asking.of(written, new Domains<>(left));
-                int at = 0;
-                while (at < pick.length && ++pick[at] == THESE.size()) {
-                    pick[at] = 0;
-                    at++;
-                }
-                if (at == pick.length) {
-                    break;
-                }
             }
         }
     }
@@ -411,6 +485,92 @@ class ANarrowingAnswersFromTheRelationAndNotFromHowItWasWrittenTest {
             apart[other][one] = true;
         }
         return new Written(stated, relation, byASwapOfPairs, byASwapOfBlocks, blocks, apart);
+    }
+
+    /**
+     * Every way of calling the values by each other's names, as which value each becomes.
+     *
+     * <p>All of them and not the ones that generate them. What the callings are used for here is to
+     * leave the rest of these laws one reading per way of calling the values, and an argument from
+     * two callings to the others needs the readings that lie between — which are the ones that were
+     * left out.
+     */
+    private static final List<List<Value>> CALLINGS = everyCalling();
+
+    /** For each number of blocks, the ways of leaving them values that read least among the ways of
+     *  calling the values — one apiece, since the rest are answered by renaming this one's. */
+    private static final Map<Integer, List<int[]>> CANONICAL = everyCanonicalReading();
+
+    private static List<List<Value>> everyCalling() {
+        List<List<Value>> out = new ArrayList<>();
+        growCallings(new ArrayList<>(), new boolean[VALUES.size()], out);
+        return out;
+    }
+
+    private static void growCallings(List<Value> sofar, boolean[] taken, List<List<Value>> out) {
+        if (sofar.size() == VALUES.size()) {
+            out.add(List.copyOf(sofar));
+            return;
+        }
+        for (int each = 0; each < VALUES.size(); each++) {
+            if (!taken[each]) {
+                taken[each] = true;
+                sofar.add(VALUES.get(each));
+                growCallings(sofar, taken, out);
+                sofar.removeLast();
+                taken[each] = false;
+            }
+        }
+    }
+
+    /** Which of {@link #THESE} the {@code which}th of them is under {@code calling}. */
+    private static int underACalling(int which, List<Value> calling) {
+        int mask = 0;
+        for (int bit = 0; bit < VALUES.size(); bit++) {
+            if ((((which + 1) >> bit) & 1) == 1) {
+                mask |= 1 << VALUES.indexOf(calling.get(bit));
+            }
+        }
+        return mask - 1;
+    }
+
+    private static Map<Integer, List<int[]>> everyCanonicalReading() {
+        Map<Integer, List<int[]>> out = new LinkedHashMap<>();
+        for (int blocks = 2; blocks <= BLOCKS; blocks++) {
+            List<int[]> canonical = new ArrayList<>();
+            int[] pick = new int[blocks];
+            while (true) {
+                if (readsLeast(pick)) {
+                    canonical.add(pick.clone());
+                }
+                int at = 0;
+                while (at < pick.length && ++pick[at] == THESE.size()) {
+                    pick[at] = 0;
+                    at++;
+                }
+                if (at == pick.length) {
+                    break;
+                }
+            }
+            out.put(blocks, canonical);
+        }
+        return out;
+    }
+
+    /** Whether no way of calling the values leaves {@code pick} reading less than it does. */
+    private static boolean readsLeast(int[] pick) {
+        for (List<Value> calling : CALLINGS) {
+            for (int at = 0; at < pick.length; at++) {
+                int under = underACalling(pick[at], calling);
+                if (under < pick[at]) {
+                    return false;
+                }
+                if (under > pick[at]) {
+                    break;
+                }
+            }
+        }
+        return true;
     }
 
     private static List<Admits> everyValueSet() {
