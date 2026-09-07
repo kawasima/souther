@@ -52,6 +52,27 @@ class AMeetIsMadeOfThePairsAWalkReachesTest {
         assertFalse(met.accepts("ab"), "nothing is accepted, which is what the meet holds");
     }
 
+    /**
+     * And a meet whose pairs would not have fit is built where the ones it reaches do.
+     *
+     * <p>The observable half of the same rule. What the two sizes multiply to is over what a
+     * machine may hold and the walk reaches a handful, so a caller told this was not built would be
+     * told it about an answer this compiler can afford — and the caller is a model somebody wrote.
+     */
+    @Test
+    void aMeetIsRefusedOnWhatItReachesAndNotOnWhatItCouldReach() {
+        // Room for either side and for what the walk reaches, and not for the pairs there are.
+        Meter meter = new Meter(600, 2000);
+        Automaton left = of("[ab]{30}", meter);
+        Automaton right = of("[bc]{30}", meter);
+        assertTrue(left.size() * right.size() > 600, "the pairs there are do not fit in a machine");
+
+        Automaton met = left.and(right, meter);
+
+        assertNotNull(met, "and the meet is built, being the pairs a walk reaches");
+        assertTrue(met.accepts("b".repeat(30)), "and it holds what both sides hold");
+    }
+
     /** And what a meet spends is the pairs it made, not the pairs it could have made. */
     @Test
     void aMeetIsChargedThePairsItReached() {

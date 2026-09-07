@@ -38,15 +38,17 @@ class ABranchNobodyCouldWorkOutIsNotOneAnybodyReadTest {
     /**
      * A choice whose left branch is empty and expensive to show empty.
      *
-     * <p>Each pattern is small; their meet is about ninety thousand states, which is past what one
-     * machine may be. So the left branch neither survives being worked out nor comes back empty.
+     * <p>Each pattern is small; their meet is past what one machine may be. The two repeat over
+     * runs of one length and of another that share no factor, so a walk over both at once is in a
+     * different pair at every step until the lengths come round together. So the left branch
+     * neither survives being worked out nor comes back empty.
      */
     private static final String MODEL = """
             module demo
 
             data Pair = { x: String, y: String, p: String }
                 invariant r =
-                    (String.matches("a{300}", y) && String.matches("b{300}", y))
+                    (String.matches("(a{251})*b", y) && String.matches("(a{223})*c", y))
                     || x == "A"
                 invariant wide =
                     (p == "1" || p == "2")

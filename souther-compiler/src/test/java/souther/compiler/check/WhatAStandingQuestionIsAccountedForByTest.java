@@ -69,10 +69,12 @@ class WhatAStandingQuestionIsAccountedForByTest {
     /**
      * Rules read in full whose answer is more than the allowance will build.
      *
-     * <p>Each pattern is small and both are taken in; showing the branch they share empty takes a
-     * machine of about ninety thousand states. So nothing is short of a rule here, and what is short
-     * is the answer they come to between them — which is why the question stands with no reading
-     * naming a rule. The same model is read for what it leaves the position in
+     * <p>Each pattern is small and both are taken in; showing the branch they share empty is past
+     * what one machine may be. The two repeat over runs of one length and of another that share no
+     * factor, so a walk over both at once is in a different pair at every step until the lengths
+     * come round together. So nothing is short of a rule here, and what is short is the answer they
+     * come to between them — which is why the question stands with no reading naming a rule. The
+     * same model is read for what it leaves the position in
      * {@code ABranchNobodyCouldWorkOutIsNotOneAnybodyReadTest}.
      */
     private static final String AN_ANSWER_BEYOND_THE_ALLOWANCE = """
@@ -80,7 +82,7 @@ class WhatAStandingQuestionIsAccountedForByTest {
 
             data N = { x: String, y: String }
                 invariant r =
-                    (String.matches("a{300}", y) && String.matches("b{300}", y))
+                    (String.matches("(a{251})*b", y) && String.matches("(a{223})*c", y))
                     || x == "A"
             """;
 
@@ -216,7 +218,7 @@ class WhatAStandingQuestionIsAccountedForByTest {
 
             data N = { x: String, y: String }
                 invariant r =
-                    String.matches("a{300}", y) && String.matches("b{300}", y) && UNREAD_Y
+                    String.matches("(a{251})*b", y) && String.matches("(a{223})*c", y) && UNREAD_Y
             """.replace("UNREAD_Y", souther.compiler.ARuleNoReadingTakesIn.about("y"));
 
     /**

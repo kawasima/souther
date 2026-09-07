@@ -206,16 +206,19 @@ class ARunOfTheStringsIsABoundAndIsOwedItsEdgeTest {
      * told their rule holds the position to what it admits and stops it nowhere, of a rule whose
      * geometry nobody read.
      *
-     * <p>The pattern is one this compiler reads and the machine for what it admits is one it makes;
-     * what runs out is the further machine the run needs, which is the product of that one with the
-     * strings above where it begins.
+     * <p>Both patterns are ones this compiler reads; what runs out is the machine for the strings
+     * they admit between them. They repeat over runs of one length and of another that share no
+     * factor, so a walk over both at once is in a different pair at every step until the lengths
+     * come round together, and that is past what one machine may be.
      */
     @Test
     void areadingThatRanOutSaysSoRatherThanThatTheRuleDrawsNoLine() {
         String report = report("""
                 module costly
 
-                data Long = String invariant String.matches("[0-9]{300}", value)
+                data Long = String
+                    invariant String.matches("(0{251})*8", value)
+                    invariant String.matches("(0{223})*9", value)
 
                 data Ok = { size: Int }
 

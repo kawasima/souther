@@ -273,27 +273,6 @@ class AQuestionExistsBecauseTheModelStatesItAndNotBecauseAReadingSucceededTest {
         return out;
     }
 
-    /**
-     * A reading that ran out of what it may build says so in its own words.
-     *
-     * <p>The pattern is one this reads and the machine for what it admits is one it makes; what runs
-     * out is the further machine that says where those strings begin and end. Written down as a
-     * pattern too large, an author would be sent to a pattern this read perfectly — so it is its
-     * own reason, and which limit refused it is kept.
-     */
-    @Test
-    void whereTheRunRanOutTheReasonIsTheRunsOwn() {
-        FieldDomains domains = read("invariant top = String.matches(\"[0-9]{300}\", value)",
-                "Code", "String");
-        List<BlockReason.RuleWithoutLineReason> why = domains.noLineAt(RuleKey.THE_VALUE).stream()
-                .map(FieldDomains.NoLine::why).toList();
-        assertEquals(1, why.size(), () -> "one rule, one reason: " + why);
-        BlockReason.OrderedExtentTooCostly stopped = assertInstanceOf(
-                BlockReason.OrderedExtentTooCostly.class, why.get(0));
-        assertEquals(souther.compiler.regex.Meter.Stopped.ONE_MACHINE, stopped.stopped(),
-                "the machine the run wanted is larger than a machine may be");
-    }
-
     /** The rules of one declaration of {@code over}, read as the compilation reads them. */
     private static FieldDomains read(String clause, String named, String over) {
         String source = """
