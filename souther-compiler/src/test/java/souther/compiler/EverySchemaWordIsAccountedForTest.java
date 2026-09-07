@@ -304,10 +304,19 @@ class EverySchemaWordIsAccountedForTest {
             // write, so a sixth of them has to teach this its word before the schema will pass;
             // only the spelling is written down here, the report's own switch being exhaustive over
             // the same sealed type.
-            new Vocabulary("branch.obligations[].rules[].writtenBy.kind",
-                    List.of("$defs", "armObligationId", "properties", "rules", "items",
-                            "properties", "writtenBy", "properties", "kind"),
+            // One shape and one place, since a fork's subject names what wrote it too.
+            new Vocabulary("writtenBy.kind",
+                    List.of("$defs", "writtenBy", "properties", "kind"),
                     List.of(souther.compiler.types.WrittenOwner.class), ownerWords(), Set.of()),
+            // What an entry of `keptOpenBy` is about, and which of the measurements a behavior has
+            // one of it names where it names one. Both are vocabularies of this document's own, so
+            // a word added to either has to be taught to the schema before it can be written.
+            new Vocabulary("keptOpenBy[].about.kind",
+                    List.of("$defs", "subject", "properties", "kind"),
+                    souther.compiler.publish.SubjectWord.class),
+            new Vocabulary("keptOpenBy[].about.measure",
+                    List.of("$defs", "subject", "properties", "measure"),
+                    souther.compiler.publish.MeasureWord.class),
             new Vocabulary("findings[].disposition",
                     List.of("$defs", "findings", "items", "properties", "disposition"),
                     Adequacy.Finding.Disposition.class),
