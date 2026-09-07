@@ -168,6 +168,10 @@ class AReadingOfValuesIsStartedComposedOrWorkedOutTest {
         if (handed.stream().anyMatch(each -> each.startsWith(READING))) {
             return COMPOSED;
         }
+        // Handed nothing is a method with no parameters, and not one whose parameters name no
+        // class of this repository. A maker taking two positions names only the variable they are
+        // written as, and reading that as the empty hand would warrant the very leaf this is
+        // about under the word a reading that starts from nothing is warranted by.
         return handed.isEmpty() ? A_START : "handed " + new TreeSet<>(handed);
     }
 
@@ -180,8 +184,15 @@ class AReadingOfValuesIsStartedComposedOrWorkedOutTest {
                         .<Signature>map(Signature::of).toList());
     }
 
-    /** Every class a signature names, its type arguments included. A type variable names none: what
-     *  a position is called is not a type this rule is about. */
+    /**
+     * What one parameter is, as this reading names it: the classes its signature names, its type
+     * arguments included, and the variable itself where it is written as one.
+     *
+     * <p>A variable is named rather than passed over, because what a hand holds is the question.
+     * Passed over, a maker taking two positions would hold nothing this can name and would read as
+     * one handed nothing — which is the warrant of the reading everything starts from, and would
+     * cover the leaf this rule exists to refuse.
+     */
     private static void names(Signature said, Set<String> out) {
         switch (said) {
             case Signature.ClassTypeSig it -> {
@@ -193,6 +204,8 @@ class AReadingOfValuesIsStartedComposedOrWorkedOutTest {
                 }
             }
             case Signature.ArrayTypeSig it -> names(it.componentSignature(), out);
+            case Signature.TypeVarSig it -> out.add("a position written as " + it.identifier());
+            case Signature.BaseTypeSig it -> out.add(it.signatureString());
             default -> { }
         }
     }
