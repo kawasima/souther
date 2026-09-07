@@ -1,10 +1,13 @@
 package souther.compiler.values;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -27,17 +30,37 @@ import java.util.function.Function;
  * together took it would be describing an argument that was never made. What a reader wants of
  * them is that the value had nowhere to go, which is what any one of them shows.
  *
+ * <p><b>Filed under the block each was taken from.</b> What a report asks of these is what one
+ * block's emptying rests on, which is a question about that block and the ones behind it — asked of
+ * the removals one at a time, a report about a relation whose blocks were all emptied at once reads
+ * every removal once per block, and the blocks a relation may have and the removals it may make are
+ * the same number. So which removals took from which block is worked out when these are made.
+ *
  * @param <A> what a position is called
  */
-public record Provenance<A>(Set<Removal<A>> removals) {
+public final class Provenance<A> {
 
-    public Provenance {
-        removals = Collections.unmodifiableSet(new LinkedHashSet<>(removals));
+    private final Set<Removal<A>> removals;
+
+    /** Which removals took from each block, so that walking back from one is a lookup apiece. */
+    private final Map<Sameness.Block<A>, List<Removal<A>>> from;
+
+    public Provenance(Set<Removal<A>> removals) {
+        this.removals = Collections.unmodifiableSet(new LinkedHashSet<>(removals));
+        Map<Sameness.Block<A>, List<Removal<A>>> from = new HashMap<>();
+        this.removals.forEach(removal ->
+                from.computeIfAbsent(removal.block(), _ -> new ArrayList<>()).add(removal));
+        this.from = from;
     }
 
     /** The removals one walk made, in the order it made them, which nothing reads. */
     static <A> Provenance<A> of(List<Removal<A>> made) {
         return new Provenance<>(new LinkedHashSet<>(made));
+    }
+
+    /** Every removal, which is what one narrowing took. */
+    public Set<Removal<A>> removals() {
+        return removals;
     }
 
     /** The removals, written in one order whichever order they were made in — see
@@ -98,8 +121,8 @@ public record Provenance<A>(Set<Removal<A>> removals) {
             if (!already.add(here)) {
                 continue;
             }
-            for (Removal<A> removal : removals) {
-                if (!removal.block().equals(here.block()) || removal.round() >= here.before()) {
+            for (Removal<A> removal : from.getOrDefault(here.block(), List.of())) {
+                if (removal.round() >= here.before()) {
                     continue;
                 }
                 for (Sameness.Block<A> blocker : removal.blockers()) {
@@ -122,6 +145,17 @@ public record Provenance<A>(Set<Removal<A>> removals) {
                     removal.round(), blockers));
         }
         return new Provenance<>(out);
+    }
+
+    /** The same removals whichever order they were made in. */
+    @Override
+    public boolean equals(Object said) {
+        return said instanceof Provenance<?> it && removals.equals(it.removals);
+    }
+
+    @Override
+    public int hashCode() {
+        return removals.hashCode();
     }
 
     /** One block, asked of the rounds before {@code before}. */

@@ -103,7 +103,7 @@ class TwoValuesThatAreOneReadAlikeTest {
     void andWhereANarrowingLeftBlocksNothingReadsTheSameWhicheverOrderItEmptiedThem() {
         assertSame(new Closure.Contradicted<>(ordered(P, Q), Provenance.nothing()),
                 new Closure.Contradicted<>(ordered(Q, P), Provenance.nothing()));
-        assertSame(new Refusal.AtEachOf<>(ordered(P, Q)), new Refusal.AtEachOf<>(ordered(Q, P)));
+        assertSame(Refusal.atEachOf(ordered(P, Q)), Refusal.atEachOf(ordered(Q, P)));
     }
 
     /** That two values which are one are written the same way. */

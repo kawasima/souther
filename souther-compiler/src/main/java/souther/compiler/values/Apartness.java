@@ -749,6 +749,15 @@ public final class Apartness<A> {
             return Lacks.none();
         }
         List<Shown<A>> found = new ArrayList<>();
+        // Each lack once. A set the walk found is cut down to the blocks whose values are written
+        // down, and two of them can be cut down to one — a set of blocks all stated to differ
+        // beside two blocks nothing wrote the values of is two sets that leave one. What the count
+        // then shows of them is one lack, shown twice.
+        //
+        // Told by what is claimed and not by the blocks the count was taken of. A lack says where
+        // it is filed ({@link RelationalLack#scattering}), where a set of blocks is a number its
+        // subsets share — and the sets one relation is short of are subsets of the same few blocks.
+        Set<RelationalLack<A>> already = new LinkedHashSet<>();
         for (Set<Sameness.Block<A>> apart : walked.get()) {
             Map<Sameness.Block<A>, Set<Value>> counted = new LinkedHashMap<>();
             apart.forEach(block -> {
@@ -760,7 +769,7 @@ public final class Apartness<A> {
                 continue;
             }
             RelationalLack<A> why = shortage(counted);
-            if (why != null) {
+            if (why != null && already.add(why)) {
                 found.add(Shown.of(why));
             }
         }

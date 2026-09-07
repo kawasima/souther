@@ -255,9 +255,8 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
                         P, Set.of(A), Sameness.Block.of("s"), Set.of(A, B), R, Set.of(B)))));
 
         assertNotEquals(one, other, "two lacks at different blocks are two lacks");
-        assertInstanceOf(Refusal.Nowhere.class,
-                Refusal.shownByBoth(new Refusal.OfThemTogether<>(Lacks.of(one)),
-                        new Refusal.OfThemTogether<>(Lacks.of(other))),
+        assertTrue(Refusal.shownByBoth(Refusal.ofThemTogether(Lacks.of(one)),
+                        Refusal.ofThemTogether(Lacks.of(other))).isNowhere(),
                 "so a choice between readings holding them keeps neither");
     }
 
@@ -281,11 +280,10 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
 
         assertTrue(both.isBottom(), "no value of these rules can be written");
 
-        if (!(both.refusedBy() instanceof Refusal.OfThemTogether<String> together)) {
-            throw new AssertionError("refused by what its blocks are held as: " + both.refusedBy());
-        }
+        assertEquals(Refusal.Nearest.OF_THEM_TOGETHER, both.refusedBy().nearest(),
+                "refused by what its blocks are held as");
         assertInstanceOf(RelationalLack.ABlockApartFromItself.class,
-                together.lacks().only().lack());
+                both.refusedBy().together().only().lack());
         assertEquals(Set.of(Sameness.of("p", "r").blockOf("p")), both.refusedBy().blocks());
     }
 
@@ -304,7 +302,7 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
 
     /** What a reduction that refused leaves a reading holding it. */
     private static Refusal<String> refusalOf(Apartness.Reduction<String> said) {
-        return new Refusal.OfThemTogether<>(everyLackOf(said));
+        return Refusal.ofThemTogether(everyLackOf(said));
     }
 
     /**
@@ -421,6 +419,44 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         assertInstanceOf(Apartness.Reduction.NotKnown.class,
                 ring.reduce(holding(java.util.Map.of())),
                 "where two values apiece is what its blocks have neighbours, and nothing answers");
+    }
+
+    /**
+     * Two sets the walk found that the count is taken of as one are one lack.
+     *
+     * <p>Three blocks all stated to differ, and two more each stated to differ from all three and
+     * not from each other. Nothing wrote down what the two are left, so each of them is dropped
+     * from the set it is in — and the two sets nothing can be added to are cut down to the same
+     * three blocks.
+     *
+     * <p>Which is one question and not two. Asked once per set the walk found, the same shortage
+     * would be shown twice, and what a reader is handed is what an argument showed rather than how
+     * many roads it was reached by.
+     */
+    @Test
+    void andTwoSetsTheCountIsTakenOfAsOneAreOneLack() {
+        Apartness<String> around = Apartness.nothing();
+        List<String> triangle = List.of("a", "b", "c");
+        for (String one : triangle) {
+            for (String other : triangle) {
+                if (one.compareTo(other) < 0) {
+                    around = around.and(Apartness.of(one, other));
+                }
+            }
+            around = around.and(Apartness.of(one, "x")).and(Apartness.of(one, "y"));
+        }
+
+        assertEquals(2, around.everySetWorthWalkingFor().orElseThrow().size(),
+                "two sets nothing can be added to, one through each of the blocks left out");
+
+        Lacks<String> shown = everyLackOf(around.reduce((block, _) ->
+                block.equals(Sameness.Block.of("x")) || block.equals(Sameness.Block.of("y"))
+                        ? new Admits.NotKnown() : new Admits.These(Set.of(A, B))));
+
+        assertEquals(Set.of(new RelationalLack.TooFewValuesBetweenThem<>(
+                        Set.of(Sameness.Block.of("a"), Sameness.Block.of("b"),
+                                Sameness.Block.of("c")), Set.of(A, B))),
+                shown.claimed(), "and one lack about the blocks both of them were cut down to");
     }
 
     /**

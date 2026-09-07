@@ -196,8 +196,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
         record Nothing<A>(Refusal<A> shown) implements Held<A> {
 
             public Nothing {
-                if (shown instanceof Refusal.AtEachOf<A> it
-                        && it.blocks().stream().anyMatch(Sameness.Block::isOne)) {
+                if (shown.atEachOf().stream().anyMatch(Sameness.Block::isOne)) {
                     throw new IllegalArgumentException(
                             "a lone position left no value is what the positions' own rules say,"
                                     + " and is not a lack the block is answerable for");
@@ -206,7 +205,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
 
             /** Nothing satisfies the rules, and nothing here says where. */
             public Nothing() {
-                this(new Refusal.Nowhere<>());
+                this(Refusal.nowhere());
             }
         }
 
@@ -620,7 +619,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
                 }
                 Lacks<A> stated = apart.apartFromThemselves();
                 if (!stated.isEmpty()) {
-                    return new Held.Nothing<>(new Refusal.OfThemTogether<>(stated));
+                    return new Held.Nothing<>(Refusal.ofThemTogether(stated));
                 }
                 return Held.Alternatives.of(new Alternative<>(new Box<>(at), apart));
             }
@@ -1078,7 +1077,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      * is knowable only while it is being refused.
      */
     public Refusal<A> refusedBy() {
-        return held instanceof Held.Nothing<A> it ? it.shown() : new Refusal.Nowhere<>();
+        return held instanceof Held.Nothing<A> it ? it.shown() : Refusal.nowhere();
     }
 
     /**
@@ -1152,20 +1151,20 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
     public Refusal<A> refusedInEveryAlternativeAt(AskedOfEachBlock<A> asked,
                                                   AskedOfARelation<A> relating) {
         if (!(held instanceof Held.Alternatives<A> it)) {
-            return new Refusal.Nowhere<>();
+            return Refusal.nowhere();
         }
         Refusal<A> everywhere = null;
         for (Alternative<A> box : it.boxes()) {
             Refusal<A> here = refusalIn(box, asked, relating);
             if (here.isNowhere()) {
-                return new Refusal.Nowhere<>();
+                return Refusal.nowhere();
             }
             everywhere = everywhere == null ? here : Refusal.shownByBoth(everywhere, here);
             if (everywhere.isNowhere()) {
-                return new Refusal.Nowhere<>();
+                return Refusal.nowhere();
             }
         }
-        return everywhere == null ? new Refusal.Nowhere<>() : everywhere;
+        return everywhere == null ? Refusal.nowhere() : everywhere;
     }
 
     /**
@@ -1188,10 +1187,10 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
             }
         });
         if (!here.isEmpty()) {
-            return new Refusal.AtEachOf<>(here);
+            return Refusal.atEachOf(here);
         }
         return relating.of(box.apart(), box.product()) instanceof Apartness.Reduction.Nothing<A> it
-                ? new Refusal.OfThemTogether<>(it.lacks()) : new Refusal.Nowhere<>();
+                ? Refusal.ofThemTogether(it.lacks()) : Refusal.nowhere();
     }
 
     /**
@@ -1436,7 +1435,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
             }
         }
         if (live.isEmpty()) {
-            return new Held.Nothing<>(dropped == null ? new Refusal.Nowhere<>() : dropped);
+            return new Held.Nothing<>(dropped == null ? Refusal.nowhere() : dropped);
         }
         Held.Alternatives.Made<A> made = Held.Alternatives.of(live, sets);
         gaveUp.addAll(made.gaveUp());

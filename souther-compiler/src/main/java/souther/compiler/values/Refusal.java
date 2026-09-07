@@ -15,48 +15,44 @@ import java.util.function.Function;
  * invention for the second, since two collective lacks over sets that overlap have shown nothing
  * about what the two happened to share.
  *
- * <p>So the two are told apart by being two, and a reader that has to put two of them together is
- * made to say what it means by it ({@link #shownByBoth}).
+ * <p><b>And both at once, because the two are not alternatives.</b> A conjunction is refused where
+ * either side is, so one side refused at a block beside one refused about blocks together is
+ * refused both ways, and neither is what it is instead of the other. Held as one of three things a
+ * refusal can be, such a conjunction had to give one of them up — and whichever it gave up, what
+ * three sides come to is then not the same when the first two are put together first as when the
+ * last two are. So a refusal holds what it was refused at and what it was refused about, and either
+ * of them may be nothing.
+ *
+ * <p>Which leaves the two ways of putting refusals together doing the same thing to each half. A
+ * conjunction keeps what either side showed ({@link #eitherShown}) and a choice keeps what both
+ * showed ({@link #shownByBoth}), so the first is a union of each half and the second a meet of
+ * each — and how the sides were bracketed is not something either can answer from.
+ *
+ * <p>What a report writes is one sentence, and which one is asked of the whole refusal
+ * ({@link #nearest}) rather than settled by which half a fold left standing.
  *
  * @param <A> what a position is called
+ * @param atEachOf the blocks each of which is left nothing, which may be none of them
+ * @param together what no assignment to some blocks satisfies, which may be nothing
  */
-public sealed interface Refusal<A> {
+public record Refusal<A>(Set<Sameness.Block<A>> atEachOf, Lacks<A> together) {
+
+    public Refusal {
+        atEachOf = Collections.unmodifiableSet(new LinkedHashSet<>(atEachOf));
+    }
 
     /** Nowhere in particular, which is where a lack no block is answerable for is. */
-    record Nowhere<A>() implements Refusal<A> {}
-
-    /**
-     * Each of these blocks is left nothing.
-     *
-     * <p>Never none of them: a lack at no block is a lack nowhere, which is the case beside this
-     * one. Refused here rather than read as {@link Nowhere} by whoever holds one, so that "no block
-     * is why" has one spelling — held as two, a reader has to ask both, and the one that forgets
-     * reports a lack at nowhere in particular as a lack somewhere.
-     */
-    record AtEachOf<A>(Set<Sameness.Block<A>> blocks) implements Refusal<A> {
-
-        public AtEachOf {
-            blocks = Collections.unmodifiableSet(new LinkedHashSet<>(blocks));
-            if (blocks.isEmpty()) {
-                throw new IllegalArgumentException(
-                        "a lack at no block is a lack nowhere, which is Nowhere");
-            }
-        }
-
-        /** The blocks written in one order — see {@link InOneOrder}. */
-        @Override
-        public String toString() {
-            return "AtEachOf" + InOneOrder.of(blocks);
-        }
+    public static <A> Refusal<A> nowhere() {
+        return new Refusal<>(Set.of(), Lacks.none());
     }
 
     /** A lack at each of {@code blocks}, which is nowhere where they are none. */
-    static <A> Refusal<A> atEachOf(Set<Sameness.Block<A>> blocks) {
-        return blocks.isEmpty() ? new Nowhere<>() : new AtEachOf<>(blocks);
+    public static <A> Refusal<A> atEachOf(Set<Sameness.Block<A>> blocks) {
+        return new Refusal<>(blocks, Lacks.none());
     }
 
     /**
-     * No assignment to these blocks together stands, and what showed it.
+     * What no assignment to some blocks satisfies, and what showed it.
      *
      * <p>The whole argument and not the blocks alone, because what a report may say about them
      * turns on which argument refused them: a value stated to differ from itself and a set of
@@ -65,14 +61,8 @@ public sealed interface Refusal<A> {
      * <p>Several of them, because one argument can show a lack about several lots of blocks at
      * once and the relation says nothing about which of them to carry.
      */
-    record OfThemTogether<A>(Lacks<A> lacks) implements Refusal<A> {
-
-        public OfThemTogether {
-            if (lacks.isEmpty()) {
-                throw new IllegalArgumentException(
-                        "a lack about blocks together is shown by an argument, and none was given");
-            }
-        }
+    public static <A> Refusal<A> ofThemTogether(Lacks<A> lacks) {
+        return new Refusal<>(Set.of(), lacks);
     }
 
     /**
@@ -85,30 +75,57 @@ public sealed interface Refusal<A> {
      * it — so a report naming it alone would send the author nowhere useful. What two lacks are
      * compared by is the claim, which is what {@link #shownByBoth} asks and this does not.
      */
-    default Set<Sameness.Block<A>> blocks() {
-        return switch (this) {
-            case Nowhere<A> _ -> Set.of();
-            case AtEachOf<A> it -> it.blocks();
-            case OfThemTogether<A> it -> it.lacks().blocks();
-        };
+    public Set<Sameness.Block<A>> blocks() {
+        if (together.isEmpty()) {
+            return atEachOf;
+        }
+        Set<Sameness.Block<A>> out = new LinkedHashSet<>(atEachOf);
+        out.addAll(together.blocks());
+        return Collections.unmodifiableSet(out);
     }
 
     /** Whether nothing here names a place. */
-    default boolean isNowhere() {
-        return this instanceof Nowhere;
+    public boolean isNowhere() {
+        return atEachOf.isEmpty() && together.isEmpty();
+    }
+
+    /**
+     * Which sentence a report writes of this.
+     *
+     * <p>Asked of the whole refusal, and asked once. Both halves can hold and a report writes one
+     * thing, so which of them it is about is a rule — and a rule spelled at each place that writes
+     * a report is one rule written as many times as there are reports.
+     *
+     * <p>A block left nothing is what it is: naming it sends an author to the rules that leave that
+     * block nothing, where a lack about blocks together sends them to the rules between blocks each
+     * of which is left something on its own. So where there is a block to name, that is the
+     * sentence.
+     */
+    public Nearest nearest() {
+        if (!atEachOf.isEmpty()) {
+            return Nearest.AT_EACH_OF;
+        }
+        return together.isEmpty() ? Nearest.NOWHERE : Nearest.OF_THEM_TOGETHER;
+    }
+
+    /** Which of the things a refusal holds a report is about. */
+    public enum Nearest {
+
+        /** Neither: what was shown is about the whole product and no block is why. */
+        NOWHERE,
+
+        /** Blocks each of which is left nothing. */
+        AT_EACH_OF,
+
+        /** Blocks no assignment to all of them satisfies, each left something on its own. */
+        OF_THEM_TOGETHER
     }
 
     /** The same lack about the blocks {@code naming} calls these. */
-    default <B> Refusal<B> renamed(Function<A, B> naming) {
-        return switch (this) {
-            case Nowhere<A> _ -> new Nowhere<>();
-            case AtEachOf<A> it -> {
-                Set<Sameness.Block<B>> out = new LinkedHashSet<>();
-                it.blocks().forEach(block -> out.add(block.renamed(naming)));
-                yield new AtEachOf<>(out);
-            }
-            case OfThemTogether<A> it -> new OfThemTogether<>(it.lacks().renamed(naming));
-        };
+    public <B> Refusal<B> renamed(Function<A, B> naming) {
+        Set<Sameness.Block<B>> out = new LinkedHashSet<>();
+        atEachOf.forEach(block -> out.add(block.renamed(naming)));
+        return new Refusal<>(out, together.renamed(naming));
     }
 
     /**
@@ -117,33 +134,17 @@ public sealed interface Refusal<A> {
      * <p>A different question from {@link #shownByBoth}, and the answer is different. There, two
      * readings of one set of rules both hold nothing and what can be said is what they agree on;
      * here, a conjunction is refused because a side of it is, and where both sides are, both
-     * reasons are true of it. So two lacks at blocks are a lack at all of them.
+     * reasons are true of it. So two lacks at blocks are a lack at all of them, and two lacks about
+     * blocks together are both of them — a side whose lack is the other's adds nothing, which is
+     * what a set of them says without anybody asking.
      *
-     * <p>And two lacks about blocks together are both of them. Each side's argument holds of the
-     * conjunction, so what it is refused by is what either of them showed — and a side whose lack
-     * is the other's adds nothing, which is what a set of them says without anybody asking.
-     *
-     * <p>Nothing kept where one side is a lack at each of some blocks and the other a lack about
-     * blocks together, unless the two are the same. The two are different claims about different
-     * things, and naming one of them would be naming whichever side the caller wrote first — which
-     * is a fact about the writing.
+     * <p>And a side refused at a block beside one refused about blocks together is refused both
+     * ways, which is why neither half is given up here.
      */
-    static <A> Refusal<A> eitherShown(Refusal<A> one, Refusal<A> other) {
-        if (one.isNowhere()) {
-            return other;
-        }
-        if (other.isNowhere()) {
-            return one;
-        }
-        if (one instanceof AtEachOf<A> mine && other instanceof AtEachOf<A> theirs) {
-            Set<Sameness.Block<A>> both = new LinkedHashSet<>(mine.blocks());
-            both.addAll(theirs.blocks());
-            return new AtEachOf<>(both);
-        }
-        if (one instanceof OfThemTogether<A> mine && other instanceof OfThemTogether<A> theirs) {
-            return new OfThemTogether<>(mine.lacks().and(theirs.lacks()));
-        }
-        return one.equals(other) ? one : new Nowhere<>();
+    public static <A> Refusal<A> eitherShown(Refusal<A> one, Refusal<A> other) {
+        Set<Sameness.Block<A>> both = new LinkedHashSet<>(one.atEachOf);
+        both.addAll(other.atEachOf);
+        return new Refusal<>(both, one.together.and(other.together));
     }
 
     /**
@@ -156,7 +157,6 @@ public sealed interface Refusal<A> {
      * <p><b>And two lacks about blocks together are the ones both readings show.</b> Such a lack is
      * not a lack at each of its blocks, so its blocks are not what is kept — what is, is the lack
      * itself, and a reading that showed it is a reading the pair may be said to have shown it.
-     * Where they show none in common, nothing was shown of the pair.
      *
      * <p><b>What the two both showed is asked of the lacks and not of how either reached them.</b>
      * Two readings that leave one block no value have shown that block has none, whatever took the
@@ -168,16 +168,15 @@ public sealed interface Refusal<A> {
      * a value and is equal to what it is: two of them that were reached differently are two
      * different values, and what they showed in common is this question rather than that one.
      */
-    static <A> Refusal<A> shownByBoth(Refusal<A> one, Refusal<A> other) {
-        if (one instanceof AtEachOf<A> mine && other instanceof AtEachOf<A> theirs) {
-            Set<Sameness.Block<A>> both = new LinkedHashSet<>(mine.blocks());
-            both.retainAll(theirs.blocks());
-            return atEachOf(both);
-        }
-        if (one instanceof OfThemTogether<A> mine && other instanceof OfThemTogether<A> theirs) {
-            Lacks<A> both = mine.lacks().sharedWith(theirs.lacks());
-            return both.isEmpty() ? new Nowhere<>() : new OfThemTogether<>(both);
-        }
-        return one.equals(other) ? one : new Nowhere<>();
+    public static <A> Refusal<A> shownByBoth(Refusal<A> one, Refusal<A> other) {
+        Set<Sameness.Block<A>> both = new LinkedHashSet<>(one.atEachOf);
+        both.retainAll(other.atEachOf);
+        return new Refusal<>(both, one.together.sharedWith(other.together));
+    }
+
+    /** What it holds, written in one order — see {@link InOneOrder}. */
+    @Override
+    public String toString() {
+        return "Refusal" + InOneOrder.of(atEachOf) + together;
     }
 }

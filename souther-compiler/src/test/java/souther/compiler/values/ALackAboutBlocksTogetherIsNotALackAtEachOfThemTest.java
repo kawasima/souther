@@ -2,10 +2,12 @@ package souther.compiler.values;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Two readings both left nothing, put together.
@@ -24,7 +26,7 @@ class ALackAboutBlocksTogetherIsNotALackAtEachOfThemTest {
 
     private static Refusal<String> together(Sameness.Block<String> one,
                                             Sameness.Block<String> other) {
-        return new Refusal.OfThemTogether<>(Lacks.of(new RelationalLack.TooFewValuesBetweenThem<>(
+        return Refusal.ofThemTogether(Lacks.of(new RelationalLack.TooFewValuesBetweenThem<>(
                 Set.of(one, other), Set.of(Value.text("A")))));
     }
 
@@ -32,9 +34,9 @@ class ALackAboutBlocksTogetherIsNotALackAtEachOfThemTest {
     @Test
     void twoLacksAtBlocksKeepWhatBothOfThemName() {
         Refusal<String> both = Refusal.shownByBoth(
-                new Refusal.AtEachOf<>(Set.of(P, Q)), new Refusal.AtEachOf<>(Set.of(Q, R)));
+                Refusal.atEachOf(Set.of(P, Q)), Refusal.atEachOf(Set.of(Q, R)));
 
-        assertEquals(Set.of(Q), assertInstanceOf(Refusal.AtEachOf.class, both).blocks());
+        assertEquals(Set.of(Q), both.atEachOf());
     }
 
     /**
@@ -48,7 +50,7 @@ class ALackAboutBlocksTogetherIsNotALackAtEachOfThemTest {
     void andTwoLacksAboutBlocksTogetherKeepNothingOfWhatTheyShare() {
         Refusal<String> both = Refusal.shownByBoth(together(P, Q), together(Q, R));
 
-        assertInstanceOf(Refusal.Nowhere.class, both);
+        assertTrue(both.isNowhere());
     }
 
     /** Two of them that are the same lack are that lack, since both readings showed the one thing. */
@@ -85,7 +87,7 @@ class ALackAboutBlocksTogetherIsNotALackAtEachOfThemTest {
         Refusal<String> both = Refusal.shownByBoth(one, other);
 
         assertEquals(Set.of(new RelationalLack.NoValueLeftForIt<>(Q)),
-                assertInstanceOf(Refusal.OfThemTogether.class, both).lacks().claimed());
+                both.together().claimed());
         assertEquals(Set.of(P, Q, R), both.blocks(),
                 "and what may be named is the block and the rules of either reading");
     }
@@ -109,16 +111,55 @@ class ALackAboutBlocksTogetherIsNotALackAtEachOfThemTest {
 
         assertEquals(Set.of(new RelationalLack.NoValueLeftForIt<>(P),
                         new RelationalLack.NoValueLeftForIt<>(R)),
-                assertInstanceOf(Refusal.OfThemTogether.class, both).lacks().claimed());
+                both.together().claimed());
         assertEquals(Set.of(P, Q, R, s), both.blocks(),
                 "and each block is named beside what took its values");
+    }
+
+    /**
+     * How refusals are put together does not turn on how they were bracketed.
+     *
+     * <p>A conjunction of three sides is refused by what the three showed, and which two of them
+     * were put together first is a fact about how somebody wrote it down. The same holds of a
+     * choice between three readings.
+     *
+     * <p>Which is what a refusal holding both of the things it can be is for. Held as one of them,
+     * a side refused at a block beside a side refused about blocks together had to give one up —
+     * and giving up either leaves an answer that is not the same when the first two are put
+     * together first as when the last two are, whichever of the two is given up.
+     */
+    @Test
+    void howTheseArePutTogetherDoesNotTurnOnHowTheyWereBracketed() {
+        List<Refusal<String>> these = List.of(Refusal.nowhere(), Refusal.atEachOf(Set.of(P)),
+                Refusal.atEachOf(Set.of(Q)), together(P, Q), together(Q, R),
+                leaving(Q, P), Refusal.eitherShown(Refusal.atEachOf(Set.of(R)), together(P, Q)));
+
+        for (Refusal<String> one : these) {
+            for (Refusal<String> other : these) {
+                assertEquals(Refusal.eitherShown(one, other), Refusal.eitherShown(other, one));
+                assertEquals(Refusal.shownByBoth(one, other), Refusal.shownByBoth(other, one));
+                assertEquals(one, Refusal.eitherShown(one, one));
+                assertEquals(one, Refusal.shownByBoth(one, one));
+                assertEquals(one, Refusal.eitherShown(one, Refusal.nowhere()));
+                for (Refusal<String> third : these) {
+                    assertEquals(
+                            Refusal.eitherShown(Refusal.eitherShown(one, other), third),
+                            Refusal.eitherShown(one, Refusal.eitherShown(other, third)),
+                            "what three conjoined sides showed");
+                    assertEquals(
+                            Refusal.shownByBoth(Refusal.shownByBoth(one, other), third),
+                            Refusal.shownByBoth(one, Refusal.shownByBoth(other, third)),
+                            "what three readings all showed");
+                }
+            }
+        }
     }
 
     /** {@code left} holding nothing, reached by {@code by} being left one value in an earlier
      *  round. */
     private static Refusal<String> leaving(Sameness.Block<String> left,
                                            Sameness.Block<String> by) {
-        return new Refusal.OfThemTogether<>(
+        return Refusal.ofThemTogether(
                 Lacks.of(new RelationalLack.NoValueLeftForIt<>(left),
                         RelationalEvidence.of(new Provenance<>(Set.of(new Provenance.Removal<>(
                                 left, Value.text("A"), 1, Set.of(by)))))));
@@ -162,18 +203,16 @@ class ALackAboutBlocksTogetherIsNotALackAtEachOfThemTest {
 
         assertEquals(partite.everySetWorthWalkingFor().orElseThrow().size(), lacks.size(),
                 "every set the count was taken of is short, and each of them is its own lack");
-        assertEquals(new Refusal.OfThemTogether<>(lacks),
-                Refusal.shownByBoth(new Refusal.OfThemTogether<>(lacks),
-                        new Refusal.OfThemTogether<>(lacks)),
+        assertEquals(Refusal.ofThemTogether(lacks),
+                Refusal.shownByBoth(Refusal.ofThemTogether(lacks),
+                        Refusal.ofThemTogether(lacks)),
                 "and two readings that show them all show them all");
     }
 
     /** A lack about blocks together and a lack at blocks are not one another, whatever they name. */
     @Test
     void andALackAtBlocksSaysNothingAboutALackAboutThemTogether() {
-        assertInstanceOf(Refusal.Nowhere.class,
-                Refusal.shownByBoth(together(P, Q), new Refusal.AtEachOf<>(Set.of(P, Q))));
-        assertInstanceOf(Refusal.Nowhere.class,
-                Refusal.shownByBoth(new Refusal.AtEachOf<>(Set.of(P, Q)), together(P, Q)));
+        assertTrue(Refusal.shownByBoth(together(P, Q), Refusal.atEachOf(Set.of(P, Q))).isNowhere());
+        assertTrue(Refusal.shownByBoth(Refusal.atEachOf(Set.of(P, Q)), together(P, Q)).isNowhere());
     }
 }

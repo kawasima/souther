@@ -145,13 +145,13 @@ class AProofNamesOneBlockAndNotAllOfThemTest {
         Confinement.Admission<FactSubject> one = new Confinement.Admission<>(
                 souther.compiler.values.Emptiness.EMPTY,
                 Confinement.EmptyBy.POSITIONS_HELD_AS_ONE,
-                new souther.compiler.values.Refusal.AtEachOf<>(
+                souther.compiler.values.Refusal.atEachOf(
                         Set.of(souther.compiler.values.Sameness.of(P, Q).joining(Q, R).blockOf(P))),
                 Confinement.Shown.BY_THE_READINGS);
         Confinement.Admission<FactSubject> other = new Confinement.Admission<>(
                 souther.compiler.values.Emptiness.EMPTY,
                 Confinement.EmptyBy.POSITIONS_HELD_AS_ONE,
-                new souther.compiler.values.Refusal.AtEachOf<>(
+                souther.compiler.values.Refusal.atEachOf(
                         Set.of(souther.compiler.values.Sameness.of(P, Q).joining(Q, S).blockOf(P))),
                 Confinement.Shown.BY_THE_READINGS);
 

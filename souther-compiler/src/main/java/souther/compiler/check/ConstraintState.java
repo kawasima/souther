@@ -306,8 +306,8 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
             // Which of the arguments a relation refuses by is the witness's to say, and the two are
             // two sentences: one is about how many values there are and the other about nothing of
             // the kind.
-            case POSITIONS_HELD_APART -> shown.site() instanceof Refusal.OfThemTogether<A> it
-                    && it.lacks().all(lack -> lack instanceof RelationalLack.ABlockApartFromItself)
+            case POSITIONS_HELD_APART -> shown.site().together()
+                    .all(lack -> lack instanceof RelationalLack.ABlockApartFromItself)
                     ? new Emptiness.PositionsHeldAsOneAreHeldApart()
                     : new Emptiness.NoDistinctValuesForPositionsHeldApart();
             case NOTHING_SHOWN, VALUES, RULES_TOGETHER -> null;
@@ -319,8 +319,8 @@ public record ConstraintState<A>(NumericDomain<A> numbers, PredicateFacts<A> fac
         // them. Said as its own place rather than through the one below: that one names the block
         // whose positions are one value, and these positions are not one value — read through it,
         // a proof would say the rules hold them as one, which is what they state they are not.
-        if (shown.site() instanceof Refusal.OfThemTogether<A> it) {
-            List<Emptiness.AtAField.Where> apart = declaredIn(it.blocks(), positions);
+        if (shown.site().nearest() == Refusal.Nearest.OF_THEM_TOGETHER) {
+            List<Emptiness.AtAField.Where> apart = declaredIn(shown.site().blocks(), positions);
             return Optional.of(apart.size() < 2 ? Emptiness.preferred(why, said)
                     : Emptiness.preferred(why, new Emptiness.AtPositionsHeldApart(apart, said)));
         }

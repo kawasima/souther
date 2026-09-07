@@ -249,6 +249,33 @@ class WhatHoldsANarrowingToWhatItIsForTest {
         }
     }
 
+    /**
+     * And a relation whose blocks are all emptied at once is reported on by asking each of them.
+     *
+     * <p>Pairs of blocks, each pair holding one value between them, and nothing stated between the
+     * pairs. Every block is left nothing by the first round, so there are as many lacks as there
+     * are blocks and as many removals — and what a report asks is what each of them rests on.
+     *
+     * <p>Asked of the removals one at a time, that is every removal read once per block. The
+     * relation is inside what a declaration may state, so which removals took from which block is
+     * worked out where they are held rather than at each of the questions.
+     */
+    @Test
+    void andARelationEmptiedAtOnceIsReportedOnByAskingEachBlock() {
+        int many = 1200;
+        Apartness<String> pairs = Apartness.nothing();
+        for (int each = 0; each < many; each += 2) {
+            pairs = pairs.and(Apartness.of("p" + each, "p" + (each + 1)));
+        }
+        Apartness.WhatABlockAdmits<String> left = (_, _) -> new Admits.These(Set.of(A));
+
+        Lacks<String> shown = lacksOf(pairs.reduce(left));
+
+        assertEquals(many, shown.size(), "every block is left nothing, and each is its own lack");
+        assertEquals(many, shown.blocks().size(),
+                "and what a report may name is each of them beside what took its value");
+    }
+
     /** What narrowing {@code relation} against what {@code left} says its blocks hold comes to,
      *  where that leaves a block nothing. */
     private static Closure.Contradicted<String> refusing(
