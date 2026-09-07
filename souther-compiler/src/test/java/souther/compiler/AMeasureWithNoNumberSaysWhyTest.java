@@ -238,11 +238,14 @@ class AMeasureWithNoNumberSaysWhyTest {
                     signature   not applicable (this behavior's output is not a sum)
                     partition   axes 1   equivalence partitions 1/2
                       · no row is in `No` at q.flag
+                      · q.flag holds 2 classes and this behavior's rules compose 0 of them
                     border      not applicable (the rules of this behavior draw no line)
                     branch      not applicable (this body owes no arm)
                   sift                     implemented   rows 0    pending 0
                     signature   not applicable (this behavior's output is not a sum)
                     partition   axes 2   equivalence partitions 0/0   (2 not measured: no row names this behavior)
+                      · p.left holds 2 classes and this behavior's rules compose 0 of them
+                      · p.right holds 2 classes and this behavior's rules compose 0 of them
                     border      not applicable (the rules of this behavior draw no line)
                     branch      not measured (no row names this behavior)
                   declarations   obligations 0/4

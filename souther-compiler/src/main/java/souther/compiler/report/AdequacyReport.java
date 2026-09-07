@@ -1418,6 +1418,19 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // Not a finding: nothing is owed here, and what the line says is what the model already
             // decided rather than something the rows left undone.
             for (PartitionEvidence.AxisCoverage axis : partition.axes()) {
+                // A position divided into more classes than this behavior's rules composed. What
+                // the rest came from is the input's own shape — the cases of a sum are classes
+                // whether or not a rule here looks at them — so a combination they take part in is
+                // one no row of this behavior can reach, and a count of those read as work owed.
+                //
+                // The rules that composed the classes and not the lines the behavior draws. A line
+                // is where a row is owed at either side of it; what put a value in a class is the
+                // axis's own answer, and the two part exactly where this sentence is about.
+                if (!axis.cutOrParted() && axis.divides().size() < axis.classes().size()) {
+                    out.append(String.format("      · %s holds %d classes and this behavior's rules"
+                                    + " compose %d of them%n",
+                            axis.name(), axis.classes().size(), axis.divides().size()));
+                }
                 for (ClaimAnnotations.Said said : behavior.claimed().at(axis.path())) {
                     // A case out of the denominator says what the author wrote about it; one still
                     // counted says that too, and that nothing settled it — a reader is told both

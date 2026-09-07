@@ -13,6 +13,7 @@ import souther.compiler.observe.Incompleteness;
 import souther.compiler.observe.MeasureReason;
 import souther.compiler.partition.AxisId;
 import souther.compiler.partition.ReportedReason;
+import souther.compiler.partition.RuleEvidenceOrigin;
 import souther.compiler.partition.UndividedPosition;
 
 import java.util.Collections;
@@ -710,8 +711,9 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
      *                went unreached
      */
     public record AxisCoverage(AxisId at, String path,
-                               List<String> classes, Reading read,
-                               Measurement<Reached> reached) {
+                               List<String> classes, List<RuleEvidenceOrigin> divides,
+                               boolean cutOrParted,
+                               Reading read, Measurement<Reached> reached) {
 
         /**
          * What a document calls this measure, which is the number it is of.
@@ -807,21 +809,24 @@ public record PartitionEvidence(Measure<List<AxisCoverage>> partitioned,
 
         /** Which classes there are is a fact about the model, and no row has to exist for it to be
          *  so — which is why a position nothing was measured at still names them. */
-        public static AxisCoverage noRows(AxisId at, String path,
-                                          List<String> classes, Reading read) {
-            return new AxisCoverage(at, path, classes, read,
+        public static AxisCoverage noRows(AxisId at, String path, List<String> classes,
+                                          List<RuleEvidenceOrigin> divides, boolean cutOrParted,
+                                          Reading read) {
+            return new AxisCoverage(at, path, classes, divides, cutOrParted, read,
                     new Measurement.NotMeasured<>(AxisCoverage.NoRows.NO_ROWS));
         }
 
         /** The same, where nobody asked for a measurement at all. */
-        public static AxisCoverage notAsked(AxisId at, String path,
-                                            List<String> classes, Reading read) {
-            return new AxisCoverage(at, path, classes, read,
+        public static AxisCoverage notAsked(AxisId at, String path, List<String> classes,
+                                            List<RuleEvidenceOrigin> divides, boolean cutOrParted,
+                                            Reading read) {
+            return new AxisCoverage(at, path, classes, divides, cutOrParted, read,
                     new Measurement.NotMeasured<>(NothingWasAsked.NOT_ASKED));
         }
 
         public AxisCoverage {
             classes = List.copyOf(classes);
+            divides = List.copyOf(divides);
             if (read == null) {
                 throw new IllegalArgumentException(
                         "a position with no account of what was read about its values: " + path);

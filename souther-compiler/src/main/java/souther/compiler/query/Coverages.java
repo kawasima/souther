@@ -505,6 +505,18 @@ final class Coverages {
     }
 
     /**
+     * Whether the rules made this position's classes by cutting or parting its values.
+     *
+     * <p>Asked of the axis's own two lists, which are what say so. A position whose classes are the
+     * cases of a sum has neither: nothing was cut, nothing was parted, and the classes are what the
+     * value's shape already had. So this is what tells a division the rules made from one they
+     * merely count.
+     */
+    private static boolean cutOrParted(Axis axis) {
+        return !axis.cuts().isEmpty() || !axis.parted().isEmpty();
+    }
+
+    /**
      * How many combinations two positions' classes make between them.
      *
      * <p>The product where the two are in one value, and less where they are not. What a row at a
@@ -598,18 +610,18 @@ final class Coverages {
         // below, and a build that asked for no measurement read no row.
         if (!asked) {
             return PartitionEvidence.AxisCoverage.notAsked(axis.id(),
-                    axis.term().toString(), classes, read);
+                    axis.term().toString(), classes, axis.divides(), cutOrParted(axis), read);
         }
         if (readings.noRows() && !readings.someRowsUnseen()) {
             return PartitionEvidence.AxisCoverage.noRows(axis.id(),
-                    axis.term().toString(), classes, read);
+                    axis.term().toString(), classes, axis.divides(), cutOrParted(axis), read);
         }
         PartitionEvidence.AxisCoverage.Reached reached =
                 new PartitionEvidence.AxisCoverage.Reached(reading.covered(),
                         reading.couldNotSay());
         WeakeningSet by = readings.weakening(List.of(reading));
         return new PartitionEvidence.AxisCoverage(axis.id(), axis.term().toString(),
-                classes, read, by.isEmpty()
+                classes, axis.divides(), cutOrParted(axis), read, by.isEmpty()
                         ? new Measurement.Complete<>(reached)
                         : new Measurement.Partial<>(reached, by));
     }
