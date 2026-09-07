@@ -1,6 +1,5 @@
 package souther.compiler.report;
 
-import souther.compiler.coverage.SiteNumbering;
 import souther.compiler.observe.Target;
 import souther.compiler.partition.ClosureGap;
 import souther.compiler.query.Weakening;
@@ -56,11 +55,10 @@ final class Subjects {
             // are what the walk met and are the reason; a behavior has one pair space, so they
             // tell no two of these apart.
             case Weakening.PairSpaceTruncated it -> new Subject.OfABehavior(it.behavior());
-            // The arm, resolved where arms are named. The probe is the number a run through it was
-            // recorded at and says of itself that it is an address and not the arm's identity, so
-            // a reader handed the number would be sent to the vocabulary rather than to the place.
-            case Weakening.ProofContradicted it -> new Subject.AtAnArm(
-                    SiteNumbering.of(it.probe().numbering()).addressOf(it.probe()));
+            // The arm as the source wrote it, which is what the fact now carries: the number a run
+            // through it was recorded at is resolved where the sites are, and nothing this far
+            // along has them.
+            case Weakening.ProofContradicted it -> new Subject.AtAnArm(it.arm());
             case Weakening.ArmsUnsettled it -> new Subject.AtAFork(it.fork());
         };
     }

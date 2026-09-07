@@ -2,7 +2,8 @@ package souther.compiler;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.coverage.Numberings;
+import souther.compiler.coverage.CoverageSites;
+import souther.compiler.coverage.DecidedBy;
 import souther.compiler.types.WrittenOwner;
 import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.observe.Incompleteness;
@@ -716,8 +717,11 @@ class AMeasureWithNoNumberSaysWhyTest {
      */
     @Test
     void whatAMeasurementWentWithoutIsASetAndUnionsLikeOne() {
-        Weakening a = new Weakening.ProofContradicted("take",
-                Numberings.arm(2, 1));
+        Weakening a = new Weakening.ProofContradicted(new CoverageSites.Obligation("take",
+                new souther.compiler.types.SourceConstructOrigin(
+                        new WrittenOwner.Body("m", "take"), 0, 0,
+                        souther.compiler.types.SourceConstruct.IF),
+                1, new DecidedBy.NotSaid()));
         Weakening b = new Weakening.ArmsUnsettled(
                 new souther.compiler.types.SourceConstructOrigin(new WrittenOwner.Body("m", "b"), 0, 0,
                         souther.compiler.types.SourceConstruct.IF));

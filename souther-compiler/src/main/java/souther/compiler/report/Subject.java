@@ -1,6 +1,6 @@
 package souther.compiler.report;
 
-import souther.compiler.coverage.SiteAddress;
+import souther.compiler.coverage.CoverageSites;
 import souther.compiler.inputs.PositionId;
 import souther.compiler.inputs.StandingQuestion;
 import souther.compiler.observe.RowRef;
@@ -98,13 +98,14 @@ public sealed interface Subject {
     record AtAFork(SourceConstructOrigin fork) implements Subject {}
 
     /**
-     * One arm of a body, as a place rather than as the number a run through it was recorded at.
+     * One arm of a body, as the source wrote it.
      *
-     * <p>The number is an address a numbering handed out and says so in its own words; which arm a
-     * reader is sent to is a place in a body, and the two are held apart because different things
-     * answer them.
+     * <p>Three things name an arm and none of them is the others. A probe is the number a run
+     * through it was recorded at; a site address is where the emitter put it; and this is the
+     * construct the author wrote, which is what a document already names an arm by and the only one
+     * of the three a reader can be sent to.
      */
-    record AtAnArm(SiteAddress.Arm arm) implements Subject {}
+    record AtAnArm(CoverageSites.Obligation arm) implements Subject {}
 
     /**
      * One of the measurements a behavior has exactly one of.

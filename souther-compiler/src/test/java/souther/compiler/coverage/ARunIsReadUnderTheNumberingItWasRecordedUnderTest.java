@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -78,30 +77,6 @@ class ARunIsReadUnderTheNumberingItWasRecordedUnderTest {
         assertThrows(IllegalArgumentException.class, () -> read.reached(elsewhere().comparison(2)),
                 "however the question is put");
         assertTrue(read.lit(here().arm(0)), "while a place of its own is answered");
-    }
-
-    /**
-     * And the way back over the crossing is the numbering's too, under the same rule.
-     *
-     * <p>A probe says which arm a run went through, in numbers. Asked of the numbering that handed
-     * it out, the answer is the place; asked of another that has a number of the same value, the
-     * answer is a place the run was never near — and here that other place is a comparison rather
-     * than an arm, so nothing about the number itself is wrong.
-     */
-    @Test
-    void aProbeIsResolvedByTheNumberingThatHandedItOutAndByNoOther() {
-        ArmProbe mine = here().arm(0);
-
-        assertEquals(here().addressOf(here().arm(2)), here().addressOf(here().arm(2)),
-                "the place is the numbering's answer, so asking twice asks one thing");
-        assertInstanceOf(SiteAddress.Arm.class, here().addressOf(mine),
-                "a probe of its own resolves to the arm it was issued for");
-
-        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
-                () -> elsewhere().addressOf(mine));
-
-        assertTrue(refused.getMessage().contains("a number means a place under the numbering"),
-                refused.getMessage());
     }
 
     /**

@@ -2288,6 +2288,31 @@ public final class Adequacy {
         }
 
         /**
+         * The arms a set of probes is about, which is asked here because here is where both are.
+         *
+         * <p>A probe is the number a run through an arm was recorded at; which arm that is, is what
+         * the sites hold. Nothing further along has the sites, so a probe carried past this point
+         * arrives everywhere else as a token its reader cannot resolve — which is what a fact about
+         * a contradicted proof used to be made of.
+         *
+         * <p>Refused where no site of this behavior was numbered for it. A proof contradicted at an
+         * arm is a proof about one of these arms, and a probe none of them was issued for means the
+         * two lists are of different behaviors.
+         */
+        private static Set<CoverageSites.Obligation> armsBehind(List<CoverageSites.ArmSite> all,
+                                                                Set<ArmProbe> probes) {
+            Set<CoverageSites.Obligation> out = new java.util.LinkedHashSet<>();
+            for (ArmProbe probe : probes) {
+                CoverageSites.ArmSite site = all.stream()
+                        .filter(each -> each.index().equals(probe))
+                        .findFirst().orElseThrow(() -> new IllegalArgumentException(
+                                "a run was recorded at " + probe + ", which is no arm of these"));
+                out.add(site.obligation());
+            }
+            return out;
+        }
+
+        /**
          * The arms of one behavior, with the ones nothing reaches taken out of what it is owed.
          *
          * <p>Taken out here and not where the probes are numbered. The plan says where
@@ -2311,7 +2336,7 @@ public final class Adequacy {
                                               souther.compiler.check.PathReachability.Answers.AsRun reachable,
                                               WeakeningSet weakenings) {
             ArmAccount account = ArmAccount.of(owed(all, reachable), covered, weakenings,
-                    ArmCensus.of(behavior, reachable.provedWrong()));
+                    ArmCensus.of(armsBehind(all, reachable.provedWrong())));
             WeakeningSet by = account.weakening();
             return new BranchEvidence(by.isEmpty()
                     ? new Measurement.Complete<>(account.summary())

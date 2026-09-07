@@ -3,8 +3,9 @@ package souther.compiler.query;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.BehaviorContract;
+import souther.compiler.coverage.CoverageSites;
+import souther.compiler.coverage.DecidedBy;
 import souther.compiler.types.WrittenOwner;
-import souther.compiler.coverage.Numberings;
 import souther.compiler.check.Carrier;
 import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.RuleRef;
@@ -217,7 +218,10 @@ class WhatEachWeakeningSaysAboutAWiderRunTest {
         out.add(new Weakening.BodiesNotElaborated("m"));
         out.add(new Weakening.BoundaryNotDerived("b"));
         out.add(new Weakening.InputNotRead("b"));
-        out.add(new Weakening.ProofContradicted("b", Numberings.arm(2, 1)));
+        out.add(new Weakening.ProofContradicted(new CoverageSites.Obligation("b",
+                new SourceConstructOrigin(new WrittenOwner.Body("m", "b"), 2, 0,
+                        SourceConstruct.IF),
+                1, new DecidedBy.NotSaid())));
         out.add(new Weakening.ArmsUnsettled(
                 new SourceConstructOrigin(new WrittenOwner.Body("m", "b"), 1, 0,
                         SourceConstruct.IF)));
