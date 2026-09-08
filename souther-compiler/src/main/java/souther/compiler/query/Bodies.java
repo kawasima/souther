@@ -9,6 +9,7 @@ import souther.compiler.check.AnalysisBody;
 import souther.compiler.check.Expansion;
 import souther.compiler.check.BehaviorChecker;
 import souther.compiler.check.SpecChecker;
+import souther.compiler.check.SpecImplementation;
 import souther.compiler.check.CheckSurface;
 import souther.compiler.check.InvariantSettled;
 import souther.compiler.check.BehaviorContract;
@@ -586,9 +587,10 @@ public final class Bodies {
      *
      * <p>An injected one is reached through the parameter {@code depends on} gave the body, so the
      * name written at the call denotes that parameter and not the behavior. Which parameter stands
-     * for which behavior is {@link SpecChecker#dependencyBindings}, asked rather than worked out
-     * again: the clause and the parameter list are read together in order and not paired by name,
-     * because two modules may declare a behavior of one name, and the answer is a binding because a
+     * for which behavior is asked of the division of the implementation's parameters rather than
+     * worked out again: which of them the clause fills is {@link SpecImplementation}'s to say and
+     * not a suffix measured here, the parameters are not paired with the clause by name because two
+     * modules may declare a behavior of one name, and the answer is a binding because a
      * binding in force wins over the declaration it shadows (spec §fn-rules). Neither is a
      * difference a program can show here — a {@code depends on} its body never calls is refused
      * (E1603), so a shadow of that spelling has the parameter beside it — which is why it is asked
@@ -618,8 +620,8 @@ public final class Bodies {
             if (!body.present() || !spec.present()) {
                 return Answer.absent();
             }
-            Map<BindingId, ValueName.Behavior> injected =
-                    SpecChecker.dependencyBindings(spec.value(), body.value().value());
+            Map<BindingId, ValueName.Behavior> injected = SpecImplementation
+                    .align(spec.value(), body.value().value()).injectedBindings();
             Set<ValueName.Behavior> reached = new LinkedHashSet<>();
             List<Hir.Expr> todo = new ArrayList<>();
             todo.add(body.value().value().writtenBody());
@@ -2076,8 +2078,9 @@ public final class Bodies {
             Hir.FnDef fn = db.ask(new SettledFn(module, spec.name())).value();
             out.put(spec.name(), souther.compiler.claims.Claims.of(
                     souther.compiler.claims.UnreachableClaims.of(body, read, scope.value(), plan),
-                    souther.compiler.check.PathReachability.of(
-                            body, policy, spec, fn, plan, read, reading.value())));
+                    souther.compiler.check.PathReachability.of(body, policy,
+                            fn == null ? null : SpecImplementation.align(spec, fn),
+                            plan, read, reading.value())));
         }
         // In the order the module declares them, which is the order a reader meets the diagnostics
         // these carry. `Map.copyOf` keeps the entries and not the order (see `Ordered`), so a

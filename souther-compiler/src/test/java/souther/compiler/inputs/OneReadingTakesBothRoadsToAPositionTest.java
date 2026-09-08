@@ -155,7 +155,7 @@ class OneReadingTakesBothRoadsToAPositionTest {
         RuleReadingSource rules = RuleReadings.of(compilation, module);
         Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().stream()
                 .filter(b -> b.name().equals(behavior)).findFirst().orElseThrow();
-        return InputDomain.of(spec, null, sigs.get(behavior), rules,
+        return InputDomain.of(spec, List.of(), sigs.get(behavior), rules,
                 ReadAs.THE_COMPILATION_DOES, demand);
     }
 }

@@ -1,7 +1,6 @@
 package souther.compiler.check;
 
 import souther.compiler.coverage.ArmProbe;
-import souther.compiler.ast.Hir;
 import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.coverage.ComparisonOccurrence;
@@ -176,16 +175,21 @@ public final class PathReachability {
      * reading, and a walk of a body against one made up says about this compilation having stopped
      * what it would say about the model. A caller without one measures nothing here.
      */
-    public static Answers of(Core body, ReadingPolicy policy, Hir.SpecBehavior spec, Hir.FnDef fn,
+    public static Answers of(Core body, ReadingPolicy policy,
+                             SpecImplementation.Implemented implemented,
                              CoverageSites.Plan plan, InputDomain read, RuleReadingSource source) {
         Objects.requireNonNull(read, "a reachability reading is made against an input that was read");
-        if (fn == null || spec == null) {
+        if (implemented == null) {
             return Answers.NONE;
         }
+        // Which binder each declared input arrives in, asked of the reading that divides an
+        // implementation's parameters. A behavior takes the behaviors it depends on beside its
+        // inputs, so which of the binders are the inputs is that reading's and not a prefix
+        // measured here.
         Scope params = Scope.NONE;
-        for (int i = 0; i < spec.params().size() && i < fn.params().size(); i++) {
-            params = params.with(fn.params().get(i).binder(),
-                    TypeOps.successType(spec.params().get(i).type()));
+        for (SpecImplementation.ParameterBinding.AnInput input : implemented.declaredInputs()) {
+            params = params.with(input.written().binder(),
+                    TypeOps.successType(input.declared().type()));
         }
         return of(body, params, plan, read, source, policy);
     }

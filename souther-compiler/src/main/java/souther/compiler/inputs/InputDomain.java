@@ -3,6 +3,7 @@ package souther.compiler.inputs;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.NumberAt;
 import souther.compiler.check.RuleReadingSource;
+import souther.compiler.check.SpecImplementation;
 import souther.compiler.check.DeclarationReadings;
 import souther.compiler.check.Carrier;
 import souther.compiler.check.DeclaredBounds;
@@ -346,29 +347,44 @@ public final class InputDomain {
      * called, the signature says what they hold, and the implementation says which binding a body's
      * reads of one carry. Paired here rather than by every caller that has some of them.
      *
-     * @param fn the implementation, or null where nothing implements this behavior — an injected
-     *           behavior has positions and no body to read them in
+     * @param arriving which binder each declared input arrives in, or empty where nothing
+     *                 implements this behavior — an injected behavior has positions and no body to
+     *                 read them in
      */
-    public static InputDomain of(Hir.SpecBehavior behavior, Hir.FnDef fn, Sig sig,
+    public static InputDomain of(Hir.SpecBehavior behavior,
+                                 List<SpecImplementation.ParameterBinding.AnInput> arriving, Sig sig,
                                  RuleReadingSource source, ReadingPolicy policy) {
-        return of(behavior, fn, sig, source, policy, InputDemand.NONE);
+        return of(behavior, arriving, sig, source, policy, InputDemand.NONE);
     }
 
     /** The same, closed over the finite paths this behavior's measurement names as well. */
-    public static InputDomain of(Hir.SpecBehavior behavior, Hir.FnDef fn, Sig sig,
+    public static InputDomain of(Hir.SpecBehavior behavior,
+                                 List<SpecImplementation.ParameterBinding.AnInput> arriving, Sig sig,
                                  RuleReadingSource source, ReadingPolicy policy, InputDemand demand) {
-        return of(behavior, fn, sig, source, policy, demand, DeclarationReadings.NONE);
+        return of(behavior, arriving, sig, source, policy, demand, DeclarationReadings.NONE);
     }
 
-    /** The same, asking {@code machines} first. */
-    public static InputDomain of(Hir.SpecBehavior behavior, Hir.FnDef fn, Sig sig,
+    /**
+     * The same, asking {@code machines} first.
+     *
+     * <p>{@code arriving} says which binder each declared input arrives in, where something
+     * implements the behavior. It is asked of {@link SpecImplementation} and not measured off the
+     * front of the implementation's parameter list: a behavior takes the behaviors it depends on
+     * beside its inputs, so the two lists are not the same length and where one stops is that
+     * reading's to say. Empty where nothing implements the behavior, which has the positions all the
+     * same and nothing to read them through.
+     */
+    public static InputDomain of(Hir.SpecBehavior behavior,
+                                 List<SpecImplementation.ParameterBinding.AnInput> arriving, Sig sig,
                                  RuleReadingSource source, ReadingPolicy policy, InputDemand demand,
                                  DeclarationReadings machines) {
+        Map<Integer, BindingId> bindings = new LinkedHashMap<>();
+        for (SpecImplementation.ParameterBinding.AnInput input : arriving) {
+            bindings.put(input.at(), input.written().binder().binding());
+        }
         List<Parameter> parameters = new ArrayList<>();
         for (int i = 0; i < sig.inputTypes().size() && i < behavior.params().size(); i++) {
-            BindingId binding = fn != null && i < fn.params().size()
-                    ? fn.params().get(i).binder().binding() : null;
-            parameters.add(new Parameter(behavior.params().get(i).name(), binding,
+            parameters.add(new Parameter(behavior.params().get(i).name(), bindings.get(i),
                     sig.inputTypes().get(i)));
         }
         return of(parameters, source, policy, demand, machines);
@@ -384,7 +400,7 @@ public final class InputDomain {
      */
     public static InputDomain of(Hir.SpecBehavior behavior, Sig sig, RuleReadingSource source,
                                  ReadingPolicy policy) {
-        return of(behavior, null, sig, source, policy);
+        return of(behavior, List.of(), sig, source, policy);
     }
 
     /** The positions, in the order they were read. */

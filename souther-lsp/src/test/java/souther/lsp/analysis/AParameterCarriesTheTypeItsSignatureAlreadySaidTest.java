@@ -111,6 +111,40 @@ class AParameterCarriesTheTypeItsSignatureAlreadySaidTest {
         assertEquals(List.of(": Draft"), labelsOf(hints(broken)));
     }
 
+    /**
+     * And a behavior that is handed what it depends on is hinted like any other.
+     *
+     * <p>Its {@code let} takes those behaviors beside the inputs, so it always writes more
+     * parameters than the signature has input types. Told apart by comparing those two lengths, the
+     * whole definition was left out — including the inputs the signature does declare, which are the
+     * ones a hint exists for.
+     */
+    @Test
+    void aBehaviorThatIsHandedWhatItDependsOnHasItsInputsHinted() {
+        String injected = """
+                module m
+
+                data Draft = { plannedCost: Int }
+
+                behavior price : (request: Draft) -> Int
+
+                behavior submit : (request: Draft) -> Int
+                    depends on price
+
+                let submit (request, price) = price(request)
+                """;
+        List<InlayHint> hints = hints(injected);
+        String letLine = injected.lines().toList().get(9);
+
+        assertEquals(List.of(": Draft"), labelsOf(hints),
+                "`request` is what the signature types; `price` is a behavior it was handed");
+        // And after the input, not after the parameter that stands beside it. Both are names on
+        // one line, so a division that had them the wrong way round draws the same label.
+        assertEquals(letLine.indexOf("(request") + "(request".length(),
+                hints.getFirst().position().character());
+        assertEquals(9, hints.getFirst().position().line());
+    }
+
     @Test
     void onlyWhatTheClientAskedToSee() {
         Range firstLineOnly = new Range(new Position(0, 0), new Position(6, 0));

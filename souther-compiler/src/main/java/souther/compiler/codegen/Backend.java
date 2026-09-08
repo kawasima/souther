@@ -452,6 +452,12 @@ public final class Backend {
             behaviorDeps.put(new ValueName.Behavior(module.name(), e.getKey()),
                     Requirements.names(e.getValue()));
         }
+        // Which definition implements each behavior, and which of that definition's parameters are
+        // the declared inputs, asked once for the module rather than worked out here: the snapshot's
+        // assembler reads its binders from the same answer, so which local an input arrives in
+        // cannot be one thing there and another here.
+        Map<String, SpecImplementation.Implemented> implementations =
+                SpecImplementation.implementationsOf(module);
         for (Hir.BehaviorDef bd : module.behaviors()) {
             emitting(bd.written(), () -> {
                 // The class a declared relation is checked by, emitted by the module that declares
@@ -467,15 +473,21 @@ public final class Backend {
                 }
                 switch (bd) {
                     case Hir.SpecBehavior spec -> {
-                        // Which definition implements it, and which of that definition's parameters
-                        // are the declared inputs, is asked rather than worked out here: the
-                        // snapshot's assembler reads its binders from the same answer, so which
-                        // local an input arrives in cannot be one thing there and another here.
                         // Bodies arrive with their helper calls already inlined (the Lower stage,
                         // ADR-0021), and are emitted as-is.
                         SpecImplementation.Implemented implemented =
-                                SpecImplementation.implementedBy(module, spec);
+                                implementations.get(spec.name());
                         if (implemented != null) {
+                            // What this emitter takes, said here rather than by the reading that
+                            // divided the parameters: an editor reads a definition whose parameters
+                            // do not line up and answers what it can about it, and this may not run
+                            // on one at all. The division is the same either way; what differs is
+                            // who may act on it.
+                            if (!implemented.hasCompleteShape()) {
+                                throw new IllegalStateException("`" + module.name() + "."
+                                        + spec.name() + "` is emitted from an implementation whose"
+                                        + " parameters the declaration does not account for");
+                            }
                             // a fn-implemented behavior: the $Impl holds the logic, the public interface
                             // (behaviorClass) is what Java code declares (spec §jvm-anonymous-union).
                             out.put(new GeneratedClass.BehaviorImpl(module.name(), spec.name()),
@@ -1313,13 +1325,15 @@ public final class Backend {
                 gen.armsAreCounted();
                 gen.injectsInto(successType(spec.ret()));
                 gen.requireds(requiredNames, requiredSuccess, requiredParam, injected);
-                for (int i = 0; i < n; i++) {
-                    // the definition's input names the binding; its type comes from the behavior
-                    Type pt = successType(spec.params().get(i).type());
-                    code.aload(i + 1);
+                for (SpecImplementation.ParameterBinding.AnInput input
+                        : implemented.declaredInputs()) {
+                    // the definition's input names the binding; its type comes from the behavior,
+                    // paired with it where the parameters were divided rather than here
+                    Type pt = successType(input.declared().type());
+                    code.aload(input.at() + 1);
                     int slot = gen.slot(pt);
                     unbox(code, pt, slot);
-                    Hir.Binder binder = implemented.inputs().get(i).binder();
+                    Hir.Binder binder = input.written().binder();
                     gen.bind(binder.binding(), binder.name(), slot, pt);
                 }
                 // thread the behavior's declared output so a tail-position fold over an empty seed

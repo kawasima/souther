@@ -75,6 +75,79 @@ class WhatIsLeftOfADotIsSaidByTheSnapshotAndNotGuessedTest {
                 "and said by declarations, which is what a reader is entitled to know");
     }
 
+    /**
+     * And a behavior that is handed what it depends on has its parameters spoken for like any
+     * other's.
+     *
+     * <p>Such a {@code let} takes the behaviors it is injected with beside its inputs, so it always
+     * writes more parameters than the signature has input types. Told apart by comparing those two
+     * lengths, none of its parameters was spoken for at all — so an author working inside any
+     * behavior that depends on anything was shown nothing after a {@code .}, while the same line one
+     * behavior up answered.
+     */
+    @Test
+    void aParameterOfABehaviorThatIsHandedWhatItDependsOnIsSpokenForToo() {
+        MemberReceiver receiver = leftOfTheDot("""
+                module m
+
+                import lib as l ( Cost )
+
+                data Draft = { plannedCost: Cost }
+
+                behavior price : (draft: Draft) -> Int
+
+                behavior submit : (request: Draft) -> Int
+                    depends on price
+
+                let submit (request, price) = request.plannedCost.
+                """);
+
+        assertEquals("Cost",
+                assertInstanceOf(Type.Ref.class,
+                        assertInstanceOf(MemberReceiver.Value.class, receiver).type().type())
+                        .name().name(),
+                "the signature says what `request` is whatever else the `let` was handed");
+    }
+
+    /**
+     * And an injected parameter is a value the declarations type, not one they are silent about.
+     *
+     * <p>The signature above the {@code let} says nothing about it — it is not an input. What it is
+     * is the behavior the {@code depends on} clause names, and that behavior's own signature says
+     * what it takes and answers. So the answer here is a typed value that offers no names after the
+     * {@code .}, which is a different thing to say than that nothing states what it is: a behavior
+     * is not a record, and an author writing a {@code .} on one is writing on something the
+     * declarations do account for.
+     */
+    @Test
+    void anInjectedParameterIsTypedAsTheBehaviorItNames() {
+        Probed probed = probe("""
+                module m
+
+                import lib as l ( Cost )
+
+                data Draft = { plannedCost: Cost }
+
+                behavior price : (draft: Draft) -> Cost
+
+                behavior submit : (request: Draft) -> Cost
+                    depends on price
+
+                let submit (request, price) = price.
+                """);
+
+        Type.FnOf takes = assertInstanceOf(Type.FnOf.class,
+                assertInstanceOf(MemberReceiver.Value.class, probed.receiver()).type().type());
+        assertEquals("Draft",
+                assertInstanceOf(Type.Ref.class, takes.params().getFirst()).name().name(),
+                "what `price` takes");
+        assertEquals("Cost", assertInstanceOf(Type.Ref.class, takes.result()).name().name(),
+                "and what it answers");
+        assertTrue(probed.snapshot().fieldsOf(
+                        ((MemberReceiver.Value) probed.receiver()).type()).isEmpty(),
+                "a behavior carries no field for a `.` to name");
+    }
+
     @Test
     void aReceiverNoDeclarationSpeaksForIsStillAValue() {
         // `submitted()` answers something no declaration read here states, so what is missing is the

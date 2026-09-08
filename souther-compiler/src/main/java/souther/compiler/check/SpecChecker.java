@@ -72,7 +72,7 @@ public final class SpecChecker {
                     if (fn != null) {
                         for (ValueName.Behavior called
                                 : requiredCalls(fn.writtenBody(), names,
-                                        dependencyBindings(spec, fn))) {
+                                        SpecImplementation.align(spec, fn).injectedBindings())) {
                             if (!out.contains(called)) {
                                 out.add(called);
                             }
@@ -272,13 +272,14 @@ public final class SpecChecker {
                 throw new Unanswerable(required.pos());
             }
         }
-        // What this fn has to take, asked of the behavior rather than added up here (§fn-declaration).
-        List<SpecImplementation.Parameter> shape = SpecImplementation.parameters(spec);
-        int nBusiness = spec.params().size();
-        if (fn.params().size() != shape.size()) {
+        // What each parameter this fn wrote stands for, asked of the behavior rather than worked
+        // out here (§fn-declaration). Every question below about which parameter is which is read
+        // off this one division.
+        SpecImplementation.Implemented implemented = SpecImplementation.align(spec, fn);
+        if (!implemented.hasExactArity()) {
             throw CompileException.of(Diagnostic
                             .at(fn.pos())
-                            .say(new BehaviorMessage.TheImplementationTakesAnotherNumberOfParameters(fn.name(), String.valueOf(fn.params().size()), spec.name(), String.valueOf(nBusiness), String.valueOf(shape.size() - nBusiness))).build());
+                            .say(new BehaviorMessage.TheImplementationTakesAnotherNumberOfParameters(fn.name(), String.valueOf(fn.params().size()), spec.name(), String.valueOf(spec.params().size()), String.valueOf(spec.dependsOn().size()))).build());
         }
         for (Hir.FnParam p : fn.params()) {
             // a pattern in parameter position names a type, but it is not an annotation: it opens
@@ -288,18 +289,21 @@ public final class SpecChecker {
                                 .at(p.pos()).say(new BehaviorMessage.AnImplementationsParametersTakeTheirTypesFromIt(fn.name(), spec.name(), p.name())).build());
             }
         }
-        for (int i = 0; i < shape.size(); i++) {
-            switch (shape.get(i)) {
+        for (SpecImplementation.ParameterBinding binding : implemented.bindings()) {
+            switch (binding) {
                 // An input's name is the implementation's to choose.
-                case SpecImplementation.Parameter.Input _ -> { }
+                case SpecImplementation.ParameterBinding.AnInput _ -> { }
                 // A clause naming nothing names no parameter for this one to be out of order
                 // against, and it was refused above, at the clause rather than at this list.
-                case SpecImplementation.Parameter.Unanswered _ -> { }
-                case SpecImplementation.Parameter.Injected injected -> {
-                    String got = fn.params().get(i).name();
-                    if (!got.equals(injected.name())) {
+                case SpecImplementation.ParameterBinding.Unanswered _ -> { }
+                // The arity is exact by here, so no parameter is standing past what the
+                // declaration asks for.
+                case SpecImplementation.ParameterBinding.Extraneous _ -> { }
+                case SpecImplementation.ParameterBinding.AnInjection injected -> {
+                    String got = injected.written().name();
+                    if (!got.equals(injected.behavior().name())) {
                         throw CompileException.of(Diagnostic
-                                        .at(fn.pos()).say(new BehaviorMessage.AnInjectedParameterIsOutOfOrder(fn.name(), got, injected.name())).build());
+                                        .at(fn.pos()).say(new BehaviorMessage.AnInjectedParameterIsOutOfOrder(fn.name(), got, injected.behavior().name())).build());
                     }
                 }
             }
@@ -310,16 +314,15 @@ public final class SpecChecker {
             Elaborator.rejectBuiltinShadow(p.name(), p.pos());
         }
         Elaborator.rejectBuiltinShadowing(fn.writtenBody());
-        for (int i = 0; i < nBusiness; i++) {
-            env = env.with(fn.params().get(i).binder(),
-                    TypeOps.successType(spec.params().get(i).type()));
+        for (SpecImplementation.ParameterBinding.AnInput input : implemented.declaredInputs()) {
+            env = env.with(input.written().binder(),
+                    TypeOps.successType(input.declared().type()));
         }
-        // Which behavior each trailing parameter stands for. The clause and the parameter list are
-        // held in the same order above, so the two are read together here rather than paired by
-        // name — an implementation names its own parameters, and the behaviors it depends on may be
-        // declared by different modules under one name.
+        // Which behavior each injected parameter stands for, read off the same division — an
+        // implementation names its own parameters, and the behaviors it depends on may be declared
+        // by different modules under one name.
         Map<souther.compiler.types.BindingId, ValueName.Behavior> dependsOn =
-                dependencyBindings(spec, fn);
+                implemented.injectedBindings();
         Type output = TypeOps.successType(spec.ret());
         // recursive helpers this behavior calls resolve through their signatures (spec §fn-declaration); merged
         // only for typing, so the construction and dependency walks below still see the business params alone.
@@ -872,26 +875,6 @@ public final class SpecChecker {
         List<ValueName.Behavior> calls = new java.util.ArrayList<>();
         collectRequiredCalls(body, requiredNames, dependencies, calls);
         return calls;
-    }
-
-    /**
-     * Which behavior each trailing parameter of {@code fn} stands for.
-     *
-     * <p>The clause and the parameter list are held in the same order (checked just above), so the
-     * two are read together rather than paired by name: an implementation names its own parameters,
-     * and two modules may declare a behavior of one name.
-     */
-    public static Map<souther.compiler.types.BindingId, ValueName.Behavior> dependencyBindings(
-            Hir.SpecBehavior spec, Hir.FnDef fn) {
-        Map<souther.compiler.types.BindingId, ValueName.Behavior> bound = new LinkedHashMap<>();
-        int business = spec.params().size();
-        for (int i = 0; i < spec.dependsOn().size() && business + i < fn.params().size(); i++) {
-            ValueName.Behavior named = behaviorReached(spec.dependsOn().get(i));
-            if (named != null) {
-                bound.put(fn.params().get(business + i).binder().id(), named);
-            }
-        }
-        return bound;
     }
 
     /**
