@@ -119,7 +119,7 @@ class EveryAnswerOfAReadingIsFiledUnderItsOwnBlocksTest {
 
         assertTrue(reading.isBottom());
         assertEquals(Set.of(Set.of("p", "r")),
-                reading.refusedBy().blocks().stream().map(Sameness.Block::members)
+                reading.refusedBy().atEachOf().stream().map(Sameness.Block::members)
                         .collect(java.util.stream.Collectors.toSet()));
     }
 

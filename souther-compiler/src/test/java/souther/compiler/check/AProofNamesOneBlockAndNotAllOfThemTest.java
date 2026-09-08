@@ -117,6 +117,47 @@ class AProofNamesOneBlockAndNotAllOfThemTest {
     }
 
     /**
+     * A state refused both ways is reported at the block that holds nothing.
+     *
+     * <p>One side leaves the value {@code p} and {@code q} are no value at all; the other states
+     * {@code r} and {@code s} to be one value and to differ, which is a lack about them together
+     * while each of them is left everything on its own. A conjunction of the two is refused both
+     * ways, and neither is what it is instead of the other.
+     *
+     * <p>What the sentence about a place is about is the first of those. Read off both, a proof
+     * could name {@code r} — a block whose own rules leave it everything — and which of the two it
+     * named would be settled by which the value declares first, which is why this declares the
+     * other pair first.
+     */
+    @Test
+    void aStateRefusedBothWaysIsReportedAtTheBlockThatHoldsNothing() {
+        Allowance<FactSubject> sets = AsACompilationAllows.forAdmittedValues();
+        AdmissibleValues<FactSubject> both = emptiedAt(P, Q, sets)
+                .meet(built(PlannedValues.<FactSubject>holdingAsOne(R, S)
+                        .meet(PlannedValues.heldApart(R, S)), sets), sets);
+
+        assertEquals(Set.of(souther.compiler.values.Sameness.of(P, Q).blockOf(P)),
+                both.refusedBy().atEachOf(), "one side leaves this block nothing");
+        assertTrue(!both.refusedBy().together().isEmpty(), "and the other refuses two together");
+
+        SequencedMap<FactSubject, Emptiness.AtAField.Where> declared = new LinkedHashMap<>();
+        declared.put(R, new Emptiness.AtAField.Where.In("r"));
+        declared.put(S, new Emptiness.AtAField.Where.In("s"));
+        declared.put(P, new Emptiness.AtAField.Where.In("p"));
+        declared.put(Q, new Emptiness.AtAField.Where.In("q"));
+
+        ConstraintState<FactSubject> state = ConstraintState.<FactSubject>top()
+                .takingRead(Confinement.Worked.of(both, OrderedIntervals.top(), Map.of()), sets);
+
+        Emptiness.AtEqualPositions at = assertInstanceOf(Emptiness.AtEqualPositions.class,
+                state.holdsNothing(declared).orElseThrow());
+        assertEquals(List.of(new Emptiness.AtAField.Where.In("p"),
+                        new Emptiness.AtAField.Where.In("q")), at.where(),
+                "the places whose one value has none, and not the ones declared first");
+        assertInstanceOf(Emptiness.NoCommonValueForEqualPositions.class, at.under());
+    }
+
+    /**
      * Two blocks beginning at one position are told apart by the places after it.
      *
      * <p>What is carried is one witness per way the rules were shown empty, so two of them may
@@ -159,17 +200,17 @@ class AProofNamesOneBlockAndNotAllOfThemTest {
         Confinement.Admission<FactSubject> one = new Confinement.Admission<>(
                 souther.compiler.values.Emptiness.EMPTY,
                 Confinement.EmptyBy.POSITIONS_HELD_AS_ONE,
-                new souther.compiler.values.Refusal.AtEachOf<>(
+                souther.compiler.values.Refusal.atEachOf(
                         Set.of(souther.compiler.values.Sameness.of(P, Q).joining(Q, R).blockOf(P))),
                 Confinement.Shown.BY_THE_READINGS);
         Confinement.Admission<FactSubject> other = new Confinement.Admission<>(
                 souther.compiler.values.Emptiness.EMPTY,
                 Confinement.EmptyBy.POSITIONS_HELD_AS_ONE,
-                new souther.compiler.values.Refusal.AtEachOf<>(
+                souther.compiler.values.Refusal.atEachOf(
                         Set.of(souther.compiler.values.Sameness.of(P, Q).joining(Q, S).blockOf(P))),
                 Confinement.Shown.BY_THE_READINGS);
 
-        assertTrue(Confinement.Admission.bothShown(one, other).at().isEmpty(),
+        assertTrue(Confinement.Admission.bothShown(one, other).site().atEachOf().isEmpty(),
                 "neither branch says the value p and q share has none");
     }
 

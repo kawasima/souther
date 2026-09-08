@@ -230,20 +230,20 @@ public sealed interface PlannedValues<A> {
     default Refusal<A> refusedInEveryAlternativeAt(AskedOfEachBlock<A> asked) {
         if (!(this instanceof Settled<A> it
                 && it.held() instanceof PlannedHeld.Alternatives<A> boxes)) {
-            return new Refusal.Nowhere<>();
+            return Refusal.nowhere();
         }
         Refusal<A> everywhere = null;
         for (PlannedHeld.Alternative<A> box : boxes.boxes()) {
             Refusal<A> here = refusalIn(box, asked);
             if (here.isNowhere()) {
-                return new Refusal.Nowhere<>();
+                return Refusal.nowhere();
             }
             everywhere = everywhere == null ? here : Refusal.shownByBoth(everywhere, here);
             if (everywhere.isNowhere()) {
-                return new Refusal.Nowhere<>();
+                return Refusal.nowhere();
             }
         }
-        return everywhere == null ? new Refusal.Nowhere<>() : everywhere;
+        return everywhere == null ? Refusal.nowhere() : everywhere;
     }
 
     /**
@@ -268,15 +268,10 @@ public sealed interface PlannedValues<A> {
             }
         });
         if (!here.isEmpty()) {
-            return new Refusal.AtEachOf<>(here);
+            return Refusal.atEachOf(here);
         }
-        for (Apartness.Edge<A> edge : box.apart().edges()) {
-            if (edge.isOfOneBlock()) {
-                return new Refusal.OfThemTogether<>(
-                        new RelationalWitness.ABlockApartFromItself<>(edge.one()));
-            }
-        }
-        return new Refusal.Nowhere<>();
+        Lacks<A> stated = box.apart().apartFromThemselves();
+        return stated.isEmpty() ? Refusal.nowhere() : Refusal.ofThemTogether(stated);
     }
 
     /** What one block's description comes to under the question, waiting where a machine would
@@ -365,7 +360,7 @@ public sealed interface PlannedValues<A> {
     default Refusal<A> refusedBy() {
         if (!(this instanceof Settled<A> it
                 && it.held() instanceof PlannedHeld.Alternatives<A> boxes)) {
-            return new Refusal.Nowhere<>();
+            return Refusal.nowhere();
         }
         Refusal<A> everywhere = null;
         for (PlannedHeld.Alternative<A> box : boxes.boxes()) {
@@ -378,10 +373,10 @@ public sealed interface PlannedValues<A> {
             Refusal<A> said = Refusal.atEachOf(here);
             everywhere = everywhere == null ? said : Refusal.shownByBoth(everywhere, said);
             if (everywhere.isNowhere()) {
-                return new Refusal.Nowhere<>();
+                return Refusal.nowhere();
             }
         }
-        return everywhere == null ? new Refusal.Nowhere<>() : everywhere;
+        return everywhere == null ? Refusal.nowhere() : everywhere;
     }
 
     /** What every alternative holds as one value. */
@@ -923,7 +918,7 @@ public sealed interface PlannedValues<A> {
         }
         if (live.isEmpty()) {
             return new AdmissibleValues.Held.Nothing<>(
-                    dropped == null ? new Refusal.Nowhere<>() : dropped);
+                    dropped == null ? Refusal.nowhere() : dropped);
         }
         // What each block the alternatives agree on holds across the ones that stand, described
         // first and built once. Read off the sets instead, a join of two languages would be a
