@@ -113,14 +113,6 @@ public final class Provenance<A> {
             return ValueHash.ofItsParts(Removal.class, block.hashCode(), value.hashCode(), round,
                     blockers.hashCode());
         }
-
-        /** What was taken, from where, when and by what. Spelled out beside the number, so that
-         *  the two are read together wherever either is changed. */
-        @Override
-        public boolean equals(Object said) {
-            return said instanceof Removal<?> it && round == it.round && block.equals(it.block)
-                    && value.equals(it.value) && blockers.equals(it.blockers);
-        }
     }
 
     /**

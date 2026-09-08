@@ -72,12 +72,6 @@ public sealed interface RelationalLack<A> {
         public int hashCode() {
             return ValueHash.ofOnePart(ABlockApartFromItself.class, block.hashCode());
         }
-
-        /** The block it is about, and this case of a lack. */
-        @Override
-        public boolean equals(Object said) {
-            return said instanceof ABlockApartFromItself<?> it && block.equals(it.block);
-        }
     }
 
     /**
@@ -111,12 +105,6 @@ public sealed interface RelationalLack<A> {
         @Override
         public int hashCode() {
             return ValueHash.ofOnePart(NoValueLeftForIt.class, block.hashCode());
-        }
-
-        /** The block it is about, and this case of a lack. */
-        @Override
-        public boolean equals(Object said) {
-            return said instanceof NoValueLeftForIt<?> it && block.equals(it.block);
         }
     }
 
@@ -155,12 +143,6 @@ public sealed interface RelationalLack<A> {
         public int hashCode() {
             return ValueHash.ofItsParts(TooFewValuesBetweenThem.class, blocks.hashCode(),
                     available.hashCode());
-        }
-
-        @Override
-        public boolean equals(Object said) {
-            return said instanceof TooFewValuesBetweenThem<?> it && blocks.equals(it.blocks)
-                    && available.equals(it.available);
         }
     }
 
@@ -218,11 +200,6 @@ public sealed interface RelationalLack<A> {
         public int hashCode() {
             return ValueHash.ofWhatItHolds(NoAssignmentTellsThemApart.class, blocks.hashCode(),
                     blocks.size());
-        }
-
-        @Override
-        public boolean equals(Object said) {
-            return said instanceof NoAssignmentTellsThemApart<?> it && blocks.equals(it.blocks);
         }
     }
 }

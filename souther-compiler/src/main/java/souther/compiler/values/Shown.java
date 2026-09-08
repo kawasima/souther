@@ -56,11 +56,4 @@ public record Shown<A>(RelationalLack<A> lack, RelationalEvidence<A> reached) {
     public int hashCode() {
         return ValueHash.ofItsParts(Shown.class, lack.hashCode(), reached.hashCode());
     }
-
-    /** The lack it claims and the routes that reached it, which is what it holds. Spelled out
-     *  beside the number, so that the two are read together wherever either is changed. */
-    @Override
-    public boolean equals(Object said) {
-        return said instanceof Shown<?> it && lack.equals(it.lack) && reached.equals(it.reached);
-    }
 }

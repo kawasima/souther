@@ -561,14 +561,6 @@ public final class AdmissibleValues<A> {
             return ValueHash.ofItsParts(Alternative.class, product.hashCode(), apart.hashCode());
         }
 
-        /** The product and the relation over it. Spelled out beside the number, so that the two
-         *  are read together wherever either is changed. */
-        @Override
-        public boolean equals(Object other) {
-            return other instanceof Alternative<?> it && product.equals(it.product)
-                    && apart.equals(it.apart);
-        }
-
         /** One alternative over positions that are each their own block, stating no denial. */
         public static <A> Alternative<A> at(Map<A, ValueSet> said) {
             return of(Box.at(said));
