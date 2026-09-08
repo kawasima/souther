@@ -32,8 +32,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * without one has is no account of any run.
  *
  * <p>Which is why a reader that wants a numbering asks the check for the one it issued rather than
- * for a plan to take one off. Reaching for a plan is what puts a reader one branch away from the
- * stand-in; the numbering is absent where the bodies are, and there is nothing there to reach for.
+ * for a plan of its own to take one off. The check answers off the plan it made and kept, which is
+ * of the bodies it holds; a reader reaching for any other plan is one branch away from the stand-in,
+ * and where the bodies are there is no answer at all rather than an empty one.
  *
  * <p><b>What this holds is the population, and not that each of them is right.</b> A walk over the
  * compiled classes sees which method takes a numbering off a plan; it does not see which plan, so
@@ -56,17 +57,19 @@ class WhoTakesAPlansNumberingHasItsBodiesTest {
     private record Licence(String who, int calls, String why) { }
 
     private static final List<Licence> MAY_TAKE = List.of(
-            new Licence("souther.compiler.query.Bodies.Checked.compute -> identity", 1,
-                    "the check decides the numbering by walking the bodies it holds, and takes it"
-                            + " off the plan that walk made. There is no stand-in to have taken it"
-                            + " from: a module whose bodies did not come out is answered for by"
-                            + " there being no answer here at all"),
+            new Licence("souther.compiler.query.Bodies.Elaborated.numberingIdentity -> identity", 1,
+                    "the plan this takes it off is the one the check walked these bodies to make"
+                            + " and kept, so it is the numbering that check issued and there is no"
+                            + " stand-in to have taken it from: a module whose bodies did not come"
+                            + " out is answered for by there being no answer here at all. Taken"
+                            + " rather than held beside the plan, so a reader cannot be handed two"
+                            + " answers about one module's arms"),
             new Licence("souther.compiler.codegen.Backend.generating -> identity", 1,
-                    "what the classes being written are numbered by, taken off the plan the same"
-                            + " method just realized from the bodies it is emitting — and taken"
-                            + " only where coverage was asked for, so it is never the stand-in's."
-                            + " The emission answers with it, rather than a caller working out a"
-                            + " numbering of its own beside the one the probes were written from"));
+                    "what the classes being written are numbered by, taken off the plan the check"
+                            + " holds for the bodies it is emitting — and taken only where coverage"
+                            + " was asked for, so it is never the stand-in's. The emission answers"
+                            + " with it, rather than a caller working out a numbering of its own"
+                            + " beside the one the probes were written from"));
 
     @Test
     void everyReaderOfAPlansNumberingIsWrittenDownWithWhatMakesItSafe() throws IOException {

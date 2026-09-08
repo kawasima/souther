@@ -171,79 +171,13 @@ public final class SiteNumbering {
         }
 
         /** The numbering, now that what its bodies do is known too. The one place a numbering is
-         *  decided from bodies, and what every later walk of them is held to. */
+         *  decided from bodies, and there is no second walk of them for it to be held against:
+         *  the plan this finishes is kept by whoever holds the bodies and handed to every reader.
+         *  What holds two builds of one module together is this being a value — the same places
+         *  under the same numbers over the same executable. */
         SiteNumbering finish(String module, Map<String, ExecutableIdentity> executable) {
             return new SiteNumbering(new NumberingIdentity(module, executable, byNumber));
         }
 
-        /**
-         * {@code identity}, as the numbering of what this walk found — the walk having been shown
-         * to have found it.
-         *
-         * <p>What a second walk of one module's bodies is for. The numbering is decided once, by
-         * whoever holds the bodies, and a later walk wants the places rather than a second opinion
-         * about what the numbers mean; so it takes the numbering that was issued, and every address
-         * it hands out is an address of that one.
-         *
-         * <p><b>Shown and not assumed.</b> Taking the numbering on the strength of having walked
-         * the same bodies is what this must not do. A walk that came to number a place differently
-         * would hand out an address carrying a numbering that says the number means something else,
-         * and the two would be the same address to everything downstream — so the disagreement
-         * that a numbering decided twice would have shown would be hidden by the numbering being
-         * decided once. What is compared is what a numbering is and no more: whose module, what the
-         * bodies do, and what each number addresses. How the plan around it is laid out is not part
-         * of that and is not looked at.
-         *
-         * <p>Refused a component at a time, because what a reader of the refusal needs is which
-         * half of the walk stopped agreeing.
-         */
-        SiteNumbering realize(NumberingIdentity identity, String module,
-                             Map<String, ExecutableIdentity> executable) {
-            if (!identity.module().equals(module)) {
-                throw new IllegalStateException("the numbering issued for " + identity.module()
-                        + " is being realized by a walk of " + module
-                        + "; a number means a place in the module it was handed out for");
-            }
-            requireTheSameBodies(identity, executable);
-            requireTheSamePlaces(identity);
-            return new SiteNumbering(identity);
-        }
-
-        /** That the bodies this walk went through are the ones the numbering was issued over. */
-        private void requireTheSameBodies(NumberingIdentity identity,
-                                          Map<String, ExecutableIdentity> executable) {
-            Set<String> issuedOver = identity.executable().keySet();
-            if (!issuedOver.equals(executable.keySet())) {
-                throw new IllegalStateException("the numbering of " + identity.module()
-                        + " was issued over the behaviors " + issuedOver
-                        + " and this walk went through " + executable.keySet());
-            }
-            for (Map.Entry<String, ExecutableIdentity> each : executable.entrySet()) {
-                if (!identity.executable().get(each.getKey()).equals(each.getValue())) {
-                    throw new IllegalStateException("the numbering of " + identity.module()
-                            + " was issued over another body of `" + each.getKey()
-                            + "`; two bodies that do different things are not two views of one"
-                            + " measurement, however their places line up");
-                }
-            }
-        }
-
-        /** That the places this walk numbered are the places the numbering hands those numbers out
-         *  for. */
-        private void requireTheSamePlaces(NumberingIdentity identity) {
-            List<SiteAddress> issuedFor = identity.byNumber();
-            if (issuedFor.size() != byNumber.size()) {
-                throw new IllegalStateException("the numbering of " + identity.module()
-                        + " handed out " + issuedFor.size() + " numbers and this walk numbered "
-                        + byNumber.size() + " places");
-            }
-            for (int n = 0; n < byNumber.size(); n++) {
-                if (!issuedFor.get(n).equals(byNumber.get(n))) {
-                    throw new IllegalStateException("the numbering of " + identity.module()
-                            + " handed " + n + " out for " + issuedFor.get(n)
-                            + " and this walk numbered " + byNumber.get(n) + " with it");
-                }
-            }
-        }
     }
 }

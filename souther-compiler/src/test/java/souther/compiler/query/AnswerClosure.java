@@ -242,6 +242,31 @@ final class AnswerClosure {
                     + "the library has on every comparison, and writing \"any library equals any "
                     + "other\" would be true only while there is one of them");
 
+    /**
+     * An index onto the very objects the answer holding it is made of.
+     *
+     * <p>Filed by which objects were put in it, so it answers for one graph and returns nothing for
+     * anybody else's. That is what it is for — a number addresses a place in a tree, and two checks
+     * of one source build trees a record compares as equal, so a value-keyed index would answer for
+     * either with the same confidence and be right about one of them.
+     *
+     * <p>Permitted where it is because its life is that graph's life. Carried into another derived
+     * answer the two would be kept apart by the store — one answer recomputed while the other is
+     * held — and the index would go on addressing objects nobody is emitting, which no reader of it
+     * can see. So this is registered at one place and every further one is a finding.
+     *
+     * <p>What outlives the graph is {@link souther.compiler.coverage.NumberingIdentity}, which is a
+     * value: the same places under the same numbers over the same executable, and two builds of one
+     * module come to one. The equality of the answer above rests on that and never on this.
+     */
+    private static final Reading AN_INDEX_ONTO_THE_ANSWERS_OWN_GRAPH =
+            new Reading("AN_INDEX_ONTO_THE_ANSWERS_OWN_GRAPH", MISSING_EQUALITY,
+                    "a plan is filed by which Core objects were put in it, so it is worth what the "
+                            + "graph the answer holds is worth and says nothing about an equal one. "
+                            + "Comparing it would deny every check its own recomputation; what the "
+                            + "answer is compared by is what the plan is a numbering of, which is a "
+                            + "value");
+
     /** How a module is found, which is something run rather than something said. */
     private static final Reading MODULE_PATH = new Reading("MODULE_PATH", CAPABILITY,
             "a module path resolves a module by running something, and a function never equals the "
@@ -376,6 +401,13 @@ final class AnswerClosure {
                     m(ANSWER, "value")), MODULE_PATH, ONLY_WALKED),
             new Known(at(Q + "Front$Library", "souther.compiler.stdlib.Stdlib",
                     m(ANSWER, "value")), STDLIB, ONLY_WALKED),
+            // Where a module's places are, on the answer that walked its bodies for them. Only the
+            // walk that asks each object what it is meets this: what the check answers with is
+            // compared without it, and two answers that hold equal bodies come out equal, so the
+            // pair walk never reaches here to find two indexes into two graphs.
+            new Known(at(Q + "Bodies$Checked", "souther.compiler.coverage.CoverageSites$Plan",
+                    m(ANSWER, "value"), m(Q + "Bodies$Elaborated", "plan")),
+                    AN_INDEX_ONTO_THE_ANSWERS_OWN_GRAPH, ONLY_WALKED),
             new Known(at(Q + "Bodies$Expanding", "souther.compiler.stdlib.Stdlib",
                     m(ANSWER, "value"), m("souther.compiler.query.Bodies$Expanding$Of", "table"), m("souther.compiler.check.HelperTable", "stdlib")),
                     STDLIB, ONLY_WALKED),
@@ -552,6 +584,14 @@ final class AnswerClosure {
                     Traversal.Why.SAYS_NOTHING_OF_ITSELF),
             new KnownDeclared(declared(Q + "Front$Path", "souther.compiler.meta.ModulePath"),
                     MODULE_PATH, Traversal.Why.NOTHING_CLOSES_IT),
+            // Where the places of a module's bodies are, held by the check that walked them. One
+            // place and not the maps under it: the plan says nothing of itself, so the walk stops
+            // here — which is the whole of what is being allowed, and the maps under it are what
+            // it is being allowed for.
+            new KnownDeclared(declared(Q + "Bodies$Checked",
+                    "souther.compiler.coverage.CoverageSites$Plan",
+                    part(Q + "Bodies$Elaborated", "plan")),
+                    AN_INDEX_ONTO_THE_ANSWERS_OWN_GRAPH, Traversal.Why.SAYS_NOTHING_OF_ITSELF),
             // The way of asking, which is where the declarations stop. What a walk of a store goes
             // on to reach through it is the store itself, written down above.
             new KnownDeclared(declared(Q + "Names$ModuleScope",

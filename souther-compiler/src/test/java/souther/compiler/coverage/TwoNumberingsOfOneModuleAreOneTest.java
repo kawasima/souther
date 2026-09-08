@@ -2,7 +2,6 @@ package souther.compiler.coverage;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.core.Core;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
@@ -10,7 +9,6 @@ import souther.compiler.query.Compilation;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.SequencedMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -86,7 +84,7 @@ class TwoNumberingsOfOneModuleAreOneTest {
     // --- one numbering ------------------------------------------------------------------------
 
     @Test
-    void aNumberingIsTheOneAnotherWalkOfTheSameBodiesComesTo() {
+    void aNumberingIsTheOneAnotherCheckOfTheSameSourceComesTo() {
         assertEquals(numberingOf(MODEL), numberingOf(MODEL),
                 "two compiles of one source number its bodies alike");
     }
@@ -150,6 +148,14 @@ class TwoNumberingsOfOneModuleAreOneTest {
                 () -> "both families are handed numbers out of the one counter: " + byFamily);
     }
 
+    /**
+     * The numbering one check of {@code source} issued.
+     *
+     * <p>Read off the answer rather than walked for here. The check makes the plan of a module and
+     * keeps it, so a walk of its bodies taken here would be a second plan of that module — the one
+     * thing the addresses are filed by identity to make impossible to confuse. What this compares
+     * is what the check itself came to.
+     */
     private static NumberingIdentity numberingOf(String source) {
         Compilation compilation = Compilation.ofSources(List.of(source), ModulePath.EMPTY);
         compilation.answerEverything();
@@ -158,9 +164,6 @@ class TwoNumberingsOfOneModuleAreOneTest {
                 compilation.db().ask(new Bodies.Checked(module)).value();
         assertTrue(checked != null,
                 () -> "the model under test compiled to nothing: " + compilation.errors());
-        SequencedMap<String, Core> bodies = new LinkedHashMap<>(checked.behaviorBodies());
-        return CoverageSites.of(new ModuleBodies(module, bodies),
-                        checked.decisions(), checked.supplied())
-                .identity();
+        return checked.numberingIdentity();
     }
 }

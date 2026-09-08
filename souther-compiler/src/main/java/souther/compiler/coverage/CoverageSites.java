@@ -293,17 +293,49 @@ public final class CoverageSites {
      * <p>{@code byNode} is keyed by identity. Core nodes are records, so two arms that look the same
      * are equal, and a value-keyed map would hand the emitter the wrong arm's probe. The instances
      * here must be the ones the emitter is walking — the same answer, not an equal one.
+     *
+     * <p>Which is why this is not a value and says nothing of itself. A plan of one graph and a
+     * plan of another built from the same source hold everything alike and answer for different
+     * objects, so there is no equality to write that would be true of both: two of these are one
+     * where they are one object. What is a value is {@link NumberingIdentity} — the same places
+     * under the same numbers over the same executable — and that is what two builds of a module are
+     * held against each other by, and what an answer holding a plan is compared by.
      */
-    public record Plan(List<Site> sites, List<GuardRef> guards, IdentityHashMap<Core, int[]> byNode,
-                       Map<ComparisonOccurrence, ComparisonEmissionSite> byComparison,
-                       IdentityHashMap<Core, ControlPointId.ArmOccurrence[]> armsByNode,
-                       Map<ComparisonOccurrence, Integer> controlByComparison,
-                       java.util.Set<Core> mayRepeat,
-                       IdentityHashMap<Core, ForkOccurrence> forkByNode,
-                       ComparisonCatalog comparisons,
-                       SiteNumbering numbering) {
+    public static final class Plan {
 
-        public Plan {
+        private final List<Site> sites;
+        private final List<GuardRef> guards;
+        private final IdentityHashMap<Core, int[]> byNode;
+        private final Map<ComparisonOccurrence, ComparisonEmissionSite> byComparison;
+        private final IdentityHashMap<Core, ControlPointId.ArmOccurrence[]> armsByNode;
+        private final Map<ComparisonOccurrence, Integer> controlByComparison;
+        private final java.util.Set<Core> mayRepeat;
+        private final IdentityHashMap<Core, ForkOccurrence> forkByNode;
+        private final ComparisonCatalog comparisons;
+        private final SiteNumbering numbering;
+
+        /**
+         * Made where the bodies are walked, and nowhere a caller can reach.
+         *
+         * <p>Not public, and that is the whole of what keeps a module to one plan. A plan is filed
+         * by which {@code Core} objects were put in it, so one built by a caller out of parts is an
+         * index into a graph that caller does not own — and nothing downstream can see the
+         * difference, because a lookup that misses and a place that is not numbered come back
+         * alike.
+         *
+         * <p>Which also settles what the checks below are for. They answer {@link #asPlan}, which
+         * puts one together field by field out of what one walk found and can put a numbering
+         * beside a catalog it does not go with — and they answer a test assembling a plan of these
+         * bodies that no source produces, which is the only other caller the package allows.
+         */
+        Plan(List<Site> sites, List<GuardRef> guards, IdentityHashMap<Core, int[]> byNode,
+             Map<ComparisonOccurrence, ComparisonEmissionSite> byComparison,
+             IdentityHashMap<Core, ControlPointId.ArmOccurrence[]> armsByNode,
+             Map<ComparisonOccurrence, Integer> controlByComparison,
+             java.util.Set<Core> mayRepeat,
+             IdentityHashMap<Core, ForkOccurrence> forkByNode,
+             ComparisonCatalog comparisons,
+             SiteNumbering numbering) {
             // Half of what a numbering could get wrong is the key's own answer now: an occurrence
             // names a comparison and nothing else, so there is no number to put on an `&&` or on
             // arithmetic, which is what would have had the emitter copy half a `long` off the
@@ -331,6 +363,85 @@ public final class CoverageSites {
                         + " of them are; the sites and the addresses are one answer or they are"
                         + " two");
             }
+            this.sites = sites;
+            this.guards = guards;
+            this.byNode = byNode;
+            this.byComparison = byComparison;
+            this.armsByNode = armsByNode;
+            this.controlByComparison = controlByComparison;
+            this.mayRepeat = mayRepeat;
+            this.forkByNode = forkByNode;
+            this.comparisons = comparisons;
+            this.numbering = numbering;
+        }
+
+        /** Every place of this module, in the order they were numbered. */
+        public List<Site> sites() {
+            return sites;
+        }
+
+        /** Which comparisons these bodies hold, under the names this plan numbers them by. */
+        public ComparisonCatalog comparisons() {
+            return comparisons;
+        }
+
+        /** The numbering these addresses are of. */
+        public SiteNumbering numbering() {
+            return numbering;
+        }
+
+        /** What a run was recorded on the way out of, by the condition it stood on. */
+        List<GuardRef> guards() {
+            return guards;
+        }
+
+        /** The nodes this plan numbered arms for, and their probes. */
+        IdentityHashMap<Core, int[]> byNode() {
+            return byNode;
+        }
+
+        /**
+         * Where the fork each numbered arm stands in is written, by the number this plan handed
+         * that arm.
+         *
+         * <p>The fork's own place and not the arm's: an arm's body is what lowering rewrites, and
+         * carries whatever position it was built from rather than the one the author would be
+         * shown.
+         *
+         * <p>Answered here because the question is about places and the answer to it is a value. A
+         * reader given the nodes instead would be holding this plan's index into trees it does not
+         * own, to take a position off each of them — which is the same projection made somewhere it
+         * cannot be told from the graph it walks over.
+         */
+        public Map<Integer, Citation> whereEachArmsForkIsWritten() {
+            Map<Integer, Citation> written = new LinkedHashMap<>();
+            armsByNode.forEach((fork, arms) -> {
+                Citation at = Citation.of(fork.pos());
+                for (ControlPointId.ArmOccurrence arm : arms) {
+                    written.put(arm.controlId(), at);
+                }
+            });
+            return written;
+        }
+
+        Map<ComparisonOccurrence, ComparisonEmissionSite> byComparison() {
+            return byComparison;
+        }
+
+        IdentityHashMap<Core, ControlPointId.ArmOccurrence[]> armsByNode() {
+            return armsByNode;
+        }
+
+        Map<ComparisonOccurrence, Integer> controlByComparison() {
+            return controlByComparison;
+        }
+
+        java.util.Set<Core> mayRepeat() {
+            return mayRepeat;
+        }
+
+        IdentityHashMap<Core, ForkOccurrence> forkByNode() {
+            return forkByNode;
         }
 
         /** What this plan is a numbering of, as two builds can be held against each other by. */
@@ -490,37 +601,16 @@ public final class CoverageSites {
      * The sites of every behavior body in one module, numbered in the order the bodies are declared
      * and, within one, in the order the arms are written — the numbering being decided here.
      *
-     * <p>Deciding a numbering is what whoever holds the bodies does once. Every other walk of them
-     * wants the places and not a second opinion about what the numbers mean, and asks
-     * {@link #under} with the numbering that was issued.
+     * <p>The only way to a plan of a module, and asked in one place: the check that holds the
+     * bodies asks it, keeps what comes back, and hands that to every reader. There is no second way
+     * in that takes a numbering already issued and walks the bodies again to meet it — a plan is
+     * filed by which {@code Core} objects were put in it, so one made anywhere but where those
+     * objects are held is an index into a graph its holder is not the owner of.
      */
     public static Plan of(ModuleBodies of, DecisionSources decisions, SuppliedRules supplied) {
         Walked walked = walked(of, decisions, supplied);
         return asPlan(walked,
                 walked.walk().numbering.finish(of.module(), walked.executable()));
-    }
-
-    /**
-     * The same sites, under a numbering already issued over these bodies.
-     *
-     * <p>What a reader that needs where the places are does when the numbering is somebody else's
-     * to decide. The addresses handed out are addresses of {@code numbering}, so an arm of this
-     * plan and an arm of the plan the numbering was issued with are one address rather than two
-     * that agree.
-     *
-     * <p>The walk is held to having realized {@code numbering} rather than trusted to have: a walk
-     * that numbered a place otherwise would hand out an address saying the number means what this
-     * numbering says, and nothing downstream could see the difference.
-     *
-     * <p><b>For a reader that wants the places.</b> A number read back as a place needs no walk at
-     * all — {@link SiteNumbering#of} answers that from the numbering alone, and a caller that asks
-     * here for it walks every body to learn nothing it uses.
-     */
-    public static Plan under(ModuleBodies of, DecisionSources decisions, SuppliedRules supplied,
-                             NumberingIdentity numbering) {
-        Walked walked = walked(of, decisions, supplied);
-        return asPlan(walked,
-                walked.walk().numbering.realize(numbering, of.module(), walked.executable()));
     }
 
     /**

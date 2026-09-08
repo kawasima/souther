@@ -2,9 +2,7 @@ package souther.compiler.query;
 
 import souther.compiler.ast.Hir;
 import souther.compiler.check.Prepared;
-import souther.compiler.core.Core;
 import souther.compiler.coverage.ArmReportAnchor;
-import souther.compiler.coverage.ControlPointId;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.sites.AuthoredSites;
@@ -12,7 +10,6 @@ import souther.compiler.sites.WrittenForks;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.TypeSymbol;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -192,10 +189,9 @@ public final class Sites {
      * Where each place one module's plan reached is, by the number the plan handed out.
      *
      * <p>Under {@link WhereAPlanReached} for the reason {@link ForksWrittenIn} is under
-     * {@link WhereAForkIsWritten}: what a report means is one place, and what answers it is a walk
-     * of every body the module has. Asked place by place, that walk would run once for each arm a
-     * sentence is written about — and {@link Bodies.Elaborated#plan()} says so where it is
-     * declared, since a plan is worked out again on every call.
+     * {@link WhereAForkIsWritten}: what a report means is one place, and the plan answers for every
+     * place at once. Asked place by place, the answer would be built again for each arm a sentence
+     * is written about.
      */
     record ForksReachedIn(String module) implements Key<Map<Integer, Citation>> {
 
@@ -210,18 +206,7 @@ public final class Sites {
             if (!checked.present() || checked.value() == null) {
                 return Answer.absent();
             }
-            Map<Integer, Citation> reached = new LinkedHashMap<>();
-            for (Map.Entry<Core, ControlPointId.ArmOccurrence[]> forked
-                    : checked.value().plan().armsByNode().entrySet()) {
-                // The fork's own place and not the arm's: an arm's body is what lowering rewrites
-                // and carries whatever position it was built from, which is the reading the arms
-                // were made with.
-                Citation at = Citation.of(forked.getKey().pos());
-                for (ControlPointId.ArmOccurrence arm : forked.getValue()) {
-                    reached.put(arm.controlId(), at);
-                }
-            }
-            return Answer.of(Ordered.map(reached));
+            return Answer.of(Ordered.map(checked.value().plan().whereEachArmsForkIsWritten()));
         }
     }
 
