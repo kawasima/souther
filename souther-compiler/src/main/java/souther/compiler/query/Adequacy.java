@@ -3798,7 +3798,10 @@ public final class Adequacy {
             case About.ARowAtAnArmAwaitsItsAnswer(CoverageSites.ArmSite arm) ->
                     Sites.placeOf(db, arm.anchor());
             // A line the declarations owe is shown at one of them, and which one the debt says.
-            case About.APointOfADeclaredBorder(DeclaredDebt owed) -> owed.at();
+            // Where that one is written is the module that wrote it answering, which is not always
+            // the module keeping the account.
+            case About.APointOfADeclaredBorder(DeclaredDebt owed) ->
+                    whereItIsWritten(db, owed.pointAt());
             // A row is shown where it is written, which is in this module's own source.
             case About.AnUnansweredRow(String _, RowIdentity _, SourcePos at) -> Citation.of(at);
             // Everything else is about the behavior as a whole — what its rows do not reach, what
@@ -3811,6 +3814,16 @@ public final class Adequacy {
                     About.APositionWhoseRulesWereNotReached _, About.AQuestionNothingAnswered _ ->
                     whereItIsDeclared(db, module, finding.subject());
         };
+    }
+
+    /** Where the declaration a finding is shown at is written. */
+    private static Citation whereItIsWritten(Db db, TypeSymbol.AtModule declared) {
+        Answer<Citation> at = db.ask(new Sites.WhereADeclarationIsWritten(declared));
+        if (!at.present()) {
+            throw new IllegalStateException("nothing this compilation holds declares "
+                    + declared.name() + ", which a finding of it is shown at");
+        }
+        return at.value();
     }
 
     /** Where the behavior a finding is about is declared. */
@@ -4048,12 +4061,18 @@ public final class Adequacy {
     public record DeclaredDebt(BorderObligationPointAssessment debt, String axis,
                                List<Owner> owners) {
 
-        /** One declaration that owes the line, and where a reader is sent to it. */
-        public record Owner(TypeSymbol.AtModule declaration, Citation at) {
+        /**
+         * One declaration that owes the line.
+         *
+         * <p>Which declaration, and not where it is written. A reader is sent to it by asking the
+         * module that wrote it where it is, which is a question of its own and one whose answer
+         * moves when the file does — while what the line is owed by does not.
+         */
+        public record Owner(TypeSymbol.AtModule declaration) {
 
             public Owner {
-                if (declaration == null || at == null) {
-                    throw new IllegalArgumentException("an owner is some declaration, somewhere");
+                if (declaration == null) {
+                    throw new IllegalArgumentException("an owner is some declaration");
                 }
             }
         }
@@ -4099,15 +4118,20 @@ public final class Adequacy {
         }
 
         /**
-         * One place to point at, for a reader that has room for one.
+         * One declaration to point at, for a reader that has room for one.
          *
          * <p>The first in the order the line names its owners, which is the declarations' own order
          * and not the order a walk found them in. A choice about where to put a mark and not about
          * whose the line is: what a finding is about is every one of {@link #owners}, and a reader
          * wanting the rest asks for them.
+         *
+         * <p>Which declaration and not where it is. Where a declaration is written is the module
+         * that wrote it answering, asked when a sentence is about to be written; carried here, an
+         * edit that moved the declaration and changed nothing it says would be an edit to this
+         * debt and to every finding made of it.
          */
-        public Citation at() {
-            return owners.getFirst().at();
+        public TypeSymbol.AtModule pointAt() {
+            return owners.getFirst().declaration();
         }
     }
 
@@ -4261,8 +4285,7 @@ public final class Adequacy {
             for (BorderObligationPointAssessment debt : points) {
                 List<DeclaredDebt.Owner> owners = new ArrayList<>();
                 for (TypeSymbol.AtModule owner : debt.ownersIn(name)) {
-                    owners.add(new DeclaredDebt.Owner(owner,
-                            declarationRead(declarations, owner, reading, policy).at()));
+                    owners.add(new DeclaredDebt.Owner(owner));
                 }
                 // A point this module keeps no account of: a row its own reading settled, which
                 // is that body's to write, or a line owed to declarations elsewhere. Left out here

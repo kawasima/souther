@@ -51,6 +51,10 @@ class WhereAnArmIsShownIsAskedOfTheModuleThatWroteItTest {
 
             behavior accept : (n: Int) -> Bool
             let accept (n) = withinLimit(n)
+
+            // Reaches a fork the language wrote, which is the other anchor.
+            behavior atLeastNone : (n: Int) -> Int
+            let atLeastNone (n) = Int.max(n, 0)
             """;
 
     private static Map<String, String> workspace(String limits) {
@@ -88,7 +92,7 @@ class WhereAnArmIsShownIsAskedOfTheModuleThatWroteItTest {
                 ArmReportAnchor.WhereItIsWritten.class, arms.get(0).anchor(),
                 "the helper is written in a file this compilation holds");
         assertEquals("shop.limits",
-                new Sites.WhereAConstructIsWritten(anchor.origin()).module(),
+                new Sites.WhereAForkIsWritten(anchor.origin()).module(),
                 "so where it is written is a question about shop.limits, asked of shop.limits");
     }
 
@@ -106,6 +110,38 @@ class WhereAnArmIsShownIsAskedOfTheModuleThatWroteItTest {
                 "the caller is holding the same fork: what it says did not change");
         assertNotEquals(shownBefore, shownAfter,
                 "and the file it is written in says it is a line further down");
+    }
+
+    /**
+     * And a fork the language itself writes takes the other question.
+     *
+     * <p>Its arms stand in every body that calls into the library, and there is no source of this
+     * compilation for a reader to open — so what a report shows is where this compilation came in
+     * through, which is the caller's own file. Held as one question with the other, an arm of
+     * {@code List.filter} would be reported at a line of a text nobody has.
+     */
+    @Test
+    void aForkTheLanguageWroteIsShownWhereThisCompilationReachedIt() {
+        Compilation c = started(LIMITS);
+        Answer<Bodies.Elaborated> checked = c.db().ask(new Bodies.Checked("shop.orders"));
+        List<CoverageSites.ArmSite> ofTheLanguage = checked.value().plan().sites().stream()
+                .filter(CoverageSites.ArmSite.class::isInstance)
+                .map(CoverageSites.ArmSite.class::cast)
+                .filter(each -> each.anchor() instanceof ArmReportAnchor.WhereItWasReached)
+                .toList();
+        assertTrue(!ofTheLanguage.isEmpty(),
+                () -> "the body reaches into the library, so some fork here is not this"
+                        + " compilation's to open: " + checked.value().plan().sites());
+
+        ArmReportAnchor.WhereItWasReached reached = assertInstanceOf(
+                ArmReportAnchor.WhereItWasReached.class, ofTheLanguage.get(0).anchor(),
+                "which is the other of the two questions");
+        assertEquals("shop.orders", reached.module(),
+                "asked of the plan that reached it, which is the caller's");
+        assertInstanceOf(Citation.Reached.class,
+                Sites.placeOf(c.db(), reached),
+                "and what it answers with is the call, said as a call rather than as where the"
+                        + " code is written");
     }
 
     @Test

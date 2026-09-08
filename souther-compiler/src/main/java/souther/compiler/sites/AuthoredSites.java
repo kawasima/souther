@@ -63,26 +63,32 @@ public final class AuthoredSites {
         this.byExtent = Map.copyOf(byExtent);
     }
 
-    /** The occurrences of {@code module}, or why they could not be told apart. */
-    public static Census of(Hir.Module module) {
+    /**
+     * What one walk of a module's source found: its occurrences, and where each construct it wrote
+     * stands.
+     *
+     * <p>Two answers and one walk, which is the whole of why they are made together. A module wrote
+     * what it wrote once, and two walks of it would be two answers to that — agreeing until the day
+     * one of them was taught something the other was not.
+     *
+     * <p>The forks are answered whether or not the occurrences could be told apart. Two expressions
+     * written over one stretch of source is a fact about extents; which fork is which is settled by
+     * an identity the extents play no part in.
+     */
+    public record Walked(Census census, WrittenForks forks) {}
+
+    /** {@code module} walked, once. */
+    public static Walked walk(Hir.Module module) {
         Walk walk = new Walk();
         walk.module(module);
-        return walk.refusal != null ? walk.refusal
-                : new Census.Identified(new AuthoredSites(walk.byExtent));
+        return new Walked(walk.refusal != null ? walk.refusal
+                : new Census.Identified(new AuthoredSites(walk.byExtent)),
+                new WrittenForks(walk.byOrigin));
     }
 
-    /**
-     * Where each construct {@code module} wrote stands.
-     *
-     * <p>The same walk as {@link #of}, because there is one answer to what a module wrote and two
-     * walks would be two of them. Answered whether or not that walk could tell every occurrence
-     * apart: two expressions written over one stretch of source is a fact about extents, and which
-     * construct is which is settled by an identity the extents play no part in.
-     */
-    public static WrittenConstructs constructsOf(Hir.Module module) {
-        Walk walk = new Walk();
-        walk.module(module);
-        return new WrittenConstructs(walk.byOrigin);
+    /** The occurrences of {@code module}, or why they could not be told apart. */
+    public static Census of(Hir.Module module) {
+        return walk(module).census();
     }
 
     /** How many occurrences were found. What a measurement reads, and what says a walk reached a
@@ -177,19 +183,20 @@ public final class AuthoredSites {
     private static final class Walk {
 
         private final Map<Region, Hir.Expr> byExtent = new LinkedHashMap<>();
-        /** Where each construct this module wrote stands, under the identity a copy cannot
-         *  change. Filled beside {@link #byExtent} and never instead of it: they answer two
-         *  questions about one walk, and a second walk would be a second answer to the first. */
+        /** Where each fork this module wrote stands, under the identity a copy cannot change.
+         *  Filled beside {@link #byExtent} and never instead of it: they answer two questions about
+         *  one walk, and a second walk would be a second answer to the first. */
         private final Map<SourceConstructOrigin, SourcePos> byOrigin = new LinkedHashMap<>();
         private Census refusal;
 
         /**
-         * Files where a construct the source wrote is.
+         * Files where a fork the source wrote is.
          *
-         * <p>Called beside {@code take} by the kinds that carry an origin, so that a kind given one
-         * later is a kind whose neighbours here are visibly doing this. The first stands: a
-         * construct is written once, and a tree holding a second node under one origin is a copy,
-         * which the module that wrote it does not have.
+         * <p>Called beside {@code take} by the kinds a body takes an arm of, so that a kind given
+         * arms later is a kind whose neighbours here are visibly doing this. A kind that carries an
+         * origin and is no fork is left out and says so where it is walked. The first stands: a
+         * fork is written once, and a tree holding a second node under one origin is a copy, which
+         * the module that wrote it does not have.
          */
         private void wrote(SourceConstructOrigin origin, SourcePos at) {
             if (origin != null && origin.isWritten() && at != null) {
@@ -356,14 +363,14 @@ public final class AuthoredSites {
                         expr(arm.body());
                     }
                 }
+                // A collection literal carries an origin and is no fork: nothing takes an arm of
+                // one, so there is no arm of it for a report to be about.
                 case Hir.ListLit list -> {
                     take(e);
-                    wrote(list.origin(), list.pos());
                     each(list.elements());
                 }
                 case Hir.RowCollection collection -> {
                     take(e);
-                    wrote(collection.origin(), collection.pos());
                     each(collection.elements());
                 }
                 case Hir.Tuple tuple -> {
@@ -376,10 +383,10 @@ public final class AuthoredSites {
                 }
                 case Hir.ListComp comp -> {
                     take(e);
-                    wrote(comp.origin(), comp.pos());
-                    // A guard lowers to a fork of its own, and where that fork is written is where
-                    // the guard is. Asked of the comprehension, which is what numbers them, so this
-                    // and the lowering cannot come to number the guards differently.
+                    // The comprehension itself is not a fork; each of its guards lowers to one, and
+                    // where that fork is written is where the guard is. Asked of the comprehension,
+                    // which is what numbers them, so this and the lowering cannot come to number
+                    // the guards differently.
                     for (int guard = 0; guard < comp.guards().size(); guard++) {
                         wrote(comp.forkOfGuard(guard), comp.guards().get(guard).pos());
                     }

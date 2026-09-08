@@ -8,8 +8,9 @@ import souther.compiler.coverage.ControlPointId;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.sites.AuthoredSites;
-import souther.compiler.sites.WrittenConstructs;
+import souther.compiler.sites.WrittenForks;
 import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.TypeSymbol;
 
 import java.util.Map;
 
@@ -46,24 +47,23 @@ public final class Sites {
 
         @Override
         public Answer<AuthoredSites> compute(Db db) {
-            Answer<Hir.Module> resolved = db.ask(new Names.Resolved(name));
-            if (!resolved.present()) {
-                return Answer.absent();
-            }
-            return AuthoredSites.of(resolved.value()) instanceof
-                    AuthoredSites.Census.Identified(AuthoredSites sites)
+            Answer<AuthoredSites.Walked> walked = db.ask(new Walk(name));
+            return walked.present() && walked.value().census()
+                    instanceof AuthoredSites.Census.Identified(AuthoredSites sites)
                     ? Answer.of(sites) : Answer.absent();
         }
     }
 
     /**
-     * Where each construct {@code name}'s source wrote stands.
+     * One walk of {@code name}'s source, which both questions about it are projections of.
      *
-     * <p>Beside {@link Authored} and answered from the same walk, because a module wrote what it
-     * wrote once. Told apart by what a reader holds: an editor holds a place and asks what is
-     * there, and this is asked by a reader that holds a construct and no place at all.
+     * <p>Here rather than at each of them, because a module wrote what it wrote once: answered
+     * apart, the two would be two walks of one source, agreeing until the day one of them was
+     * taught something the other was not. Kept as its own question so each of the two depends on
+     * what it means rather than on the other — an editor asking what is at a place is not looking
+     * at where a fork is, and neither of them is recomputed for the other.
      */
-    record WrittenIn(String name) implements Key<WrittenConstructs> {
+    record Walk(String name) implements Key<AuthoredSites.Walked> {
 
         @Override
         public String module() {
@@ -71,48 +71,77 @@ public final class Sites {
         }
 
         @Override
-        public Answer<WrittenConstructs> compute(Db db) {
+        public Answer<AuthoredSites.Walked> compute(Db db) {
             Answer<Hir.Module> resolved = db.ask(new Names.Resolved(name));
             return resolved.present()
-                    ? Answer.of(AuthoredSites.constructsOf(resolved.value())) : Answer.absent();
+                    ? Answer.of(AuthoredSites.walk(resolved.value())) : Answer.absent();
         }
     }
 
     /**
-     * Where one construct is written.
+     * Where each fork {@code name}'s source wrote stands.
+     *
+     * <p>Beside {@link Authored} and read off the same walk. Told apart by what a reader holds: an
+     * editor holds a place and asks what is there, and this is asked by a reader that holds a fork
+     * and no place at all.
+     */
+    record ForksWrittenIn(String name) implements Key<WrittenForks> {
+
+        @Override
+        public String module() {
+            return name;
+        }
+
+        @Override
+        public Answer<WrittenForks> compute(Db db) {
+            Answer<AuthoredSites.Walked> walked = db.ask(new Walk(name));
+            return walked.present() ? Answer.of(walked.value().forks()) : Answer.absent();
+        }
+    }
+
+    /**
+     * Where one fork is written.
      *
      * <p>Beside what a reading of it came to, and not inside it. A fork the source wrote and an arm
-     * of it that no row goes through are two facts about one construct, and a reader uses one of
-     * them: what a warning says is read off the reading, and where to put the caret is read off the
+     * of it that no row goes through are two facts about one fork, and a reader uses one of them:
+     * what a warning says is read off the reading, and where to put the caret is read off the
      * module that wrote the fork. Answered together, an edit that moves a helper and changes
      * nothing it does is an edit to every reading of every module that calls it.
      *
-     * <p>One construct and not a module's. A report is about the fork it is about, and that is the
+     * <p>One fork and not a module's. A report is about the fork it is about, and that is the
      * whole of what it reads here; answered a module at a time, a report pointing at one fork would
      * depend on where every other one in that module is.
      *
      * <p>The module that wrote it answers, whichever module the reading was made in. A helper
-     * expanded into three callers is one construct written once, so where it is written is not a
+     * expanded into three callers is one fork written once, so where it is written is not a
      * question any of the three can answer for itself — and a caller that answered it would say
      * where its own copy came to stand.
      *
-     * <p>Absent where nothing this compilation holds wrote the construct. What the language itself
+     * <p><b>A fork and not any construct an origin can name.</b> An origin names an application or
+     * a comparison as readily as a fork, and what is filed is what a body takes arms of
+     * ({@link WrittenForks}). Asked about one of the others, this answers that nothing wrote it,
+     * which would be a false answer rather than a missing one — so the question is about a fork,
+     * and the type it takes is wider than the question only because an origin is the identity every
+     * one of them is named by.
+     *
+     * <p>Absent where nothing this compilation holds wrote the fork. What the language itself
      * ships is the case that matters: its forks stand in every module that calls into it, and no
      * source of this compilation is where they are written.
      */
-    public record WhereAConstructIsWritten(SourceConstructOrigin origin) implements Key<Citation> {
+    public record WhereAForkIsWritten(SourceConstructOrigin fork) implements Key<Citation> {
 
         @Override
         public String module() {
-            return origin.module();
+            return fork.module();
         }
 
         @Override
         public Answer<Citation> compute(Db db) {
+            SourceConstructOrigin origin = fork;
             if (origin.module() == null) {
                 return Answer.absent();
             }
-            Answer<WrittenConstructs> written = db.ask(new WrittenIn(origin.module()));
+            Answer<WrittenForks> written = db.ask(new ForksWrittenIn(origin.module()));
             if (!written.present()) {
                 return Answer.absent();
             }
@@ -164,6 +193,35 @@ public final class Sites {
     }
 
     /**
+     * Where a module writes one of its declarations.
+     *
+     * <p>What a report about a line the declarations owe points at. The declaration and not the
+     * clause that drew the line: which rule of it a finding is about is the finding's own, and what
+     * a reader is shown is the declaration either way.
+     *
+     * <p>One declaration at a time, and asked of the module that wrote it. A line is owed wherever
+     * the model carries the type, so the module keeping the account and the module that wrote the
+     * declaration are not always one — and the second is the one that knows where it is.
+     *
+     * <p>Absent where nothing this compilation holds declares it. What the language itself declares
+     * is that case: its declarations are in no source of this compilation.
+     */
+    public record WhereADeclarationIsWritten(TypeSymbol.AtModule declared) implements Key<Citation> {
+
+        @Override
+        public String module() {
+            return declared.module();
+        }
+
+        @Override
+        public Answer<Citation> compute(Db db) {
+            Answer<Hir.Def> declaration = db.ask(new Names.ResolvedDeclaration(declared.key()));
+            return declaration.present()
+                    ? Answer.of(Citation.of(declaration.value().pos())) : Answer.absent();
+        }
+    }
+
+    /**
      * Where a module writes one of its behaviors.
      *
      * <p>What a report about a behavior points at when what it is about is the behavior itself —
@@ -211,7 +269,7 @@ public final class Sites {
     public static Citation placeOf(Db db, ArmReportAnchor anchor) {
         Answer<Citation> at = switch (anchor) {
             case ArmReportAnchor.WhereItIsWritten(SourceConstructOrigin origin) ->
-                    db.ask(new WhereAConstructIsWritten(origin));
+                    db.ask(new WhereAForkIsWritten(origin));
             case ArmReportAnchor.WhereItWasReached(String module, int controlId) ->
                     db.ask(new WhereAPlanReached(module, controlId));
         };
