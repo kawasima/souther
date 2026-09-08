@@ -652,6 +652,12 @@ sealed interface StatedByClauses {
          * refused, so a language asked to decide would answer about a branch and not about the
          * choice.
          *
+         * <p>Which of the alternatives are still standing is read off the two answers
+         * ({@link souther.compiler.values.Emptiness.Alternatives}), and whether the answers about
+         * them are final is asked here beside it ({@link #settledHere}). Two questions and not one
+         * word: a branch nobody has worked out stands, and a choice of two that stand is one this
+         * may still have to keep.
+         *
          * <p>What every alternative leaves empty is what the dead choice leaves empty, and where
          * that is no position, the choice admits nothing with none of them at fault. That is the
          * rule {@link Emptiness.AcrossEveryCase} states for a sum — what proves it has none is the
@@ -686,44 +692,57 @@ sealed interface StatedByClauses {
                 Confinement.Admission<FactSubject> mine = here.confinement().admission(machines);
                 Confinement.Admission<FactSubject> theirs =
                         there.confinement().admission(machines);
-                souther.compiler.values.Emptiness a = mine.emptiness();
-                souther.compiler.values.Emptiness b = theirs.emptiness();
-                // A branch the descriptions already show empty is decided here whichever way the
-                // declaration holds its choices. The answer is definitive — a description empty
-                // before anything is built admits nothing however the other clauses refine it —
-                // and a clause written later can only show more branches impossible, never fewer,
-                // so nothing a deferral waits for can reach a different decision. Deferred anyway,
-                // the dead branch would widen the met-together tree for nothing.
-                //
-                if (a == souther.compiler.values.Emptiness.EMPTY && b == souther.compiler.values.Emptiness.EMPTY) {
+                souther.compiler.values.Emptiness.Alternatives standing =
+                        souther.compiler.values.Emptiness.Alternatives.of(
+                                mine.emptiness(), theirs.emptiness());
+                if (settledHere(standing, mine, theirs)) {
                     decided.put(choice.id(), settled(here, mine, there, theirs));
-                    return new StatedTogether.Said(here.confinement().bothDead(there.confinement(),
-                            Confinement.Admission.bothShown(mine, theirs)));
-                }
-                if (a == souther.compiler.values.Emptiness.EMPTY) {
-                    decided.put(choice.id(), settled(here, mine, there, theirs));
-                    return other;
-                }
-                if (b == souther.compiler.values.Emptiness.EMPTY) {
-                    decided.put(choice.id(), settled(here, mine, there, theirs));
-                    return one;
-                }
-                // Two live branches are another matter: merging them is the one decision a clause
-                // written later can be too late for, since it is the branch structure the later
-                // clause's conjunction would have refined. Held apart, the choice is held open past
-                // the clause and settled by the rules of every clause together; the expansion the
-                // deferral costs was counted over the whole declaration before any clause was
-                // read, which is what admitted the declaration as APART at all.
-                if (alternatives == Alternatives.MERGED
-                        && a == souther.compiler.values.Emptiness.NONEMPTY && b == souther.compiler.values.Emptiness.NONEMPTY) {
-                    decided.put(choice.id(), settled(here, mine, there, theirs));
-                    return new StatedTogether.Said(
-                            either(here.confinement(), there.confinement()));
+                    return switch (standing) {
+                        case NEITHER_STANDS -> new StatedTogether.Said(
+                                here.confinement().bothDead(there.confinement(),
+                                        Confinement.Admission.bothShown(mine, theirs)));
+                        case ONLY_THE_RIGHT -> other;
+                        case ONLY_THE_LEFT -> one;
+                        case BOTH_STAND -> new StatedTogether.Said(
+                                either(here.confinement(), there.confinement()));
+                    };
                 }
             }
             // And where whether a branch can be taken is not settled, the question waits, and the
             // fate comes back from where the machines are made.
             return new StatedTogether.Choice(choice.id(), one, other);
+        }
+
+        /**
+         * Whether the descriptions alone decide this occurrence of a choice.
+         *
+         * <p>Which alternatives stand is one question and whether the answers about them are final
+         * is another, and this is the second — asked of the branches, and of what the whole
+         * declaration was admitted as.
+         *
+         * <p>A branch the descriptions already show empty is decided here whichever way the
+         * declaration holds its choices. The answer is definitive — a description empty before
+         * anything is built admits nothing however the other clauses refine it — and a clause
+         * written later can only show more branches impossible, never fewer, so nothing a deferral
+         * waits for can reach a different decision. Deferred anyway, the dead branch would widen the
+         * met-together tree for nothing.
+         *
+         * <p>Two live branches are another matter: merging them is the one decision a clause written
+         * later can be too late for, since it is the branch structure the later clause's conjunction
+         * would have refined. Held apart, the choice is held open past the clause and settled by the
+         * rules of every clause together; the expansion the deferral costs was counted over the
+         * whole declaration before any clause was read, which is what admitted the declaration as
+         * APART at all. And a branch nobody has worked out stands without being final, so a choice
+         * of two that stand is merged only where both answers came back settled.
+         */
+        private boolean settledHere(souther.compiler.values.Emptiness.Alternatives standing,
+                                    Confinement.Admission<FactSubject> mine,
+                                    Confinement.Admission<FactSubject> theirs) {
+            if (standing.bothStand()) {
+                return alternatives == Alternatives.MERGED
+                        && mine.emptiness().isDecided() && theirs.emptiness().isDecided();
+            }
+            return true;
         }
 
         /** The fate of a choice the descriptions alone decided, for the account to read. */
@@ -808,21 +827,19 @@ sealed interface StatedByClauses {
          */
         private StatedTogether.Said decided(StatedTogether.Said one, Settlement.Sided here,
                                             StatedTogether.Said other, Settlement.Sided there) {
-            if (here.emptiness() == souther.compiler.values.Emptiness.EMPTY && there.emptiness() == souther.compiler.values.Emptiness.EMPTY) {
+            return switch (souther.compiler.values.Emptiness.Alternatives.of(
+                    here.emptiness(), there.emptiness())) {
                 // The rule for a choice nobody can take, named rather than arrived at: a join is
                 // what two branches somebody can take come to, and neither of these is one.
-                return new StatedTogether.Said(one.confinement().bothDead(other.confinement(),
-                        Confinement.Admission.bothShown(here.shown(), there.shown())));
-            }
-            if (here.emptiness() == souther.compiler.values.Emptiness.EMPTY) {
-                return keptTogether(other, there);
-            }
-            if (there.emptiness() == souther.compiler.values.Emptiness.EMPTY) {
-                return keptTogether(one, here);
-            }
-            StatedTogether.Said left = keptTogether(one, here);
-            StatedTogether.Said right = keptTogether(other, there);
-            return new StatedTogether.Said(either(left.confinement(), right.confinement()));
+                case NEITHER_STANDS -> new StatedTogether.Said(
+                        one.confinement().bothDead(other.confinement(),
+                                Confinement.Admission.bothShown(here.shown(), there.shown())));
+                case ONLY_THE_RIGHT -> keptTogether(other, there);
+                case ONLY_THE_LEFT -> keptTogether(one, here);
+                case BOTH_STAND -> new StatedTogether.Said(
+                        either(keptTogether(one, here).confinement(),
+                                keptTogether(other, there).confinement()));
+            };
         }
 
         /**
@@ -1046,8 +1063,8 @@ sealed interface StatedByClauses {
                     // is answerable for what a branch of a branch it has already lost ever reached.
                     Taken left = one.under(fate.left());
                     Taken right = other.under(fate.right());
-                    if (fate.left().emptiness() == souther.compiler.values.Emptiness.EMPTY
-                            || fate.right().emptiness() == souther.compiler.values.Emptiness.EMPTY) {
+                    if (!souther.compiler.values.Emptiness.Alternatives.of(
+                            fate.left().emptiness(), fate.right().emptiness()).bothStand()) {
                         // What is left of a dead alternative is an account and not an alternative,
                         // so the two are accumulated and not composed as a choice. Which of them
                         // was the dead one is asked here and nowhere below: both sides arrive with
