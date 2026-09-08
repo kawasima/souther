@@ -23,6 +23,7 @@ import souther.compiler.check.RuleRef;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.CheckSurface;
 import souther.compiler.check.Sig;
+import souther.compiler.check.SpecImplementation;
 import souther.compiler.check.DerivedSymbols;
 import souther.compiler.check.Symbols;
 import souther.compiler.check.TypeOps;
@@ -710,14 +711,17 @@ public final class Adequacy {
                     // the lowering leaves them alone. A behavior nothing implements has positions
                     // all the same.
                     Answer<Hir.FnDef> fn = db.ask(new Bodies.SettledFn(name, spec.name()));
-                    out.put(spec.name(), InputDomain.of(spec, fn.present() ? fn.value() : null,
+                    SpecImplementation.Implemented implemented = fn.present()
+                            ? SpecImplementation.align(spec, fn.value()) : null;
+                    out.put(spec.name(), InputDomain.of(spec,
+                            implemented == null ? List.of() : implemented.declaredInputs(),
                             sig, reading.value(), db.ask(new Front.Reading()).value(),
                             // What this behavior's body reads, so the reading is closed over the
                             // paths its measurement names as well as the ones the enumeration
                             // finds. Asked as the reading is made and never after it: one that
                             // grew a position when somebody looked one up would answer a question
                             // differently depending on what had been asked before it.
-                            demandOf(db, name, spec, fn.present() ? fn.value() : null,
+                            demandOf(db, name, spec, implemented,
                                     scope.value(), statedOf(stated, spec)),
                             db.readings()));
                 }
@@ -740,24 +744,28 @@ public final class Adequacy {
      * it.
      */
     private static souther.compiler.inputs.InputDemand demandOf(
-            Db db, String module, Hir.SpecBehavior spec, Hir.FnDef fn, Symbols symbols,
+            Db db, String module, Hir.SpecBehavior spec,
+            SpecImplementation.Implemented implemented, Symbols symbols,
             souther.compiler.check.StatedContract stated) {
-        return statedIn(stated, symbols, bodyIn(db, module, spec, fn, symbols));
+        return statedIn(stated, symbols, bodyIn(db, module, spec, implemented, symbols));
     }
 
     /** The locations the implementation reads, or none where nothing implements the behavior. */
     private static souther.compiler.inputs.InputDemand bodyIn(
-            Db db, String module, Hir.SpecBehavior spec, Hir.FnDef fn, Symbols symbols) {
-        Bodies.CheckedBody checked = fn == null ? null
+            Db db, String module, Hir.SpecBehavior spec,
+            SpecImplementation.Implemented implemented, Symbols symbols) {
+        Bodies.CheckedBody checked = implemented == null ? null
                 : db.ask(new Bodies.CheckedBehavior(module, spec.name())).value();
         if (checked == null) {
             return souther.compiler.inputs.InputDemand.NONE;
         }
+        // Which declared input each binder stands for, asked of the reading that divides an
+        // implementation's parameters rather than measured off the front of its list.
         Map<souther.compiler.types.BindingId, String> parameters = new LinkedHashMap<>();
-        for (int i = 0; i < fn.params().size() && i < spec.params().size(); i++) {
-            souther.compiler.types.BindingId binding = fn.params().get(i).binder().binding();
+        for (SpecImplementation.ParameterBinding.AnInput input : implemented.declaredInputs()) {
+            souther.compiler.types.BindingId binding = input.written().binder().binding();
             if (binding != null) {
-                parameters.put(binding, spec.params().get(i).name());
+                parameters.put(binding, input.declared().name());
             }
         }
         return souther.compiler.inputs.InputDemand.of(checked.body(),
@@ -940,8 +948,8 @@ public final class Adequacy {
                     continue;
                 }
                 out.put(spec.name(), souther.compiler.check.PathReachability.of(
-                        body, db.ask(new Front.Reading()).value(), spec, fn, plan, read,
-                        reading.value()));
+                        body, db.ask(new Front.Reading()).value(),
+                        SpecImplementation.align(spec, fn), plan, read, reading.value()));
             }
             return Answer.of(Ordered.map(out));
         }

@@ -111,6 +111,31 @@ class AParameterCarriesTheTypeItsSignatureAlreadySaidTest {
         assertEquals(List.of(": Draft"), labelsOf(hints(broken)));
     }
 
+    /**
+     * And a behavior that is handed what it depends on is hinted like any other.
+     *
+     * <p>Its {@code let} takes those behaviors beside the inputs, so it always writes more
+     * parameters than the signature has input types. Told apart by comparing those two lengths, the
+     * whole definition was left out — including the inputs the signature does declare, which are the
+     * ones a hint exists for.
+     */
+    @Test
+    void aBehaviorThatIsHandedWhatItDependsOnHasItsInputsHinted() {
+        assertEquals(List.of(": Draft"), labelsOf(hints("""
+                module m
+
+                data Draft = { plannedCost: Int }
+
+                behavior price : (request: Draft) -> Int
+
+                behavior submit : (request: Draft) -> Int
+                    depends on price
+
+                let submit (request, price) = price(request)
+                """)),
+                "`request` is what the signature types; `price` is a behavior it was handed");
+    }
+
     @Test
     void onlyWhatTheClientAskedToSee() {
         Range firstLineOnly = new Range(new Position(0, 0), new Position(6, 0));

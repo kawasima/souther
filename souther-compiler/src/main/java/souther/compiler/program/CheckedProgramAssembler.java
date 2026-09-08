@@ -133,6 +133,8 @@ final class CheckedProgramAssembler {
     private static ModuleBoundaries fileWhatIsChecked(
             Map<ValueName.Behavior, BehaviorTarget> targets, ModuleReading module) {
         Map<ValueName.Behavior, BehaviorTarget> declares = new LinkedHashMap<>();
+        Map<String, SpecImplementation.Implemented> implementations =
+                SpecImplementation.implementationsOf(module.bodies());
         for (Hir.BehaviorDef declared : module.bodies().behaviors()) {
             ValueName.Behavior named = new ValueName.Behavior(module.name(), declared.name());
             Sig signature = module.signatures().get(declared.name());
@@ -146,7 +148,7 @@ final class CheckedProgramAssembler {
                         + " compile has no reading of it");
             }
             BehaviorTarget target = new BehaviorTarget(signatureOf(signature),
-                    implementedAs(state, named, declared, module.bodies(), module.checked(),
+                    implementedAs(state, named, declared, implementations, module.checked(),
                             module.compositions()));
             file(targets, named, target);
             declares.put(named, target);
@@ -628,7 +630,7 @@ final class CheckedProgramAssembler {
      */
     private static CheckedImplementation implementedAs(
             BehaviorImplementation state, ValueName.Behavior named, Hir.BehaviorDef declared,
-            Hir.Module lowered, Bodies.Elaborated checked,
+            Map<String, SpecImplementation.Implemented> implementations, Bodies.Elaborated checked,
             Map<ValueName.Behavior, Composition> compositions) {
         String name = declared.name();
         return switch (state) {
@@ -640,7 +642,8 @@ final class CheckedProgramAssembler {
                 Composition composed = compositions.get(named);
                 yield composed != null
                         ? new CheckedImplementation.Composed(composed)
-                        : new CheckedImplementation.Body(inputBindersOf(named, declared, lowered),
+                        : new CheckedImplementation.Body(
+                                inputBindersOf(named, implementations.get(name)),
                                 checked.behaviorBodies().get(name));
             }
         };
@@ -662,17 +665,21 @@ final class CheckedProgramAssembler {
      * would arrive instead as a dependency's binder handed over as an input's.
      */
     private static List<Core.Binder> inputBindersOf(ValueName.Behavior named,
-                                                    Hir.BehaviorDef declared, Hir.Module lowered) {
-        SpecImplementation.Implemented implemented =
-                declared instanceof Hir.SpecBehavior spec
-                        ? SpecImplementation.implementedBy(lowered, spec)
-                        : null;
+                                                    SpecImplementation.Implemented implemented) {
         if (implemented == null) {
             // This behavior was taken as implemented here and by a body of its own, and the module
             // has no definition to read one from. Nothing here can put that right, and letting it
             // through would hand an output a body whose reads resolve to nothing it was given.
             throw new IllegalStateException("`" + named.module() + "." + named.name()
                     + "` was taken as having a body and has no definition to read it from");
+        }
+        if (!implemented.hasCompleteShape()) {
+            // What this assembler takes, said here rather than by the reading that divided the
+            // parameters: an editor reads a definition whose parameters do not line up and answers
+            // what it can about it, and a checked program holds none.
+            throw new IllegalStateException("`" + named.module() + "." + named.name()
+                    + "` was taken as checked and its implementation writes parameters the"
+                    + " declaration does not account for");
         }
         List<Core.Binder> binders = new ArrayList<>();
         for (Hir.FnParam input : implemented.inputs()) {
