@@ -2,6 +2,7 @@ package souther.compiler.values;
 
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -143,6 +144,47 @@ class ABranchStandsUnlessSomethingShowedItEmptyTest {
                         () -> left + " and " + right + ", read from either end");
             }
         }
+    }
+
+    /**
+     * And it classifies two answers and does nothing with the alternatives.
+     *
+     * <p>What a choice comes to, which branch a caller takes, whether the values are merged or held
+     * apart and whether the question waits are each the caller's, and each differs by what the
+     * caller is composing. Written here as well, one of them would be a second place composing a
+     * choice — and the one that must not be written is taking the standing alternative, which is
+     * the operation a choice with one live branch was decided to have none of.
+     *
+     * <p>Held as what this may mention, because that is what an operation over branches needs: a
+     * branch to be handed, or a type variable to be handed one under. Something that mentions
+     * neither cannot be given one, whatever it is called.
+     */
+    @Test
+    void andItClassifiesTwoAnswersAndActsOnNeither() {
+        List<String> written = new ArrayList<>();
+        for (Method each : Emptiness.Alternatives.class.getDeclaredMethods()) {
+            // What an enum is, and not an operation somebody wrote over these.
+            if (each.isSynthetic() || each.getName().equals("values")
+                    || each.getName().equals("valueOf")) {
+                continue;
+            }
+            written.add(each.getName());
+            assertEquals(0, each.getTypeParameters().length,
+                    () -> each.getName() + " is written over some type of the caller's, which is"
+                            + " what an operation that is handed a branch needs");
+            List<Class<?>> mentions = new ArrayList<>(List.of(each.getParameterTypes()));
+            mentions.add(each.getReturnType());
+            for (Class<?> what : mentions) {
+                assertTrue(what == Emptiness.class || what == Emptiness.Alternatives.class
+                                || what == boolean.class,
+                        () -> each.getName() + " mentions " + what.getName() + ", which is neither"
+                                + " an answer nor which alternatives stand nor whether they both do");
+            }
+        }
+        assertEquals(List.of("bothStand", "of", "stands"), written.stream().sorted().toList(),
+                "which alternatives two answers leave standing, whether that is a choice at all,"
+                        + " and the rule they are read by — an operation beside them would be a"
+                        + " second place saying what a choice comes to");
     }
 
     private static Emptiness.Alternatives exchanged(Emptiness.Alternatives standing) {

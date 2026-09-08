@@ -104,6 +104,21 @@ final class WhatBecomesOfAValueOnTheStack {
      * work the answer out.
      */
     static boolean isTakenByAReferenceComparison(List<CodeElement> elements, int at) {
+        return followedFrom(elements, at, 0);
+    }
+
+    /**
+     * The same, of a value put somewhere and taken out again.
+     *
+     * <p>A value in a local is followed to each place that reads the local before anything writes
+     * it again, and is compared where any of them compares it. Answered without following, a
+     * constant a clause wrote into a name would come out as one nothing compares, which is a rule
+     * that anybody could get round by writing the name.
+     */
+    private static boolean followedFrom(List<CodeElement> elements, int at, int through) {
+        if (through > 4) {
+            throw new IllegalStateException("a value was put away and taken out too many times");
+        }
         Set<Label> caught = new HashSet<>();
         Map<Label, Integer> placed = new HashMap<>();
         for (int where = 0; where < elements.size(); where++) {
@@ -163,6 +178,9 @@ final class WhatBecomesOfAValueOnTheStack {
                     throw new IllegalStateException(
                             "a value was taken by a rearrangement of the stack");
                 }
+                if (instruction instanceof StoreInstruction put) {
+                    return heldIn(elements, next, put.slot(), through);
+                }
                 if (effect.carrying()) {
                     // The same value under another name, so it goes on being followed as the one
                     // thing this instruction left.
@@ -190,6 +208,30 @@ final class WhatBecomesOfAValueOnTheStack {
         // this did not follow. Said as "nothing compares it", that would be the one mistake this
         // whole reading is written to refuse.
         throw new IllegalStateException("a value was followed to the end of a method");
+    }
+
+    /**
+     * Whether what is read out of a local this value was put into is compared.
+     *
+     * <p>Every reading of the local up to the next writing of it, since after that the name holds
+     * something else. Which is why a writing ends this rather than refusing: what is in the name
+     * from there on is not this value, and the readings before it are all of them there are.
+     */
+    private static boolean heldIn(List<CodeElement> elements, int from, int slot, int through) {
+        for (int at = from + 1; at < elements.size(); at++) {
+            CodeElement element = elements.get(at);
+            if (element instanceof StoreInstruction put && put.slot() == slot) {
+                return false;
+            }
+            if (element instanceof IncrementInstruction added && added.slot() == slot) {
+                return false;
+            }
+            if (element instanceof LoadInstruction got && got.slot() == slot
+                    && followedFrom(elements, at, through + 1)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

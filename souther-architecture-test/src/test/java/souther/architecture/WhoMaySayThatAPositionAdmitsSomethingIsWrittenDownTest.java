@@ -80,9 +80,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * stopped reading drops out of the list, and the list is then what the walk can still see rather
  * than what the repository holds. So each of them is shown finding something written here —
  * {@link Taking} and {@link TakingByStanding} switch, {@link Referring} asks through a reference,
- * {@link Comparing} compares every way one can be written — and, where something near it would look
- * the same to a walk that read less, shown not finding that: {@link Constructing} writes a constant
- * where a value is wanted, and calls one before comparing what the call gave.
+ * {@link Comparing} compares every way one can be written, a name away and a conditional away
+ * included — and, where something near it would look the same to a walk that read less, shown not
+ * finding that: {@link Constructing} writes a constant where a value is wanted, and calls one
+ * before comparing what the call gave.
  */
 class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
 
@@ -229,6 +230,8 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
             "souther/architecture/WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest$Comparing#itIsEmpty"
                     + "(Lsouther/compiler/values/Emptiness;)Z",
             "souther/architecture/WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest$Comparing#itIsNotEmpty"
+                    + "(Lsouther/compiler/values/Emptiness;)Z",
+            "souther/architecture/WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest$Comparing#itIsWhatWasPutAway"
                     + "(Lsouther/compiler/values/Emptiness;)Z");
 
     /**
@@ -429,6 +432,9 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
         assertFalse(Comparing.emptyIsIt(Emptiness.UNDECIDED));
         assertFalse(Comparing.itIsNotEmpty(Emptiness.EMPTY));
         assertFalse(Comparing.emptyIsNotIt(Emptiness.EMPTY));
+        assertTrue(Comparing.itIsWhatWasPutAway(Emptiness.EMPTY),
+                "and one written into a name and compared out of it is a comparison");
+        assertFalse(Comparing.itIsWhatWasPutAway(Emptiness.NONEMPTY));
         assertTrue(Comparing.emptyIsWhicheverOfThese(Emptiness.EMPTY, Emptiness.NONEMPTY, true),
                 "and one compared against an answer the code works out first is a comparison too");
         assertFalse(Comparing.emptyIsWhicheverOfThese(Emptiness.EMPTY, Emptiness.NONEMPTY, false));
@@ -593,6 +599,17 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
 
         static boolean emptyIsNotIt(Emptiness said) {
             return Emptiness.EMPTY != said;
+        }
+
+        /**
+         * And one written into a name and compared out of it.
+         *
+         * <p>A constant a clause gave a name to is the same constant, and a rule that read only
+         * what is compared where it was written is one anybody gets round by writing the name.
+         */
+        static boolean itIsWhatWasPutAway(Emptiness said) {
+            Emptiness nothingAtAll = Emptiness.EMPTY;
+            return said == nothingAtAll;
         }
 
         /**
