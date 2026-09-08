@@ -2039,6 +2039,13 @@ public final class InvariantChecker {
         // would have to change: written over the other, whichever ran second would be the only one
         // an author was sent to.
         runs.undecided(byName).forEach((name, why) -> stopped.merge(name, why, InvariantChecker::alsoSaying));
+        // And the same of the comparisons a choice offers, which nothing else here reaches. The
+        // walk above this goes into a conjunction and stops at a choice, so a comparison standing
+        // under one was never read for the line it states — and a clause holding nothing this could
+        // classify came out as one raising no question about where the values stop, which is what a
+        // rule read to the end and stating no line comes out as.
+        unclassifiedUnderAChoice(clause, at, byName)
+                .forEach((name, why) -> stopped.merge(name, why, InvariantChecker::alsoSaying));
         // What a rule about the strings at a position came to, where this conjunct is one. Such a
         // rule states where the values stop exactly when the strings it admits run between places
         // the order does not already hold them, which is the reading's own answer and not something
@@ -2048,6 +2055,66 @@ public final class InvariantChecker {
         return lines.isEmpty()
                 ? ClauseStates.SomethingElse.naming(found).unread(stopped)
                 : new ClauseStates.ABound(lines, new LinkedHashSet<>(found), stopped);
+    }
+
+    /**
+     * The names a comparison written inside a choice leaves the line undecided at.
+     *
+     * <p><b>What this is for is not deciding what a choice means.</b> Where a choice draws a line is
+     * settled where the branches are, and nothing here asks. What is asked is the question every
+     * comparison raises on its own: this clause states where the values at a name stop, and whether
+     * it does is what reading its form further would answer. A choice standing above it does not
+     * take that question away — it may leave the line where the branch put it, and it may leave it
+     * open, and which of those it is nobody here knows.
+     *
+     * <p>So this is the conservative half of the answer and is not the whole of it. A choice whose
+     * alternatives are read to the end and hold the name nowhere between them draws no line, and
+     * says so from a reading that is not this one; until that reading reaches here, a name under
+     * such a choice is one this compiler declines to speak for. Which is what it is: read as a rule
+     * raising no question at all, the report said the model draws no line, and a limit of this
+     * compiler went out as a sentence about somebody's model.
+     *
+     * <p>Every leaf of the clause and not the alternatives alone: a choice inside a conjunction
+     * inside a choice is one an author wrote, and a binding a helper call was expanded into says
+     * what its body says (ADR-0106). Empty for a comparison, which the reading above it already
+     * asked.
+     */
+    private SequencedMap<RuleKey, List<BlockReason.RuleReadingStopped>> unclassifiedUnderAChoice(
+            Core clause, Denotations at, Map<FactSubject, Coordinate> byName) {
+        SequencedMap<RuleKey, List<BlockReason.RuleReadingStopped>> out = new LinkedHashMap<>();
+        // Asked of what the clause was written as and never of the node: a choice is a binary
+        // operator too, so a reader telling them apart by the node skips exactly the clause this is
+        // for. A part of no connective is one the reading above already asked.
+        ClauseExpr written = ClauseExpr.of(clause, true);
+        if (written instanceof ClauseExpr.Leaf) {
+            return out;
+        }
+        unclassifiedIn(written, at, byName, out);
+        return out;
+    }
+
+    /** The same, over whatever the clause was written as. */
+    private void unclassifiedIn(ClauseExpr read, Denotations at,
+                                Map<FactSubject, Coordinate> byName,
+                                SequencedMap<RuleKey, List<BlockReason.RuleReadingStopped>> out) {
+        switch (read) {
+            case ClauseExpr.Leaf it -> {
+                if (it.of() instanceof Core.Binary bin
+                        && Comparison.of(bin).orElse(null) instanceof Comparison recognised) {
+                    List<RuleKey> found = new ArrayList<>();
+                    namedIn(bin, at, byName, found);
+                    stoppedOnTheFormOf(found, canonicalFormOf(recognised, at, byName), byName)
+                            .forEach((name, why) ->
+                                    out.merge(name, why, InvariantChecker::alsoSaying));
+                }
+            }
+            case ClauseExpr.Scoped it ->
+                    unclassifiedIn(it.body(), terms.inside(it.binding(), at), byName, out);
+            case ClauseExpr.Joined it -> {
+                unclassifiedIn(it.left(), at, byName, out);
+                unclassifiedIn(it.right(), at, byName, out);
+            }
+        }
     }
 
     /**
