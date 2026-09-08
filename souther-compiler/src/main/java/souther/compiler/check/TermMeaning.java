@@ -43,25 +43,19 @@ public final class TermMeaning {
      * equal where the projections of their terms are ({@link #projectionOf}), so the term is the
      * state and the projection is how the state is compared — and nothing takes the term back out,
      * the two operations below answering a reading and what the predicates made of one.
+     *
+     * <p>The only thing held. The projection is worked out where it is asked for and not kept beside
+     * the term: a reading a caller substitutes its arguments into is read as an assumption and then
+     * let go, so a projection taken as each reading is made would walk every rule at every call site
+     * for an answer nothing asks for.
      */
     private final Core term;
-
-    /**
-     * What the projection of {@code term} hashes to, worked out once.
-     *
-     * <p>Compared first as a way of saying no, so two readings that say different things are usually
-     * told apart without walking either. It is of the same projection {@code equals} compares, so
-     * the two cannot come to read different components of a term — which is a pair that calls two
-     * terms equal and hashes them apart.
-     */
-    private final int hash;
 
     private TermMeaning(Core term) {
         if (term == null) {
             throw new IllegalArgumentException("a reading is a reading of a term");
         }
         this.term = term;
-        this.hash = Arrays.hashCode(projectionOf(term));
     }
 
     /** {@code term} read for what it says. */
@@ -97,13 +91,16 @@ public final class TermMeaning {
     @Override
     public boolean equals(Object other) {
         return other instanceof TermMeaning it
-                && hash == it.hash
-                && Arrays.equals(projectionOf(term), projectionOf(it.term));
+                && Arrays.equals(projection(), it.projection());
     }
 
     @Override
     public int hashCode() {
-        return hash;
+        return Arrays.hashCode(projection());
+    }
+
+    private Object[] projection() {
+        return projectionOf(term);
     }
 
     /**
@@ -115,7 +112,7 @@ public final class TermMeaning {
      */
     @Override
     public String toString() {
-        Object[] said = projectionOf(term);
+        Object[] said = projection();
         StringBuilder out = new StringBuilder("TermMeaning(");
         for (int i = 0; i < said.length; i++) {
             if (i > 0) {

@@ -32,8 +32,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * every kind of term: the corpus states one {@code ensures}, which reaches a handful of the node
  * kinds a reading is projected over, and a kind whose place was compared in a shape this never
  * meets would pass here. That is {@code EveryTermIsReadForWhatItSaysTest}, which asks the same
- * question of one node kind at a time and reports the kinds it did not reach. Both are wanted: one
- * holds the projection, and this holds what the query graph does with it.
+ * question of one node kind at a time, and
+ * {@code EveryKindOfTermACorpusWritesIsReadForWhatItSaysTest}, which reports the kinds nothing
+ * reaches. All three are wanted: one holds the projection, one holds what a model writes, and this
+ * holds what the query graph does with it.
  *
  * <p>Moving the whole file is the edit: every position in it changes, and every construct is
  * numbered after the ones the blank lines did not add, so a place surviving anywhere in a contract
