@@ -32,26 +32,31 @@ public final class TheCompilationsSources {
 
     private final Function<String, Symbols> scopeOf;
     private final ExpandedClauseLookup clauses;
+    private final ClauseLocations written;
 
     /** Which mint this is, told to nobody: what it stamps says this and what another stamps says
      *  another, which is the whole of how a source of one is told from a source of the other. */
     private final long mint = MINTS.incrementAndGet();
 
     /**
-     * Makes the sources of a compilation whose modules resolve under {@code scopeOf} and whose
-     * declarations' clauses are read from {@code clauses}.
+     * Makes the sources of a compilation whose modules resolve under {@code scopeOf}, whose
+     * declarations' clauses are read from {@code clauses}, and where a clause is written is read
+     * from {@code written}.
      *
-     * <p>Both are the compilation's own, and this is the whole of what it takes to be one: whoever
-     * builds this is answering for a compilation, which is a different thing from a reader asking
-     * one where to read.
+     * <p>All the compilation's own, and this is the whole of what it takes to be one: whoever builds
+     * this is answering for a compilation, which is a different thing from a reader asking one where
+     * to read.
      */
-    public TheCompilationsSources(Function<String, Symbols> scopeOf, ExpandedClauseLookup clauses) {
-        if (scopeOf == null || clauses == null) {
+    public TheCompilationsSources(Function<String, Symbols> scopeOf, ExpandedClauseLookup clauses,
+                                  ClauseLocations written) {
+        if (scopeOf == null || clauses == null || written == null) {
             throw new IllegalArgumentException(
-                    "a compilation reads its modules under a scope and reads clauses somewhere");
+                    "a compilation reads its modules under a scope, reads clauses somewhere, and"
+                            + " reads where one is written somewhere");
         }
         this.scopeOf = scopeOf;
         this.clauses = clauses;
+        this.written = written;
     }
 
     /** The source {@code module}'s rules are read under, or null where the compilation resolves no
@@ -59,6 +64,7 @@ public final class TheCompilationsSources {
     public RuleReadingSource of(String module) {
         Symbols scope = scopeOf.apply(module);
         return scope == null ? null
-                : new RuleReadingSource(scope, clauses, new AModulesRules(mint, module));
+                : new RuleReadingSource(scope, clauses, written,
+                        new AModulesRules(mint, module));
     }
 }

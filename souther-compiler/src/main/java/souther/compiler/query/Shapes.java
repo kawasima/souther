@@ -2,6 +2,7 @@ package souther.compiler.query;
 
 import souther.compiler.ast.Hir;
 import souther.compiler.check.ClauseDischarge;
+import souther.compiler.check.ClauseLocations;
 import souther.compiler.check.ExpandedClauseLookup;
 import souther.compiler.check.ExpandedClauseResult;
 import souther.compiler.check.ExpandedClauses;
@@ -19,6 +20,7 @@ import souther.compiler.check.DerivedSymbols;
 import souther.compiler.check.ResolvedSymbols;
 import souther.compiler.core.ValueShape;
 import souther.compiler.diag.CompileException;
+import souther.compiler.diag.DiagnosticPlace;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
@@ -700,6 +702,88 @@ public final class Shapes {
             }
             Answer<souther.compiler.stdlib.Stdlib> library = db.ask(new Front.Library());
             return library.present() ? library.value().languageDeclaration(named) : null;
+        }
+    }
+
+    /**
+     * Where a declaration's own clauses are written, in the order it writes them.
+     *
+     * <p>Beside {@link ClausesExpandedFor} and not inside it, because they are two facts about one
+     * declaration and a reader uses one of them. What a clause states is what every reading of the
+     * model is built on; where it is written is what one sentence puts a caret under. Answered
+     * together, an edit that moves a clause and changes nothing it states is an edit that changes
+     * what the model says, and every reading of every module that imports the declaration is worked
+     * out again for it.
+     *
+     * <p>The ordinal is the one {@link souther.compiler.check.Clause.Id} counts by — which of the
+     * declaration's own clauses this is, in written order. Every representation of a declaration
+     * writes its clauses in that order, which is what lets a reader holding a judgment about clause
+     * <i>n</i> ask here for where clause <i>n</i> is.
+     *
+     * <p>A declaration that writes no clauses answers with none, and a kind that has no
+     * {@code invariant} to write answers with none: what a reader of this needs is where the clause
+     * it is about is, and a reader asking about a clause of a declaration that wrote none is asking
+     * about a clause that does not exist.
+     */
+    public record ClauseLocationsFor(TypeKey named) implements Key<List<DiagnosticPlace>> {
+        @Override
+        public String module() {
+            return named.module();
+        }
+
+        @Override
+        public Answer<List<DiagnosticPlace>> compute(Db db) {
+            if (!(ClausesExpandedFor.declarationOf(db, named) instanceof Hir.Data data)) {
+                return Answer.of(List.of());
+            }
+            List<DiagnosticPlace> places = new ArrayList<>();
+            for (Hir.InvariantClause clause : data.invariants()) {
+                places.add(placeOf(clause));
+            }
+            return Answer.of(List.copyOf(places));
+        }
+
+        /** Where {@code clause} is written, as the declaration knows it — with no reader's route in
+         *  it, for the reason {@link souther.compiler.check.Clause} gives. */
+        private static DiagnosticPlace placeOf(Hir.InvariantClause clause) {
+            DiagnosticPlace at = DiagnosticPlace.of(clause.reportedAt());
+            return at instanceof DiagnosticPlace.Unavailable out
+                    ? new DiagnosticPlace.Unavailable(out.provenance().asDeclared()) : at;
+        }
+    }
+
+    /**
+     * Where any declaration's clauses are written, for a reader that is about to point at one.
+     *
+     * <p>One of these for the whole compilation, for the reason {@link #expandedClauses} gives: which
+     * clause is being asked about is the only input there is.
+     */
+    public static ClauseLocations clauseLocations(Db db) {
+        return clause -> {
+            List<DiagnosticPlace> places =
+                    db.ask(new ClauseLocationsFor(clause.declaredOn().key())).value();
+            if (clause.ordinal() < 0 || clause.ordinal() >= places.size()) {
+                throw new NoSuchClauseIsWritten(clause);
+            }
+            return places.get(clause.ordinal());
+        };
+    }
+
+    /**
+     * Raised where a report asks where a clause is and the declaration writes no such clause.
+     *
+     * <p>Two of this compiler's answers disagreeing. A judgment is about a clause a reading of the
+     * declaration reached, and the declaration is the one that wrote it; a clause judged and not
+     * written is a reading and a declaration that are not of one model. Answered with a place that
+     * points nowhere, the report would send a reader to a clause nobody wrote.
+     */
+    public static final class NoSuchClauseIsWritten extends IllegalStateException {
+
+        private static final long serialVersionUID = 1L;
+
+        NoSuchClauseIsWritten(souther.compiler.check.Clause.Id clause) {
+            super("nothing at " + clause.declaredOn().name() + " writes a clause numbered "
+                    + clause.ordinal());
         }
     }
 

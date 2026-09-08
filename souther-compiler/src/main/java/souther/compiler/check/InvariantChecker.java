@@ -221,9 +221,12 @@ public final class InvariantChecker {
      * <p>What it may answer instead is that a declaration's clauses could not be worked out at all.
      * That is a rule this check did not reach and is recorded as one; it is never read as a
      * declaration with no rules, which is the same empty list and the opposite fact.
+     *
+     * <p>{@code written} is where a clause this check reports about is written, asked separately for
+     * the reason {@link ClauseLocations} gives.
      */
     public record Source(Hir.Expr body, ElementProvenance elements, ExpandedClauseLookup invariants,
-                         DeclarationReadings machines,
+                         ClauseLocations written, DeclarationReadings machines,
                          Map<ValueName.Behavior, AssumedContract> contracts) {
 
         public Source {
@@ -255,6 +258,9 @@ public final class InvariantChecker {
     private final Terms terms;
     /** What a clause owes and what a guard settles. */
     private final Predicates predicates;
+    /** Where a clause this check reports about is written, asked where a sentence points and not
+     * carried by the judgment that named the clause ({@link ClauseLocations}). */
+    private final ClauseLocations written;
     /** Whether an evaluation can answer, which is what decides that a continuation is reached. */
     private final PathCompletion completion;
     /**
@@ -273,19 +279,22 @@ public final class InvariantChecker {
     private final List<Diagnostic> warnings = new ArrayList<>();
 
     private InvariantChecker(Symbols symbols,
-                             ExpandedClauseLookup dischargeInvariants, DeclarationReadings machines,
-                             ReadingPolicy policy) {
-        this(symbols, dischargeInvariants, machines, Map.of(), policy);
+                             ExpandedClauseLookup dischargeInvariants, ClauseLocations written,
+                             DeclarationReadings machines, ReadingPolicy policy) {
+        this(symbols, dischargeInvariants, written, machines, Map.of(), policy);
     }
 
     private InvariantChecker(Symbols symbols,
-                             ExpandedClauseLookup dischargeInvariants, DeclarationReadings machines,
+                             ExpandedClauseLookup dischargeInvariants, ClauseLocations written,
+                             DeclarationReadings machines,
                              Map<ValueName.Behavior, AssumedContract> contracts,
                              ReadingPolicy policy) {
+        this.written = written;
         // Where the answers about a declaration's string machines are asked for, for every
         // declaration this check reads: a capability handed on to the engine, which hands it to
         // every reading made through it, and kept by nothing any of them answers with.
-        this.engine = new PathEngine(symbols, dischargeInvariants, machines, contracts, policy);
+        this.engine = new PathEngine(symbols, dischargeInvariants, written, machines, contracts,
+                policy);
         // Borrowing nothing, since no declaration is being seeded yet, and knowing what the
         // revision knows: where a set stops is the same answer whoever met it.
         this.answers = StringMachineAnswers.unborrowed(machines.extents());
@@ -308,7 +317,7 @@ public final class InvariantChecker {
                                                TypeSymbol.AtModule named,
                                                RuleReadingSource source, ReadingPolicy policy) {
         InvariantChecker c = new InvariantChecker(source.symbols(), source.invariants(),
-                DeclarationReadings.NONE, policy);
+                source.written(), DeclarationReadings.NONE, policy);
         // Read over the declaration's own fields, each standing for itself: a construction hands one
         // value per field, so a clause naming a field names something wherever it is built. These
         // stand for a value rather than holding one, so they are entered as locations and nothing is
@@ -356,7 +365,7 @@ public final class InvariantChecker {
     static ClauseDischarge capabilityOf(StatedContract.Conjunct conjunct,
                                         Denotations locations, RuleReadingSource source,
                                         ReadingPolicy policy, String describing) {
-        return new InvariantChecker(source.symbols(), source.invariants(),
+        return new InvariantChecker(source.symbols(), source.invariants(), source.written(),
                 DeclarationReadings.NONE, policy)
                 .capabilityOf(conjunct.stated(), conjunct.at(), locations, describing);
     }
@@ -736,7 +745,8 @@ public final class InvariantChecker {
         READINGS.incrementAndGet();
         Symbols symbols = source.symbols();
         InvariantChecker c =
-                new InvariantChecker(symbols, source.invariants(), machines, policy);
+                new InvariantChecker(symbols, source.invariants(), source.written(), machines,
+                        policy);
         c.answers = answers;
         // A newtype's value is the same location as the newtype, so it is at no name of its own and
         // its fields are the first step there is. Read from the world rather than off a node handed
@@ -2870,11 +2880,12 @@ public final class InvariantChecker {
      * analysis representation could not be built or typed for, and is not analyzed at all, which is
      * the {@code ABANDONED} this answers with.
      */
-    static Findings analyze(Core body, ExpandedClauseLookup invariants, DeclarationReadings machines,
+    static Findings analyze(Core body, ExpandedClauseLookup invariants, ClauseLocations written,
+                            DeclarationReadings machines,
                             Map<ValueName.Behavior, AssumedContract> contracts,
                             Scope params, Symbols symbols, ReadingPolicy policy) {
         InvariantChecker c =
-                new InvariantChecker(symbols, invariants, machines, contracts, policy);
+                new InvariantChecker(symbols, invariants, written, machines, contracts, policy);
         if (body == null) {
             return new Findings(c.errors, c.warnings, Status.ABANDONED);
         }
@@ -3555,7 +3566,7 @@ public final class InvariantChecker {
      * it under either answer would report a clause the value does not fail, or leave one it does.
      */
     private static ClauseStatus statusOf(Predicates.Clause owed, NumericDomain<FactSubject> dom, Known k,
-                                         Clause clause) {
+                                         Clause.Ref clause) {
         boolean established = owed.dischargedBy(dom, k.facts());
         boolean refused = owed.refutedBy(dom, k.facts());
         if (established && refused) {
@@ -3571,7 +3582,7 @@ public final class InvariantChecker {
     /** Records what was proved about {@code clause}, joining it with what is already there for it:
      * one clause reached twice — through two spreads, or read again under a rewrite — is one
      * clause. */
-    private static void put(SequencedMap<Clause.Id, Judged> found, Clause clause,
+    private static void put(SequencedMap<Clause.Id, Judged> found, Clause.Ref clause,
                             ClauseStatus status) {
         found.merge(clause.id(), new Judged(clause, status), Judged::merge);
     }
@@ -3583,10 +3594,10 @@ public final class InvariantChecker {
      * them: which of the three a clause came out as is one answer, and the set of clauses this check
      * read is partitioned by it rather than covered by sets that have to be kept apart.
      */
-    record Judged(Clause clause, ClauseStatus status) {
+    record Judged(Clause.Ref clause, ClauseStatus status) {
 
         static Judged merge(Judged a, Judged b) {
-            return new Judged(Clause.merge(a.clause(), b.clause()),
+            return new Judged(Clause.Ref.merge(a.clause(), b.clause()),
                     ClauseStatus.of(a.status(), b.status()));
         }
 
@@ -3599,10 +3610,10 @@ public final class InvariantChecker {
     /** One obligation and the clause it was owed by. */
     private record Owing(Clauses.Stated from, Predicates.Clause owed) {
 
-        /** The clause this was owed by: which one it is, what a sentence may call it, and where a
-         * reader can be sent. None of those is read here — this hands the clause on whole, so that
-         * a site choosing what to say asks it rather than being handed one of its answers. */
-        Clause clause() {
+        /** The clause this was owed by: which one it is and what a sentence may call it. Neither is
+         * read here — this hands the clause on whole, so that a site choosing what to say asks it
+         * rather than being handed one of its answers. */
+        Clause.Ref clause() {
             return from.clause();
         }
     }
@@ -3663,18 +3674,18 @@ public final class InvariantChecker {
 
         /** The clauses nothing known there establishes — the ones this check could not settle and
          * the ones the value fails, which is what E2011 is about. */
-        SequencedMap<Clause.Id, Clause> unsettled() {
+        SequencedMap<Clause.Id, Clause.Ref> unsettled() {
             return where(ClauseStatus::unsettled);
         }
 
         /** The clauses the guards establish. */
-        SequencedMap<Clause.Id, Clause> settled() {
+        SequencedMap<Clause.Id, Clause.Ref> settled() {
             return where(status -> status == ClauseStatus.SETTLED);
         }
 
         /** The clauses the value being built fails wherever it is built, which is what E2010 is
          * about — and not every clause left standing beside them. */
-        SequencedMap<Clause.Id, Clause> refuted() {
+        SequencedMap<Clause.Id, Clause.Ref> refuted() {
             return where(status -> status == ClauseStatus.REFUTED);
         }
 
@@ -3686,12 +3697,12 @@ public final class InvariantChecker {
          * is depends on the path, so none of them is one the value fails and the reader is sent to
          * each of them under what is true of it.
          */
-        SequencedMap<Clause.Id, Clause> refutedSomewhere() {
+        SequencedMap<Clause.Id, Clause.Ref> refutedSomewhere() {
             return where(status -> status == ClauseStatus.REFUTED_SOMEWHERE);
         }
 
-        private SequencedMap<Clause.Id, Clause> where(Predicate<ClauseStatus> which) {
-            SequencedMap<Clause.Id, Clause> side = new LinkedHashMap<>();
+        private SequencedMap<Clause.Id, Clause.Ref> where(Predicate<ClauseStatus> which) {
+            SequencedMap<Clause.Id, Clause.Ref> side = new LinkedHashMap<>();
             found.forEach((id, one) -> {
                 if (which.test(one.status())) {
                     side.put(id, one.clause());
@@ -3717,15 +3728,21 @@ public final class InvariantChecker {
             return canName(refuted());
         }
 
-        private static boolean canName(SequencedMap<Clause.Id, Clause> side) {
+        private static boolean canName(SequencedMap<Clause.Id, Clause.Ref> side) {
             return side.values().stream().anyMatch(clause -> clause.name().isPresent());
         }
 
-        /** Where the clauses on a side are, in the order they were declared — every one of them,
-         * whether or not this compile has a file to quote it from. */
+        /**
+         * Where the clauses on a side are, in the order they were declared — every one of them,
+         * whether or not this compile has a file to quote it from.
+         *
+         * <p>Asked of {@code written} rather than read off the clauses. A judgment says which
+         * clauses it is about, and where each of them is written is the declaration's answer: taken
+         * from the judgment, a report would point where the clause was when the judgment was made.
+         */
         static Stream<souther.compiler.diag.DiagnosticPlace> pointsTo(
-                SequencedMap<Clause.Id, Clause> side) {
-            return side.values().stream().map(Clause::at);
+                SequencedMap<Clause.Id, Clause.Ref> side, ClauseLocations written) {
+            return side.keySet().stream().map(written::of);
         }
     }
 
@@ -3767,8 +3784,8 @@ public final class InvariantChecker {
      * a set with no names in it renders as, and reading it back as an answer puts "no clause was
      * named" and "there is no clause" into one value.
      */
-    private static String names(SequencedMap<Clause.Id, Clause> clauses) {
-        return clauses.values().stream().map(Clause::name).flatMap(Optional::stream)
+    private static String names(SequencedMap<Clause.Id, Clause.Ref> clauses) {
+        return clauses.values().stream().map(Clause.Ref::name).flatMap(Optional::stream)
                 .map(ClauseName::value).collect(Collectors.joining(", "));
     }
 
@@ -4349,8 +4366,8 @@ public final class InvariantChecker {
      * module path. What the message says is a different question with a different answer — whether
      * the clause could be named — and neither decides the other.
      */
-    private static <M extends Message & Supporting> Diagnostic finish(
-            Diagnostic.Builder said, SourcePos at, SequencedMap<Clause.Id, Clause> clauses,
+    private <M extends Message & Supporting> Diagnostic finish(
+            Diagnostic.Builder said, SourcePos at, SequencedMap<Clause.Id, Clause.Ref> clauses,
             M label) {
         said.at(at);
         // One label per place, and the clauses are what there are several of. A label is a sentence
@@ -4360,7 +4377,7 @@ public final class InvariantChecker {
         // reads as a repeat rather than as two clauses. Which clauses they are is in the message,
         // which names them.
         java.util.Set<souther.compiler.diag.DiagnosticPlace> already = new java.util.LinkedHashSet<>();
-        Judgment.pointsTo(clauses).forEach(place -> {
+        Judgment.pointsTo(clauses, written).forEach(place -> {
             if (!already.add(place)) {
                 return;
             }

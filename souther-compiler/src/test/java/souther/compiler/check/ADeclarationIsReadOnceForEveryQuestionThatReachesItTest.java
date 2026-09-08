@@ -198,7 +198,7 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
         // The nearest thing a reader can assemble: the compilation's own scope, and a lookup that
         // answers for no clause anybody wrote.
         RuleReadingSource ofItsOwn = new RuleReadingSource(asTheCompilationReads.symbols(),
-                RuleReadings.noClauseFiled());
+                RuleReadings.noClauseFiled(), ClauseLocations.NONE);
         long beforeItsOwn = InvariantChecker.readingsMade();
         InvariantChecker.seedFields(code, ofItsOwn, AS_THE_COMPILE_READS, readings);
 
@@ -209,7 +209,8 @@ class ADeclarationIsReadOnceForEveryQuestionThatReachesItTest {
         // And the same, minted: sources of its own over the compilation's scope and a lookup that
         // answers for nothing, saying of what they make the name the compilation writes.
         RuleReadingSource minted = new TheCompilationsSources(
-                _ -> asTheCompilationReads.symbols(), RuleReadings.noClauseFiled()).of("demo");
+                _ -> asTheCompilationReads.symbols(), RuleReadings.noClauseFiled(),
+                ClauseLocations.NONE).of("demo");
         long beforeMinted = InvariantChecker.readingsMade();
         InvariantChecker.seedFields(code, minted, AS_THE_COMPILE_READS, readings);
 

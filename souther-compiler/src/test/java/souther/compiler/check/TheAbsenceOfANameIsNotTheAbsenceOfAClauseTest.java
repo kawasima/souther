@@ -260,8 +260,8 @@ class TheAbsenceOfANameIsNotTheAbsenceOfAClauseTest {
     }
 
     /** The names of the clauses on a side that carry one, which is what a message writes out. */
-    private static List<String> names(java.util.SequencedMap<Clause.Id, Clause> clauses) {
-        return clauses.values().stream().map(Clause::name)
+    private static List<String> names(java.util.SequencedMap<Clause.Id, Clause.Ref> clauses) {
+        return clauses.values().stream().map(Clause.Ref::name)
                 .flatMap(java.util.Optional::stream).map(ClauseName::value).toList();
     }
 

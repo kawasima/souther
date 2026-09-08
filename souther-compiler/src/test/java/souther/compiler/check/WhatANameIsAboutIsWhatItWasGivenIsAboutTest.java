@@ -43,7 +43,7 @@ class WhatANameIsAboutIsWhatItWasGivenIsAboutTest {
     private final Hir.Binders binders = new Hir.Binders(OWNER);
     private final PathEngine engine =
             new PathEngine(Symbols.none(DefaultStdlib.get()),
-                RuleReadings.noClauseFiled(), DeclarationReadings.NONE,
+                RuleReadings.noClauseFiled(), ClauseLocations.NONE, DeclarationReadings.NONE,
                 Terms.Of.THE_DISCHARGE_TREE, souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
 
     @Test

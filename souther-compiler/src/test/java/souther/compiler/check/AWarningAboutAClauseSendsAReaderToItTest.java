@@ -260,7 +260,7 @@ class AWarningAboutAClauseSendsAReaderToItTest {
                 "the clause is read and judged like any other: " + judgment.found());
         assertEquals(List.of(new souther.compiler.diag.DiagnosticPlace.Unavailable(
                         new souther.compiler.diag.SourceProvenance.APublishedModule("model"))),
-                InvariantChecker.Judgment.pointsTo(judgment.unsettled()).toList(),
+                warnings.get(0).secondary().stream().map(label -> label.place()).toList(),
                 "written where this compile has no file, and saying which module that is");
 
         assertInstanceOf(InvariantMessage.NothingKnownHereEstablishesTheInvariant.class,

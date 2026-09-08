@@ -33,6 +33,7 @@ final class Clauses {
 
     private final Symbols symbols;
     private final ExpandedClauseLookup expandedClauses;
+    private final ClauseLocations written;
     private final DeclarationReadings machines;
     private final Map<TypeSymbol.AtModule, Map<String, Type>> fields = new HashMap<>();
     private final Map<TypeSymbol.AtModule, Map<String, BindingId>> bindings =
@@ -52,14 +53,18 @@ final class Clauses {
      *        that was: a type this module declares and one it imports are read alike, because what
      *        a clause is read as is what its own module expanded (spec
      *        §invariant-discharge-representation).
+     * @param written where a clause of a declaration is written, handed on to the readers that
+     *        publish a sentence pointing at one and read by nothing here. Beside the clauses and
+     *        not among them, for the reason {@link ClauseLocations} gives.
      * @param machines where the answers about a declaration's string machines are asked for,
      *        handed on to every reading of a declaration made through here and kept by none of
      *        what those readings answer with.
      */
-    Clauses(Symbols symbols,
-            ExpandedClauseLookup expandedClauses, DeclarationReadings machines) {
+    Clauses(Symbols symbols, ExpandedClauseLookup expandedClauses, ClauseLocations written,
+            DeclarationReadings machines) {
         this.symbols = symbols;
         this.expandedClauses = expandedClauses;
+        this.written = written;
         this.machines = machines;
     }
 
@@ -67,6 +72,12 @@ final class Clauses {
      *  on rather than ask for one of its own. */
     ExpandedClauseLookup expandedClauses() {
         return expandedClauses;
+    }
+
+    /** Where a clause of a declaration is written, for the same reader — asked where a sentence
+     *  points and read by nothing here. */
+    ClauseLocations written() {
+        return written;
     }
 
     /** Where the answers about a declaration's string machines are asked for, for the same
@@ -177,16 +188,16 @@ final class Clauses {
         List<Stated> stated = new ArrayList<>();
         List<RuleRef.Invariant> lost = new ArrayList<>();
         for (TypeOps.Declared inv : declared(named)) {
-            Clause clause = Clause.of(inv);
+            Clause.Ref clause = Clause.Ref.of(inv);
             Core one = statedAt(inv.asExpanded(), named, given);
             if (one != null) {
                 // The clause as one reading, and the parts its author wrote as subtrees of that
                 // very reading. Read apart instead, a conjunct would be read without the conjunct
                 // beside it, and a branch one of them rules out would stand.
                 stated.add(new Stated(clause, one,
-                        inv.shape().onto(one, new RuleRef.Invariant(clause.ref()))));
+                        inv.shape().onto(one, new RuleRef.Invariant(clause))));
             } else {
-                lost.add(new RuleRef.Invariant(clause.ref()));
+                lost.add(new RuleRef.Invariant(clause));
             }
         }
         return new StatedClauses(List.copyOf(stated), List.copyOf(lost));
@@ -229,16 +240,17 @@ final class Clauses {
      * its author wrote it in.
      *
      * <p>A check that judges the clauses one at a time has something to say about the one it could
-     * not settle, and what it says it by is what {@link Clause} holds — which the clauses were
+     * not settle, and what it says it by is what {@link Clause.Ref} holds — which the clauses were
      * flattened out of before reaching here, leaving every unproven clause reported as "the
-     * invariant".
+     * invariant". Where the clause is written is not among it and is looked up where a sentence
+     * points ({@link ClauseLocations}).
      *
      * <p>The parts are two views of one reading and not two readings. What a clause states is read
      * as one thing — its conjuncts meet there, and a branch one of them rules out is ruled out
      * there — and what an author is answerable for is a part; each part is a subtree of
      * {@code expr} and not a tree read beside it.
      */
-    record Stated(Clause clause, Core expr, List<StatedPart> parts) {
+    record Stated(Clause.Ref clause, Core expr, List<StatedPart> parts) {
 
         public Stated {
             parts = List.copyOf(parts);
