@@ -151,18 +151,29 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
      * And what one rule was handed is what the next one is handed.
      *
      * <p>The sources are parsed for whichever rule asks first and read by the rest, which is only
-     * the same reading if none of them can change it. So a unit holds what it was handed rather
-     * than a way back into it, and this is what says so — asked of a unit the repository was read
-     * into, since that is the one every rule here shares.
+     * the same reading if none of them can change it. So this is asked of the whole of what a rule
+     * is handed — the population and then a unit of it — and of the reading the repository was
+     * actually read into, since that is the one every rule here shares.
+     *
+     * <p>The population first, because it is where the most is lost: a rule that emptied it would
+     * leave the next one answering about no sources at all, and answering that way passes.
      */
     @Test
     void whatOneRuleWasHandedIsWhatTheNextOneIsHanded() {
-        Unit read = repositorySources().getFirst();
+        List<Unit> read = repositorySources();
 
-        assertThrows(UnsupportedOperationException.class, () -> read.declares().add("Anything"),
+        assertThrows(UnsupportedOperationException.class, read::clear,
+                "a rule that could empty the population would leave the next one reading a"
+                        + " repository with no sources in it and passing");
+        assertThrows(UnsupportedOperationException.class, () -> read.removeFirst(),
+                "and one that could drop a source would leave the next one passing over it");
+
+        Unit first = read.getFirst();
+
+        assertThrows(UnsupportedOperationException.class, () -> first.declares().add("Anything"),
                 "a rule that could name a type this source does not declare would be asking the"
                         + " next rule about a repository nobody wrote");
-        assertThrows(UnsupportedOperationException.class, () -> read.imports().clear(),
+        assertThrows(UnsupportedOperationException.class, () -> first.imports().clear(),
                 "and one that could drop an import would leave the next rule reading a source"
                         + " that never imported anything");
     }
@@ -642,6 +653,9 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
         } catch (IOException unreadable) {
             throw new UncheckedIOException(unreadable);
         }
+        // Closed where the population is made, and nowhere else. Copied again where it is kept,
+        // dropping this one would leave the reading immutable all the same and nothing would say
+        // which of the two was holding it.
         return List.copyOf(out);
     }
 
