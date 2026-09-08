@@ -84,7 +84,7 @@ class APositionsStandingIsNotEvidenceOfWhoseRuleItIsTest {
         assertFalse(!reached,
                 "nothing reads what asked for a machine, so the check above is passing because"
                         + " neither half is read rather than because the halves are apart");
-        assertEquals(Set.of("souther.compiler.check.StatedByClauses$Reading.keptAs"),
+        assertEquals(Set.of("souther.compiler.check.StatedByClauses$Taken.holding"),
                 Set.copyOf(read),
                 "what asked is routed to the part that asked, and read nowhere else");
     }
