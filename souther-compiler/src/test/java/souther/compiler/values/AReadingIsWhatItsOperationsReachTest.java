@@ -3,21 +3,33 @@ package souther.compiler.values;
 import org.junit.jupiter.api.Test;
 import souther.compiler.numeric.OrderedInterval;
 import souther.compiler.numeric.OrderedIntervals;
+import souther.compiler.reading.StateOfAReading;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Executable;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassModel;
+import java.lang.classfile.MethodModel;
+import java.lang.classfile.constantpool.MethodHandleEntry;
+import java.lang.classfile.instruction.InvokeDynamicInstruction;
+import java.lang.classfile.instruction.InvokeInstruction;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.DirectMethodHandleDesc;
+import java.lang.reflect.AccessFlag;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.RecordComponent;
-import java.util.ArrayDeque;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -37,102 +49,119 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * operation rather than in the value: remove the operation and the way to say the fact is gone with
  * it.
  *
- * <p><b>Nothing outside the type can mint one</b>, since every constructor is its own, so the ways
- * in are what the type declares and the lists below are the whole of them. A way added tomorrow
- * arrives here as a difference and is a question somebody answers, rather than a hole nobody sees.
+ * <p><b>Which types these are is read off what they say of themselves</b>
+ * ({@link StateOfAReading}), and never off whether they already hold their parts the way a state
+ * does. Worked out from the shape, this would find the states that are already right and pass over
+ * one written as a record of its parts — which is the state these propositions exist to refuse, and
+ * the only one such a reading could never report. So membership is declared and the shape is what
+ * is held to.
  *
- * <p><b>Which types those are is found and not listed.</b> A state added tomorrow and left off a
- * list here would be one nothing says anything about, which is the shape of the very thing these
- * propositions are for. So the family is walked to from the two languages a reading of a
- * declaration joins, through what each state is made of and what its operations take and answer
- * with, and what makes a type one of them is that it holds its parts the way these do.
+ * <p>And read off the compiled classes, so a state declaring itself in a package nothing here names
+ * is found as surely as one beside these.
  */
 class AReadingIsWhatItsOperationsReachTest {
 
-    /**
-     * The two languages a declaration's reading joins, which is where the walk starts.
-     *
-     * <p>Roots and not the family: what a rule of a value leaves is said in these two and in
-     * nothing else ({@code Confinement}), and everything the two of them are made of, take, or
-     * answer with is reached from here.
-     */
-    private static final List<Class<?>> ROOTS =
-            List.of(AdmissibleValues.class, OrderedIntervals.class);
+    /** Every class the compiler is made of, which is what both of the walks below read. */
+    private static final List<Class<?>> COMPILED = compiled();
 
-    /**
-     * Every state the readings reach, in the order their names sort.
-     *
-     * <p>A state is one that keeps its parts as this design says a state keeps them: one thing, and
-     * that thing a record of the parts. Which is what makes the family findable at all — a type
-     * that publishes its parts as a constructor is exactly what these propositions refuse, and one
-     * that is reached from here and does not hold them this way is a difference in
-     * {@link #theFamilyIsTheOneTheReadingsReach}.
-     */
+    /** Every state of a reading the compiler declares, in the order their names sort. */
     private static final List<Class<?>> FAMILY = family();
 
     private static List<Class<?>> family() {
-        List<Class<?>> found = new java.util.ArrayList<>();
-        Set<Class<?>> walked = new LinkedHashSet<>();
-        Deque<Class<?>> pending = new ArrayDeque<>(ROOTS);
-        while (!pending.isEmpty()) {
-            Class<?> one = pending.poll();
-            if (!ofTheReadings(one) || !walked.add(one)) {
-                continue;
-            }
-            if (!keepsItsPartsAsAState(one)) {
-                continue;
-            }
-            found.add(one);
-            for (RecordComponent part : WhatAReadingIsMadeOf.of(one)) {
-                pending.add(part.getType());
-            }
-            for (Method each : one.getDeclaredMethods()) {
-                pending.add(each.getReturnType());
-                pending.addAll(List.of(each.getParameterTypes()));
-            }
-            for (Class<?> nested : one.getDeclaredClasses()) {
-                pending.add(nested);
+        List<Class<?>> found = new ArrayList<>();
+        for (Class<?> each : COMPILED) {
+            if (each.isAnnotationPresent(StateOfAReading.class)) {
+                found.add(each);
             }
         }
         found.sort(Comparator.comparing(Class::getName));
         return List.copyOf(found);
     }
 
-    /** Whether the type is one of the two packages a reading of a value is written in. */
-    private static boolean ofTheReadings(Class<?> type) {
-        return "souther.compiler.values".equals(type.getPackageName())
-                || "souther.compiler.numeric".equals(type.getPackageName());
+    /**
+     * The compiler's own classes, read from where the ones this test runs against were built.
+     *
+     * <p>Found from a class of the compiler rather than from a path written here, so this reads the
+     * classes it is running with. Its own tests are not among them: a test writes a reading to look
+     * at it and ships nothing.
+     */
+    private static List<Class<?>> compiled() {
+        Path where = classesUnder(AdmissibleValues.class);
+        try (Stream<Path> found = Files.walk(where)) {
+            List<Class<?>> out = new ArrayList<>();
+            for (Path each : found.filter(p -> p.toString().endsWith(".class")).toList()) {
+                String named = where.relativize(each).toString()
+                        .replace(java.io.File.separatorChar, '.');
+                out.add(Class.forName(named.substring(0, named.length() - ".class".length())));
+            }
+            return List.copyOf(out);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        } catch (ClassNotFoundException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static Path classesUnder(Class<?> one) {
+        try {
+            return Path.of(one.getProtectionDomain().getCodeSource().getLocation().toURI());
+        } catch (URISyntaxException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /**
+     * The states of a reading are these, and a type saying so is one of them.
+     *
+     * <p>Written down so that a state added to the family is somebody saying so. What each of them
+     * is for is its own type's business; that these are the ones is read off what they declare, and
+     * one added or dropped arrives here as a difference.
+     */
+    @Test
+    void theStatesOfAReadingAreTheOnesThatSaySo() {
+        assertEquals(List.of(AdmissibleValues.class, PlannedValues.Settled.class, Realized.class,
+                        OrderedIntervals.class).stream()
+                        .sorted(Comparator.comparing(Class::getName)).toList(),
+                FAMILY,
+                "the states of a reading are not the ones this says they are. One added here is"
+                        + " held to the propositions below, which is what declaring it means");
+        assertTrue(COMPILED.size() > FAMILY.size(),
+                "the walk read the compiler's classes, or every proposition below is about nothing");
+    }
+
+    /** And each of them keeps its parts as one record of its own, which is what it declared. */
+    @Test
+    void eachOfThemKeepsItsPartsAsOneRecordOfItsOwn() {
+        for (Class<?> state : FAMILY) {
+            assertTrue(keepsItsPartsAsOne(state),
+                    () -> state.getSimpleName() + " says it is a state of a reading and holds "
+                            + List.of(state.getDeclaredFields()) + ", where a state holds one"
+                            + " record of the parts it is made of");
+        }
+    }
+
+    /**
+     * And the reading that asks it can say no, which is what makes the answer above worth having.
+     *
+     * <p>{@link OrderedInterval} is a pair of ends: a product with nothing to hold up between its
+     * parts, which writes them out as what it is. Asked the same question, it comes back with no —
+     * so a state reported as keeping its parts as its own is a fact about the state.
+     */
+    @Test
+    void andATypeThatIsARecordOfItsPartsIsSeenNotToKeepThem() {
+        assertFalse(keepsItsPartsAsOne(OrderedInterval.class),
+                "the question cannot answer no, so its yes above says nothing");
     }
 
     /** Whether it holds one thing and that thing is a record of its parts. */
-    private static boolean keepsItsPartsAsAState(Class<?> type) {
-        List<Field> mine = new java.util.ArrayList<>();
+    private static boolean keepsItsPartsAsOne(Class<?> type) {
+        List<Field> mine = new ArrayList<>();
         for (Field each : type.getDeclaredFields()) {
             if (!Modifier.isStatic(each.getModifiers())) {
                 mine.add(each);
             }
         }
-        return mine.size() == 1 && mine.getFirst().getType().isRecord()
-                && "Parts".equals(mine.getFirst().getType().getSimpleName());
-    }
-
-    /**
-     * The family is the one the readings reach, and it is these.
-     *
-     * <p>Written down so that a state added to it is somebody saying so. What each of the four is
-     * for is its own type's business; that they are four is this walk's answer and not a list kept
-     * here — a fifth reached from the readings arrives as a difference, and one that stops being
-     * reachable does too.
-     */
-    @Test
-    void theFamilyIsTheOneTheReadingsReach() {
-        assertEquals(List.of(AdmissibleValues.class, PlannedValues.Settled.class, Realized.class,
-                        OrderedIntervals.class).stream()
-                        .sorted(Comparator.comparing(Class::getName)).toList(),
-                FAMILY,
-                "the states the readings reach are not the ones this says they are. A state added"
-                        + " here holds its parts the way these do, and the propositions below are"
-                        + " asked of it too");
+        return mine.size() == 1 && mine.getFirst().getType().isRecord();
     }
 
     /** And none of them may be made from outside, whichever of them it is. */
@@ -146,50 +175,92 @@ class AReadingIsWhatItsOperationsReachTest {
     }
 
     /**
-     * Every way to get one, read off what declares them.
+     * Every way one of these is made, read off the code of every class the compiler is made of.
      *
-     * <p>Constructors whatever their access, because a maker handed the parts is the thing being
-     * asked about and being private is not what settles it; methods unless they are private, since
-     * a private one is this type composing itself. Read off the declaring types and not off the
-     * compiler: a reading's constructor is its own, so nothing else can answer with one it did not
-     * get from here.
+     * <p>Read off what a method does and not off what it answers with. A method whose type says it
+     * answers with a reading may be handing back one it was given — a projection of a state that
+     * holds it, an answer that carries it along — and that is not a way in. What makes a way in is
+     * making one, which is the constructor and whatever invokes it, and that is in the code.
+     *
+     * <p>Every class, whatever it is called and wherever it is written: a maker somewhere this
+     * happened to be told to look at is a maker, and a walk told where to look answers about the
+     * places it was told about.
+     *
+     * <p>Whatever its access, because a maker handed the parts is the thing being asked about and
+     * being private is not what settles it. A construction reached through a method reference makes
+     * one as surely as one written out, so the bootstrap arguments of an {@code invokedynamic} are
+     * read too.
      */
-    private static Set<String> waysInto(Class<?> state, Class<?>... alsoDeclaring) {
+    private static Set<String> waysInto(Class<?> state) {
+        String internal = state.getName().replace('.', '/');
         Set<String> ways = new LinkedHashSet<>();
-        Set<Class<?>> declaring = new LinkedHashSet<>();
-        declaring.add(state);
-        declaring.addAll(Set.of(alsoDeclaring));
-        for (Class<?> each : declaring) {
-            // A constructor is a way in where what it makes is one of these, which takes in the
-            // class a sealed reading permits and leaves out a type that only answers with one.
-            if (state.isAssignableFrom(each)) {
-                for (Constructor<?> made : each.getDeclaredConstructors()) {
-                    ways.add(access(made) + signature(made, each.getSimpleName()));
-                }
-            }
-            for (Method m : each.getDeclaredMethods()) {
-                if (!Modifier.isPrivate(m.getModifiers()) && m.getReturnType() == state) {
-                    ways.add(access(m) + signature(m, m.getName()));
+        for (Path each : classFiles()) {
+            ClassModel owner = parse(each);
+            boolean itself = owner.thisClass().asInternalName().equals(internal);
+            for (MethodModel method : owner.methods()) {
+                boolean made = "<init>".equals(method.methodName().stringValue())
+                        ? itself : makes(method, internal);
+                if (made) {
+                    ways.add(named(owner, method));
                 }
             }
         }
         return ways;
     }
 
-    private static String access(Executable of) {
-        int modifiers = of.getModifiers();
-        if (Modifier.isPublic(modifiers)) {
-            return "public ";
+    /** One way in, as the method it is: what it is called, and what it was handed. */
+    private static String named(ClassModel owner, MethodModel method) {
+        boolean constructor = "<init>".equals(method.methodName().stringValue());
+        StringBuilder out = new StringBuilder();
+        if (method.flags().has(AccessFlag.PUBLIC)) {
+            out.append("public ");
+        } else if (method.flags().has(AccessFlag.PRIVATE)) {
+            out.append("private ");
         }
-        return Modifier.isPrivate(modifiers) ? "private " : "";
-    }
-
-    private static String signature(Executable of, String named) {
-        StringBuilder out = new StringBuilder(named).append('(');
-        for (int i = 0; i < of.getParameterTypes().length; i++) {
-            out.append(i == 0 ? "" : ", ").append(of.getParameterTypes()[i].getSimpleName());
+        out.append(constructor ? simpleNameOf(owner.thisClass().asInternalName())
+                : method.methodName().stringValue()).append('(');
+        List<ClassDesc> takes = method.methodTypeSymbol().parameterList();
+        for (int at = 0; at < takes.size(); at++) {
+            String takesOne = takes.get(at).displayName();
+            out.append(at == 0 ? "" : ", ").append(takesOne.substring(takesOne.lastIndexOf('$') + 1));
         }
         return out.append(')').toString();
+    }
+
+    private static String simpleNameOf(String internal) {
+        String named = internal.substring(internal.lastIndexOf('/') + 1);
+        return named.substring(named.lastIndexOf('$') + 1);
+    }
+
+    /** Whether the method's own code makes one: written out, or handed to something that will. */
+    private static boolean makes(MethodModel method, String internal) {
+        return method.code().map(code -> code.elementStream().anyMatch(element -> switch (element) {
+            case InvokeInstruction it -> internal.equals(it.owner().asInternalName())
+                    && "<init>".equals(it.name().stringValue());
+            case InvokeDynamicInstruction it -> it.invokedynamic().bootstrap().arguments().stream()
+                    .anyMatch(argument -> argument instanceof MethodHandleEntry handle
+                            && handle.asSymbol() instanceof DirectMethodHandleDesc said
+                            && internal.equals(said.owner().descriptorString()
+                                    .substring(1, said.owner().descriptorString().length() - 1))
+                            && "<init>".equals(said.methodName()));
+            default -> false;
+        })).orElse(false);
+    }
+
+    private static ClassModel parse(Path compiled) {
+        try {
+            return ClassFile.of().parse(Files.readAllBytes(compiled));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private static List<Path> classFiles() {
+        try (Stream<Path> found = Files.walk(classesUnder(AdmissibleValues.class))) {
+            return found.filter(p -> p.toString().endsWith(".class")).toList();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     /**
@@ -206,9 +277,12 @@ class AReadingIsWhatItsOperationsReachTest {
                         "private AdmissibleValues(Parts)",
                         "public top()",
                         "public meet(AdmissibleValues, Allowance)",
-                        "public metAll(List, Allowance)",
                         "public renamed(Function)",
-                        "public alsoOpenedAt(Set)"),
+                        "public alsoOpenedAt(Set)",
+                        // A conjunction of several, which writes down the order the rules were
+                        // read in over what meeting them one after another left.
+                        "private sayingWhatWasReadInTheOrderOf(List)",
+                        "realize(Settled, Allowance)"),
                 waysInto(AdmissibleValues.class),
                 "a way into a reading of the values that is not one of the operations it is"
                         + " composed by. If it takes the parts and hands a reading back, the"
@@ -218,30 +292,38 @@ class AReadingIsWhatItsOperationsReachTest {
     /**
      * And realization answers with the reading beside what could not be built while making it.
      *
-     * <p>The two are settled by one piece of work and are handed over together, so writing them
-     * side by side is writing down a refusal no work made — and handing over the reading alone is
-     * saying of a reading that came from somewhere that nothing was refused while it was made,
-     * which is a claim about work that was not done. So the work is what it is made from: the one
-     * way in takes what noted the shortfalls, and there is no way in that takes the reading.
+     * <p>The two are settled by one piece of work, so what makes one is handed what that work came
+     * to and cannot be handed the two halves — a reading whose positions an allowance ran out on,
+     * beside a record of work that noted nothing, is a pair no working-out produced.
      */
     @Test
     void andADescriptionIsWorkedOutByTheReadingItComesTo() {
         assertEquals(Set.of(
                         "private Realized(Parts)",
-                        "of(AdmissibleValues, Unbuilt)",
-                        "public alsoOpenedAt(Set)",
-                        "realize(Settled, Allowance)"),
-                waysInto(Realized.class, AdmissibleValues.class),
+                        "of(Outcome)",
+                        "public alsoOpenedAt(Set)"),
+                waysInto(Realized.class),
                 "realization is the one way across, and it is the reading's own: handed the"
                         + " description and the allowance it builds the sets, decides which of"
                         + " them nobody could work out, and settles the rest against what came out");
     }
 
+    /** And what realization came to is minted by realization and by nothing else. */
+    @Test
+    void andWhatAWorkingOutCameToIsMintedWhereTheWorkIsDone() {
+        assertEquals(Set.of(
+                        "private Outcome(AdmissibleValues, Unbuilt)",
+                        "realize(Settled, Allowance)"),
+                waysInto(AdmissibleValues.Outcome.class),
+                "a second way to put a reading beside a record of work is a second way to say that"
+                        + " this work made this reading, which is what handing them over as two"
+                        + " came to");
+    }
+
     /**
      * A description is reached the same way, over plans rather than sets.
      *
-     * <p>Asked of the interface and the one reading it permits together, since what a caller holds
-     * is the interface and every way to one of those answers with it.
+     * <p>Asked of the interface a caller holds, since every way to one of these answers with it.
      */
     @Test
     void everyWayToADescriptionIsSomethingReadingIt() {
@@ -255,9 +337,10 @@ class AReadingIsWhatItsOperationsReachTest {
                         "public meet(PlannedValues)",
                         "public alsoStanding(Standing)",
                         "public bothDead(PlannedValues)",
-                        "public joinLive(PlannedValues)",
-                        "public joinLiveApart(PlannedValues)"),
-                waysInto(PlannedValues.class, PlannedValues.Settled.class),
+                        // A choice, whose two ways of leaving the alternatives — merged into one
+                        // product, or held apart — are one maker told which.
+                        "private joinedLive(PlannedValues, boolean)"),
+                waysInto(PlannedValues.Settled.class),
                 "a way into a description that is not one of the operations it is composed by");
     }
 
@@ -278,12 +361,11 @@ class AReadingIsWhatItsOperationsReachTest {
     }
 
     /**
-     * And a reading is closed because it is closed, not because nothing here can see a way in.
+     * And the walk that reads the ways in can see one that is published.
      *
-     * <p>{@link OrderedInterval} is a pair of ends, which is a product with nothing to hold up
-     * between its parts: any pair of them is an interval somebody can read, and it publishes the
-     * way to write one down. Read by the same walk, it comes back with that way — so a reading
-     * reported as having none is a fact about the reading.
+     * <p>{@link OrderedInterval} publishes the way to write a pair of ends down. Read by the same
+     * walk, it comes back with that way — so a state reported as having none is a fact about the
+     * state and not about a walk that finds nothing wherever it looks.
      */
     @Test
     void aTypeThatDoesPublishItsPartsIsSeenToPublishThem() {

@@ -1,5 +1,7 @@
 package souther.compiler.values;
 
+import souther.compiler.reading.StateOfAReading;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -126,6 +128,7 @@ import java.util.Set;
  * say so; what holds the relations up is that a reading is come by doing to one what the reading
  * says was done to it.
  */
+@StateOfAReading
 public final class AdmissibleValues<A> {
 
     /**
@@ -991,6 +994,35 @@ public final class AdmissibleValues<A> {
     }
 
     /**
+     * What one working-out came to: the reading, and the record of the work that made it.
+     *
+     * <p>The two of them travel as one thing because they are settled by one piece of work, and
+     * this is what makes that true of what comes out rather than of whoever wrote the call. Handed
+     * over as two, a caller pairs a reading with a record of work that did not make it — a reading
+     * whose positions an allowance ran out on, beside a record that noted nothing — and what it
+     * says about itself is false. Nothing outside this type can make one, so a reading beside what
+     * could not be built while making it is what a working-out came to and is nothing else.
+     */
+    static final class Outcome<A> {
+
+        private final AdmissibleValues<A> values;
+        private final Unbuilt<A> work;
+
+        private Outcome(AdmissibleValues<A> values, Unbuilt<A> work) {
+            this.values = values;
+            this.work = work;
+        }
+
+        AdmissibleValues<A> values() {
+            return values;
+        }
+
+        Unbuilt<A> work() {
+            return work;
+        }
+    }
+
+    /**
      * The reading a description comes to, with everything it describes built.
      *
      * <p>The one way from a description to a reading, and it is here because this is what it makes.
@@ -1020,12 +1052,12 @@ public final class AdmissibleValues<A> {
         of.guaranteed().forEach((block, plan) -> promising.merge(
                 heldAsOne.blockOf(block.members().iterator().next()), plan,
                 (one, other) -> AdmittedPlan.meeting(List.of(one, other))));
-        return Realized.of(new AdmissibleValues<>(new Parts<>(held, perPosition,
+        return Realized.of(new Outcome<>(new AdmissibleValues<>(new Parts<>(held, perPosition,
                 gaveUp.beside(of.standing()),
                 promised(promising, by), promised(of.defaultGuaranteed(), by.elsewhere()),
                 of.guaranteedTogether(),
                 mapped(of.tangled(), heldAsOne),
-                mapped(both(of.widened(), gaveUp.names()), heldAsOne))), gaveUp);
+                mapped(both(of.widened(), gaveUp.names()), heldAsOne))), gaveUp));
     }
 
     /**

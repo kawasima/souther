@@ -38,6 +38,7 @@ public sealed interface PlannedValues<A> {
      * relations to each other that no part states on its own, so they are this one's own and a
      * caller arrives at a description by writing one.
      */
+    @souther.compiler.reading.StateOfAReading
     final class Settled<A> implements PlannedValues<A> {
 
         /** The parts, together — see {@link AdmissibleValues}, whose reasoning this is. */

@@ -42,6 +42,7 @@ import java.util.Set;
  * combination nothing read. What the parts are is this one's own; a caller reaches a state by doing
  * to a reading what the state says was done to it.
  */
+@souther.compiler.reading.StateOfAReading
 public final class OrderedIntervals<A> {
 
     /**

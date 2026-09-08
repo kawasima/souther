@@ -32,6 +32,7 @@ import java.util.Set;
  * reaching one pays into it, so the place is what the spending was arranged by and is not what any
  * of it is about.
  */
+@souther.compiler.reading.StateOfAReading
 public final class Realized<A> {
 
     /** The parts, together — see {@link AdmissibleValues.Parts}, whose reasoning this is. */
@@ -57,16 +58,20 @@ public final class Realized<A> {
     }
 
     /**
-     * A reading beside the work that made it.
+     * What a working-out came to, as the two things it settled.
      *
-     * <p>Handed the record of the work rather than the two lists it kept, which is what makes the
-     * sentence above true of what comes out: the shortfalls are the ones that piece of work noted,
-     * and a caller cannot pair a reading with refusals nothing refused. Read off it here, since
-     * which of the two a refusal is owed to is settled where it was noted.
+     * <p>Handed one thing and not two. The reading and the record of the work are settled together
+     * and only realization can put them together ({@link AdmissibleValues.Outcome}), so what comes
+     * back holds shortfalls that piece of work noted — handed them separately, a caller pairs a
+     * reading whose positions an allowance ran out on with a record that noted nothing, and the
+     * sentence this type says about itself is false of it.
+     *
+     * <p>Which of the two a refusal is owed to is read off the record here, since that is settled
+     * where it was noted.
      */
-    static <A> Realized<A> of(AdmissibleValues<A> values, Unbuilt<A> gaveUp) {
-        return new Realized<>(
-                new Parts<>(values, gaveUp.aboutARule(), gaveUp.aboutTheAnswer()));
+    static <A> Realized<A> of(AdmissibleValues.Outcome<A> outcome) {
+        return new Realized<>(new Parts<>(outcome.values(), outcome.work().aboutARule(),
+                outcome.work().aboutTheAnswer()));
     }
 
     /** What the reading leaves, every position it could not work out widened to every value. */
