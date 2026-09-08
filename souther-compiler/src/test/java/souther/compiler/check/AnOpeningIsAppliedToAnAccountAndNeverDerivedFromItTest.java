@@ -163,6 +163,38 @@ class AnOpeningIsAppliedToAnAccountAndNeverDerivedFromItTest {
         assertEquals(Set.of(), choice.unbuiltAt(Set.of(CONSTRAINED)).read());
     }
 
+    /**
+     * A branch standing beside a dead one keeps what a choice inside it left open.
+     *
+     * <p>The dead branch is not what opened it and does not take it back: what a choice below this
+     * one was settled to have opened is still open, and the branch that stands is the one whose
+     * account outranks. Measured over the models this repository holds, nothing reaches this — so
+     * what says it is this and there is nothing else to notice if it stops.
+     */
+    @Test
+    void aBranchBesideADeadOneKeepsWhatAChoiceInsideItLeftOpen() {
+        Adoption<String, ReadingLanguage.Values> choice =
+                branch(true).either(opening(CONSTRAINED), branch(true));
+
+        assertEquals(Set.of(CONSTRAINED), choice.beside(branch(false)).opened());
+    }
+
+    /**
+     * And a branch nobody can be in has nothing left open, however much stood open in it.
+     *
+     * <p>Nothing satisfies it, so what it said narrows no value and there is no constraint left for
+     * an alternative to have widened. The positions it named are settled, which is an answer and
+     * not a gap — and an opening kept beside that answer would say a constraint stood there.
+     */
+    @Test
+    void aBranchNobodyCanBeInHasNothingLeftOpen() {
+        Adoption<String, ReadingLanguage.Values> choice =
+                branch(true).either(opening(CONSTRAINED), branch(true));
+
+        assertEquals(Set.of(), choice.inADeadBranch().opened());
+        assertEquals(Set.of(), choice.bothDead(branch(false)).opened());
+    }
+
     /** The positions the account reached: what it constrained, and what it could not manage. */
     private static Set<String> reached(Adoption<String, ReadingLanguage.Values> said) {
         Set<String> out = new java.util.LinkedHashSet<>(said.read());

@@ -330,9 +330,10 @@ sealed interface StatedByClauses {
                               Opening<FactSubject, ReadingLanguage.Values> byValues,
                               Opening<FactSubject, ReadingLanguage.Order> byOrder) {
 
-        // Copied on the way in, as everything a reading publishes is. What is here is handed to the
-        // positions and kept in what they came to, so a maker that went on writing to the set it
-        // built one from would be changing what an answer already given says.
+        // Copied on the way in, as everything a reading publishes is: what is here is handed to
+        // the positions and kept in what they came to, so a maker that went on writing to the set
+        // it built one from would be changing what an answer already given says. The openings do
+        // it where they are made, which is why only the two sets are copied here.
         public AlternativeOpening {
             if (choice == null) {
                 throw new IllegalArgumentException("an opening is some choice's");

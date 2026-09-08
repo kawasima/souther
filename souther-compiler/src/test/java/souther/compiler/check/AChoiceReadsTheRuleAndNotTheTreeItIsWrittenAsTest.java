@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * alternative, and that is so under either grouping. Where the alternatives do narrow something the
  * opening differs from one grouping to the next and is not a caller's to write down; that the two
  * groupings still come to one account is a fact about the whole walk and is held over sources
- * ({@code AChoiceComposesTheSameHoweverItsAlternativesAreBracketedTest}).
+ * ({@code WhetherAConstraintStillBindsIsReadOffWhatTheAlternativesLeaveTest}).
  */
 class AChoiceReadsTheRuleAndNotTheTreeItIsWrittenAsTest {
 

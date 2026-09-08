@@ -252,6 +252,9 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
                 "and the position hears about it, the width there being the unread branch's");
         assertEquals(java.util.Set.of(), opened.byTheLeftGoingUnread(),
                 "the left alternative was read, so nothing is open by its going unread");
+        assertEquals(java.util.Set.of(), opened.byOrder().positions(),
+                "and the reading of order read both alternatives, so the width it could not"
+                        + " account for is not something an unread alternative left open");
     }
 
     /**
@@ -308,11 +311,17 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
                 Opening.nothing());
     }
 
-    /** A choice the values could not show is as wide as it is without its right alternative. */
+    /**
+     * A choice neither reading could show is as wide as it is without its right alternative.
+     *
+     * <p>Both languages, and the same position in each. What silences the ordered half in the tests
+     * below is that its account read every alternative, and a width of nothing there would silence
+     * it whatever the accounts said.
+     */
     private static Settlement.WidthDependency widthRestingOnTheRight() {
         return new Settlement.WidthDependency(
                 new Settlement.Width<>(java.util.Set.of(), java.util.Set.of(CONSTRAINED)),
-                Settlement.Width.none());
+                new Settlement.Width<>(java.util.Set.of(), java.util.Set.of(CONSTRAINED)));
     }
 
     /** One choice somebody wrote, told from every other by being this one. */
