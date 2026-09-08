@@ -25,10 +25,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AChoiceReadsTheRuleAndNotTheTreeItIsWrittenAsTest {
 
     /** A branch nothing could read, about `x`. */
-    private static final Adoption<String> UNREAD = Adoption.at(Set.of("x"), Set.of(), true);
+    private static final Adoption<String, ReadingLanguage.Values> UNREAD =
+            Adoption.at(Set.of("x"), Set.of(), true);
 
     /** A branch read whole, about `y`. */
-    private static final Adoption<String> READ = Adoption.at(Set.of("y"), Set.of("y"), false);
+    private static final Adoption<String, ReadingLanguage.Values> READ =
+            Adoption.at(Set.of("y"), Set.of("y"), false);
 
     /**
      * One alternative and whether anything satisfies it, composed the way
@@ -38,7 +40,7 @@ class AChoiceReadsTheRuleAndNotTheTreeItIsWrittenAsTest {
      * carried beside here. A choice is dead where every alternative is, which is the rule the states
      * are composed by.
      */
-    private record Branch(Adoption<String> adoption, boolean dead) {
+    private record Branch(Adoption<String, ReadingLanguage.Values> adoption, boolean dead) {
 
         Branch or(Branch other) {
             if (dead && other.dead) {

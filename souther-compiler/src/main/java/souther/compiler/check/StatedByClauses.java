@@ -158,7 +158,8 @@ sealed interface StatedByClauses {
      *                       can be in have both, together with whatever the choice between them
      *                       raised
      */
-    record Part(Adoption<FactSubject> byValues, Adoption<FactSubject> byOrder,
+    record Part(Adoption<FactSubject, ReadingLanguage.Values> byValues,
+                Adoption<FactSubject, ReadingLanguage.Order> byOrder,
                 Map<FactSubject, StringRestriction> aboutStrings,
                 Set<AdmissibleReading.AskedAt> asked,
                 Set<RuleShortfall> ruleShortfalls) {
@@ -356,7 +357,8 @@ sealed interface StatedByClauses {
      * stand anywhere, so a branch nothing read leaves the ranges beside it saying what they said.
      */
     static AlternativeOpening opens(ChoiceId choice, Settlement.WidthDependency width,
-                                    Adoption<FactSubject> one, Adoption<FactSubject> other) {
+                                    Adoption<FactSubject, ReadingLanguage.Values> one,
+                                    Adoption<FactSubject, ReadingLanguage.Values> other) {
         Set<FactSubject> opened = new LinkedHashSet<>();
         if (one.hasUnreadPart()) {
             opened.addAll(width.mayRestOnLeft());
@@ -372,7 +374,7 @@ sealed interface StatedByClauses {
 
     /** The positions a reading reached and did not merely settle: what it constrained, and what it
      *  was about and could not manage. */
-    private static Set<FactSubject> reachedBy(Adoption<FactSubject> of) {
+    private static Set<FactSubject> reachedBy(Adoption<FactSubject, ReadingLanguage.Values> of) {
         Set<FactSubject> out = new LinkedHashSet<>(of.read());
         out.addAll(of.missed());
         return out;
@@ -1286,8 +1288,8 @@ sealed interface StatedByClauses {
             Set<FactSubject> opened = new LinkedHashSet<>();
             Map<Core, PartAccount> said = new IdentityHashMap<>();
             Map<K, Set<FactSubject>> narrowed = new LinkedHashMap<>();
-            Adoption<FactSubject> byValues = Adoption.nothing();
-            Adoption<FactSubject> byOrder = Adoption.nothing();
+            Adoption<FactSubject, ReadingLanguage.Values> byValues = Adoption.nothing();
+            Adoption<FactSubject, ReadingLanguage.Order> byOrder = Adoption.nothing();
             // What the answer has left, before an account is made out of it. Every account below
             // reads what was built and builds nothing, so this is what it costs — and an account
             // that spent would be taking the budget the answer is bounded by to say which rule a
@@ -1484,7 +1486,8 @@ sealed interface StatedByClauses {
      * read — so that the plans never reach a reader and the position pays for its own answer in one
      * place.
      */
-    record PartAccount(Adoption<FactSubject> byValues, Adoption<FactSubject> byOrder,
+    record PartAccount(Adoption<FactSubject, ReadingLanguage.Values> byValues,
+                       Adoption<FactSubject, ReadingLanguage.Order> byOrder,
                        Set<RuleShortfall> aboutARule,
                        Map<FactSubject, StringRestriction> aboutStrings) {}
 

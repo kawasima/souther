@@ -46,6 +46,10 @@ import java.util.Set;
  *
  * @param <A>           what a position is called here. A set algebra and nothing else, so the
  *                      readings' own name for a position is the caller's business
+ * @param <L>           which reading this is the account of. Nothing here reads it: what it is for
+ *                      is that an answer worked out about one reading cannot be applied to the
+ *                      other, which is otherwise the same Java type and composes without a
+ *                      complaint ({@link ReadingLanguage})
  * @param read          the positions a part of this clause put a constraint on. Open to being
  *                      widened: an alternative nothing could read is one a value can satisfy
  *                      instead, and what this part said of the position then binds nothing
@@ -62,7 +66,8 @@ import java.util.Set;
  *                      about is not carried: a branch nothing could read widens the positions the
  *                      other branch spoke about whether or not it names them
  */
-record Adoption<A>(Set<A> read, Set<A> settled, Set<A> missed, boolean hasUnreadPart) {
+record Adoption<A, L extends ReadingLanguage>(Set<A> read, Set<A> settled, Set<A> missed,
+                                              boolean hasUnreadPart) {
 
     Adoption {
         read = Set.copyOf(read);
@@ -71,7 +76,7 @@ record Adoption<A>(Set<A> read, Set<A> settled, Set<A> missed, boolean hasUnread
     }
 
     /** What a clause this reading has no word for comes to. */
-    static <A> Adoption<A> nothing() {
+    static <A, L extends ReadingLanguage> Adoption<A, L> nothing() {
         return new Adoption<>(Set.of(), Set.of(), Set.of(), false);
     }
 
@@ -84,7 +89,7 @@ record Adoption<A>(Set<A> read, Set<A> settled, Set<A> missed, boolean hasUnread
      * and not a gap. The same rule {@link #bothDead} states for a whole choice, said of one part of
      * one branch of it.
      */
-    Adoption<A> inADeadBranch() {
+    Adoption<A, L> inADeadBranch() {
         return new Adoption<>(Set.of(), mentions(), Set.of(), false);
     }
 
@@ -102,7 +107,7 @@ record Adoption<A>(Set<A> read, Set<A> settled, Set<A> missed, boolean hasUnread
      * has to be told nothing did, because what stands there is what stands at a position no reading
      * reached: everything.
      */
-    Adoption<A> unbuiltAt(Set<A> positions) {
+    Adoption<A, L> unbuiltAt(Set<A> positions) {
         if (positions.isEmpty() || mentions().stream().noneMatch(positions::contains)) {
             return this;
         }
@@ -127,7 +132,8 @@ record Adoption<A>(Set<A> read, Set<A> settled, Set<A> missed, boolean hasUnread
      * though a reading that has no word for it did give up, which is what each of them says for
      * itself.
      */
-    static <A> Adoption<A> at(Set<A> mentions, Set<A> produced, boolean failed) {
+    static <A, L extends ReadingLanguage> Adoption<A, L> at(Set<A> mentions, Set<A> produced,
+                                                            boolean failed) {
         Set<A> missed = new LinkedHashSet<>(mentions);
         missed.removeAll(produced);
         Set<A> took = new LinkedHashSet<>(mentions);
@@ -141,7 +147,7 @@ record Adoption<A>(Set<A> read, Set<A> settled, Set<A> missed, boolean hasUnread
      * <p>Nothing spoils anything: a part nothing read leaves the parts beside it saying what they
      * said, since all of them hold.
      */
-    Adoption<A> both(Adoption<A> other) {
+    Adoption<A, L> both(Adoption<A, L> other) {
         return new Adoption<>(union(read, other.read), union(settled, other.settled),
                 union(missed, other.missed), hasUnreadPart || other.hasUnreadPart);
     }
@@ -154,7 +160,7 @@ record Adoption<A>(Set<A> read, Set<A> settled, Set<A> missed, boolean hasUnread
      * of what the branches managed, {@code x == 7 || f(y)} said {@code x} had been read — and what
      * the clause leaves {@code x} is exactly what nothing here can say.
      */
-    Adoption<A> either(Adoption<A> other) {
+    Adoption<A, L> either(Adoption<A, L> other) {
         Set<A> lost = union(missed, other.missed);
         // What the branch beside it put a constraint on, and not what it found the choice imposes
         // nothing on: an alternative nothing could read widens a constraint, and there is nothing
@@ -208,7 +214,7 @@ record Adoption<A>(Set<A> read, Set<A> settled, Set<A> missed, boolean hasUnread
      * <p>What this branch missed still wins. {@code (s < "") || f(x)} leaves {@code x} open however
      * dead the first branch is, so the surviving branch's account is the one that outranks.
      */
-    Adoption<A> beside(Adoption<A> dead) {
+    Adoption<A, L> beside(Adoption<A, L> dead) {
         return new Adoption<>(read, union(settled, dead.mentions()), missed, hasUnreadPart);
     }
 
@@ -218,7 +224,7 @@ record Adoption<A>(Set<A> read, Set<A> settled, Set<A> missed, boolean hasUnread
      * <p>Then the choice admits nothing, which settles every position either of them named: the
      * values there are exactly none. No branch is left to have missed anything.
      */
-    Adoption<A> bothDead(Adoption<A> other) {
+    Adoption<A, L> bothDead(Adoption<A, L> other) {
         return new Adoption<>(Set.of(), union(mentions(), other.mentions()), Set.of(), false);
     }
 

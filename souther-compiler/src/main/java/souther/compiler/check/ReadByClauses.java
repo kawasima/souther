@@ -33,7 +33,8 @@ import java.util.Set;
  * it names), and there is nothing here that turns a place's reasons back into an account of a rule.
  */
 record ReadByClauses(Confinement.Worked<FactSubject> confinement,
-                     Adoption<FactSubject> byValues, Adoption<FactSubject> byOrder,
+                     Adoption<FactSubject, ReadingLanguage.Values> byValues,
+                     Adoption<FactSubject, ReadingLanguage.Order> byOrder,
                      java.util.Map<souther.compiler.core.Core, OfAPart> parts) {
 
     /** What every position of this reading may hold. */
@@ -95,7 +96,8 @@ record ReadByClauses(Confinement.Worked<FactSubject> confinement,
      *                     the machine for a rule under an allowance of its own — a second answer to
      *                     what the model admits at a position, made by whoever asked second
      */
-    record OfAPart(Adoption<FactSubject> byValues, Adoption<FactSubject> byOrder,
+    record OfAPart(Adoption<FactSubject, ReadingLanguage.Values> byValues,
+                   Adoption<FactSubject, ReadingLanguage.Order> byOrder,
                    Set<RuleShortfall> aboutARule,
                    java.util.Map<FactSubject, AdmittedStrings> aboutStrings) {
 
@@ -170,8 +172,8 @@ record ReadByClauses(Confinement.Worked<FactSubject> confinement,
         return adopted(byValues, byOrder);
     }
 
-    static Set<FactSubject> adopted(Adoption<FactSubject> byValues,
-                                    Adoption<FactSubject> byOrder) {
+    static Set<FactSubject> adopted(Adoption<FactSubject, ReadingLanguage.Values> byValues,
+                                    Adoption<FactSubject, ReadingLanguage.Order> byOrder) {
         Set<FactSubject> out = new LinkedHashSet<>();
         // Everything either account is about, and not what it put a constraint on: a position a
         // dead branch settled is one the reading answered for and put no constraint on, which is
