@@ -5,6 +5,7 @@ import souther.compiler.diag.QuotedFrom;
 import souther.compiler.diag.Region;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.source.SourceId;
+import souther.compiler.types.SourceConstructOrigin;
 
 
 import java.util.LinkedHashMap;
@@ -62,12 +63,32 @@ public final class AuthoredSites {
         this.byExtent = Map.copyOf(byExtent);
     }
 
-    /** The occurrences of {@code module}, or why they could not be told apart. */
-    public static Census of(Hir.Module module) {
+    /**
+     * What one walk of a module's source found: its occurrences, and where each construct it wrote
+     * stands.
+     *
+     * <p>Two answers and one walk, which is the whole of why they are made together. A module wrote
+     * what it wrote once, and two walks of it would be two answers to that — agreeing until the day
+     * one of them was taught something the other was not.
+     *
+     * <p>The forks are answered whether or not the occurrences could be told apart. Two expressions
+     * written over one stretch of source is a fact about extents; which fork is which is settled by
+     * an identity the extents play no part in.
+     */
+    public record Walked(Census census, WrittenForks forks) {}
+
+    /** {@code module} walked, once. */
+    public static Walked walk(Hir.Module module) {
         Walk walk = new Walk();
         walk.module(module);
-        return walk.refusal != null ? walk.refusal
-                : new Census.Identified(new AuthoredSites(walk.byExtent));
+        return new Walked(walk.refusal != null ? walk.refusal
+                : new Census.Identified(new AuthoredSites(walk.byExtent)),
+                new WrittenForks(walk.byOrigin));
+    }
+
+    /** The occurrences of {@code module}, or why they could not be told apart. */
+    public static Census of(Hir.Module module) {
+        return walk(module).census();
     }
 
     /** How many occurrences were found. What a measurement reads, and what says a walk reached a
@@ -155,14 +176,34 @@ public final class AuthoredSites {
     /**
      * The walk, and what it refuses.
      *
-     * <p>It stops at the first refusal rather than gathering them: what a second one would say is
-     * that the same rule is broken again, and the revision is already not one an occurrence can be
-     * named in.
+     * <p>It keeps the first refusal rather than gathering them: what a second one would say is that
+     * the same rule is broken again, and the revision is already not one an occurrence can be named
+     * in. It goes on walking all the same, because the forks under a stretch of source two
+     * expressions were written over are still forks the module wrote.
      */
     private static final class Walk {
 
         private final Map<Region, Hir.Expr> byExtent = new LinkedHashMap<>();
+        /** Where each fork this module wrote stands, under the identity a copy cannot change.
+         *  Filled beside {@link #byExtent} and never instead of it: they answer two questions about
+         *  one walk, and a second walk would be a second answer to the first. */
+        private final Map<SourceConstructOrigin, SourcePos> byOrigin = new LinkedHashMap<>();
         private Census refusal;
+
+        /**
+         * Files where a fork the source wrote is.
+         *
+         * <p>Called beside {@code take} by the kinds a body takes an arm of, so that a kind given
+         * arms later is a kind whose neighbours here are visibly doing this. A kind that carries an
+         * origin and is no fork is left out and says so where it is walked. The first stands: a
+         * fork is written once, and a tree holding a second node under one origin is a copy, which
+         * the module that wrote it does not have.
+         */
+        private void wrote(SourceConstructOrigin origin, SourcePos at) {
+            if (origin != null && origin.isWritten() && at != null) {
+                byOrigin.putIfAbsent(origin, at);
+            }
+        }
 
         void module(Hir.Module module) {
             if (module == null) {
@@ -266,7 +307,7 @@ public final class AuthoredSites {
          * not rest on that.
          */
         private void expr(Hir.Expr e) {
-            if (e == null || refusal != null) {
+            if (e == null) {
                 return;
             }
             switch (e) {
@@ -301,6 +342,7 @@ public final class AuthoredSites {
                 }
                 case Hir.Match match -> {
                     take(e);
+                    wrote(match.origin(), match.pos());
                     expr(match.scrutinee());
                     for (Hir.Case one : match.cases()) {
                         expr(one.body());
@@ -308,18 +350,22 @@ public final class AuthoredSites {
                 }
                 case Hir.If branch -> {
                     take(e);
+                    wrote(branch.origin(), branch.pos());
                     expr(branch.cond());
                     expr(branch.then());
                     expr(branch.els());
                 }
                 case Hir.IfConstructed attempt -> {
                     take(e);
+                    wrote(attempt.origin(), attempt.pos());
                     expr(attempt.construct());
                     expr(attempt.then());
                     for (Hir.ElseArm arm : attempt.els()) {
                         expr(arm.body());
                     }
                 }
+                // A collection literal carries an origin and is no fork: nothing takes an arm of
+                // one, so there is no arm of it for a report to be about.
                 case Hir.ListLit list -> {
                     take(e);
                     each(list.elements());
@@ -338,6 +384,13 @@ public final class AuthoredSites {
                 }
                 case Hir.ListComp comp -> {
                     take(e);
+                    // The comprehension itself is not a fork; each of its guards lowers to one, and
+                    // where that fork is written is where the guard is. Asked of the comprehension,
+                    // which is what numbers them, so this and the lowering cannot come to number
+                    // the guards differently.
+                    for (int guard = 0; guard < comp.guards().size(); guard++) {
+                        wrote(comp.forkOfGuard(guard), comp.guards().get(guard).pos());
+                    }
                     expr(comp.element());
                     each(comp.guards());
                 }
@@ -370,6 +423,12 @@ public final class AuthoredSites {
          * a stretch of one text, and one that is not says nothing about how far anything runs.
          */
         private void take(Hir.Expr written) {
+            // The first refusal is the one reported, and the walk goes on: what a second would say
+            // is that the same rule is broken again, while the forks under it are still forks this
+            // module wrote and are still to be found.
+            if (refusal != null) {
+                return;
+            }
             Region extent = written.region();
             if (extent == null) {
                 return;

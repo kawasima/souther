@@ -157,7 +157,7 @@ class AnArmsSiteAndItsPlaceAreOneValueTest {
                 .map(ControlPointId.ArmOccurrence.class::cast)
                 .findFirst().orElseThrow();
         ControlPointId.ArmOccurrence never = new ControlPointId.ArmOccurrence(
-                Integer.MAX_VALUE, Optional.empty(), any.at(), any.origin());
+                Integer.MAX_VALUE, Optional.empty(), any.anchor(), any.origin());
 
         assertInstanceOf(Reachability.Unsettled.class, answers.at(never),
                 "a place nothing was filed under is one the walk did not reach");

@@ -154,7 +154,7 @@ class AFindingCarriesWhatTheMeasureThatFoundItWentWithoutTest {
         // finding means and nothing about the one line that decides which measurement each finding
         // is given — which is the line that was wrong.
         List<Adequacy.Finding> found = new ArrayList<>();
-        Adequacy.Findings.signatureFindings("sort", somewhere(), signature, found);
+        Adequacy.Findings.signatureFindings("sort", signature, found);
         assertFalse(found.isEmpty(), "the producer says something about these cases");
 
         Adequacy.AdequacyBar held = Adequacy.AdequacyBar.SIMPLIFIED_DOMAIN;
@@ -204,8 +204,4 @@ class AFindingCarriesWhatTheMeasureThatFoundItWentWithoutTest {
         return TypeSymbols.declared(new TypeKey("souther.decimal", name));
     }
 
-    /** Somewhere for a finding to be about, which every finding needs and this one does not read. */
-    private static souther.compiler.diag.Citation somewhere() {
-        return findings("weigh").get(0).at();
-    }
 }

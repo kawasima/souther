@@ -171,12 +171,6 @@ public final class CoverageSites {
         /** What this way through the construct means, in the source's terms. */
         SourceOutcome outcome();
 
-        /** Where the arm is written, as a report may say it. A {@link Citation} and not a place,
-         *  because an arm of a body spliced in from out of sight is at a call in the caller's file
-         *  and is not written there — a report handed the coordinate said it was, in both of its
-         *  renderings. */
-        Citation at();
-
         /** Where a run through this is recorded, of whichever family it was issued to. What
          *  identifies it in this run — the probe number, and what a hit set holds. One per
          *  occurrence: the emitter lights this one, and the reachability analysis proves things
@@ -240,10 +234,10 @@ public final class CoverageSites {
             return occurrence.probe().orElseThrow();
         }
 
-        /** Where the fork this is an arm of is, as the occurrence has it. */
-        @Override
-        public Citation at() {
-            return occurrence.at();
+        /** What a report about this arm points at, as the occurrence has it — which of the two
+         *  places, and not which place. */
+        public ArmReportAnchor anchor() {
+            return occurrence.anchor();
         }
     }
 
@@ -613,7 +607,7 @@ public final class CoverageSites {
         // so that what gets a number and what a line is drawn on are the same collection read twice
         // rather than two descents that happen to agree.
         ComparisonCatalog comparisons = ComparisonCatalog.of(of);
-        Walk walk = new Walk(comparisons, decisions, supplied);
+        Walk walk = new Walk(of.module(), comparisons, decisions, supplied);
         Map<String, ExecutableIdentity> executable = new LinkedHashMap<>();
         for (Map.Entry<String, Core> body : of.bodies().entrySet()) {
             walk.behavior(body.getKey(), body.getValue());
@@ -693,7 +687,7 @@ public final class CoverageSites {
             DraftArm draft, SiteNumbering numbering,
             IdentityHashMap<DraftArm, ControlPointId.ArmOccurrence> issued) {
         return issued.computeIfAbsent(draft, each -> new ControlPointId.ArmOccurrence(
-                each.controlId(), armAt(numbering, each.raw()), each.at(), each.origin()));
+                each.controlId(), armAt(numbering, each.raw()), each.anchor(), each.origin()));
     }
 
     /**
@@ -733,7 +727,7 @@ public final class CoverageSites {
 
     /** One arm as the walk has it: the control point it is, and the number its place was given
      *  where the emitter records one. */
-    private record DraftArm(int controlId, java.util.OptionalInt raw, Citation at,
+    private record DraftArm(int controlId, java.util.OptionalInt raw, ArmReportAnchor anchor,
                             SourceConstructOrigin origin) {
 
         boolean isMeasured() {
@@ -791,7 +785,14 @@ public final class CoverageSites {
         private final DecisionSources decisions;
         private final SuppliedRules supplied;
 
-        Walk(ComparisonCatalog comparisons, DecisionSources decisions, SuppliedRules supplied) {
+        /** Whose plan this is. Carried because an arm of a fork nobody here wrote is reported at
+         *  the place this compilation reached it, and a number counted within one plan addresses
+         *  nothing without the module it was counted in. */
+        private final String module;
+
+        Walk(String module, ComparisonCatalog comparisons, DecisionSources decisions,
+             SuppliedRules supplied) {
+            this.module = module;
             this.comparisons = comparisons;
             this.decisions = decisions;
             this.supplied = supplied;
@@ -829,12 +830,13 @@ public final class CoverageSites {
             // question and only the probe turns on it — an arm nothing could record is still an arm,
             // and the readings that judge one need to be able to name it.
             //
-            // The fork's own coordinate, as a site takes it: an arm's body is what lowering
-            // rewrites and carries whatever position it was built from, so quoting it sends an
-            // author somewhere else in the file.
-            Citation at = Citation.of(owner.pos());
+            // What a report about this arm points at, settled here for the reason
+            // ArmReportAnchor gives. The fork's own coordinate is what says which of the two it
+            // is — an arm's body is what lowering rewrites and carries whatever position it was
+            // built from, so it is the fork that is asked and not the arm.
+            ArmReportAnchor anchor = anchorOf(owner, origin);
             if (!(reachable && answers(arm) && answering.mayEnter(owner, part))) {
-                return new DraftArm(controls++, java.util.OptionalInt.empty(), at, origin);
+                return new DraftArm(controls++, java.util.OptionalInt.empty(), anchor, origin);
             }
             // Asked before the place is numbered, so that a tree nothing wrote is refused for being
             // that rather than for whatever the numbering noticed about it first.
@@ -842,13 +844,28 @@ public final class CoverageSites {
             DraftArm draft = new DraftArm(controls++,
                     java.util.OptionalInt.of(
                             numbering.number(new SiteAddress.Arm(places.of(owner), part))),
-                    at, origin);
+                    anchor, origin);
             // The site of the arm, holding the arm rather than the number they share. One act, so
             // there is no moment at which a site exists and which place it is about is still to be
             // worked out.
             sites.add(new DraftArmSite(draft, behavior, outcome, ordinal++,
                     new Obligation(behavior, origin, part, decided)));
             return draft;
+        }
+
+        /**
+         * What a report about an arm of {@code fork} points at.
+         *
+         * <p>Asked of the position and answered without keeping it. Whether the code is written
+         * somewhere a reader holds is what a position already says, and it is the one question
+         * about it that survives the code moving: a fork written in a file this compilation holds
+         * goes on being one wherever in the file it ends up. So this is the last thing read off the
+         * position, and what comes out says which of the two questions a report asks later.
+         */
+        private ArmReportAnchor anchorOf(Core fork, SourceConstructOrigin origin) {
+            return Citation.of(fork.pos()) instanceof Citation.Written && origin.isWritten()
+                    ? new ArmReportAnchor.WhereItIsWritten(origin)
+                    : new ArmReportAnchor.WhereItWasReached(module, controls);
         }
 
         /**

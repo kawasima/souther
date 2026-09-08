@@ -141,7 +141,8 @@ class AProofAboutAMatchArmSaysNothingAboutWhatIsAnsweredWithTest {
         assertTrue(refused.probe().isPresent(), "the compiler numbered the arm it proved dead");
 
         ControlPointId.ArmOccurrence silent = new ControlPointId.ArmOccurrence(
-                refused.controlId(), java.util.Optional.empty(), refused.at(), refused.origin());
+                refused.controlId(), java.util.Optional.empty(), refused.anchor(),
+                refused.origin());
 
         assertEquals(ProducedCases.of(body, checked.plan(), arrives, answersWith),
                 ProducedCases.of(body, Plans.withArmRenamed(checked.plan(), refused, silent),
