@@ -92,12 +92,12 @@ class TheRelationAnEditRestatesIsOneACallerReadsTest {
     @Test
     void restatingItChangesWhatThatCallerMayAssume() {
         Corpus crm = Corpus.load("crm");
-        List<String> restated = new ArrayList<>();
-        for (String source : crm.sources()) {
-            restated.add(Incremental.restated(source, 0));
-        }
+        List<String> restated = restated(crm, 0);
         assertNotEquals(crm.sources(), restated,
                 "the relation edit left the corpus as it found it");
+        assertEquals(crm.sources(), restated(crm, 1),
+                "two rounds of the relation edit write one text, so the second is no edit and the"
+                        + " round after it times the floor");
 
         Compilation before = compiled(crm.sources());
         Compilation after = compiled(restated);
@@ -109,6 +109,42 @@ class TheRelationAnEditRestatesIsOneACallerReadsTest {
         assertNotNull(was, () -> STATING + " states nothing before the edit");
         assertNotEquals(was, now, "restating the rule left what a caller may assume unchanged, so"
                 + " the store has nothing to re-establish and the round times the floor");
+    }
+
+    /**
+     * And changes nothing else this corpus is read for.
+     *
+     * <p>A rule is read by more than the caller. What it compares draws a line on the values it
+     * compares (spec §a-clause-draws-a-line-on-what-it-compares-an-input-against), so a rule stating
+     * a relation the clause did not state moves the adequacy reading as well, and the round would be
+     * timing an edit to two readings under a name that says one. Which is what the first writing of
+     * this edit did: it added a bound on the parameter, the way an author tightening a rule would,
+     * and the adequacy answer for the module came back different.
+     *
+     * <p>Two readings, and neither is every reading there is. What they are is the two a rule is
+     * known to be read by beside the caller — what the compiler says about the module, and how well
+     * the module's rows cover it — so an edit that moved a third would go on being timed here. The
+     * claim is that these two do not move, not that nothing else can.
+     */
+    @Test
+    void restatingItLeavesTheOtherReadingsOfTheCorpusWhereTheyWere() {
+        Corpus crm = Corpus.load("crm");
+        Compilation before = compiled(crm.sources());
+        Compilation after = compiled(restated(crm, 0));
+
+        assertEquals(diagnosticsOf(before), diagnosticsOf(after),
+                "restating the rule moved what the compiler says about the corpus");
+        assertEquals(before.adequacy(MODULE), after.adequacy(MODULE),
+                "restating the rule moved how well the module's rows are said to cover it, so the"
+                        + " round times an edit to that reading as well as to the caller's");
+    }
+
+    private static List<String> restated(Corpus corpus, int round) {
+        List<String> out = new ArrayList<>();
+        for (String source : corpus.sources()) {
+            out.add(Incremental.restated(source, round));
+        }
+        return out;
     }
 
     private static Compilation compiled(List<String> sources) {
@@ -127,5 +163,18 @@ class TheRelationAnEditRestatesIsOneACallerReadsTest {
             }
         }
         return errors;
+    }
+
+    /** Every diagnostic, by what it says and where — the primary is read so that a diagnostic
+     *  moving to another line is a difference and not a coincidence of counts. */
+    private static List<String> diagnosticsOf(Compilation compilation) {
+        List<String> said = new ArrayList<>();
+        for (List<Diagnostic> found : Located.diagnosticsOf(compilation.diagnostics()).values()) {
+            for (Diagnostic diagnostic : found) {
+                said.add(diagnostic.severity() + " " + diagnostic.code() + " at "
+                        + diagnostic.primary());
+            }
+        }
+        return said;
     }
 }

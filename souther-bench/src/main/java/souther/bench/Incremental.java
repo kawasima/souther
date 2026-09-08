@@ -29,10 +29,11 @@ import java.util.Set;
  * <p>Restating a relation is a fifth, and it is the one the other four cannot stand in for. Adding a
  * definition gives the module something it did not declare, so what is re-asked is everything that
  * reads the declaration list. Rewriting a rule of an {@code ensures} leaves the declaration where it
- * was and changes one thing: what a caller of that behavior may assume. The bodies that call it have
- * to be checked again and nothing else has learnt anything, so this is where an answer held per
- * behavior rather than per module would show, and where losing one would show as well. The two edits
- * are the same keystroke to an author, and what separates them is only visible if both are timed.
+ * was and changes what a caller of that behavior may assume, while what the compiler says about the
+ * corpus and how well its rows cover it come back as they were. So the bodies that call it are what
+ * has anything to learn, and this is where an answer held per behavior rather than per module would
+ * show, and where losing one would show as well. The two edits are the same keystroke to an author,
+ * and what separates them is only visible if both are timed.
  */
 final class Incremental {
 
@@ -51,6 +52,9 @@ final class Incremental {
      */
     static final String STATED_RULE =
             "    ensures onTheDomainAsked = Account -> accountHasDomain(domain, value)";
+
+    /** What the rule already says, said again — see {@link #restated}. */
+    private static final String RESTATED_CONJUNCT = " && accountHasDomain(domain, value)";
 
     private Incremental() {}
 
@@ -102,17 +106,22 @@ final class Incremental {
     }
 
     /**
-     * {@code source} with the rule restated, differently in each round.
+     * {@code source} with the rule restated, alternating between rounds so that no round writes what
+     * the round before it wrote — two rounds writing one text is no edit, and the second would find
+     * every answer holding and time the floor.
      *
-     * <p>A conjunct is added rather than the rule replaced, so what the behavior states is what it
-     * stated and one thing more: the rows the corpus writes go on satisfying the clause, and a
-     * corpus that stopped compiling would be timed as it stopped early. The bound moves with the
-     * round because two rounds writing one text is no edit at all — the second would find every
-     * answer holding and time the floor.
+     * <p>The conjunct the rule already states is written a second time and taken away again. It says
+     * what the rule said, which is the point: what a caller may assume is a different value and every
+     * other reading of the corpus is the one it was. An edit that added a relation instead — a
+     * comparison of the parameter against a bound, which is what an author tightening a rule writes —
+     * draws a line on what it compares (spec §a-clause-draws-a-line-on-what-it-compares-an-input-against)
+     * and moves the adequacy reading with it, so the round would be timing two things and the number
+     * would be attributable to neither. Both halves of that are held by
+     * {@code TheRelationAnEditRestatesIsOneACallerReadsTest}.
      */
     static String restated(String source, int round) {
-        return source.replace(STATED_RULE,
-                STATED_RULE + " && String.length(domain.value) < " + (100 + round));
+        return round % 2 != 0 ? source
+                : source.replace(STATED_RULE, STATED_RULE + RESTATED_CONJUNCT);
     }
 
     private static String added(String source, int round) {
