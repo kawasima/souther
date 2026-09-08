@@ -258,22 +258,25 @@ public final class Sameness<A> {
      * coordinate: {@code p == q && q == r} and {@code q == r && p == q} name one block, hold one
      * set, and spend from one purse.
      *
-     * <p>Its members are read in the order they are spelled in and not in the order a closure
-     * reached them, so that what is written out of a reading — a proof naming the positions that
-     * must hold one value among them — does not read differently for the order the equalities
-     * behind it were written in. That order is how the positions are spelled, so it carries as far
-     * as a spelling tells two of them apart and no further, and two that render alike are left in
-     * the order they arrived in. Nothing is filed, compared or hashed under it.
+     * <p>Its members are read in the order they are spelled in, so that where their spellings tell
+     * them apart, what is written out of a reading — a proof naming the positions that must hold
+     * one value among them — does not read differently for the order the equalities behind it were
+     * written in. Two that render alike are left in the order they arrived in, which is that order,
+     * so how far this carries is how far a spelling separates positions. Nothing is filed, compared
+     * or hashed under it.
      */
     public static final class Block<A> {
 
-        /** Odd, so that a count multiplied by it keeps every bit of the count, and nowhere near a
-         *  power of two, so that two counts do not agree in the bits the members' sum reaches. */
+        /** What the number of members is multiplied by before it joins their sum, so that two
+         *  blocks whose members sum alike are still told apart where they hold different numbers of
+         *  positions. Odd, so that no bit of the number is lost in the multiplication. */
         private static final int COUNTED = 0x9e3779b9;
 
-        /** The two rounds of the mixing. Each multiplication carries what the shift before it
-         *  folded downwards back up into the high bits, so that what a block's hash comes to
-         *  depends on all of what its members came to rather than on their total alone. */
+        /** The rounds of the mixing. The members reach it as the sum a {@code Set} hashes them to,
+         *  so what is mixed is that sum and the count beside it rather than the members one at a
+         *  time. Each multiplication carries what the shift before it folded downwards back up into
+         *  the high bits, which is what stops a sum of block hashes coming to a function of the sum
+         *  over all their positions. */
         private static final int SCATTER = 0x85ebca6b;
 
         private static final int SPREAD = 0xc2b2ae35;
@@ -299,10 +302,11 @@ public final class Sameness<A> {
          * its hash does not say. One mixing at the block's edge is what stops the sum above it
          * cancelling that grouping out.
          *
-         * <p>What a compile spends on that mixing is nothing it does not spend already, and what it
-         * saves is not why it is here: the blocks a compile makes are nearly all of one position,
-         * and the sets of them are small. It is here because this hash is spelled out rather than
-         * derived, and a sum spelled out is a sum kept.
+         * <p>The mixing is work of its own, a fixed few operations paid where the block is made,
+         * and it is not paid back: the blocks a compile makes are nearly all of one position and
+         * the sets of them are small, so nothing measured here is spending what it saves. It is
+         * here because this hash is spelled out rather than derived, and a sum spelled out is a sum
+         * kept.
          */
         private final int hash;
 
@@ -352,9 +356,15 @@ public final class Sameness<A> {
         /**
          * Equal by its members and by nothing else.
          *
-         * <p>The hash is asked first, which is an answer about the members and settles most pairs
-         * without reading them. Where it agrees the members are read, because two blocks with one
-         * hash are still two blocks unless the same positions are in both.
+         * <p>The hash is asked first, and it is an answer about the members, so two blocks it tells
+         * apart are told apart without reading them. Which comparisons that reaches depends on
+         * where they came from: one made through a map has had the hashes compared already and
+         * arrives only where they agree, and one asked of two blocks in hand — whether both ends of
+         * a pair are one block, whether an answer is filed under a coordinate the reading has —
+         * arrives with nothing compared. It is those this turns away.
+         *
+         * <p>Where the hashes agree the members are read, because two blocks with one hash are
+         * still two blocks unless the same positions are in both.
          */
         @Override
         public boolean equals(Object other) {

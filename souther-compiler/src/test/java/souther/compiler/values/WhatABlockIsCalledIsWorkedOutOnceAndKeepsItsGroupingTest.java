@@ -17,6 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
  * Worked out from the members on each of those, the answer is a walk of the set for a value that
  * cannot change — which is what the first of these is about.
  *
+ * <p>Having the answer is also what lets two blocks be told apart without reading either, which is
+ * the second of these. It is worth nothing where a map asked the question, since a map compares the
+ * names before it asks; it is worth a set walk where two blocks in hand are compared.
+ *
  * <p>The rest are about what that answer is. A set's hash is the sum of its members', so a block
  * that answered with that sum and nothing else would be one whose name adds up the same however its
  * positions are grouped: a set of blocks would come to the sum over every position in all of them,
@@ -62,6 +66,28 @@ class WhatABlockIsCalledIsWorkedOutOnceAndKeepsItsGroupingTest {
     }
 
     /**
+     * Two blocks whose names already differ, asked whether they are one.
+     *
+     * <p>Each holds a position the other has one of the same name for, so a comparison that reached
+     * the members would read one: the set is asked whether it holds a position, finds one filed
+     * under that name, and asks the two whether they are the same position. Reaching them is what
+     * the names being different is there to avoid, and a comparison made of two blocks in hand is
+     * where that has anything to avoid — a map has compared the names before it asks.
+     */
+    @Test
+    void andBlocksWhoseNamesDifferAreToldApartWithoutReadingTheirPositions() {
+        Sameness.Block<Counted> one = Sameness.Block.of(members(P, Q));
+        Sameness.Block<Counted> other =
+                Sameness.Block.of(members(new Counted("pp", P.hash), R));
+        assertNotEquals(one.hashCode(), other.hashCode(), "the two blocks were named alike");
+        Counted.compared = 0;
+
+        assertNotEquals(one, other);
+
+        assertEquals(0, Counted.compared, "a block read its positions to answer what its name had");
+    }
+
+    /**
      * The same three positions, grouped two ways.
      *
      * <p>Summed and left, these two are one number whatever the positions are: both come to what
@@ -91,6 +117,7 @@ class WhatABlockIsCalledIsWorkedOutOnceAndKeepsItsGroupingTest {
     private static final class Counted {
 
         private static long asked;
+        private static long compared;
 
         private final String name;
         private final int hash;
@@ -102,6 +129,7 @@ class WhatABlockIsCalledIsWorkedOutOnceAndKeepsItsGroupingTest {
 
         @Override
         public boolean equals(Object other) {
+            compared++;
             return other instanceof Counted it && name.equals(it.name) && hash == it.hash;
         }
 
