@@ -6,6 +6,7 @@ import souther.compiler.diag.Diagnostic;
 import souther.compiler.diag.msg.ExampleMessage;
 import souther.compiler.observe.Disposition;
 import souther.compiler.observe.Expectation;
+import souther.compiler.observe.ExpectationState;
 import souther.compiler.observe.RowOutcome;
 import souther.compiler.observe.RowStatement;
 import souther.compiler.observe.Stage;
@@ -115,6 +116,105 @@ class ARowWhoseAnswerIsOwedIsARowAndAssertsNothingTest {
     }
 
     /**
+     * A second row covering the arm does not answer the first.
+     *
+     * <p>The arm and the row are two facts, and this is where holding them as one loses the second:
+     * the arm is covered, so nothing is owed about the arm — and the row written {@code <?>} is
+     * still written, and still owed an answer. Reported through the arm alone, the row went missing
+     * exactly when somebody else's row happened to cover it.
+     */
+    @Test
+    void anAnsweredAndAnUnansweredRowThroughTheSameArmStillLeaveTheRowUnanswered() {
+        String both = ANSWERED + "    | \"also over it\" : (Amount(102)) -> <?>\n";
+
+        assertEquals(List.of(), armMessagesIn(both),
+                "the arm is covered, so nothing is owed about the arm");
+        assertEquals(List.of("also over it"), rowsOwedIn(both),
+                "and the row whose answer is owed is still owed one");
+        assertTrue(gapCodesIn(both).contains("E1934"),
+                () -> "which a build refuses over: " + gapCodesIn(both));
+    }
+
+    /**
+     * A behavior with no arms owes it just the same.
+     *
+     * <p>The plainest case, and the one an arm-shaped finding cannot hold at all: there is no arm
+     * for the fact to be attached to, so a row written {@code <?>} had nowhere to be reported from.
+     */
+    @Test
+    void anUnansweredRowNeedsNoArmToRemainUnanswered() {
+        String straight = """
+                module example.plain
+
+                data Ok = { n: Int }
+
+                behavior identity : (x: Int) -> Ok
+                    constructs Ok
+                let identity (x) = Ok { n = x }
+
+                example identity
+                    | "nothing branches here" : (1) -> <?>
+                """;
+
+        assertEquals(List.of("nothing branches here"), rowsOwedIn(straight),
+                "a row with no arm under it is owed an answer like any other");
+        // And it is the row alone that a build stands on here. There is no arm in this model and
+        // nothing else this bar refuses over, so a verdict that came out satisfied would say the
+        // new finding reaches the report and not the build.
+        assertEquals(AdequacyReport.AdequacyStatus.NOT_SATISFIED, verdictOn(straight),
+                "the row is what a build held to the rows refuses over");
+    }
+
+    /**
+     * And a row of the same behavior that could not be read does not take it away.
+     *
+     * <p>What weakens an arm's measurement is what became of the rows, and that is about the arms.
+     * A row written {@code <?>} is a fact about the text; reported through the arm, it was
+     * suppressed whenever some other row left the arm's measurement short of an answer.
+     */
+    @Test
+    void anotherRowThatCouldNotBeReadDoesNotSettleThisOne() {
+        String alongside = OWED
+                + "    | \"runs away\" : (Amount(1)) -> Waiting { cost = Amount(1) }\n";
+
+        assertTrue(rowsOwedIn(alongside).contains("over it"),
+                () -> "the owed row is owed whatever became of the rows beside it: "
+                        + rowsOwedIn(alongside));
+    }
+
+    /**
+     * A row too large to hand on still knows its answer is owed.
+     *
+     * <p>What a row states is dropped when its values are larger than a reader is given, and the
+     * answer being owed used to be read out of that. So a valid row with a long input stopped being
+     * owed — and the invariant that says a row ending with nothing to hold is one whose answer is
+     * owed then refused to build the outcome at all.
+     */
+    @Test
+    void anUnansweredRowWhoseInputObservationIsTruncatedStillKnowsItsAnswerIsOwed() {
+        String wide = """
+                module example.wide
+
+                data Note = String
+
+                data Ok = { n: Note }
+
+                behavior take : (t: Note) -> Ok
+                    constructs Ok
+                let take (t) = Ok { n = t }
+
+                example take
+                    | "a long one" : (Note("%s")) -> <?>
+                """.formatted("x".repeat(2000));
+
+        assertEquals(List.of(), errorsIn(wide), "the module compiles");
+        assertEquals(ExpectationState.OWED, rowNamed(wide, "a long one").expectation(),
+                "what the source put there is not what the statement could carry");
+        assertEquals(List.of("a long one"), rowsOwedIn(wide),
+                "so the row is reported as owing its answer");
+    }
+
+    /**
      * A build held to a bar that refuses over arms refuses over this one.
      *
      * <p>The row is written and the arm is uncovered, and the second is what a build stands on. A
@@ -186,15 +286,17 @@ class ARowWhoseAnswerIsOwedIsARowAndAssertsNothingTest {
     /** The row this behavior wrote under {@code name}, which every claim above is about one of. */
     private static RowOutcome rowNamed(String source, String name) {
         Compilation compilation = compiled(source);
-        for (SourceId sourceId : compilation.exampleSourcesOf("example.trip")) {
-            Output.Examples.Of observed = compilation.db()
-                    .ask(Output.Examples.asked(compilation.db(), "example.trip", sourceId)).value();
-            if (observed == null) {
-                continue;
-            }
-            for (RowOutcome row : observed.rows()) {
-                if (row.identity().shown().contains(name)) {
-                    return row;
+        for (String module : compilation.modules()) {
+            for (SourceId sourceId : compilation.exampleSourcesOf(module)) {
+                Output.Examples.Of observed = compilation.db()
+                        .ask(Output.Examples.asked(compilation.db(), module, sourceId)).value();
+                if (observed == null) {
+                    continue;
+                }
+                for (RowOutcome row : observed.rows()) {
+                    if (row.identity().shown().contains(name)) {
+                        return row;
+                    }
                 }
             }
         }
@@ -211,6 +313,19 @@ class ARowWhoseAnswerIsOwedIsARowAndAssertsNothingTest {
                 case ExampleMessage.NoRowGoesThroughThatArm it -> said.add(it);
                 case ExampleMessage.ARowAtThatArmAwaitsItsAnswer it -> said.add(it);
                 default -> { }
+            }
+        }
+        return said;
+    }
+
+    /** Which rows this model is told owe an answer, by the name each wrote. Read off the report
+     *  rather than off the source, so what is asserted is what a person is told. */
+    private static List<String> rowsOwedIn(String source) {
+        List<String> said = new ArrayList<>();
+        for (Db.Found each : compiled(source).db().allReports()) {
+            if (each.report().diagnostic().said()
+                    instanceof ExampleMessage.TheNamedRowsAnswerIsOwed named) {
+                said.add(named.row());
             }
         }
         return said;

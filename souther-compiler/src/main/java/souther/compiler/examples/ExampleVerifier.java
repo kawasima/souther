@@ -32,6 +32,7 @@ import souther.compiler.evaluate.StepLimitExceeded;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.observe.Disposition;
 import souther.compiler.observe.Expectation;
+import souther.compiler.observe.ExpectationState;
 import souther.compiler.observe.Incompleteness;
 import souther.compiler.observe.Mismatch;
 import souther.compiler.observe.RowStatement;
@@ -1348,10 +1349,26 @@ public final class ExampleVerifier {
     /** What the row turned out to be, from the state its worker left. */
     private RowOutcome outcomeOf(ExampleTarget target, Hir.ExampleRow row, RowState state) {
         Reached reached = state.reached;
-        return new RowOutcome(row.pos(), target.name(), row.identity(),
+        return new RowOutcome(row.pos(), target.name(), row.identity(), expectationOf(row),
                 reached.stage(), state.disposition, state.failurePhase, state.expectedArm,
                 state.resultArm, state.inputCases, state.inputs, state.statement,
                 ran(reached, new Counting.Read(state.stepsSpent, state.recorded)));
+    }
+
+    /**
+     * What the row's source put where its answer goes.
+     *
+     * <p>Off the row and not off what the evaluation came away with. This is settled before
+     * anything runs and stays true however the run ends — a row too large to hand over states
+     * nothing and is still a row whose answer is owed, and a reading that stopped before the values
+     * says nothing about what was written where the answer goes.
+     */
+    private static ExpectationState expectationOf(Hir.ExampleRow row) {
+        return switch (row.expected()) {
+            case Hir.Expected.Asserted _ -> ExpectationState.ASSERTED;
+            case Hir.Expected.Unanswered _ -> ExpectationState.OWED;
+            case Hir.Expected.Unwritten _ -> ExpectationState.UNWRITTEN;
+        };
     }
 
     /**
@@ -1415,7 +1432,7 @@ public final class ExampleVerifier {
                 // handed over.
                 RowStatement stated = evaluation.state.statement;
                 rows.add(new RowOutcome(row.pos(), target.name(),
-                        row.identity(), reached.stage(), Disposition.INCOMPLETE,
+                        row.identity(), expectationOf(row), reached.stage(), Disposition.INCOMPLETE,
                         FailurePhase.TIMEOUT, null, null, List.of(),
                         stated instanceof RowStatement.Stated values ? values.inputs() : List.of(),
                         stated, ran(reached, new Counting.Unread())));

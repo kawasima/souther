@@ -4,6 +4,7 @@ import souther.compiler.diag.SourcePos;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * What one {@code example} row turned out to be — the observation every adequacy measure reads.
@@ -16,10 +17,11 @@ import java.util.List;
  * not evidence for {@code Approved}, but it is evidence that {@code Rejected} can happen.
  *
  * <p>A row whose answer is owed is evidence of the second and of neither of the others. It hands
- * over its inputs, it is applied, and what it saw is what it saw; what it states of the answer is
- * {@link Expectation.Owed}, so nothing it did is evidence that the model answers as it should.
- * Which of the two a row is is read off what it states and not off {@link #expectedArm} being
- * absent, which is also what a row whose text names no case looks like.
+ * over its inputs, it is applied, and what it saw is what it saw; nothing it did is evidence that
+ * the model answers as it should. Which of the two a row is is {@link #expectation}, read off the
+ * source where the row was read — not off {@link #expectedArm} being absent, which is also what a
+ * row whose text names no case looks like, and not off what the row states, which is dropped
+ * whenever the row's values are too large to hand on.
  *
  * <p>{@link #at} carries a source id as well as a position, because rows are gathered under the module
  * they belong to and a module's rows are written across its own source and any number of attached
@@ -83,6 +85,8 @@ import java.util.List;
  *                       rows this module writes for {@link #target}, so something outside the file
  *                       can say which row it means; a {@link RowIdentity.Unnamed} can be shown and
  *                       not addressed
+ * @param expectation    what the source put where the row's answer goes, settled where the row was
+ *                       read and true whatever became of the evaluation
  * @param stage          how far it got
  * @param disposition    how it ended
  * @param failurePhase   where it stopped, when it did
@@ -109,6 +113,7 @@ import java.util.List;
 public record RowOutcome(SourcePos at,
                          String target,
                          RowIdentity identity,
+                         ExpectationState expectation,
                          Stage stage,
                          Disposition disposition,
                          FailurePhase failurePhase,
@@ -120,7 +125,7 @@ public record RowOutcome(SourcePos at,
                          Run run) {
 
     public RowOutcome {
-        java.util.Objects.requireNonNull(statement, "a row states something");
+        Objects.requireNonNull(statement, "a row states something");
         if (statement instanceof RowStatement.Stated values
                 && !values.inputs().equals(inputs)) {
             // One fact with two places to be read from, held to being one. A row that states values
@@ -144,7 +149,7 @@ public record RowOutcome(SourcePos at,
         inputCases = inputCases == null ? List.of()
                 : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(inputCases));
         inputs = inputs == null ? List.of() : List.copyOf(inputs);
-        java.util.Objects.requireNonNull(run, "a row says what became of its evaluation");
+        Objects.requireNonNull(run, "a row says what became of its evaluation");
         if (stage.reached(Stage.INVOKED) == run.applied() instanceof Applied.Nothing) {
             // Held here because the two are written from one evaluation and read apart: a stage that
             // says the behavior was applied and a run that says nothing applied it is a state no
@@ -155,16 +160,21 @@ public record RowOutcome(SourcePos at,
                     "a row that applied the behavior says what applied it, and one that did not says "
                             + "nothing did: " + stage + " with " + run.applied());
         }
-        // What the row states of the answer and what became of the answer are one evaluation read
-        // apart, and the ends where the two meet are held to each other. A row whose answer is owed
-        // has nothing to compare an answer against and nothing for an answer to keep, so it does not
-        // reach a comparison and does not end as one that held; and ending with nothing to hold is
-        // what such a row ends as and not something a row that states an answer can be recorded as.
-        // Everything else a row can end as it can end as either way: an input fixture, a clause, a
-        // fake, an application and a budget are all reached before what the row states of the answer
-        // is of any use.
-        boolean owed = statement instanceof RowStatement.Stated values
-                && values.expects() instanceof Expectation.Owed;
+        // What the source put where the answer goes and what became of the answer are held to each
+        // other. Asked of {@link #expectation}, which is what the row was read as, and never of
+        // what the row states: a statement carries the expectation only while it carries the
+        // values, and a row whose input is larger than a snapshot keeps states nothing while being
+        // a perfectly well written row whose answer is owed.
+        //
+        // A row whose answer is owed has nothing to compare an answer against and nothing for an
+        // answer to keep, so it does not reach a comparison and does not end as one that held; and
+        // ending with nothing to hold is what such a row ends as and not something a row that
+        // states an answer can be recorded as. Everything else a row can end as it can end as
+        // either way: an input fixture, a clause, a fake, an application and a budget are all
+        // reached before what the row states of the answer is of any use.
+        Objects.requireNonNull(expectation,
+                "a row says what its source put where its answer goes");
+        boolean owed = expectation == ExpectationState.OWED;
         if (owed && (stage.reached(Stage.COMPARED) || disposition == Disposition.HELD
                 || failurePhase == FailurePhase.EXPECTED_FIXTURE
                 || failurePhase == FailurePhase.COMPARISON)) {
@@ -173,7 +183,14 @@ public record RowOutcome(SourcePos at,
         }
         if (!owed && disposition == Disposition.NOTHING_TO_HOLD) {
             throw new IllegalArgumentException("a row that ended with nothing to hold its answer to"
-                    + " is one whose answer is owed: " + statement);
+                    + " is one whose answer is owed: " + expectation);
+        }
+        // And the two are not allowed to drift where both are there. A statement that carries an
+        // expectation carries the one the row was read as.
+        if (statement instanceof RowStatement.Stated values
+                && (values.expects() instanceof Expectation.Owed) != owed) {
+            throw new IllegalArgumentException("a row states the answer its source put there: "
+                    + expectation + " with " + values.expects());
         }
     }
 

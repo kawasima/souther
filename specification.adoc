@@ -3136,7 +3136,9 @@ Such a row runs like any other and asserts nothing. Its inputs are built, its st
 
 A module whose rows are still owed answers goes on compiling. `+souther examples --generate+` writes the rows it composes with `+<?>+` in this position, so a block is pasted whole and answered a row at a time rather than held out of the file until the last of it is written.
 
-What such a row does not do is cover. An arm it goes through is an arm nothing states the behavior's answer at, so it is reported under <<every-arm-has-a-row>> (<<e1918>>) and a build held to a bar that refuses over arms refuses over it; what is said of it is that a row is written there and its answer is owed, rather than that no row goes through it. Nothing composes a second row for such an arm: the question is already written down, and what is left is an answer no search can supply.
+[[every-row-has-its-answer-written]]Every row MUST have its answer written (<<e1934>>). The row is written down and its answer is not, so this is read off the source and nothing about how far a run got bears on it — a behavior with no arms at all owes it, and so does a row at an arm another row already covers.
+
+What such a row does not do is cover. An arm whose only rows are owed answers is an arm nothing states the behavior's answer at, so it is reported too, and under the same rule rather than as an arm no row goes through (<<e1918>>): a row does go through it. Nothing composes a second row for such an arm — the question is already written down, and what is left is an answer no search can supply.
 
 [#example-evaluable]
 === What can carry an example
@@ -3521,7 +3523,7 @@ Where a behavior has a body, `+souther examples+` also reports which of its arms
 
 One more the dial asks, needing the arms measured:
 
-* [[every-arm-has-a-row]]some row that states what it expects SHOULD go through each arm of an `+if+`, a `+guard+` or an attempted construction. A row whose answer is owed (<<example-answer-owed>>) goes through an arm without saying what the behavior answers there, so it does not answer this; what is reported of such an arm says a row is written at it and what it is short of is the answer.
+* [[every-arm-has-a-row]]some row that states what it expects SHOULD go through each arm of an `+if+`, a `+guard+` or an attempted construction. A row whose answer is owed (<<example-answer-owed>>) goes through an arm without saying what the behavior answers there, so it does not answer this; an arm whose only rows are those is reported as a row owing its answer (<<every-row-has-its-answer-written>>) rather than as an arm nothing reaches.
 
 The line such a fork draws is asked for as well, and it is asked for wherever a rule draws a border rather than here (<<every-obligation-against-its-line-has-a-row>>): a `+guard+` comparing one position against another draws its line where the two are equal (<<a-comparison-of-two-positions-draws-a-line-between-them>>), exactly as an `+invariant+` and an `+ensures+` draw theirs. For a guard the arms do not stand in for it: both arms of `+charge > ceiling+` are reached by rows nowhere near the line, and a row on it takes the same arm as one well below it.
 
@@ -6562,6 +6564,21 @@ Emitted at every `+fake+` block naming a behavior another block of the module al
 None of them is preferred. The rows of a block are matched in the order they are written, and the blocks themselves are written across a module's own source and the files attached to it, which have no order between them — so there is no table two blocks make and no reading under which one of them is the one that answers. Which of them is the one to write differently is not the language's to answer, as it is not for two rows carrying one name (<<e1925>>).
 
 Told apart from <<e1908>>, where a dependency has no stand-in at all. A row requiring a behavior reported here is not told one is missing, nor that a table has no output for its input (<<e1909>>): it is told neither, because what is wrong is what the module wrote rather than anything the row states.
+
+[#e1934]
+=== A row is written with its answer still owed
+
+[,text]
+----
+Row `over the ceiling` of `submit` is written with its answer still to be written.
+Hint: Replace the row's `<?>` with what the system answers for those inputs.
+----
+
+Emitted at every row written `+<?>+` (<<example-answer-owed>>), and at every arm whose only rows are those. A warning, and one every bar refuses over: the row is written down and its answer is not, so nothing about how much of the model could be measured bears on it.
+
+Read off the source rather than off what a run came to. A row's answer is owed whether or not the behavior has arms, whether or not another row covers the arm this one goes through, and whether or not anything could be measured about the rows at all — so none of those can take the finding away.
+
+Told apart from <<e1918>>, which is an arm no row goes through. A row does go through the arm reported here; what it is short of is the answer, and writing a second row for it would answer nothing.
 
 [#e2001]
 === A helper does not carry the termination guarantee it claims

@@ -4,6 +4,7 @@ import souther.compiler.coverage.ArmProbe;
 import souther.compiler.coverage.CoverageSites;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -82,7 +83,7 @@ public sealed interface ArmObligation {
 
         public Counted {
             occurrences = oneArm(occurrences);
-            java.util.Objects.requireNonNull(awaited,
+            Objects.requireNonNull(awaited,
                     "an arm says whether a row at it is waiting for its answer");
             switch (coverage) {
                 case Measurement.Complete<ArmCoverage> _ -> { }

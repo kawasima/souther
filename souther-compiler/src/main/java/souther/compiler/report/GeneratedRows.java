@@ -662,7 +662,7 @@ public final class GeneratedRows {
             // asked to name. Listed rather than defaulted so that a shape added later has to be
             // given words here.
             case About.ACaseNothingWasSeenToProduce _,
-                    About.ARowAtAnArmAwaitsItsAnswer _,
+                    About.ARowAtAnArmAwaitsItsAnswer _, About.AnUnansweredRow _,
                     About.APositionNoLineDivides _, About.APositionThisCouldNotRead _,
                     About.ARuleWithoutALine _, About.ARuleNothingClassified _,
                     About.AQuestionNothingAnswered _,

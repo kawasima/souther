@@ -113,6 +113,7 @@ class WhyAValueCouldNotBePlacedIsTheClassifiersToSayTest {
         Map<String, ObservedValue> fields = new LinkedHashMap<>(request.fields());
         fields.put(field, value);
         return new RowOutcome(read.row().at(), read.row().target(), read.row().identity(),
+                read.row().expectation(),
                 read.row().stage(), read.row().disposition(), read.row().failurePhase(),
                 read.row().expectedArm(), read.row().resultArm(), read.row().inputCases(),
                 List.of(new ObservedValue.Constructed(request.type(), fields)),

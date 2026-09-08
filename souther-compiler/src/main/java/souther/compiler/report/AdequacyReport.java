@@ -152,7 +152,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         return ReportMeasurement.statusOf(weakenedBy);
     }
 
-    public static final int SCHEMA_VERSION = 16;
+    public static final int SCHEMA_VERSION = 17;
 
     /**
      * Where the schema this writes documents ships.
@@ -3791,6 +3791,10 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // row.
             case About.AnArmNoRowGoesThrough _, About.ARowAtAnArmAwaitsItsAnswer _ ->
                     finding.at();
+            // And a row's, for the same reason one arm is told from another by where it is: a
+            // behavior's rows are as many as somebody wrote, and the one this is about is the one
+            // at this place.
+            case About.AnUnansweredRow _ -> finding.at();
             case About.ACaseNoRowExpects _, About.ACaseNothingWasSeenToProduce _,
                     About.ACaseNoRowAppliesItTo _, About.AClassNoRowIsIn _,
                     About.APointOfABorder _, About.APointOfADeclaredBorder _,
@@ -3834,6 +3838,10 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // finding is about; which of the two things is wrong with it is the finding's kind and
             // not a second way of naming the arm.
             case About.ARowAtAnArmAwaitsItsAnswer(var arm) -> words(ArmVocabulary.label(arm));
+            // What the row calls itself, which is what says which row is meant from outside the
+            // file. A row that wrote no name answers to nothing outside it and is shown as the
+            // place it is written, which the entry carries beside this.
+            case About.AnUnansweredRow(var _, var row, var _) -> words(row.shown());
             case About.ACaseNoRowExpects(var missing) -> words(missing.name());
             case About.ACaseNothingWasSeenToProduce(var missing) -> words(missing.name());
             case About.AClassNoRowIsIn(var missing) ->

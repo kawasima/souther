@@ -455,6 +455,21 @@ public sealed interface ExampleMessage extends Message {
     /** What answering it takes. */
     record ReplaceTheMarkWithWhatTheSystemAnswers() implements ExampleMessage, Supporting {}
 
+    /**
+     * A row is written and its answer is not.
+     *
+     * <p>Said of the row and at the row, because that is what it is about. What the row goes
+     * through is a separate thing to say and is said of the arm; a behavior with no arms at all has
+     * nothing there to say it, and the row is owed an answer either way.
+     */
+    @Code(DiagnosticCode.E1934)
+    record TheRowsAnswerIsOwed(String behavior) implements ExampleMessage, Reported {}
+
+    /** The same, for a row that names itself. */
+    @Code(DiagnosticCode.E1934)
+    record TheNamedRowsAnswerIsOwed(String row, String behavior)
+            implements ExampleMessage, Reported {}
+
     // --- a stand-in and a row that disagree ---
 
     /** A row and a fake state different answers for one input. */
