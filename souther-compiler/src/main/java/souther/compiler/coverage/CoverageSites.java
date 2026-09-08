@@ -329,10 +329,10 @@ public final class CoverageSites {
          * difference, because a lookup that misses and a place that is not numbered come back
          * alike.
          *
-         * <p>Which also settles what the checks below are for. They no longer answer a caller
-         * assembling a plan by hand; they answer {@link #asPlan}, which puts one together field by
-         * field out of what one walk found, and can put a numbering beside a catalog it does not
-         * go with.
+         * <p>Which also settles what the checks below are for. They answer {@link #asPlan}, which
+         * puts one together field by field out of what one walk found and can put a numbering
+         * beside a catalog it does not go with — and they answer a test assembling a plan of these
+         * bodies that no source produces, which is the only other caller the package allows.
          */
         Plan(List<Site> sites, List<GuardRef> guards, IdentityHashMap<Core, int[]> byNode,
              Map<ComparisonOccurrence, ComparisonEmissionSite> byComparison,

@@ -2362,11 +2362,6 @@ public final class Bodies {
             return decisions;
         }
 
-        /** Which rule each expansion of these bodies was handed. */
-        public souther.compiler.coverage.SuppliedRules supplied() {
-            return supplied;
-        }
-
         /** Which of each body's bindings hold an element of a container, by the behavior's name. */
         public Map<String, souther.compiler.check.ElementBindings> elementBindings() {
             return elements;

@@ -118,7 +118,7 @@ class AGroupIsOnlyOfferedWhereARunPassesItOnceTest {
         Model model = Model.of(SHIPPING, "shippingFee");
 
         List<Interaction> asIfRepeated = CoverageRead.of(model.behavior(), model.body(),
-                model.planWhereEverythingRepeats(), model.inputs(), model.rules())
+                Plans.whereEverythingRepeats(model.plan()), model.inputs(), model.rules())
                 .interactions();
 
         assertTrue(asIfRepeated.isEmpty(),
@@ -145,11 +145,6 @@ class AGroupIsOnlyOfferedWhereARunPassesItOnceTest {
 
         List<Interaction> groups() {
             return CoverageRead.of(behavior, body, plan, inputs, rules).interactions();
-        }
-
-        /** The same plan, answering that a run may come back to anywhere. */
-        CoverageSites.Plan planWhereEverythingRepeats() {
-            return Plans.whereEverythingRepeats(plan);
         }
     }
 }

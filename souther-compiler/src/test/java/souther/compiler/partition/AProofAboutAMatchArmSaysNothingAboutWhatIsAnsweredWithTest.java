@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import souther.compiler.check.PathReachability;
 import souther.compiler.core.Core;
 import souther.compiler.coverage.ControlPointId;
-import souther.compiler.coverage.CoverageSites;
 import souther.compiler.coverage.Plans;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Bodies;
@@ -145,21 +144,14 @@ class AProofAboutAMatchArmSaysNothingAboutWhatIsAnsweredWithTest {
                 refused.controlId(), java.util.Optional.empty(), refused.at(), refused.origin());
 
         assertEquals(ProducedCases.of(body, checked.plan(), arrives, answersWith),
-                ProducedCases.of(body, planWith(checked.plan(), refused, silent),
+                ProducedCases.of(body, Plans.withArmRenamed(checked.plan(), refused, silent),
                         arrivalsWith(arrives, refused, silent), answersWith),
                 "what the body can answer with does not turn on where a run could be recorded");
         assertEquals(List.of("example.capped.Yes"),
-                ProducedCases.of(body, planWith(checked.plan(), refused, silent),
+                ProducedCases.of(body, Plans.withArmRenamed(checked.plan(), refused, silent),
                                 arrivalsWith(arrives, refused, silent), answersWith).stream()
                         .map(TypeSymbol::toString).toList(),
                 "and the case only the dead arm answers with is still taken away");
-    }
-
-    /** {@code plan} with {@code now} standing where {@code was} stood, and nothing else moved. */
-    private static CoverageSites.Plan planWith(CoverageSites.Plan plan,
-                                               ControlPointId.ArmOccurrence was,
-                                               ControlPointId.ArmOccurrence now) {
-        return Plans.withArmRenamed(plan, was, now);
     }
 
     /** The same answers, filed under {@code now} where they were filed under {@code was}. */

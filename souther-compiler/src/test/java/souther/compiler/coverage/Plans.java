@@ -9,16 +9,17 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * Plans a test needs that a walk of any source does not produce.
+ * What a test asks of a plan that the package keeps to itself.
  *
- * <p>Here because a plan is made where the bodies are walked and nowhere else. A test driving a
- * reader into a state the compiler does not reach today still has to hand it a plan, and building
- * one out of parts is the one thing the shape of {@link CoverageSites.Plan} is meant to keep a
- * caller from doing — so it is done in this package, once, under names saying what each derived
- * plan differs in, rather than by ten fields copied at each test that wants one.
+ * <p>Two kinds of thing, and both are here for the same reason: a plan is made where the bodies
+ * are walked, and what it holds is not handed out. A test driving a reader into a state no source
+ * reaches still has to hand it a plan, and a test counting what a plan numbered has to see the
+ * nodes — neither of which a caller outside this package can do.
  *
- * <p>What each of these makes is a plan of the same bodies as the one handed in: the trees are the
- * ones already walked, and it is those objects the derived plan goes on addressing.
+ * <p>Assembled here and not asked of the plan. A derived plan is wanted by tests and by nothing
+ * this compiler does, so the operation making one belongs where its callers are: written on the
+ * plan it would stand in the list of what may put a plan together, under a reason that is about a
+ * test — which is not what that list is for.
  */
 public final class Plans {
 
