@@ -190,20 +190,24 @@ sealed interface StatedByClauses {
                     shortOf(ruleShortfalls, other.ruleShortfalls()));
         }
 
-        /** The same part, in a branch nobody can be in — see {@link Adoption#inADeadBranch}. */
+        /**
+         * The same part, in a branch nobody can be in — see {@link Adoption#inADeadBranch}.
+         *
+         * <p>Nothing an author wrote there is left. What each language took in comes to what that
+         * rule states, and the rest was written where nobody can be: no rule of it is one this
+         * declaration went short on, no line it drew is one the model draws, and there is no branch
+         * for a shortfall to send anybody to.
+         *
+         * <p>What it asked for goes with them, and its reason runs the other way round. A machine
+         * is one answer about a pattern at a position, and the clauses answerable for a refusal are
+         * found by matching those two and nothing that says which branch a clause is in. So a
+         * request kept here recovers no refusal of this branch — nothing was built for it to have
+         * been refused — and offers the refusal of the branch that stands a second written place to
+         * be about.
+         */
         Part inADeadBranch() {
-            // The reasons go with it too. A rule of a branch nothing satisfies is not a rule of
-            // this declaration that went unread; there is no branch for an author to look at.
-            //
-            // And neither is what it said about the strings at a position. A line drawn from a
-            // branch nobody can be in is a line the model does not draw.
-            // What it asked for is kept. A machine refused for a pattern in a branch nobody can be
-            // in was still asked for by that pattern, and a part that forgot it would leave the
-            // refusal with nothing to be about.
-            // And what a rule is answerable for goes with them, for the same reason: there is no
-            // branch for an author to look at, so there is nothing for a shortfall to send them to.
             return new Part(byValues.inADeadBranch(), byOrder.inADeadBranch(), Map.of(),
-                    asked, Set.of());
+                    Set.of(), Set.of());
         }
 
         /** The same part of two branches somebody can be in, under the choice between them. */

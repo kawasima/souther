@@ -88,6 +88,33 @@ class NothingAWholeDeclarationLeftInADeadBranchReachesAQuestionThatStandsTest {
             """.replace("UNREAD_Y", souther.compiler.ARuleNoReadingTakesIn.about("y"));
 
     /**
+     * One pattern no machine can be made for, written in a dead branch and beside it.
+     *
+     * <p>A machine is made once for a pattern at a position however many clauses wrote it, so the
+     * refusal is one fact and the clauses that asked for it are where an author is sent. Both
+     * clauses here ask for that machine at that position, and one of them is written where nobody
+     * can be.
+     */
+    private static final String ONE_REFUSED_MACHINE_IS_ASKED_FOR_FROM_A_DEAD_BRANCH = """
+            module demo
+
+            data N = { x: String, y: String }
+                invariant r =
+                    (x == "A" && x == "B" && String.matches("a{60000}", y))
+                    || String.matches("a{60000}", y)
+            """;
+
+    /** The same pattern in two alternatives that both stand, which is two places to go to. */
+    private static final String THE_SAME_MACHINE_IS_ASKED_FOR_FROM_TWO_BRANCHES_THAT_STAND = """
+            module demo
+
+            data N = { x: String, y: String }
+                invariant r =
+                    (x == "A" && String.matches("a{60000}", y))
+                    || String.matches("a{60000}", y)
+            """;
+
+    /**
      * A choice inside a branch nobody can be in, one alternative of which nothing reads.
      *
      * <p>Inside the branch the choice does leave {@code b} wider than the rules hold it: the
@@ -146,6 +173,26 @@ class NothingAWholeDeclarationLeftInADeadBranchReachesAQuestionThatStandsTest {
         assertEquals(2, placesToLookAt(BOTH_UNREAD_FORMS_ARE_IN_BRANCHES_THAT_STAND, "y"),
                 "and with both branches standing both forms are places to go to, which is what"
                         + " makes the count above a fate's doing");
+    }
+
+    /**
+     * And a refused machine is answered for by the clauses somebody may be in.
+     *
+     * <p>A refusal is matched to the clauses that asked for it by the pattern and the position, and
+     * by nothing that says which branch either of them is in. So the request a dead branch made is
+     * not a request this declaration is answerable for: it recovers no refusal of that branch,
+     * where nothing was built to be refused, and it offers the refusal of the branch that stands a
+     * second written place to be about.
+     */
+    @Test
+    void andARefusedMachineIsAnsweredForByTheClauseThatStands() {
+        assertEquals(1, placesToLookAt(ONE_REFUSED_MACHINE_IS_ASKED_FOR_FROM_A_DEAD_BRANCH, "y"),
+                "the pattern is written twice and one of the two is where nobody can be, so there"
+                        + " is one clause an author can do something about");
+        assertEquals(2,
+                placesToLookAt(THE_SAME_MACHINE_IS_ASKED_FOR_FROM_TWO_BRANCHES_THAT_STAND, "y"),
+                "and where both branches stand both clauses asked for the machine that was"
+                        + " refused, which is what makes the count above a fate's doing");
     }
 
     /**
