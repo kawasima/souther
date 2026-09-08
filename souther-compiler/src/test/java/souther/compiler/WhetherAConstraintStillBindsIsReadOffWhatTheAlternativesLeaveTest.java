@@ -58,6 +58,27 @@ class WhetherAConstraintStillBindsIsReadOffWhatTheAlternativesLeaveTest {
     }
 
     /**
+     * And the same where the clause nothing reads is about the very position held down.
+     *
+     * <p>The nearer case, and the one a rule reading its own account for an answer gets wrong at
+     * both connectives. What a reading could not work out at a position and what it did work out
+     * there meet only once a clause is composed, and where they meet some part of it did put a
+     * constraint down: under a conjunction that part still binds, and under a choice it binds
+     * unless the alternatives leave the position differently.
+     */
+    @Test
+    void aClauseNothingReadsAboutThePositionItselfDoesNotTakeItBack() {
+        String unread = ARuleNoReadingTakesIn.about("tag");
+        assertTrue(noLineAboutTag("tag /= \"x\" && " + unread),
+                "everything holds, so the part that holds tag down holds it down");
+        assertTrue(noLineAboutTag("(tag /= \"x\" && " + unread + ") || (tag /= \"x\" && "
+                        + unread + ")"),
+                "and both alternatives leave tag where the other does");
+        assertTrue(noLineAboutTag("(tag /= \"x\" && " + unread + ") || tag /= \"x\""),
+                "and the same where one of them was read whole");
+    }
+
+    /**
      * An alternative nothing reads that says nothing about the position does take it back.
      *
      * <p>{@code tag /= "x" || (code /= "p" && f(code))}: a value satisfying the right alternative

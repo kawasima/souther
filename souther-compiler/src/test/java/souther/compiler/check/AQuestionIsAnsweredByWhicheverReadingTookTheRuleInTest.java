@@ -204,26 +204,49 @@ class AQuestionIsAnsweredByWhicheverReadingTookTheRuleInTest {
     }
 
     /**
-     * A branch nothing read widens the positions the other branch spoke of, named there or not.
+     * A position the alternatives leave differently is one the choice stands open at.
      *
-     * <p>{@code x == 7 || f(y)} says nothing about {@code x}: a value satisfying the branch nothing
-     * could read owes the other one nothing, so what the clause leaves {@code x} is exactly what
-     * cannot be said here. The reading of values composes its own answer that way already
-     * ({@code AdmissibleValues.join}), and adoption is a projection of the same reading — a rule
-     * that widens one without widening the other reports a position as read on evidence the reading
-     * does not have.
+     * <p>{@code x == 7 || f(y)} says nothing about {@code x}, and what says so is what the two
+     * branches leave: the branch nothing could read leaves {@code x} at every value, the choice
+     * leaves it there too, and dropping the unread branch would not. So the choice is open at
+     * {@code x} and the clause is not one that was read at it.
+     *
+     * <p><b>Not because a branch went unread.</b> Two alternatives holding a position to the same
+     * values hold it there whether or not either could be read to the end, and an account that
+     * answered this from its own flag for an unread clause would say they do not
+     * ({@code WhetherAConstraintStillBindsIsReadOffWhatTheAlternativesLeaveTest}). The flag says
+     * which alternative to ask about; what the alternatives leave says whether it matters, and the
+     * two are settled in different places ({@code Settlement.WidthDependency}).
      *
      * <p>Which makes a choice and a conjunction two operations rather than one. Under
      * {@code x >= 1 && f(y)} the bound on {@code x} still holds, because all of it holds.
      */
     @Test
-    void aBranchNothingReadWidensWhatTheOtherSpokeOf() {
+    void aPositionTheAlternativesLeaveDifferentlyIsOneTheChoiceStandsOpenAt() {
         assertEquals(Set.of("x", "y"), unansweredAbout("x == 7 || Int.abs(y) >= 2"),
                 "neither position is one this clause was read at");
         assertEquals(Set.of(), unansweredAbout("x == 7 || y == 2"),
                 "and a choice both branches were read at leaves nothing standing");
         assertEquals(Set.of("y"), unansweredAbout("x >= 1 && Int.abs(y) >= 2"),
                 "while a conjunct nothing read leaves the one beside it saying what it said");
+    }
+
+    /**
+     * And a position they leave alike is one it does not, however little of the clause was read.
+     *
+     * <p>The other side of the rule above, and the one an account answering from its own flag gets
+     * wrong. Both alternatives hold {@code x} to the same values; the clause standing beside that
+     * constraint in each of them is one no reading has a word for, and the position is held there
+     * all the same.
+     */
+    @Test
+    void andAPositionTheyLeaveAlikeIsOneItDoesNot() {
+        assertEquals(Set.of(), unansweredAbout("x >= 1 || x >= 1"),
+                "the alternatives leave the position where the other does, so nothing stands open");
+        assertEquals(Set.of("y"), unansweredAbout(
+                        "(x >= 1 && Int.abs(y) >= 2) || (x >= 1 && Int.abs(y) >= 2)"),
+                "and the same beside a clause nothing reads, which stands open at its own position"
+                        + " and takes nothing back at the one held down");
     }
 
     /**

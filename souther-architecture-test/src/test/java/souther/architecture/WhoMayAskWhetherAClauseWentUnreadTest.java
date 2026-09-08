@@ -34,9 +34,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * down nowhere.
  *
  * <p>So the answer has one owner. What the branches leave is worked out where they are settled and
- * arrives as an opening ({@code Opening}); an account applies one and works none out. The place
- * where the two meet — which alternative went unread, and what its going unread opens — is the row
- * below, and a second row is a second derivation of one fact.
+ * arrives as an opening ({@code Opening}); an account applies one and works none out. What the flag
+ * is still good for is written down below, and a row that is not one of those is a second
+ * derivation of one fact.
  *
  * <p>Read off the compiled classes and named down to the method, so that a reader is licensed for
  * the question it asks rather than for the class it happens to sit in. Both ways of reaching the
@@ -58,15 +58,21 @@ class WhoMayAskWhetherAClauseWentUnreadTest {
     private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
 
     /**
-     * Where an unread alternative is turned into what it left open.
+     * Where an unread alternative is turned into what it left open, and where an author is sent for
+     * it.
      *
-     * <p>The one place both halves of that question are in hand: which of the two alternatives this
-     * reading had no word for, and what the settlement could not show the alternatives preserve.
-     * Asked anywhere else, one of the halves has to be fetched from somewhere, and what is fetched
-     * is either a second answer or another reading's.
+     * <p>Two questions of the one fact and no more. What the alternative left open is the first,
+     * and it is asked where the width of the same reading is in hand — of one reading throughout,
+     * which is what the method's shape holds it to. Which choice to send an author to is the
+     * second, and it is asked of the values because that is the road that exists
+     * ({@code StatedByClauses.Part#leftOpenByValues}).
+     *
+     * <p>Asked anywhere else, one of the halves has to be fetched from somewhere, and what is
+     * fetched is either a second answer or another reading's.
      */
     private static final List<String> MAY_ASK =
-            List.of("souther/compiler/check/StatedByClauses#opens");
+            List.of("souther/compiler/check/StatedByClauses#openedBy",
+                    "souther/compiler/check/StatedByClauses#opens");
 
     @Test
     void onlyWhereAnUnreadAlternativeBecomesWhatItLeftOpen() {

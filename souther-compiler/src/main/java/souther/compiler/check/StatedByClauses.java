@@ -381,10 +381,23 @@ sealed interface StatedByClauses {
         return new AlternativeOpening(choice,
                 one.byValues().hasUnreadPart() ? reachedBy(other.byValues()) : Set.of(),
                 other.byValues().hasUnreadPart() ? reachedBy(one.byValues()) : Set.of(),
-                width.byValues().opened(one.byValues().hasUnreadPart(),
-                        other.byValues().hasUnreadPart()),
-                width.byOrder().opened(one.byOrder().hasUnreadPart(),
-                        other.byOrder().hasUnreadPart()));
+                openedBy(width.byValues(), one.byValues(), other.byValues()),
+                openedBy(width.byOrder(), one.byOrder(), other.byOrder()));
+    }
+
+    /**
+     * What one reading says a choice between these two accounts left open.
+     *
+     * <p>Here so that the three of them have to be one reading's. Whether an alternative went
+     * unread is a {@code boolean} by the time a width is asked, and a boolean carries no word for
+     * whose it is — so the width of the ends taken with the flags of the values compiles, and comes
+     * back as an opening about a choice the ends never read. Bound to one {@code L}, that call does
+     * not exist.
+     */
+    private static <L extends ReadingLanguage> Opening<FactSubject, L> openedBy(
+            Settlement.Width<L> width, Adoption<FactSubject, L> one,
+            Adoption<FactSubject, L> other) {
+        return width.opened(one.hasUnreadPart(), other.hasUnreadPart());
     }
 
     /** The positions a reading reached and did not merely settle: what it constrained, and what it
