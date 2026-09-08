@@ -298,7 +298,7 @@ public final class Sites {
      * arm written in a file this compilation has stopped holding would quietly be reported at a
      * call instead, and the sentence would go on reading as though it were the fork.
      *
-     * @throws NothingIsWrittenThere where the question the anchor names has no answer
+     * @throws NothingPlacesIt where the question the anchor names has no answer
      */
     public static Citation placeOf(Db db, ArmReportAnchor anchor) {
         Answer<Citation> at = switch (anchor) {

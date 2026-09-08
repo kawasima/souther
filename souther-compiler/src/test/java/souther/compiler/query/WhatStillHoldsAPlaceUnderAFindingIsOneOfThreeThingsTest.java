@@ -33,12 +33,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * Everything still holding a place under a finding is one of three things, and which one is what a
  * compile shows rather than what somebody wrote down.
  *
- * <p><b>Not a list of what is allowed.</b> Two of the three are what a place under a finding may be:
- * one that tells two values apart, and one nothing has been measured about. The third is work that
- * has not been done — a place a compile shows is a handle and not an identity, which is a location
- * dependency the module-boundary cut of issue #1472 has still to be split from what it is a handle
- * for. While anything stands under it, that cut has a carrier left to go stale, and taking the cut
- * is what this counts down to rather than what it permits.
+ * <p><b>Not a list of what is allowed.</b> Two of the three are things a corpus settles: a place
+ * two values were seen to differ only in, and a place nothing reached. The third settles nothing —
+ * the models reach it and no such pair turned up, which leaves open what the place is for. Every
+ * one of those is a location still reaching a finding, so every one is a carrier the
+ * module-boundary cut of issue #1472 would leave pointing at where a helper used to be, whichever
+ * way that question comes out. Taking the cut is what this counts down to rather than what it
+ * permits.
  *
  * <p>Asked of the finding and not of the thing last put right. A place is taken out of one value at
  * a time, and a check rooted at whichever one that was cannot see the rest — which is how a place
@@ -61,38 +62,55 @@ class WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest {
             "souther.compiler.diag.DiagnosticPlace");
 
     /**
-     * What a place still under a finding is, which is a thing the models answer.
+     * What was observed of a place still under a finding.
      *
      * <p>Three readings and no word for one nobody has read. What would go under a fourth is a
      * carrier whose reason is somebody's opinion, and that is what this exists to stop.
      *
-     * <p>Two of them are answers and the third is work. Told apart here so that a reader counting
-     * what is left to do counts {@link StillToSplit} and nothing else.
+     * <p><b>Named for what was seen and not for what follows from it.</b> A corpus shows that two
+     * of these differ only in their place, or that nothing reached one, or that no such pair turned
+     * up — and the third of those is not the same statement as "the place is decoration". What a
+     * place is for is a question about the values, answered by reading them; a corpus can refute
+     * that a place is spare and cannot establish it. A word here that said what a carrier <em>is</em>
+     * would be this register doing again what it exists to stop, one level up.
+     *
+     * <p>Two of them are answers and the third is a question nobody has put yet. Told apart here so
+     * that a reader counting what is left to look into counts
+     * {@link ReachedAndNotObservedToDiscriminate} and nothing else.
      */
     sealed interface Because {
 
-        /** The place is what tells two of these apart: taking it away would merge things this
-         *  compiler tells apart. Shown by two of them agreeing on everything else. */
-        record ItTellsThemApart() implements Because {}
+        /**
+         * Two of these were seen differing only in their place, so the place is doing work nothing
+         * beside it does: taking it away would merge values this compiler tells apart.
+         *
+         * <p>The one of the three that settles anything. A pair that differs only there is a
+         * refutation of the place being spare, and one is enough.
+         */
+        record TwoOfThemDifferOnlyThere() implements Because {}
 
-        /** Nothing this test compiles reaches one, so nothing has been measured about it and
-         *  moving it would be acting on nothing. Shown by there being none. */
+        /** Nothing the models reach is one of these, so nothing has been observed about it at all
+         *  and moving it would be acting on nothing. */
         record NothingReachesOne() implements Because {}
 
         /**
-         * Neither: the models reach these, and no two of them differ only in the place. So the
-         * place is a handle a document prints rather than anything that tells one from another,
-         * and it has not been split from what it is a handle for yet.
+         * The models reach these, and no two of them were seen differing only in their place.
          *
-         * <p><b>Work and not an exception.</b> Every one of these is a path by which a location
-         * still reaches a finding, so every one of them is a carrier the module-boundary cut of
-         * issue #1472 would leave pointing at where a helper used to be. The cut waits on this
-         * being empty.
+         * <p><b>What was not seen, and not what that means.</b> A pair that would have refuted the
+         * place being spare did not turn up in these models; another model may hold one, and what a
+         * place is for here is settled by reading the values rather than by counting them. So this
+         * says a question is open, not that it has been answered.
+         *
+         * <p>Every one of these is a path by which a location still reaches a finding, so every one
+         * is a carrier the module-boundary cut of issue #1472 would leave pointing at where a
+         * helper used to be — whichever way the question comes out. The cut waits on this being
+         * empty, and what empties it is somebody deciding, per carrier, whether the place is a
+         * handle to be asked for or an identity nothing else supplies.
          *
          * @param owed what has to happen before it goes, said so that a reader meets the work
          *             rather than the excuse
          */
-        record StillToSplit(String owed) implements Because {}
+        record ReachedAndNotObservedToDiscriminate(String owed) implements Because {}
     }
 
     /** Every place still under a finding, and the reading each is here under. */
@@ -103,36 +121,36 @@ class WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest {
         // The one place a place is doing work no identity beside it does: two conditions this
         // compiler declined to cut are told apart by where they are and by nothing else.
         out.put("souther.compiler.partition.OnTheWay$Declined.at",
-                new Because.ItTellsThemApart());
+                new Because.TwoOfThemDifferOnlyThere());
         out.put("souther.compiler.observe.Incompleteness$Met.citations",
                 new Because.NothingReachesOne());
         out.put("souther.compiler.partition.PredicateOrigin.writtenAt",
                 new Because.NothingReachesOne());
         out.put("souther.compiler.query.About$AnUnansweredRow.at",
                 new Because.NothingReachesOne());
-        // The handle a document prints for a rule the author gave no name, and the sets of handles
-        // folded out of it. What each of them is a handle for is beside it and is what tells one
-        // from another, which is what the models show: no two of them differ only in the place.
-        String splitTheHandle = "the handle a document prints is split from the rule it is a handle"
-                + " for, and the place asked where a clause's and an arm's are now asked";
+        // What a document prints for a rule the author gave no name, and the sets folded out of it.
+        // A rule is beside the place in each of them, and no two were seen differing only in the
+        // place — which leaves open whether the place is spare here, and that is the question.
+        String splitTheHandle = "somebody reads what a published handle is, and says whether the"
+                + " place is one to ask for or one nothing else supplies (issue #1485)";
         out.put("souther.compiler.check.RuleCitation$WrittenAt.at",
-                new Because.StillToSplit(splitTheHandle));
+                new Because.ReachedAndNotObservedToDiscriminate(splitTheHandle));
         out.put("souther.compiler.partition.LineOrigin$ComparisonOrigin$Read.writtenAt",
-                new Because.StillToSplit(splitTheHandle));
+                new Because.ReachedAndNotObservedToDiscriminate(splitTheHandle));
         out.put("souther.compiler.inputs.RuleWithoutALine.reachedAt",
-                new Because.StillToSplit(splitTheHandle));
+                new Because.ReachedAndNotObservedToDiscriminate(splitTheHandle));
         out.put("souther.compiler.inputs.StandingQuestion$BoundaryUndetermined.reachedAt",
-                new Because.StillToSplit(splitTheHandle));
+                new Because.ReachedAndNotObservedToDiscriminate(splitTheHandle));
         out.put("souther.compiler.inputs.StandingQuestion$Exact.reachedAt",
-                new Because.StillToSplit(splitTheHandle));
+                new Because.ReachedAndNotObservedToDiscriminate(splitTheHandle));
         out.put("souther.compiler.inputs.StandingQuestion$NothingClassifiesIt.reachedAt",
-                new Because.StillToSplit(splitTheHandle));
-        String splitTheWay = "a condition on the way to a border is told from its neighbours by"
-                + " what it narrows or takes in, and the place asked of whoever writes a sentence";
+                new Because.ReachedAndNotObservedToDiscriminate(splitTheHandle));
+        String splitTheWay = "somebody reads what tells one condition on the way to a border from"
+                + " its neighbours, the way the third arm beside these was read (issue #1486)";
         out.put("souther.compiler.partition.OnTheWay$Narrowed.at",
-                new Because.StillToSplit(splitTheWay));
+                new Because.ReachedAndNotObservedToDiscriminate(splitTheWay));
         out.put("souther.compiler.partition.OnTheWay$TakenIn.at",
-                new Because.StillToSplit(splitTheWay));
+                new Because.ReachedAndNotObservedToDiscriminate(splitTheWay));
         return out;
     }
 
@@ -153,7 +171,7 @@ class WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest {
     static Set<String> stillBlockingTheCut() {
         Set<String> blocking = new TreeSet<>();
         WHAT_STILL_HOLDS_A_PLACE.forEach((carrier, because) -> {
-            if (because instanceof Because.StillToSplit) {
+            if (because instanceof Because.ReachedAndNotObservedToDiscriminate) {
                 blocking.add(carrier);
             }
         });
@@ -170,7 +188,8 @@ class WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest {
     void everythingTheCutWaitsOnSaysWhatItIsWaitingFor() {
         Set<String> saidNothing = new TreeSet<>();
         WHAT_STILL_HOLDS_A_PLACE.forEach((carrier, because) -> {
-            if (because instanceof Because.StillToSplit(String owed) && owed.isBlank()) {
+            if (because instanceof Because.ReachedAndNotObservedToDiscriminate(String owed)
+                    && owed.isBlank()) {
                 saidNothing.add(carrier);
             }
         });
@@ -206,12 +225,13 @@ class WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest {
         return switch (because) {
             case Because.NothingReachesOne _ -> held.isEmpty() ? null
                     : "something reaches one: " + held.size() + " of them";
-            case Because.ItTellsThemApart _ -> held.isEmpty()
-                    ? "nothing reaches one, so nothing shows the place tells them apart"
-                    : apart ? null : "no two of them differ only in the place";
-            case Because.StillToSplit _ -> held.isEmpty()
-                    ? "nothing reaches one, so nothing was measured"
-                    : apart ? "the place tells two of them apart, so it is not a handle" : null;
+            case Because.TwoOfThemDifferOnlyThere _ -> held.isEmpty()
+                    ? "nothing reaches one, so no pair was seen at all"
+                    : apart ? null : "no two of them were seen differing only in the place";
+            case Because.ReachedAndNotObservedToDiscriminate _ -> held.isEmpty()
+                    ? "nothing reaches one, so nothing was observed"
+                    : apart ? "two of them differ only in the place, which is the other reading"
+                            : null;
         };
     }
 

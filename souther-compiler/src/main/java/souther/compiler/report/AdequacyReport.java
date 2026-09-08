@@ -306,9 +306,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     /**
      * One finding as this report shows it: what was found, and where it is shown.
      *
-     * <p>The two are one thing here and two things upstream. A finding says what a reading came to
-     * and nothing about where any of it is written, so that a helper moving is not a finding
-     * changing; where a report about it belongs is worked out once, when this report is assembled,
+     * <p>The two are one thing here and two things upstream. A finding does not carry the caret a
+     * report puts under it; where that belongs is worked out once, when this report is assembled,
      * by the rule {@link Adequacy#placeOf} owns and the warnings a build reads use as well.
      *
      * <p>Recombined here and not carried down as a second list beside the findings. Two collections

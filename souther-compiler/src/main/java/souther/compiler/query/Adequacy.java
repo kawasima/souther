@@ -3777,17 +3777,24 @@ public final class Adequacy {
      * finding be shown in two places, which is what a reader has no way to tell from two findings.
      *
      * <p>Asked and not carried. What a finding says is settled by the reading that made it; where it
-     * is shown is settled by where the code it is about is now, and that is a question for the
-     * module that wrote the code. A finding that carried the answer would be a new finding every
-     * time a helper it names slid down a file.
+     * is shown is settled by where the code it is about is now, which is somebody else's answer. A
+     * finding that carried it would be a new finding every time a helper it names slid down a file.
+     *
+     * <p>Which somebody differs by kind, and the switch is where that is said. A fork written in a
+     * source this compilation holds is placed by the module that wrote it; one the language writes
+     * is placed by the plan that reached it; a line the declarations owe is placed by the
+     * declaration it is shown at, which is not always in the module keeping the account; and a
+     * finding about a behavior as a whole is placed by that behavior. A row is the one shown where
+     * the reading already had it, for the reason
+     * {@code WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest} records.
      *
      * <p>A switch with nothing to fall through to. Which place a kind of finding is shown at is a
      * decision about that kind, so a kind added to {@link About} arrives here as a compile error
      * rather than being shown wherever the last {@code default} happened to point.
      *
      * @param module whose reading made it, which is what says where a behavior of it is declared
-     * @throws souther.compiler.query.Sites.NothingIsWrittenThere where nothing this compilation
-     *         holds places it
+     * @throws souther.compiler.query.Sites.NothingPlacesIt where nothing this compilation holds
+     *         places it
      */
     public static Citation placeOf(Db db, String module, Finding finding) {
         return switch (finding.about()) {
@@ -3857,11 +3864,16 @@ public final class Adequacy {
      * build over, because telling an author to write a row they may already have written is worse than
      * saying nothing.
      *
-     * <p><b>What was found, and not where to print it.</b> Where a report about one of these
+     * <p><b>The caret a report puts under one of these is not here.</b> Where a report about it
      * belongs is {@link Adequacy#placeOf}'s answer, asked by whoever is about to write a sentence.
      * Held here, an edit that moved a helper and changed nothing it does would be an edit to every
      * finding of every module that calls it, and no test of what this compiler answers could see
      * the difference — the findings would all be new and all say what they said.
+     *
+     * <p>Which is not the same as holding no place at all. Values reached through {@link About}
+     * still carry places of their own, and what those are for is being read one family at a time;
+     * {@code WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest} is where they are counted,
+     * and the module-boundary cut of issue #1472 waits on that count.
      */
     public record Finding(FindingSubject subject, WeakeningSet weakenedBy, About about) {
 
