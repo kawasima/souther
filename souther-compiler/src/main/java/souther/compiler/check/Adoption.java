@@ -106,11 +106,15 @@ record Adoption<A, L extends ReadingLanguage>(Set<A> read, Set<A> settled, Set<A
      * <p>Nothing satisfies the branch, so nothing it said narrows a value of this type — and
      * nothing it missed is missing from what a value of this type is under either. What is left is
      * that the positions it named are settled: the choice does nothing to them, which is an answer
-     * and not a gap. The same rule {@link #bothDead} states for a whole choice, said of one part of
-     * one branch of it.
+     * and not a gap.
      *
      * <p>What a choice above left open goes with the constraint it was about. There is no
      * constraint here for an alternative to have widened.
+     *
+     * <p>The one place that rule is stated. A choice composes alternatives this has already been
+     * applied to, so a choice one alternative of which nobody can be in is this once, and a choice
+     * neither alternative of which anybody can be in is this twice. Neither is a rule of its own,
+     * and a second statement of it would be free to disagree with this one.
      */
     Adoption<A, L> inADeadBranch() {
         return new Adoption<>(Set.of(), mentions(), Set.of(), false, Set.of());
@@ -171,10 +175,16 @@ record Adoption<A, L extends ReadingLanguage>(Set<A> read, Set<A> settled, Set<A
     }
 
     /**
-     * Both parts holding at once.
+     * Both parts holding at once, and what a choice comes to where an alternative of it is one
+     * nobody can be in.
      *
      * <p>Nothing spoils anything: a part nothing read leaves the parts beside it saying what they
      * said, since all of them hold.
+     *
+     * <p>Which is the composition a dead alternative wants and {@link #either} is not. A branch
+     * {@link #inADeadBranch} has been applied to holds no constraint and missed nothing — all it
+     * says is that the positions it named are settled — so there is nothing beside it for an
+     * alternative to have taken back, and no opening for one to arrive under.
      *
      * <p>What a choice inside either of them left open comes along. A conjunction beside a choice
      * does not put back what the choice left open — {@code (x == 7 || f(y)) && z > 1} still says
@@ -241,33 +251,6 @@ record Adoption<A, L extends ReadingLanguage>(Set<A> read, Set<A> settled, Set<A
     /** The positions any part of the clause was about. */
     Set<A> mentions() {
         return union(union(read, settled), missed);
-    }
-
-    /**
-     * This branch of a choice, beside one shown to admit nothing.
-     *
-     * <p>The dead branch settles the positions it named: nothing satisfies it, so what the choice
-     * does to a position only it spoke of is nothing, which is an answer. Its own misses do not
-     * come with it — a rule it could not read is a rule about a branch nobody can take — and
-     * neither does its {@link #hasUnreadPart}, for the same reason.
-     *
-     * <p>What this branch missed still wins. {@code (s < "") || f(x)} leaves {@code x} open however
-     * dead the first branch is, so the surviving branch's account is the one that outranks.
-     */
-    Adoption<A, L> beside(Adoption<A, L> dead) {
-        return new Adoption<>(read, union(settled, dead.mentions()), missed, hasUnreadPart, opened);
-    }
-
-    /**
-     * Two branches of a choice, both shown to admit nothing.
-     *
-     * <p>Then the choice admits nothing, which settles every position either of them named: the
-     * values there are exactly none. No branch is left to have missed anything, and none to have
-     * had a constraint of its own widened.
-     */
-    Adoption<A, L> bothDead(Adoption<A, L> other) {
-        return new Adoption<>(Set.of(), union(mentions(), other.mentions()), Set.of(), false,
-                Set.of());
     }
 
     private static <A> Set<A> union(Set<A> these, Set<A> those) {

@@ -176,7 +176,7 @@ class AnOpeningIsAppliedToAnAccountAndNeverDerivedFromItTest {
         Adoption<String, ReadingLanguage.Values> choice =
                 branch(true).either(opening(CONSTRAINED), branch(true));
 
-        assertEquals(Set.of(CONSTRAINED), choice.beside(branch(false)).opened());
+        assertEquals(Set.of(CONSTRAINED), choice.both(branch(false).inADeadBranch()).opened());
     }
 
     /**
@@ -192,7 +192,8 @@ class AnOpeningIsAppliedToAnAccountAndNeverDerivedFromItTest {
                 branch(true).either(opening(CONSTRAINED), branch(true));
 
         assertEquals(Set.of(), choice.inADeadBranch().opened());
-        assertEquals(Set.of(), choice.bothDead(branch(false)).opened());
+        assertEquals(Set.of(),
+                choice.inADeadBranch().both(branch(false).inADeadBranch()).opened());
     }
 
     /** The positions the account reached: what it constrained, and what it could not manage. */
