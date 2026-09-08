@@ -8,6 +8,7 @@ import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
@@ -98,44 +99,85 @@ class AModuleHasOnePlanAndOneMakerOfItTest {
      * <p>The whole surface and not the constructor alone. What must not leave is the indexes filed
      * by which objects were put in them: handed out, they are this plan's way into trees the caller
      * does not own, and what a caller does with one cannot be told from what it does with its own.
-     * So the public members are listed, and a new one is a finding whether it is a way in or a way
-     * to what is inside.
+     *
+     * <p><b>Written down as what each member hands over, not as what it is called.</b> A name is
+     * not what a member gives a caller, and reading the names would be watching the wrong thing:
+     * a second {@code armsOf} taking something else and answering with the index is a name already
+     * on the list, and so is the same name answering with a wider type than it did. What is listed
+     * is the kind, the name, what it takes and what comes back — which is the whole of what a
+     * caller can get through it.
+     *
+     * <p>Fields among them, because a field hands its value over as surely as a method does and is
+     * reached without one. There is a public field here already.
      */
     @Test
     void andWhatAPlanHandsOutIsWrittenDown() {
-        assertEquals(MAY_BE_PUBLIC, publicMembersOfAPlan(),
+        assertEquals(MAY_BE_PUBLIC, publicSurfaceOfAPlan(),
                 "a plan holds indexes filed by which Core objects were put in them, and handing"
                         + " one out is handing over a way into trees the taker does not own. What"
                         + " may be reached from outside this package is a value, or a question"
                         + " answered with one");
     }
 
-    /** What a plan lets a caller outside this package reach. */
+    /** What a plan lets a caller outside this package reach, and what it gets through each. */
     private static final Set<String> MAY_BE_PUBLIC = Set.of(
+            // The plan of nothing, which is what stands where a module's bodies did not come out.
+            "field NONE : souther.compiler.coverage.CoverageSites$Plan",
             // The places, in the order they were numbered, and what a run at one would be.
-            "sites", "arms", "hasNoProbes",
+            "method sites() :"
+                    + " java.util.List<souther.compiler.coverage.CoverageSites$Site>",
+            "method arms(java.lang.String) :"
+                    + " java.util.List<souther.compiler.coverage.CoverageSites$ArmSite>",
+            "method hasNoProbes() : boolean",
             // Which comparisons the bodies hold, and what this plan did about each.
-            "comparisons", "instruments", "emissionSiteOf", "requireEmissionSiteOf", "outcomeOf",
+            "method comparisons() : souther.compiler.coverage.ComparisonCatalog",
+            "method instruments(souther.compiler.coverage.ComparisonOccurrence) : boolean",
+            "method emissionSiteOf(souther.compiler.coverage.ComparisonOccurrence) :"
+                    + " java.util.Optional<souther.compiler.coverage.ComparisonEmissionSite>",
+            "method requireEmissionSiteOf(souther.compiler.coverage.ComparisonOccurrence) :"
+                    + " souther.compiler.coverage.ComparisonEmissionSite",
+            "method outcomeOf(souther.compiler.coverage.ComparisonOccurrence,boolean) :"
+                    + " java.util.Optional<"
+                    + "souther.compiler.coverage.ControlPointId$ComparisonPoint>",
             // What a number means, which is the half of a plan that outlives the graph.
-            "numbering", "identity",
+            "method numbering() : souther.compiler.coverage.SiteNumbering",
+            "method identity() : souther.compiler.coverage.NumberingIdentity",
             // Asked about a node the caller is already holding, which is the emitter's question.
-            "mayRepeat", "armsOf", "forkAt", "probesOf",
+            "method mayRepeat(souther.compiler.core.Core) : boolean",
+            "method armsOf(souther.compiler.core.Core) :"
+                    + " souther.compiler.coverage.ControlPointId$ArmOccurrence[]",
+            "method forkAt(souther.compiler.core.Core) : souther.compiler.coverage.ForkOccurrence",
+            "method probesOf(souther.compiler.core.Core) : int[]",
             // Where the fork each numbered arm stands in is written.
-            "whereEachArmsForkIsWritten");
+            "method whereEachArmsForkIsWritten() :"
+                    + " java.util.Map<java.lang.Integer, souther.compiler.diag.Citation>");
 
-    private static Set<String> publicMembersOfAPlan() {
+    private static Set<String> publicSurfaceOfAPlan() {
         Set<String> out = new TreeSet<>();
         for (Constructor<?> each : CoverageSites.Plan.class.getDeclaredConstructors()) {
-            if (Modifier.isPublic(each.getModifiers())) {
-                out.add("<init>");
+            if (Modifier.isPublic(each.getModifiers()) && !each.isSynthetic()) {
+                out.add("constructor <init>(" + parameters(each.getGenericParameterTypes()) + ")");
+            }
+        }
+        for (Field each : CoverageSites.Plan.class.getDeclaredFields()) {
+            if (Modifier.isPublic(each.getModifiers()) && !each.isSynthetic()) {
+                out.add("field " + each.getName() + " : "
+                        + each.getGenericType().getTypeName());
             }
         }
         for (Method each : CoverageSites.Plan.class.getDeclaredMethods()) {
             if (Modifier.isPublic(each.getModifiers()) && !each.isSynthetic()) {
-                out.add(each.getName());
+                out.add("method " + each.getName()
+                        + "(" + parameters(each.getGenericParameterTypes()) + ") : "
+                        + each.getGenericReturnType().getTypeName());
             }
         }
         return out;
+    }
+
+    private static String parameters(java.lang.reflect.Type[] taken) {
+        return Stream.of(taken).map(java.lang.reflect.Type::getTypeName)
+                .collect(java.util.stream.Collectors.joining(","));
     }
 
     /** Each of them written down as happening once, which is what the count is for. */
