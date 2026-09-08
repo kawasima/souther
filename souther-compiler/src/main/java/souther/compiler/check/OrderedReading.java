@@ -54,10 +54,15 @@ import java.util.Set;
  * they happened to be empty at the same position: {@code a < "" || a < ""} was refused and
  * {@code a < "" || b < ""} was not.
  *
- * <p><b>Equalities are read and disequalities are not.</b> An equality states both ends at once,
- * which is a range with one value in it and is exactly what this holds; {@code /=} states neither
- * end, and the values a denial leaves are a set rather than a range. Under a denial the two swap
- * places, which is the same rule read once.
+ * <p><b>An equality places both ends and a disequality places none, and both are read.</b> An
+ * equality states both at once, which is a range with one value in it and is exactly what this
+ * holds; {@code /=} states neither, and the values a denial leaves are a set rather than a range —
+ * which is the whole of what such a rule does to a range and is an answer, not a reading that
+ * stopped. Under a denial the two swap places, which is the same rule read once.
+ *
+ * <p>Told apart from a rule this has no word for by {@link #gaveUpAt} and never by the ranges: both
+ * leave every position where it was, and reading that back as "nothing was read here" is what made
+ * every denial written beside a bound into a choice this reading declined to speak for.
  */
 final class OrderedReading {
 
@@ -166,9 +171,9 @@ final class OrderedReading {
             return gaveUp(bin);
         }
         Hir.Expr written = Terms.asWrittenValue(bound, at);
-        // Denied, a comparison is the one that leaves what it leaves out. `!(value /= x)` is an
-        // equality and is read; `!(value == x)` is a disequality and is not, which is the same
-        // answer the disequality gets when it is written directly.
+        // Denied, a comparison is the one that leaves what it leaves out. `!(value /= x)` places
+        // both ends and `!(value == x)` places none, which is the same answer each of them gets
+        // written directly — and neither is a rule this reading failed at.
         ComparisonClaim said = positive ? claim : claim.denied();
         return switch (said) {
             // The value the rule is met at, which is a range with one value in it. What a denial

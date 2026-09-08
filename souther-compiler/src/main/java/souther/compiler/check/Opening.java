@@ -61,9 +61,10 @@ record Opening<A, L extends ReadingLanguage>(Set<A> positions, Set<A> byTheLeftG
     /**
      * A choice this reading has nothing to say about.
      *
-     * <p>Every position where the choice leaves what it leaves without either alternative, and
-     * nobody to send an author to — which is what a choice both of whose alternatives this reading
-     * read comes to, and the only state in which all three are empty together.
+     * <p>An opening with no position it could not show the alternatives preserve, and nobody to
+     * send an author to. A choice both of whose alternatives this reading read comes to it — and so
+     * does one whose unread alternative stands beside a branch reaching no position, so a reader
+     * may not take it for the first.
      */
     static <A, L extends ReadingLanguage> Opening<A, L> nothing() {
         return new Opening<>(Set.of(), Set.of(), Set.of());
