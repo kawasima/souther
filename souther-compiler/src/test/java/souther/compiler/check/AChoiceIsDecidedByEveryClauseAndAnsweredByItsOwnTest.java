@@ -241,17 +241,20 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
     @Test
     void whatAChoiceLeftOpenIsWhatTheAlternativeBesideTheUnreadOneReachedAndWidened() {
         StatedByClauses.AlternativeOpening opened = StatedByClauses.opens(new ChoiceId(),
-                new Settlement.WidthDependency(java.util.Set.of(), java.util.Set.of(CONSTRAINED)),
-                theBranchRead(java.util.Set.of()).byValues(),
-                theBranchNothingRead(java.util.Set.of()).byValues());
+                widthRestingOnTheRight(),
+                theBranchRead(java.util.Set.of()),
+                theBranchNothingRead(java.util.Set.of()));
 
         assertEquals(java.util.Set.of(CONSTRAINED), opened.byTheRightGoingUnread(),
                 "an author is sent here about the position the branch beside it constrained, and"
                         + " not about the one it settled");
-        assertEquals(java.util.Set.of(CONSTRAINED), opened.positions(),
+        assertEquals(java.util.Set.of(CONSTRAINED), opened.byValues().positions(),
                 "and the position hears about it, the width there being the unread branch's");
         assertEquals(java.util.Set.of(), opened.byTheLeftGoingUnread(),
                 "the left alternative was read, so nothing is open by its going unread");
+        assertEquals(java.util.Set.of(), opened.byOrder().positions(),
+                "and the reading of order read both alternatives, so the width it could not"
+                        + " account for is not something an unread alternative left open");
     }
 
     /**
@@ -266,10 +269,10 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
     void aPositionNoAlternativeWidenedIsNotOpenedByEitherOfThemGoingUnread() {
         StatedByClauses.AlternativeOpening opened = StatedByClauses.opens(new ChoiceId(),
                 Settlement.WidthDependency.none(),
-                theBranchNothingRead(java.util.Set.of()).byValues(),
-                theBranchNothingRead(java.util.Set.of()).byValues());
+                theBranchNothingRead(java.util.Set.of()),
+                theBranchNothingRead(java.util.Set.of()));
 
-        assertEquals(java.util.Set.of(), opened.positions(),
+        assertEquals(java.util.Set.of(), opened.byValues().positions(),
                 "the choice is as wide as it is at every position without either of them");
     }
 
@@ -285,11 +288,11 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
     @Test
     void whereTwoUnreadAlternativesAreOneTheWidthRestsOnThePositionIsStillOpened() {
         StatedByClauses.AlternativeOpening opened = StatedByClauses.opens(new ChoiceId(),
-                new Settlement.WidthDependency(java.util.Set.of(), java.util.Set.of(CONSTRAINED)),
-                theBranchNothingRead(java.util.Set.of()).byValues(),
-                theBranchNothingRead(java.util.Set.of()).byValues());
+                widthRestingOnTheRight(),
+                theBranchNothingRead(java.util.Set.of()),
+                theBranchNothingRead(java.util.Set.of()));
 
-        assertEquals(java.util.Set.of(CONSTRAINED), opened.positions(),
+        assertEquals(java.util.Set.of(CONSTRAINED), opened.byValues().positions(),
                 "the right alternative is why the choice is that wide, and nothing read it");
     }
 
@@ -304,7 +307,21 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
     private static StatedByClauses.AlternativeOpening opened(
             RuleShortfall.Site.AtAChoice choice) {
         return new StatedByClauses.AlternativeOpening(choice.id(), java.util.Set.of(),
-                java.util.Set.of(CONSTRAINED), java.util.Set.of(CONSTRAINED));
+                java.util.Set.of(CONSTRAINED), new Opening<>(java.util.Set.of(CONSTRAINED)),
+                Opening.nothing());
+    }
+
+    /**
+     * A choice neither reading could show is as wide as it is without its right alternative.
+     *
+     * <p>Both languages, and the same position in each. What silences the ordered half in the tests
+     * below is that its account read every alternative, and a width of nothing there would silence
+     * it whatever the accounts said.
+     */
+    private static Settlement.WidthDependency widthRestingOnTheRight() {
+        return new Settlement.WidthDependency(
+                new Settlement.Width<>(java.util.Set.of(), java.util.Set.of(CONSTRAINED)),
+                new Settlement.Width<>(java.util.Set.of(), java.util.Set.of(CONSTRAINED)));
     }
 
     /** One choice somebody wrote, told from every other by being this one. */
@@ -316,7 +333,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
     private static StatedByClauses.Part theBranchRead(java.util.Set<RuleShortfall> shortfalls) {
         return new StatedByClauses.Part(
                 new Adoption<>(java.util.Set.of(CONSTRAINED), java.util.Set.of(SETTLED),
-                        java.util.Set.of(), false),
+                        java.util.Set.of(), false, java.util.Set.of()),
                 Adoption.nothing(), Map.of(), java.util.Set.of(), shortfalls);
     }
 
@@ -325,7 +342,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
             java.util.Set<RuleShortfall> shortfalls) {
         return new StatedByClauses.Part(
                 new Adoption<>(java.util.Set.of(), java.util.Set.of(), java.util.Set.of(UNREAD),
-                        true),
+                        true, java.util.Set.of()),
                 Adoption.nothing(), Map.of(), java.util.Set.of(), shortfalls);
     }
 

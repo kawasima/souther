@@ -158,7 +158,8 @@ sealed interface StatedByClauses {
      *                       can be in have both, together with whatever the choice between them
      *                       raised
      */
-    record Part(Adoption<FactSubject> byValues, Adoption<FactSubject> byOrder,
+    record Part(Adoption<FactSubject, ReadingLanguage.Values> byValues,
+                Adoption<FactSubject, ReadingLanguage.Order> byOrder,
                 Map<FactSubject, StringRestriction> aboutStrings,
                 Set<AdmissibleReading.AskedAt> asked,
                 Set<RuleShortfall> ruleShortfalls) {
@@ -232,9 +233,11 @@ sealed interface StatedByClauses {
                     : "two alternatives of one choice are answerable for one written place";
             Set<RuleShortfall> shortfalls = new LinkedHashSet<>(ruleShortfalls);
             shortfalls.addAll(other.ruleShortfalls());
-            leftOpenBy(choice, opening.byTheRightGoingUnread(), other.ruleShortfalls(), shortfalls);
-            leftOpenBy(choice, opening.byTheLeftGoingUnread(), ruleShortfalls, shortfalls);
-            return new Part(byValues.either(other.byValues()), byOrder.either(other.byOrder()),
+            leftOpenByValues(choice, opening.byTheRightGoingUnread(), other.ruleShortfalls(),
+                    shortfalls);
+            leftOpenByValues(choice, opening.byTheLeftGoingUnread(), ruleShortfalls, shortfalls);
+            return new Part(byValues.either(opening.byValues(), other.byValues()),
+                    byOrder.either(opening.byOrder(), other.byOrder()),
                     StringRestriction.over(aboutStrings, other.aboutStrings(), false),
                     askedIn(asked, other.asked()), held(shortfalls));
         }
@@ -267,9 +270,15 @@ sealed interface StatedByClauses {
          * fact is told from two facts of the same shape. Never their reasons: a rule about which
          * reasons suppress which would be one more place the vocabulary has to be consulted, and a
          * reason added to it would quietly change what a choice says.
+         *
+         * <p><b>Of the reading of values, which is what the name says and not all there is.</b>
+         * Where a position's order stops is taken back by an unread alternative the same way, and
+         * an author is sent to the choice for that by nothing here. Whether they are owed it is a
+         * question of its own and is open.
          */
-        private static void leftOpenBy(RuleShortfall.Site.AtAChoice choice, Set<FactSubject> these,
-                                       Set<RuleShortfall> unread, Set<RuleShortfall> out) {
+        private static void leftOpenByValues(RuleShortfall.Site.AtAChoice choice,
+                                             Set<FactSubject> these,
+                                             Set<RuleShortfall> unread, Set<RuleShortfall> out) {
             these.stream()
                     .filter(each -> !accountedFor(each, unread))
                     .forEach(each -> out.add(new RuleShortfall(each,
@@ -310,22 +319,27 @@ sealed interface StatedByClauses {
      * @param byTheLeftGoingUnread  the positions the right alternative reached, where the left is
      *                              one nothing could read. Empty where it was read
      * @param byTheRightGoingUnread the same the other way round
-     * @param positions             the positions an alternative nothing could read was not shown
-     *                              to leave where they were
+     * @param byValues              what the reading of values could not show the alternatives leave
+     *                              where they were, where one of them went unread there
+     * @param byOrder               the same asked of where the orders stop. A separate answer and
+     *                              not a copy: which alternative went unread is each reading's own,
+     *                              and so is what a branch leaves
      */
     record AlternativeOpening(ChoiceId choice, Set<FactSubject> byTheLeftGoingUnread,
-                              Set<FactSubject> byTheRightGoingUnread, Set<FactSubject> positions) {
+                              Set<FactSubject> byTheRightGoingUnread,
+                              Opening<FactSubject, ReadingLanguage.Values> byValues,
+                              Opening<FactSubject, ReadingLanguage.Order> byOrder) {
 
-        // Copied on the way in, as everything a reading publishes is. What is here is handed to the
-        // positions and kept in what they came to, so a maker that went on writing to the set it
-        // built one from would be changing what an answer already given says.
+        // Copied on the way in, as everything a reading publishes is: what is here is handed to
+        // the positions and kept in what they came to, so a maker that went on writing to the set
+        // it built one from would be changing what an answer already given says. The openings do
+        // it where they are made, which is why only the two sets are copied here.
         public AlternativeOpening {
             if (choice == null) {
                 throw new IllegalArgumentException("an opening is some choice's");
             }
             byTheLeftGoingUnread = held(byTheLeftGoingUnread);
             byTheRightGoingUnread = held(byTheRightGoingUnread);
-            positions = held(positions);
         }
 
         private static Set<FactSubject> held(Set<FactSubject> these) {
@@ -339,11 +353,12 @@ sealed interface StatedByClauses {
      *
      * <p>Two questions and two sources, and neither answers the other's. Which alternative nothing
      * could read is a fact about the clause somebody wrote and is read off the tree that keeps that
-     * shape ({@link Adoption#dropped}). Whether anything showed the choice leaves a position what
-     * it would without an alternative is a fact about the values, is worked out where the branches
-     * were settled, and arrives here decided ({@link Settlement.WidthDependency}) — asked of the
-     * positions each branch took in instead, the answer would be that a branch narrowing a position
-     * its neighbour narrows the same way is why the choice is as wide as it is.
+     * shape ({@link Adoption#hasUnreadPart}). Whether anything showed the choice leaves a position
+     * what it would without an alternative is a fact about what the branches leave, is worked out
+     * where they were settled, and arrives here decided ({@link Settlement.WidthDependency}) —
+     * asked of the positions each branch took in instead, the answer would be that a branch
+     * narrowing a position its neighbour narrows the same way is why the choice is as wide as it
+     * is.
      *
      * <p>What arrives is the side a reader may act on: a position left out of it is one dropping
      * the alternative was shown not to narrow, and one kept is one nobody settled. So a position
@@ -351,28 +366,56 @@ sealed interface StatedByClauses {
      * a reading declining to speak for a position it could have — never an answer handed out as
      * exact when it is not.
      *
-     * <p>Of the reading of values alone, which is the one a choice is asked of. Where a position's
-     * order stops is not what an alternative takes back — a range says nothing about which values
-     * stand anywhere, so a branch nothing read leaves the ranges beside it saying what they said.
+     * <p><b>Asked of each reading about its own clause and its own branches.</b> Both halves of the
+     * question are the reading's: whether it had a word for an alternative, and whether what that
+     * alternative leaves is what the choice leaves. A range says nothing about which values stand
+     * anywhere and a set of values says nothing about where an order stops, so an answer built from
+     * one reading's half and the other's is about a choice neither of them read.
+     *
+     * <p>Handed the whole part on each side rather than one account of it, for that reason: the two
+     * accounts of one written branch are what this has to put side by side, and a caller picking
+     * one of them out is the place the halves would come apart.
      */
     static AlternativeOpening opens(ChoiceId choice, Settlement.WidthDependency width,
-                                    Adoption<FactSubject> one, Adoption<FactSubject> other) {
+                                    Part one, Part other) {
+        return new AlternativeOpening(choice,
+                one.byValues().hasUnreadPart() ? reachedBy(other.byValues()) : Set.of(),
+                other.byValues().hasUnreadPart() ? reachedBy(one.byValues()) : Set.of(),
+                openedBy(width.byValues(), one.byValues(), other.byValues()),
+                openedBy(width.byOrder(), one.byOrder(), other.byOrder()));
+    }
+
+    /**
+     * What one reading says a choice between these two accounts left open.
+     *
+     * <p><b>The one place an opening is made, and the place both halves of the question are in
+     * hand.</b> Which alternative this reading had no word for is the account's, and what it could
+     * not show the alternatives preserve is the width's; an opening is the two of them together and
+     * is nothing without either.
+     *
+     * <p>Made here rather than by the width, which is what lets the three of them be held to one
+     * reading. Asked of the width, an alternative can only arrive as a word for a side — and a word
+     * for a side says nothing about which reading it came from, so the width of the ends taken with
+     * the flags of the values composes and comes back as an opening about a choice the ends never
+     * read. Bound to one {@code L}, there is nothing to hand in but accounts, and that call cannot
+     * be written.
+     */
+    private static <L extends ReadingLanguage> Opening<FactSubject, L> openedBy(
+            Settlement.Width<L> width, Adoption<FactSubject, L> one,
+            Adoption<FactSubject, L> other) {
         Set<FactSubject> opened = new LinkedHashSet<>();
-        if (one.dropped()) {
+        if (one.hasUnreadPart()) {
             opened.addAll(width.mayRestOnLeft());
         }
-        if (other.dropped()) {
+        if (other.hasUnreadPart()) {
             opened.addAll(width.mayRestOnRight());
         }
-        return new AlternativeOpening(choice,
-                one.dropped() ? reachedBy(other) : Set.of(),
-                other.dropped() ? reachedBy(one) : Set.of(),
-                opened);
+        return new Opening<>(opened);
     }
 
     /** The positions a reading reached and did not merely settle: what it constrained, and what it
      *  was about and could not manage. */
-    private static Set<FactSubject> reachedBy(Adoption<FactSubject> of) {
+    private static Set<FactSubject> reachedBy(Adoption<FactSubject, ReadingLanguage.Values> of) {
         Set<FactSubject> out = new LinkedHashSet<>(of.read());
         out.addAll(of.missed());
         return out;
@@ -719,8 +762,8 @@ sealed interface StatedByClauses {
                                                     StatedTogether.Said other,
                                                     Settlement.Sided there) {
             return new Settlement.OfAChoice(here, there,
-                    Settlement.WidthDependency.of(here.emptiness(), one.confinement().values(),
-                            there.emptiness(), other.confinement().values()));
+                    Settlement.WidthDependency.of(here.emptiness(), one.confinement(),
+                            there.emptiness(), other.confinement()));
         }
 
         /**
@@ -1025,8 +1068,7 @@ sealed interface StatedByClauses {
                     Taken beside = keptAs(other, fate.right());
                     yield live.either(
                             new RuleShortfall.Site.AtAChoice(it.id(), it.writtenAt().pos()),
-                            opens(it.id(), fate.width(), live.took().byValues(),
-                                    beside.took().byValues()),
+                            opens(it.id(), fate.width(), live.took(), beside.took()),
                             beside);
                 }
             };
@@ -1131,7 +1173,7 @@ sealed interface StatedByClauses {
         Taken either(RuleShortfall.Site.AtAChoice choice, AlternativeOpening opening, Taken other) {
             return new Taken(took.either(choice, opening, other.took()),
                     joined(parts, other.parts()),
-                    opened(opened(opened, other.opened()), opening.positions()));
+                    opened(opened(opened, other.opened()), opening.byValues().positions()));
         }
 
         private static Map<Core, Part> joined(Map<Core, Part> these, Map<Core, Part> those) {
@@ -1286,8 +1328,8 @@ sealed interface StatedByClauses {
             Set<FactSubject> opened = new LinkedHashSet<>();
             Map<Core, PartAccount> said = new IdentityHashMap<>();
             Map<K, Set<FactSubject>> narrowed = new LinkedHashMap<>();
-            Adoption<FactSubject> byValues = Adoption.nothing();
-            Adoption<FactSubject> byOrder = Adoption.nothing();
+            Adoption<FactSubject, ReadingLanguage.Values> byValues = Adoption.nothing();
+            Adoption<FactSubject, ReadingLanguage.Order> byOrder = Adoption.nothing();
             // What the answer has left, before an account is made out of it. Every account below
             // reads what was built and builds nothing, so this is what it costs — and an account
             // that spent would be taking the budget the answer is bounded by to say which rule a
@@ -1484,7 +1526,8 @@ sealed interface StatedByClauses {
      * read — so that the plans never reach a reader and the position pays for its own answer in one
      * place.
      */
-    record PartAccount(Adoption<FactSubject> byValues, Adoption<FactSubject> byOrder,
+    record PartAccount(Adoption<FactSubject, ReadingLanguage.Values> byValues,
+                       Adoption<FactSubject, ReadingLanguage.Order> byOrder,
                        Set<RuleShortfall> aboutARule,
                        Map<FactSubject, StringRestriction> aboutStrings) {}
 

@@ -1,5 +1,7 @@
 package souther.compiler.check;
 
+import souther.compiler.numeric.OrderedInterval;
+import souther.compiler.numeric.OrderedIntervals;
 import souther.compiler.values.AdmittedPlan;
 import souther.compiler.values.PlannedValues;
 import souther.compiler.values.Realized;
@@ -12,6 +14,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.function.BinaryOperator;
+import java.util.function.Function;
 
 /**
  * What settling the met-together reading came to: the values, and the fate of every branch.
@@ -64,7 +68,69 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
     }
 
     /**
-     * Which positions a choice may be as wide as it is at because of one of its alternatives.
+     * Which positions a choice may be as wide as it is at because of one of its alternatives, as
+     * each reading measures it.
+     *
+     * <p>Two readings and one event. A choice offering an alternative nothing could read is one
+     * thing that happened to one written clause; what it left open is a different set in each of
+     * the two languages, because each of them measures what a branch leaves in its own terms and
+     * has no word for what the other holds. So this is made once, where the branches are, and the
+     * two halves are told apart by their type rather than by which caller happens to be holding
+     * one.
+     *
+     * <p>Kept together for the same reason the fates are: a reader deciding what an unread
+     * alternative left open needs both about the same two branches, and made in two places they
+     * would be two answers to one question.
+     *
+     * <p><b>Nothing where either branch admits nothing here.</b> There is no choice at such an
+     * occurrence — what it leaves is the branch beside the dead one — so its width rests on neither
+     * alternative in either language. Another occurrence of the same written choice may still be
+     * one both branches stand at, and what that one's width may rest on is joined in beside this
+     * ({@link #alsoSeen}): a branch is dead for the author only where nobody can be in it anywhere,
+     * and that is not this occurrence's to say.
+     *
+     * @param byValues what the reading of values could not show the alternatives preserve
+     * @param byOrder  the same asked of where the orders stop, which is a different question about
+     *                 the same two branches
+     */
+    record WidthDependency(Width<ReadingLanguage.Values> byValues,
+                           Width<ReadingLanguage.Order> byOrder) {
+
+        /** A choice shown to leave what it leaves without either of its alternatives. */
+        static WidthDependency none() {
+            return new WidthDependency(Width.none(), Width.none());
+        }
+
+        /**
+         * What one occurrence of a choice between these two branches may be as wide as it is
+         * because of, read off the descriptions and building nothing.
+         *
+         * <p>Each reading is asked about its own and neither is asked about the other's. Handed the
+         * whole branch rather than one half of it because the question that decides whether there
+         * is a choice here at all — whether anybody can be in each branch — is about the two of
+         * them together and is already answered.
+         */
+        static WidthDependency of(souther.compiler.values.Emptiness here,
+                                  Confinement.Planned<FactSubject> one,
+                                  souther.compiler.values.Emptiness there,
+                                  Confinement.Planned<FactSubject> other) {
+            if (here == souther.compiler.values.Emptiness.EMPTY
+                    || there == souther.compiler.values.Emptiness.EMPTY) {
+                return none();
+            }
+            return new WidthDependency(Width.ofValues(one.values(), other.values()),
+                    Width.ofOrder(one.ordered(), other.ordered()));
+        }
+
+        /** The width of one more occurrence of the same choice, taken in beside this. */
+        WidthDependency alsoSeen(WidthDependency occurrence) {
+            return new WidthDependency(byValues.alsoSeen(occurrence.byValues()),
+                    byOrder.alsoSeen(occurrence.byOrder()));
+        }
+    }
+
+    /**
+     * One reading's half of that.
      *
      * <p>A relation between two branches and not an attribute of one, which is why it is here
      * rather than in {@link Sided}: what may rest on the left is read off what the <em>right</em>
@@ -72,18 +138,18 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
      *
      * <p><b>What a member and a non-member each say, which is not the same strength.</b> Write
      * {@code D} for the positions where the choice without a branch truly leaves less than the
-     * choice with it. A position left out is one where the two are the same set and dropping the
-     * branch changes nothing — that is proven. A position kept is one where nothing here proved
-     * them the same, which is weaker than their differing: two descriptions of one set written
+     * choice with it. A position left out is one where the two are the same and dropping the branch
+     * changes nothing — that is proven. A position kept is one where nothing here proved them the
+     * same, which is weaker than their differing: two descriptions of one answer written
      * differently are kept apart. So {@code D} is contained in what is held and is not what is
      * held, and a reader may take a non-member as a fact and a member only as a question nobody
      * settled. Read the other way, a position no alternative was really answerable for would be
      * published as one an author has to look at.
      *
-     * <p>Which is what the comparison can be an equality of normalised descriptions and cost
-     * nothing. A choice admits whatever either of its branches admits, so what it leaves without
-     * one of them is contained in what it leaves with both, and equal descriptions are the same
-     * set — the proof runs in the direction a non-member is read in, and no machine is built to
+     * <p>Which is what lets the comparison be an equality of normalised descriptions and cost
+     * nothing. A choice leaves whatever either of its branches leaves, so what it leaves without
+     * one of them is contained in what it leaves with both, and equal descriptions say the same
+     * thing — the proof runs in the direction a non-member is read in, and nothing is built to
      * decide the other.
      *
      * <p><b>An occurrence at a time, and a union over them.</b> The same written choice stands
@@ -92,75 +158,107 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
      * may. Union is associative, commutative and idempotent, which is what lets the order the
      * copies are met in stay out of the answer, and it is the second reason a member is a question
      * rather than a fact: an occurrence's own widening can be covered by what another occurrence
-     * leaves. An occurrence one branch of which admits nothing is not a choice there at all and
-     * contributes neither side.
+     * leaves.
      *
+     * <p><b>Which alternative went unread is not here.</b> That is what the account of the rules
+     * says, and turning the two into what the choice left open is done where both are in hand
+     * ({@code StatedByClauses#openedBy}). Answered here, the alternative would have to arrive as a
+     * word for a side rather than as an account, and a word for a side says nothing about which
+     * reading it came from.
+     *
+     * @param <L>            which reading measured this ({@link ReadingLanguage})
      * @param mayRestOnLeft  the positions where the choice without its left alternative was not
      *                       shown to leave what the choice with it leaves
      * @param mayRestOnRight the same for the right
      */
-    record WidthDependency(Set<FactSubject> mayRestOnLeft, Set<FactSubject> mayRestOnRight) {
+    record Width<L extends ReadingLanguage>(Set<FactSubject> mayRestOnLeft,
+                                            Set<FactSubject> mayRestOnRight) {
 
-        WidthDependency {
+        Width {
             mayRestOnLeft = Set.copyOf(mayRestOnLeft);
             mayRestOnRight = Set.copyOf(mayRestOnRight);
         }
 
-        /** A choice shown to leave what it leaves without either of its alternatives. */
-        static WidthDependency none() {
-            return new WidthDependency(Set.of(), Set.of());
+        /** A choice this reading showed it leaves what it leaves without either alternative. */
+        static <L extends ReadingLanguage> Width<L> none() {
+            return new Width<>(Set.of(), Set.of());
         }
 
         /**
-         * What one occurrence of a choice between these two branches may be as wide as it is
-         * because of, read off the descriptions and building nothing.
+         * What the reading of values could not show the alternatives preserve.
          *
          * <p>Over the positions either of them narrowed, since a position neither did is one both
          * of them leave at every value and so is the choice, with or without either.
-         *
-         * <p><b>Nothing where either branch admits nothing here.</b> There is no choice at such an
-         * occurrence — what it leaves is the branch beside the dead one — so its width rests on
-         * neither alternative. Another occurrence of the same written choice may still be one both
-         * branches stand at, and what that one's width may rest on is joined in beside this
-         * ({@link #alsoSeen}): a branch is dead for the author only where nobody can be in it
-         * anywhere, and that is not this occurrence's to say.
          */
-        static WidthDependency of(souther.compiler.values.Emptiness here,
-                                  PlannedValues<FactSubject> one,
-                                  souther.compiler.values.Emptiness there,
-                                  PlannedValues<FactSubject> other) {
-            if (here == souther.compiler.values.Emptiness.EMPTY
-                    || there == souther.compiler.values.Emptiness.EMPTY) {
-                return none();
-            }
-            Set<FactSubject> mayRestOnLeft = new LinkedHashSet<>();
-            Set<FactSubject> mayRestOnRight = new LinkedHashSet<>();
+        static Width<ReadingLanguage.Values> ofValues(PlannedValues<FactSubject> one,
+                                                      PlannedValues<FactSubject> other) {
             Set<FactSubject> narrowed = new LinkedHashSet<>(one.adoptedAt());
             narrowed.addAll(other.adoptedAt());
+            return comparing(narrowed, one::at, other::at,
+                    (here, there) -> AdmittedPlan.joining(List.of(here, there)));
+        }
+
+        /**
+         * The same asked of where the orders stop.
+         *
+         * <p>Complete as well as sound, which the reading of values is not: what this language
+         * leaves a position is a pair of ends and is written one way, so the positions left out are
+         * exactly the positions the choice stops where it would without the branch. The contract
+         * this is published under ({@link Opening}) is still the weaker one, since what a reader may
+         * act on has to hold of every language that answers.
+         *
+         * <p>A position at a time, as the values are. What a choice comes to over a whole reading
+         * is more than the ranges and is composed where both languages are held
+         * ({@link Confinement.Planned}); what is asked here is one position of two branches whose
+         * fates are settled and handed in.
+         */
+        static Width<ReadingLanguage.Order> ofOrder(OrderedIntervals<FactSubject> one,
+                                                    OrderedIntervals<FactSubject> other) {
+            Set<FactSubject> bounded = new LinkedHashSet<>(one.boundedAt());
+            bounded.addAll(other.boundedAt());
+            return comparing(bounded, one::at, other::at, OrderedInterval::join);
+        }
+
+        /**
+         * Both sides of one comparison, whatever a reading leaves a position.
+         *
+         * <p>Private, and the reading it is a width of is settled by whichever of the two above
+         * called it — each of them takes the descriptions of one language and nothing else, so
+         * there is no call here at which the two could be swapped for one another.
+         */
+        private static <L extends ReadingLanguage, T> Width<L> comparing(
+                Set<FactSubject> narrowed, Function<FactSubject, T> left,
+                Function<FactSubject, T> right, BinaryOperator<T> joining) {
+            Set<FactSubject> mayRestOnLeft = new LinkedHashSet<>();
+            Set<FactSubject> mayRestOnRight = new LinkedHashSet<>();
             for (FactSubject position : narrowed) {
-                AdmittedPlan left = one.at(position);
-                AdmittedPlan right = other.at(position);
-                AdmittedPlan joined = AdmittedPlan.joining(List.of(left, right));
-                // Equal descriptions are one set, so this side of each is a proof that dropping
+                // Asked of each side once. What a reading leaves a position is worked out and not
+                // looked up — a description is met across every alternative the reading holds — so
+                // a comparison that asked again for what it already had would pay for the branches
+                // twice over.
+                T here = left.apply(position);
+                T there = right.apply(position);
+                T both = joining.apply(here, there);
+                // Equal descriptions say one thing, so this side of each is a proof that dropping
                 // the branch leaves the position where it was. Unequal ones are not a proof of
                 // anything, and the position is kept as one nobody settled.
-                if (!right.equals(joined)) {
+                if (!there.equals(both)) {
                     mayRestOnLeft.add(position);
                 }
-                if (!left.equals(joined)) {
+                if (!here.equals(both)) {
                     mayRestOnRight.add(position);
                 }
             }
-            return new WidthDependency(mayRestOnLeft, mayRestOnRight);
+            return new Width<>(mayRestOnLeft, mayRestOnRight);
         }
 
         /** The width of one more occurrence of the same choice, taken in beside this. */
-        WidthDependency alsoSeen(WidthDependency occurrence) {
+        Width<L> alsoSeen(Width<L> occurrence) {
             Set<FactSubject> left = new LinkedHashSet<>(mayRestOnLeft);
             left.addAll(occurrence.mayRestOnLeft());
             Set<FactSubject> right = new LinkedHashSet<>(mayRestOnRight);
             right.addAll(occurrence.mayRestOnRight());
-            return new WidthDependency(left, right);
+            return new Width<>(left, right);
         }
     }
 

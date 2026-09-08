@@ -2,12 +2,17 @@ package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.numeric.Count;
+import souther.compiler.numeric.Endpoint;
+import souther.compiler.numeric.OrderedInterval;
+import souther.compiler.numeric.OrderedIntervals;
 import souther.compiler.values.AdmittedPlan;
 import souther.compiler.values.PlannedValues;
 import souther.compiler.values.UnreadReason;
 import souther.compiler.values.Value;
 import souther.compiler.values.ValueSet;
 
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -53,11 +58,18 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
         return PlannedValues.unreadable(named, UnreadReason.FORM_NOT_READ);
     }
 
+    /** A choice this reading showed it is as wide as it is without either alternative. */
+    private static final Settlement.Width<ReadingLanguage.Values> NEITHER = Settlement.Width.none();
+
     /** What a choice between two branches somebody can be in is as wide as it is because of. */
-    private static Settlement.WidthDependency between(PlannedValues<FactSubject> one,
-                                                      PlannedValues<FactSubject> other) {
-        return Settlement.WidthDependency.of(souther.compiler.values.Emptiness.UNDECIDED, one,
-                souther.compiler.values.Emptiness.UNDECIDED, other);
+    private static Settlement.Width<ReadingLanguage.Values> between(PlannedValues<FactSubject> one,
+                                                                   PlannedValues<FactSubject> other) {
+        return Settlement.Width.ofValues(one, other);
+    }
+
+    /** One branch, with nothing said about where its orders stop. */
+    private static Confinement.Planned<FactSubject> branch(PlannedValues<FactSubject> values) {
+        return new Confinement.Planned<>(values, OrderedIntervals.top(), Map.of());
     }
 
     /**
@@ -69,7 +81,7 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
      */
     @Test
     void anAlternativeThatSaysNothingIsWhyTheChoiceSaysNothing() {
-        Settlement.WidthDependency width = between(isA(), unread(Set.of(OTHER)));
+        Settlement.Width<ReadingLanguage.Values> width = between(isA(), unread(Set.of(OTHER)));
 
         assertEquals(Set.of(), width.mayRestOnLeft(),
                 "without the left the choice still admits every value at value");
@@ -87,17 +99,17 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
      */
     @Test
     void twoAlternativesNarrowingAPositionAlikeLeaveTheWidthOnNeither() {
-        Settlement.WidthDependency width = between(isA().meet(unread(Set.of(OTHER))),
+        Settlement.Width<ReadingLanguage.Values> width = between(isA().meet(unread(Set.of(OTHER))),
                 isA().meet(unread(Set.of(OTHER))));
 
-        assertEquals(Settlement.WidthDependency.none(), width,
+        assertEquals(NEITHER, width,
                 "either branch dropped leaves the other saying the same thing at every position");
     }
 
     /** And the same where only one of them holds a clause nothing read. */
     @Test
     void andTheSameWhereOnlyOneOfThemHoldsAClauseNothingRead() {
-        assertEquals(Settlement.WidthDependency.none(),
+        assertEquals(NEITHER,
                 between(isA().meet(unread(Set.of(OTHER))), isA()),
                 "the redundant branch is not why the choice admits what it admits");
     }
@@ -111,10 +123,10 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
      */
     @Test
     void alternativesCoveringAPositionBetweenThemLeaveTheWidthOnNeither() {
-        Settlement.WidthDependency width =
+        Settlement.Width<ReadingLanguage.Values> width =
                 between(isA().joinLive(notA()), unread(Set.of(OTHER)));
 
-        assertEquals(Settlement.WidthDependency.none(), width,
+        assertEquals(NEITHER, width,
                 "the covered position is every value without either alternative");
     }
 
@@ -126,7 +138,7 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
      */
     @Test
     void alternativesNeitherOfWhichCoversTheOtherLeaveTheWidthOnBoth() {
-        Settlement.WidthDependency width = between(isA(),
+        Settlement.Width<ReadingLanguage.Values> width = between(isA(),
                 PlannedValues.at(VALUE, AdmittedPlan.of(ValueSet.just(B))));
 
         assertEquals(Set.of(VALUE), width.mayRestOnLeft());
@@ -144,7 +156,7 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
      */
     @Test
     void aBranchAnswerableForOnePositionIsNotAnswerableForTheNext() {
-        Settlement.WidthDependency width = between(isA().meet(otherIsA()),
+        Settlement.Width<ReadingLanguage.Values> width = between(isA().meet(otherIsA()),
                 notA().meet(otherIsA()));
 
         assertEquals(Set.of(VALUE), width.mayRestOnLeft(),
@@ -165,14 +177,50 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
     @Test
     void anOccurrenceOneBranchOfWhichAdmitsNothingRestsOnNeitherAndDoesNotSpeakForTheRest() {
         Settlement.WidthDependency dead = Settlement.WidthDependency.of(
-                souther.compiler.values.Emptiness.EMPTY, isA(),
-                souther.compiler.values.Emptiness.UNDECIDED, unread(Set.of(OTHER)));
-        Settlement.WidthDependency live = between(isA(), unread(Set.of(OTHER)));
+                souther.compiler.values.Emptiness.EMPTY, branch(isA()),
+                souther.compiler.values.Emptiness.UNDECIDED, branch(unread(Set.of(OTHER))));
+        Settlement.WidthDependency live = Settlement.WidthDependency.of(
+                souther.compiler.values.Emptiness.UNDECIDED, branch(isA()),
+                souther.compiler.values.Emptiness.UNDECIDED, branch(unread(Set.of(OTHER))));
 
         assertEquals(Settlement.WidthDependency.none(), dead,
                 "the choice is the branch beside the dead one, and no alternative widened it");
         assertEquals(live, dead.alsoSeen(live),
                 "and what the occurrence beside it found is what the written choice is left with");
+    }
+
+    /**
+     * The reading of order is asked the same question about the same two branches, and answers it
+     * about where the positions stop.
+     *
+     * <p>{@code value >= 5 || f(other)}: what the choice leaves {@code value} is every number, and
+     * without the right alternative it is the numbers from five — so the right is why the order
+     * stops nowhere, which is a fact about the order and one the values have no word for. Asked of
+     * the values instead, the answer is about a position they were told nothing about.
+     */
+    @Test
+    void theOrderIsAskedTheSameQuestionAboutWhereItsPositionsStop() {
+        Settlement.Width<ReadingLanguage.Order> width = Settlement.Width.ofOrder(
+                OrderedIntervals.at(VALUE, from(5)), OrderedIntervals.top());
+
+        assertEquals(Set.of(), width.mayRestOnLeft(),
+                "without the left the choice stops the position nowhere, as it does with it");
+        assertEquals(Set.of(VALUE), width.mayRestOnRight(),
+                "without the right it stops at five");
+    }
+
+    /** And two branches stopping a position in the same place leave the width on neither. */
+    @Test
+    void twoAlternativesStoppingAPositionAlikeLeaveTheWidthOnNeither() {
+        assertEquals(Settlement.Width.<ReadingLanguage.Order>none(),
+                Settlement.Width.ofOrder(OrderedIntervals.at(VALUE, from(5)),
+                        OrderedIntervals.at(VALUE, from(5))),
+                "an interval is written one way, so alike is the same description");
+    }
+
+    /** {@code value >= low}. */
+    private static OrderedInterval from(int low) {
+        return new OrderedInterval(Endpoint.inclusive(Count.of(low)), null);
     }
 
     /**
@@ -184,16 +232,16 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
      */
     @Test
     void whatTheOccurrencesLeaveIsJoinedWithoutRegardToOrderOrRepetition() {
-        Settlement.WidthDependency here =
-                new Settlement.WidthDependency(Set.of(VALUE), Set.of());
-        Settlement.WidthDependency there =
-                new Settlement.WidthDependency(Set.of(), Set.of(OTHER));
+        Settlement.Width<ReadingLanguage.Values> here =
+                new Settlement.Width<>(Set.of(VALUE), Set.of());
+        Settlement.Width<ReadingLanguage.Values> there =
+                new Settlement.Width<>(Set.of(), Set.of(OTHER));
 
         assertEquals(here.alsoSeen(there), there.alsoSeen(here),
                 "the order the copies were met in is not in the answer");
         assertEquals(here.alsoSeen(there), here.alsoSeen(there).alsoSeen(here),
                 "and neither is a copy met twice");
-        assertEquals(new Settlement.WidthDependency(Set.of(VALUE), Set.of(OTHER)),
+        assertEquals(new Settlement.Width<ReadingLanguage.Values>(Set.of(VALUE), Set.of(OTHER)),
                 here.alsoSeen(there),
                 "a position any occurrence's width rests on is one the whole answer's does");
     }

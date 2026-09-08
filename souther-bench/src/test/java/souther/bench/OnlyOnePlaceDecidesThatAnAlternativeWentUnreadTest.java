@@ -33,7 +33,8 @@ class OnlyOnePlaceDecidesThatAnAlternativeWentUnreadTest {
             "souther.compiler.check.StatedByClauses#opens"
                     + "(Lsouther/compiler/check/ChoiceId;"
                     + "Lsouther/compiler/check/Settlement$WidthDependency;"
-                    + "Lsouther/compiler/check/Adoption;Lsouther/compiler/check/Adoption;)"
+                    + "Lsouther/compiler/check/StatedByClauses$Part;"
+                    + "Lsouther/compiler/check/StatedByClauses$Part;)"
                     + "Lsouther/compiler/check/StatedByClauses$AlternativeOpening;";
 
     /**
@@ -98,12 +99,70 @@ class OnlyOnePlaceDecidesThatAnAlternativeWentUnreadTest {
                                 + "()Lsouther/compiler/check/Settlement$WidthDependency;",
                         "souther.compiler.check.Settlement$WidthDependency#of"
                                 + "(Lsouther/compiler/values/Emptiness;"
-                                + "Lsouther/compiler/values/PlannedValues;"
+                                + "Lsouther/compiler/check/Confinement$Planned;"
                                 + "Lsouther/compiler/values/Emptiness;"
-                                + "Lsouther/compiler/values/PlannedValues;)"
+                                + "Lsouther/compiler/check/Confinement$Planned;)"
                                 + "Lsouther/compiler/check/Settlement$WidthDependency;"),
                 whatMakes("souther.compiler.check.Settlement$WidthDependency"),
                 "somewhere else makes one, and what it made is not what the settlement compared");
+    }
+
+    /**
+     * And one method turns an alternative going unread into what it left open.
+     *
+     * <p>Both halves of that meet in one place and both are one reading's: which alternative it had
+     * no word for, and what it could not show the alternatives preserve. Made anywhere else, one of
+     * the halves has to be fetched, and what is fetched is either a second answer or the other
+     * reading's — which composes without a complaint and reports a clause the reading did not see.
+     *
+     * <p><b>And what it takes is what keeps the two halves together.</b> A maker handed a width and
+     * two accounts holds three things of one reading and cannot be given a mixture. One handed a
+     * width and a word for each side takes the same call from any reading at all, so a row of that
+     * shape is this rule saying the opposite of what it means: the seam it names is the one an
+     * author would cross at.
+     *
+     * <p>Beside it the empty one, which is what a choice shown to leave every position where it was
+     * comes to. It decides nothing and is here because a maker is a maker.
+     */
+    @Test
+    void oneMethodTurnsAnUnreadAlternativeIntoWhatItLeftOpen() throws Exception {
+        assertEquals(List.of("souther.compiler.check.Opening#nothing()"
+                                + "Lsouther/compiler/check/Opening;",
+                        "souther.compiler.check.StatedByClauses#openedBy"
+                                + "(Lsouther/compiler/check/Settlement$Width;"
+                                + "Lsouther/compiler/check/Adoption;"
+                                + "Lsouther/compiler/check/Adoption;)"
+                                + "Lsouther/compiler/check/Opening;"),
+                whatMakes("souther.compiler.check.Opening"),
+                "an opening made somewhere else is a second answer to what an alternative left"
+                        + " open, and the two agree only until one of them changes");
+    }
+
+    /**
+     * And one method compares what two branches leave, whichever reading is asking.
+     *
+     * <p>The comparison is the same few lines over whatever a reading leaves a position, and each
+     * reading reaches it by handing in its own descriptions. Written once per reading instead, the
+     * two would be two rules about one question, and a third reading would arrive with nowhere
+     * obvious to be added.
+     *
+     * <p>Beside it the empty one and the join over occurrences, which compare nothing.
+     */
+    @Test
+    void oneMethodComparesWhatTwoBranchesLeave() throws Exception {
+        assertEquals(List.of("souther.compiler.check.Settlement$Width#alsoSeen"
+                                + "(Lsouther/compiler/check/Settlement$Width;)"
+                                + "Lsouther/compiler/check/Settlement$Width;",
+                        "souther.compiler.check.Settlement$Width#comparing"
+                                + "(Ljava/util/Set;Ljava/util/function/Function;"
+                                + "Ljava/util/function/Function;"
+                                + "Ljava/util/function/BinaryOperator;)"
+                                + "Lsouther/compiler/check/Settlement$Width;",
+                        "souther.compiler.check.Settlement$Width#none()"
+                                + "Lsouther/compiler/check/Settlement$Width;"),
+                whatMakes("souther.compiler.check.Settlement$Width"),
+                "what a choice is as wide as it is because of is compared in one place, and a"
+                        + " second comparison rests on whichever pair of branches its writer held");
     }
 
     /** Every method that makes a value of {@code type}, each named once. */

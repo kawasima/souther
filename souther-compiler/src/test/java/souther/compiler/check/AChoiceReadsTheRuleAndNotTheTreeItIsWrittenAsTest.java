@@ -21,14 +21,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * nothing — and "this clause imposes nothing here", which is what a branch admitting nothing leaves,
  * is not: a further choice imposes nothing either. Held as one, whether the second survived turned
  * on where the brackets fell.
+ *
+ * <p><b>Every choice below is handed an opening of nothing, which is the opening it has.</b> No
+ * branch here narrows a position, so there is no position a choice could be narrower without an
+ * alternative, and that is so under either grouping. Where the alternatives do narrow something the
+ * opening differs from one grouping to the next and is not a caller's to write down; that the two
+ * groupings still come to one account is a fact about the whole walk and is held over sources
+ * ({@code WhetherAConstraintStillBindsIsReadOffWhatTheAlternativesLeaveTest}).
  */
 class AChoiceReadsTheRuleAndNotTheTreeItIsWrittenAsTest {
 
     /** A branch nothing could read, about `x`. */
-    private static final Adoption<String> UNREAD = Adoption.at(Set.of("x"), Set.of(), true);
+    private static final Adoption<String, ReadingLanguage.Values> UNREAD =
+            Adoption.at(Set.of("x"), Set.of(), true);
 
     /** A branch read whole, about `y`. */
-    private static final Adoption<String> READ = Adoption.at(Set.of("y"), Set.of("y"), false);
+    private static final Adoption<String, ReadingLanguage.Values> READ =
+            Adoption.at(Set.of("y"), Set.of("y"), false);
 
     /**
      * One alternative and whether anything satisfies it, composed the way
@@ -38,7 +47,7 @@ class AChoiceReadsTheRuleAndNotTheTreeItIsWrittenAsTest {
      * carried beside here. A choice is dead where every alternative is, which is the rule the states
      * are composed by.
      */
-    private record Branch(Adoption<String> adoption, boolean dead) {
+    private record Branch(Adoption<String, ReadingLanguage.Values> adoption, boolean dead) {
 
         Branch or(Branch other) {
             if (dead && other.dead) {
@@ -50,7 +59,7 @@ class AChoiceReadsTheRuleAndNotTheTreeItIsWrittenAsTest {
             if (other.dead) {
                 return new Branch(adoption.beside(other.adoption), false);
             }
-            return new Branch(adoption.either(other.adoption), false);
+            return new Branch(adoption.either(Opening.nothing(), other.adoption), false);
         }
     }
 
@@ -90,18 +99,4 @@ class AChoiceReadsTheRuleAndNotTheTreeItIsWrittenAsTest {
                 IMPOSSIBLE.or(UNREADABLE).or(UNREADABLE).adoption());
     }
 
-    /**
-     * A constraint is still widened by an alternative nothing could read.
-     *
-     * <p>The half that has to keep working. Settling is not a constraint and a constraint is not
-     * settling: a value satisfying the unread branch owes the read one nothing, so what that branch
-     * said of its position binds nothing.
-     */
-    @Test
-    void aConstraintIsStillWidenedByAnUnreadAlternative() {
-        assertFalse(READ.either(UNREAD).took("y"),
-                "what the read branch said of `y` binds nothing where the other can be taken");
-        assertTrue(READ.both(UNREAD).took("y"),
-                "and a conjunct nothing read leaves the one beside it saying what it said");
-    }
 }
