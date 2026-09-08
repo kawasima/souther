@@ -229,10 +229,14 @@ class ARowWhoseAnswerIsOwedIsARowAndAssertsNothingTest {
         List<String> owed = gapCodesIn(OWED);
         List<String> answered = gapCodesIn(ANSWERED);
 
-        assertTrue(owed.contains("E1918"),
-                () -> "an arm with an unanswered row at it is a gap: " + owed);
+        assertTrue(owed.contains("E1934"),
+                () -> "a row owing its answer is a gap: " + owed);
+        assertFalse(owed.contains("E1918"),
+                () -> "and not one about an arm nothing reaches, since a row reaches it: " + owed);
+        assertFalse(answered.contains("E1934"),
+                () -> "answering it settles the gap: " + answered);
         assertFalse(answered.contains("E1918"),
-                () -> "and answering it settles the gap: " + answered);
+                () -> "and the arm it covers is not reported either: " + answered);
 
         // The verdict itself, and not only the code the warning carries. What `--strict` exits over
         // is this word; a gap that was printed and left the verdict satisfied would let a build

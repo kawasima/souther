@@ -443,12 +443,12 @@ public sealed interface ExampleMessage extends Message {
     /**
      * A row goes through an arm of the body with its answer still owed.
      *
-     * <p>The same rule as {@link NoRowGoesThroughThatArm} — the arm has no row that says what the
-     * behavior answers there — broken the other way. The work is not to write a row: one is written
-     * and what it is short of is the answer, so the sentence says which of the two an author is
-     * looking at and the code stays the rule's.
+     * <p>Not {@link NoRowGoesThroughThatArm}, which is an arm nothing reaches. A row does reach
+     * this one, and what it is short of is the answer — the same thing the rows reported beside it
+     * are short of, and the same thing to do about it, so it is that rule's code and not the arm
+     * rule's.
      */
-    @Code(DiagnosticCode.E1918)
+    @Code(DiagnosticCode.E1934)
     record ARowAtThatArmAwaitsItsAnswer(souther.compiler.diag.Localizable arm, String behavior)
             implements ExampleMessage, Reported {}
 

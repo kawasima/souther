@@ -7,6 +7,7 @@ import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.report.GeneratedRows;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -128,6 +129,47 @@ class TheBlockAndItsHeaderComeFromOneListOfRowsTest {
 
         assertEquals(rows(block).size(), claimed(block),
                 "the number above the block is the number of rows in it: " + block);
+    }
+
+    /**
+     * A block with notes in it is still one a file can hold.
+     *
+     * <p>What tells a line of prose from a row is that the writer put {@code //} in front of it,
+     * and there are as many writers as there are things to say — the heading over a behavior's
+     * clauses, the note over a row composed for more than one thing, a line for each point no row
+     * could be written at, and the sentence about each combination nothing was composed for. One of
+     * them forgetting is a block that stops compiling the moment somebody pastes it, which is the
+     * whole of what the block is for.
+     *
+     * <p>Held where the block is finished rather than by each writer remembering, since a model
+     * that reaches every writer is not a thing this or any other test has: what a block says
+     * depends on what the model is short of, and the writers are as many as there are ways to be
+     * short. {@code GeneratedRows} asks it of the block it built, so a writer that forgets is a
+     * failure wherever its own path runs rather than a block somebody pastes and cannot compile.
+     *
+     * <p>What this adds is the other half: that the shapes it admits as rows really are rows. The
+     * lines that are not prose go into the module, and the module still compiles.
+     */
+    @Test
+    void aBlockWithNotesInItIsStillPastable() {
+        String block = block(RELATED, "example.policy");
+
+        assertTrue(block.lines().anyMatch(line -> line.startsWith("//")),
+                "the model says something beside its rows: " + block);
+
+        String pasted = RELATED + "\n" + block.lines()
+                .filter(line -> !line.startsWith("//"))
+                .reduce("", (all, line) -> all + line + "\n");
+
+        Compilation compiled = Compilation.ofSource(pasted, "Main");
+        compiled.answerEverything();
+        List<String> refused = new ArrayList<>();
+        for (souther.compiler.query.Db.Found found : compiled.db().allReports()) {
+            if (found.report().isError()) {
+                refused.add(found.report().diagnostic().code());
+            }
+        }
+        assertEquals(List.of(), refused, () -> "the block pasted whole compiles:\n" + pasted);
     }
 
     @Test

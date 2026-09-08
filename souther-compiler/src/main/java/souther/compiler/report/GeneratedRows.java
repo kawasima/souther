@@ -223,7 +223,34 @@ public final class GeneratedRows {
         }
         // The count leaves with the text. It was worked out here and thrown away, and the one
         // caller that needed it read the text instead.
-        return new Block(out.toString(), rows);
+        return new Block(pastable(out.toString()), rows);
+    }
+
+    /**
+     * The block, held to being something a file can take.
+     *
+     * <p>What the block holds is rows and prose about them, and the marker in front of the prose is
+     * the only thing telling them apart. There is a writer for each thing there is to say — the
+     * clauses a behavior states, the note over a row composed for more than one thing, a line for
+     * each point no row could be written at, a sentence for each combination nothing was composed
+     * for — and each of them writes its own marker. One that forgets sends prose out as source, and
+     * the block stops compiling the moment somebody pastes it, which is the whole of what it is for.
+     *
+     * <p>So it is asked here, where the block is finished, rather than left to the writers to
+     * remember. A line is either prose, or blank, or one of the shapes the rows are written in: the
+     * heading a behavior's rows sit under, a row, and the lines a wrapped row continues on, which
+     * are indented past the {@code |} that starts it.
+     */
+    private static String pastable(String block) {
+        for (String line : block.lines().toList()) {
+            if (line.isBlank() || line.startsWith("//") || line.startsWith("example ")
+                    || line.startsWith("    ")) {
+                continue;
+            }
+            throw new IllegalStateException("a block goes out as something a file can take, and"
+                    + " this line is neither a row nor a note about one: " + line);
+        }
+        return block;
     }
 
     /**

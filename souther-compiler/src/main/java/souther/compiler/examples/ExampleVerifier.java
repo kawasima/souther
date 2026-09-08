@@ -1362,12 +1362,14 @@ public final class ExampleVerifier {
      * anything runs and stays true however the run ends — a row too large to hand over states
      * nothing and is still a row whose answer is owed, and a reading that stopped before the values
      * says nothing about what was written where the answer goes.
+     *
+     * <p>A row whose answer did not parse is owed nothing. It is refused where it is written, so
+     * nobody is waiting on an author for it; what it is short of is a module that compiles.
      */
     private static ExpectationState expectationOf(Hir.ExampleRow row) {
         return switch (row.expected()) {
-            case Hir.Expected.Asserted _ -> ExpectationState.ASSERTED;
             case Hir.Expected.Unanswered _ -> ExpectationState.OWED;
-            case Hir.Expected.Unwritten _ -> ExpectationState.UNWRITTEN;
+            case Hir.Expected.Asserted _, Hir.Expected.Unwritten _ -> ExpectationState.NOT_OWED;
         };
     }
 
