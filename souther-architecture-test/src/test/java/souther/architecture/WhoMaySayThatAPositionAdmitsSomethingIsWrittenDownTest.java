@@ -74,6 +74,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * method reference and a switch are three spellings a scan of source text would have to know about
  * one at a time. Every module's classes, because this module is built last and a check living in
  * the module it is about passes over everything built after it.
+ *
+ * <p><b>Every list here is what a walk found, so every walk is held to a body beside this test.</b>
+ * A list and the walk that fills it are written together and agree by construction: what a walk
+ * stopped reading drops out of the list, and the list is then what the walk can still see rather
+ * than what the repository holds. So each of them is shown finding something written here —
+ * {@link Taking} and {@link TakingByStanding} switch, {@link Referring} asks through a reference,
+ * {@link Comparing} compares every way one can be written — and, where something near it would look
+ * the same to a walk that read less, shown not finding that: {@link Constructing} writes a constant
+ * where a value is wanted, and calls one before comparing what the call gave.
  */
 class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
 
@@ -240,10 +249,14 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      * was left alone.
      */
     private static final List<String> COMPARED_IN_PRODUCTION = List.of(
+            // The same partition of two answers, read one way by a choice and the other by a
+            // conjunction (#1492).
             "souther/compiler/check/Confinement#eitherShown"
                     + "(Lsouther/compiler/check/Confinement$Admission;"
                     + "Lsouther/compiler/check/Confinement$Admission;)"
                     + "Lsouther/compiler/check/Confinement$Admission;",
+            // What a positive answer is worth beside a position nobody could build, and that a
+            // joined answer has reached the top of what a choice can be (#1493).
             "souther/compiler/check/Confinement$Worked#admission"
                     + "(Lsouther/compiler/check/PositionEnvelope$Restrictions;"
                     + "Lsouther/compiler/values/StringMachineAnswers;)"
@@ -370,6 +383,14 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      */
     @Test
     void andTheseTakeTheAnswerApartByWhichAlternativesStand() {
+        assertEquals(3, TakingByStanding.by(Emptiness.Alternatives.BOTH_STAND),
+                "the fixture answers by switching");
+        assertTrue(saidHere().stream().anyMatch(
+                        use -> use.said().equals(TAKEN_APART_BY_STANDING)),
+                "the body beside this test switches over which alternatives stand, so a detector"
+                        + " that cannot find it there is one whose green would be about production"
+                        + " having stopped switching and not about the rule");
+
         assertEquals(TAKES_IT_APART_BY_STANDING,
                 placesSaying(saidInProduction(),
                         use -> use.said().equals(TAKEN_APART_BY_STANDING)),
@@ -418,6 +439,8 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                         + " that finds fewer is one that would let the rest past");
         assertEquals(Emptiness.UNDECIDED, Constructing.whatNobodyHasWorkedOut(),
                 "and the body that writes a constant answers with it");
+        assertTrue(Constructing.whatItIsCalledIs(Emptiness.EMPTY.name().intern()),
+                "and the body that compares what a call made of one answers about that");
         assertTrue(saidHere().stream().anyMatch(use ->
                         use.method().equals("whatNobodyHasWorkedOut")
                                 && use.said().equals("UNDECIDED")),
@@ -444,6 +467,13 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
         assertTrue(saidHere().stream().anyMatch(use -> use.said().equals("isEmpty")),
                 "the fixture beside this test observes a settled answer through a reference, so a"
                         + " walk that cannot find it there is one that would let one past");
+
+        assertTrue(Referring.STANDS.test(Emptiness.Alternatives.BOTH_STAND),
+                "and the fixture asks which alternatives stand by handle");
+        assertTrue(saidHere().stream().anyMatch(use -> use.said().equals("bothStand")),
+                "which the walk finds as well: the two are one word between them, and a rule that"
+                        + " read a reference to one and not the other would be about which of them"
+                        + " a caller happened to name");
     }
 
     /**
@@ -500,6 +530,26 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
     }
 
     /**
+     * A body that switches over which alternatives stand, for the other switch detector.
+     *
+     * <p>The rule about it names what production switches, so the rule alone would go on passing
+     * the day production stopped switching and the day the detector stopped finding one — the same
+     * green, for two reasons a reader could not tell apart.
+     */
+    private enum TakingByStanding {
+        ;
+
+        static int by(Emptiness.Alternatives standing) {
+            return switch (standing) {
+                case NEITHER_STANDS -> 0;
+                case ONLY_THE_LEFT -> 1;
+                case ONLY_THE_RIGHT -> 2;
+                case BOTH_STAND -> 3;
+            };
+        }
+    }
+
+    /**
      * A body that observes a settled answer through a reference to the observation, for the same
      * reason.
      *
@@ -511,6 +561,12 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
         ;
 
         static final Predicate<Emptiness> OBSERVES = Emptiness::isEmpty;
+
+        /** And which alternatives stand, which is published beside the word and is read the same
+         *  ways: a rule that found one spelling and not the other would be about how a caller
+         *  writes an ask and not about the ask. */
+        static final Predicate<Emptiness.Alternatives> STANDS =
+                Emptiness.Alternatives::bothStand;
     }
 
     /**
@@ -563,6 +619,18 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
 
         static Emptiness whatNobodyHasWorkedOut() {
             return Emptiness.UNDECIDED;
+        }
+
+        /**
+         * And one written where a call wants it, whose answer is then compared.
+         *
+         * <p>The call takes the constant and leaves something else, and the comparison after it is
+         * about what the call gave. Read as the height of the stack the two look alike — a call
+         * that takes a receiver and returns a value leaves the stack where it found it — so a walk
+         * that counted would report the constant as compared when what is compared is a string.
+         */
+        static boolean whatItIsCalledIs(String text) {
+            return Emptiness.EMPTY.name() == text;
         }
     }
 
@@ -622,9 +690,10 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
     /**
      * Every saying of the word under {@code roots}.
      *
-     * <p>The word's own class is passed over: what an enum's constants do among themselves is how
-     * one is written, and read as sayings they would put the word on every list as a namer of
-     * itself.
+     * <p>The word's own class is passed over by the rules about who says it, and by them only:
+     * what an enum's constants do among themselves is how one is written, and read as sayings they
+     * would put the word on every list as a namer of itself. Which reading of one a place is
+     * is asked of it as well — see the comment where that is done.
      */
     private static List<Use> saidUnder(List<Path> roots) {
         List<Use> found = new ArrayList<>();
@@ -703,7 +772,8 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
             List<String> out = new ArrayList<>();
             for (var argument : lambda.bootstrapArgs()) {
                 if (argument instanceof DirectMethodHandleDesc handle
-                        && named(handle.owner()).equals(EMPTINESS)) {
+                        && (named(handle.owner()).equals(EMPTINESS)
+                                || named(handle.owner()).equals(STANDING))) {
                     // Whichever kind of handle it is, what it names is what the code would have
                     // said had it been written out: a field for a constant, a method for the rest.
                     out.add(handle.methodName());
