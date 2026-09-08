@@ -30,16 +30,19 @@ class AValueIsHashedAtItsOwnBoundaryTest {
     /**
      * Four things paired two ways, each pair hashed and the two pairs added.
      *
-     * <p>Gathered as the ends added and handed up, these two are one number whatever the four
-     * things are: both come to what the four of them come to. That is what a set of pairs would
-     * hash to, and which end was paired with which is the one thing it would not say.
+     * <p>Gathered and handed up, these two are one number: both pairings come to the same sum of
+     * sums and the same sum of exclusive-ors, so neither of the two numbers a pair is gathered
+     * from tells them apart once the sum above has been taken. What tells them apart is the
+     * finishing, and it has to be at each pair's own boundary — which is what this holds, and it
+     * holds it for the gathering as well, since four things that separated under the
+     * exclusive-ors alone would let the finishing go and stay green.
      */
     @Test
     void twoUnorderedPairsAddedDoNotForgetWhichEndWentWithWhich() {
-        int a = 11;
-        int b = 22;
-        int c = 33;
-        int d = 44;
+        int a = 0;
+        int b = 1;
+        int c = 2;
+        int d = 4;
 
         int paired = ValueHash.ofAnUnorderedPair(A_KIND, a, b)
                 + ValueHash.ofAnUnorderedPair(A_KIND, c, d);

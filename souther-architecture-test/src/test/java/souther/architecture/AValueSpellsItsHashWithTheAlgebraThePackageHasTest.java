@@ -6,24 +6,30 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.lang.classfile.Attributes;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
-import java.lang.classfile.CodeElement;
+import java.lang.classfile.Instruction;
 import java.lang.classfile.MethodModel;
-import java.lang.classfile.constantpool.ClassEntry;
-import java.lang.classfile.constantpool.PoolEntry;
+import java.lang.classfile.Opcode;
+import java.lang.classfile.instruction.FieldInstruction;
 import java.lang.classfile.instruction.InvokeDynamicInstruction;
+import java.lang.classfile.instruction.InvokeInstruction;
+import java.lang.classfile.instruction.LoadInstruction;
+import java.lang.classfile.instruction.ReturnInstruction;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * A value about a relation that works its own hash out takes it from the one place that says how.
+ * A value about a relation that works its own hash out takes it from the one place that says how,
+ * and a value the compiler works one out for is left alone.
  *
  * <p>These values are handed to things that add hashes up: a set sums what it holds, a map sums its
  * entries, a record carries its last component into its own number unchanged. So a hash gathered
@@ -37,11 +43,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * hashes was written by somebody deciding afresh how to gather two things symmetrically, and the
  * one that decided on the plainest answer — the ends added — was the one that lost the pairing.
  *
- * <p><b>What this does not reach.</b> A value whose hash the compiler derives for it is not one
- * this can ask anything of, so a record here that leaves its hash alone is outside this population
- * however it is held. That is the right default: a hash written out by hand is one a component
- * added later can be left out of, which is a worse fault than the one this is about. What a record
- * here is held in is a question for whoever adds it to a set.
+ * <p><b>Asked of the number the hash hands back, and not of what the class mentions.</b> A class
+ * that names the algebra somewhere and gathers its own parts in {@code hashCode} is the defect this
+ * is about, written next to its own remedy. So what is followed here is where the number comes
+ * from: the hash asks the algebra, or it hands back a field nothing puts a number into but the
+ * algebra. The second is what a value that is asked its number far more often than one is made
+ * does, and it is not a way around the first.
+ *
+ * <p><b>And what a record leaves to the compiler is left there.</b> A hash written out by hand is
+ * one a component added later can be left out of, and an equality written out by hand is one a
+ * component added later is not part of at all — the first costs a collision, the second takes the
+ * component out of what the value is. So a record here spells its own number where the number is
+ * what this is about, and never its own equality: the generated one is over every component it has
+ * and over every component it is given.
  */
 class AValueSpellsItsHashWithTheAlgebraThePackageHasTest {
 
@@ -49,23 +63,58 @@ class AValueSpellsItsHashWithTheAlgebraThePackageHasTest {
 
     private static final String THE_ALGEBRA = WHERE + "ValueHash";
 
-    /** What a record's own hash is left to, which is nobody here deciding anything. */
+    /** What a record's own equality and hash are left to, which is nobody here deciding anything. */
     private static final String DERIVED = "java/lang/runtime/ObjectMethods";
 
     private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
 
     @Test
     void everyValueThereThatWorksOutItsOwnHashTakesItFromTheAlgebra() {
-        List<String> spellingItThemselves = new ArrayList<>();
+        List<String> gatheringItThemselves = new ArrayList<>();
         for (ClassModel read : valuesClasses()) {
-            if (declaresAHash(read) && !reaches(read, THE_ALGEBRA)) {
-                spellingItThemselves.add(read.thisClass().name().stringValue());
+            Optional<MethodModel> spelled = spelledOut(read, "hashCode", "()I");
+            if (spelled.isPresent() && !fromTheAlgebra(read, spelled.get())) {
+                gatheringItThemselves.add(read.thisClass().name().stringValue());
             }
         }
 
-        assertEquals(List.of(), spellingItThemselves,
+        assertEquals(List.of(), gatheringItThemselves,
                 "a value that gathers its own parts and hands the number up as gathered is one"
                         + " whose parts the sum above it can still take apart");
+    }
+
+    /**
+     * And a record spells its own equality where, and only where, its equality is not what its
+     * components in their places come to.
+     *
+     * <p>Which the number says: a record asks the algebra for the shape its equality has, and one
+     * of those shapes is a pair with no order between its ends. That one the compiler cannot write
+     * — the generated equality is component by component, so a pair stated the other way round
+     * would be another value while being one number, and the pair would not be unordered at all.
+     * Every other shape here is what the generated one already says, and writing it out again is
+     * writing something the next component this record is given is not part of.
+     */
+    @Test
+    void andARecordThereSpellsItsOwnEqualityWhereAndOnlyWhereTheGeneratedOneWouldSayAnother() {
+        List<String> disagreeing = new ArrayList<>();
+        for (ClassModel read : valuesClasses()) {
+            if (read.findAttribute(Attributes.record()).isEmpty()) {
+                continue;
+            }
+            boolean spellsIt = spelledOut(read, "equals", "(Ljava/lang/Object;)Z").isPresent();
+            boolean unordered = spelledOut(read, "hashCode", "()I")
+                    .filter(hash -> asks(hash, "ofAnUnorderedPair")).isPresent();
+            if (spellsIt != unordered) {
+                disagreeing.add(read.thisClass().name().stringValue()
+                        + (spellsIt ? " writes an equality the compiler would have written"
+                                : " leaves an equality that says another thing than its number"));
+            }
+        }
+
+        assertEquals(List.of(), disagreeing,
+                "an equality written out by hand is one the next component this record is given is"
+                        + " not part of, and one left generated beside an unordered number is one"
+                        + " that reads the ends in the order they were written");
     }
 
     /**
@@ -79,46 +128,109 @@ class AValueSpellsItsHashWithTheAlgebraThePackageHasTest {
         List<ClassModel> read = valuesClasses();
 
         assertTrue(read.size() > 1, "the classes about relations were not built here");
-        assertTrue(read.stream().anyMatch(AValueSpellsItsHashWithTheAlgebraThePackageHasTest
-                ::declaresAHash), "no value there works out a hash, which is not what these hold");
+        assertTrue(read.stream().anyMatch(each -> spelledOut(each, "hashCode", "()I").isPresent()),
+                "no value there works out a hash, which is not what these hold");
+        assertTrue(read.stream().anyMatch(
+                        each -> each.findAttribute(Attributes.record()).isPresent()),
+                "no value there is a record, which is not what these hold either");
     }
 
     /**
-     * Whether the class works out a number of its own rather than being given one.
+     * The method of that name the class wrote itself, where it wrote one.
      *
-     * <p>A record has a {@code hashCode} whatever it does, and the one the compiler writes is a
-     * handing-over: the whole of it is an {@code invokedynamic} that leaves the work to the runtime
-     * and names the components it is over. That is not a hash anybody here decided, so it is not
-     * one this is about.
+     * <p>A record has both of these whatever it does, and the ones the compiler writes are a
+     * handing-over: the whole of each is an {@code invokedynamic} that leaves the work to the
+     * runtime and names the components it is over. That is nobody here deciding anything.
      */
-    private static boolean declaresAHash(ClassModel read) {
+    private static Optional<MethodModel> spelledOut(ClassModel read, String named, String taking) {
         for (MethodModel method : read.methods()) {
-            if ("hashCode".equals(method.methodName().stringValue())
-                    && "()I".equals(method.methodType().stringValue())) {
-                return method.code().map(code -> code.elementList().stream()
-                        .noneMatch(AValueSpellsItsHashWithTheAlgebraThePackageHasTest::handedOver))
-                        .orElse(false);
+            if (named.equals(method.methodName().stringValue())
+                    && taking.equals(method.methodType().stringValue())) {
+                boolean handedOver = instructionsOf(method).stream().anyMatch(
+                        AValueSpellsItsHashWithTheAlgebraThePackageHasTest::handedOver);
+                return handedOver ? Optional.empty() : Optional.of(method);
             }
         }
-        return false;
+        return Optional.empty();
     }
 
-    /** Whether {@code element} is the handing-over a compiler writes for a record. */
-    private static boolean handedOver(CodeElement element) {
-        return element instanceof InvokeDynamicInstruction dynamic
+    /** Whether the number {@code hash} hands back is one the algebra answered. */
+    private static boolean fromTheAlgebra(ClassModel read, MethodModel hash) {
+        if (asks(hash)) {
+            return true;
+        }
+        return handedBack(read, hash).filter(field -> putThereByTheAlgebra(read, field)).isPresent();
+    }
+
+    /** Whether the method asks the algebra for a number. */
+    private static boolean asks(MethodModel method) {
+        return instructionsOf(method).stream().anyMatch(instruction ->
+                instruction instanceof InvokeInstruction call
+                        && THE_ALGEBRA.equals(call.owner().name().stringValue()));
+    }
+
+    /** Whether the method asks the algebra for a number of that shape. */
+    private static boolean asks(MethodModel method, String shape) {
+        return instructionsOf(method).stream().anyMatch(instruction ->
+                instruction instanceof InvokeInstruction call
+                        && THE_ALGEBRA.equals(call.owner().name().stringValue())
+                        && shape.equals(call.name().stringValue()));
+    }
+
+    /** The field a hash hands back where the whole of it is handing one back, which is what a value
+     *  asked its number far more often than one is made holds. */
+    private static Optional<String> handedBack(ClassModel read, MethodModel hash) {
+        List<Instruction> body = instructionsOf(hash);
+        if (body.size() == 3 && body.get(0) instanceof LoadInstruction
+                && body.get(1) instanceof FieldInstruction field
+                && field.opcode() == Opcode.GETFIELD
+                && read.thisClass().name().equals(field.owner().name())
+                && body.get(2) instanceof ReturnInstruction) {
+            return Optional.of(field.name().stringValue());
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Whether nothing but the algebra puts a number into {@code field}.
+     *
+     * <p>Read as the instruction before each of the puts, which is where the number being put comes
+     * from when it comes from a call. A put that took its number from anywhere else — a gathering
+     * written out beside the call, a number handed in — is one this does not admit, and the class
+     * that wrote it is reported as gathering its own.
+     */
+    private static boolean putThereByTheAlgebra(ClassModel read, String field) {
+        boolean put = false;
+        for (MethodModel method : read.methods()) {
+            Instruction before = null;
+            for (Instruction instruction : instructionsOf(method)) {
+                if (instruction instanceof FieldInstruction it && it.opcode() == Opcode.PUTFIELD
+                        && read.thisClass().name().equals(it.owner().name())
+                        && field.equals(it.name().stringValue())) {
+                    put = true;
+                    if (!(before instanceof InvokeInstruction call)
+                            || !THE_ALGEBRA.equals(call.owner().name().stringValue())) {
+                        return false;
+                    }
+                }
+                before = instruction;
+            }
+        }
+        return put;
+    }
+
+    /** Whether {@code instruction} is the handing-over a compiler writes for a record. */
+    private static boolean handedOver(Instruction instruction) {
+        return instruction instanceof InvokeDynamicInstruction dynamic
                 && DERIVED.equals(dynamic.invokedynamic().bootstrap().bootstrapMethod()
                         .reference().owner().name().stringValue());
     }
 
-    /** Whether the class names {@code named} anywhere — a hash held in a field is worked out in a
-     *  constructor, so the question is about the class and not about the method. */
-    private static boolean reaches(ClassModel read, String named) {
-        for (PoolEntry entry : read.constantPool()) {
-            if (entry instanceof ClassEntry it && named.equals(it.name().stringValue())) {
-                return true;
-            }
-        }
-        return false;
+    private static List<Instruction> instructionsOf(MethodModel method) {
+        return method.code().map(code -> code.elementList().stream()
+                .filter(Instruction.class::isInstance)
+                .map(Instruction.class::cast)
+                .toList()).orElse(List.of());
     }
 
     private static List<ClassModel> valuesClasses() {
