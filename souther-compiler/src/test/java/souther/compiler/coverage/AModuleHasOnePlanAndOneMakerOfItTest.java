@@ -7,12 +7,17 @@ import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -30,9 +35,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  *
  * <p><b>Both doors, because either alone leaves the other open.</b> The walk is one way in and the
  * constructor is the other: a caller assembling a plan out of another plan's parts never calls the
- * walk, and a caller walking the bodies a second time never calls the constructor. The second door
- * is shut by the language — the constructor is not public — and this counts the invocations left
- * inside the package, which is where a new one would appear.
+ * walk, and a caller walking the bodies a second time never calls the constructor. Each is counted
+ * rather than merely looked for, because a second walk written beside the first is a second plan
+ * and would leave a list of who walks unchanged.
+ *
+ * <p>What keeps those counts a population rather than a census of today's readers is the language,
+ * and that is asked for on its own below. A modifier is what puts the constructor and the indexes
+ * out of reach, and a modifier changing moves nothing either count would see.
  *
  * <p>Read off the compiled classes, so what is counted is what a method does rather than what a
  * reading of the sources makes of it. The tests are not in {@code target/classes}, so a plan built
@@ -63,18 +72,77 @@ class AModuleHasOnePlanAndOneMakerOfItTest {
 
     @Test
     void onlyTheCheckThatHoldsTheBodiesWalksThemForAPlan() throws IOException {
-        assertEquals(MAY_WALK.keySet(), calling(SITES, "of").keySet(),
+        assertEquals(once(MAY_WALK), calling(SITES, "of"),
                 () -> "a second walk of one module's bodies makes a second plan of it, addressing"
-                        + " objects the first plan does not. What walks them today, and what makes"
-                        + " it the one that may: " + MAY_WALK);
+                        + " objects the first plan does not — and a second walk written where the"
+                        + " first is counts as one. What walks them today, and what makes it the"
+                        + " one that may: " + MAY_WALK);
     }
 
     @Test
     void andOnlyTheEndOfThatWalkPutsOneTogether() throws IOException {
-        assertEquals(MAY_CONSTRUCT.keySet(), calling(A_PLAN, "<init>").keySet(),
+        assertEquals(once(MAY_CONSTRUCT), calling(A_PLAN, "<init>"),
                 () -> "a plan assembled out of parts is an index into a graph its assembler does"
                         + " not own. What builds one today, and what makes it the one that may: "
                         + MAY_CONSTRUCT);
+    }
+
+    /**
+     * And what a caller outside this package can reach is written down.
+     *
+     * <p>Counting who calls the constructor says nothing about who could. The constructor being
+     * out of reach is what makes the count above the whole population rather than today's readers,
+     * and it is a modifier — so a change to it moves nothing this test would otherwise see, and
+     * every reader of the plan goes on compiling.
+     *
+     * <p>The whole surface and not the constructor alone. What must not leave is the indexes filed
+     * by which objects were put in them: handed out, they are this plan's way into trees the caller
+     * does not own, and what a caller does with one cannot be told from what it does with its own.
+     * So the public members are listed, and a new one is a finding whether it is a way in or a way
+     * to what is inside.
+     */
+    @Test
+    void andWhatAPlanHandsOutIsWrittenDown() {
+        assertEquals(MAY_BE_PUBLIC, publicMembersOfAPlan(),
+                "a plan holds indexes filed by which Core objects were put in them, and handing"
+                        + " one out is handing over a way into trees the taker does not own. What"
+                        + " may be reached from outside this package is a value, or a question"
+                        + " answered with one");
+    }
+
+    /** What a plan lets a caller outside this package reach. */
+    private static final Set<String> MAY_BE_PUBLIC = Set.of(
+            // The places, in the order they were numbered, and what a run at one would be.
+            "sites", "arms", "hasNoProbes",
+            // Which comparisons the bodies hold, and what this plan did about each.
+            "comparisons", "instruments", "emissionSiteOf", "requireEmissionSiteOf", "outcomeOf",
+            // What a number means, which is the half of a plan that outlives the graph.
+            "numbering", "identity",
+            // Asked about a node the caller is already holding, which is the emitter's question.
+            "mayRepeat", "armsOf", "forkAt", "probesOf",
+            // Where the fork each numbered arm stands in is written.
+            "whereEachArmsForkIsWritten");
+
+    private static Set<String> publicMembersOfAPlan() {
+        Set<String> out = new TreeSet<>();
+        for (Constructor<?> each : CoverageSites.Plan.class.getDeclaredConstructors()) {
+            if (Modifier.isPublic(each.getModifiers())) {
+                out.add("<init>");
+            }
+        }
+        for (Method each : CoverageSites.Plan.class.getDeclaredMethods()) {
+            if (Modifier.isPublic(each.getModifiers()) && !each.isSynthetic()) {
+                out.add(each.getName());
+            }
+        }
+        return out;
+    }
+
+    /** Each of them written down as happening once, which is what the count is for. */
+    private static Map<String, Integer> once(Map<String, String> who) {
+        Map<String, Integer> out = new TreeMap<>();
+        who.keySet().forEach(each -> out.put(each, 1));
+        return out;
     }
 
     /** Which methods of this compiler invoke {@code name} on {@code owner}, and how often. */
