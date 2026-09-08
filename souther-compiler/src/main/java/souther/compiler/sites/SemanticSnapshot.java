@@ -251,11 +251,15 @@ public final class SemanticSnapshot {
     private static ParameterFact factOf(SpecImplementation.ParameterBinding binding, Sig sig,
                                         Answer<Map<ValueName.Behavior, Sig>> reachable) {
         return switch (binding) {
-            case SpecImplementation.ParameterBinding.AnInput input ->
-                    sig == null || input.at() >= sig.inputTypes().size()
-                            ? new ParameterFact.Untyped(input.written())
-                            : new ParameterFact.TypedInput(input.written(),
-                                    sig.inputTypes().get(input.at()));
+            // At the position the signature holds it at, and not tested against the signature's
+            // length first. A signature is built one input per declared parameter, so a position
+            // the division gave is a position the signature has; a test would be an answer checked
+            // against itself, and answering `Untyped` where it failed would put back the silence
+            // this reading exists to remove.
+            case SpecImplementation.ParameterBinding.AnInput input -> sig == null
+                    ? new ParameterFact.Untyped(input.written())
+                    : new ParameterFact.TypedInput(input.written(),
+                            sig.inputTypes().get(input.at()));
             case SpecImplementation.ParameterBinding.AnInjection injected ->
                     injectionFact(injected, reachable);
             // A clause that reaches no declaration names no signature to read, and a parameter the
