@@ -193,18 +193,23 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
         /**
          * The same asked of where the orders stop.
          *
-         * <p>Complete as well as sound, which the reading of values is not: an interval is written
-         * one way, so two branches that stop a position in the same place say so in the same
-         * description and the positions left out are exactly the positions the choice keeps without
-         * the branch. The contract this is published under ({@link Opening}) is still the weaker
-         * one, since what a reader may act on has to hold of every language that answers.
+         * <p>Complete as well as sound, which the reading of values is not: what this language
+         * leaves a position is a pair of ends and is written one way, so the positions left out are
+         * exactly the positions the choice stops where it would without the branch. The contract
+         * this is published under ({@link Opening}) is still the weaker one, since what a reader may
+         * act on has to hold of every language that answers.
+         *
+         * <p>A position at a time, as the values are. What a choice comes to over a whole reading
+         * is more than the ranges and is composed where both languages are held
+         * ({@link Confinement.Planned}); what is asked here is one position of two branches whose
+         * fates are settled and handed in.
          */
         static Width<ReadingLanguage.Order> ofOrder(OrderedIntervals<FactSubject> one,
                                                     OrderedIntervals<FactSubject> other) {
             Set<FactSubject> bounded = new LinkedHashSet<>(one.boundedAt());
             bounded.addAll(other.boundedAt());
-            OrderedIntervals<FactSubject> joined = one.joinLive(other);
-            return comparing(bounded, one::at, other::at, joined::at);
+            return comparing(bounded, one::at, other::at,
+                    position -> one.at(position).join(other.at(position)));
         }
 
         /**
