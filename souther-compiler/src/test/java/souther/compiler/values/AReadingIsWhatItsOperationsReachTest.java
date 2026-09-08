@@ -84,15 +84,22 @@ class AReadingIsWhatItsOperationsReachTest {
      * <p>Found from a class of the compiler rather than from a path written here, so this reads the
      * classes it is running with. Its own tests are not among them: a test writes a reading to look
      * at it and ships nothing.
+     *
+     * <p>Loaded without being initialised. What is asked of them is what they declare, which is
+     * there as soon as the class is; running their static initialisers would make this walk carry
+     * whatever any of them does on the way in, and a proposition about what a type says of itself
+     * would fail for a reason that is nothing to do with it.
      */
     private static List<Class<?>> compiled() {
         Path where = classesUnder(AdmissibleValues.class);
+        ClassLoader by = AdmissibleValues.class.getClassLoader();
         try (Stream<Path> found = Files.walk(where)) {
             List<Class<?>> out = new ArrayList<>();
             for (Path each : found.filter(p -> p.toString().endsWith(".class")).toList()) {
                 String named = where.relativize(each).toString()
                         .replace(java.io.File.separatorChar, '.');
-                out.add(Class.forName(named.substring(0, named.length() - ".class".length())));
+                out.add(Class.forName(named.substring(0, named.length() - ".class".length()),
+                        false, by));
             }
             return List.copyOf(out);
         } catch (IOException e) {
