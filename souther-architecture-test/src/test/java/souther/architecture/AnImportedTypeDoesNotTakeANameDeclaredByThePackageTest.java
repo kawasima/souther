@@ -27,6 +27,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -103,6 +104,35 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
     private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
 
     /**
+     * The repository's sources, parsed when the first question needs them and kept for the rest.
+     *
+     * <p>What the rules here are about is one population, read the same way whichever of them is
+     * asking: every source under every root, as this compiler's own parser sees it. Parsing it
+     * where it is asked for makes that reading again for each of them, and what the second one
+     * costs is the whole of the first.
+     *
+     * <p>Kept as the parsed units and not as any rule's answer, so each rule still reads them for
+     * itself. What makes the sharing sound is that a {@link Unit} holds copies of what it was
+     * handed and the parse depends on nothing a test sets: a later question is given the reading it
+     * would have made, and no rule can leave the next one a different repository.
+     *
+     * <p>In a class of its own so that the parse happens on the first use and not before. Most of
+     * the rules here are asked of sources written in the test, and a field of the test class would
+     * read the repository to answer those too.
+     *
+     * <p>A repository this cannot parse fails the initialization rather than the reading, so the
+     * first rule to ask is told which sources and the rest are told that the ask failed. Which is
+     * the same repository either way, and the account of it is in the first failure.
+     */
+    private static final class RepositorySources {
+
+        private static final List<Unit> ALL = parsedRepositorySources();
+
+        private RepositorySources() {
+        }
+    }
+
+    /**
      * Every source this repository holds, and not its main sources alone.
      *
      * <p>The reversal is the same wherever it is written. A test in {@code souther.compiler.partition}
@@ -115,6 +145,37 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
                 "a file whose package declares this name and which imports another package's:"
                         + " inside it the bare name means the other one, and nothing says so."
                         + " Drop the import and write the foreign type out where it is used");
+    }
+
+    /**
+     * And what one rule was handed is what the next one is handed.
+     *
+     * <p>The sources are parsed for whichever rule asks first and read by the rest, which is only
+     * the same reading if none of them can change it. So this is asked of the whole of what a rule
+     * is handed — the population and then a unit of it — and of the reading the repository was
+     * actually read into, since that is the one every rule here shares.
+     *
+     * <p>The population first, because it is where the most is lost: a rule that emptied it would
+     * leave the next one answering about no sources at all, and answering that way passes.
+     */
+    @Test
+    void whatOneRuleWasHandedIsWhatTheNextOneIsHanded() {
+        List<Unit> read = repositorySources();
+
+        assertThrows(UnsupportedOperationException.class, read::clear,
+                "a rule that could empty the population would leave the next one reading a"
+                        + " repository with no sources in it and passing");
+        assertThrows(UnsupportedOperationException.class, () -> read.removeFirst(),
+                "and one that could drop a source would leave the next one passing over it");
+
+        Unit first = read.getFirst();
+
+        assertThrows(UnsupportedOperationException.class, () -> first.declares().add("Anything"),
+                "a rule that could name a type this source does not declare would be asking the"
+                        + " next rule about a repository nobody wrote");
+        assertThrows(UnsupportedOperationException.class, () -> first.imports().clear(),
+                "and one that could drop an import would leave the next rule reading a source"
+                        + " that never imported anything");
     }
 
     /**
@@ -429,9 +490,26 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
                         + refused.getMessage());
     }
 
-    /** One compilation unit, as much of it as this question is about. */
+    /**
+     * One compilation unit, as much of it as this question is about.
+     *
+     * <p>Holding what it was handed rather than a way back to it. One of these is read by every
+     * rule here and outlives the reading that made it, so a caller keeping the collection it
+     * passed in would be able to change what a later rule is asked about.
+     *
+     * <p>The names in the order they were declared, and the imports in the order they were
+     * written, because both are reported. A copy that iterates in its own order would list a
+     * source's names in an order salted per run of the machine, and two runs would report one
+     * repository two ways.
+     */
     private record Unit(String where, String pkg, String root, boolean isMain,
-                        Set<String> declares, List<Import> imports) {}
+                        Set<String> declares, List<Import> imports) {
+
+        private Unit {
+            declares = Collections.unmodifiableSet(new LinkedHashSet<>(declares));
+            imports = List.copyOf(imports);
+        }
+    }
 
     /** One single import, which binds a name whatever the keyword in front of it is. */
     private record Import(String spelled, boolean isStatic) {
@@ -554,6 +632,11 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
 
     /** The sources this repository holds, read a root at a time. */
     private static List<Unit> repositorySources() {
+        return RepositorySources.ALL;
+    }
+
+    /** The parse itself, which is what is worth doing once. */
+    private static List<Unit> parsedRepositorySources() {
         List<Unit> out = new ArrayList<>();
         JavaCompiler compiler = compiler();
         try (StandardJavaFileManager files =
@@ -570,6 +653,9 @@ class AnImportedTypeDoesNotTakeANameDeclaredByThePackageTest {
         } catch (IOException unreadable) {
             throw new UncheckedIOException(unreadable);
         }
+        // Closed where the population is made, and nowhere else. Copied again where it is kept,
+        // dropping this one would leave the reading immutable all the same and nothing would say
+        // which of the two was holding it.
         return List.copyOf(out);
     }
 
