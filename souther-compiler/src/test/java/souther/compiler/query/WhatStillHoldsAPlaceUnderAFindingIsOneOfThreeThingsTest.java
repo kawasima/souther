@@ -30,23 +30,28 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * A finding says what a measure established. Where a report about one belongs is asked of the
- * module that wrote the code, and what is left holding a place is held to a reason that was
- * measured.
+ * Everything still holding a place under a finding is one of three things, and which one is what a
+ * compile shows rather than what somebody wrote down.
+ *
+ * <p><b>Not a list of what is allowed.</b> Two of the three are what a place under a finding may be:
+ * one that tells two values apart, and one nothing has been measured about. The third is work that
+ * has not been done — a place a compile shows is a handle and not an identity, which is a location
+ * dependency the module-boundary cut of issue #1472 has still to be split from what it is a handle
+ * for. While anything stands under it, that cut has a carrier left to go stale, and taking the cut
+ * is what this counts down to rather than what it permits.
  *
  * <p>Asked of the finding and not of the thing last put right. A place is taken out of one value at
  * a time, and a check rooted at whichever one that was cannot see the rest — which is how a place
  * came to be left under {@code APointOfADeclaredBorder} while everything about the arms was green.
  * So the walk starts where the answer is.
  *
- * <p><b>The reason is a reading, and the reading is checked.</b> Written as a sentence, a reason is
- * whatever whoever added the line believed when they added it — and two of the ones first written
- * here were wrong about a census this same change had taken. So there are three readings and no
- * fourth, each one a thing a corpus either shows or does not: the place tells two of them apart,
- * nothing reaches one at all, or it was measured to do neither and has not been taken out yet. A
- * carrier that is none of them fails, which is the only way a place gets to stay.
+ * <p><b>The reading is checked, not asserted.</b> Written as a sentence, a reason is whatever
+ * whoever added the line believed when they added it — and two of the ones first written here were
+ * wrong about a census this same change had taken, while the census itself could not see a place
+ * held in a collection. So each reading is a thing the models either show or do not, and a carrier
+ * that is none of the three fails.
  */
-class AFindingSaysWhatWasFoundAndNotWhereToPrintItTest {
+class WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest {
 
     /** What a report points with, which is what a finding may not hold. */
     private static final Set<String> A_PLACE = Set.of(
@@ -56,10 +61,13 @@ class AFindingSaysWhatWasFoundAndNotWhereToPrintItTest {
             "souther.compiler.diag.DiagnosticPlace");
 
     /**
-     * Why a place is still under a finding, which is a thing a corpus answers.
+     * What a place still under a finding is, which is a thing the models answer.
      *
      * <p>Three readings and no word for one nobody has read. What would go under a fourth is a
      * carrier whose reason is somebody's opinion, and that is what this exists to stop.
+     *
+     * <p>Two of them are answers and the third is work. Told apart here so that a reader counting
+     * what is left to do counts {@link StillToSplit} and nothing else.
      */
     sealed interface Because {
 
@@ -72,20 +80,25 @@ class AFindingSaysWhatWasFoundAndNotWhereToPrintItTest {
         record NothingReachesOne() implements Because {}
 
         /**
-         * Measured to be neither: instances there are, and no two of them differ only in the place.
-         * A carrier whose place is a handle a document prints, which has not been split from what
-         * it is a handle for yet.
+         * Neither: the models reach these, and no two of them differ only in the place. So the
+         * place is a handle a document prints rather than anything that tells one from another,
+         * and it has not been split from what it is a handle for yet.
+         *
+         * <p><b>Work and not an exception.</b> Every one of these is a path by which a location
+         * still reaches a finding, so every one of them is a carrier the module-boundary cut of
+         * issue #1472 would leave pointing at where a helper used to be. The cut waits on this
+         * being empty.
          *
          * @param owed what has to happen before it goes, said so that a reader meets the work
          *             rather than the excuse
          */
-        record MeasuredAndNotYetSplit(String owed) implements Because {}
+        record StillToSplit(String owed) implements Because {}
     }
 
     /** Every place still under a finding, and the reading each is here under. */
-    private static final Map<String, Because> WHAT_IS_LEFT = whatIsLeft();
+    private static final Map<String, Because> WHAT_STILL_HOLDS_A_PLACE = whatStillHoldsAPlace();
 
-    private static Map<String, Because> whatIsLeft() {
+    private static Map<String, Because> whatStillHoldsAPlace() {
         Map<String, Because> out = new TreeMap<>();
         // The one place a place is doing work no identity beside it does: two conditions this
         // compiler declined to cut are told apart by where they are and by nothing else.
@@ -103,30 +116,66 @@ class AFindingSaysWhatWasFoundAndNotWhereToPrintItTest {
         String splitTheHandle = "the handle a document prints is split from the rule it is a handle"
                 + " for, and the place asked where a clause's and an arm's are now asked";
         out.put("souther.compiler.check.RuleCitation$WrittenAt.at",
-                new Because.MeasuredAndNotYetSplit(splitTheHandle));
+                new Because.StillToSplit(splitTheHandle));
         out.put("souther.compiler.partition.LineOrigin$ComparisonOrigin$Read.writtenAt",
-                new Because.MeasuredAndNotYetSplit(splitTheHandle));
+                new Because.StillToSplit(splitTheHandle));
         out.put("souther.compiler.inputs.RuleWithoutALine.reachedAt",
-                new Because.MeasuredAndNotYetSplit(splitTheHandle));
+                new Because.StillToSplit(splitTheHandle));
         out.put("souther.compiler.inputs.StandingQuestion$BoundaryUndetermined.reachedAt",
-                new Because.MeasuredAndNotYetSplit(splitTheHandle));
+                new Because.StillToSplit(splitTheHandle));
         out.put("souther.compiler.inputs.StandingQuestion$Exact.reachedAt",
-                new Because.MeasuredAndNotYetSplit(splitTheHandle));
+                new Because.StillToSplit(splitTheHandle));
         out.put("souther.compiler.inputs.StandingQuestion$NothingClassifiesIt.reachedAt",
-                new Because.MeasuredAndNotYetSplit(splitTheHandle));
+                new Because.StillToSplit(splitTheHandle));
         String splitTheWay = "a condition on the way to a border is told from its neighbours by"
                 + " what it narrows or takes in, and the place asked of whoever writes a sentence";
         out.put("souther.compiler.partition.OnTheWay$Narrowed.at",
-                new Because.MeasuredAndNotYetSplit(splitTheWay));
+                new Because.StillToSplit(splitTheWay));
         out.put("souther.compiler.partition.OnTheWay$TakenIn.at",
-                new Because.MeasuredAndNotYetSplit(splitTheWay));
+                new Because.StillToSplit(splitTheWay));
         return out;
     }
 
     @Test
-    void everyPlaceLeftUnderAFindingIsOneSomebodyAnsweredFor() {
-        assertEquals(WHAT_IS_LEFT.keySet(), placesUnder(Adequacy.Finding.class),
-                "a place under a finding is one this holds to a reading, or one to take out");
+    void everyPlaceLeftUnderAFindingIsOneOfTheThree() {
+        assertEquals(WHAT_STILL_HOLDS_A_PLACE.keySet(), placesUnder(Adequacy.Finding.class),
+                "a place under a finding is one this reads, or one to take out");
+    }
+
+    /**
+     * What the module-boundary cut is waiting on, named so that whoever takes it can ask.
+     *
+     * <p>Not asserted empty here, because it is not: what it holds is the work this change found
+     * and did not do. It is a method rather than a line in a document so that the question "is
+     * anything still going to go stale when the cut is taken" has one answer, and the change that
+     * takes the cut is the one that asserts this is empty.
+     */
+    static Set<String> stillBlockingTheCut() {
+        Set<String> blocking = new TreeSet<>();
+        WHAT_STILL_HOLDS_A_PLACE.forEach((carrier, because) -> {
+            if (because instanceof Because.StillToSplit) {
+                blocking.add(carrier);
+            }
+        });
+        return blocking;
+    }
+
+    /**
+     * And what is waiting is waiting on work, not on a decision.
+     *
+     * <p>Every one of them says what has to happen to it. A carrier here with nothing said is one
+     * whose reason nobody wrote, which is the state this whole register exists to keep out.
+     */
+    @Test
+    void everythingTheCutWaitsOnSaysWhatItIsWaitingFor() {
+        Set<String> saidNothing = new TreeSet<>();
+        WHAT_STILL_HOLDS_A_PLACE.forEach((carrier, because) -> {
+            if (because instanceof Because.StillToSplit(String owed) && owed.isBlank()) {
+                saidNothing.add(carrier);
+            }
+        });
+        assertEquals(Set.of(), saidNothing,
+                "what the cut waits on is work somebody named");
     }
 
     /**
@@ -140,7 +189,7 @@ class AFindingSaysWhatWasFoundAndNotWhereToPrintItTest {
     void andEachReadingIsWhatACompileShows() {
         Map<String, List<Object>> byCarrier = carriersInTheModels();
         Map<String, String> wrong = new TreeMap<>();
-        WHAT_IS_LEFT.forEach((carrier, because) -> {
+        WHAT_STILL_HOLDS_A_PLACE.forEach((carrier, because) -> {
             List<Object> held = byCarrier.getOrDefault(carrier, List.of());
             String said = says(because, held, carrier);
             if (said != null) {
@@ -160,7 +209,7 @@ class AFindingSaysWhatWasFoundAndNotWhereToPrintItTest {
             case Because.ItTellsThemApart _ -> held.isEmpty()
                     ? "nothing reaches one, so nothing shows the place tells them apart"
                     : apart ? null : "no two of them differ only in the place";
-            case Because.MeasuredAndNotYetSplit _ -> held.isEmpty()
+            case Because.StillToSplit _ -> held.isEmpty()
                     ? "nothing reaches one, so nothing was measured"
                     : apart ? "the place tells two of them apart, so it is not a handle" : null;
         };
@@ -191,7 +240,7 @@ class AFindingSaysWhatWasFoundAndNotWhereToPrintItTest {
     /** Every instance of a registered carrier this compile holds, by carrier. */
     private static Map<String, List<Object>> carriersIn(Db db) {
         Set<String> wanted = new LinkedHashSet<>();
-        WHAT_IS_LEFT.keySet().forEach(each -> wanted.add(each.substring(0, each.lastIndexOf('.'))));
+        WHAT_STILL_HOLDS_A_PLACE.keySet().forEach(each -> wanted.add(each.substring(0, each.lastIndexOf('.'))));
         Map<String, List<Object>> out = new LinkedHashMap<>();
         Set<Object> seen = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
         Deque<Object> queue = new ArrayDeque<>();
@@ -243,7 +292,7 @@ class AFindingSaysWhatWasFoundAndNotWhereToPrintItTest {
 
     /** The registered carrier {@code of} is the class of. */
     private static String carrierOf(Class<?> of) {
-        return WHAT_IS_LEFT.keySet().stream()
+        return WHAT_STILL_HOLDS_A_PLACE.keySet().stream()
                 .filter(each -> each.startsWith(of.getName() + "."))
                 .findFirst().orElseThrow();
     }

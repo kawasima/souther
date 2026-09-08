@@ -12,7 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * An arm crosses a module boundary saying which fork it is one of, and which question places a
  * report about it — not where that fork is.
  *
- * <p>That it holds no place is {@link AFindingSaysWhatWasFoundAndNotWhereToPrintItTest}'s to say,
+ * <p>That it holds no place is
+ * {@link WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest}'s to say,
  * where the walk that answers it starts at the answer rather than at the value last put right. What
  * is here is the other half, which no walk over places can see: a value holding nothing passes
  * whether it says which of the two questions places it or says nothing at all, and the second is a
