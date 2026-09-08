@@ -146,7 +146,8 @@ class OnlyOnePlaceDecidesThatAnAlternativeWentUnreadTest {
                                 + "Lsouther/compiler/check/Settlement$Width;",
                         "souther.compiler.check.Settlement$Width#comparing"
                                 + "(Ljava/util/Set;Ljava/util/function/Function;"
-                                + "Ljava/util/function/Function;Ljava/util/function/Function;)"
+                                + "Ljava/util/function/Function;"
+                                + "Ljava/util/function/BinaryOperator;)"
                                 + "Lsouther/compiler/check/Settlement$Width;",
                         "souther.compiler.check.Settlement$Width#none()"
                                 + "Lsouther/compiler/check/Settlement$Width;"),

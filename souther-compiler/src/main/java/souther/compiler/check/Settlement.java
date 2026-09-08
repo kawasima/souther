@@ -1,5 +1,6 @@
 package souther.compiler.check;
 
+import souther.compiler.numeric.OrderedInterval;
 import souther.compiler.numeric.OrderedIntervals;
 import souther.compiler.values.AdmittedPlan;
 import souther.compiler.values.PlannedValues;
@@ -13,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
 
 /**
@@ -187,7 +189,7 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
             Set<FactSubject> narrowed = new LinkedHashSet<>(one.adoptedAt());
             narrowed.addAll(other.adoptedAt());
             return comparing(narrowed, one::at, other::at,
-                    position -> AdmittedPlan.joining(List.of(one.at(position), other.at(position))));
+                    (here, there) -> AdmittedPlan.joining(List.of(here, there)));
         }
 
         /**
@@ -208,8 +210,7 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
                                                     OrderedIntervals<FactSubject> other) {
             Set<FactSubject> bounded = new LinkedHashSet<>(one.boundedAt());
             bounded.addAll(other.boundedAt());
-            return comparing(bounded, one::at, other::at,
-                    position -> one.at(position).join(other.at(position)));
+            return comparing(bounded, one::at, other::at, OrderedInterval::join);
         }
 
         /**
@@ -221,18 +222,24 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
          */
         private static <L extends ReadingLanguage, T> Width<L> comparing(
                 Set<FactSubject> narrowed, Function<FactSubject, T> left,
-                Function<FactSubject, T> right, Function<FactSubject, T> joined) {
+                Function<FactSubject, T> right, BinaryOperator<T> joining) {
             Set<FactSubject> mayRestOnLeft = new LinkedHashSet<>();
             Set<FactSubject> mayRestOnRight = new LinkedHashSet<>();
             for (FactSubject position : narrowed) {
-                T both = joined.apply(position);
+                // Asked of each side once. What a reading leaves a position is worked out and not
+                // looked up — a description is met across every alternative the reading holds — so
+                // a comparison that asked again for what it already had would pay for the branches
+                // twice over.
+                T here = left.apply(position);
+                T there = right.apply(position);
+                T both = joining.apply(here, there);
                 // Equal descriptions say one thing, so this side of each is a proof that dropping
                 // the branch leaves the position where it was. Unequal ones are not a proof of
                 // anything, and the position is kept as one nobody settled.
-                if (!right.apply(position).equals(both)) {
+                if (!there.equals(both)) {
                     mayRestOnLeft.add(position);
                 }
-                if (!left.apply(position).equals(both)) {
+                if (!here.equals(both)) {
                     mayRestOnRight.add(position);
                 }
             }
