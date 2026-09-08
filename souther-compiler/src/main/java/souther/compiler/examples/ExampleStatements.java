@@ -38,6 +38,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * Reads the statements a module writes about one of its behaviors, and reports where two of them
@@ -153,7 +154,7 @@ public final class ExampleStatements {
                                     BuiltTable built) {
         Hir.Fake fk = table.read();
         List<Diagnostic> said = new ArrayList<>();
-        for (Standin standin : built.standins().explicit()) {
+        for (Standin.Explicit standin : built.standins().explicit()) {
             // The behavior the table stands in for, which is what declares the clause its rows are
             // held to. Taken from the classification: a dependency another module declares states
             // its own, and minting a name in this module would hold the row to nothing.
@@ -887,7 +888,7 @@ public final class ExampleStatements {
      * fake answers for a table the proxy refuses to build at all. What the report says a fake answers
      * has to be what the fake answers.
      */
-    record Standins(List<Standin> explicit, Standin fallback) {
+    record Standins(List<Standin.Explicit> explicit, Standin.Fallback fallback) {
 
         /**
          * Every row here is one {@link #answering} can return.
@@ -901,7 +902,8 @@ public final class ExampleStatements {
         public Standins {
             explicit = List.copyOf(explicit);
             for (int i = 0; i < explicit.size(); i++) {
-                if (answering(explicit.subList(0, i), null, explicit.get(i).arguments()) != null) {
+                if (answering(explicit.subList(0, i), null, Standin.Explicit::arguments,
+                        explicit.get(i).arguments()) != null) {
                     throw new IllegalArgumentException(
                             "a table holds no row its dispatch cannot return, and the row at " + i
                                     + " states what an earlier one states");
@@ -920,7 +922,7 @@ public final class ExampleStatements {
          * is one, and adding another means writing it somewhere it plainly does not belong.
          */
         Standin answering(Object[] arguments) {
-            return answering(explicit, fallback, arguments);
+            return answering(explicit, fallback, Standin.Explicit::arguments, arguments);
         }
 
         /**
@@ -931,10 +933,16 @@ public final class ExampleStatements {
          * built into says nothing about whether the row is ever asked — so it is asked of what states
          * rather than of what answers, and a row whose answer has not been built (and, being
          * unreachable, never will be) is decided by the same walk as the rest.
+         *
+         * <p>Only the rows that name arguments are compared, and {@code states} is how this reads
+         * them: the {@code _} row arrives as the fallback and is the answer where none of them
+         * matched, so it is never asked what it names — which is why its type does not have to have
+         * an answer to that.
          */
-        static <T extends Stated> T answering(List<T> explicit, T fallback, Object[] arguments) {
-            for (T stated : explicit) {
-                if (sameArguments(stated.arguments(), arguments)) {
+        static <R, E extends R> R answering(List<E> explicit, R fallback,
+                                            Function<E, Object[]> states, Object[] arguments) {
+            for (E stated : explicit) {
+                if (sameArguments(states.apply(stated), arguments)) {
                     return stated;
                 }
             }
@@ -966,20 +974,55 @@ public final class ExampleStatements {
      */
     sealed interface Stated {
 
-        /** The arguments this row states, or null for the {@code _} row. */
-        Object[] arguments();
-
         /** Where the row is written. */
         Hir.FakeRow row();
     }
 
-    /** A row as written, with its arguments read and nothing else of it built. */
+    /** A row as written, with the arguments it names read and nothing else of it built. */
     record Written(Object[] arguments, Hir.FakeRow row) implements Stated {}
 
-    /** One row of the table the fake dispatches with: what it states, and the answer it was built
-     * into. */
-    record Standin(Object[] arguments, Hir.FakeRow row, FixtureReader.BuiltFixture answer)
-            implements Stated {}
+    /** The {@code _} row as written. It names no arguments, so there are none here to have been
+     *  read: what it answers for is every call the rows beside it do not. */
+    record WroteAnything(Hir.FakeRow row) implements Stated {}
+
+    /**
+     * One row of the table the fake dispatches with: what it states, and the answer it was built
+     * into.
+     *
+     * <p>The two rows are two types, because what may be asked of them differs. A row that names
+     * arguments is the one a reader of the table enumerates, and reading what it names is reading
+     * the source it was written from; the {@code _} row names none, and a reader holding one has
+     * nothing of that kind to ask for. Held as one type, every such reader would have to decide for
+     * itself which it had, and a reader that decided wrongly would read a row that answers for
+     * anything as one that answers for no arguments — which is a row nobody can write.
+     */
+    sealed interface Standin extends Stated {
+
+        /** The answer this row was built into. */
+        FixtureReader.BuiltFixture answer();
+
+        /** A row that answers for the arguments it names. */
+        record Explicit(Object[] arguments, Hir.FakeRow row, FixtureReader.BuiltFixture answer)
+                implements Standin {
+
+            public Explicit {
+                if (!(row.matched() instanceof Hir.Matched.Arguments)) {
+                    throw new IllegalArgumentException(
+                            "an explicit row names the arguments it answers for");
+                }
+            }
+
+            /** Where those arguments are written, which is a question this row has an answer to
+             *  because that is what made it one of these. */
+            List<Hir.Expr> names() {
+                return ((Hir.Matched.Arguments) row.matched()).inputs();
+            }
+        }
+
+        /** The {@code _} row: what the table answers with where no row above it names the call's
+         *  arguments. */
+        record Fallback(Hir.FakeRow row, FixtureReader.BuiltFixture answer) implements Standin {}
+    }
 
     /**
      * One row of a built table, as something that did not read the source can hold it.
@@ -994,11 +1037,12 @@ public final class ExampleStatements {
      * value that could not be carried is on, an author is left to work out which of them nothing
      * could be made of.
      */
-    static RowStatements.StandInRead.EntryRead carried(FixtureReader fixtures, Standin entry) {
+    static RowStatements.StandInRead.EntryRead carried(FixtureReader fixtures,
+                                                       Standin.Explicit entry) {
         List<RowStatements.StandInRead.Written> arguments = new ArrayList<>();
         for (int i = 0; i < entry.arguments().length; i++) {
             arguments.add(new RowStatements.StandInRead.Written(
-                    fixtures.observed(entry.arguments()[i]), entry.row().inputs().get(i).pos()));
+                    fixtures.observed(entry.arguments()[i]), entry.names().get(i).pos()));
         }
         return new RowStatements.StandInRead.EntryRead(arguments,
                 new RowStatements.StandInRead.Written(fixtures.observed(entry.answer().value()),
@@ -1055,8 +1099,9 @@ public final class ExampleStatements {
     static BuiltTable standins(FixtureReader fixtures, Hir.Fake fk, List<BoundaryInput> ins,
                                      BoundaryOutput outType, List<Diagnostic> out) {
         for (Hir.FakeRow r : fk.rows()) {
-            if (!r.isDefault() && r.inputs().size() != ins.size()) {
-                out.add(unbuildableFake(r.pos(), wrote(fk), "a row has " + r.inputs().size()
+            if (r.matched() instanceof Hir.Matched.Arguments(List<Hir.Expr> inputs)
+                    && inputs.size() != ins.size()) {
+                out.add(unbuildableFake(r.pos(), wrote(fk), "a row has " + inputs.size()
                         + " input(s) where the dependency takes " + ins.size()));
                 return null;
             }
@@ -1066,14 +1111,14 @@ public final class ExampleStatements {
         // built either.
         Hir.FakeRow lastDefault = null;
         for (Hir.FakeRow r : fk.rows()) {
-            if (r.isDefault()) {
+            if (r.matched() instanceof Hir.Matched.Anything) {
                 lastDefault = r;
             }
         }
         List<Written> reachable = new ArrayList<>();
-        List<Standin> explicit = new ArrayList<>();
+        List<Standin.Explicit> explicit = new ArrayList<>();
         List<Shadowed> shadowed = new ArrayList<>();
-        Standin fallback = null;
+        Standin.Fallback fallback = null;
         // In the order the rows are written, each read as far as it is reached: what a row states,
         // then — for a row the table can return — what it answers. A row the dispatch never returns
         // is a row nothing asks for what it states, so building its answer would be work done for a
@@ -1083,17 +1128,18 @@ public final class ExampleStatements {
         // wrong wherever a later row's arguments take their time.
         try {
             for (Hir.FakeRow r : fk.rows()) {
-                if (r.isDefault()) {
+                if (!(r.matched() instanceof Hir.Matched.Arguments(List<Hir.Expr> inputs))) {
                     if (r != lastDefault) {
                         shadowed.add(new Shadowed(r, lastDefault));
                         continue;
                     }
-                    fallback = new Standin(null, r, fixtures.buildFixture(r.output(), outType));
+                    fallback = new Standin.Fallback(r,
+                            fixtures.buildFixture(r.output(), outType));
                     continue;
                 }
                 Object[] arguments = new Object[ins.size()];
                 for (int i = 0; i < ins.size(); i++) {
-                    arguments[i] = fixtures.built(r.inputs().get(i), ins.get(i));
+                    arguments[i] = fixtures.built(inputs.get(i), ins.get(i));
                 }
                 Written written = new Written(arguments, r);
                 // Whether the table would return this row when asked what this row states, asked of
@@ -1104,8 +1150,9 @@ public final class ExampleStatements {
                 // rule that decides which row answers is the rule that decides which row cannot.
                 List<Written> with = new ArrayList<>(reachable);
                 with.add(written);
-                Written answers = Standins.answering(with,
-                        lastDefault == null ? null : new Written(null, lastDefault), arguments);
+                Stated answers = Standins.answering(with,
+                        lastDefault == null ? null : new WroteAnything(lastDefault),
+                        Written::arguments, arguments);
                 if (answers != written) {
                     shadowed.add(new Shadowed(r, answers.row()));
                     continue;
@@ -1113,7 +1160,8 @@ public final class ExampleStatements {
                 reachable.add(written);
                 // A dependency that returns a sum has no single decoder; each row names one case, so
                 // decode the row's output against that case's type (as an expected value is).
-                explicit.add(new Standin(arguments, r, fixtures.buildFixture(r.output(), outType)));
+                explicit.add(new Standin.Explicit(arguments, r,
+                        fixtures.buildFixture(r.output(), outType)));
             }
         } catch (FixtureException fe) {
             out.add(unbuildableFake(fk.pos(), wrote(fk), fe.getMessage()));
@@ -1135,7 +1183,7 @@ public final class ExampleStatements {
      */
     static Diagnostic cannotAnswer(Hir.Fake fk, Shadowed dead) {
         return Diagnostic.at(dead.row().pos())
-                .say(dead.row().isDefault()
+                .say(dead.row().matched() instanceof Hir.Matched.Anything
                         ? new ExampleMessage.ALaterDefaultRowAnswersInstead(wrote(fk))
                         : new ExampleMessage.AnEarlierRowAnswersTheseArguments(wrote(fk)))
                 .secondary(souther.compiler.diag.Region.point(dead.answeredBy().pos()),

@@ -106,6 +106,39 @@ class AnOccurrenceIsNamedByWhatItWasWrittenOverTest {
         assertInstanceOf(AuthoredSites.Census.Identified.class, AuthoredSites.of(module));
     }
 
+    /**
+     * And a row that answers for anything is a row of the table.
+     *
+     * <p>What it answers with is written in the source like any other row's, so it is an occurrence
+     * like any other row's. What it answers <em>for</em> is not written at all — a walk asks the row
+     * which of the two it is, and never asks a row that names no arguments for its arguments.
+     */
+    @Test
+    void aRowThatAnswersForAnythingIsWalkedLikeTheRowsBesideIt() {
+        Hir.Module module = resolved("""
+                module m
+
+                behavior dep : (x: Int) -> Int
+
+                behavior use : (x: Int) -> Int
+                    depends on dep
+                let use (x, dep) = dep(x)
+
+                fake dep
+                    | (1) -> 2
+                    | _   -> 0
+                """);
+        AuthoredSites sites = identified(module);
+
+        List<Hir.FakeRow> rows = module.fakes().getFirst().rows();
+        Hir.Matched.Arguments named =
+                assertInstanceOf(Hir.Matched.Arguments.class, rows.getFirst().matched());
+        assertNotNull(sites.site(named.inputs().getFirst().region()), "the `1` is written");
+        assertNotNull(sites.site(rows.getFirst().output().region()), "and so is the `2`");
+        assertInstanceOf(Hir.Matched.Anything.class, rows.get(1).matched());
+        assertNotNull(sites.site(rows.get(1).output().region()), "and so is the `0` under the `_`");
+    }
+
     @Test
     void theSameSourceCensusesToTheSameAnswer() {
         // What stops work in the query graph: an answer equal to the one it replaces is an edit

@@ -84,15 +84,8 @@ public final class HelperNames {
     static Hir.Fake qualifyImportsIn(Hir.Fake fake, String self) {
         List<Hir.FakeRow> rows = new ArrayList<>();
         for (Hir.FakeRow row : fake.rows()) {
-            List<Hir.Expr> inputs = null;
-            if (row.inputs() != null) {   // a default row matches anything and writes none
-                inputs = new ArrayList<>();
-                for (Hir.Expr in : row.inputs()) {
-                    inputs.add(qualifyForeign(in, self));
-                }
-            }
-            rows.add(new Hir.FakeRow(inputs, qualifyForeign(row.output(), self),
-                    row.isDefault(), row.pos()));
+            rows.add(new Hir.FakeRow(row.matched().map(in -> qualifyForeign(in, self)),
+                    qualifyForeign(row.output(), self), row.pos()));
         }
         return new Hir.Fake(fake.target(), rows, fake.pos());
     }

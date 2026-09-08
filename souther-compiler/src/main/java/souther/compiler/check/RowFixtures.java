@@ -108,10 +108,15 @@ public final class RowFixtures {
             Sig sig = occurrence instanceof FakeTables.Occurrence.Resolved resolved
                     ? sigOf(signatures, resolved.behavior()) : null;
             for (Hir.FakeRow row : occurrence.read().rows()) {
-                if (row.inputs() != null) {
-                    for (int i = 0; i < row.inputs().size(); i++) {
-                        out.add(new Placed(row.inputs().get(i), supplies(sig, i)));
+                switch (row.matched()) {
+                    case Hir.Matched.Arguments(List<Hir.Expr> inputs) -> {
+                        for (int i = 0; i < inputs.size(); i++) {
+                            out.add(new Placed(inputs.get(i), supplies(sig, i)));
+                        }
                     }
+                    // A row that answers for anything names no argument, so there is no position
+                    // for one to be supplied at.
+                    case Hir.Matched.Anything _ -> { }
                 }
                 out.add(new Placed(row.output(), new RowPosition.Supplies(answersWith(sig))));
             }

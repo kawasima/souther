@@ -424,9 +424,46 @@ public interface Hir {
         }
     }
 
-    /** One fake row: input argument expressions mapped to an output, or the default ({@code inputs}
-     * null / {@code isDefault} true). */
-    record FakeRow(List<Expr> inputs, Expr output, boolean isDefault, SourcePos pos) implements Hir {}
+    /** One fake row: what it answers for, and what it answers with. */
+    record FakeRow(Matched matched, Expr output, SourcePos pos) implements Hir {}
+
+    /**
+     * What a fake's row answers for.
+     *
+     * <p>Two states and the source says which. A row written {@code (a, b) -> out} answers for those
+     * arguments and for no others; a row written {@code _ -> out} answers for anything, and there are
+     * no arguments written in it to read.
+     *
+     * <p>Not a list of arguments that may be absent. A walk over what the source writes has to be
+     * told which of the two a row is before it can ask for arguments, and an absence it is free to
+     * walk into is one a walk reads as a row that names none — which is a different row, and one no
+     * author can write.
+     */
+    sealed interface Matched permits Matched.Arguments, Matched.Anything {
+
+        /**
+         * The same, with the arguments rewritten where there are any to rewrite.
+         *
+         * <p>For a pass that rewrites what a row answers for without changing whether it names
+         * anything. A caller taking the list out and building a {@code Matched} back around it would
+         * be deciding a second time which of the two this is.
+         */
+        default Matched map(UnaryOperator<Expr> rewrite) {
+            return this instanceof Arguments(List<Expr> written)
+                    ? new Arguments(written.stream().map(rewrite).toList()) : this;
+        }
+
+        /** The row names the arguments it answers for, and these are they. */
+        record Arguments(List<Expr> inputs) implements Matched {
+
+            public Arguments {
+                inputs = List.copyOf(inputs);
+            }
+        }
+
+        /** The row answers for anything: {@code _ -> out}. */
+        record Anything() implements Matched {}
+    }
 
     /** {@code with <dep> = <value>} on an example row — a value fake for an injected dependency
      * (a zero-argument behavior whose faked result is a constant). The dependency is named as a

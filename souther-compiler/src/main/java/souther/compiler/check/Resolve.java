@@ -603,9 +603,13 @@ public final class Resolve {
             Hir.Var target = r.standsInFor(f.target());
             List<Hir.FakeRow> rows = new ArrayList<>();
             for (Ast.FakeRow row : f.rows()) {
-                rows.add(new Hir.FakeRow(
-                        row.inputs() == null ? null : r.exprs(row.inputs(), Reading.A_FIXTURE),
-                        r.expr(row.output(), Reading.A_FIXTURE), row.isDefault(), row.pos()));
+                Hir.Matched matched = switch (row.matched()) {
+                    case Ast.Matched.Arguments(List<Ast.Expr> inputs) ->
+                            new Hir.Matched.Arguments(r.exprs(inputs, Reading.A_FIXTURE));
+                    case Ast.Matched.Anything _ -> new Hir.Matched.Anything();
+                };
+                rows.add(new Hir.FakeRow(matched, r.expr(row.output(), Reading.A_FIXTURE),
+                        row.pos()));
             }
             fakes.add(new Hir.Fake(target, rows, f.pos()));
         }
