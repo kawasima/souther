@@ -400,6 +400,30 @@ public final class CoverageSites {
             return byNode;
         }
 
+        /**
+         * Where the fork each numbered arm stands in is written, by the number this plan handed
+         * that arm.
+         *
+         * <p>The fork's own place and not the arm's: an arm's body is what lowering rewrites, and
+         * carries whatever position it was built from rather than the one the author would be
+         * shown.
+         *
+         * <p>Answered here because the question is about places and the answer to it is a value. A
+         * reader given the nodes instead would be holding this plan's index into trees it does not
+         * own, to take a position off each of them — which is the same projection made somewhere it
+         * cannot be told from the graph it walks over.
+         */
+        public Map<Integer, Citation> whereEachArmsForkIsWritten() {
+            Map<Integer, Citation> written = new LinkedHashMap<>();
+            armsByNode.forEach((fork, arms) -> {
+                Citation at = Citation.of(fork.pos());
+                for (ControlPointId.ArmOccurrence arm : arms) {
+                    written.put(arm.controlId(), at);
+                }
+            });
+            return written;
+        }
+
         Map<ComparisonOccurrence, ComparisonEmissionSite> byComparison() {
             return byComparison;
         }
