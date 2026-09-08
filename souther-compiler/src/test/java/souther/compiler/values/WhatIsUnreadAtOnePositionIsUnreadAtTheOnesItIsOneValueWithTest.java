@@ -28,11 +28,25 @@ class WhatIsUnreadAtOnePositionIsUnreadAtTheOnesItIsOneValueWithTest {
         return AsACompilationAllows.forAdmittedValues();
     }
 
+    /** A description worked out, which is how a reading is come by. */
+    private static AdmissibleValues<String> built(PlannedValues<String> planned) {
+        return planned.resolve(allowing()).values();
+    }
+
+    /** An equality between two positions, worked out. */
+    private static AdmissibleValues<String> heldAsOne(String here, String there) {
+        return built(PlannedValues.holdingAsOne(here, there));
+    }
+
+    /** A rule nothing could read, worked out. */
+    private static AdmissibleValues<String> unread(Set<String> named, UnreadReason why) {
+        return built(PlannedValues.unreadable(named, why));
+    }
+
     /** A rule nothing could read at one position, beside an equality holding it with another. */
     private static AdmissibleValues<String> unreadAtOneOfAPair() {
-        return AdmissibleValues.<String>holdingAsOne("p", "r")
-                .meet(AdmissibleValues.unreadable(Set.of("p"), UnreadReason.FORM_NOT_READ),
-                        allowing());
+        return heldAsOne("p", "r")
+                .meet(unread(Set.of("p"), UnreadReason.FORM_NOT_READ), allowing());
     }
 
     /** The position the rule was written at is one the reading does not speak for. */
@@ -92,7 +106,7 @@ class WhatIsUnreadAtOnePositionIsUnreadAtTheOnesItIsOneValueWithTest {
      */
     @Test
     void whetherWhatStandsIsExactIsTheBlocksAnswer() {
-        AdmissibleValues<String> reading = AdmissibleValues.holdingAsOne("p", "r");
+        AdmissibleValues<String> reading = heldAsOne("p", "r");
         Sameness.Block<String> block = reading.blockOf("p");
 
         AdmissibleValues<String> wide = new AdmissibleValues<>(reading.held(),
@@ -115,11 +129,9 @@ class WhatIsUnreadAtOnePositionIsUnreadAtTheOnesItIsOneValueWithTest {
      */
     @Test
     void reasonsAtSeveralPositionsAreReadInTheOrderTheRulesWereWritten() {
-        AdmissibleValues<String> reading = AdmissibleValues.<String>holdingAsOne("p", "r")
-                .meet(AdmissibleValues.unreadable(Set.of("r"),
-                        UnreadReason.RELATES_TWO_POSITIONS), allowing())
-                .meet(AdmissibleValues.unreadable(Set.of("p"),
-                        UnreadReason.FORM_NOT_READ), allowing());
+        AdmissibleValues<String> reading = heldAsOne("p", "r")
+                .meet(unread(Set.of("r"), UnreadReason.RELATES_TWO_POSITIONS), allowing())
+                .meet(unread(Set.of("p"), UnreadReason.FORM_NOT_READ), allowing());
 
         assertEquals(List.of(UnreadReason.RELATES_TWO_POSITIONS, UnreadReason.FORM_NOT_READ),
                 reading.whyUnread("p"), "the rule about r was written first");
@@ -130,11 +142,9 @@ class WhatIsUnreadAtOnePositionIsUnreadAtTheOnesItIsOneValueWithTest {
     /** And the other way round, so the order is the rules' and not the positions'. */
     @Test
     void andTheOtherWayRoundWhenTheRulesAreWrittenTheOtherWayRound() {
-        AdmissibleValues<String> reading = AdmissibleValues.<String>holdingAsOne("p", "r")
-                .meet(AdmissibleValues.unreadable(Set.of("p"),
-                        UnreadReason.FORM_NOT_READ), allowing())
-                .meet(AdmissibleValues.unreadable(Set.of("r"),
-                        UnreadReason.RELATES_TWO_POSITIONS), allowing());
+        AdmissibleValues<String> reading = heldAsOne("p", "r")
+                .meet(unread(Set.of("p"), UnreadReason.FORM_NOT_READ), allowing())
+                .meet(unread(Set.of("r"), UnreadReason.RELATES_TWO_POSITIONS), allowing());
 
         assertEquals(List.of(UnreadReason.FORM_NOT_READ, UnreadReason.RELATES_TWO_POSITIONS),
                 reading.whyUnread("p"));

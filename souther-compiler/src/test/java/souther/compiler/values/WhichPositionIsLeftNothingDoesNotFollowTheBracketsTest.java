@@ -39,13 +39,15 @@ class WhichPositionIsLeftNothingDoesNotFollowTheBracketsTest {
     private static final Value ZERO = Value.number(0);
     private static final Value ONE = Value.number(1);
 
-    private static AdmissibleValues<String> at(String atom, Value value) {
-        return AdmissibleValues.at(atom, ValueSet.just(value));
-    }
-
     /** What puts the sets of one reading together. Every set here is written out, so nothing is
      *  built and no allowance is spent. */
     private final Allowance<String> sets = AsACompilationAllows.forAdmittedValues();
+
+    /** One rule about one position, worked out. */
+    private AdmissibleValues<String> at(String atom, Value value) {
+        return PlannedValues.at(atom, AdmittedPlan.of(ValueSet.just(value)))
+                .resolve(sets).values();
+    }
 
     private AdmissibleValues<String> pair(Value a, Value b) {
         return at(A, a).meet(at(B, b), sets);

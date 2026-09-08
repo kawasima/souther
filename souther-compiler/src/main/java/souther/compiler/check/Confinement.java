@@ -125,22 +125,17 @@ sealed interface Confinement<A> {
      */
     record Admission<A>(souther.compiler.values.Emptiness emptiness, EmptyBy by, Refusal<A> site, Shown how) {
 
-        /** The blocks the lack is about, for a reader that only has to name places. */
-        Set<Sameness.Block<A>> at() {
-            return site.blocks();
-        }
-
         /** The same, where what was refused is places rather than values several of them share. */
         static <A> Admission<A> at(souther.compiler.values.Emptiness emptiness, EmptyBy by, Set<A> positions, Shown how) {
             Set<Sameness.Block<A>> blocks = new LinkedHashSet<>();
             positions.forEach(each -> blocks.add(Sameness.Block.of(each)));
-            return new Admission<>(emptiness, by, new Refusal.AtEachOf<>(blocks), how);
+            return new Admission<>(emptiness, by, Refusal.atEachOf(blocks), how);
         }
 
         /** The same, at each of these blocks. */
         static <A> Admission<A> eachOf(souther.compiler.values.Emptiness emptiness, EmptyBy by,
                                        Set<Sameness.Block<A>> blocks, Shown how) {
-            return new Admission<>(emptiness, by, new Refusal.AtEachOf<>(blocks), how);
+            return new Admission<>(emptiness, by, Refusal.atEachOf(blocks), how);
         }
 
         /**
@@ -159,7 +154,7 @@ sealed interface Confinement<A> {
                 throw new IllegalArgumentException(
                         "a pair nothing emptied is not a pair shown to admit nothing");
             }
-            return new Admission<>(emptiness, EmptyBy.NOTHING_SHOWN, new Refusal.Nowhere<>(),
+            return new Admission<>(emptiness, EmptyBy.NOTHING_SHOWN, Refusal.nowhere(),
                     Shown.BY_THE_READINGS);
         }
 
@@ -354,7 +349,7 @@ sealed interface Confinement<A> {
         // A lack about several blocks together, which is nearer than either of the answers below
         // and is not one of them: each of those blocks is left values of its own, and what has
         // nothing is an assignment to all of them at once.
-        if (where instanceof Refusal.OfThemTogether) {
+        if (where.nearest() == Refusal.Nearest.OF_THEM_TOGETHER) {
             return new Admission<>(souther.compiler.values.Emptiness.EMPTY, EmptyBy.POSITIONS_HELD_APART, where, how);
         }
         // The values holding no alternative at all is the values' own answer, and asking anything
@@ -367,11 +362,12 @@ sealed interface Confinement<A> {
             // Each of those places holds something on its own, so "the values admit nothing" is
             // true of the declaration and says less than what was shown — and which of the two
             // nearer sentences it is is the refusal's to say and not a second reading of it.
-            return new Admission<>(souther.compiler.values.Emptiness.EMPTY, switch (alreadyShown) {
-                case Refusal.Nowhere<A> _ -> EmptyBy.VALUES;
-                case Refusal.AtEachOf<A> _ -> EmptyBy.POSITIONS_HELD_AS_ONE;
-                case Refusal.OfThemTogether<A> _ -> EmptyBy.POSITIONS_HELD_APART;
-            }, alreadyShown, Shown.BY_THE_READINGS);
+            return new Admission<>(souther.compiler.values.Emptiness.EMPTY,
+                    switch (alreadyShown.nearest()) {
+                        case NOWHERE -> EmptyBy.VALUES;
+                        case AT_EACH_OF -> EmptyBy.POSITIONS_HELD_AS_ONE;
+                        case OF_THEM_TOGETHER -> EmptyBy.POSITIONS_HELD_APART;
+                    }, alreadyShown, Shown.BY_THE_READINGS);
         }
         return new Admission<>(souther.compiler.values.Emptiness.EMPTY, EmptyBy.SET_AND_RANGE, where, how);
     }

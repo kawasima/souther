@@ -1,11 +1,10 @@
 package souther.compiler.check;
 
-import souther.compiler.values.Refusal;
 
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -42,7 +41,7 @@ class WhatShowedAPairEmptyIsCarriedWithTheVerdictTest {
 
             assertEquals(verdict, left.emptiness());
             assertEquals(Confinement.EmptyBy.NOTHING_SHOWN, left.by());
-            assertInstanceOf(Refusal.Nowhere.class, left.site());
+            assertTrue(left.site().isNowhere());
         }
     }
 }

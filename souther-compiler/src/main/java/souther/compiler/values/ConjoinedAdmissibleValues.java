@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -174,25 +173,14 @@ public final class ConjoinedAdmissibleValues<A> {
      */
     public Refusal<A> refusedInEveryAlternativeAt(AskedOfEachBlock<A> asked,
                                                   AskedOfARelation<A> relating) {
-        Set<Sameness.Block<A>> blocks = new LinkedHashSet<>();
-        Refusal<A> together = null;
+        // What either side of a conjunction showed, which is what every factor showed put together
+        // — each of them is true of the conjunction, and two lacks about two sets of blocks are two
+        // lacks rather than one about all of them.
+        Refusal<A> shown = Refusal.nowhere();
         for (AdmissibleValues<A> each : factors) {
-            switch (each.refusedInEveryAlternativeAt(asked, relating)) {
-                case Refusal.AtEachOf<A> it -> blocks.addAll(it.blocks());
-                // The first of them, which is the first in the order the readings arrived and so
-                // the order the rules were written. Every factor refused is refused of the
-                // conjunction, so each of these is true of it and naming one is naming one of
-                // several true things; put together, two lacks about two sets of blocks would say
-                // that no assignment to all of them stands, which neither factor showed.
-                case Refusal.OfThemTogether<A> it -> together =
-                        together == null ? it : together;
-                case Refusal.Nowhere<A> _ -> { }
-            }
+            shown = Refusal.eitherShown(shown, each.refusedInEveryAlternativeAt(asked, relating));
         }
-        if (!blocks.isEmpty()) {
-            return new Refusal.AtEachOf<>(blocks);
-        }
-        return together == null ? new Refusal.Nowhere<>() : together;
+        return shown;
     }
 
     /**
@@ -257,7 +245,7 @@ public final class ConjoinedAdmissibleValues<A> {
         for (AdmissibleValues<A> each : factors) {
             out = out == null ? each.refusedBy() : Refusal.eitherShown(out, each.refusedBy());
         }
-        return out == null ? new Refusal.Nowhere<>() : out;
+        return out == null ? Refusal.nowhere() : out;
     }
 
     /** Every subject any factor names. */

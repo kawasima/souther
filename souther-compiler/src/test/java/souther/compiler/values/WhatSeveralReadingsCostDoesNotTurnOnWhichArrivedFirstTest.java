@@ -37,9 +37,15 @@ class WhatSeveralReadingsCostDoesNotTurnOnWhichArrivedFirstTest {
      */
     private static AdmissibleValues<String> matching(String regex) {
         PatternRead said = PatternParser.read(regex);
-        return AdmissibleValues.at("value", ValueSet.matching(
+        return built(PlannedValues.at("value", AdmittedPlan.of(ValueSet.matching(
                 PatternPlan.of(assertInstanceOf(PatternRead.Read.class, said).syntax())
-                        .compile(PatternPlan.Budget.OF_ADMITTED_VALUES.meter())));
+                        .compile(PatternPlan.Budget.OF_ADMITTED_VALUES.meter())))));
+    }
+
+    /** A description worked out, which is how a reading is come by. The machine is compiled
+     *  above, so working this out builds nothing and spends nothing. */
+    private static AdmissibleValues<String> built(PlannedValues<String> planned) {
+        return planned.resolve(AsACompilationAllows.forAdmittedValues()).values();
     }
 
     private static List<AdmissibleValues<String>> readings() {
@@ -100,7 +106,7 @@ class WhatSeveralReadingsCostDoesNotTurnOnWhichArrivedFirstTest {
     /** The same reading, with a rule about another position that it could not read. */
     private static AdmissibleValues<String> alsoUnread(AdmissibleValues<String> read,
                                                        UnreadReason why) {
-        return read.meet(AdmissibleValues.unreadable(java.util.Set.of("elsewhere"), why),
+        return read.meet(built(PlannedValues.unreadable(java.util.Set.of("elsewhere"), why)),
                 AsACompilationAllows.forAdmittedValues());
     }
 

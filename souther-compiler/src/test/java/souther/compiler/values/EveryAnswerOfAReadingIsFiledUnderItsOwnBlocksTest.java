@@ -49,6 +49,16 @@ class EveryAnswerOfAReadingIsFiledUnderItsOwnBlocksTest {
         return planned.resolve(by).values();
     }
 
+    /** One rule about one position, worked out. */
+    private static AdmissibleValues<String> says(String atom, Value value) {
+        return built(plans(atom, value), allowing());
+    }
+
+    /** An equality between two positions, worked out. */
+    private static AdmissibleValues<String> heldAsOne(String here, String there) {
+        return built(PlannedValues.holdingAsOne(here, there), allowing());
+    }
+
     /** Every coordinate this reading files an answer under. */
     private static Set<Sameness.Block<String>> filedUnder(AdmissibleValues<String> reading) {
         Set<Sameness.Block<String>> out = new LinkedHashSet<>(reading.guaranteed().keySet());
@@ -69,7 +79,7 @@ class EveryAnswerOfAReadingIsFiledUnderItsOwnBlocksTest {
     /** A reading of one position is a product over that position, and files its answers there. */
     @Test
     void aReadingOfOnePositionIsAProductOverIt() {
-        AdmissibleValues<String> reading = AdmissibleValues.at("p", ValueSet.just(A));
+        AdmissibleValues<String> reading = says("p", A);
 
         assertTrue(reading.sameness().isDiscrete());
         assertEquals(Sameness.Block.of("p"), reading.blockOf("p"));
@@ -79,8 +89,8 @@ class EveryAnswerOfAReadingIsFiledUnderItsOwnBlocksTest {
     /** An equality makes one block of two positions, and both of them answer in it. */
     @Test
     void anEqualityMakesTheCoordinateBothPositionsAnswerIn() {
-        AdmissibleValues<String> reading = AdmissibleValues.<String>holdingAsOne("p", "r")
-                .meet(AdmissibleValues.at("p", ValueSet.just(A)), allowing());
+        AdmissibleValues<String> reading = heldAsOne("p", "r")
+                .meet(says("p", A), allowing());
 
         assertEquals(reading.blockOf("p"), reading.blockOf("r"));
         assertEquals(Set.of("p", "r"), reading.blockOf("p").members());
@@ -93,8 +103,8 @@ class EveryAnswerOfAReadingIsFiledUnderItsOwnBlocksTest {
      */
     @Test
     void whatIsStatedAtOneOfThemIsWhatTheOtherAdmits() {
-        AdmissibleValues<String> reading = AdmissibleValues.<String>holdingAsOne("p", "r")
-                .meet(AdmissibleValues.at("p", ValueSet.just(A)), allowing());
+        AdmissibleValues<String> reading = heldAsOne("p", "r")
+                .meet(says("p", A), allowing());
 
         assertEquals(ValueSet.just(A), reading.at("r"));
         assertEquals(reading.at("p"), reading.at("r"));
@@ -103,13 +113,13 @@ class EveryAnswerOfAReadingIsFiledUnderItsOwnBlocksTest {
     /** Two rules the equality cannot both hold leave the reading nothing, and say which places. */
     @Test
     void twoRulesOneValueCannotBothSatisfyLeaveNothing() {
-        AdmissibleValues<String> reading = AdmissibleValues.<String>holdingAsOne("p", "r")
-                .meet(AdmissibleValues.at("p", ValueSet.just(A)), allowing())
-                .meet(AdmissibleValues.at("r", ValueSet.just(B)), allowing());
+        AdmissibleValues<String> reading = heldAsOne("p", "r")
+                .meet(says("p", A), allowing())
+                .meet(says("r", B), allowing());
 
         assertTrue(reading.isBottom());
         assertEquals(Set.of(Set.of("p", "r")),
-                reading.refusedBy().blocks().stream().map(Sameness.Block::members)
+                reading.refusedBy().atEachOf().stream().map(Sameness.Block::members)
                         .collect(java.util.stream.Collectors.toSet()));
     }
 
@@ -117,9 +127,9 @@ class EveryAnswerOfAReadingIsFiledUnderItsOwnBlocksTest {
      *  them said into it. */
     @Test
     void aConjunctionCarriesEachSidesAnswersIntoTheCoarserRelation() {
-        AdmissibleValues<String> reading = AdmissibleValues.at("p", ValueSet.just(A))
-                .meet(AdmissibleValues.at("r", ValueSet.just(A)), allowing())
-                .meet(AdmissibleValues.holdingAsOne("p", "r"), allowing());
+        AdmissibleValues<String> reading = says("p", A)
+                .meet(says("r", A), allowing())
+                .meet(heldAsOne("p", "r"), allowing());
 
         assertEquals(Set.of("p", "r"), reading.blockOf("p").members());
         filedUnderItsOwn(reading);

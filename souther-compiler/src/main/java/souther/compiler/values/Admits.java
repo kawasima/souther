@@ -28,9 +28,11 @@ public sealed interface Admits {
             values = Collections.unmodifiableSet(new LinkedHashSet<>(values));
         }
 
-        /** The one value this is, or null where it is not one value. */
-        public Value only() {
-            return values.size() == 1 ? values.iterator().next() : null;
+        /** The values written in one order whichever order they were counted in — see
+         *  {@code InOneOrder}. */
+        @Override
+        public String toString() {
+            return "These" + InOneOrder.of(values);
         }
     }
 
@@ -51,18 +53,6 @@ public sealed interface Admits {
 
     /** Not something the reading that was asked can write down. */
     record NotKnown() implements Admits {}
-
-    /** This without {@code value}, which is what a block held apart from one holding only that
-     *  value is left. Taking one value from more than were counted leaves more than were counted
-     *  less one, which is still more than none. */
-    default Admits without(Value value) {
-        if (!(this instanceof These it) || !it.values().contains(value)) {
-            return this;
-        }
-        Set<Value> out = new LinkedHashSet<>(it.values());
-        out.remove(value);
-        return new These(out);
-    }
 
     /** Whether this is settled to be no value at all. */
     default boolean isNone() {
