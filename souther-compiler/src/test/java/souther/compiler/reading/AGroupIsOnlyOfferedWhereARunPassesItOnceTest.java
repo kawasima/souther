@@ -6,13 +6,12 @@ import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.core.Core;
 import souther.compiler.coverage.CoverageSites;
+import souther.compiler.coverage.Plans;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 
-import java.util.AbstractSet;
-import java.util.Iterator;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -91,7 +90,7 @@ class AGroupIsOnlyOfferedWhereARunPassesItOnceTest {
     void whatStandsInsideAFunctionValueIsSomewhereARunMayComeBackTo() {
         Model model = Model.of(DOUBLING, "doubled");
 
-        List<Core> forks = List.copyOf(model.plan().byNode().keySet());
+        List<Core> forks = Plans.nodesWithArms(model.plan());
         assertEquals(2, forks.size(), "the body under test has two forks");
         assertEquals(1, forks.stream().filter(model.plan()::mayRepeat).count(),
                 "and one of them stands where a run may come back to");
@@ -148,29 +147,9 @@ class AGroupIsOnlyOfferedWhereARunPassesItOnceTest {
             return CoverageRead.of(behavior, body, plan, inputs, rules).interactions();
         }
 
-        /** The same plan, answering that a run may come back to anywhere. What the walk cannot be
-         *  made to produce today, which is why it is stated rather than arranged. */
+        /** The same plan, answering that a run may come back to anywhere. */
         CoverageSites.Plan planWhereEverythingRepeats() {
-            AbstractSet<Core> everywhere = new AbstractSet<>() {
-
-                @Override
-                public boolean contains(Object node) {
-                    return true;
-                }
-
-                @Override
-                public Iterator<Core> iterator() {
-                    return java.util.Collections.emptyIterator();
-                }
-
-                @Override
-                public int size() {
-                    return 0;
-                }
-            };
-            return new CoverageSites.Plan(plan.sites(), plan.guards(), plan.byNode(),
-                    plan.byComparison(), plan.armsByNode(), plan.controlByComparison(),
-                    everywhere, plan.forkByNode(), plan.comparisons(), plan.numbering());
+            return Plans.whereEverythingRepeats(plan);
         }
     }
 }

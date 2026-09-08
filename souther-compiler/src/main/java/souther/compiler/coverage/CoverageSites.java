@@ -299,17 +299,49 @@ public final class CoverageSites {
      * <p>{@code byNode} is keyed by identity. Core nodes are records, so two arms that look the same
      * are equal, and a value-keyed map would hand the emitter the wrong arm's probe. The instances
      * here must be the ones the emitter is walking — the same answer, not an equal one.
+     *
+     * <p>Which is why this is not a value and says nothing of itself. A plan of one graph and a
+     * plan of another built from the same source hold everything alike and answer for different
+     * objects, so there is no equality to write that would be true of both: two of these are one
+     * where they are one object. What is a value is {@link NumberingIdentity} — the same places
+     * under the same numbers over the same executable — and that is what two builds of a module are
+     * held against each other by, and what an answer holding a plan is compared by.
      */
-    public record Plan(List<Site> sites, List<GuardRef> guards, IdentityHashMap<Core, int[]> byNode,
-                       Map<ComparisonOccurrence, ComparisonEmissionSite> byComparison,
-                       IdentityHashMap<Core, ControlPointId.ArmOccurrence[]> armsByNode,
-                       Map<ComparisonOccurrence, Integer> controlByComparison,
-                       java.util.Set<Core> mayRepeat,
-                       IdentityHashMap<Core, ForkOccurrence> forkByNode,
-                       ComparisonCatalog comparisons,
-                       SiteNumbering numbering) {
+    public static final class Plan {
 
-        public Plan {
+        private final List<Site> sites;
+        private final List<GuardRef> guards;
+        private final IdentityHashMap<Core, int[]> byNode;
+        private final Map<ComparisonOccurrence, ComparisonEmissionSite> byComparison;
+        private final IdentityHashMap<Core, ControlPointId.ArmOccurrence[]> armsByNode;
+        private final Map<ComparisonOccurrence, Integer> controlByComparison;
+        private final java.util.Set<Core> mayRepeat;
+        private final IdentityHashMap<Core, ForkOccurrence> forkByNode;
+        private final ComparisonCatalog comparisons;
+        private final SiteNumbering numbering;
+
+        /**
+         * Made where the bodies are walked, and nowhere a caller can reach.
+         *
+         * <p>Not public, and that is the whole of what keeps a module to one plan. A plan is filed
+         * by which {@code Core} objects were put in it, so one built by a caller out of parts is an
+         * index into a graph that caller does not own — and nothing downstream can see the
+         * difference, because a lookup that misses and a place that is not numbered come back
+         * alike.
+         *
+         * <p>Which also settles what the checks below are for. They no longer answer a caller
+         * assembling a plan by hand; they answer {@link #asPlan}, which puts one together field by
+         * field out of what one walk found, and can put a numbering beside a catalog it does not
+         * go with.
+         */
+        Plan(List<Site> sites, List<GuardRef> guards, IdentityHashMap<Core, int[]> byNode,
+             Map<ComparisonOccurrence, ComparisonEmissionSite> byComparison,
+             IdentityHashMap<Core, ControlPointId.ArmOccurrence[]> armsByNode,
+             Map<ComparisonOccurrence, Integer> controlByComparison,
+             java.util.Set<Core> mayRepeat,
+             IdentityHashMap<Core, ForkOccurrence> forkByNode,
+             ComparisonCatalog comparisons,
+             SiteNumbering numbering) {
             // Half of what a numbering could get wrong is the key's own answer now: an occurrence
             // names a comparison and nothing else, so there is no number to put on an `&&` or on
             // arithmetic, which is what would have had the emitter copy half a `long` off the
@@ -337,6 +369,61 @@ public final class CoverageSites {
                         + " of them are; the sites and the addresses are one answer or they are"
                         + " two");
             }
+            this.sites = sites;
+            this.guards = guards;
+            this.byNode = byNode;
+            this.byComparison = byComparison;
+            this.armsByNode = armsByNode;
+            this.controlByComparison = controlByComparison;
+            this.mayRepeat = mayRepeat;
+            this.forkByNode = forkByNode;
+            this.comparisons = comparisons;
+            this.numbering = numbering;
+        }
+
+        /** Every place of this module, in the order they were numbered. */
+        public List<Site> sites() {
+            return sites;
+        }
+
+        /** Which comparisons these bodies hold, under the names this plan numbers them by. */
+        public ComparisonCatalog comparisons() {
+            return comparisons;
+        }
+
+        /** The numbering these addresses are of. */
+        public SiteNumbering numbering() {
+            return numbering;
+        }
+
+        /** What a run was recorded on the way out of, by the condition it stood on. */
+        List<GuardRef> guards() {
+            return guards;
+        }
+
+        /** The nodes this plan numbered arms for, and their probes. */
+        IdentityHashMap<Core, int[]> byNode() {
+            return byNode;
+        }
+
+        Map<ComparisonOccurrence, ComparisonEmissionSite> byComparison() {
+            return byComparison;
+        }
+
+        IdentityHashMap<Core, ControlPointId.ArmOccurrence[]> armsByNode() {
+            return armsByNode;
+        }
+
+        Map<ComparisonOccurrence, Integer> controlByComparison() {
+            return controlByComparison;
+        }
+
+        java.util.Set<Core> mayRepeat() {
+            return mayRepeat;
+        }
+
+        IdentityHashMap<Core, ForkOccurrence> forkByNode() {
+            return forkByNode;
         }
 
         /** What this plan is a numbering of, as two builds can be held against each other by. */

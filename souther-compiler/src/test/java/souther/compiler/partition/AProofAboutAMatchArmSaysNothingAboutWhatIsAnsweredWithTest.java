@@ -5,6 +5,7 @@ import souther.compiler.check.PathReachability;
 import souther.compiler.core.Core;
 import souther.compiler.coverage.ControlPointId;
 import souther.compiler.coverage.CoverageSites;
+import souther.compiler.coverage.Plans;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
@@ -12,7 +13,6 @@ import souther.compiler.report.AdequacyReport;
 import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.TypeSymbol;
 
-import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -155,29 +155,11 @@ class AProofAboutAMatchArmSaysNothingAboutWhatIsAnsweredWithTest {
                 "and the case only the dead arm answers with is still taken away");
     }
 
-    /**
-     * {@code plan} with {@code now} standing where {@code was} stood, and nothing else moved.
-     *
-     * <p>Matched by what an occurrence is and not by which object it is: a plan derived a second
-     * time from one module holds equal places rather than the same ones, and the reading this is
-     * held against was made against a derivation of its own.
-     */
+    /** {@code plan} with {@code now} standing where {@code was} stood, and nothing else moved. */
     private static CoverageSites.Plan planWith(CoverageSites.Plan plan,
                                                ControlPointId.ArmOccurrence was,
                                                ControlPointId.ArmOccurrence now) {
-        IdentityHashMap<Core, ControlPointId.ArmOccurrence[]> arms = new IdentityHashMap<>();
-        plan.armsByNode().forEach((node, held) -> {
-            ControlPointId.ArmOccurrence[] out = held.clone();
-            for (int at = 0; at < out.length; at++) {
-                if (out[at].equals(was)) {
-                    out[at] = now;
-                }
-            }
-            arms.put(node, out);
-        });
-        return new CoverageSites.Plan(plan.sites(), plan.guards(), plan.byNode(),
-                plan.byComparison(), arms, plan.controlByComparison(), plan.mayRepeat(),
-                plan.forkByNode(), plan.comparisons(), plan.numbering());
+        return Plans.withArmRenamed(plan, was, now);
     }
 
     /** The same answers, filed under {@code now} where they were filed under {@code was}. */
