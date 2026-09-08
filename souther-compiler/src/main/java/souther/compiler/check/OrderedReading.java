@@ -11,6 +11,7 @@ import souther.compiler.types.Type;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -152,7 +153,14 @@ final class OrderedReading {
     }
 
     /**
-     * Whether what {@code e} leaves the positions it names is unknown, and not merely unsaid here.
+     * The positions of {@code named} whose ends {@code e} leaves unknown here.
+     *
+     * <p><b>The set and not a word about the leaf, because the set is what a caller wants and this
+     * is what owns it.</b> Which positions a clause names is the clause's own answer and arrives as
+     * {@code named}; which of them have an end at all, and which of those this reading worked out,
+     * are this reading's. Handed the flag instead, a caller made the set out of every position the
+     * clause named — and a position whose values are not ordered, which has no end for anything to
+     * be unknown about, came back as one whose end nobody could work out.
      *
      * <p>Narrower than {@link #gaveUpAt} by the rules this reading followed to the end and has no
      * range for. A comparison holding one position it counts to another states where the values
@@ -167,12 +175,25 @@ final class OrderedReading {
      * read.
      *
      * <p><b>Wider than the relation it recognises.</b> A comparison whose subject is a term this
-     * reading cannot name — an absolute value, a difference — is here whatever the arithmetic under
-     * it comes to, because this reading cannot see that it cancels. What such a rule leaves is
-     * known elsewhere, and asking that reader is not something this one can do.
+     * reading cannot name — an absolute value, a difference — leaves its positions here whatever
+     * the arithmetic under it comes to, because this reading cannot see that it cancels. What such
+     * a rule leaves is known elsewhere, and asking that reader is not something this one can do.
      */
-    boolean leavesTheEndsUnknownAt(Core e) {
-        return gaveUp.contains(e) && !relatingTwoPositions.contains(e);
+    Set<FactSubject> endsLeftUnknownAt(Core e, Set<FactSubject> named) {
+        if (!gaveUp.contains(e) || relatingTwoPositions.contains(e)) {
+            return Set.of();
+        }
+        Set<FactSubject> out = new LinkedHashSet<>();
+        named.forEach(each -> {
+            // The positions this reading counts, which is the whole of what it has ends for. A
+            // position whose values are not ordered at all is not one it fell short at: there is
+            // no end there to have been worked out, and the question this answers is not asked of
+            // it.
+            if (carriers.containsKey(each)) {
+                out.add(each);
+            }
+        });
+        return out;
     }
 
     /** A leaf this reading could not follow, which leaves every position where it was. */

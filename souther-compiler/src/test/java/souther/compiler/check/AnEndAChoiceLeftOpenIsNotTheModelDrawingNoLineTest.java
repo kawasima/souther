@@ -188,6 +188,33 @@ class AnEndAChoiceLeftOpenIsNotTheModelDrawingNoLineTest {
     }
 
     /**
+     * And a position whose values are not ordered has no end for anything to be unknown about.
+     *
+     * <p>The reading of ends counts the positions whose values are ordered, and a {@code Bool} is
+     * not one of them. So a rule about one is not a rule it fell short at: there is no end there,
+     * and a border is not what such a rule was ever going to draw.
+     *
+     * <p>The positions a clause names is the clause's answer and the ends have one of their own
+     * about which of them they have ends for. Made out of the first alone, every rule about a
+     * position with no order came back as one whose end nobody could work out — and the choice
+     * between two of them as a border this compiler could not measure.
+     *
+     * <p>The control below is the same shape at a position that is ordered, so what tells them
+     * apart is the order and not the choice.
+     */
+    @Test
+    void andAPositionWithNoOrderHasNoEndToBeUnknownAbout() {
+        assertEquals(List.of(theModelDrawsNoLine(), theModelDrawsNoLine(),
+                        List.of("border      not measured"
+                                + " (no line was derived at any position)")),
+                List.of(borderOf(aBoolean("b == true || b == false")),
+                        borderOf(aBoolean("b == true || Bool.not(b == false)")),
+                        borderOf(aBoolean("n >= 2 || Int.abs(n) >= 5"))),
+                "a rule about the boolean draws no line, and one about the number beside it is a"
+                        + " line this compiler could not work out");
+    }
+
+    /**
      * And it is the two sides that make it a relation, whichever operator is written between them.
      *
      * <p>An equality holds the two positions to each other as an ordering does, and so does a
@@ -351,6 +378,19 @@ class AnEndAChoiceLeftOpenIsNotTheModelDrawingNoLineTest {
     /** What the document says about this behavior's border. */
     private static List<String> borderIn(String clause) {
         return linesOf(clause, each -> each.startsWith("border"));
+    }
+
+    /** A model holding a position whose values are not ordered, beside one whose values are. */
+    private static String aBoolean(String clause) {
+        return """
+                module demo
+                %s
+                data N = { b: Bool, n: Int }
+                    invariant r = %s
+
+                behavior check : (v: N) -> Answer
+                let check (v) = Yes
+                """.formatted(YES_OR_NO, clause);
     }
 
     /** A model with a second position, for a rule that holds one to the other. */
