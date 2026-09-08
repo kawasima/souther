@@ -967,7 +967,11 @@ public final class InvariantChecker {
             narrowedBy.put(each.from(), one);
             one.account().adopted().forEach(position -> took.record(each.from(), position));
             took.stoppedBy(each.from(), one.account().aboutARule());
-            endsLeftOpen.merge(each.from(), one.account().endsLeftOpen(), EndsLeftOpen::both);
+            // Only the rules with one, so that a reader asking a position what is left open there
+            // walks the rules that have something rather than every rule of the declaration.
+            if (!one.account().endsLeftOpen().byPosition().isEmpty()) {
+                endsLeftOpen.merge(each.from(), one.account().endsLeftOpen(), EndsLeftOpen::both);
+            }
         });
         answered.perPart().forEach((each, parts) -> {
             Map<Core, ReadByClauses.OfAPart> out = adoptedBy

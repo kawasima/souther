@@ -58,8 +58,15 @@ record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byPosition) {
      */
     record Behind(Set<ChoiceSite> named, boolean underAChoice) {
 
+        /** What a leaf leaves: an end nothing has been read past yet, and every leaf leaves it. */
+        private static final Behind A_LEAF = new Behind(Set.of(), false);
+
         Behind {
-            named = Collections.unmodifiableSet(new LinkedHashSet<>(named));
+            // Copied on the way in, as everything a reading publishes is — and an empty one is
+            // already what it would be copied to. A leaf is read for every clause of every
+            // declaration, so what is made here is made as often as anything in this reading.
+            named = named.isEmpty() ? Set.of()
+                    : Collections.unmodifiableSet(new LinkedHashSet<>(named));
             if (!named.isEmpty() && !underAChoice) {
                 throw new IllegalArgumentException(
                         "a choice was named for an end nothing stands between");
@@ -68,7 +75,7 @@ record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byPosition) {
 
         /** What a leaf leaves: an end nothing has been read past yet. */
         static Behind aLeaf() {
-            return new Behind(Set.of(), false);
+            return A_LEAF;
         }
 
         /** The same end reached two ways, which is what a conjunction of them comes to. */
@@ -89,13 +96,19 @@ record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byPosition) {
         }
     }
 
+    /** What a part with no end left open comes to, which is most of them. */
+    private static final EndsLeftOpen NOTHING = new EndsLeftOpen(Map.of());
+
     EndsLeftOpen {
-        byPosition = Collections.unmodifiableMap(new LinkedHashMap<>(byPosition));
+        // As {@link Behind} is copied, and empty for the same reason: a leaf whose ends this
+        // reading worked out makes one of these, and that is every leaf of every clause.
+        byPosition = byPosition.isEmpty() ? Map.of()
+                : Collections.unmodifiableMap(new LinkedHashMap<>(byPosition));
     }
 
     /** A part whose ends this reading worked out, and one no reading has a word for at all. */
     static EndsLeftOpen nothing() {
-        return new EndsLeftOpen(Map.of());
+        return NOTHING;
     }
 
     /**
@@ -154,6 +167,9 @@ record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byPosition) {
      */
     EndsLeftOpen either(ChoiceSite choice, Adoption<FactSubject, ReadingLanguage.Order> mine,
                         EndsLeftOpen other, Adoption<FactSubject, ReadingLanguage.Order> theirs) {
+        if (byPosition.isEmpty() && other.byPosition.isEmpty()) {
+            return NOTHING;
+        }
         Map<FactSubject, Behind> out = new LinkedHashMap<>();
         byPosition.forEach((position, behind) ->
                 keptUnder(choice, position, behind, other, theirs, out));
