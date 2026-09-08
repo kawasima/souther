@@ -261,9 +261,9 @@ public final class Sameness<A> {
      * <p>Its members are read in the order they are spelled in, so that where their spellings tell
      * them apart, what is written out of a reading — a proof naming the positions that must hold
      * one value among them — does not read differently for the order the equalities behind it were
-     * written in. Two that render alike are left in the order they arrived in, which is that order,
-     * so how far this carries is how far a spelling separates positions. Nothing is filed, compared
-     * or hashed under it.
+     * written in. Where two of them are spelled alike it says nothing: those two keep the order
+     * they arrived in, which is the order it was there to keep out. Nothing is filed, compared or
+     * hashed under any of it.
      */
     public static final class Block<A> {
 
