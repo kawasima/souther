@@ -216,19 +216,26 @@ record Adoption<A, L extends ReadingLanguage>(Set<A> read, Set<A> settled, Set<A
     /**
      * Whether this reading put a constraint on {@code position} that binds.
      *
-     * <p>{@link #read} and neither of the other two sets: a position a dead alternative settled is
-     * one this imposes nothing on, which is an answer and not a constraint, and a position this
-     * reading could not work out is one it has nothing to say about.
+     * <p>{@link #read} and not {@link #settled}: a position a dead alternative settled is one this
+     * imposes nothing on, which is an answer and not a constraint.
      *
-     * <p>And {@link #opened} taken off it, because a constraint an alternative nothing could read
+     * <p><b>And {@link #missed} is not taken off it.</b> A leaf puts a position in one or the
+     * other, so the two meet only after composing, and where they meet some part of the clause did
+     * put a constraint here. Under a conjunction that part still binds, whatever the part beside it
+     * could not be worked out — {@code value /= 5 && f(value)} holds the value away from five.
+     * Under a choice it binds unless an alternative took it back, and which positions those are is
+     * the settlement's answer and arrives as {@link #opened}. Subtracted here, {@code missed}
+     * states that a branch this reading could not work out is a branch that takes a constraint
+     * back — the rule the opening replaced, in the other carrier.
+     *
+     * <p>{@link #opened} is taken off, because a constraint an alternative nothing could read
      * stands beside is one a value can satisfy the other way. Here rather than at a caller, so that
      * the subtraction is made wherever the question is asked: left to a reader to make,
      * {@code value /= 5 || f(value)} with {@code f} unread answers that the clause holds the
      * position away from five.
      */
     boolean constrains(A position) {
-        return read.contains(position) && !missed.contains(position)
-                && !opened.contains(position);
+        return read.contains(position) && !opened.contains(position);
     }
 
     /** The positions any part of the clause was about. */
