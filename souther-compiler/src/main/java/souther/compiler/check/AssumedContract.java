@@ -39,6 +39,42 @@ public record AssumedContract(ValueName.Behavior behavior, List<Param> params, T
         rules = List.copyOf(rules);
     }
 
+    /**
+     * Where a test reads the behaviors whose rules a caller took in, one entry per conjunct
+     * substituted into a call, and null everywhere else.
+     *
+     * <p>Beside {@link PathEngine#SEEDED} and for the same reason. Taking a rule in is silent: what
+     * it does is narrow what the caller may hold of the answer, and a body that is correct either
+     * way is checked either way. So a compile that stopped reading contracts at all would say
+     * nothing about it, and the whole of what an author would notice is a diagnostic this analysis
+     * exists to avoid needing.
+     *
+     * <p>What is recorded is the behavior whose contract it is, because that is what a reader of
+     * this wants to name — whether a compile reached the assumption a caller of <em>this</em>
+     * behavior depends on. Where it was taken in is not here: a call carries no occurrence, so the
+     * body would have to be threaded through this analysis for a reader that has the corpus in front
+     * of it and can ask which bodies call what.
+     *
+     * <p>Public because the corpora this is asked over live in another module. Assigned by the test
+     * that is reading and set back to null after; a compile running while it is assigned writes to
+     * it from whatever thread it is on, so what is assigned has to take concurrent writes.
+     */
+    public static List<ValueName.Behavior> TAKEN_IN;
+
+    /**
+     * Records that a rule of this contract was substituted into a caller's arguments.
+     *
+     * <p>Called where the substitution is made and nowhere else, so what lands here is what a caller
+     * took in rather than what it was offered: a contract handed to the analysis and never reached —
+     * because the call went to no arm, or because the hand-over stopped — is not one of these.
+     */
+    void takenIn() {
+        List<ValueName.Behavior> watching = TAKEN_IN;
+        if (watching != null) {
+            watching.add(behavior);
+        }
+    }
+
     /** One rule: when it applies, what {@code value} is where it does, and what it states. */
     public record AssumedRule(Guard guard, BindingId value, List<Conjunct> conjuncts) {
 

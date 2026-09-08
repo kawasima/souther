@@ -13,6 +13,7 @@ import souther.compiler.query.Compilation;
 import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -29,10 +30,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * relation compiles, is timed, and reports a number for a walk that stopped at the declaration.
  * Which is what this corpus did until the relation was written.
  *
- * <p>Three things, because the edit measures nothing if any of them stops holding. The rule is in
- * the corpus, so there is something to rewrite. A caller reads it, so rewriting it reaches a body.
- * And the rewrite changes what that caller may assume, so the store has an answer to re-establish
- * rather than one it finds unchanged and stops at.
+ * <p>What the measurement rests on, asked one claim at a time. The rule is in the corpus, so there
+ * is something to rewrite. Compiling it takes a rule of that contract into a caller's arguments, so
+ * the walk this is about is one the corpus reaches rather than one a fixture reaches. The body that
+ * takes it in is checked against it. The rewrite changes what that body may assume, so the store has
+ * an answer to re-establish rather than one it finds unchanged. And it leaves the other readings the
+ * corpus is held to where they were, so the round times one edit and not two.
  */
 @Tag("population")
 class TheRelationAnEditRestatesIsOneACallerReadsTest {
@@ -64,9 +67,40 @@ class TheRelationAnEditRestatesIsOneACallerReadsTest {
                 + "` " + found + " time(s), and the relation edit rewrites every one of them");
     }
 
-    /** A body of the corpus reads what that behavior states. */
+    /**
+     * Compiling the corpus takes a rule of that contract into a caller's arguments.
+     *
+     * <p>The claim the measurement rests on, and the one nothing else here makes. What a body is
+     * checked against is a question about the graph: the contract is in the map handed to the
+     * analysis. Whether the analysis reached it is a question about the walk — the call has to be
+     * followed to what produced the answer, the arm has to name a case the rule is about, and the
+     * declaration's parameters have to be paired with what this call handed over. A body that went
+     * on calling the behavior and stopped matching its cases would leave the map as it is and take
+     * nothing in, and so would a hand-over that stopped between the two.
+     *
+     * <p>Read where the substitution is made ({@link AssumedContract#TAKEN_IN}), because taking a
+     * rule in is silent: it narrows what the caller may hold of the answer, and a body that is
+     * correct either way is checked either way. There is no diagnostic to read it off.
+     */
     @Test
-    void aCallerOfItReadsWhatItStates() {
+    void compilingTheCorpusTakesInWhatItStates() {
+        List<ValueName.Behavior> takenIn = Collections.synchronizedList(new ArrayList<>());
+        AssumedContract.TAKEN_IN = takenIn;
+        try {
+            compiled(Corpus.load("crm").sources());
+        } finally {
+            AssumedContract.TAKEN_IN = null;
+        }
+        assertTrue(takenIn.contains(STATING),
+                () -> "compiling the corpus substituted no rule of " + STATING + " into a call, so"
+                        + " the reading a caller depends on is built and not reached. Taken in: "
+                        + takenIn);
+    }
+
+    /** And the body that takes it in is checked against it, which is what says the two are one
+     *  arrangement rather than the contract being reached from somewhere else. */
+    @Test
+    void whatThatCallerIsCheckedAgainstIncludesWhatItStates() {
         Compilation compilation = compiled(Corpus.load("crm").sources());
         Map<ValueName.Behavior, AssumedContract> read =
                 compilation.db().ask(new Bodies.ContractsForBody(MODULE, CALLER)).value();

@@ -416,6 +416,7 @@ final class PathEngine {
                     continue;
                 }
                 TermMeaning here = conjunct.means().get().substituted(given);
+                answered.stated().takenIn();
                 out = predicates.assume(here.assumedBy(predicates, in.at(), false), out,
                         Known.Held.OF_THE_VALUE);
             }
