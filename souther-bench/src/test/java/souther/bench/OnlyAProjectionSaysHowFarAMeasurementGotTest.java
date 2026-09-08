@@ -189,20 +189,20 @@ class OnlyAProjectionSaysHowFarAMeasurementGotTest {
                         "souther.compiler.query.Adequacy$Finding#by("
                                 + "Lsouther/compiler/query/FindingSubject;"
                                 + "Lsouther/compiler/query/Measure;"
-                                + "Lsouther/compiler/diag/Citation;"
                                 + "Lsouther/compiler/query/About;)"
                                 + "Lsouther/compiler/query/Adequacy$Finding;",
                         "souther.compiler.query.Adequacy$Finding#by("
                                 + "Lsouther/compiler/query/FindingSubject;"
                                 + "Lsouther/compiler/query/ObligationCoverage;"
-                                + "Lsouther/compiler/diag/Citation;"
                                 + "Lsouther/compiler/query/About;)"
                                 + "Lsouther/compiler/query/Adequacy$Finding;",
                         "souther.compiler.query.Adequacy$Finding#noticed("
                                 + "Lsouther/compiler/query/FindingSubject;"
-                                + "Lsouther/compiler/diag/Citation;"
                                 + "Lsouther/compiler/query/About;)"
                                 + "Lsouther/compiler/query/Adequacy$Finding;"),
+                // None of them takes a place. What a finding says is what a reading came to, and
+                // where a report about it is shown is asked of the module that wrote the code —
+                // so there is no argument here to hand one over.
                 makers,
                 "what makes a finding rather than asking the measurement that found it");
     }

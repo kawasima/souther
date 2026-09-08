@@ -73,7 +73,7 @@ final class Arms {
             PathAccess access = byArm.get(arm.index());
             if (access == null) {
                 throw new IllegalStateException("the reading of `" + behavior + "` did not reach"
-                        + " arm " + arm.index() + " at " + arm.at()
+                        + " arm " + arm.index() + " of " + arm.obligation().origin()
                         + "; every arm the plan numbered is one this walk goes to");
             }
             out.put(arm.index(), access);

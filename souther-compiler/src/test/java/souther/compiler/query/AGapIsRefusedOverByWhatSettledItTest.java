@@ -3,14 +3,12 @@ package souther.compiler.query;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.coverage.ArmProbe;
+import souther.compiler.coverage.ArmReportAnchor;
 import souther.compiler.types.WrittenOwner;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.coverage.DecidedBy;
 import souther.compiler.coverage.Numberings;
 import souther.compiler.coverage.SourceOutcome;
-import souther.compiler.diag.Citation;
-import souther.compiler.diag.SourcePos;
-import souther.compiler.source.SourceId;
 import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
 
@@ -53,7 +51,7 @@ class AGapIsRefusedOverByWhatSettledItTest {
         return new CoverageSites.ArmSite("b",
                 new SourceOutcome.Held(new SourceOutcome.HeldBy.Condition()),
                 Numberings.armPlace(index, PLACES.get(index), fork,
-                        Citation.of(new SourcePos(1, 1, new SourceId("0")))),
+                        new ArmReportAnchor.WhereItIsWritten(fork)),
                 index,
                 new CoverageSites.Obligation("b", fork, index, decided));
     }

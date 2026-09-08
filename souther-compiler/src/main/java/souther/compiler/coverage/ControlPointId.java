@@ -1,6 +1,5 @@
 package souther.compiler.coverage;
 
-import souther.compiler.diag.Citation;
 import souther.compiler.types.SourceConstructOrigin;
 
 import java.util.Optional;
@@ -37,17 +36,17 @@ public sealed interface ControlPointId {
      * @param probe where a run is recorded, or empty where no row that stands can be in this arm.
      *              Empty is an ordinary answer and not a gap: the arm is still an arm, still
      *              written, and still something a reading can prove nothing arrives at
-     * @param at     the fork this is an arm of, as a report may say it. Minted here with the rest
-     *               of the arm and not looked up afterwards: a report about an arm has to point at
-     *               the arm, and the only other place carrying one is the
-     *               {@link CoverageSites.Site}, which the arms this is for do not have
+     * @param anchor what a report about this arm points at, said without a place
+     *               ({@link ArmReportAnchor}). Settled here with the rest of the arm, because
+     *               which of the two a reader is shown turns on what the position the walk had in
+     *               hand was in — and that is the last moment anything here has one
      * @param origin what wrote the fork, and which module's source that was. Carried because a
      *               fork spliced in from another module is not this module's to be told about:
      *               {@code Int.max} has a fork of its own, and a call handing it an argument one
      *               side of it can never take makes that side dead <em>here</em> while it is alive
      *               wherever else the library is used
      */
-    record ArmOccurrence(int controlId, Optional<ArmProbe> probe, Citation at,
+    record ArmOccurrence(int controlId, Optional<ArmProbe> probe, ArmReportAnchor anchor,
                          SourceConstructOrigin origin) implements ControlPointId {
 
         /**
@@ -67,6 +66,15 @@ public sealed interface ControlPointId {
             if (probe == null) {
                 throw new IllegalArgumentException(
                         "an arm with no answer about its probe is one nothing numbered");
+            }
+            // The two say one thing where they both say anything, so they are held to it here. An
+            // arm reported at the fork it is written at, whose anchor names some other construct,
+            // would send a reader to a fork this arm is not one of — and nothing downstream reads
+            // both halves to notice.
+            if (anchor instanceof ArmReportAnchor.WhereItIsWritten written
+                    && !written.origin().equals(origin)) {
+                throw new IllegalArgumentException("an arm is an arm of one fork: " + origin
+                        + " reported at " + written.origin());
             }
         }
 

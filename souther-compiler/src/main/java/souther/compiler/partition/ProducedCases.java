@@ -192,7 +192,7 @@ public final class ProducedCases {
             // built by nothing that makes arms, and either answer about it would be an answer about
             // the author's body made out of that.
             case BINARY, CALL, COLLECTION_LITERAL -> throw new IllegalStateException(
-                    "an arm of " + origin.kind() + " at " + arm.at()
+                    "an arm of " + origin.kind() + " written by " + origin.owner()
                             + "; an arm is one of a fork the author wrote");
         };
     }

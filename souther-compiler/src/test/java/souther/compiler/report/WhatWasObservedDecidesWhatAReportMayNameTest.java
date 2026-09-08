@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.BehaviorImplementation;
 import souther.compiler.coverage.ArmProbe;
+import souther.compiler.coverage.ArmReportAnchor;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.coverage.DecidedBy;
 import souther.compiler.coverage.Numberings;
@@ -52,10 +53,31 @@ class WhatWasObservedDecidesWhatAReportMayNameTest {
         return new CoverageSites.ArmSite("b",
                 new SourceOutcome.Held(new SourceOutcome.HeldBy.Condition()),
                 Numberings.armPlace(index, PLACES.get(index), fork,
-                        souther.compiler.diag.Citation.of(new souther.compiler.diag.SourcePos(1, 1,
-                                new souther.compiler.source.SourceId("0")))),
+                        new ArmReportAnchor.WhereItIsWritten(fork)),
                 index,
                 new CoverageSites.Obligation("b", fork, index, decided));
+    }
+
+    /** The behavior as the report holds it, with where each of its forks is shown. */
+    private static AdequacyReport.BehaviorReport reported() {
+        return new AdequacyReport.BehaviorReport("b", BehaviorImplementation.IMPLEMENTED,
+                new souther.compiler.query.BehaviorEvidence(
+                        souther.compiler.query.Adequacy.RowReading.NONE,
+                        null, null, null, null, read()),
+                null, List.of(), shown());
+    }
+
+    /** Where this report shows each of the two forks. A place per fork and not per arm: the arms of
+     *  one fork are written at it. */
+    private static java.util.Map<ArmReportAnchor, souther.compiler.diag.Citation> shown() {
+        return java.util.Map.of(
+                new ArmReportAnchor.WhereItIsWritten(SETTLED), at(1),
+                new ArmReportAnchor.WhereItIsWritten(UNSETTLED), at(2));
+    }
+
+    private static souther.compiler.diag.Citation at(int line) {
+        return souther.compiler.diag.Citation.of(new souther.compiler.diag.SourcePos(line, 1,
+                new souther.compiler.source.SourceId("m.sou")));
     }
 
     /** Every row read, and one fork whose rule could not be worked out. */
@@ -73,7 +95,7 @@ class WhatWasObservedDecidesWhatAReportMayNameTest {
     @Test
     void theArmNoRowGoesThroughIsStillNamed() {
         ObjectNode behavior = JsonMapper.builder().build().createObjectNode();
-        AdequacyReport.branch(behavior, read(),
+        AdequacyReport.branch(behavior, reported(),
                 new DocumentSources(SourceNameResolver.identity()));
 
         List<String> dispositions = new java.util.ArrayList<>();
@@ -92,13 +114,7 @@ class WhatWasObservedDecidesWhatAReportMayNameTest {
         StringBuilder out = new StringBuilder();
         new AdequacyReport(AdequacyReport.SCHEMA_VERSION, "x",
                 souther.compiler.query.Adequacy.AdequacyBar.RELIABLE_DOMAIN, WeakeningSet.none(),
-                List.of()).branch(out,
-                new AdequacyReport.BehaviorReport("b", BehaviorImplementation.IMPLEMENTED,
-                        new souther.compiler.query.BehaviorEvidence(
-                                souther.compiler.query.Adequacy.RowReading.NONE,
-                                null, null, null, null, read()),
-                        null, List.of()),
-                null, SourceNameResolver.identity());
+                List.of()).branch(out, reported(), null, SourceNameResolver.identity());
 
         // Two arms and not four. What the count holds is what a row can be owed for, and a fork
         // standing for however many rules nobody could work out is not that — it is said under the
