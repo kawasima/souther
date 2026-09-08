@@ -39,6 +39,7 @@ import souther.compiler.frontend.CstFrontend;
 import souther.compiler.jvm.ClassFileImage;
 import souther.compiler.meta.ClassFileDeclarations;
 import souther.compiler.meta.ModuleMetadata;
+import souther.compiler.meta.ModuleReadback;
 import souther.compiler.meta.ModulePath;
 
 import souther.compiler.types.ValueName;
@@ -66,8 +67,12 @@ public final class Output {
     private Output() {}
 
     /**
-     * One module's classes, with its declarations stamped on. The declarations go on before anything
-     * loads a class, so what a jar carries is the same bytes this compile checked.
+     * One module's classes as they are published: the program this compilation checked, with the
+     * declarations added for an importer to read back.
+     *
+     * <p>What is added is read and never run, so a jar carries the program this compile checked and
+     * not the same bytes as any other set of classes made from it. {@link Evaluated} is the same
+     * program counted, and carries none of this.
      */
     public record Classes(String name) implements Key<Map<String, ClassFileImage>> {
         @Override
@@ -88,7 +93,7 @@ public final class Output {
                         in.injected(),
                         in.callees(), in.requirements(), in.checked(), in.compositions(),
                         in.dischargeClauses(), in.shapes(), in.checks(), in.standingCalls());
-                stamp(db, emitted);
+                publishDeclarations(db, emitted);
                 return Answer.of(emitted.seal());
             } catch (CompileException e) {
                 return Answer.absent(e);
@@ -200,26 +205,26 @@ public final class Output {
         }
 
         /**
-         * Puts this module's declarations on its classes, as its source wrote them.
+         * Puts this module's declarations on the classes that ship, as its source wrote them.
+         *
+         * <p>What ships carries them so that another compilation can import this module from a jar
+         * without its source. That is the whole of what they are for: a declaration written into a
+         * class is read by {@link ModuleReadback} through {@link Output#declarationsRead}, which
+         * reads the classes this compilation publishes and the ones on the path, and by nothing that
+         * runs a program. So they go on here and not on {@link Evaluated}, whose classes are run and
+         * never read for what the module declares.
+         *
+         * <p>Which is also what keeps a declaration's text out of what an evaluation is built from.
+         * It is written down as it was written, comments and all, so rewording a comment beside a
+         * declaration rewrites these classes; put on the evaluated classes as well, that would make
+         * every example of the module something to establish again. What an edit does to the
+         * positions under it is another matter and reaches an evaluation either way.
          *
          * <p>Nothing here can fail in a way worth reporting. A module with no source of its own was
          * read off the path, and its jar was stamped where it was built; and the declarations are
          * only asked for once the module has checked, so they are there.
          */
-        private void stamp(Db db, Emissions classes) {
-            stamp(db, name, classes);
-        }
-
-        /**
-         * Puts {@code module}'s declarations on {@code classes}, as its source wrote them.
-         *
-         * <p>Done for the classes an evaluation runs as well as for the ones that ship, so that the
-         * two are the same set of classes and differ only in the counting. A set that ran with one
-         * class missing would be a second program, and whether a row holds would be a fact about
-         * which of the two it met.
-         */
-        static void stamp(Db db, String module, Emissions classes) {
-            String name = module;
+        private void publishDeclarations(Db db, Emissions classes) {
             Front.Layout.Of layout = db.ask(new Front.Layout()).value();
             SourceId id = layout == null ? null : layout.idOfModule().get(name);
             if (id == null) {
@@ -387,7 +392,6 @@ public final class Output {
                         in.callees(), in.requirements(), in.checked(), in.compositions(),
                         in.dischargeClauses(), in.shapes(), in.checks(), in.standingCalls(),
                         instrumentation);
-                Classes.stamp(db, name, emitted);
                 // The classes, what they implement and whose numbers a run through them leaves,
                 // from the one emission that decided all three.
                 return Answer.of(new EvaluationArtifact(emitted.seal(), emitted.implemented(),
