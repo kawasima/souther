@@ -40,13 +40,13 @@ import souther.compiler.query.Bodies;
 import souther.compiler.query.FindingSubject;
 import souther.compiler.query.InputCaseEvidence;
 import souther.compiler.query.Measure;
+import souther.compiler.query.Sites;
 import souther.compiler.query.Measurement;
 import souther.compiler.query.SearchOutcomes;
 import souther.compiler.query.Weakening;
 import souther.compiler.query.WeakeningSet;
 import souther.compiler.observe.MeasurementStatus;
 import souther.compiler.query.OutputCaseEvidence;
-import souther.compiler.coverage.ArmLocations;
 import souther.compiler.coverage.ArmReportAnchor;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.coverage.DecidedBy;
@@ -632,14 +632,15 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      */
     private static Map<ArmReportAnchor, Citation> armPlaces(Compilation compilation,
                                                             Adequacy.BranchEvidence branch) {
-        if (branch == null || branch.measured().made().isEmpty()) {
+        ArmSummary counted = branch == null ? null : branch.measured().made().orElse(null);
+        if (counted == null) {
             return Map.of();
         }
-        ArmLocations written = souther.compiler.query.Sites.armLocations(compilation.db());
         Map<ArmReportAnchor, Citation> places = new LinkedHashMap<>();
-        for (ArmObligation arm : branch.measured().made().orElseThrow().all()) {
+        for (ArmObligation arm : counted.all()) {
             for (CoverageSites.ArmSite each : arm.occurrences()) {
-                places.computeIfAbsent(each.anchor(), written::of);
+                places.computeIfAbsent(each.anchor(),
+                        anchor -> Sites.placeOf(compilation.db(), anchor));
             }
         }
         return places;

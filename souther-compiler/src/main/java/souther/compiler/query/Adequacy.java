@@ -3818,12 +3818,8 @@ public final class Adequacy {
 
     /** Where the declaration a finding is shown at is written. */
     private static Citation whereItIsWritten(Db db, TypeSymbol.AtModule declared) {
-        Answer<Citation> at = db.ask(new Sites.WhereADeclarationIsWritten(declared));
-        if (!at.present()) {
-            throw new IllegalStateException("nothing this compilation holds declares "
-                    + declared.name() + ", which a finding of it is shown at");
-        }
-        return at.value();
+        return somewhere(db.ask(new Sites.WhereADeclarationIsWritten(declared)),
+                "the declaration " + declared.name());
     }
 
     /** Where the behavior a finding is about is declared. */
@@ -3832,13 +3828,16 @@ public final class Adequacy {
             throw new IllegalStateException(
                     "a finding shown at a behavior is a finding about one: " + subject);
         }
-        Answer<Citation> at =
-                db.ask(new Sites.WhereABehaviorIsDeclared(module, behavior.name()));
-        if (!at.present()) {
-            throw new IllegalStateException("nothing in " + module + " declares `"
-                    + behavior.name() + "`, which a finding of it is about");
+        return somewhere(db.ask(new Sites.WhereABehaviorIsDeclared(module, behavior.name())),
+                "the behavior `" + behavior.name() + "` of " + module);
+    }
+
+    /** {@code asked}'s answer, where a report is about to be written at it. */
+    private static Citation somewhere(Answer<Citation> asked, String subject) {
+        if (!asked.present()) {
+            throw new Sites.NothingPlacesIt(subject);
         }
-        return at.value();
+        return asked.value();
     }
 
     /**

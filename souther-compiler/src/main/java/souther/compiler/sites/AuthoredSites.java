@@ -176,9 +176,10 @@ public final class AuthoredSites {
     /**
      * The walk, and what it refuses.
      *
-     * <p>It stops at the first refusal rather than gathering them: what a second one would say is
-     * that the same rule is broken again, and the revision is already not one an occurrence can be
-     * named in.
+     * <p>It keeps the first refusal rather than gathering them: what a second one would say is that
+     * the same rule is broken again, and the revision is already not one an occurrence can be named
+     * in. It goes on walking all the same, because the forks under a stretch of source two
+     * expressions were written over are still forks the module wrote.
      */
     private static final class Walk {
 
