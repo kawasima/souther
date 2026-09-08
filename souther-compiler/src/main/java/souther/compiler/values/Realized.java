@@ -21,10 +21,12 @@ import java.util.Set;
  * answer may not: the same rules in another order would have been built, so there is no rule to
  * name. A store that took either would be a store whose type says less than the model does.
  *
- * <p>Which is why the three of them are not a way in. Handed side by side, a caller writes a reading
- * beside shortfalls no work refused, and the sentence above — that they were settled by one piece of
- * work — is true of nothing. So one is reached by doing the work ({@link AdmissibleValues#realize}),
- * or by saying that there was none to do ({@link #workedOut}).
+ * <p>Which is why the three of them are not a way in, and why there is no way in that takes the
+ * reading alone either. Handed the parts side by side, a caller writes a reading beside shortfalls
+ * no work refused; handed the reading, a caller says of a reading that came from somewhere that
+ * nothing was refused while it was made, which is a claim about work it did not do and can be false
+ * of the very reading it is handed. So one is reached by doing the work
+ * ({@link AdmissibleValues#realize}), and there is no second way.
  *
  * <p>{@code aboutARule} is not per position: an allowance is held per position and every rule
  * reaching one pays into it, so the place is what the spending was arranged by and is not what any
@@ -48,9 +50,10 @@ public final class Realized<A> {
 
     private final Parts<A> parts;
 
-    private Realized(AdmissibleValues<A> values, Set<Unbuilt.RuleShortfall<A>> aboutARule,
-                     List<Unbuilt.AnswerShortfall<A>> aboutTheAnswer) {
-        this.parts = new Parts<>(values, aboutARule, aboutTheAnswer);
+    /** The one constructor there is, and it takes the parts as one — see
+     *  {@link AdmissibleValues}, where a maker handed the parts is what may not be written. */
+    private Realized(Parts<A> parts) {
+        this.parts = parts;
     }
 
     /**
@@ -62,18 +65,8 @@ public final class Realized<A> {
      * which of the two a refusal is owed to is settled where it was noted.
      */
     static <A> Realized<A> of(AdmissibleValues<A> values, Unbuilt<A> gaveUp) {
-        return new Realized<>(values, gaveUp.aboutARule(), gaveUp.aboutTheAnswer());
-    }
-
-    /**
-     * A reading every position of which was worked out, so nothing was left unbuilt.
-     *
-     * <p>For a caller holding a reading that never was a description — one read straight into sets,
-     * where there was nothing to build and no allowance to run out. What is said here is that
-     * nothing was refused, and it is said by there being nothing to say it about.
-     */
-    public static <A> Realized<A> workedOut(AdmissibleValues<A> values) {
-        return new Realized<>(values, Set.of(), List.of());
+        return new Realized<>(
+                new Parts<>(values, gaveUp.aboutARule(), gaveUp.aboutTheAnswer()));
     }
 
     /** What the reading leaves, every position it could not work out widened to every value. */
@@ -102,7 +95,8 @@ public final class Realized<A> {
      */
     public Realized<A> alsoOpenedAt(Set<A> these) {
         return these.isEmpty() ? this
-                : new Realized<>(values().alsoOpenedAt(these), aboutARule(), aboutTheAnswer());
+                : new Realized<>(new Parts<>(values().alsoOpenedAt(these), aboutARule(),
+                        aboutTheAnswer()));
     }
 
     @Override

@@ -3,11 +3,14 @@ package souther.compiler.check;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.numeric.OrderedIntervals;
-import souther.compiler.values.AdmissibleValues;
 import souther.compiler.values.AdmittedPlan;
 import souther.compiler.values.Allowance;
 import souther.compiler.values.AsACompilationAllows;
+import souther.compiler.values.Lacks;
 import souther.compiler.values.PlannedValues;
+import souther.compiler.values.Refusal;
+import souther.compiler.values.RelationalLack;
+import souther.compiler.values.Sameness;
 import souther.compiler.values.Value;
 import souther.compiler.values.ValueSet;
 
@@ -30,10 +33,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * of the model states. So one is named, and which one is settled by the order the value declares
  * its positions rather than by the order the reading met them.
  *
- * <p>Made here rather than from a declaration. A branch is settled by the first thing that shows it
- * empty and the proof is fixed there, so a clause never reaches the second block — the state that
- * holds both is one a caller builds by conjoining two readings that are each already empty, which
- * is what {@link ConstraintState} has to answer about however it arrives.
+ * <p><b>Asked of the proof and not of a state built to carry it.</b> Which proof a walk of a state
+ * reaches is that walk's business and moves as this compiler learns to show more; how a proof is
+ * named is about what a proof can say, and a {@link Refusal} carrying two blocks is a value the
+ * refusals of two clauses conjoined come to. Asked through a state, these would need one built out
+ * of parts nothing read — which is the shape a reading of values is no longer come by, and a test
+ * that wrote one would be fixing the naming to whatever a walk happens to reach today.
+ *
+ * <p>What a walk does reach is asked once, at the end, through the reading a declaration's clauses
+ * are worked out into.
  */
 class AProofNamesOneBlockAndNotAllOfThemTest {
 
@@ -47,23 +55,52 @@ class AProofNamesOneBlockAndNotAllOfThemTest {
     private static final Value B = Value.text("B");
 
     /** Two positions held as one and stated to admit values that share none. */
-    private static AdmissibleValues<FactSubject> emptiedAt(FactSubject one, FactSubject other,
-                                                           Allowance<FactSubject> sets) {
-        return built(PlannedValues.holdingAsOne(one, other), sets)
-                .meet(says(one, A, sets), sets)
-                .meet(says(other, B, sets), sets);
+    private static PlannedValues<FactSubject> emptiedAt(FactSubject one, FactSubject other) {
+        return PlannedValues.<FactSubject>holdingAsOne(one, other)
+                .meet(says(one, A))
+                .meet(says(other, B));
     }
 
-    /** A description worked out, which is how a reading is come by. */
-    private static AdmissibleValues<FactSubject> built(PlannedValues<FactSubject> planned,
-                                                       Allowance<FactSubject> sets) {
-        return planned.resolve(sets).values();
+    /** One rule about one position. */
+    private static PlannedValues<FactSubject> says(FactSubject atom, Value value) {
+        return PlannedValues.at(atom, AdmittedPlan.of(ValueSet.just(value)));
     }
 
-    /** One rule about one position, worked out. */
-    private static AdmissibleValues<FactSubject> says(FactSubject atom, Value value,
-                                                      Allowance<FactSubject> sets) {
-        return built(PlannedValues.at(atom, AdmittedPlan.of(ValueSet.just(value))), sets);
+    /**
+     * A description worked out, which is how a confinement whose values are in hand is come by.
+     *
+     * <p>The clauses are conjoined while they are still descriptions and worked out once, which is
+     * what a declaration's reading does. Worked out one at a time and met afterwards, the fixture
+     * would be paying for a machine per clause and asking a question this compiler never asks.
+     */
+    private static Confinement.Worked<FactSubject> worked(PlannedValues<FactSubject> planned,
+                                                          Allowance<FactSubject> sets) {
+        return new Confinement.Planned<>(planned, OrderedIntervals.top(), Map.of()).resolve(sets);
+    }
+
+    /**
+     * A block left with no value, said the way a reading of a clause says it.
+     *
+     * <p>What a proof of this kind is: the rules hold these positions as one value, and that value
+     * has none.
+     */
+    private static Confinement.Admission<FactSubject> emptyAt(
+            Set<Sameness.Block<FactSubject>> blocks) {
+        return Confinement.Admission.eachOf(souther.compiler.values.Emptiness.EMPTY,
+                Confinement.EmptyBy.POSITIONS_HELD_AS_ONE, blocks,
+                Confinement.Shown.BY_THE_READINGS);
+    }
+
+    /** The block those positions are one value in. */
+    private static Sameness.Block<FactSubject> block(FactSubject one, FactSubject other) {
+        return Sameness.of(one, other).blockOf(one);
+    }
+
+    /** What a proof comes to in a value declaring these positions, which is the question. */
+    private static Emptiness named(Confinement.Admission<FactSubject> shown,
+                                   SequencedMap<FactSubject, Emptiness.AtAField.Where> positions) {
+        return ProofOfEmptiness.named(shown, positions, new Emptiness.ConflictingRules())
+                .orElseThrow();
     }
 
     /** Where the value declares each of its positions, in the order it declares them. */
@@ -81,8 +118,7 @@ class AProofNamesOneBlockAndNotAllOfThemTest {
     void oneBlockLeftWithNoValueIsNamedAsThePlacesTogether() {
         Allowance<FactSubject> sets = AsACompilationAllows.forAdmittedValues();
         ConstraintState<FactSubject> state = ConstraintState.<FactSubject>top()
-                .takingRead(Confinement.Worked.of(emptiedAt(P, Q, sets), OrderedIntervals.top(),
-                        Map.of()), sets);
+                .takingRead(worked(emptiedAt(P, Q), sets), sets);
 
         Optional<Emptiness> why = state.holdsNothing(declared());
 
@@ -100,20 +136,12 @@ class AProofNamesOneBlockAndNotAllOfThemTest {
      */
     @Test
     void twoBlocksLeftWithNoValueAreNamedOneAtATime() {
-        Allowance<FactSubject> sets = AsACompilationAllows.forAdmittedValues();
-        AdmissibleValues<FactSubject> both =
-                emptiedAt(R, S, sets).meet(emptiedAt(P, Q, sets), sets);
-        assertEquals(2, both.refusedBy().blocks().size(), "or this measures one block twice");
-
-        ConstraintState<FactSubject> state = ConstraintState.<FactSubject>top()
-                .takingRead(Confinement.Worked.of(both, OrderedIntervals.top(), Map.of()), sets);
-
         Emptiness.AtEqualPositions at = assertInstanceOf(Emptiness.AtEqualPositions.class,
-                state.holdsNothing(declared()).orElseThrow());
+                named(emptyAt(Set.of(block(R, S), block(P, Q))), declared()));
 
         assertEquals(2, at.where().size(), "one block, not the four positions of both");
         assertEquals(new Emptiness.AtAField.Where.In("p"), at.where().getFirst(),
-                "and the one whose places the value declares first, whichever was met first");
+                "and the one whose places the value declares first, whichever was shown first");
     }
 
     /**
@@ -131,14 +159,19 @@ class AProofNamesOneBlockAndNotAllOfThemTest {
      */
     @Test
     void aStateRefusedBothWaysIsReportedAtTheBlockThatHoldsNothing() {
-        Allowance<FactSubject> sets = AsACompilationAllows.forAdmittedValues();
-        AdmissibleValues<FactSubject> both = emptiedAt(P, Q, sets)
-                .meet(built(PlannedValues.<FactSubject>holdingAsOne(R, S)
-                        .meet(PlannedValues.heldApart(R, S)), sets), sets);
+        // A conjunction keeps what either side showed, which is how one proof comes to carry both.
+        Refusal<FactSubject> shown = Refusal.eitherShown(
+                Refusal.atEachOf(Set.of(block(P, Q))),
+                Refusal.ofThemTogether(Lacks.of(
+                        new RelationalLack.ABlockApartFromItself<>(block(R, S)))));
+        Confinement.Admission<FactSubject> both = new Confinement.Admission<>(
+                souther.compiler.values.Emptiness.EMPTY,
+                Confinement.EmptyBy.POSITIONS_HELD_AS_ONE, shown,
+                Confinement.Shown.BY_THE_READINGS);
 
-        assertEquals(Set.of(souther.compiler.values.Sameness.of(P, Q).blockOf(P)),
-                both.refusedBy().atEachOf(), "one side leaves this block nothing");
-        assertTrue(!both.refusedBy().together().isEmpty(), "and the other refuses two together");
+        assertEquals(Set.of(block(P, Q)), shown.atEachOf(),
+                "one side leaves this block nothing");
+        assertTrue(!shown.together().isEmpty(), "and the other refuses two together");
 
         SequencedMap<FactSubject, Emptiness.AtAField.Where> declared = new LinkedHashMap<>();
         declared.put(R, new Emptiness.AtAField.Where.In("r"));
@@ -146,11 +179,8 @@ class AProofNamesOneBlockAndNotAllOfThemTest {
         declared.put(P, new Emptiness.AtAField.Where.In("p"));
         declared.put(Q, new Emptiness.AtAField.Where.In("q"));
 
-        ConstraintState<FactSubject> state = ConstraintState.<FactSubject>top()
-                .takingRead(Confinement.Worked.of(both, OrderedIntervals.top(), Map.of()), sets);
-
         Emptiness.AtEqualPositions at = assertInstanceOf(Emptiness.AtEqualPositions.class,
-                state.holdsNothing(declared).orElseThrow());
+                named(both, declared));
         assertEquals(List.of(new Emptiness.AtAField.Where.In("p"),
                         new Emptiness.AtAField.Where.In("q")), at.where(),
                 "the places whose one value has none, and not the ones declared first");
@@ -168,22 +198,21 @@ class AProofNamesOneBlockAndNotAllOfThemTest {
     @Test
     void twoBlocksBeginningAtOnePositionAreToldApartByThePlacesAfterIt() {
         for (boolean reversed : new boolean[] {false, true}) {
-            Allowance<FactSubject> sets = AsACompilationAllows.forAdmittedValues();
-            AdmissibleValues<FactSubject> one = emptiedAt(P, R, sets);
-            AdmissibleValues<FactSubject> other = emptiedAt(P, Q, sets);
-            AdmissibleValues<FactSubject> both = reversed
-                    ? other.meet(one, sets) : one.meet(other, sets);
-            assertEquals(2, both.refusedBy().blocks().size(), "or the two witnesses are not both here");
-
-            ConstraintState<FactSubject> state = ConstraintState.<FactSubject>top()
-                    .takingRead(Confinement.Worked.of(both, OrderedIntervals.top(), Map.of()),
-                            sets);
+            Refusal<FactSubject> one = Refusal.atEachOf(Set.of(block(P, R)));
+            Refusal<FactSubject> other = Refusal.atEachOf(Set.of(block(P, Q)));
+            Confinement.Admission<FactSubject> both = new Confinement.Admission<>(
+                    souther.compiler.values.Emptiness.EMPTY,
+                    Confinement.EmptyBy.POSITIONS_HELD_AS_ONE,
+                    reversed ? Refusal.eitherShown(other, one) : Refusal.eitherShown(one, other),
+                    Confinement.Shown.BY_THE_READINGS);
+            assertEquals(2, both.site().blocks().size(),
+                    "or the two witnesses are not both here");
 
             Emptiness.AtEqualPositions at = assertInstanceOf(Emptiness.AtEqualPositions.class,
-                    state.holdsNothing(declared()).orElseThrow());
+                    named(both, declared()));
             assertEquals(List.of(new Emptiness.AtAField.Where.In("p"),
                             new Emptiness.AtAField.Where.In("q")), at.where(),
-                    "p with q is declared before p with r, met either way round");
+                    "p with q is declared before p with r, shown either way round");
         }
     }
 
@@ -220,8 +249,7 @@ class AProofNamesOneBlockAndNotAllOfThemTest {
     void aBlockOfPositionsThisValueDoesNotDeclareIsNotNamed() {
         Allowance<FactSubject> sets = AsACompilationAllows.forAdmittedValues();
         ConstraintState<FactSubject> state = ConstraintState.<FactSubject>top()
-                .takingRead(Confinement.Worked.of(emptiedAt(P, Q, sets), OrderedIntervals.top(),
-                        Map.of()), sets);
+                .takingRead(worked(emptiedAt(P, Q), sets), sets);
 
         SequencedMap<FactSubject, Emptiness.AtAField.Where> elsewhere = new LinkedHashMap<>();
         elsewhere.put(R, new Emptiness.AtAField.Where.In("r"));

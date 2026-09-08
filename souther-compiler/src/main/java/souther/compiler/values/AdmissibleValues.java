@@ -116,17 +116,15 @@ import java.util.Set;
  *
  * <h2>What a reading may be</h2>
  *
- * <p>The states are the ones these operations reach: nothing read, a rule read at a position, two
- * positions held as one value or held apart, a rule nothing could read, a conjunction, the
- * positions a choice left open, the same reading under other names, and a description worked out
- * ({@link #realize}). A choice is not among them and is not missing from them — one is taken while
- * a reading is still a description, which is the paragraph above. Every one of the paragraphs
- * above states a relation between the parts — a whole that holds nothing is not a position that
- * holds nothing, {@link Held.Nothing} is not an empty union, what a promise is about is the blocks
- * the alternatives agree on — and none of those relations is a property of any part on its own. So
- * the parts are this one's own and are not a way in. A caller reaches a reading by doing to one
- * what the reading says was done to it, and a combination nothing read is one nobody can write
- * down.
+ * <p>The states are the ones the operations above reach, together with {@link #realize}, which is
+ * where a description crosses. The parts are not among the ways in.
+ *
+ * <p>Every paragraph here states a relation between them — a whole that holds nothing is not a
+ * position that holds nothing, {@link Held.Nothing} is not an empty union, what a promise is about
+ * is the blocks the alternatives agree on — and none of those is a property of one part. So a
+ * caller handed the parts side by side could write down a combination nothing read, with nothing to
+ * say so; what holds the relations up is that a reading is come by doing to one what the reading
+ * says was done to it.
  */
 public final class AdmissibleValues<A> {
 
@@ -662,11 +660,10 @@ public final class AdmissibleValues<A> {
      * declared — written out by hand, a part left off one of them is a reading that differs from
      * another and says it does not, and nothing fails while it is wrong.
      *
-     * <p>Nameable inside this package and nowhere else, and it is no way in either way: a reading is
-     * made by {@link AdmissibleValues}'s own constructor, which nothing outside the type may call.
-     * What the package may do with it is read the parts off it — which is what the propositions
-     * about every part of a reading are asked of, and asking them of a list written out beside this
-     * one would be asking about a copy with the same holes.
+     * <p>The reading's own, and named nowhere else. A proposition about every part of a reading
+     * finds it where the reading keeps it — the one thing a reading is made of — rather than being
+     * handed it, which would put the boundary of what is published a step wider than the sentence
+     * above it.
      *
      * @param held what the rules leave: the alternatives, or nothing
      * @param perPosition what each position's own rules leave it, every alternative merged. Not
@@ -736,13 +733,13 @@ public final class AdmissibleValues<A> {
      *                about one of them is handed that sentence about each — which is the other
      *                quantifier and is false wherever a clause of its own answers for a position
      */
-    record Parts<A>(Held<A> held, Map<A, ValueSet> perPosition,
-                    Standing<A> standing,
-                    Map<Sameness.Block<A>, ValueSet> guaranteed,
-                    ValueSet defaultGuaranteed,
-                    boolean guaranteedTogether,
-                    Set<Sameness.Block<A>> tangled,
-                    Set<Sameness.Block<A>> widened) {
+    private record Parts<A>(Held<A> held, Map<A, ValueSet> perPosition,
+                            Standing<A> standing,
+                            Map<Sameness.Block<A>, ValueSet> guaranteed,
+                            ValueSet defaultGuaranteed,
+                            boolean guaranteedTogether,
+                            Set<Sameness.Block<A>> tangled,
+                            Set<Sameness.Block<A>> widened) {
 
         Parts {
             // Every part is copied, and a reader wanting to know that they all are asks the record
@@ -776,16 +773,16 @@ public final class AdmissibleValues<A> {
 
     private final Parts<A> parts;
 
+    /**
+     * The one constructor there is, and it takes the parts as one.
+     *
+     * <p>One and not two, though a second taking the parts side by side would read more easily
+     * where they are worked out. A constructor is a maker of a reading, and a maker handed the
+     * parts is the thing a reading of the values may not be come by — so the walk of the compiled
+     * classes that reads what every maker was handed would find it, and would be right.
+     */
     private AdmissibleValues(Parts<A> parts) {
         this.parts = parts;
-    }
-
-    private AdmissibleValues(Held<A> held, Map<A, ValueSet> perPosition, Standing<A> standing,
-                             Map<Sameness.Block<A>, ValueSet> guaranteed,
-                             ValueSet defaultGuaranteed, boolean guaranteedTogether,
-                             Set<Sameness.Block<A>> tangled, Set<Sameness.Block<A>> widened) {
-        this(new Parts<>(held, perPosition, standing, guaranteed, defaultGuaranteed,
-                guaranteedTogether, tangled, widened));
     }
 
     /** What the rules leave: the alternatives, or nothing. */
@@ -973,8 +970,8 @@ public final class AdmissibleValues<A> {
 
     /** Nothing read and nothing missed, which is what a reading starts from. */
     public static <A> AdmissibleValues<A> top() {
-        return new AdmissibleValues<>(one(Alternative.at(Map.of())), Map.of(), Standing.nothing(),
-                Map.of(), ValueSet.ANY, true, Set.of(), Set.of());
+        return new AdmissibleValues<>(new Parts<>(one(Alternative.at(Map.of())), Map.of(),
+                Standing.nothing(), Map.of(), ValueSet.ANY, true, Set.of(), Set.of()));
     }
 
     /**
@@ -1023,12 +1020,12 @@ public final class AdmissibleValues<A> {
         of.guaranteed().forEach((block, plan) -> promising.merge(
                 heldAsOne.blockOf(block.members().iterator().next()), plan,
                 (one, other) -> AdmittedPlan.meeting(List.of(one, other))));
-        return Realized.of(new AdmissibleValues<>(held, perPosition,
+        return Realized.of(new AdmissibleValues<>(new Parts<>(held, perPosition,
                 gaveUp.beside(of.standing()),
                 promised(promising, by), promised(of.defaultGuaranteed(), by.elsewhere()),
                 of.guaranteedTogether(),
                 mapped(of.tangled(), heldAsOne),
-                mapped(both(of.widened(), gaveUp.names()), heldAsOne)), gaveUp);
+                mapped(both(of.widened(), gaveUp.names()), heldAsOne))), gaveUp);
     }
 
     /**
@@ -1408,10 +1405,10 @@ public final class AdmissibleValues<A> {
             case Held.Nothing<A> it -> new Held.Nothing<B>(it.shown().renamed(naming));
             case Held.Alternatives<A> alternatives -> alternatives.renamed(naming);
         };
-        return new AdmissibleValues<>(renamedHeld, renamedKeys(perPosition(), naming),
+        return new AdmissibleValues<>(new Parts<>(renamedHeld, renamedKeys(perPosition(), naming),
                 standing().renamed(naming),
                 renamedBlocks(guaranteed(), naming), defaultGuaranteed(), guaranteedTogether(),
-                renamedNames(tangled(), naming), renamedNames(widened(), naming));
+                renamedNames(tangled(), naming), renamedNames(widened(), naming)));
     }
 
     /** The same map, filed under what {@code naming} calls the positions of each of its blocks. */
@@ -1485,8 +1482,8 @@ public final class AdmissibleValues<A> {
         Set<Sameness.Block<A>> widened = new LinkedHashSet<>();
         read.forEach(each -> widened.addAll(mapped(each.widened(), sameness())));
         widened.addAll(widened());
-        return new AdmissibleValues<>(held(), perPosition(), out, guaranteed(),
-                defaultGuaranteed(), guaranteedTogether(), tangled(), widened);
+        return new AdmissibleValues<>(new Parts<>(held(), perPosition(), out, guaranteed(),
+                defaultGuaranteed(), guaranteedTogether(), tangled(), widened));
     }
 
     /** Both readings holding at once. */
@@ -1505,7 +1502,7 @@ public final class AdmissibleValues<A> {
         // {@code r} would stay two promises where the conjunction has one value.
         Sameness<A> heldAsOne = both instanceof Held.Alternatives<A> it
                 ? it.commonSameness() : Sameness.discrete();
-        return new AdmissibleValues<>(both,
+        return new AdmissibleValues<>(new Parts<>(both,
                 narrowed(perPosition(), other.perPosition(), sets, heldAsOne, gaveUp),
                 alsoStanding(standing().and(other.standing()), gaveUp),
                 // Either way what comes out is a promise about whole values, which is why a
@@ -1530,7 +1527,7 @@ public final class AdmissibleValues<A> {
                 // meet of a product is exact at each of its places, so those blocks keep what
                 // they had.
                 both(mapped(both(both(widened(), other.widened()), both(tangled(), other.tangled())),
-                        heldAsOne), gaveUp));
+                        heldAsOne), gaveUp)));
     }
 
     /**
@@ -1630,9 +1627,9 @@ public final class AdmissibleValues<A> {
      */
     public AdmissibleValues<A> alsoOpenedAt(Set<A> these) {
         return these.isEmpty() ? this
-                : new AdmissibleValues<>(held(), perPosition(), standing().alsoOpenedAt(these),
-                        guaranteed(), defaultGuaranteed(), guaranteedTogether(), tangled(),
-                        widened());
+                : new AdmissibleValues<>(new Parts<>(held(), perPosition(),
+                        standing().alsoOpenedAt(these), guaranteed(), defaultGuaranteed(),
+                        guaranteedTogether(), tangled(), widened()));
     }
 
     /** The alternatives this holds, which a reading that admits nothing has none of. */

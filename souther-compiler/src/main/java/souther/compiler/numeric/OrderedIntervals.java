@@ -63,18 +63,20 @@ public final class OrderedIntervals<A> {
 
     private final Parts<A> parts;
 
-    private OrderedIntervals(Map<A, OrderedInterval> ranges, boolean nothing) {
-        this.parts = new Parts<>(ranges, nothing);
+    /** The one constructor there is, and it takes the parts as one — see {@code AdmissibleValues},
+     *  where a maker handed the parts is what a reading may not be come by. */
+    private OrderedIntervals(Parts<A> parts) {
+        this.parts = parts;
     }
 
     /** Nothing read, so every position holds every value its order has. */
     public static <A> OrderedIntervals<A> top() {
-        return new OrderedIntervals<>(Map.of(), false);
+        return new OrderedIntervals<>(new Parts<>(Map.of(), false));
     }
 
     /** One position said to lie inside {@code range}. */
     public static <A> OrderedIntervals<A> at(A position, OrderedInterval range) {
-        return new OrderedIntervals<>(Map.of(position, range), false);
+        return new OrderedIntervals<>(new Parts<>(Map.of(position, range), false));
     }
 
     private Map<A, OrderedInterval> ranges() {
@@ -144,7 +146,7 @@ public final class OrderedIntervals<A> {
         Map<A, OrderedInterval> out = new LinkedHashMap<>(ranges());
         other.ranges().forEach((position, range) ->
                 out.merge(position, range, OrderedInterval::meet));
-        return new OrderedIntervals<>(out, nothing() || other.nothing());
+        return new OrderedIntervals<>(new Parts<>(out, nothing() || other.nothing()));
     }
 
     /**
@@ -166,7 +168,7 @@ public final class OrderedIntervals<A> {
     public <B> OrderedIntervals<B> renamed(java.util.function.Function<A, B> naming) {
         Map<B, OrderedInterval> out = new LinkedHashMap<>();
         ranges().forEach((position, range) -> out.put(naming.apply(position), range));
-        return new OrderedIntervals<>(out, nothing());
+        return new OrderedIntervals<>(new Parts<>(out, nothing()));
     }
 
     /**
@@ -202,7 +204,7 @@ public final class OrderedIntervals<A> {
                 both.put(position, at(position).meet(other.at(position)));
             }
         }
-        return new OrderedIntervals<>(both, true);
+        return new OrderedIntervals<>(new Parts<>(both, true));
     }
 
     /**
@@ -234,6 +236,6 @@ public final class OrderedIntervals<A> {
                 out.put(position, range.join(there));
             }
         });
-        return new OrderedIntervals<>(out, false);
+        return new OrderedIntervals<>(new Parts<>(out, false));
     }
 }

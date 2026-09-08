@@ -158,7 +158,8 @@ class EveryPartOfAReadingIsAValueTest {
      */
     private static AdmissibleValues<?> made(List<Sample> handed) throws Exception {
         Object[] args = handed.stream().map(Sample::value).toArray();
-        Constructor<?>[] every = AdmissibleValues.Parts.class.getDeclaredConstructors();
+        Class<?> parts = WhatAReadingIsMadeOf.held(AdmissibleValues.class);
+        Constructor<?>[] every = parts.getDeclaredConstructors();
         Constructor<?> ofParts = every[0];
         for (Constructor<?> each : every) {
             if (each.getParameterCount() == handed.size()) {
@@ -166,8 +167,7 @@ class EveryPartOfAReadingIsAValueTest {
             }
         }
         ofParts.setAccessible(true);
-        Constructor<?> canonical =
-                AdmissibleValues.class.getDeclaredConstructor(AdmissibleValues.Parts.class);
+        Constructor<?> canonical = AdmissibleValues.class.getDeclaredConstructor(parts);
         canonical.setAccessible(true);
         return (AdmissibleValues<?>) canonical.newInstance(ofParts.newInstance(args));
     }
@@ -186,7 +186,7 @@ class EveryPartOfAReadingIsAValueTest {
      */
     @Test
     void nothingAReadingHoldsMayBeChangedAfterItIsMade() throws Exception {
-        RecordComponent[] parts = AdmissibleValues.Parts.class.getRecordComponents();
+        RecordComponent[] parts = WhatAReadingIsMadeOf.of(AdmissibleValues.class);
         assertTrue(parts.length > 0);
 
         for (int i = 0; i < parts.length; i++) {

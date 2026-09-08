@@ -669,12 +669,6 @@ sealed interface Confinement<A> {
             this.shown = shown;
         }
 
-        /** A reading whose positions were all worked out, beside the ranges they stop at. */
-        static <A> Worked<A> of(AdmissibleValues<A> values, OrderedIntervals<A> ordered,
-                                Map<A, Carrier> carriers) {
-            return new Worked<>(Realized.workedOut(values), ordered, carriers, null);
-        }
-
         Realized<A> made() {
             return made;
         }

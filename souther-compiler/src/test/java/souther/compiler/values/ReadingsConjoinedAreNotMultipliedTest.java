@@ -227,9 +227,8 @@ class ReadingsConjoinedAreNotMultipliedTest {
      */
     @Test
     void everyPlaceASubjectIsFiledUnderIsOneSubjectsKnowsAbout() {
-        List<String> named =
-                java.util.Arrays.stream(AdmissibleValues.Parts.class.getRecordComponents())
-                        .map(RecordComponent::getName).toList();
+        List<String> named = java.util.Arrays.stream(WhatAReadingIsMadeOf.of(AdmissibleValues.class))
+                .map(RecordComponent::getName).toList();
 
         assertEquals(List.of("held", "perPosition", "standing", "guaranteed", "defaultGuaranteed",
                         "guaranteedTogether", "tangled", "widened"),
