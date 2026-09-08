@@ -26,6 +26,16 @@ import java.util.Set;
  * another choice, and a reader looking for one is looking on the wrong side of {@link
  * PlannedValues#resolve}.
  *
+ * <p><b>And a rule of the values enters as a description.</b> There is no word here for a reading
+ * of one position, of two positions held as one value, of two held apart, or of a rule nothing
+ * could read: those are written as {@link PlannedValues} and worked out. What a leaf minted here
+ * would leave out is what working one out settles — what the allowance let it build, and what it
+ * went short of — so a caller would be handed a reading whose every position looks worked out and
+ * whose shortfall was never asked about. What this side has instead is what a reading already in
+ * hand can be put through: {@link #meet} and {@link #metAll}, {@link #renamed} and
+ * {@link #alsoOpenedAt}. Beside them is {@link #top}, which is handed nothing and is where a
+ * reading starts.
+ *
  * <h2>What is held</h2>
  *
  * <p>A union of products, or nothing. A product — a {@link Box} — is one set per position, standing
@@ -881,86 +891,6 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
         return out;
     }
 
-    /** One position said to admit {@code set}, and nothing missed. */
-    public static <A> AdmissibleValues<A> at(A atom, ValueSet set) {
-        Map<A, ValueSet> said = Map.of(atom, set);
-        return new AdmissibleValues<>(
-                set.isEmpty() ? new Held.Nothing<>() : one(Alternative.at(said)),
-                said, Standing.nothing(), Map.of(Sameness.Block.of(atom), set),
-                ValueSet.ANY, true, Set.of(), Set.of());
-    }
-
-    /**
-     * Two positions said to hold one value, which is what an equality between them states.
-     *
-     * <p>Nothing is narrowed anywhere: what this says is that the two are one side of the product,
-     * so whatever either of them is stated to admit is what both admit. Which is why it is a
-     * reading of the values at all — a rule relating two positions was one nothing here could take
-     * in, and what it left was two positions with two answers and a rule between them that reached
-     * nothing.
-     */
-    public static <A> AdmissibleValues<A> holdingAsOne(A here, A there) {
-        Sameness.Block<A> block = Sameness.of(here, there).blockOf(here);
-        // Promised at the block, though it narrows nothing there. The keys of the promise are the
-        // footprint as well — the blocks a rule of this reading reached — and this rule reached
-        // one: it shapes the relation without touching what any position admits. Left out, a
-        // choice between two equalities would be a union of two relations that no product holds
-        // and would say it lost nothing, since what it reads to decide that is this key set.
-        return new AdmissibleValues<>(
-                one(Alternative.of(new Box<>(Map.of(block, ValueSet.ANY)))), Map.of(),
-                Standing.nothing(), Map.of(block, ValueSet.ANY), ValueSet.ANY, true,
-                Set.of(), Set.of());
-    }
-
-    /**
-     * Two positions said to hold different values, which is what a denial between them states.
-     *
-     * <p>Narrowing neither, the way an equality narrows neither: what a denial says is that no one
-     * value stands at both, which is a relation between two sides of the product rather than a
-     * statement about either. So it is held beside the product ({@link Apartness}) and what it
-     * comes to is worked out where the values each side is left are in hand.
-     *
-     * <p><b>And guaranteeing nothing at either of them.</b> What is guaranteed is a lower bound —
-     * these values are admitted whatever else is read — and no value can be shown admitted at one
-     * of two positions held apart without an assignment for the other. Over a carrier of one value
-     * a denial admits nothing at all, so a guarantee of every value would be false of a model
-     * somebody can write. Said here rather than wherever a denial is met with something, because
-     * meeting a guarantee with nothing leaves nothing: every conjunction this rule reaches has it
-     * without a second rule saying so, and a choice beside it keeps what its other branch
-     * guarantees, which is right — a value satisfying that branch is under no denial.
-     */
-    public static <A> AdmissibleValues<A> heldApart(A here, A there) {
-        Sameness.Block<A> one = Sameness.Block.of(here);
-        Sameness.Block<A> other = Sameness.Block.of(there);
-        Map<Sameness.Block<A>, ValueSet> promised = new LinkedHashMap<>();
-        promised.put(one, ValueSet.NONE);
-        promised.put(other, ValueSet.NONE);
-        return new AdmissibleValues<>(
-                one(new Alternative<>(new Box<>(Map.of()), Apartness.of(here, there))),
-                Map.of(), Standing.nothing(), promised, ValueSet.ANY, true, Set.of(), Set.of());
-    }
-
-    /**
-     * A rule this could not read, which says nothing about any position and spoils the ones it
-     * names.
-     *
-     * <p>{@code named} may be empty — a rule reaching no position this can name is still a rule that
-     * was not read, and that it was is a fact about the clause somebody wrote rather than about any
-     * position of this reading ({@code Adoption}).
-     *
-     * <p>Nothing here was opened by an alternative. What this leaves at the positions it names is
-     * its own account of them, said directly; that a choice above holds this clause in one of its
-     * branches is that choice's fact, and reaches the positions from where the choice is.
-     */
-    public static <A> AdmissibleValues<A> unreadable(Set<A> named, UnreadReason why) {
-        // Nothing is guaranteed anywhere, and at the positions it does not name as much as at the
-        // ones it does: what a rule this has no word for admits is not known, so a choice offering
-        // it as an alternative is offering nothing that can be counted on.
-        return new AdmissibleValues<>(one(Alternative.at(Map.of())), Map.of(),
-                Standing.of(named, why), Map.of(),
-                ValueSet.NONE, true, Set.of(), Set.of());
-    }
-
     /**
      * What {@code atom} may hold, everything being admitted where nothing was said.
      *
@@ -977,23 +907,6 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
             // it may take. See {@link Held.Alternatives#of}.
             case Held.Alternatives<A> it -> it.at(atom);
         };
-    }
-
-    /**
-     * The positions this reading narrowed, which is what a reader asking what it took in is asking.
-     *
-     * <p>Narrowed by the reading and not by an alternative of it: a position one alternative names
-     * and another says nothing about is left at every value by the choice, and a rule that narrowed
-     * nothing is not one a question can be answered from.
-     */
-    public Set<A> adoptedAt() {
-        Set<A> out = new LinkedHashSet<>();
-        adopted().forEach(atom -> {
-            if (!at(atom).isAny()) {
-                out.add(atom);
-            }
-        });
-        return out;
     }
 
     /**
@@ -1482,16 +1395,6 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
     /** The alternatives this holds, which a reading that admits nothing has none of. */
     private Set<Alternative<A>> alternatives() {
         return held instanceof Held.Alternatives<A> it ? it.boxes() : Set.of();
-    }
-
-    /** The positions this holds an answer about, in the order they were read. */
-    private Set<A> adopted() {
-        Set<A> out = new LinkedHashSet<>();
-        switch (held) {
-            case Held.Nothing<A> _ -> out.addAll(perPosition.keySet());
-            case Held.Alternatives<A> it -> it.boxes().forEach(box -> out.addAll(box.positions()));
-        }
-        return out;
     }
 
     /** One alternative, which is what most readings hold. Nothing is put together, so what each

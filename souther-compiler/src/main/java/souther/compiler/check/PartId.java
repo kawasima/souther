@@ -19,17 +19,25 @@ package souther.compiler.check;
  * it stands among the parts of that clause and nothing else, so it means something only beside the
  * rule — two clauses each have a part numbered nought, and they are two parts.
  *
- * <p><b>A clause of a declaration's invariant, and not any rule of the model.</b> Those are the
- * clauses that are split into parts: a rule written in a body is a rule apiece, and the lines a
- * behavior's rule draws are counted over the comparisons it states rather than over anything an
- * author wrote as several. Written wider, every reader of a part had to narrow it again and say
- * what it would do with a rule that cannot arrive — one decision, made in as many places as hold a
- * part.
+ * <p><b>A clause the author named, and not any rule of the model.</b> Those are the clauses written
+ * in parts: a clause of a {@code data}'s invariant and a clause of a behavior's {@code ensures} are
+ * each what the author joined out of conjuncts, and a rule written in a body is a rule apiece with
+ * nothing an author wrote as several. Which of the two a rule is is {@link RuleRef.Named}'s answer
+ * and the seal is read here rather than restated: a kind of rule added to it is a kind this admits
+ * or refuses by having been put on that side of the seal.
  *
+ * <p><b>And which of them, kept.</b> A reader that has to hold the parts of one kind says so in the
+ * type of what it holds, so the two never arrive at one another's readers: what a declaration's
+ * clause drew is looked up by the words the declaration wrote ({@link DeclaredBorders}), and there
+ * is no such reading of a behavior's. Written as one type over both, that reader had to ask again
+ * which kind it was holding and say what it would do with the one that cannot arrive — a narrowing
+ * downstream restoring what the type above it gave away.
+ *
+ * @param <R>     which kind of clause this is a part of, which is what a holder of one is held to
  * @param rule    the clause this is a part of, as a report names it
  * @param ordinal which of that clause's parts it is, counted from zero over all of them
  */
-public record PartId(RuleRef.Invariant rule, int ordinal) {
+public record PartId<R extends RuleRef.Named>(R rule, int ordinal) {
 
     public PartId {
         if (rule == null) {

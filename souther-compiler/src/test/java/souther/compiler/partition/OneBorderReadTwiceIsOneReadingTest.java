@@ -211,7 +211,7 @@ class OneBorderReadTwiceIsOneReadingTest {
     /** The clause the bound is written in, which is only an identity here. */
     private static LineOrigin aBound() {
         return new LineOrigin.InvariantOrigin(
-                new souther.compiler.check.PartId(new RuleRef.Invariant(new Clause.Ref(
+                new souther.compiler.check.PartId<>(new RuleRef.Invariant(new Clause.Ref(
                         new Clause.Id(
                                 TypeSymbols.declared(new TypeKey("example.weigh", "Amount")), 0),
                         Optional.of(new ClauseName("cap")))), 0),
@@ -223,7 +223,7 @@ class OneBorderReadTwiceIsOneReadingTest {
         return new AuthoredLine(new WhichLine.OfAComparison(new RuleRef.Comparison("weigh",
                 new souther.compiler.types.SourceConstructOrigin(
                         new WrittenOwner.Body("example.weigh", "weigh"), 2, 0,
-                        souther.compiler.types.SourceConstruct.BINARY)), 0),
+                        souther.compiler.types.SourceConstruct.BINARY))),
                 new LineFacts(new ComparisonClaim.Cut(Towards.BELOW, true)), List.of());
     }
 }

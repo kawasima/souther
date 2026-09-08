@@ -4,8 +4,10 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.numeric.OrderedIntervals;
 import souther.compiler.values.AdmissibleValues;
+import souther.compiler.values.AdmittedPlan;
 import souther.compiler.values.Allowance;
 import souther.compiler.values.AsACompilationAllows;
+import souther.compiler.values.PlannedValues;
 import souther.compiler.values.Value;
 import souther.compiler.values.ValueSet;
 
@@ -47,9 +49,21 @@ class AProofNamesOneBlockAndNotAllOfThemTest {
     /** Two positions held as one and stated to admit values that share none. */
     private static AdmissibleValues<FactSubject> emptiedAt(FactSubject one, FactSubject other,
                                                            Allowance<FactSubject> sets) {
-        return AdmissibleValues.<FactSubject>holdingAsOne(one, other)
-                .meet(AdmissibleValues.at(one, ValueSet.just(A)), sets)
-                .meet(AdmissibleValues.at(other, ValueSet.just(B)), sets);
+        return built(PlannedValues.holdingAsOne(one, other), sets)
+                .meet(says(one, A, sets), sets)
+                .meet(says(other, B, sets), sets);
+    }
+
+    /** A description worked out, which is how a reading is come by. */
+    private static AdmissibleValues<FactSubject> built(PlannedValues<FactSubject> planned,
+                                                       Allowance<FactSubject> sets) {
+        return planned.resolve(sets).values();
+    }
+
+    /** One rule about one position, worked out. */
+    private static AdmissibleValues<FactSubject> says(FactSubject atom, Value value,
+                                                      Allowance<FactSubject> sets) {
+        return built(PlannedValues.at(atom, AdmittedPlan.of(ValueSet.just(value))), sets);
     }
 
     /** Where the value declares each of its positions, in the order it declares them. */

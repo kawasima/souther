@@ -136,6 +136,28 @@ public record BehaviorContract(ValueName.Behavior behavior, List<Contract.Param>
         return clauses.get(rule.id().clause());
     }
 
+    /**
+     * Which rule of the model one of these is, as everything that files a question about it says.
+     *
+     * <p>Here because this is where both halves of that name stand. The words are the author's for
+     * the clause where they wrote a name, and the case the arm is about where they did not — so the
+     * choice needs the rule and the clause it was written under, and only what holds the clauses can
+     * make it without looking one up. Made by a reader instead, the same rule was named by whichever
+     * of the two the reader happened to have, and the report and the reading of lines each spelled
+     * it for themselves.
+     */
+    public RuleRef.Ensures refOf(Rule rule) {
+        Optional<String> named = clauseOf(rule).name();
+        if (named.isPresent()) {
+            return new RuleRef.Ensures(rule.id(), named.get());
+        }
+        // A clause stating one rule over every answer names no case either, and the behavior's own
+        // name is then the whole of what there is to call it — which is the empty word here, and is
+        // said where a rule is rendered rather than by leaving the name out.
+        return new RuleRef.Ensures(rule.id(),
+                rule.id().selector() == null ? "" : rule.id().selector().name());
+    }
+
     /** The names a rule reads its parameters and its answer under. */
     public static BindingOwner ownerOf(ValueName.Behavior behavior) {
         return new BindingOwner.OfSignature(behavior);

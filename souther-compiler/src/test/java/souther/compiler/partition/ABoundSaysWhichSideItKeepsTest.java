@@ -174,8 +174,8 @@ class ABoundSaysWhichSideItKeepsTest {
     }
 
     /** The one part that clause was written in. */
-    private static souther.compiler.check.PartId aPart() {
-        return new souther.compiler.check.PartId(aClause(), 0);
+    private static souther.compiler.check.PartId<RuleRef.Invariant> aPart() {
+        return new souther.compiler.check.PartId<>(aClause(), 0);
     }
 
     /** A clause whose two conjuncts leave the position one value. */

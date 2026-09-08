@@ -2,6 +2,8 @@ package souther.compiler.inputs;
 
 import souther.compiler.ast.Hir;
 import souther.compiler.check.NumberAt;
+import souther.compiler.check.PartId;
+import souther.compiler.check.RuleRef;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.DeclarationReadings;
 import souther.compiler.check.FieldDomains;
@@ -606,7 +608,7 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
     }
 
     /** What makes two of them one: which part of which rule it is. */
-    private record Key(souther.compiler.check.PartId part) {}
+    private record Key(PartId<RuleRef.Invariant> part) {}
 
     /**
      * The declaration a value of {@code type} is read under: the name the signature wrote where it

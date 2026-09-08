@@ -112,8 +112,11 @@ public final class DocumentShape {
             understand(said, at);
             if (node.isObject()) {
                 objects++;
-                Set<String> may = declaredIn(said);
-                if (closed(said)) {
+                // Each thing that refuses an undeclared key refuses on its own, so a key has to be
+                // named by all of them. Gathered into one set, an object closed over keys it does
+                // not name is lent the keys of whatever stands under it, and the closure it wrote
+                // says nothing.
+                for (Set<String> may : declaredIn(said)) {
                     node.propertyNames().forEach(key -> {
                         if (!may.contains(key)) {
                             wrong.add(at + ": the schema declares no `" + key + "` here");
@@ -243,23 +246,54 @@ public final class DocumentShape {
             return more != null && more.isBoolean() && !more.booleanValue();
         }
 
-        /** Every key this object may have, over the object itself and every branch beside it. */
-        private Set<String> declaredIn(JsonNode said) {
-            Set<String> out = new LinkedHashSet<>();
-            if (said.has("properties")) {
-                said.get("properties").propertyNames().forEach(out::add);
+        /**
+         * Every key this object may have, read the way {@code additionalProperties} is defined.
+         *
+         * <p><b>The keys of the object that closed itself, and no others.</b> An
+         * {@code additionalProperties} is about the {@code properties} written beside it and about
+         * nothing written under a composition, so a key a branch declares is an additional property
+         * of the object above it. Read as though a branch's keys were the parent's, this said a
+         * document was well shaped where a reader of the schema refuses it — which is a schema
+         * closed over keys it declares nowhere, admitting nothing at all.
+         *
+         * <p><b>And what every branch of a composition allows, where every one of them is
+         * closed.</b> A value satisfies a composition by satisfying a branch, so a key no branch
+         * declares is a key each of them refuses. That is why this looks at the branches at all:
+         * not to lend their keys to the object above, but because the object below has already
+         * refused what none of them has.
+         */
+        private List<Set<String>> declaredIn(JsonNode said) {
+            List<Set<String>> refusals = new ArrayList<>();
+            if (closed(said)) {
+                Set<String> own = new LinkedHashSet<>();
+                if (said.has("properties")) {
+                    said.get("properties").propertyNames().forEach(own::add);
+                }
+                refusals.add(own);
             }
-            for (String branch : List.of("oneOf", "anyOf", "allOf")) {
-                if (said.has(branch)) {
-                    said.get(branch).forEach(each -> out.addAll(declaredIn(resolved(each))));
+            for (String branch : List.of("oneOf", "anyOf")) {
+                if (said.has(branch) && everyBranchIsClosed(said.get(branch))) {
+                    Set<String> anyBranch = new LinkedHashSet<>();
+                    said.get(branch).forEach(each ->
+                            declaredIn(resolved(each)).forEach(anyBranch::addAll));
+                    refusals.add(anyBranch);
                 }
             }
-            for (String arm : List.of("if", "then", "else", "not")) {
-                if (said.has(arm)) {
-                    out.addAll(declaredIn(resolved(said.get(arm))));
+            // An `allOf` is every branch at once, so each branch that refuses refuses on its own.
+            if (said.has("allOf")) {
+                said.get("allOf").forEach(each -> refusals.addAll(declaredIn(resolved(each))));
+            }
+            return refusals;
+        }
+
+        /** Whether a composition refuses what none of its branches declares. */
+        private boolean everyBranchIsClosed(JsonNode branches) {
+            for (JsonNode each : branches) {
+                if (!closed(resolved(each))) {
+                    return false;
                 }
             }
-            return out;
+            return true;
         }
 
         /** Where the schema says what is under one key, or null where it says nothing. */

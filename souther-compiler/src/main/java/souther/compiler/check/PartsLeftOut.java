@@ -38,7 +38,7 @@ sealed interface PartsLeftOut permits PartsLeftOut.Nothing, PartsLeftOut.Some {
      * together — a part one reached that the other never read is a value whose rules were not
      * gathered — so asking in two ways is two answers that have to agree, and there is one.
      */
-    boolean excludes(PartId part);
+    boolean excludes(PartId<RuleRef.Invariant> part);
 
     /** Nothing is left out. */
     record Nothing() implements PartsLeftOut {
@@ -49,7 +49,7 @@ sealed interface PartsLeftOut permits PartsLeftOut.Nothing, PartsLeftOut.Some {
         }
 
         @Override
-        public boolean excludes(PartId part) {
+        public boolean excludes(PartId<RuleRef.Invariant> part) {
             return false;
         }
     }
@@ -62,7 +62,7 @@ sealed interface PartsLeftOut permits PartsLeftOut.Nothing, PartsLeftOut.Some {
      * candidate is missed on its own, and one holds the end with every other candidate gone — so a
      * scope that could only name one would answer the first and stop.
      */
-    record Some(Set<PartId> parts) implements PartsLeftOut {
+    record Some(Set<PartId<RuleRef.Invariant>> parts) implements PartsLeftOut {
 
         public Some {
             parts = Set.copyOf(parts);
@@ -77,13 +77,13 @@ sealed interface PartsLeftOut permits PartsLeftOut.Nothing, PartsLeftOut.Some {
         }
 
         @Override
-        public boolean excludes(PartId part) {
+        public boolean excludes(PartId<RuleRef.Invariant> part) {
             return parts.contains(part);
         }
     }
 
     /** Every part but these. */
-    static PartsLeftOut without(Set<PartId> parts) {
+    static PartsLeftOut without(Set<PartId<RuleRef.Invariant>> parts) {
         return parts.isEmpty() ? NONE : new Some(parts);
     }
 }

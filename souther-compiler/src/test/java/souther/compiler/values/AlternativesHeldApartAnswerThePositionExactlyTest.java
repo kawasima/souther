@@ -123,7 +123,7 @@ class AlternativesHeldApartAnswerThePositionExactlyTest {
     void aPositionBesideThemKeepsItsOwnAnswer() {
         AdmissibleValues<String> one = built(pair(FIVE, ZERO).joinLiveApart(pair(SIX, ONE)));
         AdmissibleValues<String> two = built(pair(FIVE, ZERO).joinLiveApart(pair(SIX, ZERO)));
-        AdmissibleValues<String> apart = AdmissibleValues.at(C, ValueSet.just(ZERO));
+        AdmissibleValues<String> apart = built(plans(C, ZERO));
 
         AdmissibleValues<String> all = one.meet(two, sets).meet(apart, sets);
 

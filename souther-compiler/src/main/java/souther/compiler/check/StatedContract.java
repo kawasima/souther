@@ -41,21 +41,64 @@ public record StatedContract(ValueName.Behavior behavior, List<Param> params, Ty
      *
      * <p>The clause's name travels with it because a violation is reported by the clause, and a
      * reader of one rule has no way back to the clause it was written under.
+     *
+     * <p>Which rule of the model this is is reached through its parts and is not held beside them.
+     * Every part is a part of this rule and says so, so a rule kept here as well would be a second
+     * way to one rule — two values that can be built about two rules, and a reader writing both
+     * files an entry under one and describes the other.
+     *
+     * @param clause what the author wrote as the clause's name, where they wrote one. The syntax and
+     *               not the name a report uses: {@link #ref} carries that, and a reader that built
+     *               one from this would be spelling a rule a second way
      */
-    public record StatedRule(RuleId id, Guard guard, BindingId value, Optional<String> clause,
-                             List<Conjunct> conjuncts) {
+    public record StatedRule(Guard guard, BindingId value,
+                             Optional<String> clause, List<Conjunct> conjuncts) {
 
         public StatedRule {
             conjuncts = List.copyOf(conjuncts);
+            if (conjuncts.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "a rule states something, so it is written in at least one part");
+            }
+            // And every part is a part of this rule. Said here rather than left to hold: what this
+            // rule is is read off one of them, so parts naming two rules would be one state
+            // answering with whichever came first.
+            RuleRef.Ensures first = conjuncts.get(0).part().rule();
+            for (Conjunct each : conjuncts) {
+                if (!each.part().rule().equals(first)) {
+                    throw new IllegalArgumentException("the parts of one rule are parts of one"
+                            + " rule: " + first + " and " + each.part().rule());
+                }
+            }
+        }
+
+        /**
+         * Which rule of the model this is, as everything filing a question about it says.
+         *
+         * <p>Read off the parts, which is where it arrived. The words in it are chosen from the
+         * rule and the clause it was written under together ({@link BehaviorContract#refOf}), so a
+         * reader assembling them here would be choosing them from whichever of the two it had.
+         */
+        public RuleRef.Ensures ref() {
+            return conjuncts.get(0).part().rule();
+        }
+
+        /** Where in the declaration this rule is written. */
+        public RuleId id() {
+            return ref().rule();
         }
     }
 
     /**
-     * One conjunct the author wrote: where they wrote it, and what it types to for the analysis.
+     * One conjunct the author wrote: which part of the clause it is, where they wrote it, and what
+     * it types to for the analysis.
      *
+     * @param part   which of the clause's parts this is, as the split that made them issued it. A
+     *               reader below draws lines from it and says which part drew each; counting the
+     *               conjuncts again to get that back is a second answer to which parts there are
      * @param stated what it types to, or that typing it did not finish ({@link TypedClause})
      */
-    public record Conjunct(SourcePos at, TypedClause stated) {}
+    public record Conjunct(PartId<RuleRef.Ensures> part, SourcePos at, TypedClause stated) {}
 
     /**
      * The same contract with the places taken out of its terms — what a caller depends on, told
@@ -67,6 +110,10 @@ public record StatedContract(ValueName.Behavior behavior, List<Param> params, Ty
      * declaration is edited, so a reader comparing the whole of this is a reader an unrelated edit
      * reaches. Nothing else about a contract carries a place: a rule is told by its
      * {@link RuleId}, a parameter by its binding, and neither is where it stands.
+     *
+     * <p>Which part of the clause a conjunct is stays, because it is not a place. It says where the
+     * conjunct stands among the parts its author wrote, which is what the author wrote and not
+     * where they wrote it — the same thing {@link RuleId} is, one level down.
      */
     public StatedContract withoutItsPlace() {
         List<StatedRule> out = new ArrayList<>();
@@ -74,10 +121,10 @@ public record StatedContract(ValueName.Behavior behavior, List<Param> params, Ty
             List<Conjunct> conjuncts = new ArrayList<>();
             for (Conjunct each : rule.conjuncts()) {
                 Core form = each.stated().orNull();
-                conjuncts.add(new Conjunct(null, form == null ? each.stated()
+                conjuncts.add(new Conjunct(each.part(), null, form == null ? each.stated()
                         : new TypedClause.Typed(Core.withoutItsPlace(form))));
             }
-            out.add(new StatedRule(rule.id(), rule.guard(), rule.value(), rule.clause(), conjuncts));
+            out.add(new StatedRule(rule.guard(), rule.value(), rule.clause(), conjuncts));
         }
         return new StatedContract(behavior, params, output, out);
     }
@@ -100,16 +147,16 @@ public record StatedContract(ValueName.Behavior behavior, List<Param> params, Ty
         for (BehaviorContract.Clause clause : contract.clauses()) {
             for (Rule rule : clause.rules()) {
                 Scope scope = BehaviorChecker.scopeOf(contract, rule).reaching(helpers);
+                RuleRef.Ensures ref = contract.refOf(rule);
                 List<Conjunct> conjuncts = new ArrayList<>();
                 for (ClausesForDischarge.ClauseReading written : declaring.conjunctsOf(
                         rule.statement(), BehaviorContract.ownerOf(contract.behavior()))) {
-                    conjuncts.add(new Conjunct(written.at(),
+                    conjuncts.add(new Conjunct(written.part().idFor(ref), written.at(),
                             SecondaryClauseReading.of(written.asExpanded(),
                                     () -> new SecondaryClauseReading.Over(scope, ctx),
                                     "typing " + contract.behavior().name())));
                 }
-                rules.add(new StatedRule(rule.id(), rule.guard(), rule.value(), clause.name(),
-                        conjuncts));
+                rules.add(new StatedRule(rule.guard(), rule.value(), clause.name(), conjuncts));
             }
         }
         return new StatedContract(contract.behavior(), contract.params(), contract.output(), rules);

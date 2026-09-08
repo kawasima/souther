@@ -82,12 +82,21 @@ public sealed interface PlannedValues<A> {
     }
 
     /**
-     * Two positions said to hold one value — see {@link AdmissibleValues#holdingAsOne}.
+     * Two positions said to hold one value, which is what an equality between them states.
+     *
+     * <p>Nothing is narrowed anywhere: what this says is that the two are one side of the product,
+     * so whatever either of them is stated to admit is what both admit. Which is why it is a
+     * reading of the values at all — a rule relating two positions was one nothing here could take
+     * in, and what it left was two positions with two answers and a rule between them that reached
+     * nothing.
      */
     static <A> PlannedValues<A> holdingAsOne(A here, A there) {
         Sameness.Block<A> block = Sameness.of(here, there).blockOf(here);
-        // Promised at the block, though it narrows nothing there — see
-        // {@link AdmissibleValues#holdingAsOne}.
+        // Promised at the block, though it narrows nothing there. The keys of the promise are the
+        // footprint as well — the blocks a rule of this reading reached — and this rule reached
+        // one: it shapes the relation without touching what any position admits. Left out, a
+        // choice between two equalities would be a union of two relations that no product holds
+        // and would say it lost nothing, since what it reads to decide that is this key set.
         return new Settled<>(
                 PlannedHeld.one(PlannedHeld.Alternative.of(
                         new PlannedHeld.Box<>(Map.of(block, AdmittedPlan.ANY)))),
@@ -96,7 +105,21 @@ public sealed interface PlannedValues<A> {
     }
 
     /**
-     * Two positions said to hold different values — see {@link AdmissibleValues#heldApart}.
+     * Two positions said to hold different values, which is what a denial between them states.
+     *
+     * <p>Narrowing neither, the way an equality narrows neither: what a denial says is that no one
+     * value stands at both, which is a relation between two sides of the product rather than a
+     * statement about either. So it is held beside the product ({@link Apartness}) and what it
+     * comes to is worked out where the values each side is left are in hand.
+     *
+     * <p><b>And guaranteeing nothing at either of them.</b> What is guaranteed is a lower bound —
+     * these values are admitted whatever else is read — and no value can be shown admitted at one
+     * of two positions held apart without an assignment for the other. Over a carrier of one value
+     * a denial admits nothing at all, so a guarantee of every value would be false of a model
+     * somebody can write. Said here rather than wherever a denial is met with something, because
+     * meeting a guarantee with nothing leaves nothing: every conjunction this rule reaches has it
+     * without a second rule saying so, and a choice beside it keeps what its other branch
+     * guarantees, which is right — a value satisfying that branch is under no denial.
      */
     static <A> PlannedValues<A> heldApart(A here, A there) {
         Map<Sameness.Block<A>, AdmittedPlan> promised = new LinkedHashMap<>();
@@ -111,9 +134,20 @@ public sealed interface PlannedValues<A> {
 
     /**
      * A rule this could not read, which says nothing about any position and spoils the ones it
-     * names — see {@link AdmissibleValues#unreadable}.
+     * names.
+     *
+     * <p>{@code named} may be empty — a rule reaching no position this can name is still a rule
+     * that was not read, and that it was is a fact about the clause somebody wrote rather than
+     * about any position of this reading ({@code Adoption}).
+     *
+     * <p>Nothing here was opened by an alternative. What this leaves at the positions it names is
+     * its own account of them, said directly; that a choice above holds this clause in one of its
+     * branches is that choice's fact, and reaches the positions from where the choice is.
      */
     static <A> PlannedValues<A> unreadable(Set<A> named, UnreadReason why) {
+        // Nothing is guaranteed anywhere, and at the positions it does not name as much as at the
+        // ones it does: what a rule this has no word for admits is not known, so a choice offering
+        // it as an alternative is offering nothing that can be counted on.
         return new Settled<>(PlannedHeld.one(PlannedHeld.Alternative.at(Map.of())), Map.of(),
                 Standing.of(named, why), Map.of(), AdmittedPlan.NONE, true, Set.of(),
                 Set.of());

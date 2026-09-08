@@ -48,8 +48,11 @@ class WhatAConjunctionCostsIsTheComposersToSayTest {
      * and there would be no purse to tell apart.
      */
     private static ConjoinedAdmissibleValues<String> everyMultipleOf(int every) {
-        return ConjoinedAdmissibleValues.of(AdmissibleValues.at("here",
-                ValueSet.matching(language("(?:[0-9]{" + every + "})+"))));
+        return ConjoinedAdmissibleValues.of(
+                PlannedValues.at("here",
+                                AdmittedPlan.of(ValueSet.matching(
+                                        language("(?:[0-9]{" + every + "})+"))))
+                        .resolve(AsACompilationAllows.forAdmittedValues()).values());
     }
 
     private static Language language(String regex) {

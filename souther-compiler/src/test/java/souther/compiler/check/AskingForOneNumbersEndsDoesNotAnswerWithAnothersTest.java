@@ -53,13 +53,13 @@ class AskingForOneNumbersEndsDoesNotAnswerWithAnothersTest {
 
     /** An end above one number of `names`, placed by the clause at {@code by}. */
     private static FieldDomains.Placed upTo(NumberAt<RuleKey> on, int by, int at) {
-        return new FieldDomains.Placed(on, new PartId(rule(by), 0), false,
+        return new FieldDomains.Placed(on, new PartId<>(rule(by), 0), false,
                 Endpoint.inclusive(Count.of(at)));
     }
 
     /** And one below it. */
     private static FieldDomains.Placed from(NumberAt<RuleKey> on, int by, int at) {
-        return new FieldDomains.Placed(on, new PartId(rule(by), 0), true,
+        return new FieldDomains.Placed(on, new PartId<>(rule(by), 0), true,
                 Endpoint.inclusive(Count.of(at)));
     }
 

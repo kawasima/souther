@@ -45,7 +45,7 @@ public final class DeclaredClauses {
      * @param part which part of which rule it is, as the split that wrote the parts down named it
      * @param expr the conjunct itself
      */
-    public record Conjunct(PartId part, Hir.Expr expr) {
+    public record Conjunct(PartId<RuleRef.Invariant> part, Hir.Expr expr) {
 
         public Conjunct {
             if (part == null || expr == null) {

@@ -1,5 +1,5 @@
 {
-  "schemaVersion" : 15,
+  "schemaVersion" : 16,
   "compilerVersion" : "<version>",
   "status" : "partial",
   "weakening" : [ "rule_unread" ],
@@ -20,13 +20,16 @@
       "obligations" : [ {
         "obligationId" : {
           "line" : {
-            "rule" : {
-              "kind" : "invariant",
-              "declaredIn" : "conformance.catalog",
-              "declaredOn" : "Sku",
-              "clause" : 0
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.catalog",
+                "declaredOn" : "Sku",
+                "clause" : 0
+              },
+              "part" : 0
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : false,
               "holdsAtTheValue" : true,
@@ -79,13 +82,16 @@
       }, {
         "obligationId" : {
           "line" : {
-            "rule" : {
-              "kind" : "invariant",
-              "declaredIn" : "conformance.catalog",
-              "declaredOn" : "Sku",
-              "clause" : 0
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.catalog",
+                "declaredOn" : "Sku",
+                "clause" : 0
+              },
+              "part" : 0
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : false,
               "holdsAtTheValue" : true,
@@ -152,13 +158,16 @@
       "obligations" : [ {
         "obligationId" : {
           "line" : {
-            "rule" : {
-              "kind" : "invariant",
-              "declaredIn" : "conformance.catalog",
-              "declaredOn" : "Price",
-              "clause" : 0
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.catalog",
+                "declaredOn" : "Price",
+                "clause" : 0
+              },
+              "part" : 0
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : false,
               "holdsAtTheValue" : true,
@@ -204,13 +213,16 @@
       }, {
         "obligationId" : {
           "line" : {
-            "rule" : {
-              "kind" : "invariant",
-              "declaredIn" : "conformance.catalog",
-              "declaredOn" : "Price",
-              "clause" : 0
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.catalog",
+                "declaredOn" : "Price",
+                "clause" : 0
+              },
+              "part" : 0
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : false,
               "holdsAtTheValue" : true,
@@ -270,13 +282,16 @@
       "obligations" : [ {
         "obligationId" : {
           "line" : {
-            "rule" : {
-              "kind" : "invariant",
-              "declaredIn" : "conformance.catalog",
-              "declaredOn" : "Weight",
-              "clause" : 0
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.catalog",
+                "declaredOn" : "Weight",
+                "clause" : 0
+              },
+              "part" : 0
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : false,
               "holdsAtTheValue" : true,
@@ -322,13 +337,16 @@
       }, {
         "obligationId" : {
           "line" : {
-            "rule" : {
-              "kind" : "invariant",
-              "declaredIn" : "conformance.catalog",
-              "declaredOn" : "Weight",
-              "clause" : 0
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.catalog",
+                "declaredOn" : "Weight",
+                "clause" : 0
+              },
+              "part" : 0
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : false,
               "holdsAtTheValue" : true,
@@ -388,13 +406,16 @@
       "obligations" : [ {
         "obligationId" : {
           "line" : {
-            "rule" : {
-              "kind" : "invariant",
-              "declaredIn" : "conformance.catalog",
-              "declaredOn" : "Rate",
-              "clause" : 0
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.catalog",
+                "declaredOn" : "Rate",
+                "clause" : 0
+              },
+              "part" : 0
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : true,
               "holdsAtTheValue" : false,
@@ -453,13 +474,16 @@
       }, {
         "obligationId" : {
           "line" : {
-            "rule" : {
-              "kind" : "invariant",
-              "declaredIn" : "conformance.catalog",
-              "declaredOn" : "Rate",
-              "clause" : 0
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.catalog",
+                "declaredOn" : "Rate",
+                "clause" : 0
+              },
+              "part" : 1
             },
-            "conjunct" : 1,
             "facts" : {
               "valueBelongsBelow" : false,
               "holdsAtTheValue" : false,
@@ -1059,13 +1083,16 @@
       "obligations" : [ {
         "obligationId" : {
           "line" : {
-            "rule" : {
-              "kind" : "invariant",
-              "declaredIn" : "conformance.shipping",
-              "declaredOn" : "送り状番号",
-              "clause" : 0
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.shipping",
+                "declaredOn" : "送り状番号",
+                "clause" : 0
+              },
+              "part" : 0
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : false,
               "holdsAtTheValue" : true,
@@ -1118,13 +1145,16 @@
       }, {
         "obligationId" : {
           "line" : {
-            "rule" : {
-              "kind" : "invariant",
-              "declaredIn" : "conformance.shipping",
-              "declaredOn" : "送り状番号",
-              "clause" : 0
+            "which" : {
+              "kind" : "part",
+              "rule" : {
+                "kind" : "invariant",
+                "declaredIn" : "conformance.shipping",
+                "declaredOn" : "送り状番号",
+                "clause" : 0
+              },
+              "part" : 0
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : false,
               "holdsAtTheValue" : true,
@@ -1754,13 +1784,16 @@
         "obligations" : [ {
           "obligationId" : {
             "line" : {
-              "rule" : {
-                "kind" : "invariant",
-                "declaredIn" : "conformance.catalog",
-                "declaredOn" : "Weight",
-                "clause" : 0
+              "which" : {
+                "kind" : "part",
+                "rule" : {
+                  "kind" : "invariant",
+                  "declaredIn" : "conformance.catalog",
+                  "declaredOn" : "Weight",
+                  "clause" : 0
+                },
+                "part" : 0
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : false,
                 "holdsAtTheValue" : true,
@@ -1782,15 +1815,17 @@
             "stops" : {
               "kind" : "at_a_line",
               "line" : {
-                "rule" : {
+                "which" : {
                   "kind" : "comparison",
-                  "declaredIn" : "conformance.shipping",
-                  "definition" : "出荷する",
-                  "behavior" : "出荷する",
-                  "ordinal" : 11,
-                  "lowered" : 0
+                  "rule" : {
+                    "kind" : "comparison",
+                    "declaredIn" : "conformance.shipping",
+                    "definition" : "出荷する",
+                    "behavior" : "出荷する",
+                    "ordinal" : 11,
+                    "lowered" : 0
+                  }
                 },
-                "conjunct" : 0,
                 "facts" : {
                   "valueBelongsBelow" : true,
                   "holdsAtTheValue" : true,
@@ -1826,15 +1861,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.shipping",
-                "definition" : "出荷する",
-                "behavior" : "出荷する",
-                "ordinal" : 11,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.shipping",
+                  "definition" : "出荷する",
+                  "behavior" : "出荷する",
+                  "ordinal" : 11,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : true,
                 "holdsAtTheValue" : true,
@@ -1880,15 +1917,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.shipping",
-                "definition" : "出荷する",
-                "behavior" : "出荷する",
-                "ordinal" : 11,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.shipping",
+                  "definition" : "出荷する",
+                  "behavior" : "出荷する",
+                  "ordinal" : 11,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : true,
                 "holdsAtTheValue" : true,
@@ -1935,15 +1974,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.shipping",
-                "definition" : "出荷する",
-                "behavior" : "出荷する",
-                "ordinal" : 11,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.shipping",
+                  "definition" : "出荷する",
+                  "behavior" : "出荷する",
+                  "ordinal" : 11,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : true,
                 "holdsAtTheValue" : true,
@@ -2002,15 +2043,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.shipping",
-                "definition" : "出荷する",
-                "behavior" : "出荷する",
-                "ordinal" : 11,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.shipping",
+                  "definition" : "出荷する",
+                  "behavior" : "出荷する",
+                  "ordinal" : 11,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : true,
                 "holdsAtTheValue" : true,
@@ -2061,15 +2104,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.shipping",
-                "definition" : "午前の集荷か",
-                "behavior" : "出荷する",
-                "ordinal" : 1,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.shipping",
+                  "definition" : "午前の集荷か",
+                  "behavior" : "出荷する",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : false,
                 "holdsAtTheValue" : false,
@@ -2116,15 +2161,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.shipping",
-                "definition" : "午前の集荷か",
-                "behavior" : "出荷する",
-                "ordinal" : 1,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.shipping",
+                  "definition" : "午前の集荷か",
+                  "behavior" : "出荷する",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : false,
                 "holdsAtTheValue" : false,
@@ -2170,15 +2217,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.shipping",
-                "definition" : "午前の集荷か",
-                "behavior" : "出荷する",
-                "ordinal" : 1,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.shipping",
+                  "definition" : "午前の集荷か",
+                  "behavior" : "出荷する",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : false,
                 "holdsAtTheValue" : false,
@@ -2237,15 +2286,17 @@
         }, {
           "obligationId" : {
             "line" : {
-              "rule" : {
+              "which" : {
                 "kind" : "comparison",
-                "declaredIn" : "conformance.shipping",
-                "definition" : "午前の集荷か",
-                "behavior" : "出荷する",
-                "ordinal" : 1,
-                "lowered" : 0
+                "rule" : {
+                  "kind" : "comparison",
+                  "declaredIn" : "conformance.shipping",
+                  "definition" : "午前の集荷か",
+                  "behavior" : "出荷する",
+                  "ordinal" : 1,
+                  "lowered" : 0
+                }
               },
-              "conjunct" : 0,
               "facts" : {
                 "valueBelongsBelow" : false,
                 "holdsAtTheValue" : false,
@@ -2631,15 +2682,17 @@
         "subject" : "OUT point of comparison@1:78:17",
         "obligationId" : {
           "line" : {
-            "rule" : {
+            "which" : {
               "kind" : "comparison",
-              "declaredIn" : "conformance.shipping",
-              "definition" : "出荷する",
-              "behavior" : "出荷する",
-              "ordinal" : 11,
-              "lowered" : 0
+              "rule" : {
+                "kind" : "comparison",
+                "declaredIn" : "conformance.shipping",
+                "definition" : "出荷する",
+                "behavior" : "出荷する",
+                "ordinal" : 11,
+                "lowered" : 0
+              }
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : true,
               "holdsAtTheValue" : true,
@@ -2670,15 +2723,17 @@
         "subject" : "ON point of comparison@1:57:50",
         "obligationId" : {
           "line" : {
-            "rule" : {
+            "which" : {
               "kind" : "comparison",
-              "declaredIn" : "conformance.shipping",
-              "definition" : "午前の集荷か",
-              "behavior" : "出荷する",
-              "ordinal" : 1,
-              "lowered" : 0
+              "rule" : {
+                "kind" : "comparison",
+                "declaredIn" : "conformance.shipping",
+                "definition" : "午前の集荷か",
+                "behavior" : "出荷する",
+                "ordinal" : 1,
+                "lowered" : 0
+              }
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : false,
               "holdsAtTheValue" : false,
@@ -2705,15 +2760,17 @@
         "subject" : "OFF point of comparison@1:57:50",
         "obligationId" : {
           "line" : {
-            "rule" : {
+            "which" : {
               "kind" : "comparison",
-              "declaredIn" : "conformance.shipping",
-              "definition" : "午前の集荷か",
-              "behavior" : "出荷する",
-              "ordinal" : 1,
-              "lowered" : 0
+              "rule" : {
+                "kind" : "comparison",
+                "declaredIn" : "conformance.shipping",
+                "definition" : "午前の集荷か",
+                "behavior" : "出荷する",
+                "ordinal" : 1,
+                "lowered" : 0
+              }
             },
-            "conjunct" : 0,
             "facts" : {
               "valueBelongsBelow" : false,
               "holdsAtTheValue" : false,

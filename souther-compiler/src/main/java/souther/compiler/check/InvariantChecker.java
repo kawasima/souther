@@ -607,7 +607,7 @@ public final class InvariantChecker {
          * {@link #withoutClausesOf}: a clause has as many conjuncts as the author wrote, and taking
          * the clause away answers for all of them at once.
          */
-        static Reach withoutParts(java.util.Set<PartId> parts) {
+        static Reach withoutParts(java.util.Set<PartId<RuleRef.Invariant>> parts) {
             return parts.isEmpty() ? EVERYTHING
                     : new Reach(RulesLeftOut.NONE, PartsLeftOut.without(parts), _ -> false);
         }
@@ -1268,7 +1268,8 @@ public final class InvariantChecker {
      *                 own end
      * @param read     the part itself, as the reading of the clause left it
      */
-    record Direct(NumberAt<RuleKey> at, PartId part, InvariantBound bound, Core read) {
+    record Direct(NumberAt<RuleKey> at, PartId<RuleRef.Invariant> part, InvariantBound bound,
+                  Core read) {
 
         /** What the value's rules call where the end was placed. Never which end it is: one name
          *  carries more than one number and {@link #at} is what says which of them this is. */
@@ -1653,7 +1654,8 @@ public final class InvariantChecker {
      * the outermost the shape was written as, so a rule under a denial is read as the denial and
      * not as what it denies — the same node the reading above would have been handed.
      */
-    private void statedIn(ClauseExpr stated, RuleRef.Invariant from, PartId part, Denotations at,
+    private void statedIn(ClauseExpr stated, RuleRef.Invariant from, PartId<RuleRef.Invariant> part,
+                          Denotations at,
                           Map<FactSubject, Coordinate> byName, List<Direct> out,
                           List<FieldDomains.NoLine> noLines,
                           List<FieldDomains.WithoutAnEnd> withoutAnEnd,
@@ -1766,7 +1768,8 @@ public final class InvariantChecker {
      * same rule written out places — and a helper calling a helper is bindings all the way down.
      * What a helper's body joined is still this one part, and this reading has one end for it.
      */
-    private void direct(Core clause, RuleRef.Invariant from, PartId part, Denotations at,
+    private void direct(Core clause, RuleRef.Invariant from, PartId<RuleRef.Invariant> part,
+                        Denotations at,
                         Map<FactSubject, Coordinate> byName, List<Direct> out,
                         List<FieldDomains.NoLine> noLines,
                         List<FieldDomains.WithoutAnEnd> withoutAnEnd,
@@ -2224,7 +2227,7 @@ public final class InvariantChecker {
      * what the arithmetic made of them are three readings of one comparison, and handed over as
      * three arguments they are as much one comparison as the caller left them.
      */
-    private void noLineDrawn(CanonicalForm read, Core clause, PartId part,
+    private void noLineDrawn(CanonicalForm read, Core clause, PartId<RuleRef.Invariant> part,
                             Denotations at,
                             Map<FactSubject, Coordinate> byName, List<FieldDomains.NoLine> out) {
         if (!(read.comparison().claim() instanceof ComparisonClaim.Cut)) {
@@ -2294,7 +2297,7 @@ public final class InvariantChecker {
      * beside a rule that says nothing lends the second its narrowing — and the reason goes out
      * against the one rule that holds the position to nothing.
      */
-    private void restricting(Core clause, RuleRef.Invariant from, PartId part,
+    private void restricting(Core clause, RuleRef.Invariant from, PartId<RuleRef.Invariant> part,
                              Map<FactSubject, Coordinate> byName, PartsRead parts,
                              List<FieldDomains.NoLine> noLines, RunsRead runs) {
         ReadByClauses.OfAPart account = parts.accountIn(from, clause);
@@ -2393,7 +2396,7 @@ public final class InvariantChecker {
      * characters they hold; a rule about the length is a rule about a whole number and is read
      * where whole numbers are.
      */
-    private RunsRead runsOf(Core clause, RuleRef.Invariant from, PartId part,
+    private RunsRead runsOf(Core clause, RuleRef.Invariant from, PartId<RuleRef.Invariant> part,
                         Map<FactSubject, Coordinate> byName, PartsRead parts, List<Direct> out) {
         ReadByClauses.OfAPart account = parts.accountIn(from, clause);
         if (account == null) {
@@ -2443,8 +2446,8 @@ public final class InvariantChecker {
      * with no end above them has said where none of them stop — and it is a run all the same, which
      * is why what is asked of it is which of its ends the rule placed.
      */
-    private Run placed(ValueSet set, NumberAt<RuleKey> value, PartId part, Core clause,
-                       List<Direct> out) {
+    private Run placed(ValueSet set, NumberAt<RuleKey> value, PartId<RuleRef.Invariant> part,
+                       Core clause, List<Direct> out) {
         switch (extentOf(set)) {
             // A run holding one string is the rule naming a value rather than bounding a range, and
             // a value it names is a distinction of the position rather than an edge on it.
@@ -2609,7 +2612,7 @@ public final class InvariantChecker {
      * what the rules leave the coordinate without this conjunct
      * ({@link FieldDomains#movedEndsOf}).
      */
-    private static void aboutOneCoordinate(CanonicalForm read, PartId part,
+    private static void aboutOneCoordinate(CanonicalForm read, PartId<RuleRef.Invariant> part,
                                           List<FieldDomains.AboutOneCoordinate> out) {
         if (!(read instanceof CanonicalForm.Over over) || over.numbers().size() != 1) {
             return;
@@ -2621,7 +2624,7 @@ public final class InvariantChecker {
      * One candidate, kept once. A part reaching one number twice is one thing to ask a
      * counterfactual about, because taking a part away takes away everything it stated.
      */
-    private static void aboutOneCoordinate(NumberAt<RuleKey> at, PartId part,
+    private static void aboutOneCoordinate(NumberAt<RuleKey> at, PartId<RuleRef.Invariant> part,
                                            List<FieldDomains.AboutOneCoordinate> out) {
         FieldDomains.AboutOneCoordinate said = new FieldDomains.AboutOneCoordinate(at, part);
         if (!out.contains(said)) {
@@ -2630,7 +2633,7 @@ public final class InvariantChecker {
     }
 
     /** One finding, kept once. A coordinate reached twice is one place with one thing to say. */
-    private static void file(Coordinate where, PartId part, Core clause,
+    private static void file(Coordinate where, PartId<RuleRef.Invariant> part, Core clause,
                              BlockReason.RuleWithoutLineReason why,
                              List<FieldDomains.NoLine> out) {
         FieldDomains.NoLine said = new FieldDomains.NoLine(where.at(), part, clause, why);

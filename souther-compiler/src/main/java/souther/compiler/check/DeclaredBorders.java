@@ -34,8 +34,16 @@ import java.util.Map;
 public record DeclaredBorders(souther.compiler.diag.Citation at,
                               Map<Key, NumberAt<RuleKey>> forms) {
 
-    /** Which authored line: the part of the clause that placed the end. */
-    public record Key(PartId part) {}
+    /**
+     * Which authored line: the part of the clause that placed the end.
+     *
+     * <p>A part of a {@code data}'s clause and of nothing else. These are the lines a declaration
+     * wrote in its own terms, and a behavior's {@code ensures} writes none of them — so the kind of
+     * clause is in the type rather than asked of a part that arrives. Written over parts of any
+     * clause, this would take a behavior's and answer null, which is the word it has for a
+     * declaration that drew no such line.
+     */
+    public record Key(PartId<RuleRef.Invariant> part) {}
 
     public DeclaredBorders {
         if (at == null) {
@@ -81,7 +89,7 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
      * not read is a clause with no form to print, and a caller handed one has nothing to call the
      * line but the rule's own name.
      */
-    public NumberAt<RuleKey> at(PartId part) {
+    public NumberAt<RuleKey> at(PartId<RuleRef.Invariant> part) {
         return at(new Key(part));
     }
 
@@ -113,7 +121,7 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
     }
 
     /** The same, for a caller holding the part that drew the line. */
-    public String nameOf(PartId part) {
+    public String nameOf(PartId<RuleRef.Invariant> part) {
         return nameOf(new Key(part));
     }
 }

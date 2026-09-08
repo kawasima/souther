@@ -215,12 +215,13 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
         Core states = new Core.Binary(BinOp.GT,
                 new Core.Read("v", value, Type.INT, POS), new Core.Int(0, Type.INT, POS),
                 ConstructOccurrence.unwritten(), Type.BOOL, POS);
+        RuleRef.Ensures ref = new RuleRef.Ensures(new RuleId(FIND, 0, 0, AN_INT), AN_INT.name());
         return new StatedContract(FIND, List.of(), Type.INT,
-                List.of(new StatedContract.StatedRule(new RuleId(FIND, 0, 0, AN_INT),
+                List.of(new StatedContract.StatedRule(
                         new Guard.Case(CaseSpace.resolve(CaseSelector.direct(AN_INT),
                                 Symbols.none(DefaultStdlib.get()))), value,
                         Optional.empty(),
-                        List.of(new StatedContract.Conjunct(POS,
+                        List.of(new StatedContract.Conjunct(new PartId<>(ref, 0), POS,
                                 new souther.compiler.check.TypedClause.Typed(states))))));
     }
 
