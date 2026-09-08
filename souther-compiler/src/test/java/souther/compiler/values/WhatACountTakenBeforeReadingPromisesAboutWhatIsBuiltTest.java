@@ -74,20 +74,17 @@ class WhatACountTakenBeforeReadingPromisesAboutWhatIsBuiltTest {
      */
     private PlannedValues<String> either(PlannedValues<String> one, PlannedValues<String> other,
                                          boolean apart) {
-        if (dead(one) && dead(other)) {
-            return one.bothDead(other);
-        }
-        if (dead(one)) {
-            return other;
-        }
-        if (dead(other)) {
-            return one;
-        }
-        return apart ? one.joinLiveApart(other) : one.joinLive(other);
+        return switch (Emptiness.Alternatives.of(said(one), said(other))) {
+            case NEITHER_STANDS -> one.bothDead(other);
+            case ONLY_THE_RIGHT -> other;
+            case ONLY_THE_LEFT -> one;
+            case BOTH_STAND -> apart ? one.joinLiveApart(other) : one.joinLive(other);
+        };
     }
 
-    private boolean dead(PlannedValues<String> planned) {
-        return planned.holdsNothingAsBuilt(sets);
+    /** This branch's fate, in the words the classification is read in. */
+    private Emptiness said(PlannedValues<String> planned) {
+        return planned.holdsNothingAsBuilt(sets) ? Emptiness.EMPTY : Emptiness.NONEMPTY;
     }
 
     /** The same, and everything one connective reaches from them. */
