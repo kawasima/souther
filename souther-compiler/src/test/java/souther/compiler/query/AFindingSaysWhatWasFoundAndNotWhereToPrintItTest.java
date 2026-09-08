@@ -2,6 +2,7 @@ package souther.compiler.query;
 
 import org.junit.jupiter.api.Test;
 import souther.compiler.coverage.CoverageSites;
+import souther.compiler.meta.ModulePath;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -9,30 +10,41 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Deque;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * A finding says what a measure established. Where a report about one belongs is asked of the
- * module that wrote the code, and what is left holding a place says why.
+ * module that wrote the code, and what is left holding a place is held to a reason that was
+ * measured.
  *
  * <p>Asked of the finding and not of the thing last put right. A place is taken out of one value at
  * a time, and a check rooted at whichever one that was cannot see the rest — which is how a place
  * came to be left under {@code APointOfADeclaredBorder} while everything about the arms was green.
- * So the walk starts where the answer is and reports every place under it.
+ * So the walk starts where the answer is.
  *
- * <p><b>What is left is written down with its reason.</b> Not because the list is the rule — the
- * rule is that a finding carries none — but because a place still under one is either a fact this
- * compiler has measured and left, or one nobody has looked at. An entry added here is a finding of
- * its own: whoever adds it is saying which of the two it is.
+ * <p><b>The reason is a reading, and the reading is checked.</b> Written as a sentence, a reason is
+ * whatever whoever added the line believed when they added it — and two of the ones first written
+ * here were wrong about a census this same change had taken. So there are three readings and no
+ * fourth, each one a thing a corpus either shows or does not: the place tells two of them apart,
+ * nothing reaches one at all, or it was measured to do neither and has not been taken out yet. A
+ * carrier that is none of them fails, which is the only way a place gets to stay.
  */
 class AFindingSaysWhatWasFoundAndNotWhereToPrintItTest {
 
@@ -44,52 +56,243 @@ class AFindingSaysWhatWasFoundAndNotWhereToPrintItTest {
             "souther.compiler.diag.DiagnosticPlace");
 
     /**
-     * Every place still under a finding, and what each of them is.
+     * Why a place is still under a finding, which is a thing a corpus answers.
      *
-     * <p>Three readings and no fourth. A place that tells one value from another cannot be taken
-     * away without merging things this compiler tells apart; a place nothing has measured is one
-     * nobody has looked at, and moving it would be acting on nothing; and a place in the tree the
-     * author wrote is the source itself, which is not what this is about.
+     * <p>Three readings and no word for one nobody has read. What would go under a fourth is a
+     * carrier whose reason is somebody's opinion, and that is what this exists to stop.
      */
-    private static final Map<String, String> WHAT_IS_LEFT = new TreeMap<>(Map.of(
-            "souther.compiler.partition.OnTheWay$Declined.at",
-            "the place is what tells one declined condition from another, and taking it away would"
-                    + " merge conditions this compiler tells apart",
-            "souther.compiler.query.About$AnUnansweredRow.at",
-            "a row is written in the module's own source, which is not a boundary anything crosses",
-            "souther.compiler.check.RuleCitation$WrittenAt.at",
-            "a citation is the handle a report writes for a rule with no name: what it names and how"
-                    + " a reader is sent to it are one answer by design",
-            "souther.compiler.partition.LineOrigin$ComparisonOrigin$Read.writtenAt",
-            "the same, for the rule a comparison reads",
-            "souther.compiler.partition.PredicateOrigin.writtenAt",
-            "the same, for a predicate applied in a body",
-            "souther.compiler.partition.OnTheWay$Narrowed.at",
-            "nothing has been measured about it: no corpus reaches one",
-            "souther.compiler.partition.OnTheWay$TakenIn.at",
-            "nothing has been measured about it: no corpus reaches one",
-            "souther.compiler.inputs.RuleWithoutALine.reachedAt",
-            "nothing has been measured about it: no corpus reaches one",
-            "souther.compiler.observe.Incompleteness$Met.citations",
-            "nothing has been measured about it: no corpus reaches one"));
+    sealed interface Because {
 
-    /** The same, for the three a standing question carries. Held apart only because a map literal
-     *  takes ten pairs at most. */
-    private static final Map<String, String> AND_THE_STANDING_QUESTIONS = Map.of(
-            "souther.compiler.inputs.StandingQuestion$BoundaryUndetermined.reachedAt",
-            "nothing has been measured about it: no corpus reaches one",
-            "souther.compiler.inputs.StandingQuestion$Exact.reachedAt",
-            "nothing has been measured about it: no corpus reaches one",
-            "souther.compiler.inputs.StandingQuestion$NothingClassifiesIt.reachedAt",
-            "nothing has been measured about it: no corpus reaches one");
+        /** The place is what tells two of these apart: taking it away would merge things this
+         *  compiler tells apart. Shown by two of them agreeing on everything else. */
+        record ItTellsThemApart() implements Because {}
+
+        /** Nothing this test compiles reaches one, so nothing has been measured about it and
+         *  moving it would be acting on nothing. Shown by there being none. */
+        record NothingReachesOne() implements Because {}
+
+        /**
+         * Measured to be neither: instances there are, and no two of them differ only in the place.
+         * A carrier whose place is a handle a document prints, which has not been split from what
+         * it is a handle for yet.
+         *
+         * @param owed what has to happen before it goes, said so that a reader meets the work
+         *             rather than the excuse
+         */
+        record MeasuredAndNotYetSplit(String owed) implements Because {}
+    }
+
+    /** Every place still under a finding, and the reading each is here under. */
+    private static final Map<String, Because> WHAT_IS_LEFT = whatIsLeft();
+
+    private static Map<String, Because> whatIsLeft() {
+        Map<String, Because> out = new TreeMap<>();
+        // The one place a place is doing work no identity beside it does: two conditions this
+        // compiler declined to cut are told apart by where they are and by nothing else.
+        out.put("souther.compiler.partition.OnTheWay$Declined.at",
+                new Because.ItTellsThemApart());
+        out.put("souther.compiler.observe.Incompleteness$Met.citations",
+                new Because.NothingReachesOne());
+        out.put("souther.compiler.partition.PredicateOrigin.writtenAt",
+                new Because.NothingReachesOne());
+        out.put("souther.compiler.query.About$AnUnansweredRow.at",
+                new Because.NothingReachesOne());
+        // The handle a document prints for a rule the author gave no name, and the sets of handles
+        // folded out of it. What each of them is a handle for is beside it and is what tells one
+        // from another, which is what the models show: no two of them differ only in the place.
+        String splitTheHandle = "the handle a document prints is split from the rule it is a handle"
+                + " for, and the place asked where a clause's and an arm's are now asked";
+        out.put("souther.compiler.check.RuleCitation$WrittenAt.at",
+                new Because.MeasuredAndNotYetSplit(splitTheHandle));
+        out.put("souther.compiler.partition.LineOrigin$ComparisonOrigin$Read.writtenAt",
+                new Because.MeasuredAndNotYetSplit(splitTheHandle));
+        out.put("souther.compiler.inputs.RuleWithoutALine.reachedAt",
+                new Because.MeasuredAndNotYetSplit(splitTheHandle));
+        out.put("souther.compiler.inputs.StandingQuestion$BoundaryUndetermined.reachedAt",
+                new Because.MeasuredAndNotYetSplit(splitTheHandle));
+        out.put("souther.compiler.inputs.StandingQuestion$Exact.reachedAt",
+                new Because.MeasuredAndNotYetSplit(splitTheHandle));
+        out.put("souther.compiler.inputs.StandingQuestion$NothingClassifiesIt.reachedAt",
+                new Because.MeasuredAndNotYetSplit(splitTheHandle));
+        String splitTheWay = "a condition on the way to a border is told from its neighbours by"
+                + " what it narrows or takes in, and the place asked of whoever writes a sentence";
+        out.put("souther.compiler.partition.OnTheWay$Narrowed.at",
+                new Because.MeasuredAndNotYetSplit(splitTheWay));
+        out.put("souther.compiler.partition.OnTheWay$TakenIn.at",
+                new Because.MeasuredAndNotYetSplit(splitTheWay));
+        return out;
+    }
 
     @Test
     void everyPlaceLeftUnderAFindingIsOneSomebodyAnsweredFor() {
-        Set<String> left = new TreeSet<>(WHAT_IS_LEFT.keySet());
-        left.addAll(AND_THE_STANDING_QUESTIONS.keySet());
-        assertEquals(left, placesUnder(Adequacy.Finding.class),
-                "a place under a finding is one somebody said why about, or one this says to take"
-                        + " out");
+        assertEquals(WHAT_IS_LEFT.keySet(), placesUnder(Adequacy.Finding.class),
+                "a place under a finding is one this holds to a reading, or one to take out");
+    }
+
+    /**
+     * And each reading is what a compile shows, rather than what somebody wrote down.
+     *
+     * <p>The corpus is small and the readings are about what it reaches, so a carrier this says
+     * nothing reaches is one nothing reaches <em>here</em>. That is the whole of the claim: it is
+     * why the word is "nothing has been measured" and not "there are none".
+     */
+    @Test
+    void andEachReadingIsWhatACompileShows() {
+        Map<String, List<Object>> byCarrier = carriersInTheModels();
+        Map<String, String> wrong = new TreeMap<>();
+        WHAT_IS_LEFT.forEach((carrier, because) -> {
+            List<Object> held = byCarrier.getOrDefault(carrier, List.of());
+            String said = says(because, held, carrier);
+            if (said != null) {
+                wrong.put(carrier, said);
+            }
+        });
+        assertEquals(Map.of(), wrong,
+                "each place left under a finding is here under a reading the compile shows");
+    }
+
+    /** What is wrong with {@code because} as a reading of {@code held}, or null where nothing is. */
+    private static String says(Because because, List<Object> held, String carrier) {
+        boolean apart = tellsThemApart(held, carrier);
+        return switch (because) {
+            case Because.NothingReachesOne _ -> held.isEmpty() ? null
+                    : "something reaches one: " + held.size() + " of them";
+            case Because.ItTellsThemApart _ -> held.isEmpty()
+                    ? "nothing reaches one, so nothing shows the place tells them apart"
+                    : apart ? null : "no two of them differ only in the place";
+            case Because.MeasuredAndNotYetSplit _ -> held.isEmpty()
+                    ? "nothing reaches one, so nothing was measured"
+                    : apart ? "the place tells two of them apart, so it is not a handle" : null;
+        };
+    }
+
+    /** Whether two of {@code held} agree on everything but where they are. */
+    private static boolean tellsThemApart(List<Object> held, String carrier) {
+        Map<List<Object>, Set<List<Object>>> byRest = new LinkedHashMap<>();
+        for (Object each : held) {
+            List<Object> rest = new ArrayList<>();
+            List<Object> place = new ArrayList<>();
+            for (Field field : each.getClass().getDeclaredFields()) {
+                if (Modifier.isStatic(field.getModifiers())) {
+                    continue;
+                }
+                field.setAccessible(true);
+                try {
+                    (carrier.endsWith("." + field.getName()) ? place : rest).add(field.get(each));
+                } catch (IllegalAccessException unreadable) {
+                    throw new IllegalStateException(unreadable);
+                }
+            }
+            byRest.computeIfAbsent(rest, _ -> new LinkedHashSet<>()).add(place);
+        }
+        return byRest.values().stream().anyMatch(places -> places.size() > 1);
+    }
+
+    /** Every instance of a registered carrier this compile holds, by carrier. */
+    private static Map<String, List<Object>> carriersIn(Db db) {
+        Set<String> wanted = new LinkedHashSet<>();
+        WHAT_IS_LEFT.keySet().forEach(each -> wanted.add(each.substring(0, each.lastIndexOf('.'))));
+        Map<String, List<Object>> out = new LinkedHashMap<>();
+        Set<Object> seen = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
+        Deque<Object> queue = new ArrayDeque<>();
+        db.everyAnswer().values().forEach(queue::add);
+        while (!queue.isEmpty()) {
+            Object at = queue.poll();
+            if (at == null || !seen.add(at)) {
+                continue;
+            }
+            switch (at) {
+                case Collection<?> many -> {
+                    many.forEach(each -> push(queue, each));
+                    continue;
+                }
+                case Map<?, ?> map -> {
+                    map.forEach((key, value) -> {
+                        push(queue, key);
+                        push(queue, value);
+                    });
+                    continue;
+                }
+                case Optional<?> maybe -> {
+                    maybe.ifPresent(each -> push(queue, each));
+                    continue;
+                }
+                default -> { }
+            }
+            Class<?> of = at.getClass();
+            if (of.getName().startsWith("java.") || of.isEnum()) {
+                continue;
+            }
+            if (wanted.contains(of.getName())) {
+                out.computeIfAbsent(carrierOf(of), _ -> new ArrayList<>()).add(at);
+            }
+            for (Field field : of.getDeclaredFields()) {
+                if (Modifier.isStatic(field.getModifiers()) || field.getType().isPrimitive()) {
+                    continue;
+                }
+                field.setAccessible(true);
+                try {
+                    push(queue, field.get(at));
+                } catch (IllegalAccessException unreadable) {
+                    throw new IllegalStateException(unreadable);
+                }
+            }
+        }
+        return out;
+    }
+
+    /** The registered carrier {@code of} is the class of. */
+    private static String carrierOf(Class<?> of) {
+        return WHAT_IS_LEFT.keySet().stream()
+                .filter(each -> each.startsWith(of.getName() + "."))
+                .findFirst().orElseThrow();
+    }
+
+    private static void push(Deque<Object> queue, Object each) {
+        if (each != null) {
+            queue.add(each);
+        }
+    }
+
+    /**
+     * The models this repository carries, which is what the readings above are readings of.
+     *
+     * <p>Every one of them and not the nearest. The readings are about what a compile reaches, so a
+     * corpus left out is a carrier this would say nothing reaches — and the census these were taken
+     * from was taken over these, so a check over fewer would be answering about a different set
+     * than the one somebody measured.
+     */
+    private static final List<String> THE_MODELS = List.of(
+            "src/test/resources/souther/compiler/conformance/catalog",
+            "src/test/resources/souther/compiler/conformance/staffing",
+            "../souther-bench/src/main/resources/souther/bench/corpus/crm",
+            "../souther-bench/src/main/resources/souther/bench/corpus/issuetracker");
+
+    /** Every instance of a registered carrier the models reach, by carrier. */
+    private static Map<String, List<Object>> carriersInTheModels() {
+        Map<String, List<Object>> out = new LinkedHashMap<>();
+        for (String model : THE_MODELS) {
+            carriersIn(compiled(model)).forEach((carrier, held) ->
+                    out.computeIfAbsent(carrier, _ -> new ArrayList<>()).addAll(held));
+        }
+        return out;
+    }
+
+    /** A compile of one model, with its findings asked for. */
+    private static Db compiled(String model) {
+        Map<String, String> byId = new LinkedHashMap<>();
+        Path root = Path.of(model);
+        try (Stream<Path> files = Files.walk(root)) {
+            for (Path each : files.filter(p -> p.toString().endsWith(".sou")).sorted().toList()) {
+                byId.put(each.getFileName().toString(), Files.readString(each));
+            }
+        } catch (java.io.IOException unreadable) {
+            throw new java.io.UncheckedIOException(unreadable);
+        }
+        Compilation c = Compilation.ofDocuments(byId, Set.of(), ModulePath.EMPTY);
+        c.answerEverything();
+        c.modules().forEach(module -> c.db().ask(new Adequacy.Findings(module)));
+        return c.db();
     }
 
     /**
@@ -168,7 +371,7 @@ class AFindingSaysWhatWasFoundAndNotWhereToPrintItTest {
     /** A written type and whatever was written inside it, so a place in a list is a place. */
     private static List<Type> withArguments(Type type) {
         return type instanceof ParameterizedType wrote
-                ? java.util.stream.Stream.concat(java.util.stream.Stream.of(type),
+                ? Stream.concat(Stream.of(type),
                         java.util.Arrays.stream(wrote.getActualTypeArguments())).toList()
                 : List.of(type);
     }

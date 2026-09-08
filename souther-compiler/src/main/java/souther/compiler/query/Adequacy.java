@@ -4053,7 +4053,8 @@ public final class Adequacy {
      *               on the debt because only a declaration has such a word: a reading names the
      *               position it met the line at and there are as many of those as there are
      *               positions, and a line no declaration drew is on nothing anybody named
-     * @param owners the module's own declarations that owe it, each with where it is written. Never
+     * @param owners the module's own declarations that owe it. Where each of them is written is
+     *               asked of the module that wrote it, and is no part of this. Never
      *               empty: a line no declaration here owes is not this module's debt and is not one
      *               of these
      */

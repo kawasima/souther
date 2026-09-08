@@ -60,9 +60,12 @@ public final class Sites {
      *
      * <p>Here rather than at each of them, because a module wrote what it wrote once: answered
      * apart, the two would be two walks of one source, agreeing until the day one of them was
-     * taught something the other was not. Kept as its own question so each of the two depends on
-     * what it means rather than on the other — an editor asking what is at a place is not looking
-     * at where a fork is, and neither of them is recomputed for the other.
+     * taught something the other was not.
+     *
+     * <p>Kept as its own question so that what each of the two says stops where its own meaning
+     * stops. Both are worked out again whenever this comes out different, which an edit to the
+     * source makes it; what an editor is told about a place then comes back the same where nothing
+     * about the places moved, and goes no further.
      */
     record Walk(String name) implements Key<AuthoredSites.Walked> {
 
