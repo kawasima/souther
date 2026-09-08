@@ -66,6 +66,10 @@ class AValueSpellsItsHashWithTheAlgebraThePackageHasTest {
     /** What a record's own equality and hash are left to, which is nobody here deciding anything. */
     private static final String DERIVED = "java/lang/runtime/ObjectMethods";
 
+    /** Asked of the number a hash hands back where which shape it was asked for is not the
+     *  question. */
+    private static final String ANY_SHAPE = "";
+
     private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
 
     @Test
@@ -103,7 +107,7 @@ class AValueSpellsItsHashWithTheAlgebraThePackageHasTest {
             }
             boolean spellsIt = spelledOut(read, "equals", "(Ljava/lang/Object;)Z").isPresent();
             boolean unordered = spelledOut(read, "hashCode", "()I")
-                    .filter(hash -> asks(hash, "ofAnUnorderedPair")).isPresent();
+                    .filter(hash -> handsBack(hash, "ofAnUnorderedPair")).isPresent();
             if (spellsIt != unordered) {
                 disagreeing.add(read.thisClass().name().stringValue()
                         + (spellsIt ? " writes an equality the compiler would have written"
@@ -156,25 +160,30 @@ class AValueSpellsItsHashWithTheAlgebraThePackageHasTest {
 
     /** Whether the number {@code hash} hands back is one the algebra answered. */
     private static boolean fromTheAlgebra(ClassModel read, MethodModel hash) {
-        if (asks(hash)) {
+        if (handsBack(hash, ANY_SHAPE)) {
             return true;
         }
         return handedBack(read, hash).filter(field -> putThereByTheAlgebra(read, field)).isPresent();
     }
 
-    /** Whether the method asks the algebra for a number. */
-    private static boolean asks(MethodModel method) {
-        return instructionsOf(method).stream().anyMatch(instruction ->
-                instruction instanceof InvokeInstruction call
-                        && THE_ALGEBRA.equals(call.owner().name().stringValue()));
-    }
-
-    /** Whether the method asks the algebra for a number of that shape. */
-    private static boolean asks(MethodModel method, String shape) {
-        return instructionsOf(method).stream().anyMatch(instruction ->
-                instruction instanceof InvokeInstruction call
-                        && THE_ALGEBRA.equals(call.owner().name().stringValue())
-                        && shape.equals(call.name().stringValue()));
+    /**
+     * Whether the method hands back what the algebra answered, of {@code shape} where one is named.
+     *
+     * <p>Read as the answer being returned and not as the call being made. A method that asks the
+     * algebra and hands back something else has asked and answered separately, which is the defect
+     * this is about with its own remedy standing beside it.
+     */
+    private static boolean handsBack(MethodModel method, String shape) {
+        List<Instruction> body = instructionsOf(method);
+        for (int at = 0; at + 1 < body.size(); at++) {
+            if (body.get(at) instanceof InvokeInstruction call
+                    && THE_ALGEBRA.equals(call.owner().name().stringValue())
+                    && (ANY_SHAPE.equals(shape) || shape.equals(call.name().stringValue()))
+                    && body.get(at + 1) instanceof ReturnInstruction) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** The field a hash hands back where the whole of it is handing one back, which is what a value
