@@ -36,6 +36,7 @@ import java.lang.constant.ClassDesc;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -213,21 +214,73 @@ final class WhatBecomesOfAValueOnTheStack {
     /**
      * Whether what is read out of a local this value was put into is compared.
      *
-     * <p>Every reading of the local up to the next writing of it, since after that the name holds
-     * something else. Which is why a writing ends this rather than refusing: what is in the name
-     * from there on is not this value, and the readings before it are all of them there are.
+     * <p><b>A name is not the value, and which value is in it is each way round's own.</b> A name
+     * written on one way through the code still holds what it held on the ways that missed the
+     * writing, so what a place reads out of it is what any way here left there. Read as the last
+     * writing before that place, a name given another value inside a condition would be read as
+     * having it on every way, and a comparison after the condition would be about a value nothing
+     * put there.
+     *
+     * <p>So the ways are followed as they are for a value on the stack, and put together where they
+     * meet: the name holds the value where any way arriving holds it. A way that comes back to
+     * where this has already been is walked again, until no way says anything new — which it
+     * reaches, since a name that holds the value goes on holding it and no round takes that back.
      */
     private static boolean heldIn(List<CodeElement> elements, int from, int slot, int through) {
-        for (int at = from + 1; at < elements.size(); at++) {
-            CodeElement element = elements.get(at);
-            if (element instanceof StoreInstruction put && put.slot() == slot) {
-                return false;
+        Map<Label, Integer> placed = new HashMap<>();
+        for (int where = 0; where < elements.size(); where++) {
+            if (elements.get(where) instanceof LabelTarget target) {
+                placed.put(target.label(), where);
             }
-            if (element instanceof IncrementInstruction added && added.slot() == slot) {
-                return false;
+        }
+        Map<Label, Boolean> arriving = new HashMap<>();
+        Set<Integer> readWhileHeld = new LinkedHashSet<>();
+        boolean anythingNew = true;
+        int rounds = 0;
+        while (anythingNew) {
+            if (++rounds > 16) {
+                throw new IllegalStateException("what a name holds would not settle");
             }
-            if (element instanceof LoadInstruction got && got.slot() == slot
-                    && followedFrom(elements, at, through + 1)) {
+            anythingNew = false;
+            boolean holds = true;
+            boolean reached = true;
+            for (int at = from + 1; at < elements.size(); at++) {
+                CodeElement element = elements.get(at);
+                if (element instanceof LabelTarget target) {
+                    Boolean said = arriving.get(target.label());
+                    if (said != null) {
+                        holds = said || (reached && holds);
+                        reached = true;
+                    }
+                    continue;
+                }
+                if (!(element instanceof Instruction instruction) || !reached) {
+                    continue;
+                }
+                if (holds) {
+                    if (element instanceof StoreInstruction put && put.slot() == slot) {
+                        holds = false;
+                    } else if (element instanceof IncrementInstruction added
+                            && added.slot() == slot) {
+                        holds = false;
+                    } else if (element instanceof LoadInstruction got && got.slot() == slot
+                            && readWhileHeld.add(at)) {
+                        anythingNew = true;
+                    }
+                }
+                for (Label target : whereItMayGo(instruction)) {
+                    Boolean was = arriving.get(target);
+                    boolean now = was != null ? was || holds : holds;
+                    if (was == null || was != now) {
+                        arriving.put(target, now);
+                        anythingNew = true;
+                    }
+                }
+                reached = !ends(instruction);
+            }
+        }
+        for (int at : readWhileHeld) {
+            if (followedFrom(elements, at, through + 1)) {
                 return true;
             }
         }

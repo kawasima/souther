@@ -232,7 +232,10 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
             "souther/architecture/WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest$Comparing#itIsNotEmpty"
                     + "(Lsouther/compiler/values/Emptiness;)Z",
             "souther/architecture/WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest$Comparing#itIsWhatWasPutAway"
-                    + "(Lsouther/compiler/values/Emptiness;)Z");
+                    + "(Lsouther/compiler/values/Emptiness;)Z",
+            "souther/architecture/WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest$Comparing#itIsWhatWasPutAwayUnlessSomethingElseWas"
+                    + "(Lsouther/compiler/values/Emptiness;"
+                    + "Lsouther/compiler/values/Emptiness;Z)Z");
 
     /**
      * One reading whose meaning nobody has decided yet, and which question it is.
@@ -451,6 +454,13 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
         assertTrue(Comparing.itIsWhatWasPutAway(Emptiness.EMPTY),
                 "and one written into a name and compared out of it is a comparison");
         assertFalse(Comparing.itIsWhatWasPutAway(Emptiness.NONEMPTY));
+        assertTrue(Comparing.itIsWhatWasPutAwayUnlessSomethingElseWas(
+                        Emptiness.EMPTY, Emptiness.NONEMPTY, false),
+                "and one out of a name another way round writes over is a comparison on the way"
+                        + " that did not — and what writes over it is no constant, so this body is"
+                        + " a comparison for this constant or for none");
+        assertTrue(Comparing.itIsWhatWasPutAwayUnlessSomethingElseWas(
+                Emptiness.NONEMPTY, Emptiness.NONEMPTY, true));
         assertTrue(Comparing.emptyIsWhicheverOfThese(Emptiness.EMPTY, Emptiness.NONEMPTY, true),
                 "and one compared against an answer the code works out first is a comparison too");
         assertFalse(Comparing.emptyIsWhicheverOfThese(Emptiness.EMPTY, Emptiness.NONEMPTY, false));
@@ -626,6 +636,23 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
          */
         static boolean itIsWhatWasPutAway(Emptiness said) {
             Emptiness nothingAtAll = Emptiness.EMPTY;
+            return said == nothingAtAll;
+        }
+
+        /**
+         * And one written into a name that another way round writes over.
+         *
+         * <p>The second writing is on one way through and not on the other, so what is compared is
+         * this constant wherever the condition was not taken. Read as the writing that stands
+         * nearest before the comparison, the name would be read as holding the other constant on
+         * every way, and this comparison would be one nothing sees.
+         */
+        static boolean itIsWhatWasPutAwayUnlessSomethingElseWas(Emptiness said, Emptiness other,
+                                                                boolean instead) {
+            Emptiness nothingAtAll = Emptiness.EMPTY;
+            if (instead) {
+                nothingAtAll = other;
+            }
             return said == nothingAtAll;
         }
 
