@@ -273,9 +273,8 @@ sealed interface StatedByClauses {
          *
          * <p><b>Of the reading of values, which is what the name says and not all there is.</b>
          * Where a position's order stops is taken back by an unread alternative the same way, and
-         * an author is sent to the choice for that by nothing here. What is deliberate is only that
-         * this change leaves the set of these findings where it was; the missing half is written
-         * down as its own question rather than folded in beside a correction.
+         * an author is sent to the choice for that by nothing here. Whether they are owed it is a
+         * question of its own and is open.
          */
         private static void leftOpenByValues(RuleShortfall.Site.AtAChoice choice,
                                              Set<FactSubject> these,
