@@ -123,10 +123,16 @@ class ARowWhoseAnswerIsOwedIsARowAndAssertsNothingTest {
      */
     @Test
     void aBuildStillRefusesOverIt() {
-        assertTrue(gapCodesIn(OWED).contains("E1918"),
-                "an arm with an unanswered row at it is a gap: " + gapCodesIn(OWED));
-        assertFalse(gapCodesIn(ANSWERED).contains("E1918"),
-                "and answering it settles the gap: " + gapCodesIn(ANSWERED));
+        // Each side compiled once and read twice. Written as the message of an assertion, the
+        // second read runs whether or not the assertion needs it — a compile apiece, on a model
+        // measured at the level that runs every row a second time.
+        List<String> owed = gapCodesIn(OWED);
+        List<String> answered = gapCodesIn(ANSWERED);
+
+        assertTrue(owed.contains("E1918"),
+                () -> "an arm with an unanswered row at it is a gap: " + owed);
+        assertFalse(answered.contains("E1918"),
+                () -> "and answering it settles the gap: " + answered);
 
         // The verdict itself, and not only the code the warning carries. What `--strict` exits over
         // is this word; a gap that was printed and left the verdict satisfied would let a build
