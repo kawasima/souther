@@ -46,6 +46,8 @@ import souther.compiler.query.Weakening;
 import souther.compiler.query.WeakeningSet;
 import souther.compiler.observe.MeasurementStatus;
 import souther.compiler.query.OutputCaseEvidence;
+import souther.compiler.coverage.ArmLocations;
+import souther.compiler.coverage.ArmReportAnchor;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.coverage.DecidedBy;
 import souther.compiler.coverage.SuppliedRules;
@@ -199,7 +201,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      */
     public record ModuleReport(String module, SourceId declaredIn,
                                List<BehaviorReport> behaviors,
-                               List<Adequacy.Finding> declarations,
+                               List<ReportedFinding> declarations,
                                Adequacy.DeclaredBoundaries owedByDeclarations) {
 
         /**
@@ -302,20 +304,78 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     }
 
     /**
+     * One finding as this report shows it: what was found, and where it is shown.
+     *
+     * <p>The two are one thing here and two things upstream. A finding says what a reading came to
+     * and nothing about where any of it is written, so that a helper moving is not a finding
+     * changing; where a report about it belongs is worked out once, when this report is assembled,
+     * by the rule {@link Adequacy#placeOf} owns and the warnings a build reads use as well.
+     *
+     * <p>Recombined here and not carried down as a second list beside the findings. Two collections
+     * whose entries answer for each other is a correspondence somebody has to keep true, and a
+     * report holding one finding and another's place would show a reader the wrong line with no
+     * way to tell.
+     */
+    public record ReportedFinding(Adequacy.Finding finding, Citation at) {
+
+        public ReportedFinding {
+            java.util.Objects.requireNonNull(finding, "a reported finding is some finding");
+            java.util.Objects.requireNonNull(at, "a reported finding is shown somewhere");
+        }
+
+        /** What it is about, for a reader that wants the fact and not the page. */
+        public About about() {
+            return finding.about();
+        }
+
+        /** Which kind of thing it is, as the finding says. */
+        public Adequacy.Kind kind() {
+            return finding.kind();
+        }
+    }
+
+    /**
      * What one behavior's compile came to, as this report says it.
      *
      * @param claimed   what the body declared cannot arrive, beside the measures rather than in
      *                  them. The two are joined where this report is written and nowhere else,
      *                  which is what keeps a claim from reaching a denominator
-     * @param findings  what the measures found and nothing filled, which is what the lines under this
-     *                  behavior print and what a build is warned about — one list, read three ways
+     * @param reported  what the measures found and nothing filled, each with where this report
+     *                  shows it — which is what the lines under this behavior print and what a
+     *                  build is warned about
+     * @param armPlaces where each arm of this behavior is shown, for the lines that name one no
+     *                  finding is about
      */
     public record BehaviorReport(String name, BehaviorImplementation implementation,
                                  BehaviorEvidence evidence,
                                  ClaimAnnotations claimed,
-                                 List<Adequacy.Finding> findings) {
+                                 List<ReportedFinding> reported,
+                                 Map<ArmReportAnchor, Citation> armPlaces) {
         public BehaviorReport {
-            findings = List.copyOf(findings);
+            reported = List.copyOf(reported);
+            armPlaces = Map.copyOf(armPlaces);
+        }
+
+        /**
+         * Where this report shows {@code arm}.
+         *
+         * <p>Worked out when the report was assembled, from the same question the warnings a build
+         * reads ask. An arm carries which of the two places names it and not the place itself, so
+         * an arm the report was not assembled with is one nothing here can show — which is two of
+         * this compiler's answers disagreeing rather than a caret to leave empty.
+         */
+        public Citation placeOf(CoverageSites.ArmSite arm) {
+            Citation at = armPlaces.get(arm.anchor());
+            if (at == null) {
+                throw new IllegalStateException("this report was not assembled with the arm "
+                        + arm.anchor() + " of `" + name + "`");
+            }
+            return at;
+        }
+
+        /** What was found about this behavior, without where any of it is shown. */
+        public List<Adequacy.Finding> findings() {
+            return reported.stream().map(ReportedFinding::finding).toList();
         }
 
         /** How far the reading of this behavior's rows got, and what it read. The counts a document
@@ -414,7 +474,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
 
         /** The findings of one kind, in the order the measure produced them. */
         public List<Adequacy.Finding> of(Adequacy.Kind kind) {
-            return findings.stream().filter(f -> f.kind() == kind).toList();
+            return findings().stream().filter(f -> f.kind() == kind).toList();
         }
     }
 
@@ -514,13 +574,15 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                             accounts == null ? null : accounts.get(behavior.name()), branch),
                     claims == null ? ClaimAnnotations.NONE
                             : claims.getOrDefault(behavior.name(), ClaimAnnotations.NONE),
-                    ofBehavior(findings, behavior.name())));
+                    ofBehavior(compilation, name, findings, behavior.name()),
+                    armPlaces(compilation, branch)));
         }
         return new ModuleReport(name, compilation.sourceIdOf(name), behaviors,
                 findings == null ? List.of()
                         : findings.stream()
                                 .filter(each -> !(each.subject()
                                         instanceof FindingSubject.OfABehavior))
+                                .map(each -> reported(compilation, name, each))
                                 .toList(),
                 compilation.db().ask(new Adequacy.DeclaredBorders(name)).value());
     }
@@ -532,8 +594,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * report carries is work nobody reading it can do, and one that some behavior here carries is
      * work a row written in front of the reader settles.
      */
-    private static List<Adequacy.Finding> carriedBy(List<Adequacy.Finding> declarations,
-                                                    List<BehaviorReport> shown) {
+    private static List<ReportedFinding> carriedBy(List<ReportedFinding> declarations,
+                                                   List<BehaviorReport> shown) {
         Set<String> names = shown.stream().map(BehaviorReport::name)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         return declarations.stream()
@@ -543,11 +605,51 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 .toList();
     }
 
-    /** The findings about one behavior. Grouped here, where a block per behavior is printed, and
-     *  not by the measure: what each finding is about is its own answer. */
-    private static List<Adequacy.Finding> ofBehavior(List<Adequacy.Finding> findings, String name) {
+    /**
+     * The findings about one behavior, each with where this report shows it.
+     *
+     * <p>Grouped here, where a block per behavior is printed, and not by the measure: what each
+     * finding is about is its own answer. Placed here too, and this is the only moment it happens —
+     * the rule is {@link Adequacy#placeOf}'s, which is also what the warnings a build reads use, so
+     * a finding cannot be shown in one place on the page and another on the command line.
+     */
+    private static List<ReportedFinding> ofBehavior(Compilation compilation, String module,
+                                                    List<Adequacy.Finding> findings, String name) {
         return findings == null ? List.of()
-                : findings.stream().filter(each -> each.subject().isBehavior(name)).toList();
+                : findings.stream().filter(each -> each.subject().isBehavior(name))
+                        .map(each -> reported(compilation, module, each)).toList();
+    }
+
+    /**
+     * Where this report shows each arm of one behavior.
+     *
+     * <p>Built from the branch evidence itself, so that every arm the page may name has an entry
+     * and nothing else does — a lookup gathered from anywhere else would be a second collection
+     * whose agreement with the arms is somebody's to keep true.
+     *
+     * <p>Asked once per arm and not once per mention: an arm is named on the summary line, under
+     * the findings and again in the document, and the place is the same answer each time.
+     */
+    private static Map<ArmReportAnchor, Citation> armPlaces(Compilation compilation,
+                                                            Adequacy.BranchEvidence branch) {
+        if (branch == null || branch.measured().made().isEmpty()) {
+            return Map.of();
+        }
+        ArmLocations written = souther.compiler.query.Sites.armLocations(compilation.db());
+        Map<ArmReportAnchor, Citation> places = new LinkedHashMap<>();
+        for (ArmObligation arm : branch.measured().made().orElseThrow().all()) {
+            for (CoverageSites.ArmSite each : arm.occurrences()) {
+                places.computeIfAbsent(each.anchor(), written::of);
+            }
+        }
+        return places;
+    }
+
+    /** One finding with where this report shows it. */
+    private static ReportedFinding reported(Compilation compilation, String module,
+                                            Adequacy.Finding finding) {
+        return new ReportedFinding(finding,
+                Adequacy.placeOf(compilation.db(), module, finding));
     }
 
     /**
@@ -596,8 +698,9 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                     at.owedAt(each.debt().at()).searches(), names, null));
         }
         Map<String, List<Adequacy.Finding>> byDeclaration = new LinkedHashMap<>();
-        for (Adequacy.Finding each : module.declarations()) {
-            byDeclaration.computeIfAbsent(each.named(), _ -> new ArrayList<>()).add(each);
+        for (ReportedFinding each : module.declarations()) {
+            byDeclaration.computeIfAbsent(each.finding().named(), _ -> new ArrayList<>())
+                    .add(each.finding());
         }
         byDeclaration.forEach((declaration, findings) -> {
             out.append(String.format("  %s%n", declaration));
@@ -693,7 +796,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         return Stream.concat(
                         modules.stream().flatMap(m -> m.behaviors().stream())
                                 .flatMap(b -> b.findings().stream()),
-                        modules.stream().flatMap(m -> m.declarations().stream()))
+                        modules.stream().flatMap(m -> m.declarations().stream())
+                                .map(ReportedFinding::finding))
                 .toList();
     }
 
@@ -1900,7 +2004,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         for (ArmObligation.Counted open : arms.undecided()) {
             out.append(String.format("      ? undecided whether a row goes through `%s` (%s)%n",
                     ArmVocabulary.label(open.display()),
-                    open.display().at().said(names, declaredIn)));
+                    behavior.placeOf(open.display()).said(names, declaredIn)));
         }
         // Whatever findings there are, and no second opinion about whether there may be any. Which
         // arms may be named is settled where they are collected, so a condition repeated here would
@@ -1911,10 +2015,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         // under already names. It is not always: a body is spliced into whatever calls it, so an arm
         // written in a helper another module declares is in that module's file, and there the file
         // is named with it.
-        for (Adequacy.Finding f : behavior.findings()) {
+        for (ReportedFinding f : behavior.reported()) {
             if (f.about() instanceof About.AnArmNoRowGoesThrough(var arm)) {
                 out.append(String.format("      %s no row goes through `%s` (%s)%n",
-                        mark(f), ArmVocabulary.label(arm), f.at().said(names, declaredIn)));
+                        mark(f.finding()), ArmVocabulary.label(arm),
+                        f.at().said(names, declaredIn)));
             }
         }
     }
@@ -3030,7 +3135,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 signature(b, behavior.signature());
                 partition(b, behavior.partition(), behavior.boundaryReadings(),
                         behavior.account(), behavior.claimed(), sources);
-                branch(b, behavior.branch(), sources);
+                branch(b, behavior, sources);
                 findings(b, behavior, sources);
             }
         }
@@ -3423,12 +3528,12 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         });
     }
 
-    static void branch(ObjectNode behavior, Adequacy.BranchEvidence branch,
-                               DocumentSources sources) {
+    static void branch(ObjectNode into, BehaviorReport behavior, DocumentSources sources) {
+        Adequacy.BranchEvidence branch = behavior.branch();
         if (branch == null) {
             return;
         }
-        ObjectNode out = behavior.putObject("branch");
+        ObjectNode out = into.putObject("branch");
         measured(out, branch.measured(), (node, arms) -> {
             // One entry per arm the author wrote, and the numbers are not written beside them. A
             // count of arms and a count of covered arms are both a fold of this array, and written
@@ -3447,7 +3552,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 // same outcome of two constructs, and a consumer told only the outcome cannot
                 // tell them apart.
                 a.put("construct", word(arm.display().construct()));
-                at(a, arm.display().at(), sources);
+                at(a, behavior.placeOf(arm.display()), sources);
                 // Where the arm stands, once. What the rows came to and how far the reading got are
                 // what the account read to decide it, and an arm's reading is one reading — so a
                 // status and a hit beside this would be the same answer in a second encoding, with
@@ -3582,7 +3687,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * line or a class, that coordinate is not where the reader would go.
      */
     private void findings(ObjectNode behavior, BehaviorReport of, DocumentSources sources) {
-        findings(DocumentPart.FINDINGS.putArray(behavior), of.findings(), sources);
+        findings(DocumentPart.FINDINGS.putArray(behavior), of.reported(), sources);
     }
 
     /**
@@ -3651,7 +3756,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * entries alone, the subject a finding writes is what the line asks of a row, and the
      * declaration it belongs to would be gone.
      */
-    private void declarations(ArrayNode out, List<Adequacy.Finding> written,
+    private void declarations(ArrayNode out, List<ReportedFinding> written,
                               List<Adequacy.DeclaredDebt> owed, DocumentSources sources) {
         // What the declarations are owed, under the declaration each is owed to, and not only what
         // they are short of. A line a row already stands at has no finding, so a section written
@@ -3670,9 +3775,9 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             byOwners.computeIfAbsent(each.subject().declarations(), _ -> new Entry())
                     .owed.add(each);
         }
-        for (Adequacy.Finding each : written) {
+        for (ReportedFinding each : written) {
             List<TypeSymbol.AtModule> owners =
-                    each.subject() instanceof FindingSubject.OfADeclaration it
+                    each.finding().subject() instanceof FindingSubject.OfADeclaration it
                             ? it.declarations() : List.of();
             byOwners.computeIfAbsent(owners, _ -> new Entry()).found.add(each);
         }
@@ -3693,7 +3798,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     /** What one set of owners owes and is short of, gathered before anything is written. */
     private static final class Entry {
         private final List<Adequacy.DeclaredDebt> owed = new ArrayList<>();
-        private final List<Adequacy.Finding> found = new ArrayList<>();
+        private final List<ReportedFinding> found = new ArrayList<>();
 
         /**
          * What a report calls this set, taken from whoever already says it.
@@ -3707,7 +3812,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 return owed.getFirst().subject().named();
             }
             return found.isEmpty()
-                    ? AuthoredLine.naming(owners) : found.getFirst().named();
+                    ? AuthoredLine.naming(owners) : found.getFirst().finding().named();
         }
     }
 
@@ -3719,9 +3824,10 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * Written twice, a consumer joining on the fields would find them agreeing until one of the two
      * was edited.
      */
-    private void findings(DocumentArray out, List<Adequacy.Finding> written,
+    private void findings(DocumentArray out, List<ReportedFinding> written,
                           DocumentSources sources) {
-        for (Adequacy.Finding finding : written) {
+        for (ReportedFinding reported : written) {
+            Adequacy.Finding finding = reported.finding();
             DocumentItem found = out.addObject();
             ObjectNode f = found.node();
             f.put("kind", word(finding.kind()));
@@ -3760,9 +3866,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // not one with an empty code, and a consumer joining these to the diagnostics a build
             // printed reads the difference.
             finding.code().ifPresent(code -> f.put("code", code.name()));
-            Citation place = placeOfItsOwn(finding);
-            if (place != null) {
-                at(f, place, sources);
+            if (hasAPlaceOfItsOwn(finding)) {
+                at(f, reported.at(), sources);
             }
         }
     }
@@ -3784,17 +3889,16 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * about what it is about, and reading it back off a coordinate would be this report working out
      * something the measure already knew.
      */
-    private static Citation placeOfItsOwn(Adequacy.Finding finding) {
+    private static boolean hasAPlaceOfItsOwn(Adequacy.Finding finding) {
         return switch (finding.about()) {
             // Both arm findings, for the same reason: what tells two arms of one behavior apart is
             // where they are, and that is as true of an arm whose row is waiting as of one with no
             // row.
-            case About.AnArmNoRowGoesThrough _, About.ARowAtAnArmAwaitsItsAnswer _ ->
-                    finding.at();
+            case About.AnArmNoRowGoesThrough _, About.ARowAtAnArmAwaitsItsAnswer _ -> true;
             // And a row's, for the same reason one arm is told from another by where it is: a
             // behavior's rows are as many as somebody wrote, and the one this is about is the one
             // at this place.
-            case About.AnUnansweredRow _ -> finding.at();
+            case About.AnUnansweredRow _ -> true;
             case About.ACaseNoRowExpects _, About.ACaseNothingWasSeenToProduce _,
                     About.ACaseNoRowAppliesItTo _, About.AClassNoRowIsIn _,
                     About.APointOfABorder _, About.APointOfADeclaredBorder _,
@@ -3803,7 +3907,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                     About.ARuleNothingClassified _,
                     About.AQuestionNothingAnswered _,
                     About.APositionWhoseRulesWereNotReached _,
-                    About.APositionReadWiderThanItsRules _ -> null;
+                    About.APositionReadWiderThanItsRules _ -> false;
         };
     }
 

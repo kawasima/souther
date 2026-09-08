@@ -266,7 +266,7 @@ final class AReportOfOneBorder {
                                 .filter(point -> point.belongsToBehaviorAccount("weigh"))
                                 .toList()),
                         null),
-                souther.compiler.query.ClaimAnnotations.NONE, List.of());
+                souther.compiler.query.ClaimAnnotations.NONE, List.of(), java.util.Map.of());
         return new AdequacyReport(AdequacyReport.SCHEMA_VERSION, "test",
                 held, WeakeningSet.none(),
                 List.of(new AdequacyReport.ModuleReport("example.wide",

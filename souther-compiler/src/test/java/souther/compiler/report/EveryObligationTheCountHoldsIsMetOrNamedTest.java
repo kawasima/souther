@@ -211,20 +211,22 @@ class EveryObligationTheCountHoldsIsMetOrNamedTest {
                             long found = findingsAbout(behavior, gap);
                             if (found != 1) {
                                 wrong.add(reported.name() + " " + behavior.name() + ": an arm at "
-                                        + gap.display().at() + " carries " + found + " findings");
+                                        + behavior.placeOf(gap.display()) + " carries " + found
+                                        + " findings");
                             }
                         }
                         for (ArmObligation.Counted open : arms.undecided()) {
                             if (findingsAbout(behavior, open) != 0) {
                                 wrong.add(reported.name() + " " + behavior.name()
-                                        + ": an undecided arm at " + open.display().at()
+                                        + ": an undecided arm at " + behavior.placeOf(open.display())
                                         + " carries a finding");
                             }
                         }
                         for (ArmObligation.NotCounted left : arms.notCounted()) {
                             if (findingsAbout(behavior, left) != 0) {
                                 wrong.add(reported.name() + " " + behavior.name()
-                                        + ": an arm out of the count at " + left.display().at()
+                                        + ": an arm out of the count at "
+                                        + behavior.placeOf(left.display())
                                         + " carries a finding");
                             }
                         }

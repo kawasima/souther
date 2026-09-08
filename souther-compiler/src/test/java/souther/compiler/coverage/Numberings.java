@@ -1,6 +1,6 @@
 package souther.compiler.coverage;
 
-import souther.compiler.diag.Citation;
+import souther.compiler.coverage.ArmReportAnchor;
 import souther.compiler.types.SourceConstructOrigin;
 
 import java.util.LinkedHashMap;
@@ -55,8 +55,9 @@ public final class Numberings {
      * makes.
      */
     public static ControlPointId.ArmOccurrence armPlace(int controlId, ArmProbe probe,
-                                                        SourceConstructOrigin origin, Citation at) {
-        return new ControlPointId.ArmOccurrence(controlId, Optional.of(probe), at, origin);
+                                                        SourceConstructOrigin origin,
+                                                        ArmReportAnchor anchor) {
+        return new ControlPointId.ArmOccurrence(controlId, Optional.of(probe), anchor, origin);
     }
 
     /** The arms of one numbering, by their numbers, so a fixture holds addresses of one. */

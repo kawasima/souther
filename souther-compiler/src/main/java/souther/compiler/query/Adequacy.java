@@ -16,6 +16,8 @@ import souther.compiler.diag.msg.DeadBranchMessage;
 import souther.compiler.diag.msg.ExampleMessage;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.Localizable;
+import souther.compiler.diag.SourcePos;
+import souther.compiler.coverage.CoverageSites;
 import souther.compiler.examples.FixtureReader;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.AtomSpace;
@@ -1003,11 +1005,11 @@ public final class Adequacy {
             // In the order an author reads them. The walk numbers an inner fork while it is inside
             // the arm that holds it, so what order it finds them in is a fact about the traversal;
             // where a warning sits in the output should be a fact about the source.
-            found.sort(java.util.Comparator.comparingInt((Dead each) -> at(each.arm()).line())
-                    .thenComparingInt(each -> at(each.arm()).column()));
+            found.sort(java.util.Comparator.comparingInt((Dead each) -> at(db, each.arm()).line())
+                    .thenComparingInt(each -> at(db, each.arm()).column()));
             List<Report> reports = new ArrayList<>();
             for (Dead each : found) {
-                reports.add(warning(each.arm(), each.proof()));
+                reports.add(warning(db, each.arm(), each.proof()));
             }
             return Answer.of(true, reports);
         }
@@ -1021,10 +1023,10 @@ public final class Adequacy {
          * answers and never this.
          */
         private static Report warning(
-                souther.compiler.coverage.ControlPointId.ArmOccurrence arm,
+                Db db, souther.compiler.coverage.ControlPointId.ArmOccurrence arm,
                 souther.compiler.reach.Proof proof) {
             return Report.of(new DeadBranchProofWords(
-                    Warnings.pointedAt(arm.at())
+                    Warnings.pointedAt(Sites.placeOf(db, arm.anchor()))
                             .say(new DeadBranchMessage.NothingReachesThisBranch()))
                     .of(proof)
                     .hint(new DeadBranchMessage.TakeItOutOrLetSomethingReachIt())
@@ -1099,10 +1101,10 @@ public final class Adequacy {
         private record Dead(souther.compiler.coverage.ControlPointId.ArmOccurrence arm,
                             souther.compiler.reach.Proof proof) {}
 
-        /** Where an arm is written, read the way {@link Warnings#pointedAt} reads it. */
+        /** Where a report about an arm points, read the way {@link Warnings#pointedAt} reads it. */
         private static souther.compiler.diag.SourcePos at(
-                souther.compiler.coverage.ControlPointId.ArmOccurrence arm) {
-            return switch (arm.at()) {
+                Db db, souther.compiler.coverage.ControlPointId.ArmOccurrence arm) {
+            return switch (Sites.placeOf(db, arm.anchor())) {
                 case Citation.Written written -> written.at();
                 case Citation.Unplaced unplaced -> unplaced.at();
                 case Citation.Reached reached -> reached.at();
@@ -3768,6 +3770,65 @@ public final class Adequacy {
     }
 
     /**
+     * Where a report about {@code finding} belongs.
+     *
+     * <p>The one place this is decided. Two surfaces write sentences about a finding — the warnings
+     * a build reads and the document a person reads — and a rule kept in both would let the same
+     * finding be shown in two places, which is what a reader has no way to tell from two findings.
+     *
+     * <p>Asked and not carried. What a finding says is settled by the reading that made it; where it
+     * is shown is settled by where the code it is about is now, and that is a question for the
+     * module that wrote the code. A finding that carried the answer would be a new finding every
+     * time a helper it names slid down a file.
+     *
+     * <p>A switch with nothing to fall through to. Which place a kind of finding is shown at is a
+     * decision about that kind, so a kind added to {@link About} arrives here as a compile error
+     * rather than being shown wherever the last {@code default} happened to point.
+     *
+     * @param module whose reading made it, which is what says where a behavior of it is declared
+     * @throws souther.compiler.query.Sites.NothingIsWrittenThere where nothing this compilation
+     *         holds places it
+     */
+    public static Citation placeOf(Db db, String module, Finding finding) {
+        return switch (finding.about()) {
+            // An arm is shown where the fork it is one of is, which the fork's own module answers —
+            // or, for a fork nobody here wrote, where this compilation came in through.
+            case About.AnArmNoRowGoesThrough(CoverageSites.ArmSite arm) ->
+                    Sites.placeOf(db, arm.anchor());
+            case About.ARowAtAnArmAwaitsItsAnswer(CoverageSites.ArmSite arm) ->
+                    Sites.placeOf(db, arm.anchor());
+            // A line the declarations owe is shown at one of them, and which one the debt says.
+            case About.APointOfADeclaredBorder(DeclaredDebt owed) -> owed.at();
+            // A row is shown where it is written, which is in this module's own source.
+            case About.AnUnansweredRow(String _, RowIdentity _, SourcePos at) -> Citation.of(at);
+            // Everything else is about the behavior as a whole — what its rows do not reach, what
+            // its rules do not divide, what nothing here could read of them. Shown at the behavior.
+            case About.ACaseNoRowExpects _, About.ACaseNothingWasSeenToProduce _,
+                    About.ACaseNoRowAppliesItTo _, About.AClassNoRowIsIn _,
+                    About.APointOfABorder _, About.APositionNoLineDivides _,
+                    About.ARuleWithoutALine _, About.ARuleNothingClassified _,
+                    About.APositionThisCouldNotRead _, About.APositionReadWiderThanItsRules _,
+                    About.APositionWhoseRulesWereNotReached _, About.AQuestionNothingAnswered _ ->
+                    whereItIsDeclared(db, module, finding.subject());
+        };
+    }
+
+    /** Where the behavior a finding is about is declared. */
+    private static Citation whereItIsDeclared(Db db, String module, FindingSubject subject) {
+        if (!(subject instanceof FindingSubject.OfABehavior behavior)) {
+            throw new IllegalStateException(
+                    "a finding shown at a behavior is a finding about one: " + subject);
+        }
+        Answer<Citation> at =
+                db.ask(new Sites.WhereABehaviorIsDeclared(module, behavior.name()));
+        if (!at.present()) {
+            throw new IllegalStateException("nothing in " + module + " declares `"
+                    + behavior.name() + "`, which a finding of it is about");
+        }
+        return at.value();
+    }
+
+    /**
      * One thing a measure established, on the behavior it is about.
      *
      * <p>{@code about} is what the measure established, as itself. Every reader projects it into its
@@ -3784,13 +3845,13 @@ public final class Adequacy {
      * build over, because telling an author to write a row they may already have written is worse than
      * saying nothing.
      *
-     * <p>{@code at} is a {@link souther.compiler.diag.Citation} and not a place. Most of these are
-     * about a declaration this compile read, where the two are the same thing; an arm is not, being
-     * one of a body that may have been spliced in from a file nobody holds. A report reading a
-     * coordinate cannot tell the two apart, and printed the second as though it were the first.
+     * <p><b>What was found, and not where to print it.</b> Where a report about one of these
+     * belongs is {@link Adequacy#placeOf}'s answer, asked by whoever is about to write a sentence.
+     * Held here, an edit that moved a helper and changed nothing it does would be an edit to every
+     * finding of every module that calls it, and no test of what this compiler answers could see
+     * the difference — the findings would all be new and all say what they said.
      */
-    public record Finding(FindingSubject subject, WeakeningSet weakenedBy, Citation at,
-                          About about) {
+    public record Finding(FindingSubject subject, WeakeningSet weakenedBy, About about) {
 
         /**
          * What a report calls what this is about.
@@ -3820,14 +3881,13 @@ public final class Adequacy {
          * holds the rest is a regression run through this producer with two leaves that went without
          * different things.
          */
-        public static Finding by(String behavior, Measure<?> found, Citation at, About about) {
-            return by(new FindingSubject.OfABehavior(behavior), found, at, about);
+        public static Finding by(String behavior, Measure<?> found, About about) {
+            return by(new FindingSubject.OfABehavior(behavior), found, about);
         }
 
         /** The same, about whatever the measure was of. */
-        public static Finding by(FindingSubject subject, Measure<?> found, Citation at,
-                                 About about) {
-            return new Finding(subject, found.weakening(), at, about);
+        public static Finding by(FindingSubject subject, Measure<?> found, About about) {
+            return new Finding(subject, found.weakening(), about);
         }
 
         /**
@@ -3838,15 +3898,13 @@ public final class Adequacy {
          * whole for the reason the measure above is: what a caller hands over is the thing it is
          * looking at, and there is no argument here to pass a set worked out somewhere else.
          */
-        public static Finding by(FindingSubject subject, ObligationCoverage found, Citation at,
-                                 About about) {
-            return new Finding(subject, found.weakening(), at, about);
+        public static Finding by(FindingSubject subject, ObligationCoverage found, About about) {
+            return new Finding(subject, found.weakening(), about);
         }
 
         /** The same, about a behavior. */
-        public static Finding by(String behavior, ObligationCoverage found, Citation at,
-                                 About about) {
-            return by(new FindingSubject.OfABehavior(behavior), found, at, about);
+        public static Finding by(String behavior, ObligationCoverage found, About about) {
+            return by(new FindingSubject.OfABehavior(behavior), found, about);
         }
 
         /**
@@ -3863,13 +3921,13 @@ public final class Adequacy {
          * gets and is exactly the work a build held to the rows should stop for. Which kinds a bar
          * refuses over is {@link AdequacyBar#refuses} and is asked there.
          */
-        public static Finding noticed(String behavior, Citation at, About about) {
-            return noticed(new FindingSubject.OfABehavior(behavior), at, about);
+        public static Finding noticed(String behavior, About about) {
+            return noticed(new FindingSubject.OfABehavior(behavior), about);
         }
 
         /** The same, about whatever it was noticed of. */
-        public static Finding noticed(FindingSubject subject, Citation at, About about) {
-            return new Finding(subject, WeakeningSet.none(), at, about);
+        public static Finding noticed(FindingSubject subject, About about) {
+            return new Finding(subject, WeakeningSet.none(), about);
         }
 
         /**
@@ -3892,10 +3950,6 @@ public final class Adequacy {
         }
 
         public Finding {
-            // A finding is about somewhere. A place-less one used to become a warning with no
-            // caret, which nothing produced and nothing wanted; now the reading of the citation
-            // rests on there being one, so the type says so rather than the reader finding out.
-            java.util.Objects.requireNonNull(at, "a finding is about a place");
             java.util.Objects.requireNonNull(about, "a finding is about something");
         }
 
@@ -4423,7 +4477,7 @@ public final class Adequacy {
             List<Finding> out = new ArrayList<>();
             for (Hir.BehaviorDef behavior : prepared.value().behaviors()) {
                 unansweredRows(prepared.value().module(), behavior.name(), out);
-                signatureFindings(behavior.name(), Citation.of(behavior.pos()),
+                signatureFindings(behavior.name(),
                         signatures == null ? null : signatures.get(behavior.name()), out);
                 partitionFindings(behavior,
                         partitions == null ? null : partitions.get(behavior.name()),
@@ -4462,7 +4516,7 @@ public final class Adequacy {
                 if (!(item.disposition() instanceof ObligationDisposition.Unmet)) {
                     continue;
                 }
-                out.add(Finding.by(owed.subject(), item.coverage(), owed.at(),
+                out.add(Finding.by(owed.subject(), item.coverage(),
                         new About.APointOfADeclaredBorder(owed)));
             }
         }
@@ -4475,21 +4529,21 @@ public final class Adequacy {
          * it is said as undecided rather than withheld. Which of them are said at all is each
          * measure's own question below.
          *
-         * <p>Takes the name and the place rather than the whole declaration, because those are what
-         * it uses — and because a producer that needs a compiled behavior to run can only be held to
+         * <p>Takes the name rather than the whole declaration, because that is what it uses — and
+         * because a producer that needs a compiled behavior to run can only be held to
          * what some source happens to produce. What decides a build's answer here is which
          * measurement each finding is given, and the states that tell a right answer from a wrong
          * one are states a fixture may or may not reach; handed the evidence, this can be shown the
          * state itself.
          */
-        static void signatureFindings(String behavior, Citation at, SignatureEvidence signature,
+        static void signatureFindings(String behavior, SignatureEvidence signature,
                                       List<Finding> out) {
             if (signature == null || signature.counted().made().isEmpty()) {
                 return;
             }
             OutputCaseEvidence output = signature.output();
             for (TypeSymbol missing : output.unspecified()) {
-                out.add(Finding.by(behavior, output.cases(), at,
+                out.add(Finding.by(behavior, output.cases(),
                         new About.ACaseNoRowExpects(missing)));
             }
             // Where the behavior answered for no row, every case is unverified and naming each of
@@ -4508,7 +4562,6 @@ public final class Adequacy {
                 for (TypeSymbol missing : output.unverified()) {
                     if (!output.unspecified().contains(missing)) {
                         out.add(Finding.by(behavior, output.cases(),
-                                at,
                                 new About.ACaseNothingWasSeenToProduce(missing)));
                     }
                 }
@@ -4528,7 +4581,7 @@ public final class Adequacy {
                     // This input's own measurement. One position whose rows could not be classified
                     // says nothing about the position beside it, and a finding handed the signature's
                     // union would report both as undecided over one of them.
-                    out.add(Finding.by(behavior, input.cases(), at,
+                    out.add(Finding.by(behavior, input.cases(),
                             new About.ACaseNoRowAppliesItTo(input, missing)));
                 }
             }
@@ -4555,7 +4608,7 @@ public final class Adequacy {
                 }
                 for (Hir.ExampleRow row : example.rows()) {
                     if (row.expected() instanceof Hir.Expected.Unanswered) {
-                        out.add(Finding.noticed(behavior, Citation.of(row.pos()),
+                        out.add(Finding.noticed(behavior,
                                 new About.AnUnansweredRow(behavior, row.identity(), row.pos())));
                     }
                 }
@@ -4580,7 +4633,7 @@ public final class Adequacy {
                 }
                 for (PartitionEvidence.AxisClass missing : axis.uncovered()) {
                     out.add(Finding.by(behavior.name(), axis.reached(),
-                            Citation.of(behavior.pos()), new About.AClassNoRowIsIn(missing)));
+                            new About.AClassNoRowIsIn(missing)));
                 }
             }
             // This behavior's account, walked as the things it is owed. One finding per thing and
@@ -4598,7 +4651,7 @@ public final class Adequacy {
                     continue;
                 }
                 out.add(Finding.by(behavior.name(), owed.item().coverage(),
-                        Citation.of(behavior.pos()), new About.APointOfABorder(owed)));
+                        new About.APointOfABorder(owed)));
             }
             // What the model divides this position no way at all, which is the classes question and
             // is answered only for a position that has none.
@@ -4612,7 +4665,6 @@ public final class Adequacy {
                 switch (position.why()) {
                     case souther.compiler.partition.UndividedPosition.Why.Absent _ ->
                             out.add(Finding.noticed(behavior.name(),
-                                    Citation.of(behavior.pos()),
                                     new About.APositionNoLineDivides(position)));
                     // Both are said by the rule that stopped it, in a finding of its own with the
                     // rule named. Said here as well, they would be one situation under two
@@ -4627,7 +4679,6 @@ public final class Adequacy {
             for (PartitionEvidence.NotRead each : partition.notRead()) {
                 // Not measured, because nothing here established anything either way about it.
                 out.add(Finding.noticed(behavior.name(),
-                        Citation.of(behavior.pos()),
                         switch (each) {
                             case PartitionEvidence.NotRead.ARule rule ->
                                     new About.ARuleWithoutALine(rule);
@@ -4642,7 +4693,6 @@ public final class Adequacy {
             // the position, since what it qualifies is the classes and not their absence.
             for (souther.compiler.inputs.PositionValuesNotSeparated each : partition.notSeparated()) {
                 out.add(Finding.noticed(behavior.name(),
-                        Citation.of(behavior.pos()),
                         new About.APositionReadWiderThanItsRules(each)));
             }
             // A position the axes did measure, whose rules this reading is short of. A different
@@ -4658,7 +4708,6 @@ public final class Adequacy {
                 if (each instanceof Weakening.ModelReadingIncomplete(
                         souther.compiler.partition.ClosureGap.RulesNotReached gap)) {
                     out.add(Finding.noticed(behavior.name(),
-                            Citation.of(behavior.pos()),
                             new About.APositionWhoseRulesWereNotReached(gap)));
                 }
             }
@@ -4672,7 +4721,6 @@ public final class Adequacy {
                 // question is put in, are the reader's — and both used to be settled here, one of
                 // them only to be overruled by every surface that printed it.
                 out.add(Finding.noticed(behavior.name(),
-                        Citation.of(behavior.pos()),
                         new About.AQuestionNothingAnswered(each)));
             }
         }
@@ -4705,7 +4753,7 @@ public final class Adequacy {
                 // kind from an arm nobody has written a row for, and a reader that asked only
                 // whether the arm was covered would send an author to write a second row beside the
                 // one they have.
-                out.add(Finding.by(behavior, arm.coverage(), arm.display().at(),
+                out.add(Finding.by(behavior, arm.coverage(),
                         switch (arm.awaited()) {
                             case ArmObligation.Awaited.A_ROW_IS ->
                                     new About.ARowAtAnArmAwaitsItsAnswer(arm.display());
@@ -4753,7 +4801,7 @@ public final class Adequacy {
             List<Report> reports = new ArrayList<>();
             for (Finding finding : found.value()) {
                 if (finding.isAdequacyGap(asked.held())) {
-                    reports.add(warning(finding));
+                    reports.add(warning(db, name, finding));
                 }
             }
             return Answer.of(true, reports);
@@ -4797,9 +4845,9 @@ public final class Adequacy {
          * can see is used. Which findings get here is
          * {@link Finding#isAdequacyGap(AdequacyBar)}'s answer and not this method's.
          */
-        private static Report warning(Finding finding) {
+        private static Report warning(Db db, String module, Finding finding) {
             About said = finding.about();
-            souther.compiler.diag.Diagnostic.Builder built = pointedAt(finding.at())
+            souther.compiler.diag.Diagnostic.Builder built = pointedAt(placeOf(db, module, finding))
                     .say(switch (said) {
                         case About.ACaseNoRowExpects(var missing) ->
                                 new ExampleMessage.NoRowExpectsThatCase(
