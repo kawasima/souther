@@ -258,30 +258,81 @@ public final class Sameness<A> {
      * coordinate: {@code p == q && q == r} and {@code q == r && p == q} name one block, hold one
      * set, and spend from one purse.
      *
-     * <p>Its members are read in one order whatever order they were found in. What is written out
-     * of a reading — a proof naming the positions that must hold one value among them — has to come
-     * out the same on two compiles of one model, and the order a closure happened to reach them in
-     * is the order the equalities were written.
+     * <p>Its members are read in the order they are spelled in, so that where their spellings tell
+     * them apart, what is written out of a reading — a proof naming the positions that must hold
+     * one value among them — does not read differently for the order the equalities behind it were
+     * written in. Where two of them are spelled alike it says nothing: those two keep the order
+     * they arrived in, which is the order it was there to keep out. Nothing is filed, compared or
+     * hashed under any of it.
      */
-    public record Block<A>(Set<A> members) {
+    public static final class Block<A> {
 
-        public Block {
-            if (members.isEmpty()) {
-                throw new IllegalArgumentException("an answer is about at least one position");
-            }
-            List<A> ordered = new ArrayList<>(members);
-            ordered.sort(Comparator.comparing(String::valueOf));
-            members = Collections.unmodifiableSet(new LinkedHashSet<>(ordered));
+        /** What the number of members is multiplied by before it joins their sum, so that two
+         *  blocks whose members sum alike are still told apart where they hold different numbers of
+         *  positions. Odd, so that no bit of the number is lost in the multiplication. */
+        private static final int COUNTED = 0x9e3779b9;
+
+        /** The rounds of the mixing. The members reach it as the sum a {@code Set} hashes them to,
+         *  so what is mixed is that sum and the count beside it rather than the members one at a
+         *  time. Each multiplication carries what the shift before it folded downwards back up into
+         *  the high bits, which is what stops a sum of block hashes coming to a function of the sum
+         *  over all their positions. */
+        private static final int SCATTER = 0x85ebca6b;
+
+        private static final int SPREAD = 0xc2b2ae35;
+
+        private final Set<A> members;
+
+        /**
+         * What this block is asked for whenever an answer about it is looked up, worked out where
+         * the block is made.
+         *
+         * <p><b>Held rather than worked out, because a block is asked far more often than one is
+         * made.</b> A relation's answers are filed under blocks — what each is left, what each is
+         * promised, what each spends — so a round of a narrowing reads a map of them for every
+         * block it walks, and a reading asks which block a position is on for every position it
+         * reads. Derived from the members on each of those, the answer is a walk of the set and a
+         * hash of every position in it, over and over, for a value that cannot change.
+         *
+         * <p><b>And mixed, because a set's hash is the sum of its members'.</b> Left as that sum, a
+         * block's hash carries no mark of where the block ends: a set of blocks hashes to the sum
+         * over every position in all of them, so {@code {{p}, {q, r}}} and {@code {{p, q}, {r}}}
+         * come to one hash whatever those positions are. A set of blocks is what a refusal names
+         * and what a lack is about, so the grouping a block exists to state would be the one thing
+         * its hash does not say. One mixing at the block's edge is what stops the sum above it
+         * cancelling that grouping out.
+         *
+         * <p>The mixing is work of its own, a fixed few operations paid where the block is made,
+         * and it is not paid back: the blocks a compile makes are nearly all of one position and
+         * the sets of them are small, so nothing measured here is spending what it saves. It is
+         * here because this hash is spelled out rather than derived, and a sum spelled out is a sum
+         * kept.
+         */
+        private final int hash;
+
+        private Block(Set<A> members) {
+            this.members = members;
+            this.hash = hashOf(members);
         }
 
-        /** The block one position is on its own. */
+        /**
+         * The block one position is on its own.
+         *
+         * <p>Built without ordering anything. One member is in one order, and the order below is
+         * what several of them are read in.
+         */
         public static <A> Block<A> of(A position) {
             return new Block<>(Set.of(position));
         }
 
         /** The block these positions are held as one in. */
         public static <A> Block<A> of(Set<A> members) {
-            return new Block<>(members);
+            return new Block<>(ordered(members));
+        }
+
+        /** The positions this answer is about. */
+        public Set<A> members() {
+            return members;
         }
 
         /** Whether this is one position on its own. */
@@ -299,12 +350,66 @@ public final class Sameness<A> {
         public <B> Block<B> renamed(Function<A, B> naming) {
             Set<B> out = new LinkedHashSet<>();
             members.forEach(each -> out.add(naming.apply(each)));
-            return new Block<>(out);
+            return of(out);
+        }
+
+        /**
+         * Equal by its members and by nothing else.
+         *
+         * <p>The hash is asked first, and it is an answer about the members, so two blocks it tells
+         * apart are told apart without reading them. Which comparisons that reaches depends on
+         * where they came from: one made through a map has had the hashes compared already and
+         * arrives only where they agree, and one asked of two blocks in hand — whether both ends of
+         * a pair are one block, whether an answer is filed under a coordinate the reading has —
+         * arrives with nothing compared. It is those this turns away.
+         *
+         * <p>Where the hashes agree the members are read, because two blocks with one hash are
+         * still two blocks unless the same positions are in both.
+         */
+        @Override
+        public boolean equals(Object other) {
+            return this == other
+                    || (other instanceof Block<?> it
+                            && hash == it.hash && members.equals(it.members));
+        }
+
+        @Override
+        public int hashCode() {
+            return hash;
         }
 
         @Override
         public String toString() {
             return isOne() ? String.valueOf(members.iterator().next()) : members.toString();
+        }
+
+        /**
+         * The members in the order they are spelled in, which is the order a block reads them in.
+         *
+         * <p>How they are spelled is all a position of any kind can be ordered by here, since what
+         * a position is is the caller's. One of them is in one order already, which is what the
+         * block of a single position is built by.
+         */
+        private static <A> Set<A> ordered(Set<A> members) {
+            if (members.isEmpty()) {
+                throw new IllegalArgumentException("an answer is about at least one position");
+            }
+            if (members.size() == 1) {
+                return Set.of(members.iterator().next());
+            }
+            List<A> sorted = new ArrayList<>(members);
+            sorted.sort(Comparator.comparing(String::valueOf));
+            return Collections.unmodifiableSet(new LinkedHashSet<>(sorted));
+        }
+
+        /** The members' hash, taken so that the block's edge survives being summed with others. */
+        private static int hashOf(Set<?> members) {
+            int gathered = members.hashCode() ^ (members.size() * COUNTED);
+            gathered ^= (gathered >>> 16);
+            gathered *= SCATTER;
+            gathered ^= (gathered >>> 13);
+            gathered *= SPREAD;
+            return gathered ^ (gathered >>> 16);
         }
     }
 }
