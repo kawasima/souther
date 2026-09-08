@@ -504,27 +504,39 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
         return module.resolve("target").resolve("classes");
     }
 
+    /** The two walks, each read once. Every rule here asks the same question of the same class
+     *  files, and nothing writes one while this runs, so a walk per rule is the same answer read
+     *  again — over every class of every module each time. */
+    private static List<Use> inProduction;
+
+    private static List<Use> here;
+
     /** Every saying of the word in the reactor's own compiled classes. */
     private static List<Use> saidInProduction() {
-        List<Path> where = new ArrayList<>();
-        for (Path module : REPOSITORY.modules()) {
-            where.add(classesOf(module));
+        if (inProduction == null) {
+            List<Path> where = new ArrayList<>();
+            for (Path module : REPOSITORY.modules()) {
+                where.add(classesOf(module));
+            }
+            inProduction = List.copyOf(saidUnder(where));
         }
-        List<Use> found = saidUnder(where);
-        assertFalse(found.isEmpty(), "no saying of the word was read at all");
-        return found;
+        assertFalse(inProduction.isEmpty(), "no saying of the word was read at all");
+        return inProduction;
     }
 
     /** Every saying in the classes compiled beside this test, which is the fixture above. */
     private static List<Use> saidHere() {
-        try {
-            return saidUnder(List.of(Path.of(
-                    WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest.class
-                            .getProtectionDomain().getCodeSource().getLocation().toURI())));
-        } catch (URISyntaxException notAPath) {
-            throw new IllegalStateException("this test's own classes are somewhere unreadable",
-                    notAPath);
+        if (here == null) {
+            try {
+                here = List.copyOf(saidUnder(List.of(Path.of(
+                        WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest.class
+                                .getProtectionDomain().getCodeSource().getLocation().toURI()))));
+            } catch (URISyntaxException notAPath) {
+                throw new IllegalStateException("this test's own classes are somewhere unreadable",
+                        notAPath);
+            }
         }
+        return here;
     }
 
     /**
