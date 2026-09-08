@@ -42,6 +42,22 @@ sealed interface PlannedHeld<A> {
             }
             boxes = Collections.unmodifiableSet(new LinkedHashSet<>(boxes));
         }
+
+        /**
+         * Which positions every alternative holds as one value.
+         *
+         * <p>What each of them holds as one is its own, so what the choice can say of a position is
+         * what every one of them says — read the other way round, a branch would lend its equality
+         * to the branch beside it. {@link AdmissibleValues.Held.Alternatives#commonSameness} over
+         * descriptions, and answered the same way.
+         */
+        Sameness<A> commonSameness() {
+            Sameness<A> out = null;
+            for (Alternative<A> box : boxes) {
+                out = out == null ? box.sameness() : out.common(box.sameness());
+            }
+            return out == null ? Sameness.discrete() : out;
+        }
     }
 
     /**

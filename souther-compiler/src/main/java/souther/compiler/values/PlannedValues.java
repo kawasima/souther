@@ -33,52 +33,127 @@ public sealed interface PlannedValues<A> {
      * What each of them is for is written there and is not written twice; what is different is that
      * a box may describe a set that turns out to be empty, since telling that is the work this
      * whole arrangement puts off.
+     *
+     * <p>And reached the way a reading is reached, for the reason written there: the parts state
+     * relations to each other that no part states on its own, so they are this one's own and a
+     * caller arrives at a description by writing one.
      */
-    record Settled<A>(PlannedHeld<A> held, Map<A, AdmittedPlan> perPosition,
-                      Standing<A> standing,
-                      Map<Sameness.Block<A>, AdmittedPlan> guaranteed,
-                      AdmittedPlan defaultGuaranteed,
-                      boolean guaranteedTogether, Set<Sameness.Block<A>> tangled,
-                      Set<Sameness.Block<A>> widened) implements PlannedValues<A> {
+    @souther.compiler.reading.StateOfAReading
+    final class Settled<A> implements PlannedValues<A> {
 
-        public Settled {
-            perPosition = said(perPosition);
-            // A guarantee empty at one position is empty at all of them — see
-            // {@link AdmissibleValues}. Only what is settled empty counts: a description nobody has
-            // worked out is not a reason to throw a promise away, and where it does turn out empty
-            // the resolved reading drops it then.
-            if (held instanceof PlannedHeld.Nothing
-                    || defaultGuaranteed instanceof AdmittedPlan.Nothing
-                    || guaranteed.values().stream().anyMatch(AdmittedPlan.Nothing.class::isInstance)) {
-                guaranteed = Map.of();
-                defaultGuaranteed = AdmittedPlan.NONE;
-                guaranteedTogether = true;
+        /** The parts, together — see {@link AdmissibleValues}, whose reasoning this is. */
+        private record Parts<A>(PlannedHeld<A> held, Map<A, AdmittedPlan> perPosition,
+                                Standing<A> standing,
+                                Map<Sameness.Block<A>, AdmittedPlan> guaranteed,
+                                AdmittedPlan defaultGuaranteed,
+                                boolean guaranteedTogether, Set<Sameness.Block<A>> tangled,
+                                Set<Sameness.Block<A>> widened) {
+
+            private Parts {
+                perPosition = said(perPosition);
+                // A guarantee empty at one position is empty at all of them — see
+                // {@link AdmissibleValues}. Only what is settled empty counts: a description
+                // nobody has worked out is not a reason to throw a promise away, and where it does
+                // turn out empty the resolved reading drops it then.
+                if (held instanceof PlannedHeld.Nothing
+                        || defaultGuaranteed instanceof AdmittedPlan.Nothing
+                        || guaranteed.values().stream()
+                                .anyMatch(AdmittedPlan.Nothing.class::isInstance)) {
+                    guaranteed = Map.of();
+                    defaultGuaranteed = AdmittedPlan.NONE;
+                    guaranteedTogether = true;
+                }
+                guaranteed = Collections.unmodifiableMap(new LinkedHashMap<>(guaranteed));
+                tangled = Collections.unmodifiableSet(new LinkedHashSet<>(tangled));
+                widened = Collections.unmodifiableSet(new LinkedHashSet<>(widened));
+                // Everything filed under a block, said in this reading's own terms — see
+                // {@link AdmissibleValues}, whose reasoning this is.
+                Sameness<A> mine = held instanceof PlannedHeld.Alternatives<A> it
+                        ? it.commonSameness() : Sameness.discrete();
+                mine.filing(guaranteed.keySet(), tangled, widened);
             }
-            guaranteed = Collections.unmodifiableMap(new LinkedHashMap<>(guaranteed));
-            tangled = Collections.unmodifiableSet(new LinkedHashSet<>(tangled));
-            widened = Collections.unmodifiableSet(new LinkedHashSet<>(widened));
-            // Everything filed under a block, said in this reading's own coordinates — see
-            // {@link AdmissibleValues}, whose reasoning this is.
-            Sameness<A> mine = held instanceof PlannedHeld.Alternatives<A> it
-                    ? commonTo(it) : Sameness.discrete();
-            mine.filing(guaranteed.keySet(), tangled, widened);
+        }
+
+        private final Parts<A> parts;
+
+        /** The one constructor there is, and it takes the parts as one — see
+         *  {@link AdmissibleValues}, where a maker handed the parts is what may not be written. */
+        private Settled(Parts<A> parts) {
+            this.parts = parts;
+        }
+
+        /** What the rules leave: the alternatives, or nothing. */
+        public PlannedHeld<A> held() {
+            return parts.held();
+        }
+
+        /** What each position's own rules leave it, every alternative merged. */
+        public Map<A, AdmittedPlan> perPosition() {
+            return parts.perPosition();
+        }
+
+        /** What the rules of the model could not say, and what stopped this reading saying it. */
+        @Override
+        public Standing<A> standing() {
+            return parts.standing();
+        }
+
+        /** What each block is guaranteed to admit. */
+        public Map<Sameness.Block<A>, AdmittedPlan> guaranteed() {
+            return parts.guaranteed();
+        }
+
+        /** What a position this holds no guarantee for is guaranteed to admit. */
+        public AdmittedPlan defaultGuaranteed() {
+            return parts.defaultGuaranteed();
+        }
+
+        /** Whether the guarantees are about whole values. */
+        public boolean guaranteedTogether() {
+            return parts.guaranteedTogether();
+        }
+
+        /** The blocks whose correlations this reading has lost. */
+        public Set<Sameness.Block<A>> tangled() {
+            return parts.tangled();
+        }
+
+        /** The blocks whose answer cannot be guaranteed to be what the read rules leave them. */
+        public Set<Sameness.Block<A>> widened() {
+            return parts.widened();
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof Settled<?> it && parts.equals(it.parts);
+        }
+
+        @Override
+        public int hashCode() {
+            return parts.hashCode();
+        }
+
+        @Override
+        public String toString() {
+            return parts.toString();
         }
     }
 
     /** Nothing read and nothing missed, which is what a reading starts from. */
     static <A> PlannedValues<A> top() {
-        return new Settled<>(PlannedHeld.one(PlannedHeld.Alternative.at(Map.of())), Map.of(),
-                Standing.nothing(), Map.of(), AdmittedPlan.ANY, true, Set.of(), Set.of());
+        return new Settled<>(new Settled.Parts<>(
+                PlannedHeld.one(PlannedHeld.Alternative.at(Map.of())), Map.of(),
+                Standing.nothing(), Map.of(), AdmittedPlan.ANY, true, Set.of(), Set.of()));
     }
 
     /** One position said to admit what {@code plan} describes, and nothing missed. */
     static <A> PlannedValues<A> at(A atom, AdmittedPlan plan) {
         Map<A, AdmittedPlan> said = Map.of(atom, plan);
-        return new Settled<>(
+        return new Settled<>(new Settled.Parts<>(
                 plan instanceof AdmittedPlan.Nothing ? new PlannedHeld.Nothing<>()
                         : PlannedHeld.one(PlannedHeld.Alternative.at(said)),
                 said, Standing.nothing(), Map.of(Sameness.Block.of(atom), plan),
-                AdmittedPlan.ANY, true, Set.of(), Set.of());
+                AdmittedPlan.ANY, true, Set.of(), Set.of()));
     }
 
     /**
@@ -97,11 +172,11 @@ public sealed interface PlannedValues<A> {
         // one: it shapes the relation without touching what any position admits. Left out, a
         // choice between two equalities would be a union of two relations that no product holds
         // and would say it lost nothing, since what it reads to decide that is this key set.
-        return new Settled<>(
+        return new Settled<>(new Settled.Parts<>(
                 PlannedHeld.one(PlannedHeld.Alternative.of(
                         new PlannedHeld.Box<>(Map.of(block, AdmittedPlan.ANY)))),
                 Map.of(), Standing.nothing(), Map.of(block, AdmittedPlan.ANY),
-                AdmittedPlan.ANY, true, Set.of(), Set.of());
+                AdmittedPlan.ANY, true, Set.of(), Set.of()));
     }
 
     /**
@@ -125,11 +200,11 @@ public sealed interface PlannedValues<A> {
         Map<Sameness.Block<A>, AdmittedPlan> promised = new LinkedHashMap<>();
         promised.put(Sameness.Block.of(here), AdmittedPlan.NONE);
         promised.put(Sameness.Block.of(there), AdmittedPlan.NONE);
-        return new Settled<>(
+        return new Settled<>(new Settled.Parts<>(
                 PlannedHeld.one(new PlannedHeld.Alternative<>(
                         new PlannedHeld.Box<>(Map.of()), Apartness.of(here, there))),
                 Map.of(), Standing.nothing(), promised, AdmittedPlan.ANY, true,
-                Set.of(), Set.of());
+                Set.of(), Set.of()));
     }
 
     /**
@@ -148,9 +223,10 @@ public sealed interface PlannedValues<A> {
         // Nothing is guaranteed anywhere, and at the positions it does not name as much as at the
         // ones it does: what a rule this has no word for admits is not known, so a choice offering
         // it as an alternative is offering nothing that can be counted on.
-        return new Settled<>(PlannedHeld.one(PlannedHeld.Alternative.at(Map.of())), Map.of(),
+        return new Settled<>(new Settled.Parts<>(
+                PlannedHeld.one(PlannedHeld.Alternative.at(Map.of())), Map.of(),
                 Standing.of(named, why), Map.of(), AdmittedPlan.NONE, true, Set.of(),
-                Set.of());
+                Set.of()));
     }
 
     /**
@@ -341,7 +417,7 @@ public sealed interface PlannedValues<A> {
     default Sameness<A> sameness() {
         return switch (this) {
             case Settled<A> it -> it.held() instanceof PlannedHeld.Alternatives<A> boxes
-                    ? commonTo(boxes) : Sameness.discrete();
+                    ? boxes.commonSameness() : Sameness.discrete();
         };
     }
 
@@ -379,14 +455,6 @@ public sealed interface PlannedValues<A> {
         return everywhere == null ? Refusal.nowhere() : everywhere;
     }
 
-    /** What every alternative holds as one value. */
-    private static <A> Sameness<A> commonTo(PlannedHeld.Alternatives<A> boxes) {
-        Sameness<A> out = null;
-        for (PlannedHeld.Alternative<A> box : boxes.boxes()) {
-            out = out == null ? box.sameness() : out.common(box.sameness());
-        }
-        return out == null ? Sameness.discrete() : out;
-    }
 
     /**
      * The positions this reading narrowed, which is what a reader asking what it took in is asking.
@@ -453,8 +521,8 @@ public sealed interface PlannedValues<A> {
         // The coordinates the conjunction answers in, which are the two readings' equalities
         // conjoined and closed — see {@link AdmissibleValues#meet}.
         Sameness<A> heldAsOne = both instanceof PlannedHeld.Alternatives<A> it
-                ? commonTo(it) : Sameness.discrete();
-        return new Settled<>(both,
+                ? it.commonSameness() : Sameness.discrete();
+        return new Settled<>(new Settled.Parts<>(both,
                 narrowed(here.perPosition(), there.perPosition()),
                 here.standing().and(there.standing()),
                 apart ? Map.of() : guaranteedBy(here, there, heldAsOne, true),
@@ -464,7 +532,7 @@ public sealed interface PlannedValues<A> {
                 true,
                 mapped(both(here.tangled(), there.tangled()), heldAsOne),
                 mapped(both(both(here.widened(), there.widened()),
-                        both(here.tangled(), there.tangled())), heldAsOne));
+                        both(here.tangled(), there.tangled())), heldAsOne)));
     }
 
     /**
@@ -619,11 +687,11 @@ public sealed interface PlannedValues<A> {
                 empty.put(atom, AdmittedPlan.NONE);
             }
         });
-        return new Settled<>(new PlannedHeld.Nothing<>(), empty,
+        return new Settled<>(new Settled.Parts<>(new PlannedHeld.Nothing<>(), empty,
                 here.standing().and(there.standing()),
                 Map.of(), AdmittedPlan.NONE, true,
                 eachApart(both(here.tangled(), there.tangled())),
-                eachApart(both(here.widened(), there.widened())));
+                eachApart(both(here.widened(), there.widened()))));
     }
 
     /**
@@ -638,7 +706,7 @@ public sealed interface PlannedValues<A> {
         Settled<A> there = other.settled();
         PlannedHeld<A> held = apart ? apart(here, there) : merged(here, there);
         Sameness<A> heldAsOne = held instanceof PlannedHeld.Alternatives<A> it
-                ? commonTo(it) : Sameness.discrete();
+                ? it.commonSameness() : Sameness.discrete();
         Map<Sameness.Block<A>, AdmittedPlan> covered = guaranteedBy(here, there, heldAsOne, false);
         AdmittedPlan coveredElsewhere = AdmittedPlan.joining(
                 List.of(here.defaultGuaranteed(), there.defaultGuaranteed()));
@@ -660,7 +728,7 @@ public sealed interface PlannedValues<A> {
         // and what it costs is a promise this could have kept rather than one it could not.
         Set<Sameness.Block<A>> shapedBy = mapped(promisedAt(here), heldAsOne);
         shapedBy.addAll(mapped(promisedAt(there), heldAsOne));
-        return new Settled<>(held,
+        return new Settled<>(new Settled.Parts<>(held,
                 widenedBy(here.perPosition(), there.perPosition()), spoiled,
                 covered, coveredElsewhere,
                 here.guaranteedTogether() && there.guaranteedTogether() && shapedBy.size() <= 1,
@@ -671,7 +739,7 @@ public sealed interface PlannedValues<A> {
                 apart || shapedBy.size() <= 1
                         ? mapped(both(here.tangled(), there.tangled()), heldAsOne)
                         : both(mapped(both(here.tangled(), there.tangled()), heldAsOne), shapedBy),
-                mapped(both(here.widened(), there.widened()), heldAsOne));
+                mapped(both(here.widened(), there.widened()), heldAsOne)));
     }
 
     /** The alternatives of both, which is what the choice leaves where they are held apart. */
@@ -781,7 +849,7 @@ public sealed interface PlannedValues<A> {
      */
     default Realized<A> resolve(Allowance<A> by) {
         return switch (this) {
-            case Settled<A> it -> resolved(it, by);
+            case Settled<A> it -> AdmissibleValues.realize(it, by);
         };
     }
 
@@ -841,32 +909,6 @@ public sealed interface PlannedValues<A> {
         }
     }
 
-    private static <A> Realized<A> resolved(Settled<A> of, Allowance<A> by) {
-        Unbuilt<A> gaveUp = new Unbuilt<>();
-        Map<A, ValueSet> perPosition = realized(of.perPosition(), of.sameness(), by, gaveUp);
-        AdmissibleValues.Held<A> held = switch (of.held()) {
-            case PlannedHeld.Nothing<A> _ -> new AdmissibleValues.Held.Nothing<A>();
-            case PlannedHeld.Alternatives<A> boxes -> alternatives(boxes, by, gaveUp);
-        };
-        // The coordinates the answer is in, which are not the ones it was described in. An
-        // alternative dropped for admitting nothing is one whose equalities the rest need not
-        // state, so what the survivors hold as one may be coarser than what every description did
-        // — and everything filed under a block is said in the answer's own before it is built.
-        Sameness<A> heldAsOne = held instanceof AdmissibleValues.Held.Alternatives<A> it
-                ? it.commonSameness() : Sameness.discrete();
-        Map<Sameness.Block<A>, AdmittedPlan> promising = new LinkedHashMap<>();
-        of.guaranteed().forEach((block, plan) -> promising.merge(
-                heldAsOne.blockOf(block.members().iterator().next()), plan,
-                (one, other) -> AdmittedPlan.meeting(List.of(one, other))));
-        return new Realized<>(new AdmissibleValues<>(held, perPosition,
-                gaveUp.beside(of.standing()),
-                promised(promising, by), promised(of.defaultGuaranteed(), by.elsewhere()),
-                of.guaranteedTogether(),
-                mapped(of.tangled(), heldAsOne),
-                mapped(both(of.widened(), gaveUp.names()), heldAsOne)),
-                gaveUp.aboutARule(), gaveUp.aboutTheAnswer());
-    }
-
     /**
      * The same reading with more said about what stopped it.
      *
@@ -883,111 +925,9 @@ public sealed interface PlannedValues<A> {
         Sameness<A> heldAsOne = it.sameness();
         Set<Sameness.Block<A>> widened = new LinkedHashSet<>(it.widened());
         why.positions().forEach(atom -> widened.add(heldAsOne.blockOf(atom)));
-        return new Settled<>(it.held(), it.perPosition(), it.standing().and(why),
-                it.guaranteed(), it.defaultGuaranteed(), it.guaranteedTogether(), it.tangled(),
-                widened);
-    }
-
-    /**
-     * The alternatives, with the ones nothing stands in dropped.
-     *
-     * <p>Where the invariant a settled reading has is kept: a box with a side admitting nothing
-     * stands for nothing, and now that the sides are values it can be seen and taken out. Where
-     * every box goes, nothing satisfies the rules.
-     */
-    private static <A> AdmissibleValues.Held<A> alternatives(PlannedHeld.Alternatives<A> boxes,
-                                                             Allowance<A> by, Unbuilt<A> gaveUp) {
-        Set<AdmissibleValues.Alternative<A>> live = new LinkedHashSet<>();
-        Set<PlannedHeld.Alternative<A>> standing = new LinkedHashSet<>();
-        Refusal<A> dropped = null;
-        for (PlannedHeld.Alternative<A> box : boxes.boxes()) {
-            // The relation crosses unchanged. What a denial says is about the blocks and not about
-            // what they were described as holding, so building the descriptions is not where it
-            // could be lost or gained — and whether anything stands in the alternative is asked the
-            // one way it is asked wherever two of them are put together.
-            AdmissibleValues.Held<A> said = new AdmissibleValues.Alternative.Met<>(
-                    builtIn(box, by, gaveUp), box.apart()).stands();
-            switch (said) {
-                case AdmissibleValues.Held.Alternatives<A> it -> {
-                    live.addAll(it.boxes());
-                    standing.add(box);
-                }
-                case AdmissibleValues.Held.Nothing<A> it -> dropped = dropped == null ? it.shown()
-                        : Refusal.shownByBoth(dropped, it.shown());
-            }
-        }
-        if (live.isEmpty()) {
-            return new AdmissibleValues.Held.Nothing<>(
-                    dropped == null ? Refusal.nowhere() : dropped);
-        }
-        // What each block the alternatives agree on holds across the ones that stand, described
-        // first and built once. Read off the sets instead, a join of two languages would be a
-        // machine nobody counted.
-        Sameness<A> common = commonTo(new PlannedHeld.Alternatives<>(standing));
-        Set<Sameness.Block<A>> named = new LinkedHashSet<>();
-        standing.forEach(box ->
-                box.positions().forEach(position -> named.add(common.blockOf(position))));
-        Map<Sameness.Block<A>, ValueSet> across = new LinkedHashMap<>();
-        for (Sameness.Block<A> block : named) {
-            A member = block.members().iterator().next();
-            AdmittedPlan plan = AdmittedPlan.joining(
-                    standing.stream().map(box -> box.get(member)).toList());
-            Realization made = by.realizer(block).of(plan);
-            gaveUp.note(block, made);
-            if (!made.upperBound().isAny()) {
-                across.put(block, made.upperBound());
-            }
-        }
-        return AdmissibleValues.Held.Alternatives.of(live, common, across);
-    }
-
-    /** One alternative's descriptions as the sets they come to, each built under its own block's
-     *  allowance. */
-    private static <A> Map<Sameness.Block<A>, ValueSet> builtIn(PlannedHeld.Alternative<A> box,
-                                                                Allowance<A> by,
-                                                                Unbuilt<A> gaveUp) {
-        Map<Sameness.Block<A>, ValueSet> out = new LinkedHashMap<>();
-        box.at().forEach((block, plan) -> {
-            Realization made = by.realizer(block).of(plan);
-            gaveUp.note(block, made);
-            out.put(block, made.upperBound());
-        });
-        return out;
-    }
-
-    /** Each position's own description as the set it comes to, built under the allowance of the
-     *  block that position is on, the ones nobody could build widened to every value and written
-     *  down as such. */
-    private static <A> Map<A, ValueSet> realized(Map<A, AdmittedPlan> of, Sameness<A> heldAsOne,
-                                                 Allowance<A> by, Unbuilt<A> gaveUp) {
-        Map<A, ValueSet> out = new LinkedHashMap<>();
-        of.forEach((atom, plan) -> {
-            Sameness.Block<A> block = heldAsOne.blockOf(atom);
-            Realization made = by.realizer(block).of(plan);
-            gaveUp.note(block, made);
-            out.put(atom, made.upperBound());
-        });
-        return out;
-    }
-
-    /**
-     * The same for a promise, which widens the other way.
-     *
-     * <p>A promise nobody could work out promises nothing, and that is the strongest thing that
-     * stays true — where an answer this could not build widens to every value, a guarantee it could
-     * not build shrinks to none. Nothing is recorded: a reader short of a guarantee has been told
-     * no more than the truth, and the reasons below are about the upper bound.
-     */
-    private static <A> Map<Sameness.Block<A>, ValueSet> promised(
-            Map<Sameness.Block<A>, AdmittedPlan> of, Allowance<A> by) {
-        Map<Sameness.Block<A>, ValueSet> out = new LinkedHashMap<>();
-        of.forEach((block, plan) -> out.put(block, promised(plan, by.realizer(block))));
-        return out;
-    }
-
-    private static ValueSet promised(AdmittedPlan plan, Realizer by) {
-        Realization made = by.of(plan);
-        return made.isExact() ? made.upperBound() : ValueSet.NONE;
+        return new Settled<>(new Settled.Parts<>(it.held(), it.perPosition(),
+                it.standing().and(why), it.guaranteed(), it.defaultGuaranteed(),
+                it.guaranteedTogether(), it.tangled(), widened));
     }
 
     /** Every subject this reading is filed under — see {@link AdmissibleValues#subjects}. */

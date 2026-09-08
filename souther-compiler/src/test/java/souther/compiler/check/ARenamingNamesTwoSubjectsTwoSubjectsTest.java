@@ -9,7 +9,6 @@ import souther.compiler.numeric.OrderedInterval;
 import souther.compiler.numeric.OrderedIntervals;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.Rel;
-import souther.compiler.values.AdmissibleValues;
 import souther.compiler.values.AdmittedPlan;
 import souther.compiler.values.AsACompilationAllows;
 import souther.compiler.values.PlannedValues;
@@ -118,9 +117,9 @@ class ARenamingNamesTwoSubjectsTwoSubjectsTest {
     void aSubjectHeldByTwoDomainsIsRenamedOnce() {
         ConstraintState<FactSubject> both = ConstraintState.<FactSubject>top()
                 .taking(ONLY_IN_FACTS, true)
-                .takingRead(Confinement.Worked.of(
-                                says(ONLY_IN_FACTS, "A"),
-                                OrderedIntervals.top(), Map.of()),
+                .takingRead(new Confinement.Planned<>(says(ONLY_IN_FACTS, "A"),
+                                OrderedIntervals.top(), Map.<FactSubject, Carrier>of())
+                                .resolve(AsACompilationAllows.forAdmittedValues()),
                         AsACompilationAllows.forAdmittedValues());
         java.util.concurrent.atomic.AtomicInteger asked = new java.util.concurrent.atomic.AtomicInteger();
 
@@ -131,23 +130,21 @@ class ARenamingNamesTwoSubjectsTwoSubjectsTest {
         assertEquals(ValueSet.just(Value.text("A")), said.values().at("p#0"));
     }
 
-    /** One rule about one position, worked out, which is how a reading is come by. */
-    private static AdmissibleValues<FactSubject> says(FactSubject atom, String text) {
-        return PlannedValues.at(atom, AdmittedPlan.of(ValueSet.just(Value.text(text))))
-                .resolve(AsACompilationAllows.forAdmittedValues())
-                .values();
+    /** One rule about one position. */
+    private static PlannedValues<FactSubject> says(FactSubject atom, String text) {
+        return PlannedValues.at(atom, AdmittedPlan.of(ValueSet.just(Value.text(text))));
     }
 
     /** One subject in each domain, and no subject in two of them. */
     private static ConstraintState<FactSubject> spread() {
         return ConstraintState.<FactSubject>top()
                 .taking(ONLY_IN_FACTS, true)
-                .takingRead(Confinement.Worked.of(
-                                says(ONLY_IN_VALUES, "A"),
+                .takingRead(new Confinement.Planned<>(says(ONLY_IN_VALUES, "A"),
                                 OrderedIntervals.at(ONLY_IN_ORDERED, new OrderedInterval(
                                         Endpoint.inclusive(Count.of(6)),
                                         Endpoint.inclusive(Count.of(2)))),
-                                Map.of()),
+                                Map.<FactSubject, Carrier>of())
+                                .resolve(AsACompilationAllows.forAdmittedValues()),
                         AsACompilationAllows.forAdmittedValues())
                 .taking(LinearForm.<FactSubject>atom(ONLY_IN_NUMBERS)
                                 .minus(LinearForm.<FactSubject>constant(BigDecimal.valueOf(3))),

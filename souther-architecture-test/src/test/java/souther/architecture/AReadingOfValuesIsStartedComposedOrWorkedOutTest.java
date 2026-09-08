@@ -51,11 +51,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * the shape a compiler can never make and a test can, which is how tests came to be written against
  * readings the fold does not build.
  *
- * <p><b>What this does not say.</b> {@code AdmissibleValues} is a record with a public canonical
- * constructor, and this leaves that where it is: what is fixed here is the vocabulary a reading is
- * made by, not the representation. Composing two readings already worked out is not narrowed
- * either — a conjunction of them is what a declaration's clauses come to, and it is on this side of
- * {@code resolve} by design.
+ * <p><b>What this does not say.</b> Composing two readings already worked out is not narrowed here
+ * — a conjunction of them is what a declaration's clauses come to, and it is on this side of
+ * working one out by design. The representation is not this rule's either: that a reading is not
+ * written down from its parts is held by the type, whose parts are its own and whose one
+ * constructor takes them as one thing ({@code AdmissibleValues}). What the two say together is why
+ * neither leaves a gap — a maker handed the parts would be found here whatever it was called, and a
+ * maker handed a position or a set of values is what this refuses.
  *
  * <p>Read off the compiled classes, since a construction reached through a method reference makes a
  * reading as surely as one written out, and neither the enclosing declaration nor a switch over a
@@ -92,8 +94,9 @@ class AReadingOfValuesIsStartedComposedOrWorkedOutTest {
      * <p>The four inside {@code AdmissibleValues} are the conjunction, the renaming, what a choice
      * left open and the writing down of the order the rules were read in, each handed the reading
      * it is composing — as {@code this}, which is a reading in hand as much as an argument is.
-     * {@code top} is handed nothing. {@code resolved} is the one place a description becomes
-     * values, and is the only maker outside the type.
+     * {@code top} is handed nothing. {@code realize} is the one place a description becomes values,
+     * and it is the reading's own: it is handed the description and the allowance and does the
+     * building, rather than being handed what the building would have left.
      *
      * <p>{@code metAll} is not here, and that it is not is the reading holding: a conjunction of
      * several is written as one meet after another, so it makes nothing of its own.
@@ -114,14 +117,14 @@ class AReadingOfValuesIsStartedComposedOrWorkedOutTest {
             row(READING, "meet",
                     "(" + held(READING) + held(VALUES + "Allowance") + ")" + held(READING),
                     COMPOSED),
+            row(READING, "realize",
+                    "(" + held(DESCRIPTION + "$Settled") + held(VALUES + "Allowance") + ")"
+                            + held(VALUES + "Realized"),
+                    WORKED_OUT),
             row(READING, "renamed", "(Ljava/util/function/Function;)" + held(READING), COMPOSED),
             row(READING, "sayingWhatWasReadInTheOrderOf",
                     "(Ljava/util/List;)" + held(READING), COMPOSED),
-            row(READING, "top", "()" + held(READING), A_START),
-            row(DESCRIPTION, "resolved",
-                    "(" + held(DESCRIPTION + "$Settled") + held(VALUES + "Allowance") + ")"
-                            + held(VALUES + "Realized"),
-                    WORKED_OUT));
+            row(READING, "top", "()" + held(READING), A_START));
 
     @Test
     void everyMakerOfAReadingOfValuesWasHandedOneOrADescriptionOrNothing() {
