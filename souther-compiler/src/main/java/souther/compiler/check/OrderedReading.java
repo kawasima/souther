@@ -71,6 +71,18 @@ final class OrderedReading {
     private final Map<FactSubject, Carrier> carriers;
     /** The leaves this reading could not account for, written down as they are met. */
     private final Set<Core> gaveUp = Collections.newSetFromMap(new IdentityHashMap<>());
+    /**
+     * The leaves among those that hold one of this reading's positions to another of them.
+     *
+     * <p>Beside {@link #gaveUp} and not taken out of it, because the two answer different readers.
+     * What such a rule leaves the position is not a range and this reading has none for it, so it
+     * is a rule this reading did not account for and everything asking that is right to hear so.
+     * What it is not is a rule nobody read: it holds the position to another position, which is a
+     * line somewhere else and no end here — and a reader asking whether the end at this position is
+     * unknown is owed that answer rather than this reading's.
+     */
+    private final Set<Core> relatingTwoPositions =
+            Collections.newSetFromMap(new IdentityHashMap<>());
 
     private OrderedReading(Terms terms, Map<FactSubject, Carrier> carriers) {
         this.terms = terms;
@@ -139,6 +151,30 @@ final class OrderedReading {
         return gaveUp.contains(e);
     }
 
+    /**
+     * Whether what {@code e} leaves the positions it names is unknown, and not merely unsaid here.
+     *
+     * <p>Narrower than {@link #gaveUpAt} by the rules this reading followed to the end and has no
+     * range for. A comparison holding one position it counts to another states where the values
+     * part as surely as a bound does, and the line it draws runs between the two rather than at
+     * either — so nothing about where this position stops is waiting on a reader. Asked
+     * {@link #gaveUpAt}, such a rule is one nobody read, and a choice offering it comes back as one
+     * whose end nothing could work out.
+     *
+     * <p>The two are one answer with two projections and not two records of one event: what is kept
+     * is the leaf and which of the three things happened to it, and each caller asks for the half
+     * it means. Kept as two flags a caller could ask for both and be told a rule was read and not
+     * read.
+     *
+     * <p><b>Wider than the relation it recognises.</b> A comparison whose subject is a term this
+     * reading cannot name — an absolute value, a difference — is here whatever the arithmetic under
+     * it comes to, because this reading cannot see that it cancels. What such a rule leaves is
+     * known elsewhere, and asking that reader is not something this one can do.
+     */
+    boolean leavesTheEndsUnknownAt(Core e) {
+        return gaveUp.contains(e) && !relatingTwoPositions.contains(e);
+    }
+
     /** A leaf this reading could not follow, which leaves every position where it was. */
     private OrderedIntervals<FactSubject> gaveUp(Core e) {
         gaveUp.add(e);
@@ -175,6 +211,11 @@ final class OrderedReading {
         // both ends and `!(value == x)` places none, which is the same answer each of them gets
         // written directly — and neither is a rule this reading failed at.
         ComparisonClaim said = positive ? claim : claim.denied();
+        // And whether the other side is a position this counts, which is what tells a rule holding
+        // two of them apart from one whose bound this reading has no literal for. Asked of the side
+        // the position is not on, because that is the whole of the question — what the end came to
+        // says nothing about which of the two this is.
+        boolean againstAnother = positionIn(bound, at) != null;
         return switch (said) {
             // The value the rule is met at, which is a range with one value in it. What a denial
             // leaves is every other value, and that is a set rather than a range — which is the
@@ -183,7 +224,7 @@ final class OrderedReading {
                     ? onlyTheValue(bin, position, carrier, written)
                     : OrderedIntervals.top();
             case ComparisonClaim.Cut cut -> ends(bin, position, carrier,
-                    InvariantBound.at(cut, written, carrier));
+                    InvariantBound.at(cut, written, carrier), againstAnother);
         };
     }
 
@@ -200,7 +241,7 @@ final class OrderedReading {
 
     /** What the end an ordering placed leaves the position. */
     private OrderedIntervals<FactSubject> ends(Core e, FactSubject position, Carrier carrier,
-                                               InvariantBound.Read read) {
+                                               InvariantBound.Read read, boolean againstAnother) {
         return switch (read) {
             case InvariantBound.Read.AnEnd it -> leaves(position, carrier, it.bound().lower()
                     ? new OrderedInterval(it.bound().end(), null)
@@ -213,7 +254,18 @@ final class OrderedReading {
             // A cut on a position this counts, against something the order has no literal for. The
             // other reasons NoEnd stands for are answered before this call, so what arrives is
             // always this one.
-            case InvariantBound.Read.NoEnd _ -> gaveUp(e);
+            //
+            // Where that something is another position this counts, the rule holds the two of them
+            // to each other: the line it draws runs between them and there is no end here to be
+            // waiting on. So it is written down as one of those as well, and a reader asking
+            // whether the end at this position is unknown is told no
+            // ({@link #leavesTheEndsUnknownAt}).
+            case InvariantBound.Read.NoEnd _ -> {
+                if (againstAnother) {
+                    relatingTwoPositions.add(e);
+                }
+                yield gaveUp(e);
+            }
         };
     }
 

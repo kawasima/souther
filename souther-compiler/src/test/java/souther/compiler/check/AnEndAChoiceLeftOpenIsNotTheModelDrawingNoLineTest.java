@@ -169,6 +169,54 @@ class AnEndAChoiceLeftOpenIsNotTheModelDrawingNoLineTest {
     }
 
     /**
+     * And an alternative holding one position to another leaves no end here to be waiting on.
+     *
+     * <p>The line such a rule draws runs between the two positions rather than at either, and this
+     * compiler draws it: written alone, {@code n < m} is a border. So the choice is between a form
+     * nothing follows and a rule that was followed, and what it leaves at {@code n} is what the
+     * followed one leaves — nothing.
+     *
+     * <p>Asked of whether the reading of ends had a range for the alternative, it had none, and the
+     * end came back unknown at a position the model states a line about.
+     */
+    @Test
+    void andAnAlternativeHoldingOnePositionToAnotherLeavesNoEndWaiting() {
+        assertEquals(theModelDrawsNoLine(),
+                borderOf("""
+                        module demo
+                        %s
+                        data N = { n: Int, m: Int }
+                            invariant r = Int.abs(n) >= 5 || n < m
+
+                        behavior check : (v: N) -> Answer
+                        let check (v) = Yes
+                        """.formatted(YES_OR_NO)),
+                "the branch beside the unfollowed one was followed, and holds `n` to `m` rather"
+                        + " than stopping it anywhere");
+    }
+
+    /**
+     * And one whose subject this reading cannot name leaves it open, which is weaker than the rules
+     * are.
+     *
+     * <p>{@code n - n >= 0} holds every value, and written alone this compiler says so — the
+     * reading that classifies a comparison reads it to the end and finds it cuts nothing. That
+     * reading does not go into a choice, and the reading of ends cannot see that the arithmetic
+     * cancels: what it has is a subject it cannot name, which is what an absolute value is as well.
+     *
+     * <p>So this is the conservative answer and not the exact one, and it is written down rather
+     * than left to be found: what would close it is the classification of a comparison being
+     * asked under a choice.
+     */
+    @Test
+    void andOneWhoseSubjectItCannotNameIsLeftOpen() {
+        assertEquals(List.of("border      not measured (no line was derived at any position)"),
+                borderIn("Int.abs(n) >= 5 || n - n >= 0"),
+                "neither alternative is one the reading of ends can name a position in, so what"
+                        + " the choice leaves `n` is what following them would answer");
+    }
+
+    /**
      * And a choice above one that gave a constraint back does not collect it again.
      *
      * <p>The inner choice puts every value of {@code n} on the order: one of its alternatives says
@@ -288,9 +336,19 @@ class AnEndAChoiceLeftOpenIsNotTheModelDrawingNoLineTest {
         return linesOf(clause, each -> each.startsWith("border"));
     }
 
+    /** The same of a model of its own, for a rule about two positions. */
+    private static List<String> borderOf(String source) {
+        return linesOfSource(source, each -> each.startsWith("border"));
+    }
+
     private static List<String> linesOf(String clause,
                                         java.util.function.Predicate<String> which) {
-        Compilation compilation = Compilation.ofSource(model(clause), "Main");
+        return linesOfSource(model(clause), which);
+    }
+
+    private static List<String> linesOfSource(String source,
+                                              java.util.function.Predicate<String> which) {
+        Compilation compilation = Compilation.ofSource(source, "Main");
         compilation.measure(Adequacy.Asked.fullReport());
         compilation.answerEverything();
         return AdequacyReport.of(compilation).human(SourceNameResolver.identity()).lines()

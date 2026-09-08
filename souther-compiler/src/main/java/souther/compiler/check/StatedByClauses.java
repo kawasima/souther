@@ -571,11 +571,13 @@ sealed interface StatedByClauses {
                     // decided it and written down where it decided. Read off what the leaf leaves
                     // the positions instead, this would be a list of reasons and no clause.
                     held(values.shortfallsAt(e)),
-                    // And where the ends of this leaf were not worked out, which is the same
-                    // question the ends answered above and is asked of the same answer. A leaf the
-                    // reading followed brings none, whatever it found there: a rule read to the end
-                    // that places no end is one this reading has answered for.
-                    ordered.gaveUpAt(e) ? EndsLeftOpen.at(mentions) : EndsLeftOpen.nothing()));
+                    // And where the ends of this leaf are unknown, which is narrower than the leaf
+                    // being one this reading has no range for. A rule it followed to the end brings
+                    // none, whatever it found there; nor does one holding a position it counts to
+                    // another of them, whose line runs between the two and leaves no end here
+                    // waiting on a reader.
+                    ordered.leavesTheEndsUnknownAt(e)
+                            ? EndsLeftOpen.at(mentions) : EndsLeftOpen.nothing()));
         }
 
         /**
