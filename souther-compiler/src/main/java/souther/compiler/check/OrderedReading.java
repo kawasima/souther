@@ -211,11 +211,19 @@ final class OrderedReading {
         // both ends and `!(value == x)` places none, which is the same answer each of them gets
         // written directly — and neither is a rule this reading failed at.
         ComparisonClaim said = positive ? claim : claim.denied();
-        // And whether the other side is a position this counts, which is what tells a rule holding
-        // two of them apart from one whose bound this reading has no literal for. Asked of the side
-        // the position is not on, because that is the whole of the question — what the end came to
-        // says nothing about which of the two this is.
-        boolean againstAnother = positionIn(bound, at) != null;
+        // And whether this rule holds the position to another position this counts, which is a fact
+        // about the two sides and about neither claim. Written down here, where both sides are in
+        // hand and before either is read for what it leaves: put inside what one claim does with
+        // its side, the same rule written with a different operator is a rule nobody read
+        // ({@code n == m} beside {@code n < m}).
+        //
+        // Whether this reading then has a range for it is a separate question, and the two are
+        // asked together by whoever wants the end ({@link #leavesTheEndsUnknownAt}). So a rule that
+        // does place an end is here as well where it happens to compare two positions, and says
+        // nothing by being: there is nothing to be unknown about a rule this reading followed.
+        if (positionIn(bound, at) != null) {
+            relatingTwoPositions.add(bin);
+        }
         return switch (said) {
             // The value the rule is met at, which is a range with one value in it. What a denial
             // leaves is every other value, and that is a set rather than a range — which is the
@@ -224,7 +232,7 @@ final class OrderedReading {
                     ? onlyTheValue(bin, position, carrier, written)
                     : OrderedIntervals.top();
             case ComparisonClaim.Cut cut -> ends(bin, position, carrier,
-                    InvariantBound.at(cut, written, carrier), againstAnother);
+                    InvariantBound.at(cut, written, carrier));
         };
     }
 
@@ -241,7 +249,7 @@ final class OrderedReading {
 
     /** What the end an ordering placed leaves the position. */
     private OrderedIntervals<FactSubject> ends(Core e, FactSubject position, Carrier carrier,
-                                               InvariantBound.Read read, boolean againstAnother) {
+                                               InvariantBound.Read read) {
         return switch (read) {
             case InvariantBound.Read.AnEnd it -> leaves(position, carrier, it.bound().lower()
                     ? new OrderedInterval(it.bound().end(), null)
@@ -254,18 +262,7 @@ final class OrderedReading {
             // A cut on a position this counts, against something the order has no literal for. The
             // other reasons NoEnd stands for are answered before this call, so what arrives is
             // always this one.
-            //
-            // Where that something is another position this counts, the rule holds the two of them
-            // to each other: the line it draws runs between them and there is no end here to be
-            // waiting on. So it is written down as one of those as well, and a reader asking
-            // whether the end at this position is unknown is told no
-            // ({@link #leavesTheEndsUnknownAt}).
-            case InvariantBound.Read.NoEnd _ -> {
-                if (againstAnother) {
-                    relatingTwoPositions.add(e);
-                }
-                yield gaveUp(e);
-            }
+            case InvariantBound.Read.NoEnd _ -> gaveUp(e);
         };
     }
 

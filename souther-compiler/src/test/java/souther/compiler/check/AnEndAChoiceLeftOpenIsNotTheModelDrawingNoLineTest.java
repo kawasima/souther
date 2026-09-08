@@ -182,17 +182,34 @@ class AnEndAChoiceLeftOpenIsNotTheModelDrawingNoLineTest {
     @Test
     void andAnAlternativeHoldingOnePositionToAnotherLeavesNoEndWaiting() {
         assertEquals(theModelDrawsNoLine(),
-                borderOf("""
-                        module demo
-                        %s
-                        data N = { n: Int, m: Int }
-                            invariant r = Int.abs(n) >= 5 || n < m
-
-                        behavior check : (v: N) -> Answer
-                        let check (v) = Yes
-                        """.formatted(YES_OR_NO)),
+                borderOf(twoPositions("Int.abs(n) >= 5 || n < m")),
                 "the branch beside the unfollowed one was followed, and holds `n` to `m` rather"
                         + " than stopping it anywhere");
+    }
+
+    /**
+     * And it is the two sides that make it a relation, whichever operator is written between them.
+     *
+     * <p>An equality holds the two positions to each other as an ordering does, and so does a
+     * denial of a disequality — one rule written three ways. Asked inside what one kind of claim
+     * does with its side, the same rule written another way is a rule nobody read, and the answer
+     * turns on the operator rather than on what the rule says.
+     *
+     * <p>And a comparison against something built out of a position is none of them: what
+     * {@code m + 1} is, is not a position, which is what the reading that draws the line between
+     * two of them wants of each whole side.
+     */
+    @Test
+    void andItIsTheSidesThatMakeItARelationAndNotTheOperator() {
+        assertEquals(List.of(theModelDrawsNoLine(), theModelDrawsNoLine(), theModelDrawsNoLine(),
+                        List.of("border      not measured"
+                                + " (no line was derived at any position)")),
+                List.of(borderOf(twoPositions("Int.abs(n) >= 5 || n == m")),
+                        borderOf(twoPositions("Int.abs(n) >= 5 || Bool.not(n /= m)")),
+                        borderOf(twoPositions("Int.abs(n) >= 5 || n /= m")),
+                        borderOf(twoPositions("Int.abs(n) >= 5 || n >= m + 1"))),
+                "the first three hold one position to another and the last holds one to a number"
+                        + " made from one");
     }
 
     /**
@@ -334,6 +351,19 @@ class AnEndAChoiceLeftOpenIsNotTheModelDrawingNoLineTest {
     /** What the document says about this behavior's border. */
     private static List<String> borderIn(String clause) {
         return linesOf(clause, each -> each.startsWith("border"));
+    }
+
+    /** A model with a second position, for a rule that holds one to the other. */
+    private static String twoPositions(String clause) {
+        return """
+                module demo
+                %s
+                data N = { n: Int, m: Int }
+                    invariant r = %s
+
+                behavior check : (v: N) -> Answer
+                let check (v) = Yes
+                """.formatted(YES_OR_NO, clause);
     }
 
     /** The same of a model of its own, for a rule about two positions. */
