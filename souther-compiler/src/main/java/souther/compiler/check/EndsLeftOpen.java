@@ -196,12 +196,22 @@ record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byPosition) {
         return new EndsLeftOpen(out);
     }
 
-    /** The same for one position of one branch, against what the branch beside it came to. */
+    /**
+     * The same for one position of one branch, against what the branch beside it came to.
+     *
+     * <p><b>What that branch still holds down, and not what some part of it once said.</b> A
+     * constraint is open to being taken back by an alternative beside it, and a choice inside this
+     * branch may have taken this one back already — so a branch that put a constraint on the
+     * position and then lost it holds the position at every value, and the choice above stops where
+     * it would without either alternative. Asked of what was put there ({@link Adoption#read}), a
+     * fact this reading has already taken back comes round again a bracket further out, and an end
+     * an inner choice settled is left open by an outer one.
+     */
     private static void keptUnder(ChoiceSite choice, FactSubject position, Behind behind,
                                   EndsLeftOpen beside,
                                   Adoption<FactSubject, ReadingLanguage.Order> theirs,
                                   Map<FactSubject, Behind> out) {
-        if (!theirs.read().contains(position) && !beside.byPosition.containsKey(position)) {
+        if (!theirs.constrains(position) && !beside.byPosition.containsKey(position)) {
             return;
         }
         out.merge(position, behind.under(choice), Behind::and);

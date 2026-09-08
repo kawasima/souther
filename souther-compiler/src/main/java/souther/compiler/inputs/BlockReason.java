@@ -530,6 +530,20 @@ public sealed interface BlockReason {
      * do about it. That one says the comparison at this position is written in a shape no reader
      * here takes apart, and an author sent after it would rewrite a bound that reads perfectly
      * well. What they can act on is the branch written beside it.
+     *
+     * <p><b>Which choice it was is not here, and a document does not say it yet.</b> A rule may
+     * hold two of them that each leave one end open, and they are two things an author has to do —
+     * so this is one sentence about two, exactly as the same shape is on the reading of values,
+     * whose two shortfalls at one position come to one line as well. What would tell them apart is
+     * the operator each was written at, and a rule an author named is found by that name
+     * ({@link souther.compiler.check.RuleCitation}): there is nowhere in what a document says about
+     * such a rule to put a second place. Split without one, the two are the same sentence twice.
+     *
+     * <p>So the choices are kept where they are told apart — the reading's own
+     * ({@code check.ChoiceSite}) — and what reaches a position says how many there were
+     * ({@link EndLeftOpen}). What is missing is a way for a document to name a place inside a named
+     * rule, and it is the same thing missing wherever the two readings' accounts of one choice are
+     * to be put together.
      */
     record EndLeftOpenByAChoice() implements RuleReadingStopped {}
 

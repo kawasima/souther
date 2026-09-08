@@ -75,6 +75,28 @@ class AnEndAChoiceLeftOpenIsNotTheModelDrawingNoLineTest {
     }
 
     /**
+     * And two choices of one rule leaving one end open are told once, as the values' two are.
+     *
+     * <p>They are two things an author has to do and this is one sentence about both, which is what
+     * a document can say today: a rule an author named is found by that name, so there is nowhere
+     * in what is said about it to put the operator each of them was written at. Split without one,
+     * the two lines are the same sentence twice — which tells a reader less than one line does.
+     *
+     * <p>Pinned here rather than left to be noticed, because the count is not lost on the way: what
+     * the position was left with says how many there were, and the reading holds which. What is
+     * missing is a way to name a place inside a named rule, and this is where a document saying two
+     * would show up.
+     */
+    @Test
+    void andTwoChoicesOfOneRuleAreToldOnce() {
+        assertEquals(List.of("· not read: invariant N (r) — left open by a choice in it whose"
+                        + " other alternative this compiler does not read, about `v.n`"),
+                linesOf("(n >= 2 || Int.abs(n) >= 5) && (n >= 7 || Int.abs(n) >= 9)",
+                        each -> each.startsWith("· not read:")),
+                "one rule, one position, one sentence about what became of it there");
+    }
+
+    /**
      * And an alternative about another position leaves the line drawn nowhere, which is an answer.
      *
      * <p>The reading of ends could not follow the branch and still knows what it is about, so it
@@ -144,6 +166,26 @@ class AnEndAChoiceLeftOpenIsNotTheModelDrawingNoLineTest {
         assertEquals(theModelDrawsNoLine(),
                 borderIn("n >= 2 || (Int.abs(n) >= 5 || s == \"x\")"),
                 "the inner choice holds `n` nowhere and the outer one is between that and a bound");
+    }
+
+    /**
+     * And a choice above one that gave a constraint back does not collect it again.
+     *
+     * <p>The inner choice puts every value of {@code n} on the order: one of its alternatives says
+     * nothing about {@code n} at all, so what the branch holds there is what it held before the
+     * rule was written. The choice above is between that and a form nothing follows, and it stops
+     * where it would without either.
+     *
+     * <p>Read off what some part of the branch put there, the constraint the inner choice already
+     * took back comes round again a bracket further out — and an end this reading settled is
+     * reported as one it did not.
+     */
+    @Test
+    void andAChoiceAboveOneThatGaveAConstraintBackDoesNotCollectIt() {
+        assertEquals(theModelDrawsNoLine(),
+                borderIn("Int.abs(n) >= 5 || (n >= 2 || String.reverse(s) /= \"\")"),
+                "the branch beside the unfollowed one holds `n` nowhere, so the choice does not"
+                        + " either");
     }
 
     /**
