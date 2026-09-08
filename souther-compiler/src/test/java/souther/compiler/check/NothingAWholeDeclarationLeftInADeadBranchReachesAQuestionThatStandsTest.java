@@ -88,6 +88,30 @@ class NothingAWholeDeclarationLeftInADeadBranchReachesAQuestionThatStandsTest {
             """.replace("UNREAD_Y", souther.compiler.ARuleNoReadingTakesIn.about("y"));
 
     /**
+     * The first of those with the dead alternative written second instead.
+     *
+     * <p>Which alternative nobody can be in is the author's, and what a choice with one of them
+     * comes to is the branch beside it either way round. Written one way only, the claim would hold
+     * of a reading that keeps a dead second alternative and drops a dead first.
+     */
+    private static final String THE_FORM_IS_IN_A_DEAD_SECOND_ALTERNATIVE = """
+            module demo
+
+            data N = { x: String, y: String }
+                invariant r =
+                    (x == "C" && y == "Q") || (x == "A" && x == "B" && UNREAD_Y)
+            """.replace("UNREAD_Y", souther.compiler.ARuleNoReadingTakesIn.about("y"));
+
+    /** And the second of them the same way round. */
+    private static final String ONE_OF_TWO_UNREAD_FORMS_IS_IN_A_DEAD_SECOND_ALTERNATIVE = """
+            module demo
+
+            data N = { x: String, y: String }
+                invariant r =
+                    (x == "C" && UNREAD_Y) || (x == "A" && x == "B" && UNREAD_Y)
+            """.replace("UNREAD_Y", souther.compiler.ARuleNoReadingTakesIn.about("y"));
+
+    /**
      * One pattern no machine can be made for, written in a dead branch and beside it.
      *
      * <p>A machine is made once for a pattern at a position however many clauses wrote it, so the
@@ -173,6 +197,26 @@ class NothingAWholeDeclarationLeftInADeadBranchReachesAQuestionThatStandsTest {
         assertEquals(2, placesToLookAt(BOTH_UNREAD_FORMS_ARE_IN_BRANCHES_THAT_STAND, "y"),
                 "and with both branches standing both forms are places to go to, which is what"
                         + " makes the count above a fate's doing");
+    }
+
+    /**
+     * And the same whichever of the two alternatives is the one nobody can be in.
+     *
+     * <p>What is above is written with the dead branch first, and every claim of it is about a
+     * choice and not about a side. Held one way round only, a reading that treated a choice as a
+     * choice wherever the second alternative was the dead one would answer the same on all of it —
+     * the branch beside a dead first is composed with nothing either way, and the two ways are told
+     * apart by nothing else here.
+     */
+    @Test
+    void andTheSameWhicheverAlternativeNobodyCanBeIn() {
+        assertEquals(Set.of(),
+                whatARuleIsAnswerableFor(THE_FORM_IS_IN_A_DEAD_SECOND_ALTERNATIVE, "y"),
+                "nothing satisfies the second alternative, so the form written in it is no clause"
+                        + " for an author to go and look at");
+        assertEquals(1,
+                placesToLookAt(ONE_OF_TWO_UNREAD_FORMS_IS_IN_A_DEAD_SECOND_ALTERNATIVE, "y"),
+                "and it is not a second place either, which is the same claim the other way round");
     }
 
     /**

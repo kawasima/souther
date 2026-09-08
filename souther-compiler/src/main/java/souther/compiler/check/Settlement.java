@@ -114,8 +114,7 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
                                   Confinement.Planned<FactSubject> one,
                                   souther.compiler.values.Emptiness there,
                                   Confinement.Planned<FactSubject> other) {
-            if (here == souther.compiler.values.Emptiness.EMPTY
-                    || there == souther.compiler.values.Emptiness.EMPTY) {
+            if (!souther.compiler.values.Emptiness.Alternatives.of(here, there).bothStand()) {
                 return none();
             }
             return new WidthDependency(Width.ofValues(one.values(), other.values()),

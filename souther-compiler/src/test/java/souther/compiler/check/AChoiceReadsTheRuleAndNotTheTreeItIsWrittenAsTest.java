@@ -61,10 +61,18 @@ class AChoiceReadsTheRuleAndNotTheTreeItIsWrittenAsTest {
         }
 
         Branch or(Branch other) {
-            if (dead || other.dead) {
-                return new Branch(fated().both(other.fated()), dead && other.dead);
+            if (souther.compiler.values.Emptiness.Alternatives.of(said(), other.said())
+                    .bothStand()) {
+                return new Branch(adoption.either(Opening.nothing(), other.adoption), false);
             }
-            return new Branch(adoption.either(Opening.nothing(), other.adoption), false);
+            return new Branch(fated().both(other.fated()),
+                    said().joined(other.said()).isEmpty());
+        }
+
+        /** This branch's fate, in the words the classification is read in. */
+        private souther.compiler.values.Emptiness said() {
+            return dead ? souther.compiler.values.Emptiness.EMPTY
+                    : souther.compiler.values.Emptiness.NONEMPTY;
         }
     }
 

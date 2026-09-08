@@ -286,20 +286,26 @@ class WhatIsReadIsHeldAgainstTheModelsItCouldBeTest {
      * one keeps what either branch could not read.
      */
     private static Answer settled(Rule left, Rule right) {
-        boolean leftStands = !left.planned().holdsNothingAsBuilt(SETS);
-        boolean rightStands = !right.planned().holdsNothingAsBuilt(SETS);
-        if (!leftStands && !rightStands) {
-            return new Answer(
+        return switch (Emptiness.Alternatives.of(said(left), said(right))) {
+            case NEITHER_STANDS -> new Answer(
                     left.planned().bothDead(right.planned()),
                     Set.of(), Set.of(), true,
                     left.holdsSomethingUnread() || right.holdsSomethingUnread());
-        }
-        if (!leftStands) {
-            return standing(right);
-        }
-        if (!rightStands) {
-            return standing(left);
-        }
+            case ONLY_THE_RIGHT -> standing(right);
+            case ONLY_THE_LEFT -> standing(left);
+            case BOTH_STAND -> bothStanding(left, right);
+        };
+    }
+
+    /** A branch's fate, in the words the classification is read in, and asked of this compiler's
+     *  own reading rather than of the models — see {@link #settled}. */
+    private static Emptiness said(Rule branch) {
+        return branch.planned().holdsNothingAsBuilt(SETS) ? Emptiness.EMPTY : Emptiness.NONEMPTY;
+    }
+
+    /** What a choice both branches of which stand comes to, which is the one case the values
+     *  compose. */
+    private static Answer bothStanding(Rule left, Rule right) {
         Set<String> about = new LinkedHashSet<>(left.readAbout());
         about.addAll(right.readAbout());
         Set<String> opened = new LinkedHashSet<>(left.opened());

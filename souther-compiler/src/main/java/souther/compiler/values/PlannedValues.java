@@ -270,7 +270,7 @@ public sealed interface PlannedValues<A> {
                         for (Map.Entry<Sameness.Block<A>, AdmittedPlan> each
                                 : box.at().entrySet()) {
                             stands = stands.met(askedOf(each.getKey(), each.getValue(), asked));
-                            if (stands == Emptiness.EMPTY) {
+                            if (stands.isEmpty()) {
                                 break;
                             }
                         }
@@ -282,7 +282,7 @@ public sealed interface PlannedValues<A> {
                         // Said of the alternative that holds them and not of the reading, which is
                         // the grain the question is asked at — an alternative beside one carrying a
                         // denial stands on its own rules.
-                        if (stands != Emptiness.EMPTY && !box.apart().isEmpty()) {
+                        if (!stands.isEmpty() && !box.apart().isEmpty()) {
                             stands = box.apart().holdsABlockApartFromItself()
                                     ? Emptiness.EMPTY : Emptiness.UNDECIDED;
                         }
@@ -342,7 +342,7 @@ public sealed interface PlannedValues<A> {
         Set<Sameness.Block<A>> here = new LinkedHashSet<>();
         // The block and not its positions — see {@link AdmissibleValues}.
         box.at().forEach((block, plan) -> {
-            if (askedOf(block, plan, asked) == Emptiness.EMPTY) {
+            if (askedOf(block, plan, asked).isEmpty()) {
                 here.add(block);
             }
         });
@@ -395,7 +395,7 @@ public sealed interface PlannedValues<A> {
      * rather than claiming the opposite.
      */
     default boolean holdsNothingAsBuilt(Allowance<A> by) {
-        if (emptiness() == Emptiness.EMPTY) {
+        if (emptiness().isEmpty()) {
             return true;
         }
         Sameness<A> heldAsOne = sameness();
@@ -483,7 +483,7 @@ public sealed interface PlannedValues<A> {
 
     /** Whether nothing satisfies these rules, so far as that is settled. */
     default boolean isBottom() {
-        return emptiness() == Emptiness.EMPTY;
+        return emptiness().isEmpty();
     }
 
     /** The same blocks as the positions they are made of, which is the coordinate a reading with
