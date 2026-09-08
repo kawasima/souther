@@ -754,8 +754,8 @@ public final class Apartness<A> {
         // beside two blocks nothing wrote the values of is two sets that leave one. What the count
         // then shows of them is one lack, shown twice.
         //
-        // Told by what is claimed and not by the blocks the count was taken of. A lack says where
-        // it is filed ({@link RelationalLack#scattering}), where a set of blocks is a number its
+        // Told by what is claimed and not by the blocks the count was taken of. A lack works out
+        // where it is filed at its own boundary (ValueHash), so a set of blocks is not a number its
         // subsets share — and the sets one relation is short of are subsets of the same few blocks.
         Set<RelationalLack<A>> already = new LinkedHashSet<>();
         for (Set<Sameness.Block<A>> apart : walked.get()) {

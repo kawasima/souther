@@ -177,10 +177,10 @@ class ALackAboutBlocksTogetherIsNotALackAtEachOfThemTest {
      * them.
      *
      * <p>Put together by walking, that is every lack of one reading against every lack of the
-     * other, and this relation is inside what a declaration may ask for. So a lack says where it is
-     * filed ({@link RelationalLack#scattering}) and two readings are put together by asking: the
-     * sets of blocks one relation is short of are drawn from the same few blocks, and a number that
-     * is their sum is one nearly all of them share.
+     * other, and this relation is inside what a declaration may ask for. So a lack works out where
+     * it is filed at its own boundary ({@link ValueHash}) and two readings are put together by
+     * asking: the sets of blocks one relation is short of are drawn from the same few blocks, and a
+     * number that was their sum would be one nearly all of them share.
      *
      * <p>Held by being here rather than by a figure. A run that asked this by walking takes long
      * enough to be the whole of what the suite costs, which is what a reader of a broken one sees.
