@@ -37,8 +37,9 @@ class AnOpeningIsAppliedToAnAccountAndNeverDerivedFromItTest {
                 Set.of());
     }
 
+    /** What the choice was settled to leave open, which is the half of an opening this applies. */
     private static Opening<String, ReadingLanguage.Values> opening(String... positions) {
-        return new Opening<>(Set.of(positions));
+        return new Opening<>(Set.of(positions), Set.of(), Set.of());
     }
 
     /**

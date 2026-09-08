@@ -233,9 +233,10 @@ sealed interface StatedByClauses {
                     : "two alternatives of one choice are answerable for one written place";
             Set<RuleShortfall> shortfalls = new LinkedHashSet<>(ruleShortfalls);
             shortfalls.addAll(other.ruleShortfalls());
-            leftOpenByValues(choice, opening.byTheRightGoingUnread(), other.ruleShortfalls(),
-                    shortfalls);
-            leftOpenByValues(choice, opening.byTheLeftGoingUnread(), ruleShortfalls, shortfalls);
+            leftOpenByValues(choice, opening.byValues().byTheRightGoingUnread(),
+                    other.ruleShortfalls(), shortfalls);
+            leftOpenByValues(choice, opening.byValues().byTheLeftGoingUnread(),
+                    ruleShortfalls, shortfalls);
             return new Part(byValues.either(opening.byValues(), other.byValues()),
                     byOrder.either(opening.byOrder(), other.byOrder()),
                     StringRestriction.over(aboutStrings, other.aboutStrings(), false),
@@ -273,8 +274,11 @@ sealed interface StatedByClauses {
          *
          * <p><b>Of the reading of values, which is what the name says and not all there is.</b>
          * Where a position's order stops is taken back by an unread alternative the same way, and
-         * an author is sent to the choice for that by nothing here. Whether they are owed it is a
-         * question of its own and is open.
+         * the ends' opening now says where it would send an author
+         * ({@link Opening#byTheLeftGoingUnread}). What stands between that and this call is that
+         * the ends call an alternative unread wherever it placed no end, so a disequality beside a
+         * bound comes here as a choice nothing could read. Routed before that is the ends' own
+         * answer, an author is sent to clauses this compiler read perfectly well.
          */
         private static void leftOpenByValues(RuleShortfall.Site.AtAChoice choice,
                                              Set<FactSubject> these,
@@ -305,45 +309,26 @@ sealed interface StatedByClauses {
      * choice both of whose alternatives went unread is two things to answer for, and each is
      * weighed against what the branch beside it is already answerable for.
      *
-     * <p><b>Two sets and not one, because the two sides ask two questions of it.</b> An author has
-     * to look at this choice wherever the alternative beside the unread one <em>reached</em> a
-     * position, whether or not the answer there turned on it — that is a fact about clauses
-     * somebody wrote, and it is read off the tree that keeps their shape. A position is reported
-     * wider than the rules only where nothing showed the choice leaves it what it would without
-     * the unread alternative, which is a fact about values and is settled where the branches are
-     * ({@link Settlement.WidthDependency}). Made one,
-     * {@code (P(a) && f(b)) || (P(a) && f(b))} came out with {@code a} reported wider than the
-     * rules hold it: both alternatives reached {@code a}, and dropping either was shown to leave
-     * it where it was.
+     * <p><b>One opening per reading, and nothing here that is not one reading's.</b> Both things
+     * owed about a choice — that a position may be wider than the rules leave it, and that an
+     * author has to look at the choice they wrote — are read off a reading's account of its own
+     * clause, and each {@link Opening} holds its reading's answer to both. What the two languages
+     * say is never mixed until a shortfall is made, where the reading a fact arrived by has stopped
+     * being part of what is said.
      *
-     * @param byTheLeftGoingUnread  the positions the right alternative reached, where the left is
-     *                              one nothing could read. Empty where it was read
-     * @param byTheRightGoingUnread the same the other way round
-     * @param byValues              what the reading of values could not show the alternatives leave
-     *                              where they were, where one of them went unread there
-     * @param byOrder               the same asked of where the orders stop. A separate answer and
-     *                              not a copy: which alternative went unread is each reading's own,
-     *                              and so is what a branch leaves
+     * @param byValues what the reading of values says this choice left open
+     * @param byOrder  the same asked of where the orders stop. A separate answer and not a copy:
+     *                 which alternative went unread is each reading's own, and so is what a branch
+     *                 leaves and where the branch beside it reached
      */
-    record AlternativeOpening(ChoiceId choice, Set<FactSubject> byTheLeftGoingUnread,
-                              Set<FactSubject> byTheRightGoingUnread,
+    record AlternativeOpening(ChoiceId choice,
                               Opening<FactSubject, ReadingLanguage.Values> byValues,
                               Opening<FactSubject, ReadingLanguage.Order> byOrder) {
 
-        // Copied on the way in, as everything a reading publishes is: what is here is handed to
-        // the positions and kept in what they came to, so a maker that went on writing to the set
-        // it built one from would be changing what an answer already given says. The openings do
-        // it where they are made, which is why only the two sets are copied here.
         public AlternativeOpening {
             if (choice == null) {
                 throw new IllegalArgumentException("an opening is some choice's");
             }
-            byTheLeftGoingUnread = held(byTheLeftGoingUnread);
-            byTheRightGoingUnread = held(byTheRightGoingUnread);
-        }
-
-        private static Set<FactSubject> held(Set<FactSubject> these) {
-            return Collections.unmodifiableSet(new LinkedHashSet<>(these));
         }
     }
 
@@ -379,8 +364,6 @@ sealed interface StatedByClauses {
     static AlternativeOpening opens(ChoiceId choice, Settlement.WidthDependency width,
                                     Part one, Part other) {
         return new AlternativeOpening(choice,
-                one.byValues().hasUnreadPart() ? reachedBy(other.byValues()) : Set.of(),
-                other.byValues().hasUnreadPart() ? reachedBy(one.byValues()) : Set.of(),
                 openedBy(width.byValues(), one.byValues(), other.byValues()),
                 openedBy(width.byOrder(), one.byOrder(), other.byOrder()));
     }
@@ -410,12 +393,22 @@ sealed interface StatedByClauses {
         if (other.hasUnreadPart()) {
             opened.addAll(width.mayRestOnRight());
         }
-        return new Opening<>(opened);
+        return new Opening<>(opened,
+                one.hasUnreadPart() ? reachedBy(other) : Set.of(),
+                other.hasUnreadPart() ? reachedBy(one) : Set.of());
     }
 
-    /** The positions a reading reached and did not merely settle: what it constrained, and what it
-     *  was about and could not manage. */
-    private static Set<FactSubject> reachedBy(Adoption<FactSubject, ReadingLanguage.Values> of) {
+    /**
+     * The positions a reading reached and did not merely settle: what it constrained, and what it
+     * was about and could not manage.
+     *
+     * <p>Of whichever reading is asking, and the reading it is asked of is the one that had no word
+     * for the alternative beside this one. Taken from one and the flag from the other, the answer
+     * would say that a branch the ends read whole leaves a position's order open because the values
+     * had no word for it — two halves of two questions, composing without a complaint.
+     */
+    private static <L extends ReadingLanguage> Set<FactSubject> reachedBy(
+            Adoption<FactSubject, L> of) {
         Set<FactSubject> out = new LinkedHashSet<>(of.read());
         out.addAll(of.missed());
         return out;

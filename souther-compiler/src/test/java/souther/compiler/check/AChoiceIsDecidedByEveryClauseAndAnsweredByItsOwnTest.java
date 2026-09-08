@@ -245,16 +245,19 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
                 theBranchRead(java.util.Set.of()),
                 theBranchNothingRead(java.util.Set.of()));
 
-        assertEquals(java.util.Set.of(CONSTRAINED), opened.byTheRightGoingUnread(),
+        assertEquals(java.util.Set.of(CONSTRAINED), opened.byValues().byTheRightGoingUnread(),
                 "an author is sent here about the position the branch beside it constrained, and"
                         + " not about the one it settled");
         assertEquals(java.util.Set.of(CONSTRAINED), opened.byValues().positions(),
                 "and the position hears about it, the width there being the unread branch's");
-        assertEquals(java.util.Set.of(), opened.byTheLeftGoingUnread(),
+        assertEquals(java.util.Set.of(), opened.byValues().byTheLeftGoingUnread(),
                 "the left alternative was read, so nothing is open by its going unread");
         assertEquals(java.util.Set.of(), opened.byOrder().positions(),
                 "and the reading of order read both alternatives, so the width it could not"
                         + " account for is not something an unread alternative left open");
+        assertEquals(java.util.Set.of(), opened.byOrder().byTheRightGoingUnread(),
+                "and it sends an author nowhere for the same reason: which alternative went"
+                        + " unread is each reading's own, and the ends had a word for both");
     }
 
     /**
@@ -306,8 +309,9 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
      */
     private static StatedByClauses.AlternativeOpening opened(
             RuleShortfall.Site.AtAChoice choice) {
-        return new StatedByClauses.AlternativeOpening(choice.id(), java.util.Set.of(),
-                java.util.Set.of(CONSTRAINED), new Opening<>(java.util.Set.of(CONSTRAINED)),
+        return new StatedByClauses.AlternativeOpening(choice.id(),
+                new Opening<>(java.util.Set.of(CONSTRAINED), java.util.Set.of(),
+                        java.util.Set.of(CONSTRAINED)),
                 Opening.nothing());
     }
 
