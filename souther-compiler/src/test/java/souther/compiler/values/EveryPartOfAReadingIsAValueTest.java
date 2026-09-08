@@ -158,7 +158,13 @@ class EveryPartOfAReadingIsAValueTest {
      */
     private static AdmissibleValues<?> made(List<Sample> handed) throws Exception {
         Object[] args = handed.stream().map(Sample::value).toArray();
-        Constructor<?> ofParts = AdmissibleValues.Parts.class.getDeclaredConstructors()[0];
+        Constructor<?>[] every = AdmissibleValues.Parts.class.getDeclaredConstructors();
+        Constructor<?> ofParts = every[0];
+        for (Constructor<?> each : every) {
+            if (each.getParameterCount() == handed.size()) {
+                ofParts = each;
+            }
+        }
         ofParts.setAccessible(true);
         Constructor<?> canonical =
                 AdmissibleValues.class.getDeclaredConstructor(AdmissibleValues.Parts.class);

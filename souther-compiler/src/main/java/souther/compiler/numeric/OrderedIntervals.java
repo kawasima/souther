@@ -103,9 +103,9 @@ public final class OrderedIntervals<A> {
     /**
      * The positions these rules bounded, which is what a caller asking what this took in is asking.
      *
-     * <p>A rule read about a position leaves it a range, so a reading that bounded nothing is one
-     * that read nothing — which is the same question asked of the whole and is answered from the
-     * same set.
+     * <p>The positions and not the ranges, which are this one's own: what a rule left a position is
+     * read through {@link #at}, and a caller holding the map would be holding a state to work its
+     * own answers out of.
      */
     public Set<A> boundedAt() {
         return ranges().keySet();

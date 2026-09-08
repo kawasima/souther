@@ -116,9 +116,11 @@ import java.util.Set;
  *
  * <h2>What a reading may be</h2>
  *
- * <p>The states are the ones these operations reach: a leaf, a rule read at a position, two
- * positions held as one value or held apart, a rule nothing could read, a conjunction, what a
- * settled choice left, and a description worked out ({@link #realize}). Every one of the paragraphs
+ * <p>The states are the ones these operations reach: nothing read, a rule read at a position, two
+ * positions held as one value or held apart, a rule nothing could read, a conjunction, the
+ * positions a choice left open, the same reading under other names, and a description worked out
+ * ({@link #realize}). A choice is not among them and is not missing from them — one is taken while
+ * a reading is still a description, which is the paragraph above. Every one of the paragraphs
  * above states a relation between the parts — a whole that holds nothing is not a position that
  * holds nothing, {@link Held.Nothing} is not an empty union, what a promise is about is the blocks
  * the alternatives agree on — and none of those relations is a property of any part on its own. So
@@ -1006,10 +1008,10 @@ public final class AdmissibleValues<A> {
      */
     static <A> Realized<A> realize(PlannedValues.Settled<A> of, Allowance<A> by) {
         Unbuilt<A> gaveUp = new Unbuilt<>();
-        Map<A, ValueSet> perPosition = built(of.perPosition(), of.sameness(), by, gaveUp);
+        Map<A, ValueSet> perPosition = realized(of.perPosition(), of.sameness(), by, gaveUp);
         Held<A> held = switch (of.held()) {
             case PlannedHeld.Nothing<A> _ -> new Held.Nothing<A>();
-            case PlannedHeld.Alternatives<A> boxes -> standingIn(boxes, by, gaveUp);
+            case PlannedHeld.Alternatives<A> boxes -> alternatives(boxes, by, gaveUp);
         };
         // The blocks the answer is in, which are not the ones it was described in. An alternative
         // dropped for admitting nothing is one whose equalities the rest need not state, so what
@@ -1036,10 +1038,10 @@ public final class AdmissibleValues<A> {
      * nothing, and now that the sides are values it can be seen and taken out. Where every box
      * goes, nothing satisfies the rules.
      */
-    private static <A> Held<A> standingIn(PlannedHeld.Alternatives<A> boxes,
-                                          Allowance<A> by, Unbuilt<A> gaveUp) {
+    private static <A> Held<A> alternatives(PlannedHeld.Alternatives<A> boxes,
+                                            Allowance<A> by, Unbuilt<A> gaveUp) {
         Set<Alternative<A>> live = new LinkedHashSet<>();
-        Set<PlannedHeld.Alternative<A>> stands = new LinkedHashSet<>();
+        Set<PlannedHeld.Alternative<A>> standing = new LinkedHashSet<>();
         Refusal<A> dropped = null;
         for (PlannedHeld.Alternative<A> box : boxes.boxes()) {
             // The relation crosses unchanged. What a denial says is about the blocks and not about
@@ -1050,7 +1052,7 @@ public final class AdmissibleValues<A> {
             switch (said) {
                 case Held.Alternatives<A> it -> {
                     live.addAll(it.boxes());
-                    stands.add(box);
+                    standing.add(box);
                 }
                 case Held.Nothing<A> it -> dropped = dropped == null ? it.shown()
                         : Refusal.shownByBoth(dropped, it.shown());
@@ -1062,15 +1064,15 @@ public final class AdmissibleValues<A> {
         // What each block the alternatives agree on holds across the ones that stand, described
         // first and built once. Read off the sets instead, a join of two languages would be a
         // machine nobody counted.
-        Sameness<A> common = new PlannedHeld.Alternatives<>(stands).commonSameness();
+        Sameness<A> common = new PlannedHeld.Alternatives<>(standing).commonSameness();
         Set<Sameness.Block<A>> named = new LinkedHashSet<>();
-        stands.forEach(box ->
+        standing.forEach(box ->
                 box.positions().forEach(position -> named.add(common.blockOf(position))));
         Map<Sameness.Block<A>, ValueSet> across = new LinkedHashMap<>();
         for (Sameness.Block<A> block : named) {
             A member = block.members().iterator().next();
             AdmittedPlan plan = AdmittedPlan.joining(
-                    stands.stream().map(box -> box.get(member)).toList());
+                    standing.stream().map(box -> box.get(member)).toList());
             Realization made = by.realizer(block).of(plan);
             gaveUp.note(block, made);
             if (!made.upperBound().isAny()) {
@@ -1097,8 +1099,8 @@ public final class AdmissibleValues<A> {
     /** Each position's own description as the set it comes to, built under the allowance of the
      *  block that position is on, the ones nobody could build widened to every value and written
      *  down as such. */
-    private static <A> Map<A, ValueSet> built(Map<A, AdmittedPlan> of, Sameness<A> heldAsOne,
-                                              Allowance<A> by, Unbuilt<A> gaveUp) {
+    private static <A> Map<A, ValueSet> realized(Map<A, AdmittedPlan> of, Sameness<A> heldAsOne,
+                                                 Allowance<A> by, Unbuilt<A> gaveUp) {
         Map<A, ValueSet> out = new LinkedHashMap<>();
         of.forEach((atom, plan) -> {
             Sameness.Block<A> block = heldAsOne.blockOf(atom);
@@ -1480,11 +1482,11 @@ public final class AdmissibleValues<A> {
         // reading arrived with.
         Standing<A> out =
                 standing().inTheOrderOf(read.stream().map(AdmissibleValues::standing).toList());
-        Set<Sameness.Block<A>> opened = new LinkedHashSet<>();
-        read.forEach(each -> opened.addAll(mapped(each.widened(), sameness())));
-        opened.addAll(widened());
+        Set<Sameness.Block<A>> widened = new LinkedHashSet<>();
+        read.forEach(each -> widened.addAll(mapped(each.widened(), sameness())));
+        widened.addAll(widened());
         return new AdmissibleValues<>(held(), perPosition(), out, guaranteed(),
-                defaultGuaranteed(), guaranteedTogether(), tangled(), opened);
+                defaultGuaranteed(), guaranteedTogether(), tangled(), widened);
     }
 
     /** Both readings holding at once. */

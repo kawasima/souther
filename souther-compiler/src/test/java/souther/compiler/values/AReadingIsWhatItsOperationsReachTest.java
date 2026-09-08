@@ -50,11 +50,12 @@ class AReadingIsWhatItsOperationsReachTest {
         declaring.add(state);
         declaring.addAll(Set.of(alsoDeclaring));
         for (Class<?> each : declaring) {
-            // A constructor is a way in where what it makes is one of these, which is what takes in
-            // the class a sealed reading permits and leaves out a type that only answers with one.
-            for (Constructor<?> made : state.isAssignableFrom(each)
-                    ? each.getDeclaredConstructors() : new Constructor<?>[0]) {
-                ways.add(access(made) + signature(made, each.getSimpleName()));
+            // A constructor is a way in where what it makes is one of these, which takes in the
+            // class a sealed reading permits and leaves out a type that only answers with one.
+            if (state.isAssignableFrom(each)) {
+                for (Constructor<?> made : each.getDeclaredConstructors()) {
+                    ways.add(access(made) + signature(made, each.getSimpleName()));
+                }
             }
             for (Method m : each.getDeclaredMethods()) {
                 if (!Modifier.isPrivate(m.getModifiers()) && m.getReturnType() == state) {
