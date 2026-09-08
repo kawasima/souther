@@ -344,6 +344,16 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      */
     @Test
     void andNothingElseComparesTheWordAgainstOneOfItsConstants() {
+        assertTrue(Comparing.itIsEmpty(Emptiness.EMPTY), "each of the four answers what it says");
+        assertTrue(Comparing.emptyIsIt(Emptiness.EMPTY));
+        assertTrue(Comparing.itIsNotEmpty(Emptiness.NONEMPTY));
+        assertTrue(Comparing.emptyIsNotIt(Emptiness.NONEMPTY));
+        assertFalse(Comparing.itIsEmpty(Emptiness.UNDECIDED), "and each of them is a comparison,"
+                + " so a body that only looked like one would hold the detector to nothing");
+        assertFalse(Comparing.emptyIsIt(Emptiness.UNDECIDED));
+        assertFalse(Comparing.itIsNotEmpty(Emptiness.EMPTY));
+        assertFalse(Comparing.emptyIsNotIt(Emptiness.EMPTY));
+
         assertEquals(COMPARED_IN_THE_FIXTURE,
                 placesSaying(saidHere(), use -> use.said().equals(COMPARED)),
                 "the bodies beside this test compare it every way it can be written, so a detector"
