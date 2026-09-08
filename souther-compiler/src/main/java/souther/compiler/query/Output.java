@@ -67,8 +67,12 @@ public final class Output {
     private Output() {}
 
     /**
-     * One module's classes, with its declarations stamped on. The declarations go on before anything
-     * loads a class, so what a jar carries is the same bytes this compile checked.
+     * One module's classes as they are published: the program this compilation checked, with the
+     * declarations added for an importer to read back.
+     *
+     * <p>What is added is read and never run, so a jar carries the program this compile checked and
+     * not the same bytes as any other set of classes made from it. {@link Evaluated} is the same
+     * program counted, and carries none of this.
      */
     public record Classes(String name) implements Key<Map<String, ClassFileImage>> {
         @Override
@@ -210,10 +214,11 @@ public final class Output {
          * runs a program. So they go on here and not on {@link Evaluated}, whose classes are run and
          * never read for what the module declares.
          *
-         * <p>Which is also what keeps an author's comment out of what an evaluation is built from.
-         * A declaration is written down as it was written, so the text of a comment beside one is in
-         * these classes; put on the evaluated classes as well, it would make every example of the
-         * module something to establish again whenever anybody typed a comment anywhere near it.
+         * <p>Which is also what keeps a declaration's text out of what an evaluation is built from.
+         * It is written down as it was written, comments and all, so rewording a comment beside a
+         * declaration rewrites these classes; put on the evaluated classes as well, that would make
+         * every example of the module something to establish again. What an edit does to the
+         * positions under it is another matter and reaches an evaluation either way.
          *
          * <p>Nothing here can fail in a way worth reporting. A module with no source of its own was
          * read off the path, and its jar was stamped where it was built; and the declarations are

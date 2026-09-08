@@ -11,6 +11,7 @@ import souther.compiler.source.SourceId;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +21,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -34,7 +34,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * something to establish again whenever anybody typed a comment near a declaration it names.
  *
  * <p>Which is a claim about two artifacts and not about a speed, so it is asked as one. What ships
- * carries the declarations and reads back; what runs carries none of them and the rows still hold.
+ * carries the declarations and reads back; what runs carries none of that and the rows still hold.
+ * What a class does is the program either way — what only one of them carries is the declaration
+ * written down for somebody to read.
  */
 class WhatShipsCarriesTheDeclarationsAndWhatRunsDoesNotTest {
 
@@ -104,22 +106,39 @@ class WhatShipsCarriesTheDeclarationsAndWhatRunsDoesNotTest {
      * <p>Both halves, because either alone would pass on a compiler that had this wrong. That the
      * evaluation artifact was kept says nothing unless the edit was one publication had to take in,
      * and an edit publication ignores would be kept by everything.
+     *
+     * <p>Which is read off what publication came to and not off its having been worked out again. An
+     * answer recomputed to what it already was is a different object and the same publication, so a
+     * comment nothing published would pass a reading of the object alone.
      */
     @Test
     void aCommentIsPublishedAndDoesNotReachWhatTheModuleIsEvaluatedAgainst() {
         Compilation compilation = started();
-        Answer<?> ships = compilation.db().ask(new Output.Classes("shop.prices"));
+        byte[] ships = published(compilation);
         Answer<?> runs = compilation.db()
                 .ask(new Output.Evaluated("shop.prices", ArmObservation.OMIT));
 
         compilation.update(workspace(REWORDED), Set.of());
         compilation.answerEverything();
 
-        assertNotSame(ships, compilation.db().ask(new Output.Classes("shop.prices")),
+        assertFalse(Arrays.equals(ships, published(compilation)),
                 "the classes that ship carry the declaration as it is now written");
         assertSame(runs, compilation.db()
                         .ask(new Output.Evaluated("shop.prices", ArmObservation.OMIT)),
                 "and the classes the module is evaluated against are the ones they were");
+    }
+
+    /**
+     * The bytes the declaration of {@code Amount} is published in.
+     *
+     * <p>Its own class and not the one the module-level declarations go on: a data declaration is
+     * written onto the class it produced, as its source wrote it, and the module's class carries the
+     * header, the imports and an index. So a comment beside this declaration is in these bytes and
+     * in no others, which is what makes it an edit publication takes in.
+     */
+    private static byte[] published(Compilation compilation) {
+        return compilation.db().ask(new Output.Classes("shop.prices")).value()
+                .get(Emitted.value("shop.prices", "Amount")).bytes();
     }
 
     /** The class the declarations go on is published, and is not among the classes that run. */
@@ -161,14 +180,14 @@ class WhatShipsCarriesTheDeclarationsAndWhatRunsDoesNotTest {
     }
 
     /**
-     * A row still holds against classes that carry none of this.
+     * A row still holds against classes with no declaration written onto them.
      *
      * <p>Written across an import, so that what the row runs against is the classes of a module it
      * names as well as its own — the case where a class missing from one of them would be found by
      * failing to load rather than by anything about the model.
      */
     @Test
-    void aRowHoldsAgainstClassesThatCarryNoDeclarations() {
+    void aRowHoldsAgainstClassesWithNoDeclarationWrittenOnThem() {
         Compilation compilation = started();
 
         Output.Examples.Of rows = compilation.db()
