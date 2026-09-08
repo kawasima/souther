@@ -496,37 +496,16 @@ public final class CoverageSites {
      * The sites of every behavior body in one module, numbered in the order the bodies are declared
      * and, within one, in the order the arms are written — the numbering being decided here.
      *
-     * <p>Deciding a numbering is what whoever holds the bodies does once. Every other walk of them
-     * wants the places and not a second opinion about what the numbers mean, and asks
-     * {@link #under} with the numbering that was issued.
+     * <p>The only way to a plan of a module, and asked in one place: the check that holds the
+     * bodies asks it, keeps what comes back, and hands that to every reader. There is no second way
+     * in that takes a numbering already issued and walks the bodies again to meet it — a plan is
+     * filed by which {@code Core} objects were put in it, so one made anywhere but where those
+     * objects are held is an index into a graph its holder is not the owner of.
      */
     public static Plan of(ModuleBodies of, DecisionSources decisions, SuppliedRules supplied) {
         Walked walked = walked(of, decisions, supplied);
         return asPlan(walked,
                 walked.walk().numbering.finish(of.module(), walked.executable()));
-    }
-
-    /**
-     * The same sites, under a numbering already issued over these bodies.
-     *
-     * <p>What a reader that needs where the places are does when the numbering is somebody else's
-     * to decide. The addresses handed out are addresses of {@code numbering}, so an arm of this
-     * plan and an arm of the plan the numbering was issued with are one address rather than two
-     * that agree.
-     *
-     * <p>The walk is held to having realized {@code numbering} rather than trusted to have: a walk
-     * that numbered a place otherwise would hand out an address saying the number means what this
-     * numbering says, and nothing downstream could see the difference.
-     *
-     * <p><b>For a reader that wants the places.</b> A number read back as a place needs no walk at
-     * all — {@link SiteNumbering#of} answers that from the numbering alone, and a caller that asks
-     * here for it walks every body to learn nothing it uses.
-     */
-    public static Plan under(ModuleBodies of, DecisionSources decisions, SuppliedRules supplied,
-                             NumberingIdentity numbering) {
-        Walked walked = walked(of, decisions, supplied);
-        return asPlan(walked,
-                walked.walk().numbering.realize(numbering, of.module(), walked.executable()));
     }
 
     /**

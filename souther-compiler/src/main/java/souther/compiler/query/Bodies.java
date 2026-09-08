@@ -2258,7 +2258,7 @@ public final class Bodies {
         private final souther.compiler.coverage.DecisionSources decisions;
         private final souther.compiler.coverage.SuppliedRules supplied;
         private final Map<String, AnalysisBody> analysed;
-        private final souther.compiler.coverage.NumberingIdentity numbering;
+        private final souther.compiler.coverage.CoverageSites.Plan plan;
 
         private Elaborated(souther.compiler.coverage.ModuleBodies of,
                            Map<String, Core> emittedHelpers,
@@ -2267,7 +2267,7 @@ public final class Bodies {
                            souther.compiler.coverage.DecisionSources decisions,
                            souther.compiler.coverage.SuppliedRules supplied,
                            Map<String, AnalysisBody> analysed,
-                           souther.compiler.coverage.NumberingIdentity numbering) {
+                           souther.compiler.coverage.CoverageSites.Plan plan) {
             this.of = of;
             this.supplied = supplied;
             this.emittedHelpers = emittedHelpers;
@@ -2275,7 +2275,7 @@ public final class Bodies {
             this.elements = elements;
             this.decisions = decisions;
             this.analysed = Map.copyOf(analysed);
-            this.numbering = numbering;
+            this.plan = plan;
         }
 
         /**
@@ -2291,6 +2291,15 @@ public final class Bodies {
          * disagreed about which rule a fork decides by produced two modules — and whose module the
          * bodies are is as much part of that as the trees, since a name read off these is a name in
          * that module's words.
+         *
+         * <p>{@link #plan()} is not among them, and is not left out for being derived. It is an
+         * index onto the very {@code Core} objects this answer holds — filed by which objects were
+         * put in it — so two answers built from equal trees have plans that address different
+         * things and could never compare equal, however alike the modules are. What is stable
+         * across two such builds is what the plan is a numbering of, and that is a value: two
+         * checks of one module come to one {@link souther.compiler.coverage.NumberingIdentity}.
+         * Reading the plan here would deny every answer its own recomputation and leave everything
+         * downstream of the check running on every revision.
          */
         @Override
         public boolean equals(Object other) {
@@ -2317,42 +2326,35 @@ public final class Bodies {
         /**
          * Where every arm and every comparison of these bodies is, numbered.
          *
-         * <p>Made from one value, because a plan is of a module's bodies and a name it hands out
-         * says which module. Built from the bodies and the module handed over separately, the two
-         * are only as true as the caller made them — and there are a dozen callers, each holding
-         * one of these and taking the parts off it.
+         * <p>An index onto the bodies above, filed by which {@code Core} objects were put in it, so
+         * it answers for these trees and for nothing that merely equals them. That is what makes it
+         * the check's to hold rather than anybody's to make: it is worth what the graph it points
+         * into is worth, and the graph is here.
          *
-         * <p><b>Each call walks the bodies again, under the numbering this answer carries.</b> What
-         * comes back is a plan of its own and its addresses are addresses of {@link #numberingIdentity()},
-         * so an arm of one call and an arm of another are one address rather than two that agree.
-         * The walk is held to having realized that numbering, which is where a walk that came to
-         * number a place otherwise is refused.
-         *
-         * <p>Two derivations across two compiles are still held against each other by what
-         * {@link souther.compiler.coverage.NumberingIdentity} says a numbering is — the same places
-         * under the same numbers over the same executable. Nothing here rests on an address having
-         * been made by the same call as the one it is compared with.
-         *
-         * <p><b>For a caller that wants the places and not where they are.</b> Reading a recorded
-         * number back as a place takes no walk: {@link #numberingIdentity()} with
-         * {@link souther.compiler.coverage.SiteNumbering#of} answers it, and asking here for it
-         * walks every body to learn nothing the caller uses.
+         * <p>The one the walk that decided the numbering produced, handed over rather than worked
+         * out again. There is one plan of a module because there is one check of it, and every
+         * caller is looking at that one — so an arm one reader names and an arm another names are
+         * one address and not two that agree.
          */
         public souther.compiler.coverage.CoverageSites.Plan plan() {
-            return souther.compiler.coverage.CoverageSites.under(of, decisions, supplied, numbering);
+            return plan;
         }
 
         /**
          * The numbering of this module's bodies, which this check issued and every reading of them
          * is of.
          *
-         * <p>What a number a run was recorded at means. Held here because deciding it is what
-         * holding the bodies is: a reader that decided one of its own would have a second answer
-         * about one module's arms, and no later check could tell the two apart while both were
-         * true.
+         * <p>What a number a run was recorded at means. Taken off the plan rather than held beside
+         * it: two fields could be handed over out of step, and a reader would have two answers
+         * about one module's arms with no later check able to tell them apart while both were true.
+         *
+         * <p>This is the half of a plan that outlives the graph it was made from. Where the plan
+         * answers for these objects, a numbering says the same places under the same numbers over
+         * the same executable, and two builds of one module come to one — which is what lets a
+         * recording taken by one build be read by another.
          */
         public souther.compiler.coverage.NumberingIdentity numberingIdentity() {
-            return numbering;
+            return plan.identity();
         }
 
         /** Who owns the rule each fork of this module's bodies decides by. */
@@ -2542,24 +2544,29 @@ public final class Bodies {
             // the pair rather than two things to put together again.
             souther.compiler.coverage.ModuleBodies of =
                     new souther.compiler.coverage.ModuleBodies(name, bodies);
-            // The numbering of these bodies, decided here and once. What it is an answer about is
-            // the module this check holds, so this is where there is a module to decide it from;
-            // and the claims below name arms of it, so they are addresses of the numbering this
-            // answer goes on to carry rather than of one more that agrees with it.
+            // Where the places of these bodies are, walked here and once. What it is an answer
+            // about is the module this check holds, so this is where there is a module to walk;
+            // and the claims below name arms of it, so they are addresses of the plan this answer
+            // goes on to carry rather than of one more that agrees with it.
+            //
+            // Handed to the answer whole. The plan is filed by which Core objects were put in it,
+            // and the objects are the ones this answer holds, so it is worth what the answer is
+            // worth and stops being worth anything the moment it is separated from it. A reader
+            // given only what the plan is a numbering of would have to walk these bodies again to
+            // get back what this call already came to.
             //
             // Owed by the answer rather than by what is done with it, so nothing conditions it.
             // The judging below stops where the signatures or the reading of the inputs are not in
             // hand, which is a condition on judging a claim and never was one on the bodies having
-            // a numbering: a module whose bodies came out has arms whatever else did not come out,
-            // and an answer carrying no numbering is one every reader of it would decide a
-            // numbering of its own for.
+            // places: a module whose bodies came out has arms whatever else did not come out, and
+            // an answer carrying no plan is one every reader of it would walk the bodies for.
             souther.compiler.coverage.CoverageSites.Plan plan =
                     souther.compiler.coverage.CoverageSites.of(of, read, handed);
             Map<String, souther.compiler.claims.Claims> claims =
                     judged(db, of, settled.value(), plan);
             return Answer.of(
                     new Elaborated(of, module.value().emittedHelpers(), claims, elements,
-                            read, handed, analysed, plan.identity()),
+                            read, handed, analysed, plan),
                     contradicted(db, name, claims));
         }
     }
