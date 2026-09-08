@@ -106,13 +106,11 @@ class WhatIsUnreadAtOnePositionIsUnreadAtTheOnesItIsOneValueWithTest {
      */
     @Test
     void whetherWhatStandsIsExactIsTheBlocksAnswer() {
-        AdmissibleValues<String> reading = heldAsOne("p", "r");
-        Sameness.Block<String> block = reading.blockOf("p");
-
-        AdmissibleValues<String> wide = new AdmissibleValues<>(reading.held(),
-                reading.perPosition(), reading.standing(),
-                reading.guaranteed(), reading.defaultGuaranteed(), reading.guaranteedTogether(),
-                reading.tangled(), Set.of(block));
+        // A machine somebody gave up on at one of the pair, which is what leaves a block wide: the
+        // description says so of the position it was written at, and the reading it comes to says
+        // it of the block that position is on.
+        AdmissibleValues<String> wide = built(PlannedValues.<String>holdingAsOne("p", "r")
+                .alsoStanding(Standing.of(Set.of("p"), UnreadReason.EXACT_VALUES_TOO_COSTLY)));
 
         assertFalse(wide.projectionExactAt("p"));
         assertFalse(wide.projectionExactAt("r"), "one machine, one answer about it");

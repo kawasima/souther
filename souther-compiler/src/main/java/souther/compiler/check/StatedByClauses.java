@@ -499,7 +499,7 @@ sealed interface StatedByClauses {
                     // carries it; the reading of order has nothing to hand back but its ranges, and
                     // a leaf it read leaves at least one.
                     Adoption.at(mentions, said.adoptedAt(), values.gaveUpAt(e)),
-                    Adoption.at(mentions, range.ranges().keySet(), range.ranges().isEmpty()),
+                    Adoption.at(mentions, range.boundedAt(), range.boundedAt().isEmpty()),
                     // And what the leaf states about the strings at a position, where it is a rule
                     // about them. Asked of the reading that recognises one, so this is where the
                     // answer enters and the connectives below are what compose it.

@@ -21,23 +21,103 @@ import java.util.Set;
  * answer may not: the same rules in another order would have been built, so there is no rule to
  * name. A store that took either would be a store whose type says less than the model does.
  *
- * @param values what the reading leaves, every position it could not work out widened to every value
- * @param aboutARule what a rule of the model is answerable for, each saying which written thing
- *                   asked for what was refused. Not per position: an allowance is held per position
- *                   and every rule reaching one pays into it, so the place is what the spending was
- *                   arranged by and is not what any of it is about
- * @param aboutTheAnswer what the answer is answerable for, naming no rule and nothing written
+ * <p>Which is why the three of them are not a way in. Handed side by side, a caller writes a reading
+ * beside shortfalls no work refused, and the sentence above — that they were settled by one piece of
+ * work — is true of nothing. So one is reached by doing the work ({@link AdmissibleValues#realize}),
+ * or by saying that there was none to do ({@link #workedOut}).
+ *
+ * <p>{@code aboutARule} is not per position: an allowance is held per position and every rule
+ * reaching one pays into it, so the place is what the spending was arranged by and is not what any
+ * of it is about.
  */
-public record Realized<A>(AdmissibleValues<A> values,
-                          Set<Unbuilt.RuleShortfall<A>> aboutARule,
-                          List<Unbuilt.AnswerShortfall<A>> aboutTheAnswer) {
+public final class Realized<A> {
 
-    public Realized {
-        // Held in the order they were recorded, which nothing may read and every run has to give
-        // the same: an immutable copy iterates in an order salted per run of the machine, and a
-        // reader that seeded anything from one would report a model two ways on two days.
-        aboutARule = Collections.unmodifiableSet(new LinkedHashSet<>(aboutARule));
-        aboutTheAnswer = List.copyOf(aboutTheAnswer);
+    /** The parts, together — see {@link AdmissibleValues.Parts}, whose reasoning this is. */
+    private record Parts<A>(AdmissibleValues<A> values,
+                            Set<Unbuilt.RuleShortfall<A>> aboutARule,
+                            List<Unbuilt.AnswerShortfall<A>> aboutTheAnswer) {
+
+        private Parts {
+            // Held in the order they were recorded, which nothing may read and every run has to
+            // give the same: an immutable copy iterates in an order salted per run of the machine,
+            // and a reader that seeded anything from one would report a model two ways on two days.
+            aboutARule = Collections.unmodifiableSet(new LinkedHashSet<>(aboutARule));
+            aboutTheAnswer = List.copyOf(aboutTheAnswer);
+        }
+    }
+
+    private final Parts<A> parts;
+
+    private Realized(AdmissibleValues<A> values, Set<Unbuilt.RuleShortfall<A>> aboutARule,
+                     List<Unbuilt.AnswerShortfall<A>> aboutTheAnswer) {
+        this.parts = new Parts<>(values, aboutARule, aboutTheAnswer);
+    }
+
+    /**
+     * A reading beside the work that made it.
+     *
+     * <p>Handed the record of the work rather than the two lists it kept, which is what makes the
+     * sentence above true of what comes out: the shortfalls are the ones that piece of work noted,
+     * and a caller cannot pair a reading with refusals nothing refused. Read off it here, since
+     * which of the two a refusal is owed to is settled where it was noted.
+     */
+    static <A> Realized<A> of(AdmissibleValues<A> values, Unbuilt<A> gaveUp) {
+        return new Realized<>(values, gaveUp.aboutARule(), gaveUp.aboutTheAnswer());
+    }
+
+    /**
+     * A reading every position of which was worked out, so nothing was left unbuilt.
+     *
+     * <p>For a caller holding a reading that never was a description — one read straight into sets,
+     * where there was nothing to build and no allowance to run out. What is said here is that
+     * nothing was refused, and it is said by there being nothing to say it about.
+     */
+    public static <A> Realized<A> workedOut(AdmissibleValues<A> values) {
+        return new Realized<>(values, Set.of(), List.of());
+    }
+
+    /** What the reading leaves, every position it could not work out widened to every value. */
+    public AdmissibleValues<A> values() {
+        return parts.values();
+    }
+
+    /** What a rule of the model is answerable for, each saying which written thing asked for what
+     *  was refused. */
+    public Set<Unbuilt.RuleShortfall<A>> aboutARule() {
+        return parts.aboutARule();
+    }
+
+    /** What the answer is answerable for, naming no rule and nothing written. */
+    public List<Unbuilt.AnswerShortfall<A>> aboutTheAnswer() {
+        return parts.aboutTheAnswer();
+    }
+
+    /**
+     * The same answer, unable to speak for {@code these} because a choice offered an alternative
+     * nothing could read.
+     *
+     * <p>What was refused while working the reading out is what it was, and this adds nothing to
+     * it: the positions a choice left open are a fact about the branches anybody can be in, and
+     * they are carried by the reading — see {@link AdmissibleValues#alsoOpenedAt}.
+     */
+    public Realized<A> alsoOpenedAt(Set<A> these) {
+        return these.isEmpty() ? this
+                : new Realized<>(values().alsoOpenedAt(these), aboutARule(), aboutTheAnswer());
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof Realized<?> it && parts.equals(it.parts);
+    }
+
+    @Override
+    public int hashCode() {
+        return parts.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return parts.toString();
     }
 
     /**
@@ -53,7 +133,7 @@ public record Realized<A>(AdmissibleValues<A> values,
      * be in, and has kept no record of why nobody knows.
      */
     public Emptiness emptiness() {
-        if (values.isBottom()) {
+        if (values().isBottom()) {
             return Emptiness.EMPTY;
         }
         return unbuilt().isEmpty() ? Emptiness.NONEMPTY : Emptiness.UNDECIDED;
@@ -62,8 +142,8 @@ public record Realized<A>(AdmissibleValues<A> values,
     /** Every position whose answer was not built, whichever of the two it is owed to. */
     public Set<A> unbuilt() {
         Set<A> out = new LinkedHashSet<>();
-        aboutARule.forEach(each -> out.add(each.at()));
-        aboutTheAnswer.forEach(each -> out.add(each.at()));
+        aboutARule().forEach(each -> out.add(each.at()));
+        aboutTheAnswer().forEach(each -> out.add(each.at()));
         return Collections.unmodifiableSet(out);
     }
 }

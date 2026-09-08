@@ -361,6 +361,32 @@ public final class ConjoinedAdmissibleValues<A> {
         return out;
     }
 
+    /**
+     * Two of these say the same thing where they hold the same readings in the same order.
+     *
+     * <p>Written out, because what a query graph stops work on is whether an answer equals the one
+     * before it, and a conjunction ends up inside such an answer ({@code Confinement.Conjoined}).
+     * Left to the default, every conjunction differs from the one the last compile made and nothing
+     * that read one is kept past an edit that changed nothing.
+     *
+     * <p>The readings and not the index beside them: {@link #naming} is worked out from the factors
+     * and holds no fact they do not.
+     *
+     * <p><b>In the order they arrived, though what is answered does not turn on it.</b> The order is
+     * what a compilation writes out, so two of these holding the same readings in two orders write
+     * two things — and equal, one of them would be handed back where the other was made and a model
+     * would come out two ways on two days.
+     */
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof ConjoinedAdmissibleValues<?> it && factors.equals(it.factors);
+    }
+
+    @Override
+    public int hashCode() {
+        return factors.hashCode();
+    }
+
     @Override
     public String toString() {
         return factors.isEmpty() ? "everything" : String.join(" and ", factors.stream()

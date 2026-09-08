@@ -3,6 +3,7 @@ package souther.compiler.values;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -147,18 +148,22 @@ class EveryPartOfAReadingIsAValueTest {
         return out;
     }
 
-    @SuppressWarnings("unchecked")
-    private static Object made(Class<?> of, List<Sample> handed) throws Exception {
-        Constructor<?>[] every = of.getDeclaredConstructors();
-        Constructor<?> canonical = every[0];
-        for (Constructor<?> each : every) {
-            if (each.getParameterCount() == handed.size()) {
-                canonical = each;
-            }
-        }
+    /**
+     * A reading made of exactly what was handed over, by the one constructor there is.
+     *
+     * <p>Through the parts and not through an operation, because what is being asked about is what
+     * a reading does with what it is made of. Every way in composes or narrows what it is given, so
+     * a reading reached through one holds sets it made itself and a maker holding the map it passed
+     * in has nothing here to write into.
+     */
+    private static AdmissibleValues<?> made(List<Sample> handed) throws Exception {
         Object[] args = handed.stream().map(Sample::value).toArray();
+        Constructor<?> ofParts = AdmissibleValues.Parts.class.getDeclaredConstructors()[0];
+        ofParts.setAccessible(true);
+        Constructor<?> canonical =
+                AdmissibleValues.class.getDeclaredConstructor(AdmissibleValues.Parts.class);
         canonical.setAccessible(true);
-        return canonical.newInstance(args);
+        return (AdmissibleValues<?>) canonical.newInstance(ofParts.newInstance(args));
     }
 
     /**
@@ -175,7 +180,7 @@ class EveryPartOfAReadingIsAValueTest {
      */
     @Test
     void nothingAReadingHoldsMayBeChangedAfterItIsMade() throws Exception {
-        RecordComponent[] parts = AdmissibleValues.class.getRecordComponents();
+        RecordComponent[] parts = AdmissibleValues.Parts.class.getRecordComponents();
         assertTrue(parts.length > 0);
 
         for (int i = 0; i < parts.length; i++) {
@@ -185,8 +190,12 @@ class EveryPartOfAReadingIsAValueTest {
                 continue;
             }
             List<Sample> handed = handedOver(parts);
-            Object reading = made(AdmissibleValues.class, handed);
-            Object held = part.getAccessor().invoke(reading);
+            AdmissibleValues<?> reading = made(handed);
+            // Asked of what the reading hands out and not of what the parts hold. The reading is
+            // what a caller has, and a part it copied and then handed over by reference is one
+            // whose maker can still write into what somebody else is holding.
+            Method accessor = AdmissibleValues.class.getDeclaredMethod(part.getName());
+            Object held = accessor.invoke(reading);
 
             assertThrows(UnsupportedOperationException.class, () -> add(held),
                     part.getName() + " may be written to after the reading was made");
@@ -199,7 +208,7 @@ class EveryPartOfAReadingIsAValueTest {
             assertTrue(!writes.isEmpty(), part.getName() + " is a part with nothing to write into");
             for (Runnable write : writes) {
                 write.run();
-                assertEquals(said, String.valueOf(part.getAccessor().invoke(reading)),
+                assertEquals(said, String.valueOf(accessor.invoke(reading)),
                         part.getName() + " moved when the maker wrote into what it was made of");
             }
         }

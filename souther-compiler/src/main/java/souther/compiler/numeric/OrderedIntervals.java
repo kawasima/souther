@@ -35,14 +35,36 @@ import java.util.Set;
  * is — so a rule comparing a date against a written one lands here, and one comparing two fields of
  * a record lands there. Both may hold the same rule about an {@code Int}, and neither is the other's
  * copy: what each of them can show is its own, and a contradiction shown anywhere is a contradiction.
+ *
+ * <p><b>The states are the ones these operations reach.</b> The two parts depend on each other —
+ * {@code nothing} says the whole is empty where no position is, and a position left an empty range
+ * says it where the whole need not carry it — so a pair of them written down side by side is a
+ * combination nothing read. What the parts are is this one's own; a caller reaches a state by doing
+ * to a reading what the state says was done to it.
  */
-public record OrderedIntervals<A>(Map<A, OrderedInterval> ranges, boolean nothing) {
+public final class OrderedIntervals<A> {
 
-    public OrderedIntervals {
-        // Kept in the order the positions were read. What is written out of these has to come out
-        // the same on two runs of the compiler, and the iteration order of an immutable copy does
-        // not.
-        ranges = Collections.unmodifiableMap(new LinkedHashMap<>(ranges));
+    /**
+     * The parts, together, so that everything answered from all of them is answered from one place.
+     *
+     * <p>Equality and the parts a reader may be shown are the whole of what this is, and both of
+     * them are the record's. A part added here arrives in each of them the day it is declared, which
+     * is what keeps a state that differs from telling a caller it does not.
+     */
+    private record Parts<A>(Map<A, OrderedInterval> ranges, boolean nothing) {
+
+        private Parts {
+            // Kept in the order the positions were read. What is written out of these has to come
+            // out the same on two runs of the compiler, and the iteration order of an immutable
+            // copy does not.
+            ranges = Collections.unmodifiableMap(new LinkedHashMap<>(ranges));
+        }
+    }
+
+    private final Parts<A> parts;
+
+    private OrderedIntervals(Map<A, OrderedInterval> ranges, boolean nothing) {
+        this.parts = new Parts<>(ranges, nothing);
     }
 
     /** Nothing read, so every position holds every value its order has. */
@@ -55,14 +77,48 @@ public record OrderedIntervals<A>(Map<A, OrderedInterval> ranges, boolean nothin
         return new OrderedIntervals<>(Map.of(position, range), false);
     }
 
+    private Map<A, OrderedInterval> ranges() {
+        return parts.ranges();
+    }
+
+    private boolean nothing() {
+        return parts.nothing();
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof OrderedIntervals<?> it && parts.equals(it.parts);
+    }
+
+    @Override
+    public int hashCode() {
+        return parts.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return parts.toString();
+    }
+
+    /**
+     * The positions these rules bounded, which is what a caller asking what this took in is asking.
+     *
+     * <p>A rule read about a position leaves it a range, so a reading that bounded nothing is one
+     * that read nothing — which is the same question asked of the whole and is answered from the
+     * same set.
+     */
+    public Set<A> boundedAt() {
+        return ranges().keySet();
+    }
+
     /** What {@code position} is left, every value of its order where nothing was said. */
     public OrderedInterval at(A position) {
-        return ranges.getOrDefault(position, OrderedInterval.OPEN);
+        return ranges().getOrDefault(position, OrderedInterval.OPEN);
     }
 
     /** Whether nothing satisfies these rules, at a position or otherwise. */
     public boolean isBottom() {
-        return nothing || ranges.values().stream().anyMatch(OrderedInterval::holdsNothing);
+        return nothing() || ranges().values().stream().anyMatch(OrderedInterval::holdsNothing);
     }
 
     /**
@@ -75,7 +131,7 @@ public record OrderedIntervals<A>(Map<A, OrderedInterval> ranges, boolean nothin
      */
     public Set<A> holdingNothing() {
         Set<A> out = new LinkedHashSet<>();
-        ranges.forEach((position, range) -> {
+        ranges().forEach((position, range) -> {
             if (range.holdsNothing()) {
                 out.add(position);
             }
@@ -85,9 +141,10 @@ public record OrderedIntervals<A>(Map<A, OrderedInterval> ranges, boolean nothin
 
     /** Both readings holding at once. */
     public OrderedIntervals<A> meet(OrderedIntervals<A> other) {
-        Map<A, OrderedInterval> out = new LinkedHashMap<>(ranges);
-        other.ranges.forEach((position, range) -> out.merge(position, range, OrderedInterval::meet));
-        return new OrderedIntervals<>(out, nothing || other.nothing);
+        Map<A, OrderedInterval> out = new LinkedHashMap<>(ranges());
+        other.ranges().forEach((position, range) ->
+                out.merge(position, range, OrderedInterval::meet));
+        return new OrderedIntervals<>(out, nothing() || other.nothing());
     }
 
     /**
@@ -108,8 +165,8 @@ public record OrderedIntervals<A>(Map<A, OrderedInterval> ranges, boolean nothin
      */
     public <B> OrderedIntervals<B> renamed(java.util.function.Function<A, B> naming) {
         Map<B, OrderedInterval> out = new LinkedHashMap<>();
-        ranges.forEach((position, range) -> out.put(naming.apply(position), range));
-        return new OrderedIntervals<>(out, nothing);
+        ranges().forEach((position, range) -> out.put(naming.apply(position), range));
+        return new OrderedIntervals<>(out, nothing());
     }
 
     /**
@@ -171,8 +228,8 @@ public record OrderedIntervals<A>(Map<A, OrderedInterval> ranges, boolean nothin
         assert !isBottom() && !other.isBottom()
                 : "a choice of two live alternatives was asked of " + this + " and " + other;
         Map<A, OrderedInterval> out = new LinkedHashMap<>();
-        ranges.forEach((position, range) -> {
-            OrderedInterval there = other.ranges.get(position);
+        ranges().forEach((position, range) -> {
+            OrderedInterval there = other.ranges().get(position);
             if (there != null) {
                 out.put(position, range.join(there));
             }
