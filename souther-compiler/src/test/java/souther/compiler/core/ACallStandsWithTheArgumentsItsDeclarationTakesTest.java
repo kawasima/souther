@@ -44,6 +44,11 @@ class ACallStandsWithTheArgumentsItsDeclarationTakesTest {
 
     private static final ApplicationOrigin COMPOSED = new ApplicationOrigin.ComposedFixture();
 
+    /** Where such a call stands, which this fixture composes: no source wrote the name or the
+     *  application. */
+    private static final Core.KeptCallPlace COMPOSED_PLACE =
+            new Core.KeptCallPlace(COMPOSED_NAME, COMPOSED);
+
     private static final BindingOwner OWNER = new BindingOwner.OfValue("demo", "call");
 
     private static final ValueName.Stdlib.Operation LENGTH =
@@ -59,7 +64,7 @@ class ACallStandsWithTheArgumentsItsDeclarationTakesTest {
     void aCallOfFewerIsRefused() {
         IllegalStateException e = assertThrows(IllegalStateException.class,
                 () -> new Core.PreservedCall(KeptCalls.declared(LENGTH), List.of(),
-                        COMPOSED_NAME, COMPOSED, Type.INT, POS));
+                        COMPOSED_PLACE, Type.INT, POS));
 
         assertTrue(e.getMessage().contains("List.length"), e.getMessage());
     }
@@ -71,7 +76,7 @@ class ACallStandsWithTheArgumentsItsDeclarationTakesTest {
 
         assertThrows(IllegalStateException.class,
                 () -> new Core.PreservedCall(KeptCalls.declared(LENGTH), two,
-                        COMPOSED_NAME, COMPOSED, Type.INT, POS));
+                        COMPOSED_PLACE, Type.INT, POS));
     }
 
     /**
@@ -85,7 +90,7 @@ class ACallStandsWithTheArgumentsItsDeclarationTakesTest {
     void andGoesOnStandingWithThemAfterTheCallerHasMovedOn() {
         List<Core> handed = new ArrayList<>(KeptCalls.to(LENGTH, POS).args());
         Core.PreservedCall call = new Core.PreservedCall(KeptCalls.declared(LENGTH), handed,
-                COMPOSED_NAME, COMPOSED, Type.INT, POS);
+                COMPOSED_PLACE, Type.INT, POS);
 
         handed.add(new Core.Int(0, Type.INT, POS));
 
@@ -104,10 +109,10 @@ class ACallStandsWithTheArgumentsItsDeclarationTakesTest {
         ValueName value = new ValueName.Helper("demo", "half");
 
         assertEquals(0, new Core.PreservedCall(KeptCalls.settledValue(value, Type.INT), List.of(),
-                COMPOSED_NAME, COMPOSED, Type.INT, POS).args().size());
+                COMPOSED_PLACE, Type.INT, POS).args().size());
         assertThrows(IllegalStateException.class,
                 () -> new Core.PreservedCall(KeptCalls.settledValue(value, Type.INT),
-                        List.of(new Core.Int(0, Type.INT, POS)), COMPOSED_NAME, COMPOSED,
+                        List.of(new Core.Int(0, Type.INT, POS)), COMPOSED_PLACE,
                         Type.INT, POS));
     }
 

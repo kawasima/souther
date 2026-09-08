@@ -359,9 +359,11 @@ final class Conditions {
             ApplicationOrigin application = ApplicationOrigin.composedOutOf(call.application(), 0,
                     ApplicationDerivationCause.SizeMeaningOfApplication::new);
             Core size = new Core.PreservedCall(means.size(), call.args(),
-                    ReferenceOrigin.composedOutOf(call.reference(), 0,
-                            ReferenceDerivationCause.SizeMeaningOfReference::new),
-                    application, Type.INT, call.pos());
+                    new Core.KeptCallPlace(
+                            ReferenceOrigin.composedOutOf(call.reference(), 0,
+                                    ReferenceDerivationCause.SizeMeaningOfReference::new),
+                            application),
+                    Type.INT, call.pos());
             return new Core.Binary(BinOp.EQ, size, new Core.Int(0, Type.INT, call.pos()),
                     ConstructOccurrence.unwritten(), Type.BOOL, call.pos());
         }

@@ -63,6 +63,7 @@ public final class TermMeaning {
         return new TermMeaning(term);
     }
 
+
     /**
      * The same reading with {@code given} put where the names it reads stand — what a caller does
      * with a rule written in the declaration's names.
@@ -150,6 +151,12 @@ public final class TermMeaning {
      * <p>The kind goes in ahead of what it says, so two nodes of different kinds that happen to say
      * the same things are told apart, and the length of a list goes in ahead of its elements, so
      * that where one list ends and the next begins is said rather than inferred.
+     *
+     * <p>What is left out is every component whose type says where the node stands: the
+     * {@link souther.compiler.diag.SourcePos} every node has, the {@link Core.ForkPlace} a fork
+     * has, the {@link Core.KeptCallPlace} a kept call has, and the occurrence or application the
+     * two kinds that carry one directly have. That is the whole of the list, and it is the list an
+     * architecture test walks the record components to hold this to.
      */
     private static void project(Core e, List<Object> out) {
         switch (e) {

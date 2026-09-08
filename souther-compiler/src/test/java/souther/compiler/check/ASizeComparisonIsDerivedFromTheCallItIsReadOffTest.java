@@ -15,9 +15,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * The size a comparison is read as says where it came from, and says it from the call it was read
@@ -47,9 +45,10 @@ class ASizeComparisonIsDerivedFromTheCallItIsReadOffTest {
     private static Core.PreservedCall written() {
         Core.PreservedCall kept = emptiness();
         return new Core.PreservedCall(kept.declared(), kept.args(),
-                new SourceReferenceOrigin(new WrittenOwner.Body("demo", "b"), 0),
-                new ApplicationOrigin.Written(SourceConstructOrigin.written(
-                        new WrittenOwner.Body("demo", "b"), 0, SourceConstruct.CALL)),
+                new Core.KeptCallPlace(
+                        new SourceReferenceOrigin(new WrittenOwner.Body("demo", "b"), 0),
+                        new ApplicationOrigin.Written(SourceConstructOrigin.written(
+                                new WrittenOwner.Body("demo", "b"), 0, SourceConstruct.CALL))),
                 kept.type(), kept.pos());
     }
 

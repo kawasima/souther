@@ -268,8 +268,9 @@ public final class CallElaborator {
         // this applies is the callee's, and why the application is here is the application's — and
         // a call kept for a reader to quote is not always one an author wrote, a library operation
         // used as a value being expanded into a block whose application is kept the same way.
-        return new Core.PreservedCall(kept.declaring(), ca.cores(), call.answered().origin(),
-                call.application(), TypeOps.substitute(kept.result(), bind), call.pos());
+        return new Core.PreservedCall(kept.declaring(), ca.cores(),
+                new Core.KeptCallPlace(call.answered().origin(), call.application()),
+                TypeOps.substitute(kept.result(), bind), call.pos());
     }
 
     /**

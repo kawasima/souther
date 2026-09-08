@@ -2681,17 +2681,8 @@ final class Terms {
      * composed thing is another composed thing, and it says so.
      */
     private static ApplicationOrigin writtenBackFrom(ApplicationOrigin folded) {
-        ApplicationOrigin written = ApplicationOrigin.composedOutOf(folded, 0,
+        return ApplicationOrigin.composedOutOf(folded, 0,
                 ApplicationDerivationCause.ApplicationWrittenBack::new);
-        if (written == null) {
-            // A term with its places taken out says nothing about where it came from, and what is
-            // written out of one is reached only where every part of it could be written — which is
-            // where the call still carries what it applies. Said here rather than left to the tree
-            // this builds, which refuses an application with no reason to be.
-            throw new IllegalStateException(
-                    "a term with its places taken out was written back out as a construction");
-        }
-        return written;
     }
 
     /** {@code given} with {@code li}'s binder standing for what it was given. */

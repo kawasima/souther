@@ -51,8 +51,8 @@ class WhatAClauseWouldExpandToIsCountedByTheFoldThatReadsItTest {
     /** As the analysis representation spells one, which is what {@link Predicates} reads. */
     private static Core not(Core e) {
         return new Core.If(e, new Core.Bool(false, Type.BOOL, POS),
-                new Core.Bool(true, Type.BOOL, POS), ConstructOccurrence.unwritten(), Type.BOOL,
-                POS, List.of());
+                new Core.Bool(true, Type.BOOL, POS),
+                Core.ForkPlace.asWritten(ConstructOccurrence.unwritten()), Type.BOOL, POS);
     }
 
     private static long cost(Core e) {

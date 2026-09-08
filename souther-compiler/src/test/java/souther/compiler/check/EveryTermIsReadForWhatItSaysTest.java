@@ -93,7 +93,7 @@ class EveryTermIsReadForWhatItSaysTest {
         assertNotEquals(TermMeaning.of(forked(List.of())),
                 TermMeaning.of(new Core.If(new Core.Bool(false, Type.BOOL, POS),
                         new Core.Int(1, Type.INT, POS), new Core.Int(0, Type.INT, POS),
-                        ConstructOccurrence.unwritten(), Type.INT, POS, List.of())),
+                        Core.ForkPlace.asWritten(ConstructOccurrence.unwritten()), Type.INT, POS)),
                 "two forks asking different things are two readings");
     }
 
@@ -198,13 +198,13 @@ class EveryTermIsReadForWhatItSaysTest {
     private static Core forked(List<BindingOwner> expansion) {
         return new Core.If(new Core.Bool(true, Type.BOOL, POS),
                 new Core.Int(1, Type.INT, POS), new Core.Int(0, Type.INT, POS),
-                ConstructOccurrence.unwritten(), Type.INT, POS, expansion);
+                new Core.ForkPlace(ConstructOccurrence.unwritten(), expansion), Type.INT, POS);
     }
 
     private static Core kept(ReferenceOrigin reference, ApplicationOrigin application) {
         Core.PreservedCall call = KeptCalls.to(ValueName.Stdlib.operation("List", "isEmpty"),
                 List.of(new Core.Str("", Type.STRING, POS)), Type.BOOL, POS);
-        return new Core.PreservedCall(call.declared(), call.args(), reference, application,
-                call.type(), POS);
+        return new Core.PreservedCall(call.declared(), call.args(),
+                new Core.KeptCallPlace(reference, application), call.type(), POS);
     }
 }

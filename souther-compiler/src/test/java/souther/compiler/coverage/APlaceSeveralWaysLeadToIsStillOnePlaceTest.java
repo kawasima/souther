@@ -14,7 +14,6 @@ import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.Type;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -42,12 +41,14 @@ class APlaceSeveralWaysLeadToIsStillOnePlaceTest {
             SourceConstructOrigin.written(new WrittenOwner.Body("demo", "b"), 0,
                     SourceConstruct.IF);
 
-    /** One fork standing in both sides of a comparison, which is two ways to one place. */
+    /** One fork standing in both sides of a comparison, which is two ways to one place. The
+     *  comparison itself is one no source wrote: what this is about is the fork under it. */
     private static Core sharedFork() {
         Core fork = new Core.If(new Core.Bool(true, Type.BOOL, AT),
                 new Core.Int(1, Type.INT, AT), new Core.Int(2, Type.INT, AT),
-                ConstructOccurrence.asWritten(FORK), Type.INT, AT, List.of());
-        return new Core.Binary(BinOp.ADD, fork, fork, null, Type.INT, AT);
+                Core.ForkPlace.asWritten(ConstructOccurrence.asWritten(FORK)), Type.INT, AT);
+        return new Core.Binary(BinOp.ADD, fork, fork, ConstructOccurrence.unwritten(), Type.INT,
+                AT);
     }
 
     /** One {@code let} standing in both sides, which is two ways to one binder. */
@@ -56,7 +57,7 @@ class APlaceSeveralWaysLeadToIsStillOnePlaceTest {
         Core let = new Core.LetIn(new Core.Binder("x", bound),
                 new Core.Int(1, Type.INT, AT),
                 new Core.Read("x", bound, Type.INT, AT), Type.INT, AT);
-        return new Core.Binary(BinOp.ADD, let, let, null, Type.INT, AT);
+        return new Core.Binary(BinOp.ADD, let, let, ConstructOccurrence.unwritten(), Type.INT, AT);
     }
 
     @Test

@@ -47,8 +47,8 @@ class APreservedCallIsRefusedByWhatItIsNotByWhatItNamesTest {
         // A value the representation kept standing rather than a call: it declares no parameters,
         // and reaching the emitter is the same thing having gone wrong.
         assertRefused(helper, new Core.PreservedCall(KeptCalls.settledValue(helper, Type.INT),
-                List.of(), new FixtureReferenceOrigin(0),
-                new ApplicationOrigin.ComposedFixture(), Type.INT, POS));
+                List.of(), new Core.KeptCallPlace(new FixtureReferenceOrigin(0),
+                        new ApplicationOrigin.ComposedFixture()), Type.INT, POS));
     }
 
     private static void assertRefused(ValueName.Stdlib.Operation operation) {

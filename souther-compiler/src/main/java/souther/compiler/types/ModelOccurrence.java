@@ -70,10 +70,8 @@ public record ModelOccurrence(SourceConstructOrigin origin, ExpansionLineage lin
      * that was handed over, and what stands after that belongs to whoever handed it.
      */
     public static Optional<ModelOccurrence> statedAt(ConstructOccurrence occurrence) {
-        // A term with its places taken out is a key for comparing two readings of one body and not
-        // a construct of the model ({@link Core#withoutItsPlace}). Refused rather than met further
-        // in: what such a walk would come back with is an answer about a node that says it stands
-        // nowhere, and every caller here is walking a tree whose places are still on it.
+        // Refused rather than met further in: a construct of the model is some construct, and what
+        // a walk over one that was not would come back with is an answer about nothing.
         if (occurrence == null) {
             throw new IllegalArgumentException(
                     "a construct with no place is no occurrence of the model");

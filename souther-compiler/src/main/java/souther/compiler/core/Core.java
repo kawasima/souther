@@ -87,12 +87,6 @@ public sealed interface Core {
         // The application and not the name inside it. What a temporal's construction names is a
         // namespace rather than a declaration, and a namespace is not a thing to be a reference of,
         // so there is no second occurrence here to keep.
-        //
-        // Null where the term has had its places taken out ({@link #withoutItsPlace}), as every
-        // other origin in that walk is. What it holds is a module and a count of the constructs
-        // before it, so it moves whenever anything above the declaration is edited — and what that
-        // walk makes is a value two readings of one term compare equal, which an unrelated edit
-        // must not reach. Kept here, a temporal would be the one node that broke it.
 
         public Temporal {
             if (kind == null || !kind.temporal()) {
@@ -100,6 +94,13 @@ public sealed interface Core {
             }
             if (text == null) {
                 throw new IllegalArgumentException("a written temporal is written out");
+            }
+            // A temporal reaches here having been written as a construction, so there is one to
+            // name. A reader below writes the construction back out from this and has nowhere else
+            // to get it.
+            if (application == null) {
+                throw new IllegalArgumentException(
+                        "a written temporal was written as some construction: " + text);
             }
         }
 
@@ -131,6 +132,59 @@ public sealed interface Core {
         }
     }
 
+    /**
+     * Where a fork of the model stands: which fork the source wrote and which copy of it this is
+     * ({@code occurrence}), and what that copy is called where the rules a call supplied are looked
+     * up ({@code expansion}), innermost first.
+     *
+     * <p>One value because neither is true without the other. A fork is a construct the model owes
+     * coverage for and a copy the inliner made, and a reader that has one of the two is a reader
+     * that files one fork under another's name — so there is no fork here with an occurrence and no
+     * lineage, and none with a lineage and no occurrence.
+     *
+     * <p>The expansion is empty where the fork stands in the body as the author wrote it, which is a
+     * fork of the model in no copy but its own. That is a thing to say, and it is why the two are a
+     * product rather than one value derived from the other: which construct a copy is of is settled
+     * by the calls the source wrote, and what a binding belongs to is the inlining pass's own
+     * answer, which is what the table of supplied rules is keyed by.
+     */
+    record ForkPlace(ConstructOccurrence occurrence,
+                     List<souther.compiler.types.BindingOwner> expansion) {
+
+        public ForkPlace {
+            if (occurrence == null) {
+                throw new IllegalArgumentException(
+                        "a fork is some fork of the model, in some copy of the body that wrote it");
+            }
+            expansion = List.copyOf(expansion);
+        }
+
+        /** A fork standing in the body as it was written, which is in no copy but its own. */
+        public static ForkPlace asWritten(ConstructOccurrence occurrence) {
+            return new ForkPlace(occurrence, List.of());
+        }
+    }
+
+    /**
+     * Where a call a representation kept standing stands: which occurrence of the operation's name
+     * it applies ({@code reference}) and why the application is here ({@code application}).
+     *
+     * <p>Two questions and one value. The block a name used as a value was expanded into holds an
+     * application this compiler wrote applying a name the author wrote, so neither answers the
+     * other; and a reader writing the call back out has to name a name and compose an application,
+     * so it wants both. One of them alone is half a call, which is a state no producer means and
+     * the first reader to meet one would be reporting somebody else's mistake.
+     */
+    record KeptCallPlace(ReferenceOrigin reference, ApplicationOrigin application) {
+
+        public KeptCallPlace {
+            if (reference == null || application == null) {
+                throw new IllegalArgumentException("a call carries what it applies and why it is"
+                        + " here together: " + reference + " and " + application);
+            }
+        }
+    }
+
     /** A read of something the body binds: a parameter, a {@code let}, a lambda's parameter, a
      * {@code match} arm's binding. {@code binding} is which one; {@code name} is what to call the
      * local it is emitted as, and what a diagnostic quotes. */
@@ -153,15 +207,19 @@ public sealed interface Core {
     record Binary(BinOp op, Core left, Core right, ConstructOccurrence occurrence, Type type,
                   SourcePos pos) implements Core {
 
-        /**
-         * What the source wrote, for a reader whose question is about the construct alone.
-         *
-         * <p>Null where the term has had its places taken out ({@link #withoutItsPlace}), which is
-         * where the occurrence is: what that walk makes is a value two readings of one term compare
-         * equal, and both halves of an occurrence move with edits the term cannot see.
-         */
+        public Binary {
+            // A comparison is some comparison of the model, in some copy of the body that wrote it.
+            // Both halves are the occurrence's to say, and a comparison that is neither is one no
+            // reading of coverage can file.
+            if (occurrence == null) {
+                throw new IllegalArgumentException(
+                        "a comparison is some comparison of the model: " + op);
+            }
+        }
+
+        /** What the source wrote, for a reader whose question is about the construct alone. */
         public SourceConstructOrigin origin() {
-            return occurrence == null ? null : occurrence.origin();
+            return occurrence.origin();
         }
     }
 
@@ -441,39 +499,25 @@ public sealed interface Core {
      * from different declarations — what may say that a name has been read against a declaration is
      * {@link CompleteSignature} and nothing else.
      */
-    record PreservedCall(DeclaredOperation declared, List<Core> args, ReferenceOrigin reference,
-                         ApplicationOrigin application, Type type, SourcePos pos) implements Core {
+    record PreservedCall(DeclaredOperation declared, List<Core> args, KeptCallPlace place,
+                         Type type, SourcePos pos) implements Core {
 
-        // `application` says why this application is here and `reference` which occurrence of the
-        // operation's name it applies, and they are two questions: the block a name used as a value
-        // was expanded into holds an application this pass wrote applying a name the author wrote.
-        // Kept for the reason a comparison's is — a rule read off a call is the same rule wherever
-        // the call was expanded to, and the readings of it are several — and kept as two, because a
-        // reader writing the call back out has to name a name and compose an application, and
-        // working either out from the other is the derivation this exists to remove.
-        //
         // Not a construct of the source. A call kept for a reader to quote is not always one an
         // author wrote: a library operation used as a value is expanded into a block, and the
         // application inside that block is kept in the same way. Held as a construct, those arrived
         // saying no source wrote them and nothing said what they were instead.
-        //
-        // Both are null exactly where the term has had its places taken out
-        // ({@link #withoutItsPlace}), and they go together: what that walk makes is a value two
-        // readings of one term compare equal, and either of these left in would move with an edit
-        // the term cannot see. So a reader wanting them asks for the pair — one of them answering
-        // alone would be half a call — and what it has then is a key for comparing rather than a
-        // term to write back out.
+
+        /** Which occurrence of the operation's name this applies. */
+        public ReferenceOrigin reference() {
+            return place.reference();
+        }
+
+        /** Why this application is here. */
+        public ApplicationOrigin application() {
+            return place.application();
+        }
 
         public PreservedCall {
-            // One state or the other and never half of one. What a call applies and why it is here
-            // are dropped together where a term's places are taken out, and are wanted together by
-            // every reader that composes something out of this — so a call carrying one of them
-            // alone is a call no producer makes and no reader can read, and the first reader to
-            // meet one would be reporting somebody else's mistake.
-            if ((reference == null) != (application == null)) {
-                throw new IllegalArgumentException(
-                        "a call carries what it applies and why it is here together: " + declared);
-            }
             // Taken over rather than borrowed. Checking a list the caller goes on holding says what
             // was true when the call was built, and every reader below reads the call afterwards —
             // a pass that kept the list it handed over could put another argument in it and leave a
@@ -531,13 +575,22 @@ public sealed interface Core {
      * pass's own answer, which is what the table of supplied rules is keyed by. Either derived from
      * the other would put one reader's counting inside the other's identity.
      */
-    record If(Core cond, Core then, Core els, ConstructOccurrence occurrence, Type type,
-              SourcePos pos,
-              List<souther.compiler.types.BindingOwner> expansion) implements Core {
+    record If(Core cond, Core then, Core els, ForkPlace place, Type type, SourcePos pos)
+            implements Core {
 
-        /** What the source wrote, null where the places were taken out, as for {@link Binary}. */
+        /** Which fork of the model this is, in whichever copy of the body it stands. */
+        public ConstructOccurrence occurrence() {
+            return place.occurrence();
+        }
+
+        /** What the copy is called where the rules a call supplied are looked up. */
+        public List<souther.compiler.types.BindingOwner> expansion() {
+            return place.expansion();
+        }
+
+        /** What the source wrote, as for {@link Binary}. */
         public SourceConstructOrigin origin() {
-            return occurrence == null ? null : occurrence.origin();
+            return occurrence().origin();
         }
     }
 
@@ -556,12 +609,21 @@ public sealed interface Core {
      * copy is called where supplied rules are looked up, as they do for {@link If}.
      */
     record IfConstructed(Construct construct, Binder binder, Core then, List<ElseArm> els,
-                         ConstructOccurrence occurrence, Type type, SourcePos pos,
-                         List<souther.compiler.types.BindingOwner> expansion) implements Core {
+                         ForkPlace place, Type type, SourcePos pos) implements Core {
 
-        /** What the source wrote, null where the places were taken out, as for {@link Binary}. */
+        /** Which fork of the model this is, in whichever copy of the body it stands. */
+        public ConstructOccurrence occurrence() {
+            return place.occurrence();
+        }
+
+        /** What the copy is called where the rules a call supplied are looked up. */
+        public List<souther.compiler.types.BindingOwner> expansion() {
+            return place.expansion();
+        }
+
+        /** What the source wrote, as for {@link Binary}. */
         public SourceConstructOrigin origin() {
-            return occurrence == null ? null : occurrence.origin();
+            return occurrence().origin();
         }
     }
 
@@ -791,13 +853,22 @@ public sealed interface Core {
      * {@code occurrence} and {@code expansion} say which fork of the model this is and what its copy
      * is called where supplied rules are looked up, as they do for {@link If}.
      */
-    record Match(Core scrutinee, List<Case> cases, ConstructOccurrence occurrence, Type type,
-                 SourcePos pos,
-                 List<souther.compiler.types.BindingOwner> expansion) implements Core {
+    record Match(Core scrutinee, List<Case> cases, ForkPlace place, Type type, SourcePos pos)
+            implements Core {
 
-        /** What the source wrote, null where the places were taken out, as for {@link Binary}. */
+        /** Which fork of the model this is, in whichever copy of the body it stands. */
+        public ConstructOccurrence occurrence() {
+            return place.occurrence();
+        }
+
+        /** What the copy is called where the rules a call supplied are looked up. */
+        public List<souther.compiler.types.BindingOwner> expansion() {
+            return place.expansion();
+        }
+
+        /** What the source wrote, as for {@link Binary}. */
         public SourceConstructOrigin origin() {
-            return occurrence == null ? null : occurrence.origin();
+            return occurrence().origin();
         }
     }
 
@@ -863,8 +934,7 @@ public sealed interface Core {
             case PreservedCall p -> {
                 List<Core> args = each(p.args(), atExpr);
                 yield args == p.args() ? p
-                        : new PreservedCall(p.declared(), args, p.reference(), p.application(),
-                                p.type(), p.pos());
+                        : new PreservedCall(p.declared(), args, p.place(), p.type(), p.pos());
             }
             // what is applied is a binding holding a function, which the backend loads: a name slot
             case Apply a -> {
@@ -878,8 +948,7 @@ public sealed interface Core {
                 Core then = atExpr.apply(iff.then());
                 Core els = atExpr.apply(iff.els());
                 yield cond == iff.cond() && then == iff.then() && els == iff.els() ? iff
-                        : new If(cond, then, els, iff.occurrence(), iff.type(), iff.pos(),
-                                iff.expansion());
+                        : new If(cond, then, els, iff.place(), iff.type(), iff.pos());
             }
             case IfConstructed ic -> {
                 Construct construct = atConstruction.apply(ic.construct());
@@ -889,8 +958,8 @@ public sealed interface Core {
                     return body == arm.body() ? arm : new ElseArm(arm.clause(), body);
                 });
                 yield construct == ic.construct() && then == ic.then() && els == ic.els() ? ic
-                        : new IfConstructed(construct, ic.binder(), then, els, ic.occurrence(),
-                                ic.type(), ic.pos(), ic.expansion());
+                        : new IfConstructed(construct, ic.binder(), then, els, ic.place(),
+                                ic.type(), ic.pos());
             }
             case LetIn li -> {
                 Core value = atExpr.apply(li.value());
@@ -925,8 +994,7 @@ public sealed interface Core {
                 Core scrutinee = atExpr.apply(m.scrutinee());
                 List<Case> cases = each(m.cases(), c -> c.answering(atExpr.apply(c.body())));
                 yield scrutinee == m.scrutinee() && cases == m.cases() ? m
-                        : new Match(scrutinee, cases, m.occurrence(), m.type(), m.pos(),
-                                m.expansion());
+                        : new Match(scrutinee, cases, m.place(), m.type(), m.pos());
             }
         };
     }

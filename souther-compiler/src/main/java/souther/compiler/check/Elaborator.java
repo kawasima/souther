@@ -292,8 +292,9 @@ public final class Elaborator {
                     joined = TypeOps.joinAt(expected, tt, et);
                 }
                 if (joined != null) {
-                    yield new Core.If(cond, then, els, ctx.occurrenceOf(iff.origin()), joined, iff.pos(),
-                            ctx.within());
+                    yield new Core.If(cond, then, els,
+                            new Core.ForkPlace(ctx.occurrenceOf(iff.origin()), ctx.within()),
+                            joined, iff.pos());
                 }
                 throw CompileException.of(Diagnostic
                                 .at(iff.pos(), 2)
@@ -350,7 +351,8 @@ public final class Elaborator {
                     joined = next;
                 }
                 yield new Core.IfConstructed(construct, CoreBinders.of(ic.binder()), then, arms,
-                        ctx.occurrenceOf(ic.origin()), joined, ic.pos(), ctx.within());
+                        new Core.ForkPlace(ctx.occurrenceOf(ic.origin()), ctx.within()), joined,
+                        ic.pos());
             }
             case Hir.ListLit lit -> {
                 if (lit.elements().isEmpty()) {
@@ -1333,8 +1335,9 @@ public final class Elaborator {
                                     Type.show(t), Type.show(f)))
                             .build());
                 }
-                yield new Core.If(cond, then, els, ctx.occurrenceOf(iff.origin()), t, iff.pos(),
-                        ctx.within());
+                yield new Core.If(cond, then, els,
+                        new Core.ForkPlace(ctx.occurrenceOf(iff.origin()), ctx.within()), t,
+                        iff.pos());
             }
             // a helper that answers a function: `adder(5)` expands to the lambda under the bindings
             // its arguments became, and what those captured is what the lambda closes over
@@ -1524,9 +1527,9 @@ public final class Elaborator {
         // as is a call, and that call is this reading's: nobody applied anything there, so it is
         // derived from the name that was written rather than being an application of a source. The
         // reference is that name's and is carried, not made again.
-        return new Core.PreservedCall(settled.declaring(), List.of(), reference,
-                new ApplicationOrigin.Derived(
-                        new ApplicationDerivationCause.NameReadAsAValue(reference), 0),
+        return new Core.PreservedCall(settled.declaring(), List.of(),
+                new Core.KeptCallPlace(reference, new ApplicationOrigin.Derived(
+                        new ApplicationDerivationCause.NameReadAsAValue(reference), 0)),
                 settled.result(), pos);
     }
 

@@ -206,14 +206,14 @@ class WhatABodyDoesDoesNotMoveWithTheNumbersMintedForItsNamesTest {
                     it.params().stream().map(each -> moved(each, subst)).toList(),
                     it.body(), it.type(), it.pos());
             case Core.IfConstructed it -> new Core.IfConstructed(it.construct(),
-                    moved(it.binder(), subst), it.then(), it.els(), it.occurrence(), it.type(),
-                    it.pos(), it.expansion());
+                    moved(it.binder(), subst), it.then(), it.els(), it.place(), it.type(),
+                    it.pos());
             case Core.Match it -> new Core.Match(it.scrutinee(),
                     it.cases().stream()
                             .map(one -> new Core.Case(one.pattern(), moved(one.binder(), subst),
                                     one.body(), one.pos()))
                             .toList(),
-                    it.occurrence(), it.type(), it.pos(), it.expansion());
+                    it.place(), it.type(), it.pos());
             default -> e;
         };
     }

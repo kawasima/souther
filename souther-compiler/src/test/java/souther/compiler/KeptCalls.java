@@ -50,7 +50,8 @@ public final class KeptCalls {
     /** A call to {@code operation} over {@code args}, answering {@code type}. */
     public static Core.PreservedCall to(ValueName.Stdlib.Operation operation, List<Core> args,
                                         Type type, SourcePos pos) {
-        return new Core.PreservedCall(declared(operation), args, NAME, COMPOSED, type, pos);
+        return new Core.PreservedCall(declared(operation), args,
+                new Core.KeptCallPlace(NAME, COMPOSED), type, pos);
     }
 
     /**
@@ -66,8 +67,8 @@ public final class KeptCalls {
             args.add(new Core.Read("arg" + i, new BindingId(OWNER, i), signature.params().get(i),
                     pos));
         }
-        return new Core.PreservedCall(signature.declaring(), args, NAME, COMPOSED, signature.result(),
-                pos);
+        return new Core.PreservedCall(signature.declaring(), args,
+                new Core.KeptCallPlace(NAME, COMPOSED), signature.result(), pos);
     }
 
     /** What the library declares {@code operation} to be. */
