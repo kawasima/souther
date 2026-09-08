@@ -995,10 +995,14 @@ public final class ExampleStatements {
      * could be made of.
      */
     static RowStatements.StandInRead.EntryRead carried(FixtureReader fixtures, Standin entry) {
+        // An entry carries arguments because its row named them, so the places they were written at
+        // are the row's; the fallback carries none and is not read here.
+        List<Hir.Expr> written = entry.row().matched()
+                instanceof Hir.Matched.Arguments(List<Hir.Expr> inputs) ? inputs : List.of();
         List<RowStatements.StandInRead.Written> arguments = new ArrayList<>();
         for (int i = 0; i < entry.arguments().length; i++) {
             arguments.add(new RowStatements.StandInRead.Written(
-                    fixtures.observed(entry.arguments()[i]), entry.row().inputs().get(i).pos()));
+                    fixtures.observed(entry.arguments()[i]), written.get(i).pos()));
         }
         return new RowStatements.StandInRead.EntryRead(arguments,
                 new RowStatements.StandInRead.Written(fixtures.observed(entry.answer().value()),
@@ -1055,8 +1059,9 @@ public final class ExampleStatements {
     static BuiltTable standins(FixtureReader fixtures, Hir.Fake fk, List<BoundaryInput> ins,
                                      BoundaryOutput outType, List<Diagnostic> out) {
         for (Hir.FakeRow r : fk.rows()) {
-            if (!r.isDefault() && r.inputs().size() != ins.size()) {
-                out.add(unbuildableFake(r.pos(), wrote(fk), "a row has " + r.inputs().size()
+            if (r.matched() instanceof Hir.Matched.Arguments(List<Hir.Expr> inputs)
+                    && inputs.size() != ins.size()) {
+                out.add(unbuildableFake(r.pos(), wrote(fk), "a row has " + inputs.size()
                         + " input(s) where the dependency takes " + ins.size()));
                 return null;
             }
@@ -1066,7 +1071,7 @@ public final class ExampleStatements {
         // built either.
         Hir.FakeRow lastDefault = null;
         for (Hir.FakeRow r : fk.rows()) {
-            if (r.isDefault()) {
+            if (r.matched() instanceof Hir.Matched.Anything) {
                 lastDefault = r;
             }
         }
@@ -1083,7 +1088,7 @@ public final class ExampleStatements {
         // wrong wherever a later row's arguments take their time.
         try {
             for (Hir.FakeRow r : fk.rows()) {
-                if (r.isDefault()) {
+                if (!(r.matched() instanceof Hir.Matched.Arguments(List<Hir.Expr> inputs))) {
                     if (r != lastDefault) {
                         shadowed.add(new Shadowed(r, lastDefault));
                         continue;
@@ -1093,7 +1098,7 @@ public final class ExampleStatements {
                 }
                 Object[] arguments = new Object[ins.size()];
                 for (int i = 0; i < ins.size(); i++) {
-                    arguments[i] = fixtures.built(r.inputs().get(i), ins.get(i));
+                    arguments[i] = fixtures.built(inputs.get(i), ins.get(i));
                 }
                 Written written = new Written(arguments, r);
                 // Whether the table would return this row when asked what this row states, asked of
@@ -1135,7 +1140,7 @@ public final class ExampleStatements {
      */
     static Diagnostic cannotAnswer(Hir.Fake fk, Shadowed dead) {
         return Diagnostic.at(dead.row().pos())
-                .say(dead.row().isDefault()
+                .say(dead.row().matched() instanceof Hir.Matched.Anything
                         ? new ExampleMessage.ALaterDefaultRowAnswersInstead(wrote(fk))
                         : new ExampleMessage.AnEarlierRowAnswersTheseArguments(wrote(fk)))
                 .secondary(souther.compiler.diag.Region.point(dead.answeredBy().pos()),

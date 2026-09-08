@@ -29,7 +29,7 @@ class ATableHoldsNoRowItCannotAnswerWithTest {
 
     private static ExampleStatements.Standin stating(String argument) {
         return new ExampleStatements.Standin(new Object[] {argument},
-                new Hir.FakeRow(List.of(), null, false, SOMEWHERE), null);
+                new Hir.FakeRow(new Hir.Matched.Arguments(List.of()), null, SOMEWHERE), null);
     }
 
     @Test

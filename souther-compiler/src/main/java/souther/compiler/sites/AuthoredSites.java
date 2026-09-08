@@ -8,6 +8,7 @@ import souther.compiler.source.SourceId;
 
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -244,8 +245,11 @@ public final class AuthoredSites {
         private void fake(Hir.Fake fake) {
             expr(fake.target());
             for (Hir.FakeRow row : fake.rows()) {
-                for (Hir.Expr input : row.inputs()) {
-                    expr(input);
+                switch (row.matched()) {
+                    case Hir.Matched.Arguments(List<Hir.Expr> inputs) -> inputs.forEach(this::expr);
+                    // A row that answers for anything writes no arguments, so there is nothing
+                    // written for a site to be at.
+                    case Hir.Matched.Anything _ -> { }
                 }
                 expr(row.output());
             }

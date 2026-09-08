@@ -629,9 +629,13 @@ public final class ExampleVerifier {
         // written with, and there is no grain below that for it to have stated instead.
         Expectation.Asserts stated;
         try {
+            // An entry is a row that named the arguments it answers for; the fallback names none
+            // and is not one of these.
+            List<Hir.Expr> written = entry.written().matched()
+                    instanceof Hir.Matched.Arguments(List<Hir.Expr> inputs) ? inputs : List.of();
             args = new Object[sig.ins().size()];
             for (int i = 0; i < args.length; i++) {
-                args[i] = fixtures.built(entry.written().inputs().get(i), sig.ins().get(i));
+                args[i] = fixtures.built(written.get(i), sig.ins().get(i));
             }
             stated = new Expectation.TheValue(
                     fixtures.assertedExpected(entry.written().output(), sig.out()).asserted());

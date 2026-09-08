@@ -248,9 +248,29 @@ public interface Ast {
      */
     record Fake(Var target, List<FakeRow> rows, SourcePos pos) implements Ast {}
 
-    /** One fake row: input argument expressions mapped to an output, or the default ({@code inputs}
-     * null / {@code isDefault} true). */
-    record FakeRow(List<Expr> inputs, Expr output, boolean isDefault, SourcePos pos) implements Ast {}
+    /** One fake row: what it answers for, and what it answers with. */
+    record FakeRow(Matched matched, Expr output, SourcePos pos) implements Ast {}
+
+    /**
+     * What a fake's row answers for.
+     *
+     * <p>Two states and the source says which: a row written {@code (a, b) -> out} answers for those
+     * arguments and for no others, and a row written {@code _ -> out} answers for anything, with no
+     * arguments written in it to read. The parse decides which, and nothing below it decides again.
+     */
+    sealed interface Matched permits Matched.Arguments, Matched.Anything {
+
+        /** The row names the arguments it answers for, and these are they. */
+        record Arguments(List<Expr> inputs) implements Matched {
+
+            public Arguments {
+                inputs = List.copyOf(inputs);
+            }
+        }
+
+        /** The row answers for anything: {@code _ -> out}. */
+        record Anything() implements Matched {}
+    }
 
     /** {@code with <dep> = <value>} on an example row — a value fake for an injected dependency
      * (a zero-argument behavior whose faked result is a constant). The dependency is named as a

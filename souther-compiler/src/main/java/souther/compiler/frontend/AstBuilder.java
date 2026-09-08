@@ -1683,10 +1683,10 @@ public final class AstBuilder {
                 inputs.add(expr(a));
             }
         });
-        boolean isDefault = args.isEmpty();
         List<SyntaxNode> exprs = exprChildren(n);   // the output (not inside ARG_LIST)
         Ast.Expr output = exprs.isEmpty() ? null : expr(exprs.get(0));
-        return new Ast.FakeRow(isDefault ? null : inputs, output, isDefault, pos(n));
+        return new Ast.FakeRow(args.isEmpty() ? new Ast.Matched.Anything()
+                : new Ast.Matched.Arguments(inputs), output, pos(n));
     }
 
     }
