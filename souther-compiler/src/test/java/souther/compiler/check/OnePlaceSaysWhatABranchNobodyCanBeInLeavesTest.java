@@ -31,11 +31,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * to disagree with the first — and a choice neither alternative of which anybody can be in is a
  * choice nothing publishes an account of, so nothing would notice that it had.
  *
- * <p>So the account reads a fate in one place and spends it on one branch. What composes two
- * branches afterwards is not told which of them was which, and cannot be: a choice one alternative
- * of which is dead and a choice neither alternative of which anybody can be in are the same line
- * with the rule applied once and twice. The one that no report reads travels the road the one every
- * report reads travels.
+ * <p>So a fate is spent on a branch in one place, and what composes two branches afterwards is not
+ * handed one. Which of the two compositions a choice gets is read off the two fates beside that,
+ * and that is the whole of what a pair of them decides — so a choice one alternative of which is
+ * dead and a choice neither alternative of which anybody can be in are the same line with the rule
+ * applied once and twice. The one that no report reads travels the road the one every report reads
+ * travels.
  *
  * <p>Held over the compiled classes and per calling method, because that is the grain the claim is
  * at. Two methods of one class are two places, and a rule stated at the class would let the second
@@ -50,7 +51,7 @@ class OnePlaceSaysWhatABranchNobodyCanBeInLeavesTest {
 
     private static final String TAKEN = "souther/compiler/check/StatedByClauses$Taken";
 
-    /** A method that may apply the rule or read a fate, how many times it does, and why. */
+    /** A method that may apply the rule or spend a fate on a branch, how often, and why. */
     private record Licence(String who, int calls, String why) { }
 
     /**
@@ -79,13 +80,18 @@ class OnePlaceSaysWhatABranchNobodyCanBeInLeavesTest {
                     "the one place a branch is answered for by what became of it"));
 
     /**
-     * And who reads a fate at all, which is the walk over the tree the author wrote.
+     * And who spends one on a branch, which is the walk over the tree the author wrote.
      *
-     * <p>Twice, for the two alternatives of a choice. A third reader is a second place deciding
-     * what a fate means, and the account of a choice would be back to turning on the pair rather
-     * than on the branches.
+     * <p>Twice, for the two alternatives of a choice. A third caller is a second place deciding
+     * what a fate does to an account, and what a branch left would be back to turning on the pair
+     * rather than on the branch.
+     *
+     * <p>Reading a fate is not that and is not counted here. The walk beside this one reads the two
+     * of them to pick which composition the choice gets, which is a question about the choice: the
+     * compositions are handed no fate, so what one of them does to a branch is what this method
+     * already did.
      */
-    private static final List<Licence> READING_A_FATE = List.of(
+    private static final List<Licence> SPENDING_A_FATE_ON_A_BRANCH = List.of(
             new Licence("souther.compiler.check.StatedByClauses.Reading.accounted", 2,
                     "the account of a rule, asking each alternative of a choice what became of it"));
 
@@ -98,16 +104,16 @@ class OnePlaceSaysWhatABranchNobodyCanBeInLeavesTest {
                 "and a part deadened anywhere but over the whole subtree is a part answered for by"
                         + " a caller that has not answered for the rest: " + why(DEADENING_A_PART));
         assertEquals(declared(DEADENING_A_TAKEN), callsTo(TAKEN, "inADeadBranch"),
-                "and a subtree deadened outside the reading of a fate is one deadened for a reason"
+                "and a subtree deadened outside the spending of a fate is one deadened for a reason"
                         + " no fate gave: " + why(DEADENING_A_TAKEN));
     }
 
     @Test
     void andAFateIsSpentOnOneBranchInOnePlace() throws IOException {
-        assertEquals(declared(READING_A_FATE), callsTo(TAKEN, "under"),
-                "a fate read anywhere else is a second answer to what became of a branch, and a"
-                        + " composition that could ask for one would be a rule about a pair: "
-                        + why(READING_A_FATE));
+        assertEquals(declared(SPENDING_A_FATE_ON_A_BRANCH), callsTo(TAKEN, "under"),
+                "a second caller of this is a second place deciding what a fate does to an account,"
+                        + " and what a branch left would be back to turning on the pair: "
+                        + why(SPENDING_A_FATE_ON_A_BRANCH));
     }
 
     private static Map<String, Integer> declared(List<Licence> licences) {

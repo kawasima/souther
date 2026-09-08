@@ -1056,8 +1056,9 @@ sealed interface StatedByClauses {
                             || fate.right().emptiness() == souther.compiler.values.Emptiness.EMPTY) {
                         // What is left of a dead alternative is an account and not an alternative,
                         // so the two are accumulated and not composed as a choice. Which of them
-                        // was the dead one is spent by here, and a choice nobody can take at all is
-                        // this same line with two of them.
+                        // was the dead one is asked here and nowhere below: both sides arrive with
+                        // their fate already spent, and a choice nobody can take at all is this
+                        // same line with two of them.
                         yield left.both(right);
                     }
                     yield left.either(
@@ -1110,16 +1111,16 @@ sealed interface StatedByClauses {
         /**
          * This branch of a choice with its fate applied, which is what a choice composes.
          *
-         * <p>The one place the account reads a fate. A branch nobody can be in is put in a dead
+         * <p>The one place a fate is spent on a branch. A branch nobody can be in is put in a dead
          * branch, a branch nothing settled holds what working it out could not build, and a branch
-         * somebody can be in is itself. What a choice does with the two of them turns on nothing
-         * more, so no composition below is told which branch was which — and a rule for a pair of
-         * fates, having no way to reach a branch, cannot say something a rule for one of them
-         * would not.
+         * somebody can be in is itself.
          *
-         * <p>Which is what keeps a choice neither branch of which anybody can take from being a
-         * case at all. It is this twice and the composition beside it, and the answer cannot turn
-         * on the order the alternatives were written in because nothing in it looks at the pair.
+         * <p>Which composition the choice then gets is read off the two fates beside this, and that
+         * is the whole of what a pair of them decides. Neither composition is handed a fate, so
+         * neither can say anything about what a branch left that this did not — which is what keeps
+         * a choice neither branch of which anybody can take from being a case at all. It is this
+         * twice and a composition, and the answer cannot turn on the order the alternatives were
+         * written in because the composition a dead branch picks treats its two sides alike.
          */
         Taken under(Settlement.Sided fate) {
             // Asked of what the fate settles and not taken apart by which of the three answers it
