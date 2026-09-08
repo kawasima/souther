@@ -494,12 +494,13 @@ sealed interface StatedByClauses {
             PlannedValues<FactSubject> said = values.leaf(e, positive, at);
             OrderedIntervals<FactSubject> range = ordered.leaf(e, positive, at);
             Set<FactSubject> mentions = mentioned(e, at);
+            Set<FactSubject> bounded = range.boundedAt();
             return new Said(new Confinement.Planned<>(said, range, ordered.carriers()), new Part(
                     // Each language says whether it gave up on the leaf. The reading of values
                     // carries it; the reading of order has nothing to hand back but its ranges, and
                     // a leaf it read leaves at least one.
                     Adoption.at(mentions, said.adoptedAt(), values.gaveUpAt(e)),
-                    Adoption.at(mentions, range.ranges().keySet(), range.ranges().isEmpty()),
+                    Adoption.at(mentions, bounded, bounded.isEmpty()),
                     // And what the leaf states about the strings at a position, where it is a rule
                     // about them. Asked of the reading that recognises one, so this is where the
                     // answer enters and the connectives below are what compose it.

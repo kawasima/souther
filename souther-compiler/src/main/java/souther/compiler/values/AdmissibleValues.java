@@ -1,5 +1,7 @@
 package souther.compiler.values;
 
+import souther.compiler.reading.StateOfAReading;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -113,14 +115,21 @@ import java.util.Set;
  * alternatives admits every value at a position admits every value at it. That is what
  * {@link #guaranteedAt} is carried for, and holding "something went unread" alone would answer the
  * same clause two ways depending on where its brackets fell.
+ *
+ * <h2>What a reading may be</h2>
+ *
+ * <p>The states are the ones the operations above reach, together with {@link #realize}, which is
+ * where a description crosses. The parts are not among the ways in.
+ *
+ * <p>Every paragraph here states a relation between them — a whole that holds nothing is not a
+ * position that holds nothing, {@link Held.Nothing} is not an empty union, what a promise is about
+ * is the blocks the alternatives agree on — and none of those is a property of one part. So a
+ * caller handed the parts side by side could write down a combination nothing read, with nothing to
+ * say so; what holds the relations up is that a reading is come by doing to one what the reading
+ * says was done to it.
  */
-public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
-                                  Standing<A> standing,
-                                  Map<Sameness.Block<A>, ValueSet> guaranteed,
-                                  ValueSet defaultGuaranteed,
-                                  boolean guaranteedTogether,
-                                  Set<Sameness.Block<A>> tangled,
-                                  Set<Sameness.Block<A>> widened) {
+@StateOfAReading
+public final class AdmissibleValues<A> {
 
     /**
      * The whole of what this reading is, written out for putting several of them in a work order.
@@ -141,13 +150,13 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
     void schedulingForm(StringBuilder out) {
         for (String each : COMPONENTS) {
             switch (each) {
-                case "held" -> PlanOrder.written(held, out);
-                case "perPosition" -> PlanOrder.written(perPosition, out);
-                case "guaranteed" -> PlanOrder.written(guaranteed, out);
-                case "defaultGuaranteed" -> PlanOrder.write(defaultGuaranteed, out);
-                case "guaranteedTogether" -> out.append(guaranteedTogether).append(';');
-                case "tangled" -> named(tangled, out);
-                case "widened" -> named(widened, out);
+                case "held" -> PlanOrder.written(held(), out);
+                case "perPosition" -> PlanOrder.written(perPosition(), out);
+                case "guaranteed" -> PlanOrder.written(guaranteed(), out);
+                case "defaultGuaranteed" -> PlanOrder.write(defaultGuaranteed(), out);
+                case "guaranteedTogether" -> out.append(guaranteedTogether()).append(';');
+                case "tangled" -> named(tangled(), out);
+                case "widened" -> named(widened(), out);
                 // The author's, and not this. See above.
                 case "standing" -> { }
                 default -> throw new IllegalStateException(
@@ -163,9 +172,9 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
         these.stream().map(String::valueOf).sorted().forEach(each -> out.append(each).append(';'));
     }
 
-    /** Every part of a reading, in the order this record declares them. */
+    /** Every part of a reading, in the order {@link Parts} declares them. */
     private static final List<String> COMPONENTS =
-            java.util.Arrays.stream(AdmissibleValues.class.getRecordComponents())
+            java.util.Arrays.stream(Parts.class.getRecordComponents())
                     .map(java.lang.reflect.RecordComponent::getName).toList();
 
     /**
@@ -647,6 +656,18 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
     }
 
     /**
+     * The parts, together, so that everything answered from all of them is answered from one place.
+     *
+     * <p>Which reading two of these are is settled here, and so is the list a reader is shown, and
+     * both of them are the record's. A part added to this arrives in each of them the day it is
+     * declared — written out by hand, a part left off one of them is a reading that differs from
+     * another and says it does not, and nothing fails while it is wrong.
+     *
+     * <p>The reading's own, and named nowhere else. A proposition about every part of a reading
+     * finds it where the reading keeps it — the one thing a reading is made of — rather than being
+     * handed it, which would put the boundary of what is published a step wider than the sentence
+     * above it.
+     *
      * @param held what the rules leave: the alternatives, or nothing
      * @param perPosition what each position's own rules leave it, every alternative merged. Not
      *                what a position may hold — {@link #at} is narrower wherever the alternatives
@@ -715,32 +736,112 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      *                about one of them is handed that sentence about each — which is the other
      *                quantifier and is false wherever a clause of its own answers for a position
      */
-    public AdmissibleValues {
-        // Every part is copied, and a reader wanting to know that they all are asks the record
-        // rather than this list — `EveryPartOfAReadingIsAValue` counts the parts off the
-        // declaration, because a list written here is one a part added later is missing from and
-        // a list written there would be a copy of it with the same hole.
-        perPosition = said(perPosition);
-        // A guarantee empty at one position is empty at all of them. What is promised is one set
-        // per position standing for the product of them, and a product with an empty side is
-        // empty — so there is no value at any position that this can promise. This is also where a
-        // reading that admits nothing arrives, by whichever way it got there: a leaf left no value,
-        // two rules that cannot both hold, a caller that showed it from outside.
-        if (held instanceof Held.Nothing || defaultGuaranteed.isEmpty()
-                || guaranteed.values().stream().anyMatch(ValueSet::isEmpty)) {
-            guaranteed = Map.of();
-            defaultGuaranteed = ValueSet.NONE;
-            guaranteedTogether = true;
+    private record Parts<A>(Held<A> held, Map<A, ValueSet> perPosition,
+                            Standing<A> standing,
+                            Map<Sameness.Block<A>, ValueSet> guaranteed,
+                            ValueSet defaultGuaranteed,
+                            boolean guaranteedTogether,
+                            Set<Sameness.Block<A>> tangled,
+                            Set<Sameness.Block<A>> widened) {
+
+        Parts {
+            // Every part is copied, and a reader wanting to know that they all are asks the record
+            // rather than this list — `EveryPartOfAReadingIsAValue` counts the parts off the
+            // declaration, because a list written here is one a part added later is missing from
+            // and a list written there would be a copy of it with the same hole.
+            perPosition = said(perPosition);
+            // A guarantee empty at one position is empty at all of them. What is promised is one
+            // set per position standing for the product of them, and a product with an empty side
+            // is empty — so there is no value at any position that this can promise. This is also
+            // where a reading that admits nothing arrives, by whichever way it got there: a leaf
+            // left no value, two rules that cannot both hold, a choice every branch of which was
+            // shown impossible.
+            if (held instanceof Held.Nothing || defaultGuaranteed.isEmpty()
+                    || guaranteed.values().stream().anyMatch(ValueSet::isEmpty)) {
+                guaranteed = Map.of();
+                defaultGuaranteed = ValueSet.NONE;
+                guaranteedTogether = true;
+            }
+            guaranteed = Collections.unmodifiableMap(new LinkedHashMap<>(guaranteed));
+            // Kept in the order they were recorded rather than as an immutable copy, whose
+            // iteration order is salted per run of the JVM: what is written out of a reading has to
+            // come out the same on two compiles of one model.
+            tangled = Collections.unmodifiableSet(new LinkedHashSet<>(tangled));
+            widened = Collections.unmodifiableSet(new LinkedHashSet<>(widened));
+            Sameness<A> mine = held instanceof Held.Alternatives<A> it
+                    ? it.commonSameness() : Sameness.discrete();
+            mine.filing(guaranteed.keySet(), tangled, widened);
         }
-        guaranteed = Collections.unmodifiableMap(new LinkedHashMap<>(guaranteed));
-        // Kept in the order they were recorded rather than as an immutable copy, whose iteration
-        // order is salted per run of the JVM: what is written out of a reading has to come out the
-        // same on two compiles of one model.
-        tangled = Collections.unmodifiableSet(new LinkedHashSet<>(tangled));
-        widened = Collections.unmodifiableSet(new LinkedHashSet<>(widened));
-        Sameness<A> mine = held instanceof Held.Alternatives<A> it
-                ? it.commonSameness() : Sameness.discrete();
-        mine.filing(guaranteed.keySet(), tangled, widened);
+    }
+
+    private final Parts<A> parts;
+
+    /**
+     * The one constructor there is, and it takes the parts as one.
+     *
+     * <p>One and not two, though a second taking the parts side by side would read more easily
+     * where they are worked out. A constructor is a maker of a reading, and a maker handed the
+     * parts is the thing a reading of the values may not be come by — so the walk of the compiled
+     * classes that reads what every maker was handed would find it, and would be right.
+     */
+    private AdmissibleValues(Parts<A> parts) {
+        this.parts = parts;
+    }
+
+    /** What the rules leave: the alternatives, or nothing. */
+    public Held<A> held() {
+        return parts.held();
+    }
+
+    /** What each position's own rules leave it, every alternative merged. */
+    public Map<A, ValueSet> perPosition() {
+        return parts.perPosition();
+    }
+
+    /** What the rules of the model could not say, and what stopped this reading saying it. */
+    public Standing<A> standing() {
+        return parts.standing();
+    }
+
+    /** Which values each block is guaranteed to admit, read through {@link #guaranteedAt}. */
+    public Map<Sameness.Block<A>, ValueSet> guaranteed() {
+        return parts.guaranteed();
+    }
+
+    /** What a position this holds no guarantee for is guaranteed to admit. */
+    public ValueSet defaultGuaranteed() {
+        return parts.defaultGuaranteed();
+    }
+
+    /** Whether one value may be taken from each position's guarantee and the whole of them stand
+     *  together in this reading. */
+    public boolean guaranteedTogether() {
+        return parts.guaranteedTogether();
+    }
+
+    /** The blocks whose correlations this reading has lost. */
+    public Set<Sameness.Block<A>> tangled() {
+        return parts.tangled();
+    }
+
+    /** The blocks whose {@link #at} cannot be guaranteed to be what the read rules leave them. */
+    public Set<Sameness.Block<A>> widened() {
+        return parts.widened();
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        return other instanceof AdmissibleValues<?> it && parts.equals(it.parts);
+    }
+
+    @Override
+    public int hashCode() {
+        return parts.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return parts.toString();
     }
 
     /**
@@ -814,7 +915,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      * than a promise and less than this holds.
      */
     public ValueSet guaranteedAt(A atom) {
-        return guaranteed.getOrDefault(blockOf(atom), defaultGuaranteed);
+        return guaranteed().getOrDefault(blockOf(atom), defaultGuaranteed());
     }
 
     /**
@@ -831,7 +932,8 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      * intersection.
      */
     public Sameness<A> sameness() {
-        return held instanceof Held.Alternatives<A> it ? it.commonSameness() : Sameness.discrete();
+        return held() instanceof Held.Alternatives<A> it
+                ? it.commonSameness() : Sameness.discrete();
     }
 
     /** The block {@code position} is on, which is the position on its own wherever no equality
@@ -858,7 +960,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
         // is: read per position, a block whose machine was given up on would report the position
         // the widening was recorded against as wide and the position beside it as exact, while
         // {@link #at} hands both of them the same set.
-        return held instanceof Held.Nothing || !widened.contains(blockOf(atom));
+        return held() instanceof Held.Nothing || !widened().contains(blockOf(atom));
     }
 
     /** Whether what this holds can be guaranteed to be the whole of what the read rules admit,
@@ -866,13 +968,13 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      *  proof state as above and about the same readings: one that admits nothing holds no
      *  relation. */
     public boolean relationExact() {
-        return tangled.isEmpty();
+        return tangled().isEmpty();
     }
 
     /** Nothing read and nothing missed, which is what a reading starts from. */
     public static <A> AdmissibleValues<A> top() {
-        return new AdmissibleValues<>(one(Alternative.at(Map.of())), Map.of(), Standing.nothing(),
-                Map.of(), ValueSet.ANY, true, Set.of(), Set.of());
+        return new AdmissibleValues<>(new Parts<>(one(Alternative.at(Map.of())), Map.of(),
+                Standing.nothing(), Map.of(), ValueSet.ANY, true, Set.of(), Set.of()));
     }
 
     /**
@@ -892,6 +994,173 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
     }
 
     /**
+     * What one working-out came to: the reading, and the record of the work that made it.
+     *
+     * <p>The two of them travel as one thing because they are settled by one piece of work, and
+     * this is what makes that true of what comes out rather than of whoever wrote the call. Handed
+     * over as two, a caller pairs a reading with a record of work that did not make it — a reading
+     * whose positions an allowance ran out on, beside a record that noted nothing — and what it
+     * says about itself is false. Nothing outside this type can make one, so a reading beside what
+     * could not be built while making it is what a working-out came to and is nothing else.
+     */
+    static final class Outcome<A> {
+
+        private final AdmissibleValues<A> values;
+        private final Unbuilt<A> work;
+
+        private Outcome(AdmissibleValues<A> values, Unbuilt<A> work) {
+            this.values = values;
+            this.work = work;
+        }
+
+        AdmissibleValues<A> values() {
+            return values;
+        }
+
+        Unbuilt<A> work() {
+            return work;
+        }
+    }
+
+    /**
+     * The reading a description comes to, with everything it describes built.
+     *
+     * <p>The one way from a description to a reading, and it is here because this is what it makes.
+     * Handed the description and the allowance, it builds the sets, decides which of them nobody
+     * could work out, and settles the rest against what came out — so a caller has a reading
+     * because the work a reading claims was done was done, and not because it wrote down what that
+     * work would have left. What could not be built comes back beside it ({@link Realized}).
+     *
+     * <p>Read through the description's own questions and not through what it is made of. What each
+     * of the parts means is {@link PlannedValues.Settled}'s, and what they come to together is this
+     * one's — which is the same division either side of the line.
+     */
+    static <A> Realized<A> realize(PlannedValues.Settled<A> of, Allowance<A> by) {
+        Unbuilt<A> gaveUp = new Unbuilt<>();
+        Map<A, ValueSet> perPosition = realized(of.perPosition(), of.sameness(), by, gaveUp);
+        Held<A> held = switch (of.held()) {
+            case PlannedHeld.Nothing<A> _ -> new Held.Nothing<A>();
+            case PlannedHeld.Alternatives<A> boxes -> alternatives(boxes, by, gaveUp);
+        };
+        // The blocks the answer is in, which are not the ones it was described in. An alternative
+        // dropped for admitting nothing is one whose equalities the rest need not state, so what
+        // the survivors hold as one may be coarser than what every description did — and everything
+        // filed under a block is said in the answer's own before it is built.
+        Sameness<A> heldAsOne = held instanceof Held.Alternatives<A> it
+                ? it.commonSameness() : Sameness.discrete();
+        Map<Sameness.Block<A>, AdmittedPlan> promising = new LinkedHashMap<>();
+        of.guaranteed().forEach((block, plan) -> promising.merge(
+                heldAsOne.blockOf(block.members().iterator().next()), plan,
+                (one, other) -> AdmittedPlan.meeting(List.of(one, other))));
+        return Realized.of(new Outcome<>(new AdmissibleValues<>(new Parts<>(held, perPosition,
+                gaveUp.beside(of.standing()),
+                promised(promising, by), promised(of.defaultGuaranteed(), by.elsewhere()),
+                of.guaranteedTogether(),
+                mapped(of.tangled(), heldAsOne),
+                mapped(both(of.widened(), gaveUp.names()), heldAsOne))), gaveUp));
+    }
+
+    /**
+     * The alternatives, with the ones nothing stands in dropped.
+     *
+     * <p>Where the invariant a reading has is kept: a box with a side admitting nothing stands for
+     * nothing, and now that the sides are values it can be seen and taken out. Where every box
+     * goes, nothing satisfies the rules.
+     */
+    private static <A> Held<A> alternatives(PlannedHeld.Alternatives<A> boxes,
+                                            Allowance<A> by, Unbuilt<A> gaveUp) {
+        Set<Alternative<A>> live = new LinkedHashSet<>();
+        Set<PlannedHeld.Alternative<A>> standing = new LinkedHashSet<>();
+        Refusal<A> dropped = null;
+        for (PlannedHeld.Alternative<A> box : boxes.boxes()) {
+            // The relation crosses unchanged. What a denial says is about the blocks and not about
+            // what they were described as holding, so building the descriptions is not where it
+            // could be lost or gained — and whether anything stands in the alternative is asked the
+            // one way it is asked wherever two of them are put together.
+            Held<A> said = new Alternative.Met<>(builtIn(box, by, gaveUp), box.apart()).stands();
+            switch (said) {
+                case Held.Alternatives<A> it -> {
+                    live.addAll(it.boxes());
+                    standing.add(box);
+                }
+                case Held.Nothing<A> it -> dropped = dropped == null ? it.shown()
+                        : Refusal.shownByBoth(dropped, it.shown());
+            }
+        }
+        if (live.isEmpty()) {
+            return new Held.Nothing<>(dropped == null ? Refusal.nowhere() : dropped);
+        }
+        // What each block the alternatives agree on holds across the ones that stand, described
+        // first and built once. Read off the sets instead, a join of two languages would be a
+        // machine nobody counted.
+        Sameness<A> common = new PlannedHeld.Alternatives<>(standing).commonSameness();
+        Set<Sameness.Block<A>> named = new LinkedHashSet<>();
+        standing.forEach(box ->
+                box.positions().forEach(position -> named.add(common.blockOf(position))));
+        Map<Sameness.Block<A>, ValueSet> across = new LinkedHashMap<>();
+        for (Sameness.Block<A> block : named) {
+            A member = block.members().iterator().next();
+            AdmittedPlan plan = AdmittedPlan.joining(
+                    standing.stream().map(box -> box.get(member)).toList());
+            Realization made = by.realizer(block).of(plan);
+            gaveUp.note(block, made);
+            if (!made.upperBound().isAny()) {
+                across.put(block, made.upperBound());
+            }
+        }
+        return Held.Alternatives.of(live, common, across);
+    }
+
+    /** One alternative's descriptions as the sets they come to, each built under its own block's
+     *  allowance. */
+    private static <A> Map<Sameness.Block<A>, ValueSet> builtIn(PlannedHeld.Alternative<A> box,
+                                                                Allowance<A> by,
+                                                                Unbuilt<A> gaveUp) {
+        Map<Sameness.Block<A>, ValueSet> out = new LinkedHashMap<>();
+        box.at().forEach((block, plan) -> {
+            Realization made = by.realizer(block).of(plan);
+            gaveUp.note(block, made);
+            out.put(block, made.upperBound());
+        });
+        return out;
+    }
+
+    /** Each position's own description as the set it comes to, built under the allowance of the
+     *  block that position is on, the ones nobody could build widened to every value and written
+     *  down as such. */
+    private static <A> Map<A, ValueSet> realized(Map<A, AdmittedPlan> of, Sameness<A> heldAsOne,
+                                                 Allowance<A> by, Unbuilt<A> gaveUp) {
+        Map<A, ValueSet> out = new LinkedHashMap<>();
+        of.forEach((atom, plan) -> {
+            Sameness.Block<A> block = heldAsOne.blockOf(atom);
+            Realization made = by.realizer(block).of(plan);
+            gaveUp.note(block, made);
+            out.put(atom, made.upperBound());
+        });
+        return out;
+    }
+
+    /**
+     * The same for a promise, which widens the other way.
+     *
+     * <p>A promise nobody could work out promises nothing, and that is the strongest thing that
+     * stays true — where an answer this could not build widens to every value, a guarantee it could
+     * not build shrinks to none. Nothing is recorded: a reader short of a guarantee has been told
+     * no more than the truth, and the reasons below are about the upper bound.
+     */
+    private static <A> Map<Sameness.Block<A>, ValueSet> promised(
+            Map<Sameness.Block<A>, AdmittedPlan> of, Allowance<A> by) {
+        Map<Sameness.Block<A>, ValueSet> out = new LinkedHashMap<>();
+        of.forEach((block, plan) -> out.put(block, promised(plan, by.realizer(block))));
+        return out;
+    }
+
+    private static ValueSet promised(AdmittedPlan plan, Realizer by) {
+        Realization made = by.of(plan);
+        return made.isExact() ? made.upperBound() : ValueSet.NONE;
+    }
+
+    /**
      * What {@code atom} may hold, everything being admitted where nothing was said.
      *
      * <p>Over the alternatives, since a value standing in any of them stands in the reading. Which
@@ -900,8 +1169,8 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      * this asks.
      */
     public ValueSet at(A atom) {
-        return switch (held) {
-            case Held.Nothing<A> _ -> perPosition.getOrDefault(atom, ValueSet.ANY);
+        return switch (held()) {
+            case Held.Nothing<A> _ -> perPosition().getOrDefault(atom, ValueSet.ANY);
             // Read and not worked out. What a position holds across the alternatives was settled
             // where they were put together, which is where there was an allowance for the machine
             // it may take. See {@link Held.Alternatives#of}.
@@ -973,12 +1242,12 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
         if (guaranteedAt(atom).equals(at(atom))) {
             return List.of();
         }
-        return standing.across(blockOf(atom).members());
+        return standing().across(blockOf(atom).members());
     }
 
     /** Whether nothing satisfies these rules, at a position or otherwise. */
     public boolean isBottom() {
-        return held instanceof Held.Nothing;
+        return held() instanceof Held.Nothing;
     }
 
     /**
@@ -990,7 +1259,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      * is knowable only while it is being refused.
      */
     public Refusal<A> refusedBy() {
-        return held instanceof Held.Nothing<A> it ? it.shown() : Refusal.nowhere();
+        return held() instanceof Held.Nothing<A> it ? it.shown() : Refusal.nowhere();
     }
 
     /**
@@ -1018,7 +1287,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      * hold something.
      */
     public Emptiness anyAlternativeAdmits(AskedOfEachBlock<A> asked, AskedOfARelation<A> relating) {
-        if (held instanceof Held.Alternatives<A> it) {
+        if (held() instanceof Held.Alternatives<A> it) {
             Emptiness any = Emptiness.EMPTY;
             for (Alternative<A> box : it.boxes()) {
                 Emptiness stands = Emptiness.NONEMPTY;
@@ -1063,7 +1332,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      */
     public Refusal<A> refusedInEveryAlternativeAt(AskedOfEachBlock<A> asked,
                                                   AskedOfARelation<A> relating) {
-        if (!(held instanceof Held.Alternatives<A> it)) {
+        if (!(held() instanceof Held.Alternatives<A> it)) {
             return Refusal.nowhere();
         }
         Refusal<A> everywhere = null;
@@ -1128,14 +1397,14 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      */
     public Set<A> subjects() {
         Set<A> out = new LinkedHashSet<>();
-        if (held instanceof Held.Alternatives<A> alternatives) {
+        if (held() instanceof Held.Alternatives<A> alternatives) {
             alternatives.boxes().forEach(box -> out.addAll(box.positions()));
         }
-        out.addAll(perPosition.keySet());
-        out.addAll(standing.positions());
-        members(guaranteed.keySet(), out);
-        members(tangled, out);
-        members(widened, out);
+        out.addAll(perPosition().keySet());
+        out.addAll(standing().positions());
+        members(guaranteed().keySet(), out);
+        members(tangled(), out);
+        members(widened(), out);
         return Collections.unmodifiableSet(out);
     }
 
@@ -1164,14 +1433,14 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      * said anything about.
      */
     public <B> AdmissibleValues<B> renamed(java.util.function.Function<A, B> naming) {
-        Held<B> renamedHeld = switch (held) {
+        Held<B> renamedHeld = switch (held()) {
             case Held.Nothing<A> it -> new Held.Nothing<B>(it.shown().renamed(naming));
             case Held.Alternatives<A> alternatives -> alternatives.renamed(naming);
         };
-        return new AdmissibleValues<>(renamedHeld, renamedKeys(perPosition, naming),
-                standing.renamed(naming),
-                renamedBlocks(guaranteed, naming), defaultGuaranteed, guaranteedTogether,
-                renamedNames(tangled, naming), renamedNames(widened, naming));
+        return new AdmissibleValues<>(new Parts<>(renamedHeld, renamedKeys(perPosition(), naming),
+                standing().renamed(naming),
+                renamedBlocks(guaranteed(), naming), defaultGuaranteed(), guaranteedTogether(),
+                renamedNames(tangled(), naming), renamedNames(widened(), naming)));
     }
 
     /** The same map, filed under what {@code naming} calls the positions of each of its blocks. */
@@ -1240,12 +1509,13 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
     private AdmissibleValues<A> sayingWhatWasReadInTheOrderOf(List<AdmissibleValues<A>> read) {
         // Theirs in the order they were read, and then the ones the meet itself added, which no
         // reading arrived with.
-        Standing<A> out = standing.inTheOrderOf(read.stream().map(each -> each.standing).toList());
+        Standing<A> out =
+                standing().inTheOrderOf(read.stream().map(AdmissibleValues::standing).toList());
         Set<Sameness.Block<A>> widened = new LinkedHashSet<>();
-        read.forEach(each -> widened.addAll(mapped(each.widened, sameness())));
-        widened.addAll(this.widened);
-        return new AdmissibleValues<>(held, perPosition, out, guaranteed,
-                defaultGuaranteed, guaranteedTogether, tangled, widened);
+        read.forEach(each -> widened.addAll(mapped(each.widened(), sameness())));
+        widened.addAll(widened());
+        return new AdmissibleValues<>(new Parts<>(held(), perPosition(), out, guaranteed(),
+                defaultGuaranteed(), guaranteedTogether(), tangled(), widened));
     }
 
     /** Both readings holding at once. */
@@ -1254,7 +1524,7 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
         // one of them does not, the sets it holds are each true of some value and of no one value
         // at once, and met they would promise a combination neither reading has — so the
         // conjunction promises nothing. See {@link #guaranteedAt}.
-        boolean apart = !guaranteedTogether || !other.guaranteedTogether;
+        boolean apart = !guaranteedTogether() || !other.guaranteedTogether();
         Set<Sameness.Block<A>> gaveUp = new LinkedHashSet<>();
         Held<A> both = met(other, sets, gaveUp);
         // The coordinates the conjunction answers in, which are the two readings' equalities
@@ -1264,9 +1534,9 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
         // {@code r} would stay two promises where the conjunction has one value.
         Sameness<A> heldAsOne = both instanceof Held.Alternatives<A> it
                 ? it.commonSameness() : Sameness.discrete();
-        return new AdmissibleValues<>(both,
-                narrowed(perPosition, other.perPosition, sets, heldAsOne, gaveUp),
-                alsoStanding(standing.and(other.standing), gaveUp),
+        return new AdmissibleValues<>(new Parts<>(both,
+                narrowed(perPosition(), other.perPosition(), sets, heldAsOne, gaveUp),
+                alsoStanding(standing().and(other.standing()), gaveUp),
                 // Either way what comes out is a promise about whole values, which is why a
                 // conjunction never has to say it is not one. Two of them met is one — a value
                 // taken from each position of both stands in both readings — and nothing promised
@@ -1277,18 +1547,19 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
                 // more than the truth. The reasons below are about {@link #at}, which is an upper
                 // bound and would be saying something false if it widened quietly.
                 apart ? ValueSet.NONE
-                        : sets.meetPromised(null, defaultGuaranteed, other.defaultGuaranteed).set(),
+                        : sets.meetPromised(null, defaultGuaranteed(),
+                                other.defaultGuaranteed()).set(),
                 true,
                 // The intersection of two products is a product, and of anything else it need not
                 // be. What each side could not state, the conjunction cannot state either.
-                mapped(both(tangled, other.tangled), heldAsOne),
+                mapped(both(tangled(), other.tangled()), heldAsOne),
                 // And a block the two of them are tangled at is where the intersection can come
                 // back wider than the rules are: a pair they refuse between them is one neither
                 // per-block meet excludes. Everywhere else the relation is a product and the
                 // meet of a product is exact at each of its places, so those blocks keep what
                 // they had.
-                both(mapped(both(both(widened, other.widened), both(tangled, other.tangled)),
-                        heldAsOne), gaveUp));
+                both(mapped(both(both(widened(), other.widened()), both(tangled(), other.tangled())),
+                        heldAsOne), gaveUp)));
     }
 
     /**
@@ -1388,13 +1659,14 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
      */
     public AdmissibleValues<A> alsoOpenedAt(Set<A> these) {
         return these.isEmpty() ? this
-                : new AdmissibleValues<>(held, perPosition, standing.alsoOpenedAt(these),
-                        guaranteed, defaultGuaranteed, guaranteedTogether, tangled, widened);
+                : new AdmissibleValues<>(new Parts<>(held(), perPosition(),
+                        standing().alsoOpenedAt(these), guaranteed(), defaultGuaranteed(),
+                        guaranteedTogether(), tangled(), widened()));
     }
 
     /** The alternatives this holds, which a reading that admits nothing has none of. */
     private Set<Alternative<A>> alternatives() {
-        return held instanceof Held.Alternatives<A> it ? it.boxes() : Set.of();
+        return held() instanceof Held.Alternatives<A> it ? it.boxes() : Set.of();
     }
 
     /** One alternative, which is what most readings hold. Nothing is put together, so what each
@@ -1433,8 +1705,8 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
     private static <A> Map<Sameness.Block<A>, ValueSet> guaranteedBy(
             AdmissibleValues<A> these, AdmissibleValues<A> those, Sameness<A> heldAsOne,
             Allowance.Composing<A> both) {
-        Set<Sameness.Block<A>> named = mapped(these.guaranteed.keySet(), heldAsOne);
-        named.addAll(mapped(those.guaranteed.keySet(), heldAsOne));
+        Set<Sameness.Block<A>> named = mapped(these.guaranteed().keySet(), heldAsOne);
+        named.addAll(mapped(those.guaranteed().keySet(), heldAsOne));
         Map<Sameness.Block<A>, ValueSet> out = new LinkedHashMap<>();
         // What could not be built exactly comes back as nothing promised, which is what a promise
         // widens to. Nothing is recorded: see {@link #meet}.
@@ -1446,8 +1718,8 @@ public record AdmissibleValues<A>(Held<A> held, Map<A, ValueSet> perPosition,
     /** What this reading promises the value {@code block} stands for, whichever blocks of its own
      *  it holds those positions in. */
     private ValueSet promisedFor(Sameness.Block<A> block) {
-        return guaranteed.getOrDefault(blockOf(block.members().iterator().next()),
-                defaultGuaranteed);
+        return guaranteed().getOrDefault(blockOf(block.members().iterator().next()),
+                defaultGuaranteed());
     }
 
 }
