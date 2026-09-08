@@ -65,7 +65,8 @@ class WhatWasObservedDecidesWhatAReportMayNameTest {
                         arm(SETTLED, 1, DecidedBy.THE_DECLARATION),
                         arm(UNSETTLED, 2, DecidedBy.NOT_SAID),
                         arm(UNSETTLED, 3, DecidedBy.NOT_SAID)),
-                Set.of(PLACES.get(0)), souther.compiler.query.Adequacy.NOTHING_PROVEN, WeakeningSet.none());
+                Set.of(PLACES.get(0)), Set.of(), souther.compiler.query.Adequacy.NOTHING_PROVEN,
+                WeakeningSet.none());
     }
 
     /** The arm no row goes through is named, though the numbers are not a whole measure. */

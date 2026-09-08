@@ -116,14 +116,17 @@ class AMeasureIsIntroducedInOnePlaceTest {
             Map.entry("souther.compiler.query.Adequacy$BranchEvidence#notAsked(Lsouther/compiler/query/Adequacy$BranchEvidence$NotAsked;)Lsouther/compiler/query/Adequacy$BranchEvidence;", 1),
             Map.entry("souther.compiler.query.Adequacy$BranchEvidence#unreadable(Lsouther/compiler/query/WeakeningSet;)Lsouther/compiler/query/Adequacy$BranchEvidence;", 1),
             Map.entry("souther.compiler.query.Adequacy$BranchEvidence#unelaborated(Ljava/lang/String;)Lsouther/compiler/query/Adequacy$BranchEvidence;", 1),
-            Map.entry("souther.compiler.query.Adequacy$BranchEvidence#measured(Ljava/lang/String;Ljava/util/List;Ljava/util/Set;Lsouther/compiler/check/PathReachability$Answers$AsRun;Lsouther/compiler/query/WeakeningSet;)Lsouther/compiler/query/Adequacy$BranchEvidence;", 2),
+            // Two sets of probes: the arms a row that states what it expects went through, and the
+            // arms a row whose answer is owed went through. They are handed in apart because they
+            // answer different questions about one arm.
+            Map.entry("souther.compiler.query.Adequacy$BranchEvidence#measured(Ljava/lang/String;Ljava/util/List;Ljava/util/Set;Ljava/util/Set;Lsouther/compiler/check/PathReachability$Answers$AsRun;Lsouther/compiler/query/WeakeningSet;)Lsouther/compiler/query/Adequacy$BranchEvidence;", 2),
             // And one arm of a behavior, which is a measure of its own beside the account over all
             // of them. Three states from two facts: whether a row lit this arm, and whether the
             // reading that could have lit it ran out. The fourth combination is the one that cannot
             // happen — a row through an arm went through it whatever else stopped — and the
             // constructor refuses it, so this method is where the three are chosen between and the
             // arms of the account cannot be assembled from anything else.
-            Map.entry("souther.compiler.query.ArmObligation#of(Ljava/util/List;Ljava/util/Set;Lsouther/compiler/query/WeakeningSet;)Lsouther/compiler/query/ArmObligation;", 3),
+            Map.entry("souther.compiler.query.ArmObligation#of(Ljava/util/List;Ljava/util/Set;Ljava/util/Set;Lsouther/compiler/query/WeakeningSet;)Lsouther/compiler/query/ArmObligation;", 3),
             Map.entry("souther.compiler.query.Coverages#whyNothingWasAsked(Lsouther/compiler/query/Adequacy$Level;)Lsouther/compiler/query/Measurement;", 1),
             Map.entry("souther.compiler.query.OutputCaseEvidence#notAsked(Ljava/util/Set;)Lsouther/compiler/query/OutputCaseEvidence;", 1),
             Map.entry("souther.compiler.query.InputCaseEvidence#notAsked(ILjava/util/Set;Ljava/util/Set;)Lsouther/compiler/query/InputCaseEvidence;", 1),

@@ -13,11 +13,17 @@ public enum Stage {
     /** Nothing was established — the fixtures did not build. */
     NONE,
 
-    /** The inputs and the expectation were built, so the row's values are known to be legal. */
+    /** The row's values were built — its inputs, and the expectation where it states one — so they
+     *  are known to be legal. */
     FIXTURES_VALIDATED,
 
     /** The behavior was applied. Whatever it answered, it answered. */
     INVOKED,
+
+    /** The behavior answered and the answer was taken. Where a row states what it expects this is
+     *  passed through on the way to {@link #COMPARED}; where the answer is owed it is where the row
+     *  ends, and it is what a measure reading the answer reads. */
+    ANSWERED,
 
     /** The answer was compared against what the row expects. */
     COMPARED;

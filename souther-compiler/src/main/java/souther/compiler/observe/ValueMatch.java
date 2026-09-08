@@ -51,7 +51,7 @@ final class ValueMatch {
      * reader that told them apart itself would have the other grain's comparison somewhere else,
      * and two comparisons of one statement can disagree.
      */
-    Verdict verdict(Expectation stated, ObservedValue answered, Position answers) {
+    Verdict verdict(Expectation.Asserts stated, ObservedValue answered, Position answers) {
         return switch (stated) {
             case Expectation.TheValue(Asserted value) -> {
                 Mismatch differs = compare(value, answered, answers);

@@ -237,7 +237,10 @@ class WhatCrossesIsAValueNothingCanChangeTest {
         if (type == ObservedValue.class) {
             return new ObservedValue.Integer(1);
         }
-        if (type == Expectation.class) {
+        // What a row states of the answer, and the two grains of it an answer can be held to. A
+        // comparison takes the second, so both shapes are met on the way across and each needs a
+        // sample of its own — a row whose answer is owed states one and not the other.
+        if (type == Expectation.class || type == Expectation.Asserts.class) {
             return new Expectation.TheCase(A_DATA);
         }
         if (type == Mismatch.Reason.class) {

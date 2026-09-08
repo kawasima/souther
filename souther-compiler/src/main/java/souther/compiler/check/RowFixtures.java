@@ -91,7 +91,14 @@ public final class RowFixtures {
                             new RowPosition.Supplies(answersWith(sigOf(signatures,
                                     w.standsInFor())))));
                 }
-                out.add(new Placed(row.expected(), new RowPosition.Asserts(answersWith(sig))));
+                switch (row.expected()) {
+                    case Hir.Expected.Asserted(Hir.Expr answer) ->
+                            out.add(new Placed(answer, new RowPosition.Asserts(answersWith(sig))));
+                    // A row whose answer is owed writes no operand at the position, and neither
+                    // does one whose answer did not parse. An operand made up here would be a value
+                    // nobody wrote, emitted under a name and run.
+                    case Hir.Expected.Unanswered _, Hir.Expected.Unwritten _ -> { }
+                }
             }
         }
         // Every block written, whether or not its target reached a behavior: an operand stands

@@ -333,8 +333,8 @@ class CompileExampleGenerateTest {
      *
      * <p>The row is text somebody pastes, so what it says has to read back as what it was made from.
      * Written as itself, a tab is invisible in the row and a newline ends it — the rest of the row
-     * lands on a line that is not commented out, and what was pasted is not what was offered. So this
-     * asks the compiler rather than the text: the block goes back in, and the rows have to hold.
+     * lands on a line of its own, and what was pasted is not what was offered. So this asks the
+     * compiler rather than the text: the block goes back in, and the rows have to hold.
      */
     @Test
     void aValueWithACharacterALiteralEscapesSurvivesBeingPasted() {
@@ -364,11 +364,8 @@ class CompileExampleGenerateTest {
                 inputs(generated(tabbed).get("take").composed()),
                 "the tab is written the way a literal spells one");
 
-        String block = blockOf(tabbed, "example.tabbed", false);
-        String pasted = tabbed + block.lines()
-                .filter(line -> line.startsWith("//     ") || line.equals("// example take"))
-                .map(line -> line.substring("// ".length()).replace("<?>", "Ok { n = 0 }"))
-                .reduce("", (all, line) -> all + line + "\n");
+        String pasted = tabbed + sourceOf(blockOf(tabbed, "example.tabbed", false))
+                .replace("<?>", "Ok { n = 0 }");
 
         Compilation compilation = Compilation.ofSource(pasted, "Main");
         compilation.answerEverything();
@@ -688,14 +685,25 @@ class CompileExampleGenerateTest {
 
     // --- the block, put back through the compiler ------------------------------------------------
 
-    /** The rows of the block, with the placeholder answered the way an author answers it. */
+    /** The rows of the block, with the mark answered the way an author answers it. */
     private static String answered(String source, String expected) {
-        String block = blockOf(source, "example.trip", false);
-        String rows = block.lines()
-                .filter(line -> line.startsWith("//     ") || line.equals("// example submit"))
-                .map(line -> line.substring("// ".length()).replace("<?>", expected))
-                .reduce("", (all, line) -> all + line + "\n");
+        String rows = sourceOf(blockOf(source, "example.trip", false))
+                .replace("<?>", expected);
         return source + rows;
+    }
+
+    /**
+     * The block's rows, which is every line of it that is not prose.
+     *
+     * <p>Read by what a line starts with, because that is what tells the two apart now: the rows and
+     * the heading over them are source, and everything said about them is a comment. Nothing here
+     * takes a marker off, which is the whole of what the block being rows means — an author pastes
+     * it as it stands.
+     */
+    private static String sourceOf(String block) {
+        return block.lines()
+                .filter(line -> !line.startsWith("//"))
+                .reduce("", (all, line) -> all + line + "\n");
     }
 
     /** The rows a source's examples left, across every file that writes one. */
@@ -755,22 +763,36 @@ class CompileExampleGenerateTest {
     }
 
     /**
-     * Pasted as it comes, the block changes nothing.
+     * Pasted as it comes, the block is rows the module keeps and asserts nothing with.
      *
-     * <p>Which is what being commented out means, said as something the compiler can answer. A row that
-     * compiled would be an assertion nobody made, and the next build would hold the model to it.
+     * <p>Both halves, because either alone is a different design. The rows arrive — the module goes
+     * on compiling with them in it, so an author answers them one at a time and everything that
+     * keeps source keeps these. And nothing is asserted: a row whose answer nobody wrote states no
+     * answer, which is what stops the paste from holding the model to a claim nobody made.
+     *
+     * <p>And the block does not offer them again. What was owed is written down now, so a second
+     * run has a row at every point the first composed one for; offered twice, an author who pasted
+     * the block and came back would be handed the same questions beside the ones they are already
+     * looking at.
      */
     @Test
-    void theBlockPastedUnchangedLeavesTheModelWhereItWas() {
-        String block = blockOf(TRIP, "example.trip", false);
-        String pasted = TRIP + block;
+    void theBlockPastedUnchangedIsRowsThatStateNoAnswer() {
+        String pasted = TRIP + sourceOf(blockOf(TRIP, "example.trip", false));
 
         Compilation compilation = Compilation.ofSource(pasted, "Main");
         compilation.answerEverything();
+        List<souther.compiler.observe.RowOutcome> rows = outcomes(compilation);
 
-        assertEquals(1, outcomes(compilation).size(), "no row was added");
-        assertEquals(block, blockOf(pasted, "example.trip", false),
-                "the same rows are still owed");
+        assertEquals(3, rows.size(), "the row that was there, and the two pasted");
+        assertEquals(List.of(souther.compiler.observe.Disposition.HELD,
+                        souther.compiler.observe.Disposition.NOTHING_TO_HOLD,
+                        souther.compiler.observe.Disposition.NOTHING_TO_HOLD),
+                rows.stream().map(souther.compiler.observe.RowOutcome::disposition).sorted()
+                        .toList(),
+                "the row that was answered holds, and the two pasted hold nothing: " + rows);
+
+        assertEquals("", blockOf(pasted, "example.trip", false),
+                "and nothing is offered a second time");
     }
 
     /**
@@ -1038,21 +1060,18 @@ class CompileExampleGenerateTest {
      * <p>These lines are meant to be pasted into a file the formatter then runs over. A block in a
      * shape the formatter would change turns a paste into a diff on the next commit.
      *
-     * <p>Asked of the block and not of a block somebody has answered. A row is written with the
-     * hole in it, and an answer is wider than the hole — so the line an author ends up with is a
+     * <p>Asked of the block and not of a block somebody has answered. A row is written with the mark
+     * in it, and an answer is wider than the mark — so the line an author ends up with is a
      * different width from the one offered, and what the formatter does about <em>that</em> is the
      * author's own {@code fmt} run rather than anything this block chose. What this holds is that
      * nothing the block does to the formatter's output afterwards — taking off the header it needed
-     * to parse, putting the hole back where the placeholder was — leaves a line the formatter would
-     * not have written.
+     * to parse, writing the prose beside the rows — leaves a line the formatter would not have
+     * written.
      */
     @Test
     void theBlockIsWrittenInTheFormattersOwnShape() {
-        String block = blockOf(TRIP, "example.trip", false);
-        String rows = block.lines()
-                .filter(line -> line.startsWith("//     ") || line.equals("// example submit"))
-                .map(line -> line.substring("// ".length()).replace("<?>", "unanswered__"))
-                .reduce("examples for example.trip\n\n", (all, line) -> all + line + "\n");
+        String rows = "examples for example.trip\n\n"
+                + sourceOf(blockOf(TRIP, "example.trip", false));
 
         assertEquals(rows, souther.compiler.fmt.Formatter.format(rows));
     }
@@ -1109,8 +1128,8 @@ class CompileExampleGenerateTest {
         String block = GeneratedRows.of(compilation, null, null, false, SourceNameResolver.identity()).text();
 
         assertEquals(declared, block.lines()
-                        .filter(line -> line.startsWith("// example "))
-                        .map(line -> line.substring("// example ".length()))
+                        .filter(line -> line.startsWith("example "))
+                        .map(line -> line.substring("example ".length()))
                         .toList(),
                 block);
     }

@@ -4,6 +4,7 @@ import souther.compiler.diag.SourcePos;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * What one {@code example} row turned out to be — the observation every adequacy measure reads.
@@ -15,6 +16,13 @@ import java.util.List;
  * {@link #resultArm} are both kept: a row that expected {@code Approved} and saw {@code Rejected} is
  * not evidence for {@code Approved}, but it is evidence that {@code Rejected} can happen.
  *
+ * <p>A row whose answer is owed is evidence of the second and of neither of the others. It hands
+ * over its inputs, it is applied, and what it saw is what it saw; nothing it did is evidence that
+ * the model answers as it should. Which of the two a row is is {@link #expectation}, read off the
+ * source where the row was read — not off {@link #expectedArm} being absent, which is also what a
+ * row whose text names no case looks like, and not off what the row states, which is dropped
+ * whenever the row's values are too large to hand on.
+ *
  * <p>{@link #at} carries a source id as well as a position, because rows are gathered under the module
  * they belong to and a module's rows are written across its own source and any number of attached
  * {@code examples for} files.
@@ -23,26 +31,34 @@ import java.util.List;
  * stop-point belongs:
  *
  * <pre>
- * how it ended               stage               disposition   failurePhase
- * ------------------------------------------------------------------------------
- * recorded, not evaluated    FIXTURES_VALIDATED  PENDING       NONE
- * a wrong arity              NONE                FAILED        INPUT_FIXTURE
- * an input fixture failed    NONE                FAILED        INPUT_FIXTURE
- * the expectation failed     NONE                FAILED        EXPECTED_FIXTURE
- * the expected arm is wrong  NONE                FAILED        EXPECTED_FIXTURE
- * the values broke a clause  FIXTURES_VALIDATED  FAILED        ENSURES
- * a dependency had no fake   FIXTURES_VALIDATED  FAILED        FAKE_RESOLUTION
- * a fake had no answer       INVOKED             FAILED        FAKE_RESOLUTION
- * an `unreachable` reached   INVOKED             FAILED        INVOCATION
- * an invariant aborted       INVOKED             FAILED        INVOCATION
- * the answer disagreed       COMPARED            FAILED        COMPARISON
- * it held                    COMPARED            HELD          NONE
- * a fixture's helper hung    NONE                INCOMPLETE    TIMEOUT
- * the behavior hung          INVOKED             INCOMPLETE    TIMEOUT
- * it could not be handed on  FIXTURES_VALIDATED  INCOMPLETE    VALUE_CROSSING
+ * how it ended               stage               disposition      failurePhase
+ * ---------------------------------------------------------------------------------
+ * recorded, not evaluated    FIXTURES_VALIDATED  PENDING          NONE
+ * a wrong arity              NONE                FAILED           INPUT_FIXTURE
+ * an input fixture failed    NONE                FAILED           INPUT_FIXTURE
+ * the expectation failed     NONE                FAILED           EXPECTED_FIXTURE
+ * the expected arm is wrong  NONE                FAILED           EXPECTED_FIXTURE
+ * the values broke a clause  FIXTURES_VALIDATED  FAILED           ENSURES
+ * a dependency had no fake   FIXTURES_VALIDATED  FAILED           FAKE_RESOLUTION
+ * a fake had no answer       INVOKED             FAILED           FAKE_RESOLUTION
+ * an `unreachable` reached   INVOKED             FAILED           INVOCATION
+ * an invariant aborted       INVOKED             FAILED           INVOCATION
+ * the answer disagreed       COMPARED            FAILED           COMPARISON
+ * it held                    COMPARED            HELD             NONE
+ * its answer is owed         ANSWERED            NOTHING_TO_HOLD  NONE
+ * a fixture's helper hung    NONE                INCOMPLETE       TIMEOUT
+ * the behavior hung          INVOKED             INCOMPLETE       TIMEOUT
+ * it could not be handed on  FIXTURES_VALIDATED  INCOMPLETE       VALUE_CROSSING
  * the answer was not this
- *   model's to hand it to    FIXTURES_VALIDATED  INCOMPLETE    ANSWERER_ESTABLISHMENT
+ *   model's to hand it to    FIXTURES_VALIDATED  INCOMPLETE       ANSWERER_ESTABLISHMENT
  * </pre>
+ *
+ * <p>A row whose answer is owed reaches every one of these but the four that are about an
+ * expectation. Its inputs can fail to build, its fake can have no answer, the body it runs can
+ * abort and its budget can run out, and each of those is the row ending the way any other row ends
+ * that way. What it cannot do is fail to build an expectation it does not have, disagree with one,
+ * or hold — so the row above is the only end that is its alone, and the four it cannot reach are
+ * held to that at construction.
  *
  * <p>The last two share a stage and a disposition and are not the same thing, which is what the
  * phase is for. {@link FailurePhase#VALUE_CROSSING} is a row that could not be handed on: the value
@@ -69,6 +85,8 @@ import java.util.List;
  *                       rows this module writes for {@link #target}, so something outside the file
  *                       can say which row it means; a {@link RowIdentity.Unnamed} can be shown and
  *                       not addressed
+ * @param expectation    what the source put where the row's answer goes, settled where the row was
+ *                       read and true whatever became of the evaluation
  * @param stage          how far it got
  * @param disposition    how it ended
  * @param failurePhase   where it stopped, when it did
@@ -95,6 +113,7 @@ import java.util.List;
 public record RowOutcome(SourcePos at,
                          String target,
                          RowIdentity identity,
+                         ExpectationState expectation,
                          Stage stage,
                          Disposition disposition,
                          FailurePhase failurePhase,
@@ -106,7 +125,7 @@ public record RowOutcome(SourcePos at,
                          Run run) {
 
     public RowOutcome {
-        java.util.Objects.requireNonNull(statement, "a row states something");
+        Objects.requireNonNull(statement, "a row states something");
         if (statement instanceof RowStatement.Stated values
                 && !values.inputs().equals(inputs)) {
             // One fact with two places to be read from, held to being one. A row that states values
@@ -130,7 +149,7 @@ public record RowOutcome(SourcePos at,
         inputCases = inputCases == null ? List.of()
                 : java.util.Collections.unmodifiableList(new java.util.ArrayList<>(inputCases));
         inputs = inputs == null ? List.of() : List.copyOf(inputs);
-        java.util.Objects.requireNonNull(run, "a row says what became of its evaluation");
+        Objects.requireNonNull(run, "a row says what became of its evaluation");
         if (stage.reached(Stage.INVOKED) == run.applied() instanceof Applied.Nothing) {
             // Held here because the two are written from one evaluation and read apart: a stage that
             // says the behavior was applied and a run that says nothing applied it is a state no
@@ -141,14 +160,48 @@ public record RowOutcome(SourcePos at,
                     "a row that applied the behavior says what applied it, and one that did not says "
                             + "nothing did: " + stage + " with " + run.applied());
         }
+        // What the source put where the answer goes and what became of the answer are held to each
+        // other. Asked of {@link #expectation}, which is what the row was read as, and never of
+        // what the row states: a statement carries the expectation only while it carries the
+        // values, and a row whose input is larger than a snapshot keeps states nothing while being
+        // a perfectly well written row whose answer is owed.
+        //
+        // A row whose answer is owed has nothing to compare an answer against and nothing for an
+        // answer to keep, so it does not reach a comparison and does not end as one that held; and
+        // ending with nothing to hold is what such a row ends as and not something a row that
+        // states an answer can be recorded as. Everything else a row can end as it can end as
+        // either way: an input fixture, a clause, a fake, an application and a budget are all
+        // reached before what the row states of the answer is of any use.
+        Objects.requireNonNull(expectation,
+                "a row says what its source put where its answer goes");
+        boolean owed = expectation == ExpectationState.OWED;
+        if (owed && (stage.reached(Stage.COMPARED) || disposition == Disposition.HELD
+                || failurePhase == FailurePhase.EXPECTED_FIXTURE
+                || failurePhase == FailurePhase.COMPARISON)) {
+            throw new IllegalArgumentException("a row whose answer is owed holds an answer to"
+                    + " nothing: " + stage + " with " + disposition + " at " + failurePhase);
+        }
+        if (!owed && disposition == Disposition.NOTHING_TO_HOLD) {
+            throw new IllegalArgumentException("a row that ended with nothing to hold its answer to"
+                    + " is one whose answer is owed: " + expectation);
+        }
+        // And the two are not allowed to drift where both are there. A statement that carries an
+        // expectation carries the one the row was read as.
+        if (statement instanceof RowStatement.Stated values
+                && (values.expects() instanceof Expectation.Owed) != owed) {
+            throw new IllegalArgumentException("a row states the answer its source put there: "
+                    + expectation + " with " + values.expects());
+        }
     }
 
     /** Whether the behavior answered for this row — it was applied and a value came back, which is
-     * what {@link Stage#COMPARED} is reached by. Whether that answer can be named as a case is
-     * {@link #observed}: a value of a type no declaration of the module's names is an answer all the
-     * same, and a run that got one is not a run that produced nothing. */
+     * what {@link Stage#ANSWERED} is reached by. Where a row states what it expects the answer is
+     * then compared, and where it is owed the row ends here; both saw the answer. Whether that
+     * answer can be named as a case is {@link #observed}: a value of a type no declaration of the
+     * module's names is an answer all the same, and a run that got one is not a run that produced
+     * nothing. */
     public boolean answered() {
-        return stage.reached(Stage.COMPARED);
+        return stage.reached(Stage.ANSWERED);
     }
 
     /** Whether this row is evidence that the behavior can answer with {@link #resultArm}. A row that

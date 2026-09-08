@@ -1643,10 +1643,25 @@ public final class AstBuilder {
                 withs.add(new Ast.With(behaviorNameAfter(b, 0), expr(firstExprChild(b)), pos(b)));
             }
         });
-        // the expected is the row's own expr child (ARG_LIST holds the inputs; WITH_CLAUSE the fakes)
-        List<SyntaxNode> expectedNodes = exprChildren(n);
-        Ast.Expr expected = expectedNodes.isEmpty() ? null : expr(expectedNodes.get(0));
-        return new Ast.ExampleRow(identity, inputs, withs, expected, pos(n));
+        return new Ast.ExampleRow(identity, inputs, withs, expected(n), pos(n));
+    }
+
+    /**
+     * What the row put where its answer goes.
+     *
+     * <p>{@code <?>} is a token of the row and an asserted answer is its own expr child (ARG_LIST
+     * holds the inputs and WITH_CLAUSE the fakes), so the two cannot both be there and the reading
+     * takes them in that order. A row with neither is one whose answer did not parse, which is said
+     * as that rather than left for a reader to find out by looking.
+     */
+    private Ast.Expected expected(SyntaxNode n) {
+        Optional<SyntaxToken> owed = n.token(SyntaxKind.UNANSWERED);
+        if (owed.isPresent()) {
+            return new Ast.Expected.Unanswered(posOf(owed.get()));
+        }
+        List<SyntaxNode> written = exprChildren(n);
+        return written.isEmpty() ? new Ast.Expected.Unwritten(pos(n))
+                : new Ast.Expected.Asserted(expr(written.get(0)));
     }
 
     /** {@code fake <target> | rows}, read for the owner it names. */

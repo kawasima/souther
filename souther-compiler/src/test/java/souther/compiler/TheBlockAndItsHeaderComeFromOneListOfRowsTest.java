@@ -7,6 +7,7 @@ import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.report.GeneratedRows;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -95,13 +96,13 @@ class TheBlockAndItsHeaderComeFromOneListOfRowsTest {
 
     /** Where each row starts. A row the formatter wrapped is still one row, and one {@code |}. */
     private static List<String> rows(String block) {
-        return block.lines().filter(line -> line.startsWith("//     | ")).toList();
+        return block.lines().filter(line -> line.startsWith("    | ")).toList();
     }
 
     /** The rows as printed, which is what a reader pastes — and not what is said under them. */
     private static List<String> written(String block) {
-        return block.lines().dropWhile(line -> !line.startsWith("// example "))
-                .takeWhile(line -> line.startsWith("// example ") || line.startsWith("//     "))
+        return block.lines().dropWhile(line -> !line.startsWith("example "))
+                .takeWhile(line -> line.startsWith("example ") || line.startsWith("    "))
                 .toList();
     }
 
@@ -117,8 +118,8 @@ class TheBlockAndItsHeaderComeFromOneListOfRowsTest {
         String block = block(POLICY, "example.policy");
 
         assertEquals(List.of(
-                        "// example fee",
-                        "//     | (0, Policy { rate = Rate(0), cap = Cap(0) }) -> <?>"),
+                        "example fee",
+                        "    | (0, Policy { rate = Rate(0), cap = Cap(0) }) -> <?>"),
                 written(block));
     }
 
@@ -128,6 +129,48 @@ class TheBlockAndItsHeaderComeFromOneListOfRowsTest {
 
         assertEquals(rows(block).size(), claimed(block),
                 "the number above the block is the number of rows in it: " + block);
+    }
+
+    /**
+     * A block with notes in it is still one a file can hold.
+     *
+     * <p>What tells a line of prose from a row is that the writer put {@code //} in front of it,
+     * and there are as many writers as there are things to say — the heading over a behavior's
+     * clauses, the note over a row composed for more than one thing, a line for each point no row
+     * could be written at, and the sentence about each combination nothing was composed for. One of
+     * them forgetting is a block that stops compiling the moment somebody pastes it, which is the
+     * whole of what the block is for.
+     *
+     * <p>Held where the block is finished rather than by each writer remembering, since a model
+     * that reaches every writer is not a thing this or any other test has: what a block says
+     * depends on what the model is short of, and the writers are as many as there are ways to be
+     * short. {@code GeneratedRows} parses what is left of a block when its prose is taken away, so
+     * a writer that forgets its marker fails wherever its own path runs.
+     *
+     * <p>What this adds is the step past parsing. The block goes into the module it was generated
+     * for and the module is compiled: a block that parses and names something the module does not
+     * have is still one an author cannot use.
+     */
+    @Test
+    void aBlockWithNotesInItIsStillPastable() {
+        String block = block(RELATED, "example.policy");
+
+        assertTrue(block.lines().anyMatch(line -> line.startsWith("//")),
+                "the model says something beside its rows: " + block);
+
+        String pasted = RELATED + "\n" + block.lines()
+                .filter(line -> !line.startsWith("//"))
+                .reduce("", (all, line) -> all + line + "\n");
+
+        Compilation compiled = Compilation.ofSource(pasted, "Main");
+        compiled.answerEverything();
+        List<String> refused = new ArrayList<>();
+        for (souther.compiler.query.Db.Found found : compiled.db().allReports()) {
+            if (found.report().isError()) {
+                refused.add(found.report().diagnostic().code());
+            }
+        }
+        assertEquals(List.of(), refused, () -> "the block pasted whole compiles:\n" + pasted);
     }
 
     @Test

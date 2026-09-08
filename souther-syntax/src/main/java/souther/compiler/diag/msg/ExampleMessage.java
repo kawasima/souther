@@ -440,6 +440,36 @@ public sealed interface ExampleMessage extends Message {
     /** Which of the two that is. */
     record EitherARowIsMissingOrNothingReachesIt() implements ExampleMessage, Supporting {}
 
+    /**
+     * A row goes through an arm of the body with its answer still owed.
+     *
+     * <p>Not {@link NoRowGoesThroughThatArm}, which is an arm nothing reaches. A row does reach
+     * this one, and what it is short of is the answer — the same thing the rows reported beside it
+     * are short of, and the same thing to do about it, so it is that rule's code and not the arm
+     * rule's.
+     */
+    @Code(DiagnosticCode.E1934)
+    record ARowAtThatArmAwaitsItsAnswer(souther.compiler.diag.Localizable arm, String behavior)
+            implements ExampleMessage, Reported {}
+
+    /** What answering it takes. */
+    record ReplaceTheMarkWithWhatTheSystemAnswers() implements ExampleMessage, Supporting {}
+
+    /**
+     * A row is written and its answer is not.
+     *
+     * <p>Said of the row and at the row, because that is what it is about. What the row goes
+     * through is a separate thing to say and is said of the arm; a behavior with no arms at all has
+     * nothing there to say it, and the row is owed an answer either way.
+     */
+    @Code(DiagnosticCode.E1934)
+    record TheRowsAnswerIsOwed(String behavior) implements ExampleMessage, Reported {}
+
+    /** The same, for a row that names itself. */
+    @Code(DiagnosticCode.E1934)
+    record TheNamedRowsAnswerIsOwed(String row, String behavior)
+            implements ExampleMessage, Reported {}
+
     // --- a stand-in and a row that disagree ---
 
     /** A row and a fake state different answers for one input. */

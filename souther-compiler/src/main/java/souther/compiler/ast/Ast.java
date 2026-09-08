@@ -268,11 +268,49 @@ public interface Ast {
     record Example(String target, List<ExampleRow> rows, SourcePos pos) implements Ast {}
 
     /**
-     * One example row: what it names itself, the input argument expressions, and the expected result.
-     * A bare {@link Var} expected asserts only the result arm (the case); a {@link NewData}, a
-     * {@link Call} (a newtype constructor), or a literal asserts the whole value.
+     * What stands where a row's answer goes.
+     *
+     * <p>Three states and the source says which. A row that asserts something carries the expression
+     * it asserts; a row written {@code <?>} says its answer is owed and is a row all the same; and a
+     * row whose answer could not be read is neither, because nothing was written there to be read.
+     *
+     * <p>The last two are not one state. {@link Unanswered} is what an author wrote — the row is
+     * well formed, and what it says is that the answer is still to come. {@link Unwritten} is this
+     * compiler's recovery: the text after the arrow was not an expression, a diagnostic says so, and
+     * what the row would have asserted is not known. Held as one, a module full of syntax errors
+     * would read as a module full of work an author had deliberately left.
      */
-    record ExampleRow(RowIdentity identity, List<Expr> inputs, List<With> withs, Expr expected,
+    sealed interface Expected permits Expected.Asserted, Expected.Unanswered, Expected.Unwritten {
+
+        /** Where the answer stands, which is where a reader is pointed whatever is there. */
+        SourcePos pos();
+
+        /** The row states its answer, and this is what it states. */
+        record Asserted(Expr expression) implements Expected {
+
+            public Asserted {
+                Objects.requireNonNull(expression, "an asserted answer is an expression");
+            }
+
+            @Override
+            public SourcePos pos() {
+                return expression.pos();
+            }
+        }
+
+        /** The row is written {@code <?>}: its answer is owed and nobody has written it. */
+        record Unanswered(SourcePos pos) implements Expected {}
+
+        /** No answer was read here. The row is malformed and a parse diagnostic says how. */
+        record Unwritten(SourcePos pos) implements Expected {}
+    }
+
+    /**
+     * One example row: what it names itself, the input argument expressions, and what stands where
+     * its answer goes. A bare {@link Var} asserted asserts only the result arm (the case); a
+     * {@link NewData}, a {@link Call} (a newtype constructor), or a literal asserts the whole value.
+     */
+    record ExampleRow(RowIdentity identity, List<Expr> inputs, List<With> withs, Expected expected,
                       SourcePos pos) implements Ast {}
 
     /**

@@ -52,7 +52,8 @@ class GeneratedRowsOfferAValueAtASumOfRecordsTest {
     void aBoundaryRowIsOfferedWhereACompanionPositionIsASumOfRecords() throws Exception {
         String report = generated();
 
-        List<String> rows = report.lines().filter(line -> line.startsWith("//     | ")).toList();
+        List<String> rows = report.lines().filter(line -> line.startsWith("    | ")).toList();
+        assertFalse(rows.isEmpty(), () -> "the block offers rows to look at: " + report);
         // The value at the boundary rather than the name of the line: a row composed only for a
         // line is offered without a name, since which of the lines it sits on is still owed is what
         // an unrelated row changes.

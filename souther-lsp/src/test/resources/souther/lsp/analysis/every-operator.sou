@@ -24,6 +24,9 @@ let tidy (i) = Item { ...i, name = i.name |> trim }
 
 behavior renameThenTidy = rename >-> tidy
 
+example renameThenTidy
+    | (Item { name = "a", count = Count(0), note = "n" }) -> <?>
+
 behavior score : (i: Item) -> Int
 let score (i) = {
     let n = i.count.value

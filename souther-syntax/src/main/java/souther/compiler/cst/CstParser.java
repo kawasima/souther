@@ -739,7 +739,12 @@ public final class CstParser {
     }
 
     /** {@code [ "desc" : ] ( args ) -> expected} — an argument list, then the expected result
-     * (a bare type name asserts the arm; a construction/literal asserts the whole value). */
+     * (a bare type name asserts the arm; a construction/literal asserts the whole value), or
+     * {@code <?>} where the answer has not been written yet.
+     *
+     * <p>{@code <?>} is read here and nowhere else. What it says is that this row's answer is owed,
+     * which is a thing only a row has; admitted as an expression it would be writable in a body, an
+     * input and a {@code with} value, and every one of those would then have to refuse it. */
     private void exampleRow() {
         start(SyntaxKind.EXAMPLE_ROW);
         if (at(SyntaxKind.STRING_LIT) && nth(1) == SyntaxKind.COLON) {
@@ -758,7 +763,9 @@ public final class CstParser {
             withClause();   // supplies fakes for what the target depends on (value dependencies)
         }
         expect(SyntaxKind.ARROW, Reading.AN_EXAMPLE);
-        expr();      // expected
+        if (!eat(SyntaxKind.UNANSWERED)) {
+            expr();      // expected
+        }
         finish();
     }
 

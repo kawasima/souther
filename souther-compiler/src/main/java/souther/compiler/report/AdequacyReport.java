@@ -3786,7 +3786,15 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      */
     private static Citation placeOfItsOwn(Adequacy.Finding finding) {
         return switch (finding.about()) {
-            case About.AnArmNoRowGoesThrough _ -> finding.at();
+            // Both arm findings, for the same reason: what tells two arms of one behavior apart is
+            // where they are, and that is as true of an arm whose row is waiting as of one with no
+            // row.
+            case About.AnArmNoRowGoesThrough _, About.ARowAtAnArmAwaitsItsAnswer _ ->
+                    finding.at();
+            // And a row's, for the same reason one arm is told from another by where it is: a
+            // behavior's rows are as many as somebody wrote, and the one this is about is the one
+            // at this place.
+            case About.AnUnansweredRow _ -> finding.at();
             case About.ACaseNoRowExpects _, About.ACaseNothingWasSeenToProduce _,
                     About.ACaseNoRowAppliesItTo _, About.AClassNoRowIsIn _,
                     About.APointOfABorder _, About.APointOfADeclaredBorder _,
@@ -3826,6 +3834,14 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // exists to join to that entry, and a value spelled a second way here would join to
             // nothing.
             case About.AnArmNoRowGoesThrough(var arm) -> words(ArmVocabulary.label(arm));
+            // The arm's label again, and the same one. What the document joins on is which arm the
+            // finding is about; which of the two things is wrong with it is the finding's kind and
+            // not a second way of naming the arm.
+            case About.ARowAtAnArmAwaitsItsAnswer(var arm) -> words(ArmVocabulary.label(arm));
+            // What the row calls itself, which is what says which row is meant from outside the
+            // file. A row that wrote no name answers to nothing outside it and is shown as the
+            // place it is written, which the entry carries beside this.
+            case About.AnUnansweredRow(var _, var row, var _) -> words(row.shown());
             case About.ACaseNoRowExpects(var missing) -> words(missing.name());
             case About.ACaseNothingWasSeenToProduce(var missing) -> words(missing.name());
             case About.AClassNoRowIsIn(var missing) ->

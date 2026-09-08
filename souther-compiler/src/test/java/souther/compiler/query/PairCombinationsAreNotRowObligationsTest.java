@@ -52,10 +52,17 @@ class PairCombinationsAreNotRowObligationsTest {
         assertEquals(List.of(
                 "ACaseNoRowExpects", "ACaseNothingWasSeenToProduce", "ACaseNoRowAppliesItTo",
                 "AClassNoRowIsIn", "APointOfABorder", "APointOfADeclaredBorder",
-                "AnArmNoRowGoesThrough", "ARuleWithoutALine", "ARuleNothingClassified",
+                // An arm and a row at it: what a row is owed at is the arm either way, and the
+                // second says the row is written and its answer is not.
+                "AnArmNoRowGoesThrough", "ARowAtAnArmAwaitsItsAnswer",
+                "ARuleWithoutALine", "ARuleNothingClassified",
                 "AQuestionNothingAnswered", "ARuleWithoutALine", "ARuleNothingClassified",
                 "APositionThisCouldNotRead", "APositionNoLineDivides",
-                "APositionReadWiderThanItsRules", "APositionWhoseRulesWereNotReached"), every,
+                "APositionReadWiderThanItsRules", "APositionWhoseRulesWereNotReached",
+                // A row owed an answer, which is owed at the row. What it is owed at is the thing
+                // somebody wrote, so it is no more about a combination than an arm is — and it is
+                // the one kind here that is read off the source rather than measured.
+                "AnUnansweredRow"), every,
                 "a kind of gap this compiler finds that this law says nothing about");
     }
 

@@ -31,8 +31,13 @@ public final class EditorSymbols {
      */
     public static Optional<EditorSymbolClass> classOf(SyntaxKind kind) {
         return Optional.ofNullable(switch (kind) {
+            // `<?>` is painted rather than left in the colour of the text, and it is here rather
+            // than below because of what painting it takes: it opens with `<`, so an editor that
+            // left it alone would paint that character as the operator it also spells and the rest
+            // of the mark as text. What is painted whole is what is painted at all.
             case SPREAD, ASSIGN, PIPE, ARROW, PIPEFWD, VPIPE, QUESTION, PLUSPLUS, EQ, NE, LT, LE,
-                 GT, GE, AND, OR, PLUS, MINUS, STAR, SLASH -> EditorSymbolClass.OPERATOR;
+                 GT, GE, AND, OR, PLUS, MINUS, STAR, SLASH, UNANSWERED ->
+                    EditorSymbolClass.OPERATOR;
             // `_` is here with the brackets and the commas: it stands where a name stands, and a
             // name is left in the colour of the text too.
             case LBRACE, RBRACE, LPAREN, RPAREN, LBRACKET, RBRACKET, COLON, COMMA, DOT, UNDERSCORE ->

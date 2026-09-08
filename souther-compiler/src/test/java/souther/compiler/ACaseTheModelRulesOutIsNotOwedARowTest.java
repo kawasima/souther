@@ -788,10 +788,11 @@ class ACaseTheModelRulesOutIsNotOwedARowTest {
     /**
      * What the generator offers has to be what the compiler accepts.
      *
-     * <p>The row it used to write for {@code Off} was E1911 the moment it was uncommented: the tool
-     * handing an author work its own compiler refuses. Checked by writing the rows out, answering
+     * <p>The row it used to write for {@code Off} was E1911 the moment it was compiled: the tool
+     * handing an author work its own compiler refuses. Checked by taking the rows out, answering
      * them and compiling — a generator that offered nothing at all would pass an assertion about
-     * {@code Off} alone, so what it does offer is fixed as well.
+     * {@code Off} alone, so what it does offer is fixed as well, and that there is something to
+     * take is asserted rather than assumed.
      */
     @Test
     void everyRowTheGeneratorOffersCompiles() {
@@ -801,7 +802,9 @@ class ACaseTheModelRulesOutIsNotOwedARowTest {
         assertTrue(offered.contains("(Pending)"), offered);
         assertFalse(offered.contains("(Off)"), offered);
 
-        String answered = RULED_OUT + "\n" + uncommented(offered).replace("<?>", "Answer(0)");
+        String rows = rowsOf(offered);
+        assertTrue(rows.contains("| "), () -> "the block offers rows to compile: " + offered);
+        String answered = RULED_OUT + "\n" + rows.replace("<?>", "Answer(0)");
         Compilation amended = Compilation.ofSource(answered, "Main");
         amended.answerEverything();
         assertEquals(List.of(), amended.db().allReports().stream()
@@ -809,12 +812,12 @@ class ACaseTheModelRulesOutIsNotOwedARowTest {
                 .map(found -> found.report().diagnostic().code()).toList(), answered);
     }
 
-    /** The rows out of a generated block, with the comment marker each is offered behind removed. */
-    private static String uncommented(String offered) {
+    /** The rows out of a generated block, which are the lines of it that are not prose. */
+    private static String rowsOf(String offered) {
         StringBuilder out = new StringBuilder();
         for (String line : offered.lines().toList()) {
-            if (line.startsWith("// example") || line.startsWith("//     |")) {
-                out.append(line.substring(3)).append('\n');
+            if (!line.startsWith("//")) {
+                out.append(line).append('\n');
             }
         }
         return out.toString();

@@ -152,7 +152,7 @@ class AComparisonInAnEnsuresIsOfferedARowTest {
             """;
 
     private static List<String> rowsOf(String report) {
-        return report.lines().filter(line -> line.startsWith("//     | ")).toList();
+        return report.lines().filter(line -> line.startsWith("    | ")).toList();
     }
 
     /** The lines a report marks as boundaries nothing is at. */

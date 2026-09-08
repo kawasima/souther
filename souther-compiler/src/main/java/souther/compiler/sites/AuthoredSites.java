@@ -232,7 +232,12 @@ public final class AuthoredSites {
                 for (Hir.With with : row.withs()) {
                     expr(with.value());
                 }
-                expr(row.expected());
+                switch (row.expected()) {
+                    case Hir.Expected.Asserted(Hir.Expr answer) -> expr(answer);
+                    // A row whose answer is owed and one whose answer did not parse write nothing
+                    // here, so there is nothing written for a site to be at.
+                    case Hir.Expected.Unanswered _, Hir.Expected.Unwritten _ -> { }
+                }
             }
         }
 

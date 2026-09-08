@@ -664,14 +664,21 @@ public final class ExampleStatements {
             if (row.inputs().size() != sig.inputTypes().size()) {
                 continue;
             }
+            // What a fake is held to is what the rows of the behavior it stands in for say that
+            // behavior answers. A row whose answer is owed says nothing of the kind, and one whose
+            // answer did not parse says nothing at all, so neither is a row a table can disagree
+            // with.
+            if (!(row.expected() instanceof Hir.Expected.Asserted(Hir.Expr asserted))) {
+                continue;
+            }
             Read<RecordedRow> read = within(readers, reader -> {
                 Object[] arguments = builtOrNull(reader, row.inputs(), sig.ins());
                 if (arguments == null) {
                     return null;
                 }
-                Answered answer = readExpected(reader, row.expected(), sig.out(), cases);
+                Answered answer = readExpected(reader, asserted, sig.out(), cases);
                 return answer instanceof Answered.Unreadable ? null
-                        : new RecordedRow(row.expected(), arguments, answer);
+                        : new RecordedRow(asserted, arguments, answer);
             }, new Deadline.Work.Fixtures(ex.target(), row.pos(), row.identity()));
             // A reading that did not finish is not said here, whichever reason ended it. The same row
             // is evaluated where the example is checked, which builds these fixtures and then runs the

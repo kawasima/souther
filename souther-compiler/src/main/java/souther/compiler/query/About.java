@@ -1,7 +1,11 @@
 package souther.compiler.query;
 
 import souther.compiler.coverage.CoverageSites;
+import souther.compiler.diag.SourcePos;
+import souther.compiler.observe.RowIdentity;
 import souther.compiler.types.TypeSymbol;
+
+import java.util.Objects;
 
 /**
  * What one {@link Adequacy.Finding} is about.
@@ -368,6 +372,56 @@ public sealed interface About {
             CoverageSites.ArmSite arm) implements OfAnObligation {
 
         public AnArmNoRowGoesThrough {
+            java.util.Objects.requireNonNull(arm, "a finding is about something");
+        }
+
+        @Override
+        public ObligationIdentity obligationIdentity() {
+            return new ObligationIdentity.OfAnArm(arm.obligation());
+        }
+    }
+
+    /**
+     * A row whose answer is owed: it is written {@code <?>} and nobody has written what the system
+     * answers.
+     *
+     * <p>About the row and about nothing else. What is owed here is owed whether or not the
+     * behavior has arms, whether or not another row covers the arm this one goes through, and
+     * whether or not anything could be measured about the rows at all — so it is read off the
+     * source, where the fact is settled, rather than off an arm that happens to carry it. Held on
+     * an arm, this went missing for a behavior with no branches, for an arm a second row covered,
+     * and for an arm whose measurement some unrelated unread row had weakened.
+     *
+     * <p>Beside {@link ARowAtAnArmAwaitsItsAnswer} and not instead of it. That one is about an arm
+     * — what to tell an author about it, and that nothing should compose a second row for it —
+     * and this one is the work itself.
+     */
+    record AnUnansweredRow(String behavior, RowIdentity identity, SourcePos at) implements About {
+
+        public AnUnansweredRow {
+            Objects.requireNonNull(behavior, "a row is a row of a behavior");
+            Objects.requireNonNull(identity, "a row says what it calls itself");
+            Objects.requireNonNull(at, "a row is written somewhere");
+        }
+    }
+
+    /**
+     * An arm a row goes through with its answer owed, and nothing covers.
+     *
+     * <p>Different news from {@link AnArmNoRowGoesThrough}, and different work. There is a row at
+     * this arm; what it is short of is the answer, which is written where the row is and by whoever
+     * knows what the system does. Told as an arm no row goes through, an author would be sent to
+     * write a row that is already in front of them — and whatever they wrote would be a second row
+     * for the same arm.
+     *
+     * <p>Still a gap. Nothing here asserts what the behavior answers, so a build is entitled to
+     * refuse over it exactly as it is over an arm with no row; what differs is the sentence and not
+     * the standing.
+     */
+    record ARowAtAnArmAwaitsItsAnswer(
+            CoverageSites.ArmSite arm) implements OfAnObligation {
+
+        public ARowAtAnArmAwaitsItsAnswer {
             java.util.Objects.requireNonNull(arm, "a finding is about something");
         }
 
