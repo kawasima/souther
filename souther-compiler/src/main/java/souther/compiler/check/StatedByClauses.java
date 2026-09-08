@@ -835,7 +835,7 @@ sealed interface StatedByClauses {
          */
         private StatedTogether.Said keptTogether(StatedTogether.Said read,
                                                  Settlement.Sided known) {
-            if (known.emptiness() != souther.compiler.values.Emptiness.UNDECIDED) {
+            if (known.emptiness().isDecided()) {
                 return read;
             }
             return new StatedTogether.Said(
@@ -858,7 +858,7 @@ sealed interface StatedByClauses {
         private Settlement.Sided probed(StatedTogether.Said read,
                                         Allowance<FactSubject> by) {
             Confinement.Admission<FactSubject> said = read.confinement().admission(machines);
-            if (said.emptiness() != souther.compiler.values.Emptiness.UNDECIDED) {
+            if (said.emptiness().isDecided()) {
                 return Settlement.Sided.settledAs(said);
             }
             // Worked out, the descriptions become sets and every alternative can be asked where its
@@ -866,7 +866,7 @@ sealed interface StatedByClauses {
             // what a pattern comes to.
             Confinement.Worked<FactSubject> worked = read.confinement().resolve(by);
             Confinement.Admission<FactSubject> admitted = worked.admission(machines);
-            if (admitted.emptiness() != souther.compiler.values.Emptiness.UNDECIDED) {
+            if (admitted.emptiness().isDecided()) {
                 return Settlement.Sided.settledAs(admitted);
             }
             Realized<FactSubject> made = worked.made();
@@ -949,7 +949,7 @@ sealed interface StatedByClauses {
          */
         private static boolean nobodyIsIn(StatedTogether.Said branch,
                                           Allowance<FactSubject> by) {
-            return branch.confinement().alreadyEstablished(by) == souther.compiler.values.Emptiness.EMPTY;
+            return branch.confinement().alreadyEstablished(by).isEmpty();
         }
 
         /**

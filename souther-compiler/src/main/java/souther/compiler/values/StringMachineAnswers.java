@@ -157,7 +157,7 @@ public final class StringMachineAnswers {
             return known;
         }
         Emptiness made = TextExtents.inside(language, held, meter);
-        if (made != Emptiness.UNDECIDED) {
+        if (made.isDecided()) {
             MADE.incrementAndGet();
             if (keeps) {
                 inside.put(stretch, made);
