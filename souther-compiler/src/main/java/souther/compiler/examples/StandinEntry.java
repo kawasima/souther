@@ -32,14 +32,15 @@ public final class StandinEntry {
     private final BoundExamples of;
     private final String behavior;
     private final SourcePos table;
-    private final Hir.FakeRow written;
+    private final ExampleStatements.Standin.Explicit written;
     private final List<ObservedValue> inputs;
     private final ObservedValue stated;
     private final List<String> shownInputs;
     private final String shownStated;
     private final List<RecordedRow> alsoBy;
 
-    StandinEntry(BoundExamples of, String behavior, SourcePos table, Hir.FakeRow written,
+    StandinEntry(BoundExamples of, String behavior, SourcePos table,
+                 ExampleStatements.Standin.Explicit written,
                  List<ObservedValue> inputs, ObservedValue stated, List<String> shownInputs,
                  String shownStated, List<RecordedRow> alsoBy) {
         this.of = of;
@@ -72,7 +73,7 @@ public final class StandinEntry {
 
     /** Where this entry itself is written. */
     public SourcePos at() {
-        return written.pos();
+        return written.row().pos();
     }
 
     /** The inputs the entry states. */
@@ -132,7 +133,7 @@ public final class StandinEntry {
         return of;
     }
 
-    Hir.FakeRow written() {
+    ExampleStatements.Standin.Explicit written() {
         return written;
     }
 }

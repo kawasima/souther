@@ -310,7 +310,7 @@ public final class ExampleVerifier {
         }
         List<StandinEntry> entries = new ArrayList<>();
         List<StatedRow> rows = recordedRowsOf(of, behavior, fixtures, sig);
-        for (ExampleStatements.Standin entry : built.standins().explicit()) {
+        for (ExampleStatements.Standin.Explicit entry : built.standins().explicit()) {
             // What the row states, read the one way a table's row is read. What a person is shown
             // is beside it and is this reader's own: the two are not one string, which is the
             // whole reason a machine-readable half is carried at all.
@@ -331,7 +331,7 @@ public final class ExampleVerifier {
                     alsoBy.add(stated.handle());
                 }
             }
-            entries.add(new StandinEntry(of, behavior, first.pos(), entry.row(),
+            entries.add(new StandinEntry(of, behavior, first.pos(), entry,
                     inputs, carried.answer().value(), shownInputs,
                     fixtures.shown(fixtures.structured(entry.answer().value()), sig.outputType()),
                     alsoBy));
@@ -629,16 +629,12 @@ public final class ExampleVerifier {
         // written with, and there is no grain below that for it to have stated instead.
         Expectation.Asserts stated;
         try {
-            // An entry is a row that named the arguments it answers for; the fallback names none
-            // and is not one of these.
-            List<Hir.Expr> written = entry.written().matched()
-                    instanceof Hir.Matched.Arguments(List<Hir.Expr> inputs) ? inputs : List.of();
             args = new Object[sig.ins().size()];
             for (int i = 0; i < args.length; i++) {
-                args[i] = fixtures.built(written.get(i), sig.ins().get(i));
+                args[i] = fixtures.built(entry.written().names().get(i), sig.ins().get(i));
             }
-            stated = new Expectation.TheValue(
-                    fixtures.assertedExpected(entry.written().output(), sig.out()).asserted());
+            stated = new Expectation.TheValue(fixtures.assertedExpected(
+                    entry.written().row().output(), sig.out()).asserted());
         } catch (FixtureException fe) {
             return new StandinObservation.Unobserved(
                     new StandinObservation.Reason.TheEntryWasNotRead(
@@ -2232,12 +2228,12 @@ public final class ExampleVerifier {
         // it cannot dispatch to are not among them: a reader walking these is walking answers the
         // stand-in can give, and which rows those are is the table's own rule to have decided.
         List<RowStatements.StandInRead.EntryRead> entries = new ArrayList<>();
-        for (ExampleStatements.Standin entry : table.explicit()) {
+        for (ExampleStatements.Standin.Explicit entry : table.explicit()) {
             entries.add(ExampleStatements.carried(fixtures, entry));
         }
         // The `_` row's answer, quoted where that answer is written rather than where the row
         // begins: it is the only value the row states, and it is the one a reader is sent to.
-        ExampleStatements.Standin fallback = table.fallback();
+        ExampleStatements.Standin.Fallback fallback = table.fallback();
         StoodIn.Otherwise otherwise = fallback == null ? new StoodIn.Otherwise.NothingStated()
                 : new StoodIn.Otherwise.Answer(fixtures.observed(fallback.answer().value()),
                         fallback.row().output().pos());

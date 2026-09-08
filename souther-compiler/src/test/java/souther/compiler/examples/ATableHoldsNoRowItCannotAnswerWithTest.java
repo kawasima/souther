@@ -27,15 +27,15 @@ class ATableHoldsNoRowItCannotAnswerWithTest {
 
     private static final SourcePos SOMEWHERE = new SourcePos(1, 1);
 
-    private static ExampleStatements.Standin stating(String argument) {
-        return new ExampleStatements.Standin(new Object[] {argument},
+    private static ExampleStatements.Standin.Explicit stating(String argument) {
+        return new ExampleStatements.Standin.Explicit(new Object[] {argument},
                 new Hir.FakeRow(new Hir.Matched.Arguments(List.of()), null, SOMEWHERE), null);
     }
 
     @Test
     void aTableRefusesARowAnEarlierRowAlreadyStates() {
-        ExampleStatements.Standin first = stating("m-1");
-        ExampleStatements.Standin second = stating("m-1");
+        ExampleStatements.Standin.Explicit first = stating("m-1");
+        ExampleStatements.Standin.Explicit second = stating("m-1");
 
         assertThrows(IllegalArgumentException.class,
                 () -> new ExampleStatements.Standins(List.of(first, second), null),
@@ -44,8 +44,8 @@ class ATableHoldsNoRowItCannotAnswerWithTest {
 
     @Test
     void aTableOfRowsStatingDifferentThingsIsWhatItSays() {
-        ExampleStatements.Standin one = stating("m-1");
-        ExampleStatements.Standin nine = stating("m-9");
+        ExampleStatements.Standin.Explicit one = stating("m-1");
+        ExampleStatements.Standin.Explicit nine = stating("m-9");
 
         ExampleStatements.Standins table = assertDoesNotThrow(
                 () -> new ExampleStatements.Standins(List.of(one, nine), null));
