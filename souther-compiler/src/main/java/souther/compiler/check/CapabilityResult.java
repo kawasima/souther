@@ -115,7 +115,7 @@ public sealed interface CapabilityResult {
             parts.add(switch (each) {
                 case Predicates.Part.Carried it -> new RequiredPart.Routed(routesOf(it.clause()));
                 case Predicates.Part.Unread it ->
-                        new RequiredPart.OutsideTheFragment(FragmentReason.of(it.at()));
+                        new RequiredPart.OutsideTheFragment(it.why());
             });
         }
         return new Analyzed(parts);

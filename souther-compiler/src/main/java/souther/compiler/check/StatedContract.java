@@ -101,32 +101,33 @@ public record StatedContract(ValueName.Behavior behavior, List<Param> params, Ty
     public record Conjunct(PartId<RuleRef.Ensures> part, SourcePos at, TypedClause stated) {}
 
     /**
-     * The same contract with the places taken out of its terms — what a caller depends on, told
-     * apart from where the author wrote it.
+     * What a caller of this behavior may take as holding of its answer ({@link AssumedContract}).
      *
      * <p>A caller substitutes its own arguments into the terms and reads what they say. It does not
-     * read where they were written, and it does not read the coverage ordinals the module numbered
-     * them with. Both are on the terms all the same, and both move when anything above the
-     * declaration is edited, so a reader comparing the whole of this is a reader an unrelated edit
-     * reaches. Nothing else about a contract carries a place: a rule is told by its
-     * {@link RuleId}, a parameter by its binding, and neither is where it stands.
+     * read where they were written, nor the ordinals the module numbered the constructs in them
+     * with, nor which clause of this declaration each rule was written under. All of those are here
+     * because a report is written from them, and all of them move when the declaration is edited
+     * above the rule — so a caller depending on this reading whole is a caller an unrelated edit
+     * reaches.
      *
-     * <p>Which part of the clause a conjunct is stays, because it is not a place. It says where the
-     * conjunct stands among the parts its author wrote, which is what the author wrote and not
-     * where they wrote it — the same thing {@link RuleId} is, one level down.
+     * <p>Which part of the clause a conjunct is goes for a different reason. It is not a place — it
+     * says where the conjunct stands among the parts its author wrote, which is what the author
+     * wrote and not where they wrote it, and it is what a reader below draws lines from. It is left
+     * out because no caller reads it: what a caller may assume is what the parts come to, and which
+     * of them said it is how a report names them.
      */
-    public StatedContract withoutItsPlace() {
-        List<StatedRule> out = new ArrayList<>();
+    public AssumedContract assumptions() {
+        List<AssumedContract.AssumedRule> out = new ArrayList<>();
         for (StatedRule rule : rules) {
-            List<Conjunct> conjuncts = new ArrayList<>();
+            List<AssumedContract.Conjunct> conjuncts = new ArrayList<>();
             for (Conjunct each : rule.conjuncts()) {
                 Core form = each.stated().orNull();
-                conjuncts.add(new Conjunct(each.part(), null, form == null ? each.stated()
-                        : new TypedClause.Typed(Core.withoutItsPlace(form))));
+                conjuncts.add(new AssumedContract.Conjunct(
+                        Optional.ofNullable(form).map(TermMeaning::of)));
             }
-            out.add(new StatedRule(rule.guard(), rule.value(), rule.clause(), conjuncts));
+            out.add(new AssumedContract.AssumedRule(rule.guard(), rule.value(), conjuncts));
         }
-        return new StatedContract(behavior, params, output, out);
+        return new AssumedContract(behavior, params, output, out);
     }
 
     /**

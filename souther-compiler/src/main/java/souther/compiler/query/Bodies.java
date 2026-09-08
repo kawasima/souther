@@ -15,6 +15,7 @@ import souther.compiler.check.BehaviorContract;
 import souther.compiler.check.CheckedEnsures;
 import souther.compiler.core.EnsuresEnforcement;
 import souther.compiler.check.BehaviorRequirement;
+import souther.compiler.check.AssumedContract;
 import souther.compiler.check.ClausesForDischarge;
 import souther.compiler.check.StatedContract;
 import souther.compiler.check.ContractDischarge;
@@ -535,35 +536,37 @@ public final class Bodies {
      * reaching a reader wherever it comes out equal. What is left is the cost of rebuilding the
      * table, which is a question about this producer and not about who depends on it.
      *
-     * <p>Answered without its places, which is the whole of what a caller assumes. A contract as the
-     * declaration holds it carries where its terms were written and the ordinals the module numbered
-     * them with, and on that value nothing below an edit ever comes out equal: a blank line moves
+     * <p>Answered as what a caller may assume ({@link AssumedContract}), which is a different reading
+     * from the one the declaration holds. A contract as the declaration holds it carries where its
+     * terms were written, the ordinals the module numbered them with, and which clause each rule was
+     * written under, and on that value nothing below an edit ever comes out equal: a blank line moves
      * every position under it, and a clause gaining a term moves every ordinal under it. A caller
-     * reads neither — it substitutes its own arguments into the terms and reads what they say.
+     * reads none of them — it substitutes its own arguments into the terms and reads what they say.
      *
-     * <p>Taken out here rather than ignored when comparing. An answer whose equality says one thing
-     * and whose value says another is one a reader can tell apart after the store has decided they
-     * are the same, and the store decides that on behalf of everything downstream. So the two are
-     * one value: what this hands over is what it is compared by. The declaration's own reading, with
-     * its places, is {@link StatedContracts}, which is what an editor and a diagnostic want.
+     * <p>A reading of its own rather than the same value compared loosely. An answer whose equality
+     * says one thing and whose value says another is one a reader can tell apart after the store has
+     * decided they are the same, and the store decides that on behalf of everything downstream. What
+     * this hands over is a reading with nothing to ask about where a term stands, so the value and
+     * what it is compared by are one. The declaration's own reading, with its places, is
+     * {@link StatedContracts}, which is what an editor and a diagnostic want.
      *
      * <p>Absent where the behavior states nothing, and where the module that declares it could not be
      * read. Absence is what a caller wanting to know "is there anything to assume" is asking, and an
      * empty contract would be a second way to say it.
      */
-    public record Stated(ValueName.Behavior behavior) implements Key<StatedContract> {
+    public record Assumptions(ValueName.Behavior behavior) implements Key<AssumedContract> {
         @Override
         public String module() {
             return behavior.module();
         }
 
         @Override
-        public Answer<StatedContract> compute(Db db) {
+        public Answer<AssumedContract> compute(Db db) {
             Map<String, StatedContract> declared =
                     db.ask(new StatedContracts(behavior.module())).value();
             StatedContract stated = declared == null ? null : declared.get(behavior.name());
             return stated == null ? Answer.absent()
-                    : Answer.of(stated.withoutItsPlace());
+                    : Answer.of(stated.assumptions());
         }
     }
 
@@ -659,19 +662,19 @@ public final class Bodies {
      * shape of a {@code compute}.
      */
     public record ContractsForBody(String module, String behavior)
-            implements Key<Map<ValueName.Behavior, StatedContract>> {
+            implements Key<Map<ValueName.Behavior, AssumedContract>> {
 
         @Override
-        public Answer<Map<ValueName.Behavior, StatedContract>> compute(Db db) {
+        public Answer<Map<ValueName.Behavior, AssumedContract>> compute(Db db) {
             Answer<Set<ValueName.Behavior>> targets = db.ask(new BehaviorsReached(module, behavior));
             if (!targets.present()) {
                 return Answer.absent();
             }
-            Map<ValueName.Behavior, StatedContract> out = new LinkedHashMap<>();
+            Map<ValueName.Behavior, AssumedContract> out = new LinkedHashMap<>();
             for (ValueName.Behavior each : targets.value()) {
-                Answer<StatedContract> stated = db.ask(new Stated(each));
-                if (stated.present()) {
-                    out.put(each, stated.value());
+                Answer<AssumedContract> assumed = db.ask(new Assumptions(each));
+                if (assumed.present()) {
+                    out.put(each, assumed.value());
                 }
             }
             return Answer.of(Ordered.map(out));
@@ -1941,7 +1944,7 @@ public final class Bodies {
             // What the behaviors this body reaches state about their answers, and only those: a
             // relation declared by a behavior it does not call is no part of what it is checked
             // against, and depending on one would re-check this body whenever that one was edited.
-            Answer<Map<ValueName.Behavior, StatedContract>> contracts =
+            Answer<Map<ValueName.Behavior, AssumedContract>> contracts =
                     db.ask(new ContractsForBody(module, behavior));
             if (!spec.present() || !fn.present() || !body.present() || !scope.present()
                     || !calleeSigs.present() || !reqSigs.present() || !inliner.present()

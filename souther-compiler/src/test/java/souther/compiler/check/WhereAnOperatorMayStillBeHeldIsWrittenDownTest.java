@@ -183,14 +183,16 @@ class WhereAnOperatorMayStillBeHeldIsWrittenDownTest {
                     "the same, for a clause of a data"),
             new Held("souther.compiler.inputs.ComparedNumber.of",
                     "the same, for any binary a walk over the input space met"),
+            // Reading a term for what it says, where the operator is part of what it says.
+            new Held("souther.compiler.check.TermMeaning.project",
+                    "puts it among what two readings of a term are compared by: two comparisons"
+                            + " differing in it say different things"),
             // Rebuilding a tree, which carries the operator across unchanged.
             new Held("souther.compiler.ast.Hir.atSlots",
                     "copies it into the node it is rebuilding"),
             new Held("souther.compiler.ast.Hir.withRegion", "the same, under a region"),
             new Held("souther.compiler.core.Core.atSlots",
                     "copies it into the node it is rebuilding"),
-            new Held("souther.compiler.core.Core.withoutItsPlace",
-                    "the same, with what said where a node stood taken off"),
             new Held("souther.compiler.check.HelperInliner.inline",
                     "copies it into the node a spliced helper becomes"),
             new Held("souther.compiler.check.HelperInliner.rename",

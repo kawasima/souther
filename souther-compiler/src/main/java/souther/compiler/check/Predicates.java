@@ -444,9 +444,9 @@ final class Predicates {
             return new Owed(List.of(), Fold.NOT_DECIDED);
         }
 
-        /** One part of the clause this could make nothing of, which is {@code where}. */
+        /** One part of the clause this could make nothing of, said as what stopped the reading. */
         static Owed unreadable(Core where) {
-            return new Owed(List.of(new Part.Unread(where)), Fold.NOT_DECIDED);
+            return new Owed(List.of(new Part.Unread(FragmentReason.of(where))), Fold.NOT_DECIDED);
         }
 
         static Owed of(Clause clause) {
@@ -527,18 +527,25 @@ final class Predicates {
         }
 
         /**
-         * The check made nothing of it, and {@code at} is the part it stopped on.
+         * The check made nothing of it, and {@code why} is what it stopped on, said as one of the
+         * reasons there are.
          *
-         * <p>The node and not a word for it. Whoever reads this wants to say what in the clause was
-         * not read, and working that out from the clause afterwards is a second walk that can come
-         * back with a different answer from the one that gave up — which is how a clause with
-         * nothing wrong in it came to be described as naming a term the check cannot name.
+         * <p>The conclusion and not the node it was drawn from. Whoever reads this wants to say what
+         * in the clause was not read, and working that out from the clause afterwards is a second
+         * walk that can come back with a different answer from the one that gave up — which is how a
+         * clause with nothing wrong in it came to be described as naming a term the check cannot
+         * name. So the walk that gave up says why, where it gave up.
+         *
+         * <p>And carrying the node instead would put a term in an answer read at a call. What a
+         * caller may assume is read for what it says ({@link TermMeaning}), and a part handing the
+         * node back would let a reader of that answer ask where the term stands — which two readings
+         * of one declaration compare equal about and would then disagree on.
          */
-        record Unread(Core at) implements Part {
+        record Unread(FragmentReason why) implements Part {
 
             public Unread {
-                if (at == null) {
-                    throw new IllegalArgumentException("a part nothing was made of is somewhere");
+                if (why == null) {
+                    throw new IllegalArgumentException("a part nothing was made of says why");
                 }
             }
         }

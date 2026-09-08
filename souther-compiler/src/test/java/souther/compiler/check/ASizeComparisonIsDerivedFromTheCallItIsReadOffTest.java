@@ -20,20 +20,20 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * Taking a term's places out does not take away what it states.
+ * The size a comparison is read as says where it came from, and says it from the call it was read
+ * off.
  *
- * <p>{@link Core#withoutItsPlace} drops what a call applies and why it is here, so that two readings
- * of one term compare equal however the file around them was edited. What it does not drop is the
- * meaning: a caller reads its assumptions out of exactly such a term — {@code Bodies.Stated} answers
- * with one — so a reader that declined to read a normalized term would take a meaning away from that
- * caller for the sake of an identity the caller never asked for.
+ * <p>{@link Conditions#asSizeComparison} answers with a call no source wrote: the size the written
+ * one means, composed so that the rule can be read as the comparison it states. Giving it the
+ * written call's own identity would put two applications under one, so it is a name and an
+ * application of that pass's — each derived from the one the call it is read off reached.
  *
- * <p>So an emptiness check is read as the size comparison it means either way. What differs is only
- * how much the answer can say about where it came from: read off a term that carries its places, the
- * size is an occurrence of its own derived from the one the comparison reached; read off one that
- * does not, it says as little as the term it was read off does.
+ * <p>Which makes what it derives from the question. A call an author wrote and one a generator
+ * composed are two different things to have been read off, and the answer says which: composed is
+ * not the same answer as saying nothing, and a reader telling only "does this have an identity"
+ * from "which of the three is it" reports the second as the first.
  */
-class ANormalizedTermStatesWhatTheTermItCameFromStatesTest {
+class ASizeComparisonIsDerivedFromTheCallItIsReadOffTest {
 
     private static final SourcePos POS = new SourcePos(1, 1);
 
@@ -64,25 +64,6 @@ class ANormalizedTermStatesWhatTheTermItCameFromStatesTest {
     }
 
     /**
-     * And read off the same term with its places taken out, it is read as the same comparison. The
-     * answer says as little about where it came from as its input does, and no less about what it
-     * means.
-     */
-    @Test
-    void andItIsReadTheSameWayOnceThePlacesAreTakenOut() {
-        Core normalized = Core.withoutItsPlace(written());
-
-        Core stated = Conditions.asSizeComparison(normalized);
-
-        Core.Binary compared = assertInstanceOf(Core.Binary.class, stated);
-        Core.PreservedCall size = assertInstanceOf(Core.PreservedCall.class, compared.left());
-        assertEquals(Type.INT, size.type());
-        assertNull(size.application(),
-                "read off a term that says nothing about where it came from, it says nothing either");
-        assertNull(size.reference());
-    }
-
-    /**
      * And read off a value the generator composed, it stays composed.
      *
      * <p>Composed is not the same answer as saying nothing. A fixture's call carries why it is
@@ -97,25 +78,5 @@ class ANormalizedTermStatesWhatTheTermItCameFromStatesTest {
         Core.Binary compared = assertInstanceOf(Core.Binary.class, stated);
         Core.PreservedCall size = assertInstanceOf(Core.PreservedCall.class, compared.left());
         assertInstanceOf(ApplicationOrigin.ComposedFixture.class, size.application());
-    }
-
-    /**
-     * And the two come to one term once the places are out of both, which is what taking them out
-     * is for: a caller reading a normalized contract must reach the value it would have reached
-     * from the term that contract was normalized from.
-     *
-     * <p>Compared with the places taken out of each. What the rewrite mints for the comparison it
-     * builds is its own, and a place is exactly what this walk exists to make two readings agree
-     * about — so comparing before taking them out would be asking the two orders to agree about the
-     * thing neither is being read for.
-     */
-    @Test
-    void andTheTwoReadingsComeToOneTermOnceThePlacesAreOut() {
-        Core fromWritten = Core.withoutItsPlace(Conditions.asSizeComparison(written()));
-        Core fromNormalized =
-                Core.withoutItsPlace(Conditions.asSizeComparison(Core.withoutItsPlace(written())));
-
-        assertEquals(fromWritten, fromNormalized,
-                "reading a term and reading its normalized form come to one value");
     }
 }

@@ -356,12 +356,6 @@ final class Conditions {
             // rule can be read as the comparison it states — and giving it the written call's own
             // identity would put two applications under one. So it is a name and an application of
             // this pass's, each derived from the one the comparison it is read off reached.
-            // What the comparison means is the same whether or not the term still carries where it
-            // came from. A term with its places taken out is one a caller reads its assumptions
-            // from — `Bodies.Stated` answers with one — so declining to read it here would take a
-            // meaning away from the reader for the sake of an identity it never asked for. A
-            // normalized term is read as a normalized one: the size is a call of this pass's either
-            // way, and it says as much about where it came from as the term it was read off does.
             ApplicationOrigin application = ApplicationOrigin.composedOutOf(call.application(), 0,
                     ApplicationDerivationCause.SizeMeaningOfApplication::new);
             Core size = new Core.PreservedCall(means.size(), call.args(),
