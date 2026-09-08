@@ -1,5 +1,6 @@
 package souther.bench;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -46,6 +47,58 @@ class TheRelationAnEditRestatesIsOneACallerReadsTest {
     private static final String CALLER = "linkLeadToAccount";
 
     /**
+     * The corpus as it is written and the corpus with the rule restated, each compiled once for the
+     * class.
+     *
+     * <p>Two texts and five questions. A corpus is the size somebody writes, so compiling one is
+     * most of what this class costs, and asking each question of its own compile is the same answer
+     * worked out again — which is what {@link CorpusTest} does for the same reason.
+     *
+     * <p>The one made of the corpus as written carries the watch, so what it took in is recorded on
+     * the compile the other questions are asked of rather than on a second one made to record it.
+     * The watch is set for as long as that compile runs and put back after: it is read by whatever
+     * thread the compile is on, and left assigned it would collect from every compile after.
+     */
+    private static Compilation before;
+    private static Compilation after;
+    private static List<ValueName.Behavior> takenIn;
+
+    private static synchronized Compilation before() {
+        if (before == null) {
+            List<ValueName.Behavior> watching = Collections.synchronizedList(new ArrayList<>());
+            AssumedContract.TAKEN_IN = watching;
+            try {
+                before = compiled(Corpus.load("crm").sources());
+            } finally {
+                AssumedContract.TAKEN_IN = null;
+            }
+            takenIn = watching;
+        }
+        return before;
+    }
+
+    private static synchronized Compilation after() {
+        if (after == null) {
+            after = compiled(restated(Corpus.load("crm"), 0));
+        }
+        return after;
+    }
+
+    /**
+     * And given back when the class is done with them.
+     *
+     * <p>A fork runs its classes one after another and keeps the JVM, so two answered compilations
+     * of a model this size, with everything they reached, would be a floor under the heap that every
+     * class after this one runs above.
+     */
+    @AfterAll
+    static void released() {
+        before = null;
+        after = null;
+        takenIn = null;
+    }
+
+    /**
      * The rule the edit rewrites is written in the corpus, once.
      *
      * <p>Once, and not merely somewhere: the edit rewrites every occurrence of the text, so two
@@ -84,13 +137,7 @@ class TheRelationAnEditRestatesIsOneACallerReadsTest {
      */
     @Test
     void compilingTheCorpusTakesInWhatItStates() {
-        List<ValueName.Behavior> takenIn = Collections.synchronizedList(new ArrayList<>());
-        AssumedContract.TAKEN_IN = takenIn;
-        try {
-            compiled(Corpus.load("crm").sources());
-        } finally {
-            AssumedContract.TAKEN_IN = null;
-        }
+        before();
         assertTrue(takenIn.contains(STATING),
                 () -> "compiling the corpus substituted no rule of " + STATING + " into a call, so"
                         + " the reading a caller depends on is built and not reached. Taken in: "
@@ -101,9 +148,8 @@ class TheRelationAnEditRestatesIsOneACallerReadsTest {
      *  arrangement rather than the contract being reached from somewhere else. */
     @Test
     void whatThatCallerIsCheckedAgainstIncludesWhatItStates() {
-        Compilation compilation = compiled(Corpus.load("crm").sources());
         Map<ValueName.Behavior, AssumedContract> read =
-                compilation.db().ask(new Bodies.ContractsForBody(MODULE, CALLER)).value();
+                before().db().ask(new Bodies.ContractsForBody(MODULE, CALLER)).value();
         assertNotNull(read, () -> MODULE + "." + CALLER + " has no body to read contracts for");
         AssumedContract assumed = read.get(STATING);
         assertNotNull(assumed, () -> MODULE + "." + CALLER + " reads no contract of " + STATING
@@ -126,20 +172,17 @@ class TheRelationAnEditRestatesIsOneACallerReadsTest {
     @Test
     void restatingItChangesWhatThatCallerMayAssume() {
         Corpus crm = Corpus.load("crm");
-        List<String> restated = restated(crm, 0);
-        assertNotEquals(crm.sources(), restated,
+        assertNotEquals(crm.sources(), restated(crm, 0),
                 "the relation edit left the corpus as it found it");
         assertEquals(crm.sources(), restated(crm, 1),
                 "two rounds of the relation edit write one text, so the second is no edit and the"
                         + " round after it times the floor");
 
-        Compilation before = compiled(crm.sources());
-        Compilation after = compiled(restated);
-        assertEquals(List.of(), errorsOf(after),
+        assertEquals(List.of(), errorsOf(after()),
                 "the corpus no longer compiles once the relation is restated");
 
-        AssumedContract was = before.db().ask(new Bodies.Assumptions(STATING)).value();
-        AssumedContract now = after.db().ask(new Bodies.Assumptions(STATING)).value();
+        AssumedContract was = before().db().ask(new Bodies.Assumptions(STATING)).value();
+        AssumedContract now = after().db().ask(new Bodies.Assumptions(STATING)).value();
         assertNotNull(was, () -> STATING + " states nothing before the edit");
         assertNotEquals(was, now, "restating the rule left what a caller may assume unchanged, so"
                 + " the store has nothing to re-establish and the round times the floor");
@@ -162,13 +205,9 @@ class TheRelationAnEditRestatesIsOneACallerReadsTest {
      */
     @Test
     void restatingItLeavesTheOtherReadingsOfTheCorpusWhereTheyWere() {
-        Corpus crm = Corpus.load("crm");
-        Compilation before = compiled(crm.sources());
-        Compilation after = compiled(restated(crm, 0));
-
-        assertEquals(diagnosticsOf(before), diagnosticsOf(after),
+        assertEquals(diagnosticsOf(before()), diagnosticsOf(after()),
                 "restating the rule moved what the compiler says about the corpus");
-        assertEquals(before.adequacy(MODULE), after.adequacy(MODULE),
+        assertEquals(before().adequacy(MODULE), after().adequacy(MODULE),
                 "restating the rule moved how well the module's rows are said to cover it, so the"
                         + " round times an edit to that reading as well as to the caller's");
     }
