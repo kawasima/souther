@@ -170,10 +170,18 @@ sealed interface StatedByClauses {
         }
 
         /**
-         * Both readings holding at once.
+         * Both readings holding at once, and what a choice comes to where an alternative of it is
+         * one nobody can be in.
          *
          * <p>Nothing spoils anything and nothing is raised: both clauses are the author's, both
          * were read, and a conjunction offers no alternative for anything to have gone unread in.
+         *
+         * <p>Which is why a choice with a dead alternative composes here and not at
+         * {@link #either}. A branch {@link #inADeadBranch} has been applied to is not an
+         * alternative anything can be read in: what is left of it is that the positions it named
+         * are settled, and it says nothing about the strings anywhere. Composed as an alternative,
+         * it would take back what the branch that stands said about the strings at every position,
+         * because a side saying nothing about a position is every string there.
          */
         Part both(Part other) {
             return new Part(byValues.both(other.byValues()), byOrder.both(other.byOrder()),
@@ -196,21 +204,6 @@ sealed interface StatedByClauses {
             // branch for an author to look at, so there is nothing for a shortfall to send them to.
             return new Part(byValues.inADeadBranch(), byOrder.inADeadBranch(), Map.of(),
                     asked, Set.of());
-        }
-
-        /** This part of the branch that stands, beside the same part of one nobody can be in. */
-        Part beside(Part gone) {
-            // The standing branch's own, and nothing from the other. What a rule of a branch
-            // nothing satisfies is answerable for is not a rule of this declaration at all.
-            return new Part(byValues.beside(gone.byValues()), byOrder.beside(gone.byOrder()),
-                    aboutStrings, askedIn(asked, gone.asked()), ruleShortfalls);
-        }
-
-        /** The same part of two branches, neither of which anybody can be in. */
-        Part bothDead(Part other) {
-            return new Part(byValues.bothDead(other.byValues()),
-                    byOrder.bothDead(other.byOrder()), Map.of(),
-                    askedIn(asked, other.asked()), Set.of());
         }
 
         /** The same part of two branches somebody can be in, under the choice between them. */
@@ -1048,57 +1041,29 @@ sealed interface StatedByClauses {
                         throw new IllegalStateException(
                                 "a choice of a rule was never met in the settled reading");
                     }
-                    souther.compiler.values.Emptiness here = fate.left().emptiness();
-                    souther.compiler.values.Emptiness there = fate.right().emptiness();
-                    if (here == souther.compiler.values.Emptiness.EMPTY && there == souther.compiler.values.Emptiness.EMPTY) {
-                        yield one.bothDead(other);
-                    }
-                    if (here == souther.compiler.values.Emptiness.EMPTY) {
-                        yield keptAs(other, fate.right()).beside(one);
-                    }
-                    if (there == souther.compiler.values.Emptiness.EMPTY) {
-                        yield keptAs(one, fate.left()).beside(other);
-                    }
                     // Here, where both branches have their fate. What an alternative nothing could
                     // read left open turns on which of them anybody can be in: a branch shown dead
                     // by a clause written elsewhere takes what it could not read with it, and until
                     // the whole declaration is settled that is not known. Asked before, this choice
                     // is answerable for what a branch of a branch it has already lost ever reached.
-                    Taken live = keptAs(one, fate.left());
-                    Taken beside = keptAs(other, fate.right());
-                    yield live.either(
+                    Taken left = one.under(fate.left());
+                    Taken right = other.under(fate.right());
+                    if (fate.left().emptiness() == souther.compiler.values.Emptiness.EMPTY
+                            || fate.right().emptiness() == souther.compiler.values.Emptiness.EMPTY) {
+                        // What is left of a dead alternative is an account and not an alternative,
+                        // so the two are accumulated and not composed as a choice. Which of them
+                        // was the dead one is spent by here, and a choice nobody can take at all is
+                        // this same line with two of them.
+                        yield left.both(right);
+                    }
+                    yield left.either(
                             new RuleShortfall.Site.AtAChoice(it.id(), it.writtenAt().pos()),
-                            opens(it.id(), fate.width(), live.took(), beside.took()),
-                            beside);
+                            opens(it.id(), fate.width(), left.took(), right.took()),
+                            right);
                 }
             };
         }
 
-        /**
-         * A branch of the rule that is being kept, holding what the settlement could not build in
-         * it.
-         *
-         * <p>{@link #keptTogether} for the account: the reasons and the given-up positions were
-         * settled where the branch's occurrences were probed, and are applied to what this rule's
-         * parts said — a part about a position nobody worked out is one the account still calls
-         * taken in until this is applied.
-         */
-        private Taken keptAs(Taken read, Settlement.Sided known) {
-            if (known.emptiness() != souther.compiler.values.Emptiness.UNDECIDED) {
-                return read;
-            }
-            return read.mapped(part -> new Part(
-                    part.byValues().unbuiltAt(known.unbuilt()),
-                    part.byOrder().unbuiltAt(known.unbuilt()),
-                    part.aboutStrings(), part.asked(),
-                    // What a machine was refused for, said as what a rule is answerable for, at
-                    // the clause that asked for it rather than at the place it was built for. What
-                    // the answer itself was short of is not here: that holds of everything waiting
-                    // on the position and is the position's own, kept by the carrier that answers
-                    // for the position.
-                    shortOf(part.ruleShortfalls(),
-                            askedFor(known.ruleShortfalls(), part.asked()))));
-        }
     }
 
     /**
@@ -1117,7 +1082,15 @@ sealed interface StatedByClauses {
             return new Taken(took, out, opened);
         }
 
-        /** Both holding at once, each part still the part it was. */
+        /**
+         * Both holding at once, each part still the part it was — and what a choice comes to
+         * where an alternative of it is one nobody can be in.
+         *
+         * <p>The reason a choice composes here is {@link Part#both}'s: what is left of a branch
+         * {@link #inADeadBranch} has been applied to is not an alternative, so there is nothing in
+         * it for {@link #either} to be about. Which of the two a choice is asked of turns on the
+         * fates alone, and the fates are spent on the branches before either is reached.
+         */
         Taken both(Taken other) {
             return new Taken(took.both(other.took()), joined(parts, other.parts()),
                     opened(opened, other.opened()));
@@ -1131,32 +1104,68 @@ sealed interface StatedByClauses {
         }
 
         /**
-         * This branch of a choice, beside one nobody can be in.
+         * This branch of a choice with its fate applied, which is what a choice composes.
          *
-         * <p>What the dead one said goes with it, its unread rules included: nothing satisfies it,
-         * so what it left a position is not something a value of this type is under. What it does
-         * leave is that the positions it named are settled — the choice does nothing to them — and
-         * that is an answer only a reading that got to the end of the branch could give.
+         * <p>The one place the account reads a fate. A branch nobody can be in is put in a dead
+         * branch, a branch nothing settled holds what working it out could not build, and a branch
+         * somebody can be in is itself. What a choice does with the two of them turns on nothing
+         * more, so no composition below is told which branch was which — and a rule for a pair of
+         * fates, having no way to reach a branch, cannot say something a rule for one of them
+         * would not.
+         *
+         * <p>Which is what keeps a choice neither branch of which anybody can take from being a
+         * case at all. It is this twice and the composition beside it, and the answer cannot turn
+         * on the order the alternatives were written in because nothing in it looks at the pair.
          */
-        Taken beside(Taken gone) {
-            // And what a choice inside it left open goes with it too, for the same reason: there
-            // is no branch there for a position to be open in.
-            return new Taken(took.beside(gone.took()),
-                    joined(parts, gone.mapped(Part::inADeadBranch).parts()), opened);
+        Taken under(Settlement.Sided fate) {
+            return switch (fate.emptiness()) {
+                case EMPTY -> inADeadBranch();
+                case UNDECIDED -> holding(fate);
+                case NONEMPTY -> this;
+            };
         }
 
         /**
-         * A choice neither branch of which anybody can take.
+         * The whole of this, in a branch nobody can be in.
          *
-         * <p>No one of them speaks for the rest: taking the first to be found impossible out of the
-         * answer would settle the proof by the order the operands were written in, and the same
-         * model written two ways would be refused two ways.
+         * <p>Every part of it and what the subtree came to, by the rule {@link Adoption} states
+         * once for all of them. What a choice inside it left open is not among them and is not
+         * cleared: a choice inside such a branch is one neither alternative of which anybody can be
+         * in, so there is nothing there to clear, and a line clearing it would be one no reading
+         * could reach and nothing could show wrong.
          */
-        Taken bothDead(Taken other) {
-            return new Taken(took.bothDead(other.took()),
-                    joined(mapped(Part::inADeadBranch).parts(),
-                            other.mapped(Part::inADeadBranch).parts()),
-                    Set.of());
+        Taken inADeadBranch() {
+            // An assertion because it is about this compiler and not about any model, and here
+            // rather than in one test because every dead branch a corpus holds goes through it. A
+            // branch is empty wherever the whole of it is met, so every choice inside one nobody
+            // can be in has both its alternatives empty as well, and a walk arriving here holding
+            // an opening would have settled a choice against a tree this branch is not in.
+            assert opened.isEmpty()
+                    : "a choice inside a branch nobody can be in left a position open";
+            Taken dead = mapped(Part::inADeadBranch);
+            return new Taken(dead.took(), dead.parts(), opened);
+        }
+
+        /**
+         * A branch nothing showed empty, holding what working it out could not build.
+         *
+         * <p>A branch shown to admit something is kept and there is nothing more to say; a branch
+         * nothing could work out is kept for the same reason nothing was dropped — nobody showed
+         * it empty — and that is not the same fact. Kept without saying so, the account would call
+         * a position taken in where the truth is that nobody worked it out.
+         */
+        private Taken holding(Settlement.Sided known) {
+            return mapped(part -> new Part(
+                    part.byValues().unbuiltAt(known.unbuilt()),
+                    part.byOrder().unbuiltAt(known.unbuilt()),
+                    part.aboutStrings(), part.asked(),
+                    // What a machine was refused for, said as what a rule is answerable for, at
+                    // the clause that asked for it rather than at the place it was built for. What
+                    // the answer itself was short of is not here: that holds of everything waiting
+                    // on the position and is the position's own, kept by the carrier that answers
+                    // for the position.
+                    shortOf(part.ruleShortfalls(),
+                            askedFor(known.ruleShortfalls(), part.asked()))));
         }
 
         /**

@@ -46,18 +46,23 @@ class AChoiceReadsTheRuleAndNotTheTreeItIsWrittenAsTest {
      * <p>Whether a branch admits nothing is the state's to know and not the evidence's, so it is
      * carried beside here. A choice is dead where every alternative is, which is the rule the states
      * are composed by.
+     *
+     * <p>Two cases and not four, which is the shape under test as much as the answers are. A
+     * branch is put in a dead branch by what became of it and by nothing about the branch beside
+     * it, and what is left of it composes with a rule that knows nothing of fates — so a choice
+     * neither alternative of which anybody can be in is not written here at all, and cannot come
+     * out anything but what two dead branches leave.
      */
     private record Branch(Adoption<String, ReadingLanguage.Values> adoption, boolean dead) {
 
+        /** This branch with its fate applied, which is what a choice composes. */
+        Adoption<String, ReadingLanguage.Values> fated() {
+            return dead ? adoption.inADeadBranch() : adoption;
+        }
+
         Branch or(Branch other) {
-            if (dead && other.dead) {
-                return new Branch(adoption.bothDead(other.adoption), true);
-            }
-            if (dead) {
-                return new Branch(other.adoption.beside(adoption), false);
-            }
-            if (other.dead) {
-                return new Branch(adoption.beside(other.adoption), false);
+            if (dead || other.dead) {
+                return new Branch(fated().both(other.fated()), dead && other.dead);
             }
             return new Branch(adoption.either(Opening.nothing(), other.adoption), false);
         }
@@ -65,6 +70,11 @@ class AChoiceReadsTheRuleAndNotTheTreeItIsWrittenAsTest {
 
     private static final Branch UNREADABLE = new Branch(UNREAD, false);
     private static final Branch IMPOSSIBLE = new Branch(READ, true);
+
+    /** A second branch nothing satisfies, about a position of its own, so that a choice of two of
+     *  them has two answers to keep apart. */
+    private static final Branch ALSO_IMPOSSIBLE =
+            new Branch(Adoption.at(Set.of("z"), Set.of("z"), false), true);
 
     /**
      * Three alternatives compose the same whichever way the brackets fall.
@@ -99,4 +109,24 @@ class AChoiceReadsTheRuleAndNotTheTreeItIsWrittenAsTest {
                 IMPOSSIBLE.or(UNREADABLE).or(UNREADABLE).adoption());
     }
 
+    /**
+     * And a choice no alternative of which anybody can be in composes the same way.
+     *
+     * <p>The one no report reads: such a choice is empty, so either a choice outside it takes the
+     * alternative beside it and puts this whole one in a dead branch, or the declaration is refused
+     * and its account reaches nothing. Held anyway, because what makes it come out one way is that
+     * nothing here is written about a pair of dead branches — and that is a fact about the
+     * composition, which the next alternative does read.
+     */
+    @Test
+    void andTwoAlternativesNobodyCanBeInComposeTheSameWayRound() {
+        assertEquals(IMPOSSIBLE.or(ALSO_IMPOSSIBLE).adoption(),
+                ALSO_IMPOSSIBLE.or(IMPOSSIBLE).adoption(),
+                "neither of them speaks for the choice, so neither order does");
+        assertEquals(UNREADABLE.or(IMPOSSIBLE).or(ALSO_IMPOSSIBLE).adoption(),
+                UNREADABLE.or(IMPOSSIBLE.or(ALSO_IMPOSSIBLE)).adoption(),
+                "and a branch that stands beside them reads the same rule either way");
+        assertTrue(IMPOSSIBLE.or(ALSO_IMPOSSIBLE).dead(),
+                "a choice is dead where every alternative of it is");
+    }
 }
