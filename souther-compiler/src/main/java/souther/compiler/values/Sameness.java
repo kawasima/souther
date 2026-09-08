@@ -267,20 +267,6 @@ public final class Sameness<A> {
      */
     public static final class Block<A> {
 
-        /** What the number of members is multiplied by before it joins their sum, so that two
-         *  blocks whose members sum alike are still told apart where they hold different numbers of
-         *  positions. Odd, so that no bit of the number is lost in the multiplication. */
-        private static final int COUNTED = 0x9e3779b9;
-
-        /** The rounds of the mixing. The members reach it as the sum a {@code Set} hashes them to,
-         *  so what is mixed is that sum and the count beside it rather than the members one at a
-         *  time. Each multiplication carries what the shift before it folded downwards back up into
-         *  the high bits, which is what stops a sum of block hashes coming to a function of the sum
-         *  over all their positions. */
-        private static final int SCATTER = 0x85ebca6b;
-
-        private static final int SPREAD = 0xc2b2ae35;
-
         private final Set<A> members;
 
         /**
@@ -294,25 +280,18 @@ public final class Sameness<A> {
          * reads. Derived from the members on each of those, the answer is a walk of the set and a
          * hash of every position in it, over and over, for a value that cannot change.
          *
-         * <p><b>And mixed, because a set's hash is the sum of its members'.</b> Left as that sum, a
-         * block's hash carries no mark of where the block ends: a set of blocks hashes to the sum
-         * over every position in all of them, so {@code {{p}, {q, r}}} and {@code {{p, q}, {r}}}
-         * come to one hash whatever those positions are. A set of blocks is what a refusal names
-         * and what a lack is about, so the grouping a block exists to state would be the one thing
-         * its hash does not say. One mixing at the block's edge is what stops the sum above it
-         * cancelling that grouping out.
-         *
-         * <p>The mixing is work of its own, a fixed few operations paid where the block is made,
-         * and it is not paid back: the blocks a compile makes are nearly all of one position and
-         * the sets of them are small, so nothing measured here is spending what it saves. It is
-         * here because this hash is spelled out rather than derived, and a sum spelled out is a sum
-         * kept.
+         * <p><b>And taken as what a collection holds rather than as their sum.</b> A set of blocks
+         * is what a refusal names and what a lack is about, and a set hashes what it holds by
+         * adding them up — so a block that handed up the sum over its own members would leave
+         * {@code {{p}, {q, r}}} and {@code {{p, q}, {r}}} at one number whatever those positions
+         * are, and the grouping a block exists to state would be the one thing it does not say.
+         * {@link ValueHash} is where that is closed and why.
          */
         private final int hash;
 
         private Block(Set<A> members) {
             this.members = members;
-            this.hash = hashOf(members);
+            this.hash = ValueHash.ofWhatItHolds(Block.class, members.hashCode(), members.size());
         }
 
         /**
@@ -400,16 +379,6 @@ public final class Sameness<A> {
             List<A> sorted = new ArrayList<>(members);
             sorted.sort(Comparator.comparing(String::valueOf));
             return Collections.unmodifiableSet(new LinkedHashSet<>(sorted));
-        }
-
-        /** The members' hash, taken so that the block's edge survives being summed with others. */
-        private static int hashOf(Set<?> members) {
-            int gathered = members.hashCode() ^ (members.size() * COUNTED);
-            gathered ^= (gathered >>> 16);
-            gathered *= SCATTER;
-            gathered ^= (gathered >>> 13);
-            gathered *= SPREAD;
-            return gathered ^ (gathered >>> 16);
         }
     }
 }

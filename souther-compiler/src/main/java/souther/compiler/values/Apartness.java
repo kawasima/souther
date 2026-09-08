@@ -936,9 +936,19 @@ public final class Apartness<A> {
                             || (one.equals(it.other) && other.equals(it.one)));
         }
 
+        /**
+         * A pair of blocks with no order between its ends — see {@link ValueHash}.
+         *
+         * <p>Taken as a pair and not as its ends added. The ends added is what a pair stated either
+         * way round most easily comes to one number by, and it is also what leaves a set of pairs
+         * at the sum over every block any of its pairs names: the pair of {@code A} with {@code B}
+         * beside the pair of {@code C} with {@code D}, and the pair of {@code A} with {@code C}
+         * beside the pair of {@code B} with {@code D}, add up the same. Which block was stated to
+         * differ from which is what a relation is, and it is the one thing that sum does not say.
+         */
         @Override
         public int hashCode() {
-            return one.hashCode() + other.hashCode();
+            return ValueHash.ofAnUnorderedPair(Edge.class, one.hashCode(), other.hashCode());
         }
 
         /** The two ends, written in one order whichever way round they were stated. Which end is
