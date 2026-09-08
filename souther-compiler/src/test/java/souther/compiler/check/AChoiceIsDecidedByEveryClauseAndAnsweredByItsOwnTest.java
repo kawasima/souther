@@ -245,16 +245,19 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
                 theBranchRead(java.util.Set.of()),
                 theBranchNothingRead(java.util.Set.of()));
 
-        assertEquals(java.util.Set.of(CONSTRAINED), opened.byTheRightGoingUnread(),
+        assertEquals(java.util.Set.of(CONSTRAINED), opened.byValues().byTheRightGoingUnread(),
                 "an author is sent here about the position the branch beside it constrained, and"
                         + " not about the one it settled");
         assertEquals(java.util.Set.of(CONSTRAINED), opened.byValues().positions(),
                 "and the position hears about it, the width there being the unread branch's");
-        assertEquals(java.util.Set.of(), opened.byTheLeftGoingUnread(),
+        assertEquals(java.util.Set.of(), opened.byValues().byTheLeftGoingUnread(),
                 "the left alternative was read, so nothing is open by its going unread");
         assertEquals(java.util.Set.of(), opened.byOrder().positions(),
                 "and the reading of order read both alternatives, so the width it could not"
                         + " account for is not something an unread alternative left open");
+        assertEquals(java.util.Set.of(), opened.byOrder().byTheRightGoingUnread(),
+                "and it sends an author nowhere for the same reason: which alternative went"
+                        + " unread is each reading's own, and the ends had a word for both");
     }
 
     /**
@@ -306,8 +309,9 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
      */
     private static StatedByClauses.AlternativeOpening opened(
             RuleShortfall.Site.AtAChoice choice) {
-        return new StatedByClauses.AlternativeOpening(choice.id(), java.util.Set.of(),
-                java.util.Set.of(CONSTRAINED), new Opening<>(java.util.Set.of(CONSTRAINED)),
+        return new StatedByClauses.AlternativeOpening(choice.id(),
+                new Opening<>(java.util.Set.of(CONSTRAINED), java.util.Set.of(),
+                        java.util.Set.of(CONSTRAINED)),
                 Opening.nothing());
     }
 
@@ -322,6 +326,55 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
         return new Settlement.WidthDependency(
                 new Settlement.Width<>(java.util.Set.of(), java.util.Set.of(CONSTRAINED)),
                 new Settlement.Width<>(java.util.Set.of(), java.util.Set.of(CONSTRAINED)));
+    }
+
+    /**
+     * And the reading of ends is sent to the choice by its own alternative going unread.
+     *
+     * <p>The other half of the same fact, and the one nothing else here reaches. Which alternative
+     * a reading had no word for is that reading's, and so is where the branch beside it reached —
+     * so an opening of the ends is not the values' answer with another name on it, and holding only
+     * the empty case would leave a half that is always empty passing for one that is right.
+     *
+     * <p>The values read both alternatives here, which is what makes the two answers differ: the
+     * ends send an author to this choice and the values send them nowhere, over one written
+     * {@code ||}.
+     */
+    @Test
+    void andTheEndsAreSentToTheChoiceByTheirOwnAlternativeGoingUnread() {
+        StatedByClauses.AlternativeOpening opened = StatedByClauses.opens(new ChoiceId(),
+                widthRestingOnTheRight(),
+                theBranchTheEndsCouldNotRead(), theBranchTheEndsRead());
+
+        assertEquals(java.util.Set.of(CONSTRAINED), opened.byOrder().byTheLeftGoingUnread(),
+                "the ends had no word for the left alternative, so an author is sent here about"
+                        + " the position the right one reached");
+        assertEquals(java.util.Set.of(), opened.byOrder().byTheRightGoingUnread(),
+                "and nowhere for the right, which they read");
+        assertEquals(java.util.Set.of(), opened.byValues().byTheLeftGoingUnread(),
+                "and the values read both, so what they send an author to is not this");
+        assertEquals(java.util.Set.of(), opened.byValues().byTheRightGoingUnread(),
+                "either way round");
+    }
+
+    /** A branch the ends had no word for, the values having read it. */
+    private static StatedByClauses.Part theBranchTheEndsCouldNotRead() {
+        return new StatedByClauses.Part(
+                new Adoption<>(java.util.Set.of(CONSTRAINED), java.util.Set.of(),
+                        java.util.Set.of(), false, java.util.Set.of()),
+                new Adoption<>(java.util.Set.of(), java.util.Set.of(),
+                        java.util.Set.of(UNREAD), true, java.util.Set.of()),
+                Map.of(), java.util.Set.of(), java.util.Set.of());
+    }
+
+    /** And the alternative beside it that both of them read, constraining one position. */
+    private static StatedByClauses.Part theBranchTheEndsRead() {
+        return new StatedByClauses.Part(
+                new Adoption<>(java.util.Set.of(CONSTRAINED), java.util.Set.of(),
+                        java.util.Set.of(), false, java.util.Set.of()),
+                new Adoption<>(java.util.Set.of(CONSTRAINED), java.util.Set.of(),
+                        java.util.Set.of(), false, java.util.Set.of()),
+                Map.of(), java.util.Set.of(), java.util.Set.of());
     }
 
     /** One choice somebody wrote, told from every other by being this one. */

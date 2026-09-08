@@ -61,18 +61,18 @@ class WhoMayAskWhetherAClauseWentUnreadTest {
      * Where an unread alternative is turned into what it left open, and where an author is sent for
      * it.
      *
-     * <p>Two questions of the one fact and no more. What the alternative left open is the first,
-     * and it is asked where the width of the same reading is in hand — of one reading throughout,
-     * which is what the method's shape holds it to. Which choice to send an author to is the
-     * second, and it is asked of the values because that is the road that exists
-     * ({@code StatedByClauses.Part#leftOpenByValues}).
+     * <p>Two questions of the one fact, and one place asks both. What the alternative left open is
+     * the first; which choice to send an author to is the second. Both are answered off the same
+     * reading's two accounts and the same reading's width, so both are asked where all three are in
+     * hand, bound to one reading — which is what the method's shape holds it to.
      *
-     * <p>Asked anywhere else, one of the halves has to be fetched from somewhere, and what is
-     * fetched is either a second answer or another reading's.
+     * <p>One row and not two, which is the whole of it. Asked at a second site, one reading's flag
+     * stands beside a set of positions reached by whichever reading the writer had in hand, and
+     * that composes without a complaint: an author is sent to a choice on the strength of an
+     * alternative the reading that named the positions read to the end.
      */
     private static final List<String> MAY_ASK =
-            List.of("souther/compiler/check/StatedByClauses#openedBy",
-                    "souther/compiler/check/StatedByClauses#opens");
+            List.of("souther/compiler/check/StatedByClauses#openedBy");
 
     @Test
     void onlyWhereAnUnreadAlternativeBecomesWhatItLeftOpen() {
