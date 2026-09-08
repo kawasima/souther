@@ -10,6 +10,7 @@ import java.lang.classfile.instruction.ArrayStoreInstruction;
 import java.lang.classfile.instruction.BranchInstruction;
 import java.lang.classfile.instruction.ConstantInstruction;
 import java.lang.classfile.instruction.ConvertInstruction;
+import java.lang.classfile.instruction.DiscontinuedInstruction;
 import java.lang.classfile.instruction.ExceptionCatch;
 import java.lang.classfile.instruction.FieldInstruction;
 import java.lang.classfile.instruction.IncrementInstruction;
@@ -221,62 +222,49 @@ final class WhatBecomesOfAValueOnTheStack {
      * having it on every way, and a comparison after the condition would be about a value nothing
      * put there.
      *
-     * <p>So the ways are followed as they are for a value on the stack, and put together where they
-     * meet: the name holds the value where any way arriving holds it. A way that comes back to
-     * where this has already been is walked again, until no way says anything new — which it
-     * reaches, since a name that holds the value goes on holding it and no round takes that back.
+     * <p>So this is over the places in the code and not over what is written after the writing:
+     * the name holds the value at a place where any way of arriving there holds it, and every way
+     * the code may go is one of them — what is written next, wherever it jumps, and wherever what
+     * it throws may be caught. A way that comes back is one of them too, and the places are walked
+     * again until no way says anything new, which they reach because a name holding the value goes
+     * on holding it and no round takes that back.
      */
     private static boolean heldIn(List<CodeElement> elements, int from, int slot, int through) {
-        Map<Label, Integer> placed = new HashMap<>();
-        for (int where = 0; where < elements.size(); where++) {
-            if (elements.get(where) instanceof LabelTarget target) {
-                placed.put(target.label(), where);
-            }
-        }
-        Map<Label, Boolean> arriving = new HashMap<>();
+        Map<Label, Integer> placed = placesOf(elements);
+        boolean[] holds = new boolean[elements.size()];
+        holds[from + 1] = true;
         Set<Integer> readWhileHeld = new LinkedHashSet<>();
         boolean anythingNew = true;
-        int rounds = 0;
         while (anythingNew) {
-            if (++rounds > 16) {
-                throw new IllegalStateException("what a name holds would not settle");
-            }
             anythingNew = false;
-            boolean holds = true;
-            boolean reached = true;
-            for (int at = from + 1; at < elements.size(); at++) {
+            for (int at = 0; at < elements.size(); at++) {
+                if (!holds[at]) {
+                    continue;
+                }
                 CodeElement element = elements.get(at);
-                if (element instanceof LabelTarget target) {
-                    Boolean said = arriving.get(target.label());
-                    if (said != null) {
-                        holds = said || (reached && holds);
-                        reached = true;
-                    }
-                    continue;
-                }
-                if (!(element instanceof Instruction instruction) || !reached) {
-                    continue;
-                }
-                if (holds) {
+                boolean after = true;
+                if (element instanceof Instruction instruction) {
                     if (element instanceof StoreInstruction put && put.slot() == slot) {
-                        holds = false;
+                        after = false;
                     } else if (element instanceof IncrementInstruction added
                             && added.slot() == slot) {
-                        holds = false;
+                        after = false;
                     } else if (element instanceof LoadInstruction got && got.slot() == slot
                             && readWhileHeld.add(at)) {
                         anythingNew = true;
                     }
-                }
-                for (Label target : whereItMayGo(instruction)) {
-                    Boolean was = arriving.get(target);
-                    boolean now = was != null ? was || holds : holds;
-                    if (was == null || was != now) {
-                        arriving.put(target, now);
-                        anythingNew = true;
+                    for (int to : goesTo(elements, placed, at, instruction, after)) {
+                        if (!holds[to]) {
+                            holds[to] = true;
+                            anythingNew = true;
+                        }
                     }
+                } else if (at + 1 < elements.size() && !holds[at + 1]) {
+                    // A label or a line, which nothing carries the value across but the code
+                    // written after it.
+                    holds[at + 1] = true;
+                    anythingNew = true;
                 }
-                reached = !ends(instruction);
             }
         }
         for (int at : readWhileHeld) {
@@ -285,6 +273,63 @@ final class WhatBecomesOfAValueOnTheStack {
             }
         }
         return false;
+    }
+
+    /**
+     * Everywhere the code may be at next, once the instruction at {@code at} has run.
+     *
+     * <p>The whole of it: what is written after it unless nothing carries on to that, wherever it
+     * may jump, and every handler that may catch what it throws. A name holds what it holds however
+     * the code arrived, so an edge left out is a place a name is read at that nothing here reads —
+     * and what a rule on top of this would say of it is that nobody compares the value.
+     *
+     * @param after whether the name still holds the value once this instruction has run, which is
+     *              what is carried to each of them
+     */
+    private static List<Integer> goesTo(List<CodeElement> elements, Map<Label, Integer> placed,
+                                        int at, Instruction instruction, boolean after) {
+        if (!after) {
+            return List.of();
+        }
+        if (instruction instanceof DiscontinuedInstruction) {
+            throw new IllegalStateException(
+                    "a name was followed into a way of jumping this cannot say the ways of");
+        }
+        List<Integer> out = new ArrayList<>();
+        if (!ends(instruction) && at + 1 < elements.size()) {
+            out.add(at + 1);
+        }
+        for (Label target : whereItMayGo(instruction)) {
+            out.add(placeOf(placed, target));
+        }
+        // And wherever what it throws may be caught, since a name is what it was when the throwing
+        // began. Left out, a comparison written in a handler is one nothing reads.
+        for (CodeElement each : elements) {
+            if (each instanceof ExceptionCatch handler
+                    && placeOf(placed, handler.tryStart()) <= at
+                    && at < placeOf(placed, handler.tryEnd())) {
+                out.add(placeOf(placed, handler.handler()));
+            }
+        }
+        return out;
+    }
+
+    private static Map<Label, Integer> placesOf(List<CodeElement> elements) {
+        Map<Label, Integer> placed = new HashMap<>();
+        for (int where = 0; where < elements.size(); where++) {
+            if (elements.get(where) instanceof LabelTarget target) {
+                placed.put(target.label(), where);
+            }
+        }
+        return placed;
+    }
+
+    private static int placeOf(Map<Label, Integer> placed, Label label) {
+        Integer where = placed.get(label);
+        if (where == null) {
+            throw new IllegalStateException("a way leads somewhere this walk never reaches");
+        }
+        return where;
     }
 
     /**

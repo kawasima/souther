@@ -233,9 +233,14 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                     + "(Lsouther/compiler/values/Emptiness;)Z",
             "souther/architecture/WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest$Comparing#itIsWhatWasPutAway"
                     + "(Lsouther/compiler/values/Emptiness;)Z",
+            "souther/architecture/WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest$Comparing#itIsWhatWasPutAwayGoingRound"
+                    + "(Lsouther/compiler/values/Emptiness;"
+                    + "Lsouther/compiler/values/Emptiness;I)Z",
             "souther/architecture/WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest$Comparing#itIsWhatWasPutAwayUnlessSomethingElseWas"
                     + "(Lsouther/compiler/values/Emptiness;"
-                    + "Lsouther/compiler/values/Emptiness;Z)Z");
+                    + "Lsouther/compiler/values/Emptiness;Z)Z",
+            "souther/architecture/WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest$Comparing#itIsWhatWasPutAwayWhereSomethingWasCaught"
+                    + "(Lsouther/compiler/values/Emptiness;Ljava/lang/RuntimeException;)Z");
 
     /**
      * One reading whose meaning nobody has decided yet, and which question it is.
@@ -461,6 +466,12 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                         + " a comparison for this constant or for none");
         assertTrue(Comparing.itIsWhatWasPutAwayUnlessSomethingElseWas(
                 Emptiness.NONEMPTY, Emptiness.NONEMPTY, true));
+        assertTrue(Comparing.itIsWhatWasPutAwayGoingRound(Emptiness.EMPTY, Emptiness.NONEMPTY, 1),
+                "and one written into a name going round a loop is compared after it");
+        assertFalse(Comparing.itIsWhatWasPutAwayGoingRound(Emptiness.EMPTY, Emptiness.NONEMPTY, 0));
+        assertTrue(Comparing.itIsWhatWasPutAwayWhereSomethingWasCaught(
+                        Emptiness.EMPTY, new IllegalStateException("thrown")),
+                "and one compared where what was thrown is caught is compared there");
         assertTrue(Comparing.emptyIsWhicheverOfThese(Emptiness.EMPTY, Emptiness.NONEMPTY, true),
                 "and one compared against an answer the code works out first is a comparison too");
         assertFalse(Comparing.emptyIsWhicheverOfThese(Emptiness.EMPTY, Emptiness.NONEMPTY, false));
@@ -654,6 +665,38 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                 nothingAtAll = other;
             }
             return said == nothingAtAll;
+        }
+
+        /**
+         * And one written into a name inside a loop and compared after it.
+         *
+         * <p>The way from the writing to the comparison goes backwards first, round the loop and
+         * out of it. Followed only forwards from the writing, that way is not there at all, and the
+         * comparison after the loop is one nothing reads.
+         */
+        static boolean itIsWhatWasPutAwayGoingRound(Emptiness said, Emptiness other, int times) {
+            Emptiness nothingAtAll = other;
+            for (int each = 0; each < times; each++) {
+                nothingAtAll = Emptiness.EMPTY;
+            }
+            return said == nothingAtAll;
+        }
+
+        /**
+         * And one compared where what was thrown is caught.
+         *
+         * <p>A name holds what it held when the throwing began, so the way to the handler is a way
+         * the value travels. Followed only along what carries on, the throw ends the way and the
+         * comparison written in the handler is one nothing reads.
+         */
+        static boolean itIsWhatWasPutAwayWhereSomethingWasCaught(Emptiness said,
+                                                                RuntimeException thrown) {
+            Emptiness nothingAtAll = Emptiness.EMPTY;
+            try {
+                throw thrown;
+            } catch (RuntimeException caught) {
+                return said == nothingAtAll;
+            }
         }
 
         /**
