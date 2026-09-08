@@ -261,14 +261,10 @@ class AWarningAboutAClauseSendsAReaderToItTest {
         assertEquals(List.of(new souther.compiler.diag.DiagnosticPlace.Unavailable(
                         new souther.compiler.diag.SourceProvenance.APublishedModule("model"))),
                 warnings.get(0).secondary().stream().map(label -> label.place()).toList(),
-                "written where this compile has no file, and saying which module that is");
+                "one label, written where this compile has no file, saying which module that is");
 
         assertInstanceOf(InvariantMessage.NothingKnownHereEstablishesTheInvariant.class,
                 warnings.get(0).said(), "the clause was written without a name");
-        assertEquals(List.of(), lines(warnings.get(0)),
-                "and there is no source here to send the reader to");
-        assertEquals(1, warnings.get(0).secondary().size(),
-                "the label is there all the same, saying what it can");
         assertTrue(new HumanRenderer(false)
                         .render(warnings.get(0), new SourceContext("app.sou", USING),
                                 java.util.Locale.ENGLISH)

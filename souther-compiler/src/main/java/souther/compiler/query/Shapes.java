@@ -720,10 +720,14 @@ public final class Shapes {
      * writes its clauses in that order, which is what lets a reader holding a judgment about clause
      * <i>n</i> ask here for where clause <i>n</i> is.
      *
-     * <p>A declaration that writes no clauses answers with none, and a kind that has no
-     * {@code invariant} to write answers with none: what a reader of this needs is where the clause
-     * it is about is, and a reader asking about a clause of a declaration that wrote none is asking
-     * about a clause that does not exist.
+     * <p>A declaration that writes no clauses answers with none, and so does a kind that has no
+     * {@code invariant} to write: what a reader needs is where the clause it is about is, and a
+     * declaration that wrote none has no such clause to be asked about.
+     *
+     * <p>Nothing declaring one is the other answer and is absent. A declaration that wrote no
+     * clauses and a name nothing in this compilation declares are opposite facts and the same empty
+     * list, and a reader handed the list cannot tell them apart — which is the shape
+     * {@link ClausesExpandedFor} keeps three answers to avoid.
      */
     public record ClauseLocationsFor(TypeKey named) implements Key<List<DiagnosticPlace>> {
         @Override
@@ -733,7 +737,11 @@ public final class Shapes {
 
         @Override
         public Answer<List<DiagnosticPlace>> compute(Db db) {
-            if (!(ClausesExpandedFor.declarationOf(db, named) instanceof Hir.Data data)) {
+            Hir.Def declared = ClausesExpandedFor.declarationOf(db, named);
+            if (declared == null) {
+                return Answer.absent();
+            }
+            if (!(declared instanceof Hir.Data data)) {
                 return Answer.of(List.of());
             }
             List<DiagnosticPlace> places = new ArrayList<>();
@@ -760,12 +768,13 @@ public final class Shapes {
      */
     public static ClauseLocations clauseLocations(Db db) {
         return clause -> {
-            List<DiagnosticPlace> places =
-                    db.ask(new ClauseLocationsFor(clause.declaredOn().key())).value();
-            if (clause.ordinal() < 0 || clause.ordinal() >= places.size()) {
+            Answer<List<DiagnosticPlace>> written =
+                    db.ask(new ClauseLocationsFor(clause.declaredOn().key()));
+            if (!written.present() || clause.ordinal() < 0
+                    || clause.ordinal() >= written.value().size()) {
                 throw new NoSuchClauseIsWritten(clause);
             }
-            return places.get(clause.ordinal());
+            return written.value().get(clause.ordinal());
         };
     }
 

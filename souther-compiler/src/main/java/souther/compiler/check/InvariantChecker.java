@@ -258,9 +258,6 @@ public final class InvariantChecker {
     private final Terms terms;
     /** What a clause owes and what a guard settles. */
     private final Predicates predicates;
-    /** Where a clause this check reports about is written, asked where a sentence points and not
-     * carried by the judgment that named the clause ({@link ClauseLocations}). */
-    private final ClauseLocations written;
     /** Whether an evaluation can answer, which is what decides that a continuation is reached. */
     private final PathCompletion completion;
     /**
@@ -289,7 +286,6 @@ public final class InvariantChecker {
                              DeclarationReadings machines,
                              Map<ValueName.Behavior, AssumedContract> contracts,
                              ReadingPolicy policy) {
-        this.written = written;
         // Where the answers about a declaration's string machines are asked for, for every
         // declaration this check reads: a capability handed on to the engine, which hands it to
         // every reading made through it, and kept by nothing any of them answers with.
@@ -4377,7 +4373,7 @@ public final class InvariantChecker {
         // reads as a repeat rather than as two clauses. Which clauses they are is in the message,
         // which names them.
         java.util.Set<souther.compiler.diag.DiagnosticPlace> already = new java.util.LinkedHashSet<>();
-        Judgment.pointsTo(clauses, written).forEach(place -> {
+        Judgment.pointsTo(clauses, this.clauses.written()).forEach(place -> {
             if (!already.add(place)) {
                 return;
             }

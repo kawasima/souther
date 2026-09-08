@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -107,8 +108,9 @@ class AClauseReachedTwiceIsOneClauseTest {
 
         assertEquals(1, judgment.unsettled().size(),
                 "one clause, read once down each branch: " + judgment.unsettled());
-        assertEquals(List.of(7, 7), linesPointedAtIn(READ_ON_TWO_BRANCHES),
-                "and each branch's construction sends a reader to the one line it is written on");
+        assertEquals(Set.of(7), Set.copyOf(linesPointedAtIn(READ_ON_TWO_BRANCHES)),
+                "and however many constructions are reported, there is one line to send a reader"
+                        + " to, because there is one clause");
     }
 
     // --- reading the check ----------------------------------------------------------------------

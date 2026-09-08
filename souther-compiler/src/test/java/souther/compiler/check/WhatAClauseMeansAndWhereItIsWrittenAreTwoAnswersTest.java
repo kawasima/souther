@@ -2,7 +2,9 @@ package souther.compiler.check;
 
 import souther.compiler.diag.DiagnosticPlace;
 import souther.compiler.meta.ModulePath;
+import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
+import souther.compiler.query.Key;
 import souther.compiler.query.Shapes;
 import souther.compiler.types.TypeKey;
 
@@ -18,6 +20,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * What a construction was judged against, and where the clause it was judged against is written.
@@ -84,6 +87,27 @@ class WhatAClauseMeansAndWhereItIsWrittenAreTwoAnswersTest {
                 "and the line it writes it on once a line is inserted above it");
 
         assertNotEquals(clauseLines(DECLARING), clauseLines(MOVED));
+    }
+
+    /**
+     * And the check that reports about the construction depends on where the clause is written.
+     *
+     * <p>The edge is what this is all for, and it is the one thing neither answer above shows: two
+     * answers that differ say nothing about whether the reader of the first asks for the second. A
+     * report that worked the place out without recording that it had would go on saying where the
+     * clause was, on the day a cut lets the reading itself stand.
+     */
+    @Test
+    void andTheCheckThatReportsAboutTheConstructionDependsOnWhereTheClauseIsWritten() {
+        Compilation compilation = answered(DECLARING);
+
+        Set<Key<?>> read =
+                compilation.db().dependenciesOf(new Bodies.CheckedBehavior("app", "make"));
+
+        assertTrue(read.contains(new Shapes.ClauseLocationsFor(SMALL)),
+                "checking the body asks where the clause it reports about is written");
+        assertFalse(read.contains(new Shapes.ClauseLocationsFor(new TypeKey("limits", "Large"))),
+                "and what it read is what it asked for: nothing declares a `Large` to ask about");
     }
 
     /**
