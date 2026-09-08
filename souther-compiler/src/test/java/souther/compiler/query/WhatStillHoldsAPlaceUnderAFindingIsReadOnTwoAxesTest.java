@@ -1,5 +1,6 @@
 package souther.compiler.query;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import souther.compiler.coverage.CoverageSites;
 import souther.compiler.meta.ModulePath;
@@ -276,10 +277,18 @@ class WhatStillHoldsAPlaceUnderAFindingIsReadOnTwoAxesTest {
     /**
      * And each reading is what a compile shows, rather than what somebody wrote down.
      *
-     * <p>The corpus is small and the readings are about what it reaches, so a carrier this says
-     * nothing reaches is one nothing reaches <em>here</em>. That is the whole of the claim: it is
-     * why the word is "nothing has been measured" and not "there are none".
+     * <p>The readings are about what the models reach, so a carrier this says nothing reaches is
+     * one nothing reaches <em>in them</em>. That is the whole of the claim: it is why the word is
+     * "nothing has been observed" and not "there are none".
+     *
+     * <p>Its subjects are the models this repository carries, so it runs where those are run, and
+     * a build that does not run them does not check these readings. What a build does check is
+     * everything above: that each place under a finding is registered at all, that the cut waits on
+     * every one nobody has shown does not cross, and that each says what it says it for. A carrier
+     * added without a reading fails a build; a reading that has gone out of date with the models
+     * fails the run that reads them.
      */
+    @Tag("population")
     @Test
     void andEachReadingIsWhatACompileShows() {
         Map<String, List<Object>> byCarrier = carriersInTheModels();
