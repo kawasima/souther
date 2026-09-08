@@ -111,7 +111,7 @@ class EverySlotIsAChildTest {
         Core.IfConstructed attempt = new Core.IfConstructed(construction(),
                 binder("p"), new Core.Int(0, Type.INT, POS),
                 List.of(new Core.ElseArm(Optional.empty(), new Core.Int(1, Type.INT, POS))),
-                ConstructOccurrence.asWritten(ORIGIN), Type.INT, POS, List.of());
+                Core.ForkPlace.asWritten(ConstructOccurrence.asWritten(ORIGIN)), Type.INT, POS);
 
         assertTrue(childrenOf(attempt).stream().anyMatch(c -> c instanceof Core.Construct),
                 "the construction itself, rather than the field values inside it");
@@ -122,7 +122,8 @@ class EverySlotIsAChildTest {
         Core.IfConstructed attempt = new Core.IfConstructed(construction(),
                 binder("p"),
                 new Core.Apply(read("f", 1), List.of(), Type.INT, POS),
-                List.of(), ConstructOccurrence.asWritten(ORIGIN), Type.INT, POS, List.of());
+                List.of(), Core.ForkPlace.asWritten(ConstructOccurrence.asWritten(ORIGIN)),
+                Type.INT, POS);
 
         List<String> asExpressions = new ArrayList<>();
         List<String> asNames = new ArrayList<>();

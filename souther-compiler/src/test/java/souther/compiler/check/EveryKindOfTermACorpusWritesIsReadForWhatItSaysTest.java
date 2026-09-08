@@ -1,6 +1,7 @@
-package souther.compiler.core;
+package souther.compiler.check;
 
 import souther.compiler.conformance.ConformanceCorpus;
+import souther.compiler.core.Core;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
@@ -17,27 +18,27 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * Reading a term without its place, over every kind of term there is.
+ * A term read for what it says, over every kind of term a model writes.
  *
- * <p>{@link Core#withoutItsPlace} is a case per node kind, and a case is wrong in two ways a
- * compiler cannot see: it can keep a place, and it can build something the node refuses to be. The
- * second is not theoretical — the first writing of it handed a name its spelling with nowhere to
- * put it, which {@link souther.compiler.ast.WrittenName} refuses outright, so every contract
- * holding a written binder threw out of the whole compile.
+ * <p>{@link TermMeaning} is a projection written a case per node kind, and which kinds anything here
+ * reaches is measured rather than assumed: the permitted subtypes are the language's own list of
+ * what a term can be, so a kind added later is unreached here until someone says what a reading of
+ * it leaves out. A module written to reach what the corpus does not stands beside the corpus,
+ * because the corpus is a set of models and a model has no reason to write every kind.
  *
- * <p>What was written against contracts did not find it: the conformance corpus states one
- * {@code ensures}, and a clause reaches a handful of the kinds. So this asks the question of
- * {@code Core} rather than of contracts, over every body the corpus compiles, and reports which
- * kinds it did not reach rather than assuming there are none — the permitted subclasses are the
- * language's own list of what a term can be, so a kind added later is unreached here until someone
- * says what its place is.
+ * <p>Over the whole corpus twice, so it is here rather than beside the checks a build runs: what one
+ * of those asks of a fixture, this asks of every term two compilations of one corpus produce.
+ * {@code EveryTermIsReadForWhatItSaysTest} is where a reading is held to each thing that says where
+ * a node stands, one at a time.
+ *
+ * <p>Moving every line is the edit this can make. It moves every position and reaches no ordinal —
+ * a module numbers its constructs after the ones the blank lines did not add — so what says where a
+ * construct stands among its neighbours is held by the fixtures and not here.
  */
 @Tag("population")
-class EveryTermCanBeReadWithoutItsPlaceTest {
-
+class EveryKindOfTermACorpusWritesIsReadForWhatItSaysTest {
 
     /**
      * A module written to reach what the corpus does not. The corpus is a set of models, and a model
@@ -137,16 +138,14 @@ class EveryTermCanBeReadWithoutItsPlaceTest {
                         out.add(checked.body());
                     }
                 }
-                Map<String, souther.compiler.check.StatedContract> stated =
+                Map<String, StatedContract> stated =
                         c.db().ask(new Bodies.StatedContracts(module)).value();
                 if (stated == null) {
                     continue;
                 }
                 for (String behavior : new TreeSet<>(stated.keySet())) {
-                    for (souther.compiler.check.StatedContract.StatedRule rule
-                            : stated.get(behavior).rules()) {
-                        for (souther.compiler.check.StatedContract.Conjunct each
-                                : rule.conjuncts()) {
+                    for (StatedContract.StatedRule rule : stated.get(behavior).rules()) {
+                        for (StatedContract.Conjunct each : rule.conjuncts()) {
                             if (each.stated().orNull() != null) {
                                 out.add(each.stated().orNull());
                             }
@@ -166,12 +165,12 @@ class EveryTermCanBeReadWithoutItsPlaceTest {
         Core.forEachChild(e, child -> each(child, f));
     }
 
-    private static Set<Class<?>> kindsIn(List<Core> terms) {
-        Set<Class<?>> out = new LinkedHashSet<>();
+    private static Set<String> kindsIn(List<Core> terms) {
+        Set<Class<?>> found = new LinkedHashSet<>();
         for (Core term : terms) {
-            each(term, node -> out.add(node.getClass()));
+            each(term, node -> found.add(node.getClass()));
         }
-        return out;
+        return named(found);
     }
 
     private static Set<String> named(Set<Class<?>> kinds) {
@@ -180,6 +179,10 @@ class EveryTermCanBeReadWithoutItsPlaceTest {
             out.add(kind.getSimpleName());
         }
         return out;
+    }
+
+    private static List<TermMeaning> read(List<Core> terms) {
+        return terms.stream().map(TermMeaning::of).toList();
     }
 
     /**
@@ -194,44 +197,23 @@ class EveryTermCanBeReadWithoutItsPlaceTest {
     private static final Set<String> WRITTEN_BY_NOTHING = new TreeSet<>(Set.of("OptionNone"));
 
     @Test
-    void everyKindOfTermTheCorpusWritesIsRead() {
-        List<Core> read = bodies("").stream().map(Core::withoutItsPlace).toList();
-
-        Set<String> reached = named(kindsIn(bodies("")));
+    void everyKindOfTermTheCorpusWritesIsReached() {
+        Set<String> reached = kindsIn(bodies(""));
         Set<String> declared = named(Set.of(Core.class.getPermittedSubclasses()));
         declared.removeAll(reached);
-        assertEquals(WRITTEN_BY_NOTHING, declared,
-                "a kind of term nothing here reaches is one nothing here says the place of");
-        assertEquals(reached, named(kindsIn(read)),
-                "reading a term without its place does not change what kind of term it is");
-    }
 
-    @Test
-    void nothingReadWithoutItsPlaceKeepsOne() {
-        for (Core term : bodies("")) {
-            each(Core.withoutItsPlace(term), node -> {
-                assertNull(node.pos(), () -> node.getClass().getSimpleName() + " kept where it is");
-                switch (node) {
-                    case Core.Binary b -> assertNull(b.origin(), "a comparison kept its ordinal");
-                    case Core.If i -> assertNull(i.origin(), "a conditional kept its ordinal");
-                    case Core.Match m -> assertNull(m.origin(), "a match kept its ordinal");
-                    case Core.IfConstructed c ->
-                            assertNull(c.origin(), "an attempt kept its ordinal");
-                    default -> { }
-                }
-            });
-        }
+        assertEquals(WRITTEN_BY_NOTHING, declared,
+                "a kind of term nothing here reaches is one nothing here reads");
     }
 
     /**
-     * And two readings of one corpus that differ only in where its lines are read the same. The
-     * property the rest of this is for: a caller depending on what a term says is not an edit away
-     * from a blank line somewhere above it.
+     * And two readings of one corpus that differ only in where its lines are come to one value. The
+     * property the fixtures are for, asked of everything a model writes.
      */
     @Test
-    void movingEveryLineChangesNoTermReadWithoutItsPlace() {
-        List<Core> where = bodies("").stream().map(Core::withoutItsPlace).toList();
-        List<Core> moved = bodies("\n\n\n").stream().map(Core::withoutItsPlace).toList();
+    void movingEveryLineChangesNoReading() {
+        List<TermMeaning> where = read(bodies(""));
+        List<TermMeaning> moved = read(bodies("\n\n\n"));
 
         assertEquals(where.size(), moved.size(), "the same bodies compile either way");
         assertEquals(where, moved, "and each says what it said, three lines further down");

@@ -55,9 +55,7 @@ public sealed interface ApplicationOrigin {
      * its kind is what a derivation is derived from, so it is one. One composed for a fixture is not
      * a derivation of anything — two of them carry the same answer, and a derivation of one would
      * equal a derivation of the other while claiming to be its own occurrence — so what comes out of
-     * a composed thing is another composed thing. And a term with its places taken out
-     * ({@link souther.compiler.core.Core#withoutItsPlace}) says nothing about where it came from,
-     * so neither does this: what is composed out of it says as little as it does.
+     * a composed thing is another composed thing.
      *
      * <p>Which is separate from what the composed thing <em>means</em>. Every case comes out with
      * the same meaning; they differ only in how much can be said about where it came from.
@@ -77,7 +75,6 @@ public sealed interface ApplicationOrigin {
         return switch (from) {
             case Identified identified -> new Derived(cause.apply(identified), ordinal);
             case ComposedFixture _ -> new ComposedFixture();
-            case null -> null;
         };
     }
 

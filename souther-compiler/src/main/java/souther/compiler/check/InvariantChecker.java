@@ -224,7 +224,7 @@ public final class InvariantChecker {
      */
     public record Source(Hir.Expr body, ElementProvenance elements, ExpandedClauseLookup invariants,
                          DeclarationReadings machines,
-                         Map<ValueName.Behavior, StatedContract> contracts) {
+                         Map<ValueName.Behavior, AssumedContract> contracts) {
 
         public Source {
             contracts = Map.copyOf(contracts);
@@ -280,7 +280,7 @@ public final class InvariantChecker {
 
     private InvariantChecker(Symbols symbols,
                              ExpandedClauseLookup dischargeInvariants, DeclarationReadings machines,
-                             Map<ValueName.Behavior, StatedContract> contracts,
+                             Map<ValueName.Behavior, AssumedContract> contracts,
                              ReadingPolicy policy) {
         // Where the answers about a declaration's string machines are asked for, for every
         // declaration this check reads: a capability handed on to the engine, which hands it to
@@ -2871,7 +2871,7 @@ public final class InvariantChecker {
      * the {@code ABANDONED} this answers with.
      */
     static Findings analyze(Core body, ExpandedClauseLookup invariants, DeclarationReadings machines,
-                            Map<ValueName.Behavior, StatedContract> contracts,
+                            Map<ValueName.Behavior, AssumedContract> contracts,
                             Scope params, Symbols symbols, ReadingPolicy policy) {
         InvariantChecker c =
                 new InvariantChecker(symbols, invariants, machines, contracts, policy);

@@ -298,7 +298,7 @@ class AnOutcomeIsNamedByWhatWasWrittenTest {
         Core answer = new Core.Int(1, Type.INT, at);
         Core fork = new Core.If(new Core.Bool(true, Type.BOOL, at),
                 answer, new Core.Int(2, Type.INT, at),
-                ConstructOccurrence.unwritten(), Type.INT, at, List.of());
+                Core.ForkPlace.asWritten(ConstructOccurrence.unwritten()), Type.INT, at);
 
         IllegalStateException refused = assertThrows(IllegalStateException.class,
                 () -> CoverageSites.of(

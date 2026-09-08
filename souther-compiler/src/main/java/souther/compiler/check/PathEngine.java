@@ -68,7 +68,7 @@ final class PathEngine {
     /** Getting to the positions that reading is asked about, which is nobody's semantics. */
     private final GuaranteeWalk walk;
     /** What each behavior a body may call states about its answer, by the name it is called under. */
-    private final Map<ValueName.Behavior, StatedContract> contracts;
+    private final Map<ValueName.Behavior, AssumedContract> contracts;
 
     PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants,
                DeclarationReadings machines, ReadingPolicy policy) {
@@ -77,7 +77,7 @@ final class PathEngine {
     }
 
     PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants,
-               DeclarationReadings machines, Map<ValueName.Behavior, StatedContract> contracts,
+               DeclarationReadings machines, Map<ValueName.Behavior, AssumedContract> contracts,
                ReadingPolicy policy) {
         this(symbols, dischargeInvariants, machines, contracts, Terms.Of.THE_DISCHARGE_TREE,
                 policy);
@@ -97,7 +97,7 @@ final class PathEngine {
     }
 
     PathEngine(Symbols symbols, ExpandedClauseLookup dischargeInvariants,
-               DeclarationReadings machines, Map<ValueName.Behavior, StatedContract> contracts,
+               DeclarationReadings machines, Map<ValueName.Behavior, AssumedContract> contracts,
                Terms.Of reading, ReadingPolicy policy) {
         this.symbols = symbols;
         this.clauses = new Clauses(symbols, dischargeInvariants, machines);
@@ -319,13 +319,13 @@ final class PathEngine {
                 || !(reached.denotes() instanceof ValueName.Behavior behavior)) {
             return null;
         }
-        StatedContract stated = contracts.get(behavior);
-        return stated == null ? null : new Answered(stated, call);
+        AssumedContract assumed = contracts.get(behavior);
+        return assumed == null ? null : new Answered(assumed, call);
     }
 
     /** An answer and what was declared about it: the rules, and the call they are read at — a rule
      * names the behavior's own parameters, and what those are here is what this call handed over. */
-    private record Answered(StatedContract stated, Core.Call call) {}
+    private record Answered(AssumedContract stated, Core.Call call) {}
 
     /** The call {@code value} came from, through however many names it was given, or null where it
      * came from something else. {@code seen} stops a binding given itself. */
@@ -403,7 +403,7 @@ final class PathEngine {
             return in;
         }
         Known out = in.known();
-        for (StatedContract.StatedRule rule : answered.stated().rules()) {
+        for (AssumedContract.AssumedRule rule : answered.stated().rules()) {
             if (!reached.test(rule.guard())) {
                 continue;
             }
@@ -411,12 +411,12 @@ final class PathEngine {
             if (given == null) {
                 continue;
             }
-            for (StatedContract.Conjunct conjunct : rule.conjuncts()) {
-                if (conjunct.stated().orNull() == null) {
+            for (AssumedContract.Conjunct conjunct : rule.conjuncts()) {
+                if (conjunct.means().isEmpty()) {
                     continue;
                 }
-                Core here = Clauses.substituted(conjunct.stated().orNull(), given);
-                out = predicates.assume(predicates.assumed(here, in.at(), false), out,
+                TermMeaning here = conjunct.means().get().substituted(given);
+                out = predicates.assume(here.assumedBy(predicates, in.at(), false), out,
                         Known.Held.OF_THE_VALUE);
             }
         }
@@ -436,7 +436,7 @@ final class PathEngine {
      * argument would be a relation nobody declared.
      */
     private static Map<BindingId, Core> handedOver(Answered answered,
-                                                   StatedContract.StatedRule rule, Core answer) {
+                                                   AssumedContract.AssumedRule rule, Core answer) {
         List<Core> args = answered.call().args();
         if (args.size() != answered.stated().params().size()) {
             return null;

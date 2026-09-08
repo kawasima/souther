@@ -208,8 +208,9 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
                 "the rule the behavior stated about its Int case was taken in here");
     }
 
-    /** {@code ensures | Int v -> v > 0}, as the analysis holds it. */
-    private static StatedContract statesThatTheIntIsPositive() {
+    /** {@code ensures | Int v -> v > 0}, as a caller of the behavior has it — read from the
+     *  declaration's own holding of it, which is what answers one anywhere else. */
+    private static AssumedContract statesThatTheIntIsPositive() {
         BindingId value = new Hir.Binders(new BindingOwner.OfValue("demo", "findIt"))
                 .binder("v", POS).binding();
         Core states = new Core.Binary(BinOp.GT,
@@ -222,7 +223,8 @@ class AnArmSaysWhichCaseAValueIsAndDoesNotMakeASecondOneTest {
                                 Symbols.none(DefaultStdlib.get()))), value,
                         Optional.empty(),
                         List.of(new StatedContract.Conjunct(new PartId<>(ref, 0), POS,
-                                new souther.compiler.check.TypedClause.Typed(states))))));
+                                new souther.compiler.check.TypedClause.Typed(states))))))
+                .assumptions();
     }
 
     private Core.Case arm(Core.ResolvedPattern pattern, Core.Binder binder) {

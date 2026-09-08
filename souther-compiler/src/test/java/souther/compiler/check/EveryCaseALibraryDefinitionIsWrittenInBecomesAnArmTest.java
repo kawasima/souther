@@ -116,7 +116,8 @@ class EveryCaseALibraryDefinitionIsWrittenInBecomesAnArmTest {
         }
         return new Core.PreservedCall(
                 KeptCalls.declared((ValueName.Stdlib.Operation) operation), args,
-                new FixtureReferenceOrigin(0), new ApplicationOrigin.ComposedFixture(),
+                new Core.KeptCallPlace(new FixtureReferenceOrigin(0),
+                        new ApplicationOrigin.ComposedFixture()),
                 entry.signature().result(), POS);
     }
 }
