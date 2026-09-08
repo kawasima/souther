@@ -115,6 +115,23 @@ class AnEndAChoiceLeftOpenIsNotTheModelDrawingNoLineTest {
     }
 
     /**
+     * And a rule it followed to the end brings nothing to the choice, whatever it placed.
+     *
+     * <p>What a leaf leaves here is the reading's own answer for having followed the rule, and not
+     * what came out of it: a disequality is read to the end and places no end, and the conjunct
+     * beside it places the one the branch has. Read off what was produced, that disequality is a
+     * rule nobody read, the branch it is in is an alternative nothing could follow, and the choice
+     * comes back undecided at a position both of its branches were read at.
+     */
+    @Test
+    void andARuleItFollowedBringsNothingToTheChoice() {
+        assertEquals(theModelDrawsNoLine(),
+                borderIn("(n /= 5 && String.reverse(s) /= \"\") || n <= 0"),
+                "the branch holds a form nothing follows, and what it leaves `n` is the"
+                        + " disequality's — which was followed, so nothing rests on the form");
+    }
+
+    /**
      * And a choice inside an alternative answers for itself before the one above reads it.
      *
      * <p>The inner choice offers a branch that holds {@code n} nowhere, so what it leaves there is
@@ -140,9 +157,11 @@ class AnEndAChoiceLeftOpenIsNotTheModelDrawingNoLineTest {
     @Test
     void andABranchNobodyCanBeInLeavesNothingOpen() {
         assertEquals(theModelDrawsNoLine(),
-                borderIn("(s < \"\" && Int.abs(n) >= 5) || n >= 2"),
-                "nothing satisfies the branch the unread form is written in, so no value of this"
-                        + " type stands anywhere on its account");
+                borderIn("((s < \"\" && Int.abs(n) >= 5) || n >= 2)"
+                        + " || String.reverse(s) /= \"\""),
+                "nothing satisfies the branch the unread form is written in, so the end at `n` is"
+                        + " the one the branch beside it places, and the alternative that names no"
+                        + " `n` leaves it where it found it");
     }
 
     /** And a rule with no choice in it is measured as it was. */
