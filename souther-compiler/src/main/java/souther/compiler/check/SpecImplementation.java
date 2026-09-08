@@ -23,6 +23,12 @@ import java.util.Map;
  * a body is. Worked out again at a reader, it is the same rule with a strictness of its own, and the
  * three that existed disagreed about what a list too short to divide meant.
  *
+ * <p>Inside, the declaration and the definition are two things and are read in that order. What the
+ * behavior requires is worked out from its inputs and its clause alone, and both things this offers
+ * — the list a caller writing an implementation is held to, and the division of one already
+ * written — read that. Read the clause twice instead, the two agree because one private method
+ * answers both, which is what having one place is supposed to stop anybody resting on.
+ *
  * <p>Nothing here is about how a parameter is written. Where it goes in a line, and whether the line
  * breaks, is the formatter's.
  */
@@ -122,11 +128,26 @@ public final class SpecImplementation {
      * about the whole shape are here to be asked, and none of them is enforced here — a reading that
      * refused to divide would be deciding for all three.
      */
-    public record Implemented(Hir.FnDef definition, List<ParameterBinding> bindings,
-                              int required, boolean everyDependencyAnswered) {
+    public static final class Implemented {
 
-        public Implemented {
-            bindings = List.copyOf(bindings);
+        private final Hir.FnDef definition;
+        private final List<ParameterBinding> bindings;
+        private final Shape shape;
+
+        private Implemented(Hir.FnDef definition, List<ParameterBinding> bindings, Shape shape) {
+            this.definition = definition;
+            this.bindings = List.copyOf(bindings);
+            this.shape = shape;
+        }
+
+        /** The {@code let} this is the reading of. */
+        public Hir.FnDef definition() {
+            return definition;
+        }
+
+        /** What each parameter it wrote stands for, in the order it wrote them. */
+        public List<ParameterBinding> bindings() {
+            return bindings;
         }
 
         /** The parameters the declaration says are its inputs, in order, each with the input it
@@ -153,18 +174,19 @@ public final class SpecImplementation {
         /** Whether the definition wrote a parameter for each position the declaration asks for, and
          *  no others. Where it did not, E1614 says so where the definition is written. */
         public boolean hasExactArity() {
-            return definition.params().size() == required;
+            return definition.params().size() == shape.size();
         }
 
         /**
          * Whether every {@code depends on} entry reaches a declaration.
          *
-         * <p>Asked of the clause rather than of the parameters. A definition that wrote too few
-         * parameters has no position for the entry that reaches nothing, and a reading that looked
-         * for one would call the clause answered because the parameter list ran out first.
+         * <p>Asked of what the declaration requires rather than of the parameters. A definition
+         * that wrote too few parameters has no position for the entry that reaches nothing, and a
+         * reading that looked for one would call the clause answered because the parameter list ran
+         * out first.
          */
         public boolean hasAnsweredDependencies() {
-            return everyDependencyAnswered;
+            return shape.everyDependencyAnswered();
         }
 
         /**
@@ -179,19 +201,85 @@ public final class SpecImplementation {
         }
     }
 
-    /** What an implementation of {@code spec} is required to take, in order. */
-    public static List<Parameter> parameters(Hir.SpecBehavior spec) {
-        List<Parameter> required = new ArrayList<>(spec.params().size() + spec.dependsOn().size());
-        for (Hir.Param input : spec.params()) {
-            required.add(new Parameter.Input(input.name()));
+    /**
+     * One position a behavior requires an implementation to have, as the declaration settles it.
+     *
+     * <p>About the declaration and nothing else. Which parameter of a {@code let} fills a position
+     * is {@link ParameterBinding}'s, and is a second question — this list is as long as the
+     * declaration says and that one is as long as the {@code let} the author typed.
+     */
+    private sealed interface RequiredParameter {
+
+        /** A declared input, at the position the signature holds its type at. */
+        record Input(Hir.Param declared, int at) implements RequiredParameter {}
+
+        /** A behavior the clause names. */
+        record Injection(ValueName.Behavior behavior) implements RequiredParameter {}
+
+        /** A clause entry that reaches no declaration. */
+        record Unanswered() implements RequiredParameter {}
+    }
+
+    /**
+     * What a behavior requires of whatever implements it.
+     *
+     * <p>The inputs first and then the clause, which is where that order is written. Both readers of
+     * the rule — the list a caller writing a declaration is offered, and the division of the
+     * parameters one already wrote — are projections of this, so what the clause reaches is decided
+     * once. Two walks of the clause agreed because the same private reading answered both, which is
+     * the shape this component exists to stop being relied on.
+     */
+    private record Shape(List<RequiredParameter> parameters) {
+
+        private Shape {
+            parameters = List.copyOf(parameters);
+        }
+
+        /** How many parameters an implementation is required to write. */
+        int size() {
+            return parameters.size();
+        }
+
+        /** Whether every entry of the clause reaches a declaration. */
+        boolean everyDependencyAnswered() {
+            for (RequiredParameter required : parameters) {
+                if (required instanceof RequiredParameter.Unanswered) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    /** What {@code spec} requires, which is the one reading of its inputs and its clause. */
+    private static Shape shapeOf(Hir.SpecBehavior spec) {
+        List<RequiredParameter> required =
+                new ArrayList<>(spec.params().size() + spec.dependsOn().size());
+        for (int at = 0; at < spec.params().size(); at++) {
+            required.add(new RequiredParameter.Input(spec.params().get(at), at));
         }
         for (Hir.Var dependency : spec.dependsOn()) {
             ValueName.Behavior named = behaviorReached(dependency);
             required.add(named == null
-                    ? new Parameter.Unanswered()
-                    : new Parameter.Injected(named.name()));
+                    ? new RequiredParameter.Unanswered()
+                    : new RequiredParameter.Injection(named));
         }
-        return List.copyOf(required);
+        return new Shape(required);
+    }
+
+    /** What an implementation of {@code spec} is required to take, in order. */
+    public static List<Parameter> parameters(Hir.SpecBehavior spec) {
+        List<Parameter> offered = new ArrayList<>();
+        for (RequiredParameter required : shapeOf(spec).parameters()) {
+            offered.add(switch (required) {
+                case RequiredParameter.Input(Hir.Param declared, int _) ->
+                        new Parameter.Input(declared.name());
+                case RequiredParameter.Injection(ValueName.Behavior behavior) ->
+                        new Parameter.Injected(behavior.name());
+                case RequiredParameter.Unanswered _ -> new Parameter.Unanswered();
+            });
+        }
+        return List.copyOf(offered);
     }
 
     /**
@@ -208,27 +296,23 @@ public final class SpecImplementation {
      * {@link Implemented#hasExactArity} is the fact a caller that may not go on asks for.
      */
     public static Implemented align(Hir.SpecBehavior spec, Hir.FnDef definition) {
+        Shape shape = shapeOf(spec);
         List<Hir.FnParam> written = definition.params();
         List<ParameterBinding> bindings = new ArrayList<>(written.size());
-        int inputs = spec.params().size();
-        for (int at = 0; at < inputs && at < written.size(); at++) {
-            bindings.add(new ParameterBinding.AnInput(written.get(at), spec.params().get(at), at));
+        for (int at = 0; at < shape.size() && at < written.size(); at++) {
+            Hir.FnParam wrote = written.get(at);
+            bindings.add(switch (shape.parameters().get(at)) {
+                case RequiredParameter.Input(Hir.Param declared, int held) ->
+                        new ParameterBinding.AnInput(wrote, declared, held);
+                case RequiredParameter.Injection(ValueName.Behavior behavior) ->
+                        new ParameterBinding.AnInjection(wrote, behavior);
+                case RequiredParameter.Unanswered _ -> new ParameterBinding.Unanswered(wrote);
+            });
         }
-        boolean answered = true;
-        for (int nth = 0; nth < spec.dependsOn().size(); nth++) {
-            ValueName.Behavior named = behaviorReached(spec.dependsOn().get(nth));
-            answered &= named != null;
-            int at = inputs + nth;
-            if (at < written.size()) {
-                bindings.add(named == null
-                        ? new ParameterBinding.Unanswered(written.get(at))
-                        : new ParameterBinding.AnInjection(written.get(at), named));
-            }
-        }
-        for (int at = inputs + spec.dependsOn().size(); at < written.size(); at++) {
+        for (int at = shape.size(); at < written.size(); at++) {
             bindings.add(new ParameterBinding.Extraneous(written.get(at)));
         }
-        return new Implemented(definition, bindings, inputs + spec.dependsOn().size(), answered);
+        return new Implemented(definition, bindings, shape);
     }
 
     /**

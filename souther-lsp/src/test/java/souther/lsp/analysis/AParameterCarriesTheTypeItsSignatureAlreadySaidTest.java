@@ -121,7 +121,7 @@ class AParameterCarriesTheTypeItsSignatureAlreadySaidTest {
      */
     @Test
     void aBehaviorThatIsHandedWhatItDependsOnHasItsInputsHinted() {
-        assertEquals(List.of(": Draft"), labelsOf(hints("""
+        String injected = """
                 module m
 
                 data Draft = { plannedCost: Int }
@@ -132,8 +132,17 @@ class AParameterCarriesTheTypeItsSignatureAlreadySaidTest {
                     depends on price
 
                 let submit (request, price) = price(request)
-                """)),
+                """;
+        List<InlayHint> hints = hints(injected);
+        String letLine = injected.lines().toList().get(9);
+
+        assertEquals(List.of(": Draft"), labelsOf(hints),
                 "`request` is what the signature types; `price` is a behavior it was handed");
+        // And after the input, not after the parameter that stands beside it. Both are names on
+        // one line, so a division that had them the wrong way round draws the same label.
+        assertEquals(letLine.indexOf("(request") + "(request".length(),
+                hints.getFirst().position().character());
+        assertEquals(9, hints.getFirst().position().line());
     }
 
     @Test
