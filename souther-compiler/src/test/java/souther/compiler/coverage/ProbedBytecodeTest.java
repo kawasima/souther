@@ -239,6 +239,10 @@ class ProbedBytecodeTest {
      * <p>An import's arms belong to its own module and are numbered against its own plan. Measuring
      * them here would put hits into a run whose report has no plan to read them by, so the linked set
      * replaces this module's classes and leaves the rest alone.
+     *
+     * <p>Every class that ships and can be run, and the one that cannot. A module's declarations are
+     * written onto a class of their own for an importer to read them off, and nothing loads it to
+     * run it, so what an evaluation is handed is what ships less that one.
      */
     @Test
     void onlyThisModulesClassesAreTheMeasuredOnes() {
@@ -252,7 +256,10 @@ class ProbedBytecodeTest {
         assertNotNull(plain);
         assertNotNull(linked);
 
-        assertEquals(plain.keySet(), linked.keySet(), "the same classes are loadable");
+        Set<String> loadable = new LinkedHashSet<>(plain.keySet());
+        assertTrue(loadable.remove(Emitted.declarations(module)),
+                "what ships carries the class an importer reads the declarations off");
+        assertEquals(loadable, linked.keySet(), "the same classes are loadable");
         for (Map.Entry<String, ClassFileImage> each : linked.entrySet()) {
             ClassFileImage want = measured.containsKey(each.getKey())
                     ? measured.get(each.getKey()) : plain.get(each.getKey());
