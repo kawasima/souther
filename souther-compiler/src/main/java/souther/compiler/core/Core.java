@@ -518,6 +518,10 @@ public sealed interface Core {
         }
 
         public PreservedCall {
+            if (place == null) {
+                throw new IllegalArgumentException("a call kept standing stands somewhere: it"
+                        + " applies some occurrence of a name, for some reason: " + declared);
+            }
             // Taken over rather than borrowed. Checking a list the caller goes on holding says what
             // was true when the call was built, and every reader below reads the call afterwards —
             // a pass that kept the list it handed over could put another argument in it and leave a
@@ -578,6 +582,13 @@ public sealed interface Core {
     record If(Core cond, Core then, Core els, ForkPlace place, Type type, SourcePos pos)
             implements Core {
 
+        public If {
+            if (place == null) {
+                throw new IllegalArgumentException("a fork stands somewhere: some fork of the"
+                        + " model, in some copy of the body that wrote it");
+            }
+        }
+
         /** Which fork of the model this is, in whichever copy of the body it stands. */
         public ConstructOccurrence occurrence() {
             return place.occurrence();
@@ -610,6 +621,13 @@ public sealed interface Core {
      */
     record IfConstructed(Construct construct, Binder binder, Core then, List<ElseArm> els,
                          ForkPlace place, Type type, SourcePos pos) implements Core {
+
+        public IfConstructed {
+            if (place == null) {
+                throw new IllegalArgumentException("a fork stands somewhere: some fork of the"
+                        + " model, in some copy of the body that wrote it");
+            }
+        }
 
         /** Which fork of the model this is, in whichever copy of the body it stands. */
         public ConstructOccurrence occurrence() {
@@ -855,6 +873,13 @@ public sealed interface Core {
      */
     record Match(Core scrutinee, List<Case> cases, ForkPlace place, Type type, SourcePos pos)
             implements Core {
+
+        public Match {
+            if (place == null) {
+                throw new IllegalArgumentException("a fork stands somewhere: some fork of the"
+                        + " model, in some copy of the body that wrote it");
+            }
+        }
 
         /** Which fork of the model this is, in whichever copy of the body it stands. */
         public ConstructOccurrence occurrence() {

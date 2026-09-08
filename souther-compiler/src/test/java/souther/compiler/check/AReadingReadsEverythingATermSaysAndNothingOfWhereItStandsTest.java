@@ -16,7 +16,9 @@ import java.lang.classfile.instruction.InvokeInstruction;
 import java.lang.reflect.RecordComponent;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -77,7 +79,7 @@ class AReadingReadsEverythingATermSaysAndNothingOfWhereItStandsTest {
     @Test
     void everythingATermSaysIsRead() throws IOException {
         Set<String> unread = new TreeSet<>();
-        Set<String> called = accessorsCalledByTheProjection();
+        Set<String> called = componentsReadByTheIdentity();
         for (Class<?> kind : walked()) {
             for (RecordComponent component : kind.getRecordComponents()) {
                 if (!WHERE_IT_STANDS.contains(component.getType())
@@ -95,7 +97,7 @@ class AReadingReadsEverythingATermSaysAndNothingOfWhereItStandsTest {
     @Test
     void andNothingOfWhereItStandsIs() throws IOException {
         Set<String> read = new TreeSet<>();
-        Set<String> called = accessorsCalledByTheProjection();
+        Set<String> called = componentsReadByTheIdentity();
         for (Class<?> kind : walked()) {
             for (RecordComponent component : kind.getRecordComponents()) {
                 if (WHERE_IT_STANDS.contains(component.getType())
@@ -110,7 +112,33 @@ class AReadingReadsEverythingATermSaysAndNothingOfWhereItStandsTest {
                         + " declaration reaches");
     }
 
-    /** And the population is not empty, so what the two above ask is asked of something. */
+    /**
+     * And what it reads of a term are its components, so the two questions above are about all of
+     * it.
+     *
+     * <p>A record's components are what it is made of; anything else on it is worked out from them,
+     * and a reading that asked one of those would be reading whatever it happens to be derived from.
+     * A comparison's {@code origin} is its occurrence's, so an identity calling it reads where the
+     * comparison stands while nothing above sees a place component being read.
+     */
+    @Test
+    void andWhatItReadsOfATermAreItsComponents() throws IOException {
+        Set<String> components = new TreeSet<>();
+        for (Class<?> kind : walked()) {
+            for (RecordComponent component : kind.getRecordComponents()) {
+                components.add(kind.getSimpleName() + "." + component.getName());
+            }
+        }
+
+        Set<String> derived = new TreeSet<>(componentsReadByTheIdentity());
+        derived.removeAll(components);
+
+        assertEquals(Set.of(), derived,
+                "an identity that asks a term something worked out from its components is one the"
+                        + " two questions above cannot see the answer of");
+    }
+
+    /** And the population is not empty, so what the questions above ask is asked of something. */
     @Test
     void bothKindsOfComponentAreThere() {
         int says = 0;
@@ -131,27 +159,57 @@ class AReadingReadsEverythingATermSaysAndNothingOfWhereItStandsTest {
     }
 
     /**
-     * Every accessor of a term the projection calls, by the record it is declared on.
+     * Every component of a term the identity reads, by the record it is declared on.
      *
-     * <p>Over the whole of {@link TermMeaning}, and not the one method: what the walk reads it may
-     * read through a helper of its own, and a component read there is read.
+     * <p>From {@code equals} and {@code hashCode} and through the calls they make of their own
+     * class, because what the identity reads is the question. Collected over the whole class
+     * instead, a component that only some other operation reads would count as read — and a
+     * component the identity leaves out is exactly the one that makes two readings the store called
+     * one answer differently, whoever else reads it.
      */
-    private static Set<String> accessorsCalledByTheProjection() throws IOException {
-        Path compiled = Path.of("target", "classes", "souther", "compiler", "check",
-                "TermMeaning.class").toAbsolutePath();
-        ClassModel model = ClassFile.of().parse(Files.readAllBytes(compiled));
-        Set<String> called = new LinkedHashSet<>();
+    private static Set<String> componentsReadByTheIdentity() throws IOException {
+        ClassModel model = ClassFile.of().parse(Files.readAllBytes(compiledReading()));
+        Set<String> read = new LinkedHashSet<>();
+        Set<String> walked = new LinkedHashSet<>();
+        Deque<MethodModel> pending = new ArrayDeque<>();
         for (MethodModel method : model.methods()) {
+            String name = method.methodName().stringValue();
+            if (name.equals("equals") || name.equals("hashCode")) {
+                pending.add(method);
+            }
+        }
+        String self = model.thisClass().asInternalName();
+        while (!pending.isEmpty()) {
+            MethodModel method = pending.removeFirst();
+            if (!walked.add(method.methodName().stringValue()
+                    + method.methodType().stringValue())) {
+                continue;
+            }
             method.code().ifPresent(code -> code.forEach(element -> {
                 if (element instanceof InvokeInstruction call) {
                     String owner = call.owner().asInternalName();
+                    if (owner.equals(self)) {
+                        for (MethodModel candidate : model.methods()) {
+                            if (candidate.methodName().stringValue()
+                                            .equals(call.name().stringValue())
+                                    && candidate.methodType().stringValue()
+                                            .equals(call.type().stringValue())) {
+                                pending.add(candidate);
+                            }
+                        }
+                    }
                     int nested = owner.lastIndexOf('$');
                     if (owner.startsWith("souther/compiler/core/Core") && nested >= 0) {
-                        called.add(owner.substring(nested + 1) + "." + call.name().stringValue());
+                        read.add(owner.substring(nested + 1) + "." + call.name().stringValue());
                     }
                 }
             }));
         }
-        return called;
+        return read;
+    }
+
+    private static Path compiledReading() {
+        return Path.of("target", "classes", "souther", "compiler", "check", "TermMeaning.class")
+                .toAbsolutePath();
     }
 }
