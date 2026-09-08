@@ -103,7 +103,13 @@ public sealed interface GenerationOutcome {
             /** What the rows were seen doing, which is an account and not an obligation. */
             AN_ACCOUNT_OF_WHAT_THE_ROWS_DID(
                     "this is what the rows were observed doing rather than something owed, so"
-                            + " there is nothing here to compose a row for");
+                            + " there is nothing here to compose a row for"),
+
+            /** A row is written here and is waiting for its answer, which nobody but its author
+             *  can supply. */
+            A_ROW_HERE_IS_WAITING_FOR_ITS_ANSWER(
+                    "a row already stands here with its answer owed, and composing a second one"
+                            + " would offer a question that is already written down");
 
             private final String said;
 

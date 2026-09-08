@@ -591,7 +591,7 @@ public final class Resolve {
                 }
                 rows.add(new Hir.ExampleRow(row.identity(),
                         r.exprs(row.inputs(), Reading.A_FIXTURE), withs,
-                        r.expr(row.expected(), Reading.A_FIXTURE), row.pos()));
+                        r.expected(row.expected(), Reading.A_FIXTURE), row.pos()));
             }
             examples.add(new Hir.Example(e.target(), rows, e.pos()));
         }
@@ -1285,6 +1285,18 @@ public final class Resolve {
             out.add(new Hir.ElseArm(arm.clause(), expr(arm.body(), bound), arm.pos()));
         }
         return out;
+    }
+
+    /** The names in a row's answer, rewritten where there is an answer to rewrite. What the row put
+     *  there is carried across as it is: whether an answer is owed or was not read is the source's
+     *  own state and nothing resolution has anything to say about. */
+    private Hir.Expected expected(Ast.Expected written, Reading reading) {
+        return switch (written) {
+            case Ast.Expected.Asserted(Ast.Expr e) ->
+                    new Hir.Expected.Asserted(expr(e, reading));
+            case Ast.Expected.Unanswered(SourcePos at) -> new Hir.Expected.Unanswered(at);
+            case Ast.Expected.Unwritten(SourcePos at) -> new Hir.Expected.Unwritten(at);
+        };
     }
 
     private List<Hir.Expr> exprs(List<Ast.Expr> es, Reading reading) {

@@ -46,12 +46,13 @@ record ArmAccount(List<ArmObligation> obligations, ArmCensus census) {
      *
      * @param owed       every occurrence of every arm the behavior is owed a row for, in the order
      *                   the body holds them
-     * @param covered    the probes some row went through
+     * @param covered    the probes a row that states what it expects went through
+     * @param awaiting   the probes a row whose answer is owed went through
      * @param rowsUnread what the reading of this behavior's rows went without
      * @param census     whether anything has shown {@code owed} to be short of an arm
      */
     static ArmAccount of(List<CoverageSites.ArmSite> owed, Set<ArmProbe> covered,
-                         WeakeningSet rowsUnread, ArmCensus census) {
+                         Set<ArmProbe> awaiting, WeakeningSet rowsUnread, ArmCensus census) {
         java.util.SequencedMap<CoverageSites.Obligation, List<CoverageSites.ArmSite>> byObligation =
                 new LinkedHashMap<>();
         for (CoverageSites.ArmSite site : owed) {
@@ -59,7 +60,7 @@ record ArmAccount(List<ArmObligation> obligations, ArmCensus census) {
         }
         List<ArmObligation> arms = new ArrayList<>();
         byObligation.forEach((_, occurrences) ->
-                arms.add(ArmObligation.of(occurrences, covered, rowsUnread)));
+                arms.add(ArmObligation.of(occurrences, covered, awaiting, rowsUnread)));
         return new ArmAccount(arms, census);
     }
 

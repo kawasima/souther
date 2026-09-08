@@ -773,9 +773,12 @@ public final class Analyzer {
      * An offer to write the rows nothing covers, on the behavior the cursor is in.
      *
      * <p>The same block {@code souther examples --generate} prints, put where it goes rather than on
-     * a terminal for someone to copy. It arrives commented out, with each answer left as a hole that
-     * is not a term — the compiler does not know what the model owes, and a row it filled in would be
-     * an assertion nobody made.
+     * a terminal for someone to copy. The rows arrive as rows, each written {@code <?>} where its
+     * answer goes: the compiler does not know what the model owes, and a row it filled in would be
+     * an assertion nobody made. What that buys here is that the rows are in the document — the
+     * checker goes on saying which of them are owed an answer, {@code souther fmt} runs over them,
+     * and renaming a field one of them names reaches it. A block written into a file and hidden from
+     * everything that would keep it starts going stale where it lands.
      *
      * <p>Inserted at the end of the document. Where rows belong is the author's choice — this
      * module's own source or an attached file — and moving a block is easier than finding out why one

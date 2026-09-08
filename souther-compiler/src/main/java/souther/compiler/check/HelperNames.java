@@ -75,7 +75,7 @@ public final class HelperNames {
                 withs.add(new Hir.With(w.dep(), qualifyForeign(w.value(), self), w.pos()));
             }
             rows.add(new Hir.ExampleRow(row.identity(), inputs, withs,
-                    qualifyForeign(row.expected(), self), row.pos()));
+                    row.expected().map(e -> qualifyForeign(e, self)), row.pos()));
         }
         return new Hir.Example(ex.target(), rows, ex.pos());
     }

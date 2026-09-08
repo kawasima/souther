@@ -27,9 +27,11 @@ import souther.compiler.check.DerivedSymbols;
 import souther.compiler.check.Symbols;
 import souther.compiler.check.TypeOps;
 import souther.compiler.observe.Disposition;
+import souther.compiler.observe.Expectation;
 import souther.compiler.observe.Incompleteness;
 import souther.compiler.observe.MeasureReason;
 import souther.compiler.observe.RowOutcome;
+import souther.compiler.observe.RowStatement;
 import souther.compiler.observe.Stage;
 import souther.compiler.partition.Axis;
 import souther.compiler.partition.DomainPoint;
@@ -1137,6 +1139,11 @@ public final class Adequacy {
             // The numbering the recordings below are read under, which is this module's own — and
             // none where its bodies were not read, in which case there is nothing to read them as.
             Optional<SiteNumbering> numbering = numberingOf(db, name);
+            // Every row that went there, whether or not it states what the behavior answers. What a
+            // proof about reach is disproved by is a run arriving, and a row whose answer is owed
+            // arrives the same way any other does — so the two are one set here, where the arm
+            // account keeps them apart. The questions are different: whether anything can get here
+            // is about the machine, and whether anything says what it answers is about the rows.
             Set<ArmProbe> lit = new LinkedHashSet<>();
             for (RowReading observed : db.ask(new RowReadings(name)).value().values()) {
                 for (RowOutcome row : observed.rowsSeen()) {
@@ -1651,6 +1658,11 @@ public final class Adequacy {
             case About.APointOfABorder _, About.APointOfADeclaredBorder _,
                  About.ACaseNoRowAppliesItTo _, About.AClassNoRowIsIn _,
                  About.AnArmNoRowGoesThrough _ -> null;
+            // A row is written at the arm and is waiting for its answer. What is left there is the
+            // answer, which is the author's to write and nothing a search can compose; a row
+            // offered here would be a second row for an arm that already has one.
+            case About.ARowAtAnArmAwaitsItsAnswer _ -> new GenerationOutcome.NotApplicable(
+                    GenerationOutcome.NotApplicable.Reason.A_ROW_HERE_IS_WAITING_FOR_ITS_ANSWER);
             case About.ACaseNoRowExpects _ -> new GenerationOutcome.NotSupported(
                     GenerationOutcome.NotSupported.Reason.NO_STRATEGY_FOR_AN_OUTPUT_CASE);
             // What the rows were seen doing rather than what they owe.
@@ -2333,9 +2345,10 @@ public final class Adequacy {
         public static BranchEvidence measured(String behavior,
                                               List<CoverageSites.ArmSite> all,
                                               Set<ArmProbe> covered,
+                                              Set<ArmProbe> awaiting,
                                               souther.compiler.check.PathReachability.Answers.AsRun reachable,
                                               WeakeningSet weakenings) {
-            ArmAccount account = ArmAccount.of(owed(all, reachable), covered, weakenings,
+            ArmAccount account = ArmAccount.of(owed(all, reachable), covered, awaiting, weakenings,
                     ArmCensus.of(armsBehind(all, reachable.provedWrong())));
             WeakeningSet by = account.weakening();
             return new BranchEvidence(by.isEmpty()
@@ -2414,10 +2427,16 @@ public final class Adequacy {
                     checked == null ? Optional.empty()
                             : Optional.of(SiteNumbering.of(checked.numberingIdentity()));
             Map<String, RowReading> byTarget = db.ask(new RowReadings(name)).value();
+            // Sorted as they are gathered, by what the row that lit them states. A row that states
+            // what it expects covers the arms it went through; a row whose answer is owed went
+            // through them and asserts nothing about them, and the two arrive here as one set only
+            // if this is the place that forgets which was which. Read off what each row states,
+            // which is where a row's own text was read, rather than by going back to the source.
             Set<ArmProbe> lit = new LinkedHashSet<>();
+            Set<ArmProbe> awaiting = new LinkedHashSet<>();
             for (RowReading observed : byTarget.values()) {
                 for (RowOutcome row : observed.rowsSeen()) {
-                    lit.addAll(armsSeenIn(row, numbering));
+                    (awaitsItsAnswer(row) ? awaiting : lit).addAll(armsSeenIn(row, numbering));
                 }
             }
 
@@ -2438,10 +2457,12 @@ public final class Adequacy {
                 if (absent != null) {
                     return absent;
                 }
+                List<ArmProbe> here = arms.stream().map(CoverageSites.ArmSite::index).toList();
                 Set<ArmProbe> covered = new LinkedHashSet<>(lit);
-                covered.retainAll(arms.stream()
-                        .map(CoverageSites.ArmSite::index).toList());
-                return BranchEvidence.measured(behavior.name(), arms, covered,
+                covered.retainAll(here);
+                Set<ArmProbe> awaited = new LinkedHashSet<>(awaiting);
+                awaited.retainAll(here);
+                return BranchEvidence.measured(behavior.name(), arms, covered, awaited,
                         arrives, rowsBehind(observed));
             });
         }
@@ -3008,6 +3029,7 @@ public final class Adequacy {
                             // so nothing reaches here with one.
                             case About.APointOfADeclaredBorder _,
                                     About.ACaseNoRowExpects _, About.ACaseNothingWasSeenToProduce _,
+                                    About.ARowAtAnArmAwaitsItsAnswer _,
                                     About.APositionNoLineDivides _,
                                     About.APositionThisCouldNotRead _,
                                     About.ARuleWithoutALine _, About.ARuleNothingClassified _,
@@ -3891,7 +3913,12 @@ public final class Adequacy {
                 case About.APositionReadWiderThanItsRules _ ->
                         Kind.PARTITION_VALUES_NOT_SEPARATED;
                 case About.AQuestionNothingAnswered _ -> Kind.RULE_UNACCOUNTED;
-                case About.AnArmNoRowGoesThrough _ -> Kind.ARM_UNREACHED;
+                // One rule and two ways of breaking it. An arm with no row and an arm whose row is
+                // waiting for its answer both leave the arm with nothing that says what the
+                // behavior answers there, so a build stands the same way over each; what differs is
+                // the sentence, which is the report's and not this.
+                case About.AnArmNoRowGoesThrough _, About.ARowAtAnArmAwaitsItsAnswer _ ->
+                        Kind.ARM_UNREACHED;
             };
         }
 
@@ -4624,8 +4651,19 @@ public final class Adequacy {
                 // which is written in one language, and a diagnostic, which is written in the
                 // reader's — and the two readings ask the same arm rather than one of them being
                 // handed the other's answer.
+                //
+                // Which of the two sentences the arm gets is the account's answer. An arm a row
+                // already stands at, waiting for what the system answers, is work of a different
+                // kind from an arm nobody has written a row for, and a reader that asked only
+                // whether the arm was covered would send an author to write a second row beside the
+                // one they have.
                 out.add(Finding.by(behavior, arm.coverage(), arm.display().at(),
-                        new About.AnArmNoRowGoesThrough(arm.display())));
+                        switch (arm.awaited()) {
+                            case ArmObligation.Awaited.A_ROW_IS ->
+                                    new About.ARowAtAnArmAwaitsItsAnswer(arm.display());
+                            case ArmObligation.Awaited.NOTHING_IS ->
+                                    new About.AnArmNoRowGoesThrough(arm.display());
+                        }));
             }
             return List.copyOf(out);
         }
@@ -4780,6 +4818,9 @@ public final class Adequacy {
                         case About.AnArmNoRowGoesThrough(var arm) ->
                                 new ExampleMessage.NoRowGoesThroughThatArm(
                                         phraseFor(arm), arm.behavior());
+                        case About.ARowAtAnArmAwaitsItsAnswer(var arm) ->
+                                new ExampleMessage.ARowAtThatArmAwaitsItsAnswer(
+                                        phraseFor(arm), arm.behavior());
                         // The class and the position it is a class of, in the partition's own
                         // words — which are the words the report writes for the same finding.
                         case About.AClassNoRowIsIn(var missing) ->
@@ -4861,6 +4902,10 @@ public final class Adequacy {
                 }
                 case About.AnArmNoRowGoesThrough _ ->
                         built.hint(new ExampleMessage.EitherARowIsMissingOrNothingReachesIt());
+                // Which of the two this arm is, is already settled: a row is there. What is left is
+                // the answer, so the hint says how it is written rather than what might be wrong.
+                case About.ARowAtAnArmAwaitsItsAnswer _ ->
+                        built.hint(new ExampleMessage.ReplaceTheMarkWithWhatTheSystemAnswers());
                 // Said as the row to write and not as the class to cover. A class is met by a
                 // value falling in it, and what an author writes is the value — a hint naming the
                 // class alone leaves them to work out which of the position's values is one.
@@ -5165,6 +5210,23 @@ public final class Adequacy {
     }
 
     private Adequacy() {}
+
+    /**
+     * Whether the row is waiting for its answer, so that what it went through is not evidence that
+     * anything about the model was asserted there.
+     *
+     * <p>Asked of what the row states, which is what the evaluation read off the row's own text and
+     * carried out with it. Asked of the source instead, this would be a second reading of a row —
+     * and the arms would be sorted by one reading while what a report says about the row came from
+     * another.
+     *
+     * <p>Not asked of {@link RowOutcome#expectedArm()} being absent. A row that names no case has
+     * none of those either, and it states an answer all the same.
+     */
+    private static boolean awaitsItsAnswer(RowOutcome row) {
+        return row.statement() instanceof RowStatement.Stated stated
+                && stated.expects() instanceof Expectation.Owed;
+    }
 
     /**
      * The arms {@code row} was seen at, which is none where nothing watched it.

@@ -490,6 +490,7 @@ The full formal grammar (BNF) is deferred (<<future-work>>).
 !`+?+` !delimiter !<<optional>>
 !`+>->+` !delimiter !<<sequential-composition>>
 !`+|>+` !delimiter !<<pipe>>
+!`+<?>+` !token !<<example-answer-owed>>
 !a module header !production !<<modules>>
 !an `+import+` !production !<<imports>>
 !an `+exposing+` clause !production !<<exposed-values>>
@@ -3091,7 +3092,7 @@ What a row is held to, and what holding a build to it requires:
 * [[example-evaluation-stays-within-stack]]and it MUST reach that counted depth limit before the JVM stack runs out, the two being set so the counted one is met first;
 * [[example-evaluation-answers]]the work around the counted evaluation — loading a class, decoding a value, comparing two of them — MUST answer within the wait the policy allows. Unlike the two above, this says nothing about the model.
 
-An `+example+` names a target behavior, then lists one or more `+|+`-led rows. A row is an optional name (a string, followed by `+:+`), an input argument tuple, `+->+`, and an expected result. `+example+`, `+examples+`, and `+for+` are contextual keywords, not reserved words, so they do not collide with an identifier or the `+example.*+` namespace.
+An `+example+` names a target behavior, then lists one or more `+|+`-led rows. A row is an optional name (a string, followed by `+:+`), an input argument tuple, `+->+`, and an expected result — or `+<?>+`, which says the answer is owed and has not been written (<<example-answer-owed>>). `+example+`, `+examples+`, and `+for+` are contextual keywords, not reserved words, so they do not collide with an identifier or the `+example.*+` namespace.
 
 [#example-row-name]
 === A row's name
@@ -3117,6 +3118,25 @@ The expected side asserts at one of two granularities.
 The cases a row may name are the output's cases whether the output is written as a case list (`+-> Submitted | Rejected+`) or under the sum's own name (`+-> Verdict+`, <<sum-data>>) — a case stands where a value of its sum is expected here as everywhere else. A sum among those cases contributes its own cases, so a row names a leaf. The sum's name is not itself an expected arm: it says which cases are possible, not which one this input yields (<<e1904>>).
 
 Types make totality and the case set exhaustive (<<match>>, <<unmarked-sum>>); an `+example+` fixes the value rule for a representative input — which arm, or which value, a given input yields.
+
+[#example-answer-owed]
+=== A row whose answer is owed
+
+A row may be written `+<?>+` where its expected result goes. What it says is that these inputs are worth asking about and nobody has written down what the system answers for them. It is one token, written in this position and nowhere else: `+< ? >+` is not it, and a value position that reads it is a parse error.
+
+[,souther]
+----
+example submitTravelRequest
+    | "over the ceiling"
+        : (Drafting { applicant = EmployeeId("e-001"), estimatedCost = Amount(100001) })
+        -> <?>
+----
+
+Such a row runs like any other and asserts nothing. Its inputs are built, its stand-ins are read, the behavior is applied, and what the behavior answered is held to what it declares of its answer (<<an-implementation-keeps-what-the-behavior-states>>). Two things do not happen, both for the same reason. What the row states is not held to an `+ensures+` (<<a-row-keeps-what-the-behavior-states>>), because it states no answer for a clause to be read against; and the answer is not compared, because there is nothing written to compare it with. So the row says nothing about the value the model yields.
+
+A module whose rows are still owed answers goes on compiling. `+souther examples --generate+` writes the rows it composes with `+<?>+` in this position, so a block is pasted whole and answered a row at a time rather than held out of the file until the last of it is written.
+
+What such a row does not do is cover. An arm it goes through is an arm nothing states the behavior's answer at, so it is reported under <<every-arm-has-a-row>> (<<e1918>>) and a build held to a bar that refuses over arms refuses over it; what is said of it is that a row is written there and its answer is owed, rather than that no row goes through it. Nothing composes a second row for such an arm: the question is already written down, and what is left is an answer no search can supply.
 
 [#example-evaluable]
 === What can carry an example
@@ -3501,7 +3521,7 @@ Where a behavior has a body, `+souther examples+` also reports which of its arms
 
 One more the dial asks, needing the arms measured:
 
-* [[every-arm-has-a-row]]some row SHOULD go through each arm of an `+if+`, a `+guard+` or an attempted construction.
+* [[every-arm-has-a-row]]some row that states what it expects SHOULD go through each arm of an `+if+`, a `+guard+` or an attempted construction. A row whose answer is owed (<<example-answer-owed>>) goes through an arm without saying what the behavior answers there, so it does not answer this; what is reported of such an arm says a row is written at it and what it is short of is the answer.
 
 The line such a fork draws is asked for as well, and it is asked for wherever a rule draws a border rather than here (<<every-obligation-against-its-line-has-a-row>>): a `+guard+` comparing one position against another draws its line where the two are equal (<<a-comparison-of-two-positions-draws-a-line-between-them>>), exactly as an `+invariant+` and an `+ensures+` draw theirs. For a guard the arms do not stand in for it: both arms of `+charge > ceiling+` are reached by rows nowhere near the line, and a row on it takes the same arm as one well below it.
 

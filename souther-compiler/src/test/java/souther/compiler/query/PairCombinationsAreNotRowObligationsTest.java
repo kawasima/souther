@@ -52,7 +52,10 @@ class PairCombinationsAreNotRowObligationsTest {
         assertEquals(List.of(
                 "ACaseNoRowExpects", "ACaseNothingWasSeenToProduce", "ACaseNoRowAppliesItTo",
                 "AClassNoRowIsIn", "APointOfABorder", "APointOfADeclaredBorder",
-                "AnArmNoRowGoesThrough", "ARuleWithoutALine", "ARuleNothingClassified",
+                // An arm and a row at it: what a row is owed at is the arm either way, and the
+                // second says the row is written and its answer is not.
+                "AnArmNoRowGoesThrough", "ARowAtAnArmAwaitsItsAnswer",
+                "ARuleWithoutALine", "ARuleNothingClassified",
                 "AQuestionNothingAnswered", "ARuleWithoutALine", "ARuleNothingClassified",
                 "APositionThisCouldNotRead", "APositionNoLineDivides",
                 "APositionReadWiderThanItsRules", "APositionWhoseRulesWereNotReached"), every,

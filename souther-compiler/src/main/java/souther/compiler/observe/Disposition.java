@@ -16,6 +16,16 @@ public enum Disposition {
     /** The row ran and its expectation held. */
     HELD,
 
+    /**
+     * The row ran and there was no expectation to hold the answer to: its answer is owed.
+     *
+     * <p>Not {@link #HELD}, which is a statement about the model keeping what a row says, and this
+     * row says nothing about the answer. Not {@link #PENDING} either — that is a row nothing
+     * evaluated, and this one was applied and answered. What is missing is the author's half, and
+     * what the row is missing is said by what it states rather than by a second word here.
+     */
+    NOTHING_TO_HOLD,
+
     /** The row ran, or tried to, and the model did not do what the row says. */
     FAILED,
 

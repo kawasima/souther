@@ -335,7 +335,18 @@ public final class CstLexer {
             }
             case '=' -> take('=') ? SyntaxKind.EQ : SyntaxKind.ASSIGN;
             case '/' -> take('=') ? SyntaxKind.NE : SyntaxKind.SLASH;   // `//` is handled as a comment
-            case '<' -> take('=') ? SyntaxKind.LE : SyntaxKind.LT;
+            case '<' -> {
+                if (take('=')) {
+                    yield SyntaxKind.LE;
+                }
+                // `<?>` — where an example row's answer goes before anyone has written it. One
+                // token, so the language spells it one way.
+                if (peekIs('?') && peekIs2('>')) {
+                    pos += 2;
+                    yield SyntaxKind.UNANSWERED;
+                }
+                yield SyntaxKind.LT;
+            }
             case '>' -> {
                 if (take('=')) {
                     yield SyntaxKind.GE;

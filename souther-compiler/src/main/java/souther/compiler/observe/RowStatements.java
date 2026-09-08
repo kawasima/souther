@@ -212,6 +212,9 @@ public final class RowStatements {
             case Expectation.TheValue(Asserted value) -> Limits.DEFAULT.stoppedBy(value);
             // A case is a name. Nothing about it can be too large or fail to be read.
             case Expectation.TheCase _ -> null;
+            // An answer that is owed is no value either. What such a row is short of is the
+            // author's half, and a limit on what may be carried has nothing to say about it.
+            case Expectation.Owed _ -> null;
         };
         return stopped != null
                 ? new RowStatement.Incomplete(new RowStatement.Side.TheExpectation(), stopped)

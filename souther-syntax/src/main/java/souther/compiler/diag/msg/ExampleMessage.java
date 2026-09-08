@@ -440,6 +440,21 @@ public sealed interface ExampleMessage extends Message {
     /** Which of the two that is. */
     record EitherARowIsMissingOrNothingReachesIt() implements ExampleMessage, Supporting {}
 
+    /**
+     * A row goes through an arm of the body with its answer still owed.
+     *
+     * <p>The same rule as {@link NoRowGoesThroughThatArm} — the arm has no row that says what the
+     * behavior answers there — broken the other way. The work is not to write a row: one is written
+     * and what it is short of is the answer, so the sentence says which of the two an author is
+     * looking at and the code stays the rule's.
+     */
+    @Code(DiagnosticCode.E1918)
+    record ARowAtThatArmAwaitsItsAnswer(souther.compiler.diag.Localizable arm, String behavior)
+            implements ExampleMessage, Reported {}
+
+    /** What answering it takes. */
+    record ReplaceTheMarkWithWhatTheSystemAnswers() implements ExampleMessage, Supporting {}
+
     // --- a stand-in and a row that disagree ---
 
     /** A row and a fake state different answers for one input. */

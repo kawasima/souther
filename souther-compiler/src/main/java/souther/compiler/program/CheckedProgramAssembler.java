@@ -16,6 +16,7 @@ import souther.compiler.core.Core;
 import souther.compiler.core.EnsuresEnforcement;
 import souther.compiler.core.ValueShape;
 import souther.compiler.meta.ModulePath;
+import souther.compiler.observe.Expectation;
 import souther.compiler.observe.FieldTypes;
 import souther.compiler.observe.Position;
 import souther.compiler.observe.RowOutcome;
@@ -459,6 +460,13 @@ final class CheckedProgramAssembler {
         // wrote down.
         return switch (row) {
             case Output.RowsRead.ReadRow.Ran(RowOutcome outcome) -> switch (outcome.statement()) {
+                // A row whose answer is owed first, because what a reader can do with a row turns on
+                // whether there is anything to hold before it turns on what the row needs to run.
+                // Sorted the other way, such a row would arrive as one an output applies and asks,
+                // and what it asked would be answered against no statement at all.
+                case RowStatement.Stated stated
+                        when stated.expects() instanceof Expectation.Owed ->
+                        new CheckedRow.AnswerOwed(stated);
                 case RowStatement.Stated stated -> stated.standIns().isEmpty()
                         ? new CheckedRow.SelfContained(stated, types,
                                 Position.at(signature.answers()))

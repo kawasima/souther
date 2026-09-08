@@ -626,7 +626,7 @@ public final class ExampleVerifier {
         Object[] args;
         // A table entry states the whole value, always: what a fake answers with is what it was
         // written with, and there is no grain below that for it to have stated instead.
-        Expectation stated;
+        Expectation.Asserts stated;
         try {
             args = new Object[sig.ins().size()];
             for (int i = 0; i < args.length; i++) {
@@ -1554,50 +1554,72 @@ public final class ExampleVerifier {
             state.inputCases.add(caseWritten(fixtures, row.inputs().get(i), ins.get(i).type()));
             state.inputs.add(fixtures.observed(args[i]));
         }
-        // validate the expected arm/value against the output cases before running. Which case the row
-        // asserts is read through what it names, so a row may name a value where it may name a case.
-        // Only where that answers is there an arm to hold against the target's: a helper answers with a
-        // case nothing here can read off the text, and reporting that as an arm the target cannot produce
-        // refused a row whose expectation was right (issue #214).
-        TypeSymbol named = fixtures.constructedCase(row.expected());
-        state.expectedArm = named;
-        if (named != null && !outCases.isEmpty() && !outCases.contains(named)) {
-            String expectedArm = fixtures.expectedArm(row.expected());
-            List<String> names = new ArrayList<>();
-            for (TypeSymbol c : outCases) {
-                names.add(c.name());
-            }
-            out.add(Diagnostic.at(row.pos())
-                    .say(new ExampleMessage.NotOneOfTheResultCases(
-                            expectedArm != null ? expectedArm : named.name(), target.name()))
-                    .hint(new ExampleMessage.TheResultCasesAre(String.join(", ", names))).build());
-            state.failed(FailurePhase.EXPECTED_FIXTURE);
-            return;
-        }
-        // Build the expected value before running: a row whose expectation cannot be built states no
-        // expectation, and comparing a result against a value nothing built reported a mismatch
-        // against an empty expected value — a wrong answer for a row that was right.
-        //
-        // At the grain the row states it — the value it wrote, or the case it named and nothing
-        // under it — and read once. What a declaration is held to is read from that grain below
-        // rather than worked out beside it: two readings of which grain a row wrote can disagree,
-        // and then a row is compared as one thing and held to a clause as another.
+        // What the row states of the answer, and what a clause is held to it by. A row whose answer
+        // is owed states neither: there is nothing to build, no arm to hold against the target's,
+        // and nothing for a declaration to be decided from until the behavior has answered.
         Expectation stated;
         Evidence evidence;
-        try {
-            TypeSymbol only = fixtures.caseOnly(row.expected());
-            FixtureReader.ExpectedValue expected =
-                    only != null ? null : fixtures.assertedExpected(row.expected(), sig.out());
-            stated = only != null ? new Expectation.TheCase(only)
-                    : new Expectation.TheValue(expected.asserted());
-            evidence = evidenceOf(fixtures, stated, expected, row, sig);
-        } catch (FixtureException fe) {
-            out.add(Diagnostic.at(row.pos())
-                    .say(new ExampleMessage.TheExpectedValueCouldNotBeBuilt(target.name(),
-                            fe.getMessage()))
-                    .build());
-            state.failed(FailurePhase.EXPECTED_FIXTURE);
-            return;
+        switch (row.expected()) {
+            case Hir.Expected.Asserted(Hir.Expr answer) -> {
+                // validate the expected arm/value against the output cases before running. Which case
+                // the row asserts is read through what it names, so a row may name a value where it may
+                // name a case. Only where that answers is there an arm to hold against the target's: a
+                // helper answers with a case nothing here can read off the text, and reporting that as
+                // an arm the target cannot produce refused a row whose expectation was right.
+                TypeSymbol named = fixtures.constructedCase(answer);
+                state.expectedArm = named;
+                if (named != null && !outCases.isEmpty() && !outCases.contains(named)) {
+                    String expectedArm = fixtures.expectedArm(answer);
+                    List<String> names = new ArrayList<>();
+                    for (TypeSymbol c : outCases) {
+                        names.add(c.name());
+                    }
+                    out.add(Diagnostic.at(row.pos())
+                            .say(new ExampleMessage.NotOneOfTheResultCases(
+                                    expectedArm != null ? expectedArm : named.name(), target.name()))
+                            .hint(new ExampleMessage.TheResultCasesAre(String.join(", ", names)))
+                            .build());
+                    state.failed(FailurePhase.EXPECTED_FIXTURE);
+                    return;
+                }
+                // Build the expected value before running: a row whose expectation cannot be built
+                // states no expectation, and comparing a result against a value nothing built reported
+                // a mismatch against an empty expected value — a wrong answer for a row that was right.
+                //
+                // At the grain the row states it — the value it wrote, or the case it named and
+                // nothing under it — and read once. What a declaration is held to is read from that
+                // grain below rather than worked out beside it: two readings of which grain a row
+                // wrote can disagree, and then a row is compared as one thing and held to a clause as
+                // another.
+                try {
+                    TypeSymbol only = fixtures.caseOnly(answer);
+                    FixtureReader.ExpectedValue expected =
+                            only != null ? null : fixtures.assertedExpected(answer, sig.out());
+                    stated = only != null ? new Expectation.TheCase(only)
+                            : new Expectation.TheValue(expected.asserted());
+                    evidence = evidenceOf(fixtures, stated, expected, answer, sig);
+                } catch (FixtureException fe) {
+                    out.add(Diagnostic.at(row.pos())
+                            .say(new ExampleMessage.TheExpectedValueCouldNotBeBuilt(target.name(),
+                                    fe.getMessage()))
+                            .build());
+                    state.failed(FailurePhase.EXPECTED_FIXTURE);
+                    return;
+                }
+            }
+            case Hir.Expected.Unanswered _ -> {
+                stated = new Expectation.Owed();
+                // Read only where the row states an answer, which is what the statement beside it
+                // says. What such a row answers is held to the declaration below, on the answer.
+                evidence = null;
+            }
+            case Hir.Expected.Unwritten _ -> {
+                // The row's answer did not parse, and the parse said so where it is written. There
+                // is nothing here to run and nothing to add: a second sentence about the same
+                // characters would send the author to look at the row twice.
+                state.failed(FailurePhase.EXPECTED_FIXTURE);
+                return;
+            }
         }
         // What stands in for each dependency, read here and not where a run needs it. What the row
         // states of a stand-in and what a run applies the behavior with are two halves of one
@@ -1616,7 +1638,12 @@ public final class ExampleVerifier {
         // What the row has is handed over as it stands. Which rules a declaration decides from an
         // answer and which it decides from a case alone is the declaration's own, worked out where
         // its check is emitted; nothing here reads a clause to choose.
-        if (!keepsWhatIsDeclared(row, target, args, evidence, sig, out, state)) {
+        //
+        // Asked of a row that states an answer. A row whose answer is owed states nothing a clause
+        // relating an answer to its inputs can be held to; what it answers is held to the same
+        // clauses below, where the answer is the model's rather than the row's.
+        if (!(stated instanceof Expectation.Owed)
+                && !keepsWhatIsDeclared(row, target, args, evidence, sig, out, state)) {
             return;
         }
         // Stated as a switch and not as a test for one of the two: what a run can have for a behavior
@@ -1693,15 +1720,29 @@ public final class ExampleVerifier {
         // The case the run answered with is the one the value is. Its class names the module that
         // declares it, and what this module means by that class's spelling is a different question.
         state.resultArm = fixtures.typeOf(result);
-        state.got(Stage.COMPARED);
+        // The answer is in hand, which is as far as a row gets before anything is done with it. A
+        // measure reading what the behavior answered reads a row that got here, and the two things
+        // done with an answer — holding it to the declaration, holding it to what the row states —
+        // are past it rather than folded into it.
+        state.got(Stage.ANSWERED);
         if (!keepsWhatIsDeclaredOfWhatItAnswered(fixtures, row, target, sig, args, result, out,
                 state)) {
             return;
         }
+        // Compared where the row states something to compare against. A row whose answer is owed
+        // ends here: it was applied, it answered, and what it answered keeps what the behavior
+        // declares of it; there is nothing further to hold the answer to, and the answer nobody
+        // wrote is reported as the row's own work rather than found here.
+        if (!(stated instanceof Expectation.Asserts asserts)) {
+            state.disposition = Disposition.NOTHING_TO_HOLD;
+            state.failurePhase = FailurePhase.NONE;
+            return;
+        }
+        state.got(Stage.COMPARED);
         // Asked of what the row stated, which is what decides what being the same answer means: a
         // row that wrote a value is held to the value, and one that named a case is held to the
         // case and nothing under it.
-        if (fixtures.holds(stated, result, sig.outputType())
+        if (fixtures.holds(asserts, result, sig.outputType())
                 instanceof Verdict.NotHeld(Mismatch differs)) {
             // The whole of each side, so the two can be read against each other, and then where they
             // part: a row that wrote a name the answer does not wear differs at one position by its
@@ -1772,16 +1813,22 @@ public final class ExampleVerifier {
      *
      * @param expected the row's own value where it wrote one, which was computed by running the
      *     module's code and is not asked for again
+     * @param answer   what the row wrote where its answer goes, which is why this is asked only of
+     *     a row that wrote one
      */
     private Evidence evidenceOf(FixtureReader fixtures, Expectation stated,
-                                FixtureReader.ExpectedValue expected, Hir.ExampleRow row, Sig sig) {
+                                FixtureReader.ExpectedValue expected, Hir.Expr answer, Sig sig) {
         return switch (stated) {
             case Expectation.TheValue _ -> new Evidence.Answer(expected.live());
             case Expectation.TheCase(TypeSymbol only) ->
                     symbols.declaredNode(only) instanceof Hir.UnitData
                             ? new Evidence.Answer(
-                                    fixtures.buildFixture(row.expected(), sig.out()).value())
+                                    fixtures.buildFixture(answer, sig.out()).value())
                             : new Evidence.Case(only);
+            // A row whose answer is owed states nothing a declaration can be decided from, and the
+            // reading that gets here is the one that read what the row states.
+            case Expectation.Owed _ -> throw new IllegalStateException(
+                    "a row whose answer is owed states nothing to hold a declaration to");
         };
     }
 
@@ -2207,7 +2254,12 @@ public final class ExampleVerifier {
                                       Type answers) {
         return switch (stated) {
             case Expectation.TheCase _ -> fixtures.describeActual(result);
-            case Expectation.TheValue _ -> fixtures.shown(fixtures.structured(result), answers);
+            // The whole answer where the row said nothing about it either. A row whose answer is
+            // owed is shown what came back, which is what an author about to write the answer down
+            // is reading the report for; shown a case instead, they would be handed less than the
+            // row is short of.
+            case Expectation.TheValue _, Expectation.Owed _ ->
+                    fixtures.shown(fixtures.structured(result), answers);
         };
     }
 
@@ -2215,7 +2267,7 @@ public final class ExampleVerifier {
                                 String actual, Mismatch differs) {
         // Underline the expected result (the part the row asserts), not the whole row, so the marker
         // lands on something meaningful rather than a single column at the row's start.
-        SourcePos pos = row.expected() != null ? row.expected().pos() : row.pos();
+        SourcePos pos = row.expected().pos();
         int width = Math.max(1, expected.length());
         Diagnostic.Builder b = Diagnostic.at(pos, width)
                 .say(new ExampleMessage.TheRowDoesNotHold())

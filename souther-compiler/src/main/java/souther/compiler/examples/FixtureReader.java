@@ -6,6 +6,7 @@ import souther.compiler.ast.Hir;
 import souther.compiler.check.AtomSpace;
 import souther.compiler.check.CallElaborator;
 import souther.compiler.check.Symbols;
+import souther.compiler.cst.SyntaxKind;
 import souther.compiler.core.Kernel;
 import souther.compiler.observe.Asserted;
 import souther.compiler.observe.Expectation;
@@ -1749,16 +1750,20 @@ public final class FixtureReader {
      * named a case decides what being the same answer means, and a caller that told the two apart
      * itself would be a second place that decided it.
      */
-    Verdict holds(Expectation stated, Object result, Type position) {
+    Verdict holds(Expectation.Asserts stated, Object result, Type position) {
         return souther.compiler.observe.Comparisons.verdict(stated, structured(result), types,
                 Position.at(position));
     }
 
-    /** What a row stated, as it stated it: the value it wrote, or the case it named. */
+    /** What a row stated, as it stated it: the value it wrote, the case it named, or the mark that
+     *  says its answer is owed. */
     String shown(Expectation stated) {
         return switch (stated) {
             case Expectation.TheValue(Asserted value) -> shown(value);
             case Expectation.TheCase(TypeSymbol name) -> name.name();
+            // As the row writes it. A reader shown a phrase about the row instead would be shown
+            // this compiler's words where the row's own characters are what they are looking for.
+            case Expectation.Owed _ -> SyntaxKind.UNANSWERED.fixedSpelling().orElseThrow();
         };
     }
 
@@ -1790,7 +1795,7 @@ public final class FixtureReader {
     }
 
     /** What a row stated, named as the language names it. */
-    String typeShown(Expectation stated) {
+    String typeShown(Expectation.Asserts stated) {
         return new ValueRendering(neutral).typeShown(stated);
     }
 

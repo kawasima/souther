@@ -117,7 +117,7 @@ final class ValueRendering {
     }
 
     /** What the row stated, named as the language names it. */
-    String typeShown(Expectation stated) {
+    String typeShown(Expectation.Asserts stated) {
         return switch (stated) {
             case Expectation.TheValue(Asserted value) -> typeShown(value);
             case Expectation.TheCase(TypeSymbol name) -> name.name();

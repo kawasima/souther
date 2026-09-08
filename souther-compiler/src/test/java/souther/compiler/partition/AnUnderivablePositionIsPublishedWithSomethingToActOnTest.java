@@ -180,7 +180,7 @@ class AnUnderivablePositionIsPublishedWithSomethingToActOnTest {
                  About.ACaseNoRowExpects _, About.ACaseNothingWasSeenToProduce _,
                  About.ACaseNoRowAppliesItTo _, About.AClassNoRowIsIn _,
                  About.APointOfABorder _, About.APointOfADeclaredBorder _,
-                 About.AnArmNoRowGoesThrough _ -> null;
+                 About.AnArmNoRowGoesThrough _, About.ARowAtAnArmAwaitsItsAnswer _ -> null;
         };
     }
 

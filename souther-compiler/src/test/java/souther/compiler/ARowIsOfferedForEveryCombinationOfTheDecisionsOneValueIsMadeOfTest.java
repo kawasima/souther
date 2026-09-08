@@ -120,7 +120,7 @@ class ARowIsOfferedForEveryCombinationOfTheDecisionsOneValueIsMadeOfTest {
 
     /** How many rows the block writes, named or not. */
     private static int rows(String block) {
-        return (int) block.lines().filter(line -> line.startsWith("//     | ")).count();
+        return (int) block.lines().filter(line -> line.startsWith("    | ")).count();
     }
 
     /** {@code | "name" : (inputs)} as the block writes it, over lines the formatter may have wrapped. */

@@ -3,6 +3,7 @@ package souther.lsp;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.query.Adequacy;
+import souther.compiler.query.Compilation;
 import souther.lsp.analysis.Analyzer;
 import souther.lsp.analysis.ModuleGraph;
 import souther.lsp.protocol.CodeAction;
@@ -10,6 +11,7 @@ import souther.lsp.protocol.CodeLens;
 import souther.lsp.protocol.Position;
 import souther.lsp.protocol.Range;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -288,9 +290,11 @@ class AdequacyLensTest {
     /**
      * The offer on a behavior's declaration writes the block `--generate` prints.
      *
-     * <p>Commented out and with every answer left open, for the same reason the command's output is:
-     * the compiler does not know what the model owes, and a row it filled in would be an assertion
-     * nobody made.
+     * <p>Rows, with every answer left owed, for the same reason the command's output is: the
+     * compiler does not know what the model owes, and a row it filled in would be an assertion
+     * nobody made. What is written into somebody's file is source — which is what keeps the
+     * checker, the formatter and a rename reaching it after it lands — and the prose beside the
+     * rows is what arrives commented.
      */
     @Test
     void theRowsABehaviorDoesNotCoverCanBeWrittenIn() {
@@ -307,10 +311,28 @@ class AdequacyLensTest {
 
         CodeAction.Edit taken = analyzer.resolve(offered, TRIP, graph);
         assertNotNull(taken, "and taking it writes rows");
-        for (String line : taken.newText().lines().filter(l -> !l.isBlank()).toList()) {
-            assertTrue(line.startsWith("//"), "every line is a comment: " + line);
-        }
         assertTrue(taken.newText().contains("-> <?>"), taken.newText());
+        assertTrue(taken.newText().lines().anyMatch(line -> line.startsWith("example ")),
+                "the rows are written as rows: " + taken.newText());
+        // And what is written into the file compiles with the document it lands in, which is what
+        // keeps everything that reads source reading these. Asserted on the document rather than on
+        // the block, because that is what an author is left with.
+        assertEquals(List.of(),
+                errorsIn(TRIP.stripTrailing() + "\n" + taken.newText()),
+                "and the document goes on compiling with them in it");
+    }
+
+    /** What a compile of {@code source} refuses it for, which is nothing where it compiles. */
+    private static List<String> errorsIn(String source) {
+        List<String> said = new ArrayList<>();
+        Compilation compilation = Compilation.ofSource(source, "Main");
+        compilation.answerEverything();
+        for (souther.compiler.query.Db.Found each : compilation.db().allReports()) {
+            if (each.report().isError()) {
+                said.add(each.report().diagnostic().code());
+            }
+        }
+        return said;
     }
 
     /**

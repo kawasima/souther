@@ -26,7 +26,7 @@ import java.util.List;
  * @param observed what stood there
  * @param position what the declaration reads that place through
  */
-public record Mismatch(List<PathElement> path, Reason reason, Expectation expected,
+public record Mismatch(List<PathElement> path, Reason reason, Expectation.Asserts expected,
                        ObservedValue observed, Position position) {
 
     public Mismatch {

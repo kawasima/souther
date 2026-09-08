@@ -95,13 +95,13 @@ class TheBlockAndItsHeaderComeFromOneListOfRowsTest {
 
     /** Where each row starts. A row the formatter wrapped is still one row, and one {@code |}. */
     private static List<String> rows(String block) {
-        return block.lines().filter(line -> line.startsWith("//     | ")).toList();
+        return block.lines().filter(line -> line.startsWith("    | ")).toList();
     }
 
     /** The rows as printed, which is what a reader pastes — and not what is said under them. */
     private static List<String> written(String block) {
-        return block.lines().dropWhile(line -> !line.startsWith("// example "))
-                .takeWhile(line -> line.startsWith("// example ") || line.startsWith("//     "))
+        return block.lines().dropWhile(line -> !line.startsWith("example "))
+                .takeWhile(line -> line.startsWith("example ") || line.startsWith("    "))
                 .toList();
     }
 
@@ -117,8 +117,8 @@ class TheBlockAndItsHeaderComeFromOneListOfRowsTest {
         String block = block(POLICY, "example.policy");
 
         assertEquals(List.of(
-                        "// example fee",
-                        "//     | (0, Policy { rate = Rate(0), cap = Cap(0) }) -> <?>"),
+                        "example fee",
+                        "    | (0, Policy { rate = Rate(0), cap = Cap(0) }) -> <?>"),
                 written(block));
     }
 

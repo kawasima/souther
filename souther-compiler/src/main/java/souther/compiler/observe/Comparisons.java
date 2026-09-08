@@ -26,8 +26,8 @@ public final class Comparisons {
      * <p>For whoever holds a reading of the declarations to bind to. What is answered here is the
      * same for both faces, which is what makes a row mean one thing wherever it is read.
      */
-    public static Verdict verdict(Expectation stated, ObservedValue answered, ValueTypes types,
-                                  Position answers) {
+    public static Verdict verdict(Expectation.Asserts stated, ObservedValue answered,
+                                  ValueTypes types, Position answers) {
         if (stated == null || answered == null || types == null || answers == null) {
             throw new IllegalArgumentException("a comparison is of a statement against an answer,"
                     + " read with what the declarations say and where the answer stands");

@@ -376,4 +376,30 @@ public sealed interface About {
             return new ObligationIdentity.OfAnArm(arm.obligation());
         }
     }
+
+    /**
+     * An arm a row goes through with its answer owed, and nothing covers.
+     *
+     * <p>Different news from {@link AnArmNoRowGoesThrough}, and different work. There is a row at
+     * this arm; what it is short of is the answer, which is written where the row is and by whoever
+     * knows what the system does. Told as an arm no row goes through, an author would be sent to
+     * write a row that is already in front of them — and whatever they wrote would be a second row
+     * for the same arm.
+     *
+     * <p>Still a gap. Nothing here asserts what the behavior answers, so a build is entitled to
+     * refuse over it exactly as it is over an arm with no row; what differs is the sentence and not
+     * the standing.
+     */
+    record ARowAtAnArmAwaitsItsAnswer(
+            CoverageSites.ArmSite arm) implements OfAnObligation {
+
+        public ARowAtAnArmAwaitsItsAnswer {
+            java.util.Objects.requireNonNull(arm, "a finding is about something");
+        }
+
+        @Override
+        public ObligationIdentity obligationIdentity() {
+            return new ObligationIdentity.OfAnArm(arm.obligation());
+        }
+    }
 }

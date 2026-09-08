@@ -113,7 +113,7 @@ class AGeneratedRowIsNamedForWhatItWasComposedForTest {
 
     /** How many rows the block writes, named or not. A row the formatter wrapped is still one. */
     private static int rows(String block) {
-        return (int) block.lines().filter(line -> line.startsWith("//     | ")).count();
+        return (int) block.lines().filter(line -> line.startsWith("    | ")).count();
     }
 
     /** The names the block offers, in the order it writes them. */

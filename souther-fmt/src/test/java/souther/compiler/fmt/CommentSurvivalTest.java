@@ -100,6 +100,21 @@ class CommentSurvivalTest {
                           // the comment
                           | "a" : (1) -> O { n = 1 }
                         """),
+                // What `souther examples --generate` writes: rows whose answers are owed, with the
+                // prose about them written as comments between them. The rows and the comments are
+                // new together, so what this holds is the pair — a row that keeps its mark under a
+                // comment that moved is a block an author cannot read.
+                Arguments.of("a row whose answer is owed", """
+                        module m
+                        data O = { n: Int }
+                        behavior f : (n: Int) -> O constructs O
+                        let f (n) = O { n = n }
+                        example f
+                          // the comment
+                          | "a" : (1) -> <?>
+                          // fills something
+                          | "b" : (2) -> <?>
+                        """),
                 Arguments.of("exposing entry", """
                         module m exposing (
                           // the comment
@@ -143,6 +158,32 @@ class CommentSurvivalTest {
 
         assertEquals(once, Formatter.format(once),
                 "a second format changed the " + where + " case");
+    }
+
+    /**
+     * A row whose answer is owed comes back written the way it went in.
+     *
+     * <p>Beside the cases above rather than among them, because what those hold is the comment and
+     * this holds the row. The mark is one token and the formatter writes it back as one: split into
+     * {@code <}, {@code ?} and {@code >}, it would be laid out as three operators and the row would
+     * come out of a {@code fmt} run saying something the parser refuses.
+     */
+    @Test
+    void aRowWhoseAnswerIsOwedKeepsItsMark() {
+        String source = """
+                module m
+                data O = { n: Int }
+                behavior f : (n: Int) -> O constructs O
+                let f (n) = O { n = n }
+                example f
+                    | "a" : (1) -> <?>
+                """;
+
+        String formatted = Formatter.format(source);
+
+        assertTrue(formatted.contains("-> <?>"),
+                "the mark is written back where the answer goes:\n" + formatted);
+        assertEquals(formatted, Formatter.format(formatted), "and a second format leaves it alone");
     }
 
     /** Two comment lines above one member stay in that order — building them one at a time reverses

@@ -41,6 +41,7 @@ public final class Formatter {
     private static final TokenDoc COMMA = TokenDoc.token(SyntaxKind.COMMA, ",");
     private static final TokenDoc DOT = TokenDoc.token(SyntaxKind.DOT, ".");
     private static final TokenDoc QUESTION = TokenDoc.token(SyntaxKind.QUESTION, "?");
+    private static final TokenDoc UNANSWERED = TokenDoc.token(SyntaxKind.UNANSWERED, "<?>");
     private static final TokenDoc ASSIGN = TokenDoc.token(SyntaxKind.ASSIGN, "=");
     private static final TokenDoc COLON = TokenDoc.token(SyntaxKind.COLON, ":");
     private static final TokenDoc ARROW = TokenDoc.token(SyntaxKind.ARROW, "->");
@@ -849,8 +850,13 @@ public final class Formatter {
         List<SyntaxNode> expected = exprChildren(n);   // the row's expr child that is not the ARG_LIST
         SyntaxNode gives = expected.isEmpty() ? null : expected.get(0);
         Place ofTheExpected = segmentPlace(at, ARROW, gives);
-        segs.add(segment(ofTheExpected, gives,
-                gives == null ? TokenDoc.NIL : expr(gives, ofTheExpected)));
+        // What the row put where its answer goes: the expression it wrote, the mark that says the
+        // answer is owed, or nothing where the row is malformed. The mark is a token of the row and
+        // is written back as it was read — a formatter that dropped it would answer a row nobody
+        // has answered.
+        TokenDoc answer = gives != null ? expr(gives, ofTheExpected)
+                : n.token(SyntaxKind.UNANSWERED).isPresent() ? UNANSWERED : TokenDoc.NIL;
+        segs.add(segment(ofTheExpected, gives, answer));
         return concat(PIPE, GAP, TokenDoc.node(n.kind(), chained(head, segs)));
     }
 
