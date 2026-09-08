@@ -27,10 +27,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p><b>Both halves of a reading are compared, and only one of them is held to anything.</b> Two
  * readings in which every clause stopped agree over what stated, because neither stated anything, so
  * the clauses a reading has no form for are compared beside the ones it does and the count below
- * refuses a sweep in which nothing stated. But no clause of either population stops: what this says
- * is that a clause <i>with a form</i> has one answer whoever asks, and the arm for a clause without
- * one is written here and reached by nothing. Holding that arm needs a declaration whose clause the
- * discharge reader has no form for, and there is none to sweep.
+ * refuses a sweep in which nothing stated. But no clause of a corpus stops, so what this says is
+ * that a clause <i>with a form</i> has one answer whoever asks. The other arm is held beside this,
+ * over a source written to reach it: a corpus is a model somebody wrote to work, and a clause the
+ * discharge reader has no form for is not something to put in one.
  */
 @Tag("population")
 class EveryDeclarationACorpusImportsStatesOneThingWhoeverAsksTest {

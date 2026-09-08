@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -36,10 +37,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * answers for the declaration it was asked about rather than for the spelling. Each is its own
  * assertion, so a failure says which.
  *
- * <p><b>What is held is a clause that has a form.</b> A reading answers a clause it has no form for
- * with {@link TypedClause.Stopped}, and no clause of these declarations reaches that arm — the
- * control below pins that, by holding what reached a form to what was reached at all. So nothing
- * here says two modules agree about a clause neither could type.
+ * <p><b>Both arms are held, over two sources.</b> A reading answers a clause it has no form for with
+ * {@link TypedClause.Stopped}, and nothing that compiles reaches that arm — the control below pins
+ * that for the declarations swept here, by holding what reached a form to what was reached at all.
+ * The arm itself is held over a source this compiler refuses, where a clause names something nothing
+ * declares.
  */
 class WhatADeclarationsClausesStateIsOneAnswerWhicheverModuleAsksTest {
 
@@ -237,6 +239,64 @@ class WhatADeclarationsClausesStateIsOneAnswerWhicheverModuleAsksTest {
                 "both declarations state a clause, or this compares nothing: " + theirs + mine);
         assertNotEquals(theirs, mine,
                 "two declarations of one spelling, stating different rules, were read alike");
+    }
+
+    /**
+     * A module whose one clause names something nothing declares, and a module that imports it.
+     *
+     * <p>Apart from the sources above because this one does not compile, and that is what it is for:
+     * a clause the discharge reader has no form for is answered with
+     * {@link TypedClause.Stopped}, and nothing that compiles reaches that arm. Name resolution
+     * reports and carries on, so the declaration is still there to be read — which is what makes the
+     * reading askable at all.
+     */
+    private static final String A_CLAUSE_WITH_NO_FORM = """
+            module demo.stopped exposing ( Amount )
+
+            data Amount = Decimal
+                invariant value >= 0.00m && Absent.nothing(value)
+            """;
+
+    /** A module that imports it, so the reading can be taken from a module that did not write it. */
+    private static final String READING_IT = """
+            module demo.reader exposing ( f )
+
+            import demo.stopped as Stopped ( Amount )
+
+            behavior f : (a: Amount) -> Decimal
+            let f (a) = a.value
+            """;
+
+    /**
+     * The other arm: a clause with no form is the same no-form whichever module asks.
+     *
+     * <p>Held because the two arms are two answers and only one of them was reached by anything that
+     * compiles. Two readings that both stopped agree over what they stated by having stated nothing,
+     * so the comparisons above say nothing about this arm however many declarations they sweep.
+     *
+     * <p>What is compared is the whole reading and not the half of it that typed. A clause this
+     * reader has no form for and one the declaring module has no form for are the same clause, named
+     * the same way, and the two lists are held to being the same list.
+     */
+    @Test
+    void aClauseWithNoFormIsTheSameNoFormWhicheverModuleAsks() {
+        Compilation compilation =
+                Compilation.ofSources(List.of(A_CLAUSE_WITH_NO_FORM, READING_IT), ModulePath.EMPTY);
+        compilation.answerEverything();
+        assertFalse(compilation.errors().isEmpty(),
+                "this source is supposed to name something nothing declares");
+
+        Db db = compilation.db();
+        TypeSymbol.AtModule named = TypeSymbols.declared(new TypeKey("demo.stopped", "Amount"));
+        ClauseReadings.Read declaring = ClauseReadings.readBy(db, "demo.stopped", named);
+        ClauseReadings.Read asking = ClauseReadings.readBy(db, "demo.reader", named);
+
+        assertFalse(declaring.stopped().isEmpty(),
+                "the clause this fixture writes is supposed to have no form, and the declaring"
+                        + " module found one for it: " + declaring);
+        assertEquals(declaring, asking,
+                "`demo.stopped.Amount` reads one way where it was written and another where"
+                        + " `demo.reader` reads it");
     }
 
     /** `demo.base.Amount` as `demo.user` reads it, over a compilation of {@code declaring}. */
