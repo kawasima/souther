@@ -105,7 +105,13 @@ public record RulesWithNoLine(List<RuleWithoutALine> reported,
      */
     public BlockReason.RuleReadingStopped aReadingThatStopped() {
         for (RuleWithoutALine each : reported) {
-            if (each.why() instanceof BlockReason.RuleReadingStopped stopped) {
+            // Asked of the reason and not read off its type. A rule the reading of ends could not
+            // follow is a rule this compiler got partway through, and what the position admits is
+            // still exactly what the rules leave — so the type says a reading stopped and the
+            // question here is which one ({@link BlockReason.RuleReadingStopped
+            // #widensWhatThePositionAdmits}).
+            if (each.why() instanceof BlockReason.RuleReadingStopped stopped
+                    && stopped.widensWhatThePositionAdmits()) {
                 return stopped;
             }
         }

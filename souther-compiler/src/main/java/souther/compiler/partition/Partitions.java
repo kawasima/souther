@@ -459,7 +459,8 @@ public final class Partitions {
         // reader that files no finding for such a rule leaves the question as the only thing
         // saying it, and one whose questions are the accounting's leaves the finding.
         boolean stopped = found.readingsThatStopped().stream()
-                        .anyMatch(one -> filedHere(one.at(), term, path))
+                        .anyMatch(one -> filedHere(one.at(), term, path)
+                                && leavesTheDivisionUnknown(one.why()))
                 || found.unclassified().stream()
                         .anyMatch(one -> filedHere(one.at(), term, path));
         if (!stated && !stopped) {
@@ -469,6 +470,31 @@ public final class Partitions {
         // one rule is not answered for by another read from end to end, and a rule read from end to
         // end is the model stating something whatever became of the reading beside it.
         return new BodyCutInspection.NoLine(stopped, stated);
+    }
+
+    /**
+     * Whether a rule this compiler did not get through leaves how the position divides unknown.
+     *
+     * <p>Asked of the reason and not read off the list it arrived in. Every rule here is one a
+     * reading stopped on, and which reading stopped decides what is unknown: the reading that says
+     * which values may stand at a position is what the classes are made of, and one that says
+     * where they stop is not. A rule read to the end by the first and given up on by the second
+     * leaves the classes exactly as the rules leave them — and answered off the list, the position
+     * came back as one this compiler could not divide, which is a limit of the border said about
+     * the partition ({@link BlockReason.RuleReadingStopped
+     * #widensWhatThePositionAdmits}).
+     *
+     * <p><b>A reason that names no rule passes through, and is not asked.</b> The question is one a
+     * rule's own reading answers; a position that could not hand its sets on has no rule to ask it
+     * of, and what it does to a verdict here is what it did before this was asked. That those
+     * reasons say one thing here and another where the same question is asked of a whole position
+     * ({@link souther.compiler.inputs.RulesWithNoLine#aReadingThatStopped}) is older than this and
+     * is not settled by it.
+     */
+    private static boolean leavesTheDivisionUnknown(
+            BlockReason.RuleWithoutLineReason why) {
+        return !(why instanceof BlockReason.RuleReadingStopped it)
+                || it.widensWhatThePositionAdmits();
     }
 
     /**

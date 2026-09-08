@@ -45,7 +45,11 @@ class WhoMayMakeARuleShortfallTest {
 
     private static final String A_LEAF = OWNER + "$Site$AtALeaf";
 
-    private static final String A_CHOICE = OWNER + "$Site$AtAChoice";
+    // A place of its own and not one of the shortfall's, because both readings name it: a choice
+    // offering an alternative nothing reads leaves the values open and the ends open, and an author
+    // lifting it lifts both. Held under the shortfall, the reading that never files one would have
+    // had to name a shortfall to say which choice it means.
+    private static final String A_CHOICE = "souther/compiler/check/ChoiceSite";
 
     private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
 

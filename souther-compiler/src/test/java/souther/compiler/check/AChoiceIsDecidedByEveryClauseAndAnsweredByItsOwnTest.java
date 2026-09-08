@@ -179,7 +179,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
      */
     @Test
     void whatLeftTheConstraintOpenIsTheChoiceItWasOffered() {
-        RuleShortfall.Site.AtAChoice choice = aChoice();
+        ChoiceSite choice = aChoice();
 
         assertEquals(java.util.Set.of(new RuleShortfall(CONSTRAINED,
                         UnreadReason.ALTERNATIVE_NOT_READ,
@@ -196,7 +196,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
     void aShortfallOnlyTheUnreadBranchHoldsAnswersForThePosition() {
         RuleShortfall inside = new RuleShortfall(CONSTRAINED, UnreadReason.ALTERNATIVE_NOT_READ,
                 aChoice());
-        RuleShortfall.Site.AtAChoice choice = aChoice();
+        ChoiceSite choice = aChoice();
 
         assertEquals(java.util.Set.of(inside),
                 theBranchRead(java.util.Set.of())
@@ -218,7 +218,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
     void andWhichOfTheTwoIsNotAskedOfWhereItWasWritten() {
         RuleShortfall form = new RuleShortfall(CONSTRAINED, UnreadReason.FORM_NOT_READ,
                 new RuleShortfall.Site.AtALeaf(new Core.Bool(true, Type.BOOL, new SourcePos(1, 1))));
-        RuleShortfall.Site.AtAChoice choice = aChoice();
+        ChoiceSite choice = aChoice();
 
         assertEquals(java.util.Set.of(form),
                 theBranchRead(java.util.Set.of())
@@ -308,7 +308,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
      * hold is the other half — which of them a rule is still answerable for.
      */
     private static StatedByClauses.AlternativeOpening opened(
-            RuleShortfall.Site.AtAChoice choice) {
+            ChoiceSite choice) {
         return new StatedByClauses.AlternativeOpening(choice.id(),
                 new Opening<>(java.util.Set.of(CONSTRAINED), java.util.Set.of(),
                         java.util.Set.of(CONSTRAINED)),
@@ -364,7 +364,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
                         java.util.Set.of(), false, java.util.Set.of()),
                 new Adoption<>(java.util.Set.of(), java.util.Set.of(),
                         java.util.Set.of(UNREAD), true, java.util.Set.of()),
-                Map.of(), java.util.Set.of(), java.util.Set.of());
+                Map.of(), java.util.Set.of(), java.util.Set.of(), EndsLeftOpen.nothing());
     }
 
     /** And the alternative beside it that both of them read, constraining one position. */
@@ -374,12 +374,12 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
                         java.util.Set.of(), false, java.util.Set.of()),
                 new Adoption<>(java.util.Set.of(CONSTRAINED), java.util.Set.of(),
                         java.util.Set.of(), false, java.util.Set.of()),
-                Map.of(), java.util.Set.of(), java.util.Set.of());
+                Map.of(), java.util.Set.of(), java.util.Set.of(), EndsLeftOpen.nothing());
     }
 
     /** One choice somebody wrote, told from every other by being this one. */
-    private static RuleShortfall.Site.AtAChoice aChoice() {
-        return new RuleShortfall.Site.AtAChoice(new ChoiceId(), new SourcePos(1, 1));
+    private static ChoiceSite aChoice() {
+        return new ChoiceSite(new ChoiceId(), new SourcePos(1, 1));
     }
 
     /** A branch that was read, constraining one position and settling another. */
@@ -387,7 +387,8 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
         return new StatedByClauses.Part(
                 new Adoption<>(java.util.Set.of(CONSTRAINED), java.util.Set.of(SETTLED),
                         java.util.Set.of(), false, java.util.Set.of()),
-                Adoption.nothing(), Map.of(), java.util.Set.of(), shortfalls);
+                Adoption.nothing(), Map.of(), java.util.Set.of(), shortfalls,
+                EndsLeftOpen.nothing());
     }
 
     /** And the alternative beside it that nothing could read. */
@@ -396,14 +397,15 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
         return new StatedByClauses.Part(
                 new Adoption<>(java.util.Set.of(), java.util.Set.of(), java.util.Set.of(UNREAD),
                         true, java.util.Set.of()),
-                Adoption.nothing(), Map.of(), java.util.Set.of(), shortfalls);
+                Adoption.nothing(), Map.of(), java.util.Set.of(), shortfalls,
+                EndsLeftOpen.nothing());
     }
 
     /** And two choices leaving one position open are two things an author can look at. */
     @Test
     void twoChoicesLeavingOnePositionOpenAreTwo() {
-        RuleShortfall.Site.AtAChoice one = aChoice();
-        RuleShortfall.Site.AtAChoice other = aChoice();
+        ChoiceSite one = aChoice();
+        ChoiceSite other = aChoice();
 
         assertEquals(2, java.util.Set.of(
                         new RuleShortfall(CONSTRAINED, UnreadReason.ALTERNATIVE_NOT_READ,

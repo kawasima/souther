@@ -157,16 +157,23 @@ sealed interface StatedByClauses {
      *                       keeps its own and takes nothing from the other. Two branches somebody
      *                       can be in have both, together with whatever the choice between them
      *                       raised
+     * @param endsLeftOpen where the reading of ends did not work out the end this part states, and
+     *                     which choice an author is sent to for it ({@link EndsLeftOpen}). The
+     *                     ends' own, and not the other half of {@code ruleShortfalls}: that one is
+     *                     about which values may stand at a position, and a reading that has a word
+     *                     for a range where the other has none is short of nothing here
      */
     record Part(Adoption<FactSubject, ReadingLanguage.Values> byValues,
                 Adoption<FactSubject, ReadingLanguage.Order> byOrder,
                 Map<FactSubject, StringRestriction> aboutStrings,
                 Set<AdmissibleReading.AskedAt> asked,
-                Set<RuleShortfall> ruleShortfalls) {
+                Set<RuleShortfall> ruleShortfalls,
+                EndsLeftOpen endsLeftOpen) {
 
         /** What a clause of no connective, that no reading has a word for, took in. */
         static Part nothing() {
-            return new Part(Adoption.nothing(), Adoption.nothing(), Map.of(), Set.of(), Set.of());
+            return new Part(Adoption.nothing(), Adoption.nothing(), Map.of(), Set.of(), Set.of(),
+                    EndsLeftOpen.nothing());
         }
 
         /**
@@ -187,7 +194,8 @@ sealed interface StatedByClauses {
             return new Part(byValues.both(other.byValues()), byOrder.both(other.byOrder()),
                     StringRestriction.over(aboutStrings, other.aboutStrings(), true),
                     askedIn(asked, other.asked()),
-                    shortOf(ruleShortfalls, other.ruleShortfalls()));
+                    shortOf(ruleShortfalls, other.ruleShortfalls()),
+                    endsLeftOpen.both(other.endsLeftOpen()));
         }
 
         /**
@@ -206,12 +214,27 @@ sealed interface StatedByClauses {
          * be about.
          */
         Part inADeadBranch() {
+            // And no end of it is left open. An end nothing derived is what a value of this type
+            // may still be at, and no value of this type is in this branch.
             return new Part(byValues.inADeadBranch(), byOrder.inADeadBranch(), Map.of(),
-                    Set.of(), Set.of());
+                    Set.of(), Set.of(), EndsLeftOpen.nothing());
+        }
+
+        /**
+         * The same part, written under a choice one alternative of which nobody can be in.
+         *
+         * <p>Only the ends this reading did not work out are about it. Everything else here is what
+         * the clause says, and a clause says what it says wherever it is written; this one is about
+         * what reaches a reader, and the walk that would have reached these ends stopped at the
+         * {@code ||} the author wrote.
+         */
+        Part underACollapsedChoice() {
+            return new Part(byValues, byOrder, aboutStrings, asked, ruleShortfalls,
+                    endsLeftOpen.underACollapsedChoice());
         }
 
         /** The same part of two branches somebody can be in, under the choice between them. */
-        Part either(RuleShortfall.Site.AtAChoice choice, AlternativeOpening opening, Part other) {
+        Part either(ChoiceSite choice, AlternativeOpening opening, Part other) {
             // What a rule is answerable for is said of the choice, beside it and never out of it.
             // What happened is that this choice offered an alternative nothing could read, so an
             // author is sent to the choice — filed at a leaf under the branch that was read, they
@@ -237,7 +260,11 @@ sealed interface StatedByClauses {
             return new Part(byValues.either(opening.byValues(), other.byValues()),
                     byOrder.either(opening.byOrder(), other.byOrder()),
                     StringRestriction.over(aboutStrings, other.aboutStrings(), false),
-                    askedIn(asked, other.asked()), held(shortfalls));
+                    askedIn(asked, other.asked()), held(shortfalls),
+                    // And the ends the choice leaves open, struck down by what each alternative
+                    // says it came to and never added to: what a choice can show is that the branch
+                    // beside an unfollowed one puts every value of a position on the order.
+                    endsLeftOpen.either(choice, byOrder, other.endsLeftOpen(), other.byOrder()));
         }
 
         /**
@@ -277,7 +304,7 @@ sealed interface StatedByClauses {
          * stops, in the vocabulary that can say the ends were the reading that stopped
          * ({@code RuleAccounting.Why.TheEndReadingSays}); this reason is not it.
          */
-        private static void leftOpenByValues(RuleShortfall.Site.AtAChoice choice,
+        private static void leftOpenByValues(ChoiceSite choice,
                                              Set<FactSubject> these,
                                              Set<RuleShortfall> unread, Set<RuleShortfall> out) {
             these.stream()
@@ -543,7 +570,15 @@ sealed interface StatedByClauses {
                     // And what a rule of this leaf is answerable for, asked of the reading that
                     // decided it and written down where it decided. Read off what the leaf leaves
                     // the positions instead, this would be a list of reasons and no clause.
-                    held(values.shortfallsAt(e))));
+                    held(values.shortfallsAt(e)),
+                    // And which of the positions this leaf names have an end here that is unknown,
+                    // which is the ends' answer and not this walk's. What the clause names is what
+                    // is handed over; which of those have an end at all, and which of them this
+                    // reading worked out, are questions only it can answer — a rule it followed to
+                    // the end leaves none of them, nor does one holding a position it counts to
+                    // another of them, nor is a position whose values are not ordered one it fell
+                    // short at.
+                    EndsLeftOpen.at(ordered.endsLeftUnknownAt(e, mentions))));
         }
 
         /**
@@ -1009,7 +1044,7 @@ sealed interface StatedByClauses {
                     // clause that asked for it, and reaches no clause that asked for something else.
                     shortOf(part.ruleShortfalls(),
                             askedFor(made.made().aboutARule(), part.asked())),
-                    part.aboutStrings())));
+                    part.aboutStrings(), part.endsLeftOpen())));
             return parts;
         }
 
@@ -1053,10 +1088,16 @@ sealed interface StatedByClauses {
                         // was the dead one is asked here and nowhere below: both sides arrive with
                         // their fate already spent, and a choice nobody can take at all is this
                         // same line with two of them.
-                        yield left.both(right);
+                        //
+                        // And what is accumulated is still written under the choice the author
+                        // wrote, which the walk that raises a rule's questions stopped at. So an
+                        // end left open in the branch that stands is one nothing else reaches, and
+                        // it is marked here — where the written choice is still in hand — rather
+                        // than left to read like an end under a conjunction.
+                        yield left.both(right).mapped(Part::underACollapsedChoice);
                     }
                     yield left.either(
-                            new RuleShortfall.Site.AtAChoice(it.id(), it.writtenAt().pos()),
+                            new ChoiceSite(it.id(), it.writtenAt().pos()),
                             opens(it.id(), fate.width(), left.took(), right.took()),
                             right);
                 }
@@ -1169,7 +1210,12 @@ sealed interface StatedByClauses {
                     // on the position and is the position's own, kept by the carrier that answers
                     // for the position.
                     shortOf(part.ruleShortfalls(),
-                            askedFor(known.ruleShortfalls(), part.asked()))));
+                            askedFor(known.ruleShortfalls(), part.asked())),
+                    // What the ends left open is untouched. Which machines the values could not
+                    // build says nothing about which ends this reading worked out, and a position
+                    // struck off here would be one the border is told nothing about because a
+                    // pattern beside it was unaffordable.
+                    part.endsLeftOpen()));
         }
 
         /**
@@ -1183,7 +1229,7 @@ sealed interface StatedByClauses {
          * parts. Each of them is written under one alternative and is answered by what happened to
          * that alternative, which is nothing — both stand.
          */
-        Taken either(RuleShortfall.Site.AtAChoice choice, AlternativeOpening opening, Taken other) {
+        Taken either(ChoiceSite choice, AlternativeOpening opening, Taken other) {
             return new Taken(took.either(choice, opening, other.took()),
                     joined(parts, other.parts()),
                     opened(opened(opened, other.opened()), opening.byValues().positions()));
@@ -1472,7 +1518,7 @@ sealed interface StatedByClauses {
             Map<Core, ReadByClauses.OfAPart> out = new IdentityHashMap<>();
             said.forEach((each, part) -> out.put(each, new ReadByClauses.OfAPart(
                     part.byValues(), part.byOrder(), part.aboutARule(),
-                    admitted(part.aboutStrings(), answers))));
+                    admitted(part.aboutStrings(), answers), part.endsLeftOpen())));
             return out;
         }
 
@@ -1542,7 +1588,8 @@ sealed interface StatedByClauses {
     record PartAccount(Adoption<FactSubject, ReadingLanguage.Values> byValues,
                        Adoption<FactSubject, ReadingLanguage.Order> byOrder,
                        Set<RuleShortfall> aboutARule,
-                       Map<FactSubject, StringRestriction> aboutStrings) {}
+                       Map<FactSubject, StringRestriction> aboutStrings,
+                       EndsLeftOpen endsLeftOpen) {}
 
     /** How much the allowance has spent in all, for holding an account to spending nothing — see
      *  {@code InvariantChecker.spentBy}. */

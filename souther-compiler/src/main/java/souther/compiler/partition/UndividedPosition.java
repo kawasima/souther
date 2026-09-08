@@ -141,6 +141,21 @@ public record UndividedPosition(TermPath at, Why why) {
          */
         RULES_NOT_READ_AT_ALL,
         /**
+         * A rule about this position offers an alternative this compiler does not read, and what
+         * the rule leaves here is what its alternatives leave together.
+         *
+         * <p>Its own word beside {@link #UNSUPPORTED_SYNTAX}, and the difference is what an author
+         * does about it. That one promises the rule at this position is written in a form nothing
+         * here takes apart, which sends them to rewrite it; the rule here reads perfectly well and
+         * what they can act on is the branch written beside it. Said as the other word, an author
+         * rewrites a bound that was never the difficulty.
+         *
+         * <p>A fact about this compiler and not about the model. The choice may hold the position
+         * exactly where the rule at it says, and may hold it nowhere; which of the two it is, is
+         * what reading the alternative would answer.
+         */
+        UNREAD_ALTERNATIVE_OF_A_CHOICE,
+        /**
          * The compiler followed the rules about this position, and building the exact set of values
          * they leave between them cost more than it allows itself.
          *

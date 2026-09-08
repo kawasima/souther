@@ -32,6 +32,7 @@ record ReadPosition(TermPath path, TypeView view, List<PositionBounds> bounds,
                     ProjectionEvidence projection, List<Case> declared, ReadingResult reading,
                     ObligationDomain obligations, AdmissibleSet admitted,
                     List<RuleWithoutALine> rulesWithoutALine,
+                    List<EndLeftOpen> endsLeftOpen,
                     List<StandingQuestion> unansweredQuestions,
                     Set<RulesLeftUnread> rulesLeftUnread,
                     StructuralInspection structure) implements Position {
@@ -55,6 +56,7 @@ record ReadPosition(TermPath path, TypeView view, List<PositionBounds> bounds,
         }
         declared = List.copyOf(declared);
         rulesWithoutALine = List.copyOf(rulesWithoutALine);
+        endsLeftOpen = List.copyOf(endsLeftOpen);
         unansweredQuestions = List.copyOf(unansweredQuestions);
         // Kept in the order the readers found them, so that two runs over one model produce the
         // same value — the reason `MeasureClosure` keeps its gaps that way too.

@@ -889,7 +889,8 @@ public final class InputDomain {
         return new ReadPosition(read.path(), read.view(), read.bounds(),
                 read.nothingExists(), read.projection(),
                 read.declared(), read.reading(), read.obligations(), read.admitted(),
-                read.rulesWithoutALine(), read.unansweredQuestions(),
+                read.rulesWithoutALine(), read.endsLeftOpen(),
+                read.unansweredQuestions(),
                 left, read.structure());
     }
 
@@ -1395,6 +1396,17 @@ public final class InputDomain {
                 placed.projection(path), declared, reading,
                 ObligationDomain.of(reading, declared), admitted,
                 withoutALine,
+                // And which of those rules the reading of ends is still owed an end of. The
+                // finding above says what became of the rule here; this says the reading did not
+                // run out, which nothing else at this position says once the walk that classifies
+                // has stopped at the choice.
+                //
+                // Every one of them, whether or not a choice is answerable for it: which of the
+                // two the finding above was written for is a question about what an author can do,
+                // and the measure is asking whether the line was derived.
+                placed.endsLeftOpenAt(path).stream()
+                        .map(each -> new EndLeftOpen(each.rule(), each.byChoice() != null))
+                        .toList(),
                 // What the rules of this position leave open. Asked of the accounting rather than
                 // read off the completeness beside it: one reading being short of a position's
                 // rules is that reading's business, and a rule another reading took in is not a
@@ -1769,6 +1781,23 @@ public final class InputDomain {
             out.add(new RuleCitation.Named(each.part().rule()),
                     filedAt(path, each.at(), type, source),
                     each.why());
+        }
+        // And the rules whose end here a choice in them left open. Beside the walk's own findings
+        // and not among them: that walk stops at a choice, so a comparison written under one is a
+        // rule it never had in hand, and what became of it is what the reading of ends said once
+        // the branches were settled.
+        //
+        // Only where a choice is answerable, because that is what this sentence says. An end left
+        // open with no choice behind it is left open all the same, and what it leaves the measure
+        // short of is said where the measure is; said here, an author would be sent to a branch
+        // their own rule does not have.
+        for (FieldDomains.EndLeftOpen each : placed.endsLeftOpenAt(path)) {
+            if (each.byChoice() == null) {
+                continue;
+            }
+            out.add(new RuleCitation.Named(each.rule()),
+                    filedAt(path, each.at(), type, source),
+                    new BlockReason.EndLeftOpenByAChoice());
         }
     }
 

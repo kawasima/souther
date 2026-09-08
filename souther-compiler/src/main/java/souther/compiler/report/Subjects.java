@@ -100,6 +100,11 @@ final class Subjects {
                     new Subject.AtAPosition(it.behavior(), it.at());
             case ClosureGap.PositionNotReachedInto it ->
                     new Subject.AtAPosition(it.behavior(), it.at());
+            // The position, and not the rule it names. A reader is sent where the line was to have
+            // been, and which rule was to have drawn it is what the finding there says — sent to
+            // the rule, two of these about one position would be two places to go for one line.
+            case ClosureGap.LineNotDerived it ->
+                    new Subject.AtAPosition(it.behavior(), it.at());
         };
     }
 }

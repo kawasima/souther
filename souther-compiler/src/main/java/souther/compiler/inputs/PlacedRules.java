@@ -578,6 +578,26 @@ record PlacedRules(TermPath root, TypeSymbol value, Rules rules, Reaching alsoRe
     }
 
     /**
+     * The rules whose end at {@code path} a choice in them left open.
+     *
+     * <p>Asked of every reading that reaches the position, as the rules with no line are: a clause
+     * of the value this position sits in and a clause of its own type are two ways of saying where
+     * its values stop, and a choice in either of them leaves the same end open.
+     */
+    List<FieldDomains.EndLeftOpen> endsLeftOpenAt(TermPath path) {
+        RuleKey where = keyOf(path);
+        List<FieldDomains.EndLeftOpen> here =
+                where == null ? List.of() : bounds().endsLeftOpenAt(where);
+        TermPath above = alsoAt(path);
+        if (above == null) {
+            return here;
+        }
+        List<FieldDomains.EndLeftOpen> out = new ArrayList<>(here);
+        out.addAll(alsoReaching.outer().endsLeftOpenAt(above));
+        return List.copyOf(out);
+    }
+
+    /**
      * The clauses of this value's declarations that no end came out of, once each.
      *
      * <p>For the reading that draws lines rather than places ends. A rule relating two coordinates

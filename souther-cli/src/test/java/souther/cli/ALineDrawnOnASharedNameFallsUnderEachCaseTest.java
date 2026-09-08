@@ -258,6 +258,47 @@ class ALineDrawnOnASharedNameFallsUnderEachCaseTest {
     }
 
     /**
+     * And a clause whose end a choice in it left open names the shared field under each case.
+     *
+     * <p>The same question asked of the other reading. Where the values stop under a choice is what
+     * the alternatives leave together, and a branch nothing reads leaves it as far out as that
+     * branch allows — so the field is owed the sentence wherever it is read, and reading it at the
+     * sum alone would say it of a name no row is written at.
+     */
+    @Test
+    void aClauseWhoseEndAChoiceLeftOpenNamesTheSharedFieldUnderEachCase() throws Exception {
+        String model = """
+                module example.line
+
+                data Paging = { limit: Int }
+                data A = { ...Paging, x: Int }
+                data B = { ...Paging, y: Int }
+                data Q = A | B
+
+                data Holder = { q: HELD }
+                    invariant fits = q.limit >= 2 || Int.abs(q.limit) >= 5
+
+                data Ok
+
+                behavior read : (h: Holder) -> Ok
+
+                let read (h) = Ok
+                """;
+        String throughTheSum = report(model.replace("HELD", "Q"));
+
+        assertTrue(throughTheSum.contains("left open by a choice in it whose other alternative"
+                        + " this compiler does not read, about `h.q@A.limit`"),
+                () -> throughTheSum);
+        assertTrue(throughTheSum.contains("left open by a choice in it whose other alternative"
+                        + " this compiler does not read, about `h.q@B.limit`"),
+                () -> throughTheSum);
+        assertTrue(report(model.replace("HELD", "A"))
+                        .contains("left open by a choice in it whose other alternative this"
+                                + " compiler does not read, about `h.q.limit`"),
+                "which is what the same clause says where no sum is in the way");
+    }
+
+    /**
      * A line neither of whose names was filed stays where the model wrote it.
      *
      * <p>Nothing to move it to, and the two ways of that are one answer about the line: a name

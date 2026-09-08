@@ -237,6 +237,28 @@ public sealed interface Position permits ReadPosition {
     List<RuleWithoutALine> rulesWithoutALine();
 
     /**
+     * The ends of rules written here that the reading of ends did not work out, each under the
+     * choice an author is sent to for it.
+     *
+     * <p>Beside {@link #rulesWithoutALine()} and not read out of it. That list is what a report
+     * says became of a rule at this position, and what it says is the same sentence about a rule
+     * this compiler read to the end and about one it did not — which is why it holds neither
+     * measure open. This is the other question: whether the reading that draws lines here ran out,
+     * which a rule read to the end never leaves it doing.
+     *
+     * <p><b>Every one of them, and not only the ones a choice is answerable for.</b> Whether the
+     * line here was derived and whether there is a clause to send an author to are two questions,
+     * and an end nobody can be sent anywhere about is as underived as one they can. Kept to the
+     * second, an end left open beside an alternative nobody can be in went out as a model that
+     * draws no line.
+     *
+     * <p>One entry per choice, because two of them leaving one end open are two things to lift and
+     * lifting either leaves the end where it was. What they leave short is the one line, and that
+     * is folded where the measure is ({@code ClosureGap.LineNotDerived}).
+     */
+    List<EndLeftOpen> endsLeftOpen();
+
+    /**
      * Whether the values at this position are read from a product this reading cannot show the
      * rules admit.
      *

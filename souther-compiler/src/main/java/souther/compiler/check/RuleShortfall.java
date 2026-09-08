@@ -56,7 +56,7 @@ record RuleShortfall(FactSubject position, UnreadReason why, RuleShortfall.Site 
      * {@link #writtenAt} answers — asked of every kind, so that whoever puts these in the order
      * somebody wrote them asks one question of all of them and a kind added later has to answer it.
      */
-    sealed interface Site {
+    sealed interface Site permits Site.AtALeaf, ChoiceSite {
 
         /** Where an author wrote it, which is what an order among them is taken over. */
         SourcePos writtenAt();
@@ -91,36 +91,5 @@ record RuleShortfall(FactSubject position, UnreadReason why, RuleShortfall.Site 
             }
         }
 
-        /**
-         * One choice an alternative of which nothing could read.
-         *
-         * <p>The identity and the place beside each other, rather than one made to answer for the
-         * other. Which choice this is, is a question the whole reading asks and a source position
-         * cannot answer — a helper expanded twice writes one operator at one place and is two
-         * choices — and where it is written is a question the identity cannot answer, being nothing
-         * but itself. So the choice carries both from where it is made.
-         *
-         * @param writtenAt the operator, which is what a reader is sent to: the position an author
-         *                  wrote the {@code ||} at and not where the operand under it begins
-         */
-        record AtAChoice(ChoiceId id, SourcePos writtenAt) implements Site {
-
-            public AtAChoice {
-                if (id == null || writtenAt == null) {
-                    throw new IllegalArgumentException(
-                            "a choice is some choice of a clause, written somewhere");
-                }
-            }
-
-            @Override
-            public boolean equals(Object other) {
-                return other instanceof AtAChoice it && id == it.id;
-            }
-
-            @Override
-            public int hashCode() {
-                return System.identityHashCode(id);
-            }
-        }
     }
 }

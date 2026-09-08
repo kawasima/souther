@@ -493,7 +493,8 @@ public final class InvariantChecker {
                   Map<RuleKey, ValueSet> admitted,
                   Map<RuleKey, List<UnreadReason>> unreadAt,
                   Set<RuleKey> notSeparated,
-                  StringFacts stringMachines) {
+                  StringFacts stringMachines,
+                  Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen) {
 
         /** The atom each count is recorded against, for a reader that wants the subject and not
          *  which operation it is a count of. Projected rather than kept beside {@link #held()}: two
@@ -956,10 +957,21 @@ public final class InvariantChecker {
         // What the answer has left, before a word of the account is read.
         int unspent = spentBy(allowed);
         AdmissibleValues<FactSubject> values = answered.whole().values();
+        // And where a choice of a rule left an end of it open, which is the reading of ends saying
+        // what became of its own clause. Read off the account rather than walked for: the answer is
+        // composed over the tree the author wrote, with the branches nobody can be in already
+        // dropped, and a walk here would be asking a second time about a shape the settlement has
+        // finished with.
+        Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen = new LinkedHashMap<>();
         answered.perClause().forEach((each, one) -> {
             narrowedBy.put(each.from(), one);
             one.account().adopted().forEach(position -> took.record(each.from(), position));
             took.stoppedBy(each.from(), one.account().aboutARule());
+            // Only the rules with one, so that a reader asking a position what is left open there
+            // walks the rules that have something rather than every rule of the declaration.
+            if (!one.account().endsLeftOpen().byPosition().isEmpty()) {
+                endsLeftOpen.merge(each.from(), one.account().endsLeftOpen(), EndsLeftOpen::both);
+            }
         });
         answered.perPart().forEach((each, parts) -> {
             Map<Core, ReadByClauses.OfAPart> out = adoptedBy
@@ -1089,7 +1101,8 @@ public final class InvariantChecker {
         return new Seeded(constraints, atoms, keys, held, reading, took, read,
                 notGathered, unreadOfEveryValue, Set.copyOf(handedOn),
                 readBy, Map.copyOf(spacing), admitted, unreadAt, notSeparated,
-                c.answers.facts());
+                c.answers.facts(),
+                Collections.unmodifiableMap(new LinkedHashMap<>(endsLeftOpen)));
     }
 
     /**

@@ -174,8 +174,43 @@ public sealed interface BlockReason {
     sealed interface RuleReadingStopped extends StoppedWithoutALine, QuestionStandingReason {
 
         /**
-         * One switch over the eleven, and the reason for it being one: a division of these into two
-         * is only reviewable where all eleven answers are visible together.
+         * Whether a position holding this rule has values nothing can claim are what the rules
+         * leave.
+         *
+         * <p>What a caller means by "a reading stopped here" and what this type is
+         * ({@link RulesWithNoLine#aReadingThatStopped}). They were one question while every rule
+         * this compiler got partway through was one the reading of values got partway through: a
+         * rule that reaches a position and is not taken in leaves the values there an upper bound,
+         * and a reader deciding whether the position was answered exactly asked which type the
+         * reason had.
+         *
+         * <p>They are not one question. A rule can be read to the end by the reading that says
+         * which values may stand at a position and be one the reading that says where they stop
+         * could not follow — and then the values are exactly what the rules leave, and only the
+         * line is missing. Answered off the type, such a position comes back as one whose cases
+         * are all unsettled because a rule went unread, on the strength of a border.
+         *
+         * <p>One switch, as {@link #runSensitivity} is one, and for the same reason: the answers
+         * are only reviewable together. Every arm that was here before this question was asked
+         * answers as it did — each of them is a stop of the reading that turns clauses into sets of
+         * values — so nothing about what a position admits moves by this being asked.
+         */
+        default boolean widensWhatThePositionAdmits() {
+            return switch (this) {
+                // The reading of ends could not follow an alternative, and every alternative's
+                // values were read. What the position admits is what the rules leave; the line
+                // through them is what nobody worked out.
+                case EndLeftOpenByAChoice _ -> false;
+                case PatternTooCostly _, PatternTooDeeplyNested _, OrderedExtentTooCostly _,
+                     UnreadComparisonForm _, UnreadComparisonDomain _, RuleAboutADerivedValue _,
+                     RuleAboutAnElementOfSeveralSequences _, UnreadValueRule _,
+                     ValueRuleRelatingTwoPositions _, CasePairingNotDetermined _ -> true;
+            };
+        }
+
+        /**
+         * One switch over the twelve, and the reason for it being one: a division of these into two
+         * is only reviewable where all twelve answers are visible together.
          */
         @Override
         default RunSensitivity runSensitivity() {
@@ -186,14 +221,15 @@ public sealed interface BlockReason {
                 // same rule.
                 case PatternTooCostly _, PatternTooDeeplyNested _,
                      OrderedExtentTooCostly _ -> RunSensitivity.MAY_CHANGE;
-                // And seven where nothing was compared against anything. A form nothing takes
+                // And eight where nothing was compared against anything. A form nothing takes
                 // apart, values no line can be drawn on, a rule about a value made from this one, a
                 // rule about an element of one of several sequences, a relation between two
                 // positions and a pairing nothing worked out are all met again by a run allowed
-                // more of everything.
+                // more of everything. So is an end a choice left open: what the reading of ends
+                // stops on is a form it does not enter, and there is no figure it stopped at.
                 case UnreadComparisonForm _, UnreadComparisonDomain _, RuleAboutADerivedValue _,
                      RuleAboutAnElementOfSeveralSequences _, UnreadValueRule _,
-                     ValueRuleRelatingTwoPositions _,
+                     ValueRuleRelatingTwoPositions _, EndLeftOpenByAChoice _,
                      CasePairingNotDetermined _ -> RunSensitivity.UNAFFECTED;
             };
         }
@@ -481,6 +517,35 @@ public sealed interface BlockReason {
      * values that follows a rule into a shape it does not enter today.
      */
     record UnreadValueRule() implements RuleReadingStopped {}
+
+    /**
+     * A choice in the rule offers an alternative this compiler does not read, and where the values
+     * stop here is what the two alternatives leave together.
+     *
+     * <p>The rule was read. What stopped is the reading of one branch of it, and a value satisfying
+     * that branch owes the branch beside it nothing — so the end at this position is as far out as
+     * whatever the unread alternative allows, which is not known.
+     *
+     * <p>Its own case beside {@link UnreadComparisonForm}, and the difference is what an author can
+     * do about it. That one says the comparison at this position is written in a shape no reader
+     * here takes apart, and an author sent after it would rewrite a bound that reads perfectly
+     * well. What they can act on is the branch written beside it.
+     *
+     * <p><b>Which choice it was is not here, and a document does not say it yet.</b> A rule may
+     * hold two of them that each leave one end open, and they are two things an author has to do —
+     * so this is one sentence about two, exactly as the same shape is on the reading of values,
+     * whose two shortfalls at one position come to one line as well. What would tell them apart is
+     * the operator each was written at, and a rule an author named is found by that name
+     * ({@link souther.compiler.check.RuleCitation}): there is nowhere in what a document says about
+     * such a rule to put a second place. Split without one, the two are the same sentence twice.
+     *
+     * <p>So the choices are kept where they are told apart — the reading's own
+     * ({@code check.ChoiceSite}) — and what reaches a position says how many there were
+     * ({@link EndLeftOpen}). What is missing is a way for a document to name a place inside a named
+     * rule, and it is the same thing missing wherever the two readings' accounts of one choice are
+     * to be put together.
+     */
+    record EndLeftOpenByAChoice() implements RuleReadingStopped {}
 
     /**
      * A rule naming a set of strings whose machine is more than this compiler will make.

@@ -1857,6 +1857,10 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // The three a rule reaches, written about the rule: the line these appear on names it,
             // so a sentence saying "a rule about it" would name the rule and then not say so.
             case UNSUPPORTED_SYNTAX -> "written in a form this compiler does not read";
+            // Written about the choice and not about the rule at this position: that one was read,
+            // and an author sent after its form would rewrite what is not the difficulty.
+            case UNREAD_ALTERNATIVE_OF_A_CHOICE -> "left open by a choice in it whose other"
+                    + " alternative this compiler does not read";
             // Written about the rules together and not about this one. What ran out is the
             // allowance for the values they leave between them, and two rules cheap on their own
             // can have an answer that is not — so a sentence naming this rule would be telling a
@@ -4550,6 +4554,10 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 };
                 case ClosureGap.RulesNotReached _ ->
                         WeakeningWord.RULES_NOT_REACHED;
+                // The same word as a rule nothing classified, and the same news: this compiler did
+                // not read far enough. Which clause of the rule it stopped in is what the finding
+                // at the position says, and is not what this word promises.
+                case ClosureGap.LineNotDerived _ -> WeakeningWord.RULE_UNREAD;
             };
             case Weakening.BodiesNotElaborated _ -> WeakeningWord.BODIES_NOT_ELABORATED;
             case Weakening.BoundaryNotDerived _ -> WeakeningWord.BEHAVIOR_BOUNDARY_NOT_DERIVED;

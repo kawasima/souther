@@ -11,6 +11,7 @@ import souther.compiler.types.Type;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -71,6 +72,18 @@ final class OrderedReading {
     private final Map<FactSubject, Carrier> carriers;
     /** The leaves this reading could not account for, written down as they are met. */
     private final Set<Core> gaveUp = Collections.newSetFromMap(new IdentityHashMap<>());
+    /**
+     * The leaves among those that hold one of this reading's positions to another of them.
+     *
+     * <p>Beside {@link #gaveUp} and not taken out of it, because the two answer different readers.
+     * What such a rule leaves the position is not a range and this reading has none for it, so it
+     * is a rule this reading did not account for and everything asking that is right to hear so.
+     * What it is not is a rule nobody read: it holds the position to another position, which is a
+     * line somewhere else and no end here — and a reader asking whether the end at this position is
+     * unknown is owed that answer rather than this reading's.
+     */
+    private final Set<Core> relatingTwoPositions =
+            Collections.newSetFromMap(new IdentityHashMap<>());
 
     private OrderedReading(Terms terms, Map<FactSubject, Carrier> carriers) {
         this.terms = terms;
@@ -139,6 +152,50 @@ final class OrderedReading {
         return gaveUp.contains(e);
     }
 
+    /**
+     * The positions of {@code named} whose ends {@code e} leaves unknown here.
+     *
+     * <p><b>The set and not a word about the leaf, because the set is what a caller wants and this
+     * is what owns it.</b> Which positions a clause names is the clause's own answer and arrives as
+     * {@code named}; which of them have an end at all, and which of those this reading worked out,
+     * are this reading's. Handed the flag instead, a caller made the set out of every position the
+     * clause named — and a position whose values are not ordered, which has no end for anything to
+     * be unknown about, came back as one whose end nobody could work out.
+     *
+     * <p>Narrower than {@link #gaveUpAt} by the rules this reading followed to the end and has no
+     * range for. A comparison holding one position it counts to another states where the values
+     * part as surely as a bound does, and the line it draws runs between the two rather than at
+     * either — so nothing about where this position stops is waiting on a reader. Asked
+     * {@link #gaveUpAt}, such a rule is one nobody read, and a choice offering it comes back as one
+     * whose end nothing could work out.
+     *
+     * <p>The two are one answer with two projections and not two records of one event: what is kept
+     * is the leaf and which of the three things happened to it, and each caller asks for the half
+     * it means. Kept as two flags a caller could ask for both and be told a rule was read and not
+     * read.
+     *
+     * <p><b>Wider than the relation it recognises.</b> A comparison whose subject is a term this
+     * reading cannot name — an absolute value, a difference — leaves its positions here whatever
+     * the arithmetic under it comes to, because this reading cannot see that it cancels. What such
+     * a rule leaves is known elsewhere, and asking that reader is not something this one can do.
+     */
+    Set<FactSubject> endsLeftUnknownAt(Core e, Set<FactSubject> named) {
+        if (!gaveUp.contains(e) || relatingTwoPositions.contains(e)) {
+            return Set.of();
+        }
+        Set<FactSubject> out = new LinkedHashSet<>();
+        named.forEach(each -> {
+            // The positions this reading counts, which is the whole of what it has ends for. A
+            // position whose values are not ordered at all is not one it fell short at: there is
+            // no end there to have been worked out, and the question this answers is not asked of
+            // it.
+            if (carriers.containsKey(each)) {
+                out.add(each);
+            }
+        });
+        return out;
+    }
+
     /** A leaf this reading could not follow, which leaves every position where it was. */
     private OrderedIntervals<FactSubject> gaveUp(Core e) {
         gaveUp.add(e);
@@ -175,6 +232,19 @@ final class OrderedReading {
         // both ends and `!(value == x)` places none, which is the same answer each of them gets
         // written directly — and neither is a rule this reading failed at.
         ComparisonClaim said = positive ? claim : claim.denied();
+        // And whether this rule holds the position to another position this counts, which is a fact
+        // about the two sides and about neither claim. Written down here, where both sides are in
+        // hand and before either is read for what it leaves: put inside what one claim does with
+        // its side, the same rule written with a different operator is a rule nobody read
+        // ({@code n == m} beside {@code n < m}).
+        //
+        // Whether this reading then has a range for it is a separate question, and the two are
+        // asked together by whoever wants the end ({@link #leavesTheEndsUnknownAt}). So a rule that
+        // does place an end is here as well where it happens to compare two positions, and says
+        // nothing by being: there is nothing to be unknown about a rule this reading followed.
+        if (positionIn(bound, at) != null) {
+            relatingTwoPositions.add(bin);
+        }
         return switch (said) {
             // The value the rule is met at, which is a range with one value in it. What a denial
             // leaves is every other value, and that is a set rather than a range — which is the
