@@ -551,6 +551,20 @@ sealed interface Confinement<A> {
             return values;
         }
 
+        /**
+         * Where this reading's orders stop, for a caller asking a question only that reading
+         * answers.
+         *
+         * <p>Beside {@link #values()} and on the same terms. Neither is handed out for the question
+         * this type owns — whether anything satisfies the pair is {@link #admission} and is not
+         * askable of one half — and a caller comparing what one alternative leaves against what the
+         * choice leaves is asking each reading about its own, which is a question the other has no
+         * word for.
+         */
+        OrderedIntervals<A> ordered() {
+            return ordered;
+        }
+
         @Override
         public Map<A, Carrier> carriers() {
             return carriers;
