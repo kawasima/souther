@@ -1,6 +1,7 @@
 package souther.compiler.check;
 
 import souther.compiler.ast.Hir;
+import souther.compiler.types.BindingId;
 import souther.compiler.types.ValueName;
 
 import java.util.ArrayList;
@@ -162,6 +163,29 @@ public final class SpecImplementation {
             return List.copyOf(inputs);
         }
 
+        /**
+         * Which behavior each injected parameter stands for, under the binding a body reads it
+         * through.
+         *
+         * <p>A name written at a call inside the body denotes the parameter and not the behavior,
+         * so what a reader typing that call needs is the binding. Read off the division and not
+         * paired with the clause by name: an implementation names its own parameters, and two
+         * modules may declare a behavior of one name.
+         *
+         * <p>Here rather than at any of the readers, for the reason {@link #inputs} is: a caller
+         * that filtered the bindings itself would be deciding which arm answers this question, and
+         * three of them would each have decided.
+         */
+        public Map<BindingId, ValueName.Behavior> injectedBindings() {
+            Map<BindingId, ValueName.Behavior> injected = new LinkedHashMap<>();
+            for (ParameterBinding binding : bindings) {
+                if (binding instanceof ParameterBinding.AnInjection stands) {
+                    injected.put(stands.written().binder().id(), stands.behavior());
+                }
+            }
+            return Collections.unmodifiableMap(injected);
+        }
+
         /** The same, as the parameters alone — what a caller binding a local to an input needs. */
         public List<Hir.FnParam> inputs() {
             List<Hir.FnParam> written = new ArrayList<>();
@@ -172,7 +196,7 @@ public final class SpecImplementation {
         }
 
         /** Whether the definition wrote a parameter for each position the declaration asks for, and
-         *  no others. Where it did not, E1614 says so where the definition is written. */
+         *  no others. Where it did not, E1615 says so where the definition is written. */
         public boolean hasExactArity() {
             return definition.params().size() == shape.size();
         }

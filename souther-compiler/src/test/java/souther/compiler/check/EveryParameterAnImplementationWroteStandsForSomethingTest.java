@@ -1,6 +1,8 @@
 package souther.compiler.check;
 
+import souther.compiler.Compiler;
 import souther.compiler.ast.Hir;
+import souther.compiler.diag.CompileException;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Names;
 import souther.compiler.types.ValueName;
@@ -15,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -86,15 +89,21 @@ class EveryParameterAnImplementationWroteStandsForSomethingTest {
     /**
      * A parameter the declaration asks for no position for is one of these, and says so.
      *
-     * <p>Written where an author has typed one parameter too many and not yet been told. It is
-     * refused where the definition is checked (E1615); what is asked here is what the parameter is
-     * before anything refuses it, which is what an editor reading the buffer has.
+     * <p>Written where an author has typed one parameter too many and not yet been told. What is
+     * asked here is what the parameter is before anything refuses it, which is what an editor
+     * reading the buffer has — and the refusal is asserted beside it, so which diagnostic answers
+     * for the arity is read off the compiler rather than off a comment.
      */
     @Test
     void aParameterThePositionsRunOutBeforeIsExtraneous() {
-        SpecImplementation.Implemented implemented = alignmentOf(TWO_OF_EACH.replace(
+        String tooMany = TWO_OF_EACH.replace(
                 "let place (id, other, findMember, logLookup)",
-                "let place (id, other, findMember, logLookup, stray)"), "place");
+                "let place (id, other, findMember, logLookup, stray)");
+        SpecImplementation.Implemented implemented = alignmentOf(tooMany, "place");
+
+        assertEquals("E1615",
+                assertThrows(CompileException.class, () -> Compiler.compile(tooMany)).code(),
+                "the arity is what refuses it, at the definition");
 
         assertEquals(5, implemented.bindings().size(),
                 "one for each parameter the author wrote, including the one nothing asked for");

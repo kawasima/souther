@@ -587,11 +587,10 @@ public final class Bodies {
      *
      * <p>An injected one is reached through the parameter {@code depends on} gave the body, so the
      * name written at the call denotes that parameter and not the behavior. Which parameter stands
-     * for which behavior is {@link SpecChecker#dependencyBindings}, read off the one division of an
-     * implementation's parameters rather than worked out again: which of them the clause fills is
-     * {@link SpecImplementation}'s to say and not a suffix measured here, the parameters are not
-     * paired with the clause by name because two modules may declare a behavior of one name, and the
-     * answer is a binding because a
+     * for which behavior is asked of the division of the implementation's parameters rather than
+     * worked out again: which of them the clause fills is {@link SpecImplementation}'s to say and
+     * not a suffix measured here, the parameters are not paired with the clause by name because two
+     * modules may declare a behavior of one name, and the answer is a binding because a
      * binding in force wins over the declaration it shadows (spec §fn-rules). Neither is a
      * difference a program can show here — a {@code depends on} its body never calls is refused
      * (E1603), so a shadow of that spelling has the parameter beside it — which is why it is asked
@@ -621,8 +620,8 @@ public final class Bodies {
             if (!body.present() || !spec.present()) {
                 return Answer.absent();
             }
-            Map<BindingId, ValueName.Behavior> injected = SpecChecker.dependencyBindings(
-                    SpecImplementation.align(spec.value(), body.value().value()));
+            Map<BindingId, ValueName.Behavior> injected = SpecImplementation
+                    .align(spec.value(), body.value().value()).injectedBindings();
             Set<ValueName.Behavior> reached = new LinkedHashSet<>();
             List<Hir.Expr> todo = new ArrayList<>();
             todo.add(body.value().value().writtenBody());

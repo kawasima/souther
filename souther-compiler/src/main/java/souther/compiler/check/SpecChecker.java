@@ -72,7 +72,7 @@ public final class SpecChecker {
                     if (fn != null) {
                         for (ValueName.Behavior called
                                 : requiredCalls(fn.writtenBody(), names,
-                                        dependencyBindings(SpecImplementation.align(spec, fn)))) {
+                                        SpecImplementation.align(spec, fn).injectedBindings())) {
                             if (!out.contains(called)) {
                                 out.add(called);
                             }
@@ -322,7 +322,7 @@ public final class SpecChecker {
         // implementation names its own parameters, and the behaviors it depends on may be declared
         // by different modules under one name.
         Map<souther.compiler.types.BindingId, ValueName.Behavior> dependsOn =
-                dependencyBindings(implemented);
+                implemented.injectedBindings();
         Type output = TypeOps.successType(spec.ret());
         // recursive helpers this behavior calls resolve through their signatures (spec §fn-declaration); merged
         // only for typing, so the construction and dependency walks below still see the business params alone.
@@ -875,23 +875,6 @@ public final class SpecChecker {
         List<ValueName.Behavior> calls = new java.util.ArrayList<>();
         collectRequiredCalls(body, requiredNames, dependencies, calls);
         return calls;
-    }
-
-    /**
-     * Which behavior each injected parameter of an implementation stands for.
-     *
-     * <p>Read off the division rather than paired by name: an implementation names its own
-     * parameters, and two modules may declare a behavior of one name.
-     */
-    public static Map<souther.compiler.types.BindingId, ValueName.Behavior> dependencyBindings(
-            SpecImplementation.Implemented implemented) {
-        Map<souther.compiler.types.BindingId, ValueName.Behavior> bound = new LinkedHashMap<>();
-        for (SpecImplementation.ParameterBinding binding : implemented.bindings()) {
-            if (binding instanceof SpecImplementation.ParameterBinding.AnInjection injected) {
-                bound.put(injected.written().binder().id(), injected.behavior());
-            }
-        }
-        return bound;
     }
 
     /**
