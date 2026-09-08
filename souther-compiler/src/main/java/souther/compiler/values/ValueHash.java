@@ -30,6 +30,10 @@ package souther.compiler.values;
  * <p>The kind is taken in because two values of different kinds holding alike are two values, and
  * where both are cases of one sum type nothing else here tells them apart — a block stated apart
  * from itself and a block left no value name the same block and claim different things.
+ *
+ * <p><b>How many parts a value has is not asked here.</b> There are as many of these as there are
+ * values here to write, and a value of five parts is a fifth one written when there is one. What
+ * they are for is the shape of an equality, and the shapes are what the shapes are.
  */
 final class ValueHash {
 
@@ -47,13 +51,27 @@ final class ValueHash {
     private ValueHash() {
     }
 
-    /** A value of {@code kind} holding one thing. */
+    /**
+     * A value of {@code kind} that holds one thing.
+     *
+     * <p>Which is what a value holding its parts in a value of its own holds: what it is equal by
+     * is that one, and what that one is made of is that one's own question. So this is where such
+     * a value comes, and not because it is simple.
+     */
     static int ofOnePart(Class<?> kind, int part) {
         return finished(GATHER * seed(kind) + part);
     }
 
-    /** A value of {@code kind} holding two, each in its own place: exchanging them is another
-     *  value, and this answers another number. */
+    /**
+     * A value of {@code kind} holding two, each in its own place: exchanging them is another value,
+     * and this answers another number.
+     *
+     * <p>A part that is itself a collection joins as the number that collection hands over, and how
+     * many it holds joins nothing. So two values whose collections sum alike are one number here,
+     * which is a collision and not the cancelling above: the parts of neither are recoverable from
+     * it. Where a value <em>is</em> a collection, how many it holds is part of the number
+     * ({@link #ofWhatItHolds}), because there is nothing else there to tell two of them apart.
+     */
     static int ofItsParts(Class<?> kind, int first, int second) {
         return finished(GATHER * (GATHER * seed(kind) + first) + second);
     }
