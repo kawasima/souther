@@ -59,7 +59,7 @@ class AValueSpellsItsHashWithTheAlgebraThePackageHasTest {
         List<String> spellingItThemselves = new ArrayList<>();
         for (ClassModel read : valuesClasses()) {
             if (declaresAHash(read) && !reaches(read, THE_ALGEBRA)) {
-                spellingItThemselves.add(read.thisClass().name().stringValue() + " " + shapeOf(read));
+                spellingItThemselves.add(read.thisClass().name().stringValue());
             }
         }
 
@@ -101,22 +101,6 @@ class AValueSpellsItsHashWithTheAlgebraThePackageHasTest {
             }
         }
         return false;
-    }
-
-    /** What the class's hash is made of, for saying so where one is reported. */
-    private static String shapeOf(ClassModel read) {
-        for (MethodModel method : read.methods()) {
-            if ("hashCode".equals(method.methodName().stringValue())
-                    && "()I".equals(method.methodType().stringValue())) {
-                return method.code().map(code -> code.elementList().stream()
-                        .map(element -> element instanceof InvokeDynamicInstruction dynamic
-                                ? "indy:" + dynamic.invokedynamic().bootstrap().bootstrapMethod()
-                                        .reference().owner().name().stringValue()
-                                : element.getClass().getSimpleName())
-                        .toList().toString()).orElse("(no code)");
-            }
-        }
-        return "(no hash)";
     }
 
     /** Whether {@code element} is the handing-over a compiler writes for a record. */

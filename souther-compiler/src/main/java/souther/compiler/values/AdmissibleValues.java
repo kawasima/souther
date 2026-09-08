@@ -858,9 +858,12 @@ public final class AdmissibleValues<A> {
         return other instanceof AdmissibleValues<?> it && parts.equals(it.parts);
     }
 
+    /** What it holds, as this kind of value — see {@link ValueHash}. The parts are a record, and a
+     *  record's number is one its last component joins unchanged, so handing that up is handing up
+     *  a number whatever hashes this next can still take apart. */
     @Override
     public int hashCode() {
-        return parts.hashCode();
+        return ValueHash.ofOnePart(AdmissibleValues.class, parts.hashCode());
     }
 
     @Override
