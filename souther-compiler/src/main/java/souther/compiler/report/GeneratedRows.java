@@ -1,6 +1,8 @@
 package souther.compiler.report;
 
 import souther.compiler.coverage.ArmProbe;
+import souther.compiler.cst.CstError;
+import souther.compiler.cst.CstParser;
 import souther.compiler.cst.SyntaxKind;
 import souther.compiler.diag.SourceNameResolver;
 import souther.compiler.fmt.Formatter;
@@ -223,7 +225,7 @@ public final class GeneratedRows {
         }
         // The count leaves with the text. It was worked out here and thrown away, and the one
         // caller that needed it read the text instead.
-        return new Block(pastable(out.toString()), rows);
+        return new Block(pastable(module, out.toString()), rows);
     }
 
     /**
@@ -236,19 +238,29 @@ public final class GeneratedRows {
      * for — and each of them writes its own marker. One that forgets sends prose out as source, and
      * the block stops compiling the moment somebody pastes it, which is the whole of what it is for.
      *
-     * <p>So it is asked here, where the block is finished, rather than left to the writers to
-     * remember. A line is either prose, or blank, or one of the shapes the rows are written in: the
-     * heading a behavior's rows sit under, a row, and the lines a wrapped row continues on, which
-     * are indented past the {@code |} that starts it.
+     * <p>Asked by parsing what is left when the prose is taken away, rather than by looking at how
+     * a line starts. A shape read off the front of a line is a guess about what the language
+     * admits, and the guess a reader would reach for lets exactly the writer this is here for
+     * through: a clause is quoted indented, so prose that lost its marker looks like the lines a
+     * wrapped row continues on. What the block promises is that a file can take it, and the thing
+     * that answers that is the parser.
+     *
+     * <p>The header goes back on for the reading. It is taken off the block because where the rows
+     * are pasted is the author's choice, and a bare {@code example} block is not a file — so the
+     * question is asked of the file the block becomes rather than of a fragment nothing accepts.
      */
-    private static String pastable(String block) {
+    private static String pastable(String module, String block) {
+        StringBuilder source = new StringBuilder("examples for ").append(module).append("\n\n");
         for (String line : block.lines().toList()) {
-            if (line.isBlank() || line.startsWith("//") || line.startsWith("example ")
-                    || line.startsWith("    ")) {
-                continue;
+            if (!line.startsWith("//")) {
+                source.append(line).append("\n");
             }
+        }
+        List<CstError<?>> refused = CstParser.parse(source.toString()).errors();
+        if (!refused.isEmpty()) {
             throw new IllegalStateException("a block goes out as something a file can take, and"
-                    + " this line is neither a row nor a note about one: " + line);
+                    + " what is left of this one when its prose is taken away does not parse: "
+                    + refused.getFirst() + " in\n" + source);
         }
         return block;
     }

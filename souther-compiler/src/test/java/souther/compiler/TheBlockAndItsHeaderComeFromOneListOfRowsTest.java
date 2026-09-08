@@ -144,11 +144,12 @@ class TheBlockAndItsHeaderComeFromOneListOfRowsTest {
      * <p>Held where the block is finished rather than by each writer remembering, since a model
      * that reaches every writer is not a thing this or any other test has: what a block says
      * depends on what the model is short of, and the writers are as many as there are ways to be
-     * short. {@code GeneratedRows} asks it of the block it built, so a writer that forgets is a
-     * failure wherever its own path runs rather than a block somebody pastes and cannot compile.
+     * short. {@code GeneratedRows} parses what is left of a block when its prose is taken away, so
+     * a writer that forgets its marker fails wherever its own path runs.
      *
-     * <p>What this adds is the other half: that the shapes it admits as rows really are rows. The
-     * lines that are not prose go into the module, and the module still compiles.
+     * <p>What this adds is the step past parsing. The block goes into the module it was generated
+     * for and the module is compiled: a block that parses and names something the module does not
+     * have is still one an author cannot use.
      */
     @Test
     void aBlockWithNotesInItIsStillPastable() {
