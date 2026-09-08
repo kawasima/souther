@@ -160,6 +160,12 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
      * rather than a fact: an occurrence's own widening can be covered by what another occurrence
      * leaves.
      *
+     * <p><b>Which alternative went unread is not here.</b> That is what the account of the rules
+     * says, and turning the two into what the choice left open is done where both are in hand
+     * ({@code StatedByClauses#openedBy}). Answered here, the alternative would have to arrive as a
+     * word for a side rather than as an account, and a word for a side says nothing about which
+     * reading it came from.
+     *
      * @param <L>            which reading measured this ({@link ReadingLanguage})
      * @param mayRestOnLeft  the positions where the choice without its left alternative was not
      *                       shown to leave what the choice with it leaves
@@ -253,25 +259,6 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
             Set<FactSubject> right = new LinkedHashSet<>(mayRestOnRight);
             right.addAll(occurrence.mayRestOnRight());
             return new Width<>(left, right);
-        }
-
-        /**
-         * What the choice leaves open, given which of its alternatives went unread.
-         *
-         * <p>The one place an opening is made. Both halves of the question meet here and both are
-         * this reading's: which alternative it had no word for, and what it could not show the
-         * alternatives preserve. Asked with the other reading's answer to either half, what comes
-         * back is an opening about a choice this reading did not see.
-         */
-        Opening<FactSubject, L> opened(boolean leftUnread, boolean rightUnread) {
-            Set<FactSubject> out = new LinkedHashSet<>();
-            if (leftUnread) {
-                out.addAll(mayRestOnLeft);
-            }
-            if (rightUnread) {
-                out.addAll(mayRestOnRight);
-            }
-            return new Opening<>(out);
         }
     }
 

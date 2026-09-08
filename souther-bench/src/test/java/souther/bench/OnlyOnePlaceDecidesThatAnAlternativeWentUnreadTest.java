@@ -115,6 +115,12 @@ class OnlyOnePlaceDecidesThatAnAlternativeWentUnreadTest {
      * the halves has to be fetched, and what is fetched is either a second answer or the other
      * reading's — which composes without a complaint and reports a clause the reading did not see.
      *
+     * <p><b>And what it takes is what keeps the two halves together.</b> A maker handed a width and
+     * two accounts holds three things of one reading and cannot be given a mixture. One handed a
+     * width and a word for each side takes the same call from any reading at all, so a row of that
+     * shape is this rule saying the opposite of what it means: the seam it names is the one an
+     * author would cross at.
+     *
      * <p>Beside it the empty one, which is what a choice shown to leave every position where it was
      * comes to. It decides nothing and is here because a maker is a maker.
      */
@@ -122,7 +128,10 @@ class OnlyOnePlaceDecidesThatAnAlternativeWentUnreadTest {
     void oneMethodTurnsAnUnreadAlternativeIntoWhatItLeftOpen() throws Exception {
         assertEquals(List.of("souther.compiler.check.Opening#nothing()"
                                 + "Lsouther/compiler/check/Opening;",
-                        "souther.compiler.check.Settlement$Width#opened(ZZ)"
+                        "souther.compiler.check.StatedByClauses#openedBy"
+                                + "(Lsouther/compiler/check/Settlement$Width;"
+                                + "Lsouther/compiler/check/Adoption;"
+                                + "Lsouther/compiler/check/Adoption;)"
                                 + "Lsouther/compiler/check/Opening;"),
                 whatMakes("souther.compiler.check.Opening"),
                 "an opening made somewhere else is a second answer to what an alternative left"

@@ -388,16 +388,29 @@ sealed interface StatedByClauses {
     /**
      * What one reading says a choice between these two accounts left open.
      *
-     * <p>Here so that the three of them have to be one reading's. Whether an alternative went
-     * unread is a {@code boolean} by the time a width is asked, and a boolean carries no word for
-     * whose it is — so the width of the ends taken with the flags of the values compiles, and comes
-     * back as an opening about a choice the ends never read. Bound to one {@code L}, that call does
-     * not exist.
+     * <p><b>The one place an opening is made, and the place both halves of the question are in
+     * hand.</b> Which alternative this reading had no word for is the account's, and what it could
+     * not show the alternatives preserve is the width's; an opening is the two of them together and
+     * is nothing without either.
+     *
+     * <p>Made here rather than by the width, which is what lets the three of them be held to one
+     * reading. Asked of the width, an alternative can only arrive as a word for a side — and a word
+     * for a side says nothing about which reading it came from, so the width of the ends taken with
+     * the flags of the values composes and comes back as an opening about a choice the ends never
+     * read. Bound to one {@code L}, there is nothing to hand in but accounts, and that call cannot
+     * be written.
      */
     private static <L extends ReadingLanguage> Opening<FactSubject, L> openedBy(
             Settlement.Width<L> width, Adoption<FactSubject, L> one,
             Adoption<FactSubject, L> other) {
-        return width.opened(one.hasUnreadPart(), other.hasUnreadPart());
+        Set<FactSubject> opened = new LinkedHashSet<>();
+        if (one.hasUnreadPart()) {
+            opened.addAll(width.mayRestOnLeft());
+        }
+        if (other.hasUnreadPart()) {
+            opened.addAll(width.mayRestOnRight());
+        }
+        return new Opening<>(opened);
     }
 
     /** The positions a reading reached and did not merely settle: what it constrained, and what it
