@@ -240,24 +240,29 @@ class AnEndAChoiceLeftOpenIsNotTheModelDrawingNoLineTest {
     }
 
     /**
-     * And one whose subject this reading cannot name leaves it open, which is weaker than the rules
-     * are.
+     * And an alternative holding of every row settles the choice, whatever stands beside it.
      *
-     * <p>{@code n - n >= 0} holds every value, and written alone this compiler says so — the
-     * reading that classifies a comparison reads it to the end and finds it cuts nothing. That
-     * reading does not go into a choice, and the reading of ends cannot see that the arithmetic
-     * cancels: what it has is a subject it cannot name, which is what an absolute value is as well.
+     * <p>{@code n - n >= 0} holds every value there is, so every value takes that alternative and
+     * the branch beside it constrains nobody. What the choice leaves {@code n} is every value, and
+     * the model draws no line — which is an answer and not this compiler falling short.
      *
-     * <p>So this is the conservative answer and not the exact one, and it is written down rather
-     * than left to be found: what would close it is the classification of a comparison being
-     * asked under a choice.
+     * <p>The reading of ends cannot see it. It has no arithmetic for the sides of a comparison, so
+     * what it has is a subject it cannot name — which is what an absolute value is as well, and
+     * those two are not the same rule. They are told apart by the reading that does have the
+     * arithmetic ({@link StatedLines}), and the answer arrives here already made.
+     *
+     * <p>Read off what the ends managed alone, both alternatives are forms nothing followed and
+     * this came back as a border this compiler could not measure — a limit of this compiler sent
+     * out where the model has an answer. The control for that is
+     * {@link #andAnEndNoAlternativeBoundedIsLeftOpen}, where neither alternative was followed and
+     * neither holds of every row.
      */
     @Test
-    void andOneWhoseSubjectItCannotNameIsLeftOpen() {
-        assertEquals(List.of("border      not measured (no line was derived at any position)"),
+    void andAnAlternativeHoldingOfEveryRowSettlesTheChoice() {
+        assertEquals(theModelDrawsNoLine(),
                 borderIn("Int.abs(n) >= 5 || n - n >= 0"),
-                "neither alternative is one the reading of ends can name a position in, so what"
-                        + " the choice leaves `n` is what following them would answer");
+                "one alternative admits every value, so nothing about `n` rests on the form"
+                        + " beside it");
     }
 
     /**

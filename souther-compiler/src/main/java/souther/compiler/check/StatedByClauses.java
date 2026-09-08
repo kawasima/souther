@@ -494,10 +494,11 @@ sealed interface StatedByClauses {
      *  Built per clause, this walk paid for a pair of readers at every clause of every value. */
     static Reading readingOf(Terms terms, Map<FactSubject, Type> byName,
                              Symbols symbols, Alternatives alternatives,
-                             Allowance<FactSubject> allowed, StringMachineAnswers machines) {
+                             Allowance<FactSubject> allowed, StringMachineAnswers machines,
+                             StatedLines lines, BoundaryReading boundaries) {
         return new Reading(AdmissibleReading.of(terms, byName, symbols, allowed),
                 OrderedReading.of(terms, byName, symbols), terms, byName, alternatives,
-                machines);
+                machines, lines, boundaries);
     }
 
 
@@ -524,7 +525,7 @@ sealed interface StatedByClauses {
      */
     record Reading(AdmissibleReading values, OrderedReading ordered, Terms terms,
                    Map<FactSubject, Type> byName, Alternatives alternatives,
-                   StringMachineAnswers machines)
+                   StringMachineAnswers machines, StatedLines lines, BoundaryReading boundaries)
             implements ClauseReading<StatedByClauses, Denotations> {
 
         /** What a binding under a clause is entered as, for a fold over this reading. The one
@@ -555,7 +556,11 @@ sealed interface StatedByClauses {
             PlannedValues<FactSubject> said = values.leaf(e, positive, at);
             OrderedIntervals<FactSubject> range = ordered.leaf(e, positive, at);
             Set<FactSubject> mentions = mentioned(e, at);
-            return new Said(new Confinement.Planned<>(said, range, ordered.carriers()), new Part(
+            return new Said(new Confinement.Planned<>(said, range,
+                    // And where the leaf leaves the numbers this value's operations answer, which
+                    // is a third order with a reading of its own. Held beside the other two so that
+                    // the connectives compose it once, under the fate the other two decide.
+                    boundaries.leaf(e, positive, at), ordered.carriers()), new Part(
                     // Each language says for itself whether it could account for the leaf, and each
                     // is asked. Read off what a language produced instead, a rule it followed to
                     // the end and found bounds nothing is one it gave up on — which is what every
@@ -572,14 +577,20 @@ sealed interface StatedByClauses {
                     // decided it and written down where it decided. Read off what the leaf leaves
                     // the positions instead, this would be a list of reasons and no clause.
                     held(values.shortfallsAt(e)),
-                    // And which of the positions this leaf names have an end here that is unknown,
-                    // which is the ends' answer and not this walk's. What the clause names is what
-                    // is handed over; which of those have an end at all, and which of them this
-                    // reading worked out, are questions only it can answer — a rule it followed to
-                    // the end leaves none of them, nor does one holding a position it counts to
-                    // another of them, nor is a position whose values are not ordered one it fell
-                    // short at.
-                    EndsLeftOpen.at(ordered.endsLeftUnknownAt(e, mentions))));
+                    // And which of the positions this leaf names have an end here that is unknown.
+                    // Two readings, each asked what only it can say. Which positions the leaf says
+                    // the values stop somewhere on is a fact about the clause and wants the
+                    // arithmetic of its sides ({@link StatedLines}); which of those have an end at
+                    // all, and which of them were worked out, are the ends' own — a rule it
+                    // followed to the end leaves none of them, nor does one holding a position it
+                    // counts to another of them, nor is a position whose values are not ordered one
+                    // it fell short at.
+                    //
+                    // Read off what the ends managed alone, a rule stating no line and a rule
+                    // stating one nobody worked out are one answer, and every leaf of the first
+                    // kind left an end open under a choice.
+                    EndsLeftOpen.at(ordered.endsLeftUnknownAt(e,
+                            lines.ownValuesALineIsStatedOn(e, positive, at, mentions)))));
         }
 
         /**

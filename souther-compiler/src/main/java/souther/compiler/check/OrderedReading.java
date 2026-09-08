@@ -1,11 +1,7 @@
 package souther.compiler.check;
 
-import souther.compiler.ast.Hir;
 import souther.compiler.core.Core;
-import souther.compiler.numeric.Endpoint;
-import souther.compiler.numeric.OrderedInterval;
 import souther.compiler.numeric.OrderedIntervals;
-import souther.compiler.numeric.Place;
 import souther.compiler.types.Type;
 
 import java.util.Collections;
@@ -156,11 +152,12 @@ final class OrderedReading {
      * The positions of {@code named} whose ends {@code e} leaves unknown here.
      *
      * <p><b>The set and not a word about the leaf, because the set is what a caller wants and this
-     * is what owns it.</b> Which positions a clause names is the clause's own answer and arrives as
-     * {@code named}; which of them have an end at all, and which of those this reading worked out,
-     * are this reading's. Handed the flag instead, a caller made the set out of every position the
-     * clause named — and a position whose values are not ordered, which has no end for anything to
-     * be unknown about, came back as one whose end nobody could work out.
+     * is what owns it.</b> Which positions the clause says the values stop somewhere on is the
+     * clause's own answer and arrives as {@code named}; which of them have an end at all, and which
+     * of those this reading worked out, are this reading's. Handed the flag instead, a caller made
+     * the set out of every position the clause named — and a position whose values are not ordered,
+     * which has no end for anything to be unknown about, came back as one whose end nobody could
+     * work out.
      *
      * <p>Narrower than {@link #gaveUpAt} by the rules this reading followed to the end and has no
      * range for. A comparison holding one position it counts to another states where the values
@@ -174,10 +171,12 @@ final class OrderedReading {
      * it means. Kept as two flags a caller could ask for both and be told a rule was read and not
      * read.
      *
-     * <p><b>Wider than the relation it recognises.</b> A comparison whose subject is a term this
-     * reading cannot name — an absolute value, a difference — leaves its positions here whatever
-     * the arithmetic under it comes to, because this reading cannot see that it cancels. What such
-     * a rule leaves is known elsewhere, and asking that reader is not something this one can do.
+     * <p><b>And narrower than what this reading gave up on, by what it has no arithmetic for.</b> A
+     * comparison whose positions cancel holds of every row, a call restricts which values may stand
+     * somewhere and orders none of them, and a bound on how long a string is stops another number:
+     * each of them is a leaf this reading lost the thread of and none of them leaves a position's
+     * own order waiting on a reader. Which they are is decided where the arithmetic is
+     * ({@link StatedLines}) and arrives in {@code named}.
      */
     Set<FactSubject> endsLeftUnknownAt(Core e, Set<FactSubject> named) {
         if (!gaveUp.contains(e) || relatingTwoPositions.contains(e)) {
@@ -202,101 +201,37 @@ final class OrderedReading {
         return OrderedIntervals.top();
     }
 
-    /** Where one comparison leaves the position it names, or nothing where it names none. */
+    /**
+     * Where one comparison leaves the position it names, or nothing where it names none.
+     *
+     * <p>What the comparison does to an order is read where both readings of one read it
+     * ({@link OrderedLeaf}); what is here is this reading's own bookkeeping about the leaf, which
+     * is what {@link #gaveUpAt} and {@link #endsLeftUnknownAt} answer out of.
+     */
     private OrderedIntervals<FactSubject> comparison(Core.Binary bin, boolean positive,
                                                      Denotations at) {
-        Comparison read = Comparison.of(bin).orElse(null);
-        if (read == null) {
-            // Written with an operator and not a comparison. The same as a rule of another shape.
-            return gaveUp(bin);
-        }
-        // The position-bearing side read as the left one, as `0 <= value` says what `value >= 0`
-        // says.
-        FactSubject position = positionIn(bin.left(), at);
-        Core bound = bin.right();
-        ComparisonClaim claim = read.claim();
-        if (position == null) {
-            position = positionIn(bin.right(), at);
-            bound = bin.left();
-            claim = claim.turned();
-        }
-        Carrier carrier = position == null ? null : carriers.get(position);
-        if (carrier == null) {
-            // Neither side is a position this counts. The rule may still be about one — a length,
-            // an absolute value, a reversal — and what it holds that position to is then something
-            // this reading cannot follow rather than something it found to be nothing.
-            return gaveUp(bin);
-        }
-        Hir.Expr written = Terms.asWrittenValue(bound, at);
-        // Denied, a comparison is the one that leaves what it leaves out. `!(value /= x)` places
-        // both ends and `!(value == x)` places none, which is the same answer each of them gets
-        // written directly — and neither is a rule this reading failed at.
-        ComparisonClaim said = positive ? claim : claim.denied();
-        // And whether this rule holds the position to another position this counts, which is a fact
-        // about the two sides and about neither claim. Written down here, where both sides are in
-        // hand and before either is read for what it leaves: put inside what one claim does with
-        // its side, the same rule written with a different operator is a rule nobody read
-        // ({@code n == m} beside {@code n < m}).
-        //
-        // Whether this reading then has a range for it is a separate question, and the two are
-        // asked together by whoever wants the end ({@link #leavesTheEndsUnknownAt}). So a rule that
-        // does place an end is here as well where it happens to compare two positions, and says
-        // nothing by being: there is nothing to be unknown about a rule this reading followed.
-        if (positionIn(bound, at) != null) {
+        OrderedLeaf.Read<FactSubject> read = OrderedLeaf.of(bin, positive, at, terms,
+                e -> positionIn(e, at), carriers::get);
+        // Whether this reading then has a range for the rule is a separate question, and the two
+        // are asked together by whoever wants the end ({@link #endsLeftUnknownAt}). So a rule that
+        // does place an end is written down here as well where it happens to compare two positions,
+        // and says nothing by being: there is nothing to be unknown about a rule this reading
+        // followed.
+        if (read.againstAnother()) {
             relatingTwoPositions.add(bin);
         }
-        return switch (said) {
-            // The value the rule is met at, which is a range with one value in it. What a denial
-            // leaves is every other value, and that is a set rather than a range — which is the
-            // whole of what the rule does to a range, so it is one this reading followed.
-            case ComparisonClaim.Singled singled -> singled.holdsAtTheValue()
-                    ? onlyTheValue(bin, position, carrier, written)
-                    : OrderedIntervals.top();
-            case ComparisonClaim.Cut cut -> ends(bin, position, carrier,
-                    InvariantBound.at(cut, written, carrier));
+        return switch (read.left()) {
+            case OrderedLeaf.Left.NotFollowed<FactSubject> _ -> gaveUp(bin);
+            // A rule read from end to end that stops the values nowhere — what a disequality
+            // states. The values it leaves are a set rather than a range, which is the whole of
+            // what it does to a range, so it is one this reading followed.
+            case OrderedLeaf.Left.PlacesNoEnd<FactSubject> _ -> OrderedIntervals.top();
+            // Inside what the order itself holds, which is what makes the carrier's own ends part
+            // of every answer rather than something applied once around the whole reading: a branch
+            // left short of them is a branch whose emptiness nothing can see.
+            case OrderedLeaf.Left.Leaves<FactSubject> it ->
+                    OrderedIntervals.at(it.number(), it.within());
         };
-    }
-
-    /** The range of one value, or nothing where the rule names none this order reads. */
-    private OrderedIntervals<FactSubject> onlyTheValue(Core e, FactSubject position,
-                                                       Carrier carrier, Hir.Expr written) {
-        Place only = written == null ? null : carrier.literalOf(written);
-        // The rule meets the position at something this order has no literal for, so where it
-        // leaves the position is not something this reading found to be nothing.
-        return only == null ? gaveUp(e)
-                : leaves(position, carrier, new OrderedInterval(
-                        Endpoint.inclusive(only), Endpoint.inclusive(only)));
-    }
-
-    /** What the end an ordering placed leaves the position. */
-    private OrderedIntervals<FactSubject> ends(Core e, FactSubject position, Carrier carrier,
-                                               InvariantBound.Read read) {
-        return switch (read) {
-            case InvariantBound.Read.AnEnd it -> leaves(position, carrier, it.bound().lower()
-                    ? new OrderedInterval(it.bound().end(), null)
-                    : new OrderedInterval(null, it.bound().end()));
-            // The rule names an end the order does not reach, so the position holds nothing. Said as
-            // a range of this order with no value in it, which is the same kind of answer two rules
-            // whose ends cross come to.
-            case InvariantBound.Read.PastWhereTheOrderStops _ ->
-                    leaves(position, carrier, carrier.nothing());
-            // A cut on a position this counts, against something the order has no literal for. The
-            // other reasons NoEnd stands for are answered before this call, so what arrives is
-            // always this one.
-            case InvariantBound.Read.NoEnd _ -> gaveUp(e);
-        };
-    }
-
-    /**
-     * What one rule leaves a position, inside what the order itself holds.
-     *
-     * <p>The one place a position is spoken about, which is what makes the order's own ends part of
-     * every answer rather than something applied once at the end. A reader adding a second such
-     * place has to remember the extent; this one cannot forget it.
-     */
-    private static OrderedIntervals<FactSubject> leaves(FactSubject position, Carrier carrier,
-                                                 OrderedInterval range) {
-        return OrderedIntervals.at(position, carrier.extent().meet(range));
     }
 
     /** The position {@code e} is, or null where it is not one this is reading for. */

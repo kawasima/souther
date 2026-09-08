@@ -61,7 +61,13 @@ class WhatDecidesWhetherAValueExistsHoldsBothLanguagesTest {
     void whereThePositionsStopIsHeldByTheConfinementAndByNothingElse() {
         Set<String> apart = new TreeSet<>();
         int found = 0;
+        int derived = 0;
         for (Class<?> each : compiled()) {
+            for (Field field : each.getDeclaredFields()) {
+                if (field.getType() == OrderedIntervals.class && ofADerivedNumber(field)) {
+                    derived++;
+                }
+            }
             if (!holdsWhereThePositionsStop(each)) {
                 continue;
             }
@@ -71,19 +77,43 @@ class WhatDecidesWhetherAValueExistsHoldsBothLanguagesTest {
             }
         }
         assertTrue(found > 0, "found no type holding an order at all — the scan missed the tree");
+        // And the orders this rule is not about are here to be let past. Without one, the reading
+        // of the type argument is a branch nothing takes, and the rule would read as if it told
+        // two kinds of order apart while every order it ever saw was a position's.
+        assertTrue(derived > 0,
+                "found no order of a number an operation answers — the exemption reaches nothing");
         assertEquals(Set.of(), apart,
                 "a type holding where the positions stop beside what they admit is one whose reader"
                         + " can ask each of them whether anything satisfies the rules");
     }
 
-    /** Whether a class holds where a value's positions stop. */
+    /**
+     * Whether a class holds where a value's positions stop.
+     *
+     * <p>The positions, and not every order this compiler holds in the same algebra. A number an
+     * operation answers of a place is another order with an owner of its own
+     * ({@link DerivedNumber}), and there is no set of values beside it for anybody to compose it
+     * with: what a length runs between says nothing about which strings stand anywhere, so a reader
+     * holding one is not a reader that can decide whether a value exists.
+     *
+     * <p>Read off what the field is an order of, which is written in the class file. Asked of the
+     * raw type alone, the population was every order there is, and a reading that has no half of
+     * the question was refused for holding half of it.
+     */
     private static boolean holdsWhereThePositionsStop(Class<?> of) {
         for (Field each : of.getDeclaredFields()) {
-            if (each.getType() == OrderedIntervals.class) {
+            if (each.getType() == OrderedIntervals.class && !ofADerivedNumber(each)) {
                 return true;
             }
         }
         return false;
+    }
+
+    /** Whether a field's order is one of the numbers an operation answers. */
+    private static boolean ofADerivedNumber(Field of) {
+        return of.getGenericType() instanceof java.lang.reflect.ParameterizedType it
+                && it.getActualTypeArguments().length == 1
+                && it.getActualTypeArguments()[0] == DerivedNumber.class;
     }
 
     /**

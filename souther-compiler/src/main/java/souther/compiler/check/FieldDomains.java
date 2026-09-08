@@ -6,6 +6,8 @@ import souther.compiler.core.Core;
 import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.NumericDomain;
+import souther.compiler.numeric.OrderedInterval;
+import souther.compiler.numeric.OrderedIntervals;
 import souther.compiler.numeric.Rel;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
@@ -77,7 +79,7 @@ public final class FieldDomains {
                     ConstraintState.<FactSubject>top(), null, null, null, null, Map.of(),
                     Set.of(RuleKey.THE_VALUE),
                     Map.of(), Map.of(), Map.of(), Map.of(), StringFacts.NONE, KnownExtents.NONE,
-                    Map.of());
+                    Map.of(), OrderedIntervals.top());
 
     private final Map<RuleKey, NumericDomain.Bounds> byName;
     /** The ends the record's own clauses place, which is a different question from the range they
@@ -113,6 +115,21 @@ public final class FieldDomains {
     private final Map<BoundaryQuestion, BoundaryStanding> standing;
     /** Where a choice of a rule left an end of it open — see {@link #endsLeftOpenAt}. */
     private final Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen;
+    /**
+     * Where the rules leave the numbers this value's operations answer, with every choice settled.
+     *
+     * <p>Beside the interval algebra and not inside it. That one never enters an alternative — what
+     * a construction owes is asked of the clause as written — so a choice between two bounds on a
+     * length leaves it nothing, and where those two branches together stop the length is known only
+     * to the reading that composed them.
+     *
+     * <p><b>Read where a line is looked for and nowhere else.</b> It is an envelope: two branches
+     * naming one size each leave the run between them, and no value has the sizes in between. So
+     * {@link #leftAt} takes it — a line falls at the outermost end either way — and
+     * {@link #projection} does not, because being inside the envelope is not being a value the
+     * rules admit.
+     */
+    private final OrderedIntervals<DerivedNumber> derived;
     /** Which readings took each clause in, as each of them said so. */
     private final ReadingEvidence took;
     /** The accounting, worked out once. Every name of a value asks the same question of it. */
@@ -232,8 +249,10 @@ public final class FieldDomains {
                          Map<RuleRef.Invariant, Map<Core, InvariantChecker.PartRead>> readBy,
                          Map<FactSubject, souther.compiler.numeric.Granularity> spacing,
                          StringFacts stringMachines, KnownExtents known,
-                         Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen) {
+                         Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen,
+                         OrderedIntervals<DerivedNumber> derived) {
         this.endsLeftOpen = endsLeftOpen;
+        this.derived = derived;
         this.stringMachines = stringMachines;
         this.known = known;
         this.byName = byName;
@@ -462,7 +481,7 @@ public final class FieldDomains {
                 seeded.constraints(), named, data, source, policy, settled,
                 seeded.unreadOfEveryValue(), seeded.atoms(), seeded.held(),
                 seeded.readBy(), seeded.spacing(), seeded.stringMachines(), machines.extents(),
-                seeded.endsLeftOpen());
+                seeded.endsLeftOpen(), seeded.derived());
     }
 
     /**
@@ -1869,7 +1888,27 @@ public final class FieldDomains {
         // `String` is measured two ways — its own order, and the length of it — and answering with
         // the wrong one clamps a line drawn on one axis by the range of the other.
         FactSubject atom = subjectAt(path, kind);
-        return atom == null ? null : constraints.numbers().boundsOf(atom);
+        if (atom == null) {
+            return null;
+        }
+        NumericDomain.Bounds held = constraints.numbers().boundsOf(atom);
+        // And what the choices leave it, which the algebra has no way to: it reads a clause as
+        // written and never enters an alternative, so a length bounded in both branches of a
+        // choice comes back from it unbounded. Met rather than preferred — the two are readings of
+        // the same rules and each holds what the other cannot.
+        DerivedNumber number = DerivedNumber.of(new NumberAt<>(path, kind));
+        if (number == null) {
+            return held;
+        }
+        OrderedInterval settled = derived.at(number);
+        // And nothing where the envelope holds no value. That its ends have crossed says the rules
+        // admit nothing at this number, which is a fact about whether a value exists — the question
+        // this reading is deliberately no part of ({@link Confinement.Planned#derived}) and one the
+        // readings that decide it already answer. Met in, a line would be drawn where the ends
+        // crossed, at a place the order does not reach.
+        return Endpoint.someValueLiesBetween(settled.low(), settled.high())
+                ? held.meet(new NumericDomain.Bounds(settled.low(), settled.high()))
+                : held;
     }
 
     /**
