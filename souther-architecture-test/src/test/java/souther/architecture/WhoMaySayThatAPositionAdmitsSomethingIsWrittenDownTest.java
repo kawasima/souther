@@ -144,6 +144,18 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
             "souther/compiler/check/Confinement",
             "souther/compiler/check/StatedByClauses");
 
+    /**
+     * And the readings that owe each of the three answers something of its own.
+     *
+     * <p>What becomes of a branch of a choice whose fate came back is three things and not two: a
+     * branch nobody can be in leaves an account and not an alternative, a branch nobody settled is
+     * kept saying so, and a branch somebody can be in is itself. Nothing composed out of the two
+     * settled answers says the middle one, so this reading is written as a switch and is told about
+     * an answer added to the three.
+     */
+    private static final List<String> TAKES_THE_ANSWER_APART = List.of(
+            "souther/compiler/check/StatedByClauses#under");
+
     /** One saying of the word, and whose code holds it. */
     private record Use(String nest, String method, String said) {}
 
@@ -195,28 +207,35 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
     }
 
     /**
-     * And nothing takes the answer apart by which of the three it is.
+     * And these take the answer apart by which of the three it is.
      *
-     * <p>A switch over this word says something the three rules above do not watch for: it reads
-     * the answer as a choice between arms rather than asking whether it settles anything. It is
-     * also the one shape whose constants are named in a synthetic class rather than in the code
-     * that switched, so what is asserted is that there is none.
+     * <p>A switch over this word reads the answer as a choice between arms rather than asking
+     * whether it settles anything, and a reading owed a different thing for each of the three has
+     * to. What it buys is the one shape an answer added to the three stops: read by comparisons
+     * against constants, a fourth answer falls into whichever arm the last comparison left it, and
+     * nobody has decided that. So these are written down one method at a time, and what the list is
+     * for is that each entry is a reading somebody chose to owe every answer.
      *
-     * <p>Shown with the same detector run over a body that does switch ({@link Taking}), because an
-     * expectation of none passes just as well when the detector has stopped working — which is what
+     * <p>The nest and the method, since a nest holds readings that are not this one — a name would
+     * be enough to tell two of them apart the day one nest switches in two places, and a descriptor
+     * would be carried the day two methods of one nest share a name.
+     *
+     * <p>Shown with the same detector run over a body that does switch ({@link Taking}), because a
+     * short expectation passes just as well when the detector has stopped working — which is what
      * the day javac writes a switch some other way would look like.
      */
     @Test
-    void andNothingTakesTheAnswerApartByWhichOfTheThreeItIs() {
+    void andTheseTakeTheAnswerApartByWhichOfTheThreeItIs() {
         assertEquals(1, Taking.by(Emptiness.NONEMPTY), "the fixture answers by switching");
         assertTrue(saidHere().stream().anyMatch(use -> use.said().equals(TAKEN_APART)),
                 "the fixture beside this test switches over the word, so a detector that cannot"
                         + " find it there is one that would report none anywhere");
 
-        assertEquals(List.of(),
-                nestsSaying(saidInProduction(), use -> use.said().equals(TAKEN_APART)),
-                "this takes the answer apart by which of the three it is, which the rules above do"
-                        + " not watch: what they read is who names one");
+        assertEquals(TAKES_THE_ANSWER_APART,
+                placesSaying(saidInProduction(), use -> use.said().equals(TAKEN_APART)),
+                "a reading that owes each of the three answers something different says so by"
+                        + " switching, and one that arrived some other way is a reading a fourth"
+                        + " answer would be given a meaning by without anybody deciding it");
     }
 
     /**
@@ -309,6 +328,13 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
         return new ArrayList<>(out);
     }
 
+    /** The same, said of the method as well as the nest, for a rule about readings and not nests. */
+    private static List<String> placesSaying(List<Use> said, Predicate<Use> which) {
+        Set<String> out = new TreeSet<>();
+        said.stream().filter(which).forEach(use -> out.add(use.nest() + "#" + use.method()));
+        return new ArrayList<>(out);
+    }
+
     private static Path classesOf(Path module) {
         return module.resolve("target").resolve("classes");
     }
@@ -356,7 +382,8 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                     continue;
                 }
                 ClassModel model = ClassFile.of().parse(bytes);
-                String nest = nestOf(model.thisClass().asInternalName());
+                String holds = model.thisClass().asInternalName();
+                String nest = nestOf(holds);
                 if (nest.equals(EMPTINESS)) {
                     continue;
                 }
@@ -367,7 +394,7 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                     }
                     String where = method.methodName().stringValue();
                     for (CodeElement element : code) {
-                        for (String what : saidBy(element)) {
+                        for (String what : saidBy(element, holds)) {
                             found.add(new Use(nest, where, what));
                         }
                     }
@@ -383,12 +410,18 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      * <p>A reference is the call it stands for. {@code Emptiness::isEmpty} puts no call to the word
      * in the code that wrote it — what it names is a handle among a bootstrap's arguments — so a
      * walk over calls alone reads a nest that observes a settled answer as one that says nothing.
+     *
+     * <p>And a switch's table is a saying where it is read and not where it is filled. The
+     * synthetic class javac writes to hold one fills it in its own initializer, which is how a
+     * table is made rather than a reading of the word — counted, every switch would be answered for
+     * twice, once by whoever switched and once by nobody.
      */
-    private static List<String> saidBy(CodeElement element) {
+    private static List<String> saidBy(CodeElement element, String holds) {
         if (element instanceof FieldInstruction field) {
             String named = field.name().stringValue();
             if (named.equals(TAKEN_APART)) {
-                return List.of(TAKEN_APART);
+                return field.owner().asInternalName().equals(holds)
+                        ? List.of() : List.of(TAKEN_APART);
             }
             return field.owner().asInternalName().equals(EMPTINESS)
                     ? List.of(named) : List.of();

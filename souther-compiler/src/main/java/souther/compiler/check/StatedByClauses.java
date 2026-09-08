@@ -1115,18 +1115,22 @@ sealed interface StatedByClauses {
          * a choice neither branch of which anybody can take from being a case at all. It is this
          * twice and a composition, and the answer cannot turn on the order the alternatives were
          * written in because the composition a dead branch picks treats its two sides alike.
+         *
+         * <p>Each of the three answers is answered for here, which is what an account of a branch
+         * owes: what to do with a branch nobody settled is not what to do with one somebody can be
+         * in, and neither is a reading of the other. So this is where an answer added to the three
+         * is told what becomes of a branch that has it, and no reading below is.
          */
         Taken under(Settlement.Sided fate) {
-            // Asked of what the fate settles and not taken apart by which of the three answers it
-            // is. A branch is one nobody can be in, or one nobody settled, or neither — and the two
-            // questions are asked in that order because the second is about a branch still standing.
-            if (fate.emptiness() == souther.compiler.values.Emptiness.EMPTY) {
-                return inADeadBranch();
-            }
-            if (fate.emptiness() == souther.compiler.values.Emptiness.UNDECIDED) {
-                return holding(fate);
-            }
-            return this;
+            return switch (fate.emptiness()) {
+                // Nobody can be in it, so what is left of it is an account and not an alternative.
+                case EMPTY -> inADeadBranch();
+                // Nobody settled it, and it is kept saying so: kept without, the account would call
+                // a position open where the truth is that nothing looked.
+                case UNDECIDED -> holding(fate);
+                // Somebody can be in it, and there is nothing to say about it that it does not say.
+                case NONEMPTY -> this;
+            };
         }
 
         /**
