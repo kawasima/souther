@@ -715,7 +715,15 @@ let screenForDuplicates (lead, accounts, contacts) = {
 // holds, so the implementation builds it through the generated decoder rather than through a constructor
 // this declaration would have to grant — which is also why an injected behavior's non-unit `constructs`
 // has to be exposed (E1305) and this one has nothing to expose.
+//
+// The clause is what the implementation is for. A lookup by domain that answered some other account
+// would be a matching bug of the worst kind — the lead would be linked to a company nobody asked
+// about — and the type says nothing about it, since one Account is the same shape as another. So the
+// relation is declared: where an account comes back, it is an account on the domain that was asked
+// for. The predicate is accountHasDomain, the one the duplicate screen already matches the account
+// book with, because the two are asking the same question of an account and there is one answer to it.
 behavior findAccountByDomain : (domain: DomainName) -> Account | AccountNotFound
+    ensures onTheDomainAsked = Account -> accountHasDomain(domain, value)
 
 data MatchedAccount = { leadId: LeadId, accountId: AccountId }
 
