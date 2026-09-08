@@ -94,7 +94,7 @@
         <junit.version>6.1.2</junit.version>
         <!-- Named rather than written where it is used: `souther init` writes a project that runs
              its tests, and what it hands that project is this number. -->
-        <surefire.version>3.5.6</surefire.version>
+        <surefire.version>3.6.0</surefire.version>
         <!-- A JVM per two cores. Named here so -DforkCount=N reaches it: a literal in the plugin's
              configuration outranks the property surefire declares, so the override the comment
              below offers was not one, and a fork count could not be measured until it was.
@@ -270,7 +270,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.15.0</version>
+                <version>3.16.0</version>
                 <configuration>
                     <compilerArgs>
                         <!-- Every warning javac can give, and none of them is a thing to walk past.
@@ -301,7 +301,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.5.0</version>
+                <version>3.5.1</version>
                 <configuration>
                     <archive>
                         <manifest>
