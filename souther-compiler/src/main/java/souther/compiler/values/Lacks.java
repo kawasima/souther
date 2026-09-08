@@ -170,13 +170,14 @@ public final class Lacks<A> {
         return true;
     }
 
+    /** What was shown, in no order — see {@link ValueHash}. */
     @Override
     public int hashCode() {
-        int out = 0;
+        int summed = 0;
         for (Shown<A> shown : each) {
-            out += shown.hashCode();
+            summed += shown.hashCode();
         }
-        return out;
+        return ValueHash.ofWhatItHolds(Lacks.class, summed, each.size());
     }
 
     /** Written in one order whichever they arrived in — see {@link InOneOrder}. */

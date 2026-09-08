@@ -42,4 +42,25 @@ public record Shown<A>(RelationalLack<A> lack, RelationalEvidence<A> reached) {
     public <B> Shown<B> renamed(Function<A, B> naming) {
         return new Shown<>(lack.renamed(naming), reached.renamed(naming));
     }
+
+    /**
+     * The lack and how it was reached, each in its own place — see {@link ValueHash}.
+     *
+     * <p>Said here rather than left to what a record answers, because these are what an argument
+     * holds several of and what several of them come to is their numbers added. A record's own
+     * carries its last component up unchanged, so two of these would come to one number whenever
+     * the same lacks and the same routes were shared out between them the other way — and which
+     * route reached which lack is what an author is sent to read.
+     */
+    @Override
+    public int hashCode() {
+        return ValueHash.ofItsParts(Shown.class, lack.hashCode(), reached.hashCode());
+    }
+
+    /** The lack it claims and the routes that reached it, which is what it holds. Spelled out
+     *  beside the number, so that the two are read together wherever either is changed. */
+    @Override
+    public boolean equals(Object said) {
+        return said instanceof Shown<?> it && lack.equals(it.lack) && reached.equals(it.reached);
+    }
 }

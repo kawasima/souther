@@ -244,9 +244,12 @@ public final class Standing<A> {
                 && openedByAlternative.equals(it.openedByAlternative);
     }
 
+    /** What it holds and what an alternative opened, each in its own place — see
+     *  {@link ValueHash}. */
     @Override
     public int hashCode() {
-        return entries.hashCode() * 31 + openedByAlternative.hashCode();
+        return ValueHash.ofItsParts(Standing.class, entries.hashCode(),
+                openedByAlternative.hashCode());
     }
 
     @Override

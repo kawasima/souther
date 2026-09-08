@@ -240,9 +240,10 @@ public final class Sameness<A> {
         return other instanceof Sameness<?> it && blocks.equals(it.blocks);
     }
 
+    /** Which block each position is on — see {@link ValueHash}. */
     @Override
     public int hashCode() {
-        return blocks.hashCode();
+        return ValueHash.ofWhatItHolds(Sameness.class, blocks.hashCode(), blocks.size());
     }
 
     @Override

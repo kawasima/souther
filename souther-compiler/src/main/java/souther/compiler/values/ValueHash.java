@@ -63,6 +63,12 @@ final class ValueHash {
         return finished(GATHER * (GATHER * (GATHER * seed(kind) + first) + second) + third);
     }
 
+    /** A value of {@code kind} holding four, each in its own place. */
+    static int ofItsParts(Class<?> kind, int first, int second, int third, int fourth) {
+        int gathered = GATHER * (GATHER * (GATHER * seed(kind) + first) + second) + third;
+        return finished(GATHER * gathered + fourth);
+    }
+
     /**
      * A value of {@code kind} that is two things with no order between them, so that it is hashed
      * alike whichever way round its two ends were written.

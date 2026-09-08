@@ -99,12 +99,13 @@ public final class RelationalEvidence<A> {
         return InOneOrder.of(routes);
     }
 
+    /** The routes it holds, in no order — see {@link ValueHash}. */
     @Override
     public int hashCode() {
-        int out = 0;
+        int summed = 0;
         for (Provenance<A> route : routes) {
-            out += route.hashCode();
+            summed += route.hashCode();
         }
-        return out;
+        return ValueHash.ofWhatItHolds(RelationalEvidence.class, summed, routes.size());
     }
 }

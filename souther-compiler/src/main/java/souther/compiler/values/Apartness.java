@@ -889,9 +889,10 @@ public final class Apartness<A> {
         return other instanceof Apartness<?> it && edges.equals(it.edges);
     }
 
+    /** The pairs it holds — see {@link ValueHash}. */
     @Override
     public int hashCode() {
-        return edges.hashCode();
+        return ValueHash.ofWhatItHolds(Apartness.class, edges.hashCode(), edges.size());
     }
 
     /** The pairs written in one order whichever order they were stated in — see
