@@ -133,8 +133,8 @@ class AProofNamesOneBlockAndNotAllOfThemTest {
     void aStateRefusedBothWaysIsReportedAtTheBlockThatHoldsNothing() {
         Allowance<FactSubject> sets = AsACompilationAllows.forAdmittedValues();
         AdmissibleValues<FactSubject> both = emptiedAt(P, Q, sets)
-                .meet(AdmissibleValues.<FactSubject>holdingAsOne(R, S)
-                        .meet(AdmissibleValues.heldApart(R, S), sets), sets);
+                .meet(built(PlannedValues.<FactSubject>holdingAsOne(R, S)
+                        .meet(PlannedValues.heldApart(R, S)), sets), sets);
 
         assertEquals(Set.of(souther.compiler.values.Sameness.of(P, Q).blockOf(P)),
                 both.refusedBy().atEachOf(), "one side leaves this block nothing");
