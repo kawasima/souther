@@ -339,11 +339,11 @@ sealed interface StatedByClauses {
      *
      * <p>Two questions and two sources, and neither answers the other's. Which alternative nothing
      * could read is a fact about the clause somebody wrote and is read off the tree that keeps that
-     * shape ({@link Adoption#dropped}). Whether anything showed the choice leaves a position what
-     * it would without an alternative is a fact about the values, is worked out where the branches
-     * were settled, and arrives here decided ({@link Settlement.WidthDependency}) — asked of the
-     * positions each branch took in instead, the answer would be that a branch narrowing a position
-     * its neighbour narrows the same way is why the choice is as wide as it is.
+     * shape ({@link Adoption#hasUnreadPart}). Whether anything showed the choice leaves a position
+     * what it would without an alternative is a fact about the values, is worked out where the
+     * branches were settled, and arrives here decided ({@link Settlement.WidthDependency}) — asked
+     * of the positions each branch took in instead, the answer would be that a branch narrowing a
+     * position its neighbour narrows the same way is why the choice is as wide as it is.
      *
      * <p>What arrives is the side a reader may act on: a position left out of it is one dropping
      * the alternative was shown not to narrow, and one kept is one nobody settled. So a position
@@ -358,15 +358,15 @@ sealed interface StatedByClauses {
     static AlternativeOpening opens(ChoiceId choice, Settlement.WidthDependency width,
                                     Adoption<FactSubject> one, Adoption<FactSubject> other) {
         Set<FactSubject> opened = new LinkedHashSet<>();
-        if (one.dropped()) {
+        if (one.hasUnreadPart()) {
             opened.addAll(width.mayRestOnLeft());
         }
-        if (other.dropped()) {
+        if (other.hasUnreadPart()) {
             opened.addAll(width.mayRestOnRight());
         }
         return new AlternativeOpening(choice,
-                one.dropped() ? reachedBy(other) : Set.of(),
-                other.dropped() ? reachedBy(one) : Set.of(),
+                one.hasUnreadPart() ? reachedBy(other) : Set.of(),
+                other.hasUnreadPart() ? reachedBy(one) : Set.of(),
                 opened);
     }
 

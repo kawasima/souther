@@ -26,8 +26,8 @@ import java.util.Set;
  * leaves the parts beside it saying what they said — {@code value >= 1 && f(value)} still bounds the
  * value. Under a choice it does not: a value satisfying the branch nothing could read is under no
  * obligation from the other, so {@code x == 7 || f(y)} says nothing about {@code x} either. That is
- * why {@link #dropped} is here and why {@link #either} spoils across positions the unread branch
- * never named — the same reason {@code AdmissibleValues.join} does.
+ * why {@link #hasUnreadPart} is here and why {@link #either} spoils across positions the unread
+ * branch never named — the same reason {@code AdmissibleValues.join} does.
  *
  * <p>What is recorded is that the reading settled what the clause does to a position, which is not
  * the same as its having narrowed anything there. A branch shown to admit nothing settles every
@@ -44,24 +44,25 @@ import java.util.Set;
  * <p>Composed rather than collected. A set filled as the leaves go by is a fact about the walk and
  * not about the clause, and it cannot be undone by what a later branch failed to read.
  *
- * @param <A>     what a position is called here. A set algebra and nothing else, so the readings'
- *                own name for a position is the caller's business
- * @param read    the positions a part of this clause put a constraint on. Open to being widened:
- *                an alternative nothing could read is one a value can satisfy instead, and what
- *                this part said of the position then binds nothing
- * @param settled the positions a dead alternative named, which the choice imposes nothing on. Not
- *                {@link #read}, and this is what keeps the choice associative: a constraint can be
- *                widened by an alternative beside it, and "this clause imposes nothing here"
- *                cannot — a further choice imposes nothing extra either. Folded into {@code read},
- *                whether it survived turned on where the brackets fell
- * @param missed  the positions a part of it was about, or was widened by a part nothing read, and
- *                so was not settled at
- * @param dropped whether a part of this clause went unread anywhere in it, which is what a choice
- *                needs in order to know that a branch widened it. What that part was about is not
- *                carried: a branch nothing could read widens the positions the other branch spoke
- *                about whether or not it names them
+ * @param <A>           what a position is called here. A set algebra and nothing else, so the
+ *                      readings' own name for a position is the caller's business
+ * @param read          the positions a part of this clause put a constraint on. Open to being
+ *                      widened: an alternative nothing could read is one a value can satisfy
+ *                      instead, and what this part said of the position then binds nothing
+ * @param settled       the positions a dead alternative named, which the choice imposes nothing on.
+ *                      Not {@link #read}, and this is what keeps the choice associative: a
+ *                      constraint can be widened by an alternative beside it, and "this clause
+ *                      imposes nothing here" cannot — a further choice imposes nothing extra
+ *                      either. Folded into {@code read}, whether it survived turned on where the
+ *                      brackets fell
+ * @param missed        the positions a part of it was about, or was widened by a part nothing read,
+ *                      and so was not settled at
+ * @param hasUnreadPart whether a part of this clause went unread anywhere in it, which is what a
+ *                      choice needs in order to know that a branch widened it. What that part was
+ *                      about is not carried: a branch nothing could read widens the positions the
+ *                      other branch spoke about whether or not it names them
  */
-record Adoption<A>(Set<A> read, Set<A> settled, Set<A> missed, boolean dropped) {
+record Adoption<A>(Set<A> read, Set<A> settled, Set<A> missed, boolean hasUnreadPart) {
 
     Adoption {
         read = Set.copyOf(read);
@@ -115,7 +116,7 @@ record Adoption<A>(Set<A> read, Set<A> settled, Set<A> missed, boolean dropped) 
                 lost.add(each);
             }
         });
-        return new Adoption<>(stillRead, stillSettled, lost, dropped);
+        return new Adoption<>(stillRead, stillSettled, lost, hasUnreadPart);
     }
 
     /**
@@ -142,7 +143,7 @@ record Adoption<A>(Set<A> read, Set<A> settled, Set<A> missed, boolean dropped) 
      */
     Adoption<A> both(Adoption<A> other) {
         return new Adoption<>(union(read, other.read), union(settled, other.settled),
-                union(missed, other.missed), dropped || other.dropped);
+                union(missed, other.missed), hasUnreadPart || other.hasUnreadPart);
     }
 
     /**
@@ -158,14 +159,14 @@ record Adoption<A>(Set<A> read, Set<A> settled, Set<A> missed, boolean dropped) 
         // What the branch beside it put a constraint on, and not what it found the choice imposes
         // nothing on: an alternative nothing could read widens a constraint, and there is nothing
         // to widen about a position nothing constrains.
-        if (other.dropped) {
+        if (other.hasUnreadPart) {
             lost = union(lost, read);
         }
-        if (dropped) {
+        if (hasUnreadPart) {
             lost = union(lost, other.read);
         }
         return new Adoption<>(union(read, other.read), union(settled, other.settled), lost,
-                dropped || other.dropped);
+                hasUnreadPart || other.hasUnreadPart);
     }
 
     /** Whether this reading settled what the whole of the clause does to {@code position}. */
@@ -202,13 +203,13 @@ record Adoption<A>(Set<A> read, Set<A> settled, Set<A> missed, boolean dropped) 
      * <p>The dead branch settles the positions it named: nothing satisfies it, so what the choice
      * does to a position only it spoke of is nothing, which is an answer. Its own misses do not
      * come with it — a rule it could not read is a rule about a branch nobody can take — and
-     * neither does its {@link #dropped}, for the same reason.
+     * neither does its {@link #hasUnreadPart}, for the same reason.
      *
      * <p>What this branch missed still wins. {@code (s < "") || f(x)} leaves {@code x} open however
      * dead the first branch is, so the surviving branch's account is the one that outranks.
      */
     Adoption<A> beside(Adoption<A> dead) {
-        return new Adoption<>(read, union(settled, dead.mentions()), missed, dropped);
+        return new Adoption<>(read, union(settled, dead.mentions()), missed, hasUnreadPart);
     }
 
     /**
