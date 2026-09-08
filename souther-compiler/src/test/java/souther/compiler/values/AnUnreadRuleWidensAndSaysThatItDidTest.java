@@ -33,8 +33,8 @@ class AnUnreadRuleWidensAndSaysThatItDidTest {
      *  nothing is built and no allowance is spent. */
     private final Allowance<String> sets = AsACompilationAllows.forAdmittedValues();
 
-    private static AdmissibleValues<String> says(String atom, Value value) {
-        return AdmissibleValues.at(atom, ValueSet.just(value));
+    private AdmissibleValues<String> says(String atom, Value value) {
+        return built(plans(atom, value));
     }
 
     /** The same rule while it is still a description, which is where a choice between two of them
@@ -45,6 +45,11 @@ class AnUnreadRuleWidensAndSaysThatItDidTest {
 
     private static PlannedValues<String> unread(Set<String> named) {
         return PlannedValues.unreadable(named, UnreadReason.FORM_NOT_READ);
+    }
+
+    /** A description worked out, which is how a reading is come by. */
+    private AdmissibleValues<String> built(PlannedValues<String> planned) {
+        return planned.resolve(sets).values();
     }
 
     /** A description worked out and told what its unread alternatives left open, which is what a
@@ -88,7 +93,7 @@ class AnUnreadRuleWidensAndSaysThatItDidTest {
     @Test
     void anUnreadRuleStatedBesideAnotherNarrowsNothing() {
         AdmissibleValues<String> both = says(VALUE, A)
-                .meet(AdmissibleValues.unreadable(Set.of(), UnreadReason.FORM_NOT_READ), sets);
+                .meet(built(unread(Set.of())), sets);
         assertEquals(ValueSet.just(A), both.at(VALUE));
         assertFalse(both.isBottom());
         assertTrue(both.speaksFor(VALUE));
@@ -98,9 +103,7 @@ class AnUnreadRuleWidensAndSaysThatItDidTest {
     @Test
     void anUnreadRuleNamingAPositionLeavesItSpokenForByNothing() {
         AdmissibleValues<String> both =
-                says(VALUE, A).meet(
-                        AdmissibleValues.unreadable(Set.of(OTHER), UnreadReason.FORM_NOT_READ),
-                        sets);
+                says(VALUE, A).meet(built(unread(Set.of(OTHER))), sets);
         assertTrue(both.speaksFor(VALUE));
         assertFalse(both.speaksFor(OTHER));
         assertEquals(ValueSet.ANY, both.at(OTHER));
@@ -177,8 +180,8 @@ class AnUnreadRuleWidensAndSaysThatItDidTest {
      */
     @Test
     void whatStoppedARuleIsHeldWithThePositionItNamed() {
-        AdmissibleValues<String> read =
-                AdmissibleValues.unreadable(Set.of(VALUE), UnreadReason.RELATES_TWO_POSITIONS);
+        AdmissibleValues<String> read = built(
+                PlannedValues.unreadable(Set.of(VALUE), UnreadReason.RELATES_TWO_POSITIONS));
 
         assertEquals(List.of(UnreadReason.RELATES_TWO_POSITIONS), read.whyUnread(VALUE));
         assertEquals(List.of(), read.whyUnread(OTHER),

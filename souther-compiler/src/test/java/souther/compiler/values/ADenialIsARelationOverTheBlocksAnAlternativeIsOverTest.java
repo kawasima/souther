@@ -141,8 +141,8 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         assertTrue(planned.meet(PlannedValues.holdingAsOne("p", "r"))
                         .anyAlternativeAdmits((_, _) -> Emptiness.NONEMPTY) == Emptiness.EMPTY,
                 "the choice states it, so an equality read beside it refuses");
-        assertTrue(planned.resolve(sets).values()
-                        .meet(AdmissibleValues.holdingAsOne("p", "r"), sets).isBottom(),
+        assertTrue(built(planned, sets)
+                        .meet(built(PlannedValues.holdingAsOne("p", "r"), sets), sets).isBottom(),
                 "and it is still stated once the values are worked out");
     }
 
@@ -268,8 +268,8 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
     @Test
     void aConjunctionEmptiedByItsRelationHoldsNothingAndSaysWhat() {
         Allowance<String> sets = AsACompilationAllows.forAdmittedValues();
-        AdmissibleValues<String> both = AdmissibleValues.<String>holdingAsOne("p", "r")
-                .meet(AdmissibleValues.heldApart("p", "r"), sets);
+        AdmissibleValues<String> both = built(PlannedValues.holdingAsOne("p", "r"), sets)
+                .meet(built(PlannedValues.heldApart("p", "r"), sets), sets);
 
         assertTrue(both.isBottom(), "no value of these rules can be written");
 
@@ -744,6 +744,12 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
         assertInstanceOf(Apartness.Reduction.NotKnown.class,
                 even.reduce((block, _) -> new Admits.These(block.equals(P0) ? three : two)),
                 "and one value more at one block is one assignment too many");
+    }
+
+    /** A description worked out, which is how a reading is come by. */
+    private static AdmissibleValues<String> built(PlannedValues<String> planned,
+                                                  Allowance<String> sets) {
+        return planned.resolve(sets).values();
     }
 
     /** A relation nothing stated is one nothing refuses. */

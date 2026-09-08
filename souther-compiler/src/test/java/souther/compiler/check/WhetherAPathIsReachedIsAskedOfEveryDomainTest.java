@@ -10,6 +10,10 @@ import souther.compiler.numeric.Rel;
 import souther.compiler.numeric.OrderedInterval;
 import souther.compiler.numeric.OrderedIntervals;
 import souther.compiler.values.AdmissibleValues;
+import souther.compiler.values.AdmittedPlan;
+import souther.compiler.values.Allowance;
+import souther.compiler.values.AsACompilationAllows;
+import souther.compiler.values.PlannedValues;
 import souther.compiler.values.Value;
 import souther.compiler.values.ValueSet;
 
@@ -176,12 +180,16 @@ class WhetherAPathIsReachedIsAskedOfEveryDomainTest {
     private static ConstraintState<FactSubject> valuesAtBottom() {
         // Met as one reading and handed over as one. Two readings are combined where the
         // clauses of a declaration are read, and never at the state's boundary.
-        souther.compiler.values.Allowance<FactSubject> sets =
-                souther.compiler.values.AsACompilationAllows.forAdmittedValues();
+        Allowance<FactSubject> sets = AsACompilationAllows.forAdmittedValues();
         return ConstraintState.<FactSubject>top().takingRead(Confinement.Worked.of(
-                AdmissibleValues.at(A_POSITION, ValueSet.just(Value.text("A")))
-                        .meet(AdmissibleValues.at(A_POSITION, ValueSet.just(Value.text("B"))),
-                                sets), OrderedIntervals.top(), Map.of()), sets);
+                says("A", sets).meet(says("B", sets), sets),
+                OrderedIntervals.top(), Map.of()), sets);
+    }
+
+    /** One rule about the position, worked out, which is how a reading is come by. */
+    private static AdmissibleValues<FactSubject> says(String text, Allowance<FactSubject> sets) {
+        return PlannedValues.at(A_POSITION, AdmittedPlan.of(ValueSet.just(Value.text(text))))
+                .resolve(sets).values();
     }
 
     private static ConstraintState<FactSubject> orderedAtBottom() {
