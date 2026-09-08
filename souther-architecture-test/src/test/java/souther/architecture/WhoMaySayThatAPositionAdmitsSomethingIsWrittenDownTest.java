@@ -235,6 +235,26 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                     + "(Lsouther/compiler/values/Emptiness;)Z");
 
     /**
+     * One reading whose meaning nobody has decided yet, and which question it is.
+     *
+     * <p>The question is carried by the reading and not written beside it. What orders this list is
+     * how the walk's answer sorts, which is nobody's to arrange, so a grouping written between the
+     * entries says an adjacency the order does not give — and says it wrongly the first time an
+     * entry sorts into the middle of another group.
+     *
+     * @param place    the one method, as a permission is written
+     * @param question where the question this reading is is being decided
+     */
+    private record Open(String place, String question) {}
+
+    /** A choice and a conjunction read the same partition of two answers opposite ways round. */
+    private static final String ONE_PARTITION_TWO_READINGS = "souther-lang/souther#1492";
+
+    /** What a settled positive answer is worth, beside a position nobody could build and at the top
+     *  of what a join can reach. */
+    private static final String WHAT_AN_ANSWER_IS_WORTH = "souther-lang/souther#1493";
+
+    /**
      * And the readings of this word whose meaning nobody has decided yet.
      *
      * <p>Three questions and no owner for any of them. {@code eitherShown} and {@code alsoSeen}
@@ -251,29 +271,25 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      * this compiler has decided. Naming a reading here says that; it does not say that the reading
      * was left alone.
      */
-    private static final List<String> COMPARED_IN_PRODUCTION = List.of(
-            // The same partition of two answers, read one way by a choice and the other by a
-            // conjunction (#1492).
-            "souther/compiler/check/Confinement#eitherShown"
+    private static final List<Open> COMPARED_IN_PRODUCTION = List.of(
+            new Open("souther/compiler/check/Confinement#eitherShown"
                     + "(Lsouther/compiler/check/Confinement$Admission;"
                     + "Lsouther/compiler/check/Confinement$Admission;)"
-                    + "Lsouther/compiler/check/Confinement$Admission;",
-            // What a positive answer is worth beside a position nobody could build, and that a
-            // joined answer has reached the top of what a choice can be (#1493).
-            "souther/compiler/check/Confinement$Worked#admission"
+                    + "Lsouther/compiler/check/Confinement$Admission;", ONE_PARTITION_TWO_READINGS),
+            new Open("souther/compiler/check/Settlement$Sided#alsoSeen"
+                    + "(Lsouther/compiler/check/Settlement$Sided;)"
+                    + "Lsouther/compiler/check/Settlement$Sided;", ONE_PARTITION_TWO_READINGS),
+            new Open("souther/compiler/check/Confinement$Worked#admission"
                     + "(Lsouther/compiler/check/PositionEnvelope$Restrictions;"
                     + "Lsouther/compiler/values/StringMachineAnswers;)"
-                    + "Lsouther/compiler/check/Confinement$Admission;",
-            "souther/compiler/check/Settlement$Sided#alsoSeen"
-                    + "(Lsouther/compiler/check/Settlement$Sided;)"
-                    + "Lsouther/compiler/check/Settlement$Sided;",
-            "souther/compiler/values/AdmissibleValues#anyAlternativeAdmits"
+                    + "Lsouther/compiler/check/Confinement$Admission;", WHAT_AN_ANSWER_IS_WORTH),
+            new Open("souther/compiler/values/AdmissibleValues#anyAlternativeAdmits"
                     + "(Lsouther/compiler/values/AskedOfEachBlock;"
                     + "Lsouther/compiler/values/AskedOfARelation;)"
-                    + "Lsouther/compiler/values/Emptiness;",
-            "souther/compiler/values/PlannedValues#anyAlternativeAdmits"
+                    + "Lsouther/compiler/values/Emptiness;", WHAT_AN_ANSWER_IS_WORTH),
+            new Open("souther/compiler/values/PlannedValues#anyAlternativeAdmits"
                     + "(Lsouther/compiler/values/AskedOfEachBlock;)"
-                    + "Lsouther/compiler/values/Emptiness;");
+                    + "Lsouther/compiler/values/Emptiness;", WHAT_AN_ANSWER_IS_WORTH));
 
     /**
      * One saying of the word, and whose code holds it.
@@ -453,10 +469,11 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                 "which the walk sees it naming, so its absence above is the detector telling a"
                         + " comparison from the making of an answer and not the walk missing it");
 
-        assertEquals(COMPARED_IN_PRODUCTION,
+        assertEquals(COMPARED_IN_PRODUCTION.stream().map(Open::place).sorted().toList(),
                 placesSaying(saidInProduction(), use -> use.said().equals(COMPARED)),
-                "a reading that compares is one no owned meaning answered, so what is written here"
-                        + " is the readings whose meaning nobody has decided yet");
+                () -> "a reading that compares is one no owned meaning answered, so what is written"
+                        + " here is the readings whose meaning nobody has decided yet, each with"
+                        + " where it is being decided:\n" + questionsBeingDecided());
     }
 
     /**
@@ -656,6 +673,17 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
         Set<String> out = new TreeSet<>();
         said.stream().filter(which).forEach(use -> out.add(use.nest()));
         return new ArrayList<>(out);
+    }
+
+    /** Where each reading that compares is being decided, for whoever the rule above stopped: an
+     *  entry added to that list is a question somebody is deciding, and an entry that has gone is
+     *  one that was. */
+    private static String questionsBeingDecided() {
+        StringBuilder out = new StringBuilder();
+        COMPARED_IN_PRODUCTION.forEach(open ->
+                out.append("  ").append(open.place()).append("  ").append(open.question())
+                        .append('\n'));
+        return out.toString();
     }
 
     /** The one method each of the sayings {@code which} keeps is in, for a rule about readings. */
