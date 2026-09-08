@@ -377,9 +377,12 @@ public final class AdmissibleValues<A> {
                         && commonSameness.equals(it.commonSameness) && across.equals(it.across);
             }
 
+            /** The boxes, what is held as one across them and what each block is left — each in
+             *  its own place, see {@link ValueHash}. */
             @Override
             public int hashCode() {
-                return (boxes.hashCode() * 31 + commonSameness.hashCode()) * 31 + across.hashCode();
+                return ValueHash.ofItsParts(Alternatives.class, boxes.hashCode(),
+                        commonSameness.hashCode(), across.hashCode());
             }
 
             @Override
@@ -543,6 +546,19 @@ public final class AdmissibleValues<A> {
         /** One alternative that states no denial. */
         public static <A> Alternative<A> of(Box<A> product) {
             return new Alternative<>(product, Apartness.nothing());
+        }
+
+        /**
+         * The product and the relation over it, each in its own place — see {@link ValueHash}.
+         *
+         * <p>Said here rather than left to what a record answers, because these are held several to
+         * a set and a set adds up what it holds. A record carries its last component up unchanged,
+         * so two alternatives would come to one number whenever they held each other's relation —
+         * and an alternative is a product and the denials over that product together.
+         */
+        @Override
+        public int hashCode() {
+            return ValueHash.ofItsParts(Alternative.class, product.hashCode(), apart.hashCode());
         }
 
         /** One alternative over positions that are each their own block, stating no denial. */
@@ -834,9 +850,12 @@ public final class AdmissibleValues<A> {
         return other instanceof AdmissibleValues<?> it && parts.equals(it.parts);
     }
 
+    /** What it holds, as this kind of value — see {@link ValueHash}. The parts are a record, and a
+     *  record's number is one its last component joins unchanged, so handing that up is handing up
+     *  a number whatever hashes this next can still take apart. */
     @Override
     public int hashCode() {
-        return parts.hashCode();
+        return ValueHash.ofOnePart(AdmissibleValues.class, parts.hashCode());
     }
 
     @Override

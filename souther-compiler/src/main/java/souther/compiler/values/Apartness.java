@@ -754,8 +754,8 @@ public final class Apartness<A> {
         // beside two blocks nothing wrote the values of is two sets that leave one. What the count
         // then shows of them is one lack, shown twice.
         //
-        // Told by what is claimed and not by the blocks the count was taken of. A lack says where
-        // it is filed ({@link RelationalLack#scattering}), where a set of blocks is a number its
+        // Told by what is claimed and not by the blocks the count was taken of. A lack works out
+        // where it is filed at its own boundary (ValueHash), so a set of blocks is not a number its
         // subsets share — and the sets one relation is short of are subsets of the same few blocks.
         Set<RelationalLack<A>> already = new LinkedHashSet<>();
         for (Set<Sameness.Block<A>> apart : walked.get()) {
@@ -889,9 +889,10 @@ public final class Apartness<A> {
         return other instanceof Apartness<?> it && edges.equals(it.edges);
     }
 
+    /** The pairs it holds — see {@link ValueHash}. */
     @Override
     public int hashCode() {
-        return edges.hashCode();
+        return ValueHash.ofWhatItHolds(Apartness.class, edges.hashCode(), edges.size());
     }
 
     /** The pairs written in one order whichever order they were stated in — see
@@ -936,9 +937,19 @@ public final class Apartness<A> {
                             || (one.equals(it.other) && other.equals(it.one)));
         }
 
+        /**
+         * A pair of blocks with no order between its ends — see {@link ValueHash}.
+         *
+         * <p>Taken as a pair and not as its ends added. The ends added is what a pair stated either
+         * way round most easily comes to one number by, and it is also what leaves a set of pairs
+         * at the sum over every block any of its pairs names: the pair of {@code A} with {@code B}
+         * beside the pair of {@code C} with {@code D}, and the pair of {@code A} with {@code C}
+         * beside the pair of {@code B} with {@code D}, add up the same. Which block was stated to
+         * differ from which is what a relation is, and it is the one thing that sum does not say.
+         */
         @Override
         public int hashCode() {
-            return one.hashCode() + other.hashCode();
+            return ValueHash.ofAnUnorderedPair(Edge.class, one.hashCode(), other.hashCode());
         }
 
         /** The two ends, written in one order whichever way round they were stated. Which end is

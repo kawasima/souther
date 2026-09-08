@@ -382,9 +382,12 @@ public final class ConjoinedAdmissibleValues<A> {
         return other instanceof ConjoinedAdmissibleValues<?> it && factors.equals(it.factors);
     }
 
+    /** The factors it holds, as this kind of value — see {@link ValueHash}. A list hands up a
+     *  number its elements join one at a time, so handing that up is handing up a number whatever
+     *  hashes this next can still take apart. */
     @Override
     public int hashCode() {
-        return factors.hashCode();
+        return ValueHash.ofOnePart(ConjoinedAdmissibleValues.class, factors.hashCode());
     }
 
     @Override

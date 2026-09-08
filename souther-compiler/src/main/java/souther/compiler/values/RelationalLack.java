@@ -35,28 +35,6 @@ public sealed interface RelationalLack<A> {
     /** Every block the lack is about, which is what a report has to name to say what has nothing. */
     Set<Sameness.Block<A>> blocks();
 
-    /**
-     * A number for a set of blocks that two different sets rarely share.
-     *
-     * <p>A set's own is the sum of what it holds, and the sets of blocks one relation is short of
-     * are all drawn from the same few blocks — so their sums fall together, and a reader that filed
-     * these under it would compare nearly every one of them with every other. Each block's number is
-     * scattered before the sum is taken, which leaves the sum as free of the order they come in as
-     * it was and the sets as far apart as they are.
-     *
-     * <p>Which is a thing a lack works out for itself and not a thing a caller does to it. A lack
-     * is what a refusal is looked up by, so where it is filed is settled by the lack rather than by
-     * whoever is filing it.
-     */
-    private static int scattering(Set<?> these) {
-        int out = 0;
-        for (Object each : these) {
-            int mixed = each.hashCode() * 0x9E3779B9;
-            out += mixed ^ (mixed >>> 16);
-        }
-        return out;
-    }
-
     /** The same argument about the blocks {@code naming} calls these. */
     default <B> RelationalLack<B> renamed(java.util.function.Function<A, B> naming) {
         return switch (this) {
@@ -88,6 +66,12 @@ public sealed interface RelationalLack<A> {
         public Set<Sameness.Block<A>> blocks() {
             return Set.of(block);
         }
+
+        /** The block, as this case of a lack — see {@link ValueHash}. */
+        @Override
+        public int hashCode() {
+            return ValueHash.ofOnePart(ABlockApartFromItself.class, block.hashCode());
+        }
     }
 
     /**
@@ -109,6 +93,18 @@ public sealed interface RelationalLack<A> {
         @Override
         public Set<Sameness.Block<A>> blocks() {
             return Set.of(block);
+        }
+
+        /**
+         * The block, as this case of a lack — see {@link ValueHash}.
+         *
+         * <p>Which case it is is part of the number, and here that is the whole of what tells this
+         * from a block stated apart from itself: both name one block and claim different things,
+         * and an argument holds several lacks in no order.
+         */
+        @Override
+        public int hashCode() {
+            return ValueHash.ofOnePart(NoValueLeftForIt.class, block.hashCode());
         }
     }
 
@@ -142,16 +138,11 @@ public sealed interface RelationalLack<A> {
             return "TooFewValuesBetweenThem" + InOneOrder.of(blocks) + InOneOrder.of(available);
         }
 
-        /** The blocks and the values, scattered — see {@link #scattering}. */
+        /** The blocks and the values, each in its own place — see {@link ValueHash}. */
         @Override
         public int hashCode() {
-            return 31 * scattering(blocks) + scattering(available);
-        }
-
-        @Override
-        public boolean equals(Object said) {
-            return said instanceof TooFewValuesBetweenThem<?> it && blocks.equals(it.blocks)
-                    && available.equals(it.available);
+            return ValueHash.ofItsParts(TooFewValuesBetweenThem.class, blocks.hashCode(),
+                    available.hashCode());
         }
     }
 
@@ -204,15 +195,11 @@ public sealed interface RelationalLack<A> {
             return "NoAssignmentTellsThemApart" + InOneOrder.of(blocks);
         }
 
-        /** The blocks, scattered — see {@link #scattering}. */
+        /** The blocks it names, in no order — see {@link ValueHash}. */
         @Override
         public int hashCode() {
-            return scattering(blocks);
-        }
-
-        @Override
-        public boolean equals(Object said) {
-            return said instanceof NoAssignmentTellsThemApart<?> it && blocks.equals(it.blocks);
+            return ValueHash.ofWhatItHolds(NoAssignmentTellsThemApart.class, blocks.hashCode(),
+                    blocks.size());
         }
     }
 }

@@ -45,6 +45,23 @@
         </module>
         <module name="UnusedLocalVariable"/>
         <module name="EqualsHashCode"/>
+        <!--
+          A record that spells its own hash is not asked to spell its own equality.
+
+          What this rule mirrors is one direction: an equality written by hand beside a hash the
+          class did not write is two answers that disagree. Checkstyle also asks the other way
+          round, and CI does not — so unasked, this rule stops a commit CI would have accepted,
+          and the thing it stops is the safer of the two shapes. A record's equality is written by
+          the compiler over every component it has and every component it is given later; a hash
+          written by hand beside it is one a later component costs a collision. Answering this
+          rule by writing the equality out as well is answering it by making the loss of a
+          component take that component out of what the value is.
+        -->
+        <module name="SuppressionXpathSingleFilter">
+            <property name="checks" value="EqualsHashCode"/>
+            <property name="query"
+                      value="//RECORD_DEF//METHOD_DEF[./IDENT[@text='hashCode']]"/>
+        </module>
         <module name="FallThrough"/>
         <module name="ModifierOrder"/>
         <module name="ArrayTypeStyle"/>

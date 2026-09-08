@@ -23,12 +23,11 @@ import java.util.function.Predicate;
  * to answer for.
  *
  * <p><b>Which is why what is inside is not what is handed out.</b> These are held in the order they
- * arrived, because a lack about several blocks hashes through the set of blocks it names and the
- * sets of blocks one relation is short of fall together — measured on the shape the walk is
- * admitted at, putting them somewhere that hashes them on the way in was what a reduction cost
- * rather than a part of it. An order nobody may read is not an order a value may show, so nothing
- * here answers with one: a reader asks what was claimed, what a report may name, or whether every
- * lack is of some kind.
+ * arrived, because a lack about several blocks hashes through the set of blocks it names — measured
+ * on the shape the walk is admitted at, and on the numbers a lack had then, putting them somewhere
+ * that hashes them on the way in was what a reduction cost rather than a part of it. An order
+ * nobody may read is not an order a value may show, so nothing here answers with one: a reader asks
+ * what was claimed, what a report may name, or whether every lack is of some kind.
  *
  * <p>And what a lack claims is what these are looked up by, which is a question asked of every lack
  * of one of these against every lack of another wherever two are put together. Asked by walking,
@@ -170,13 +169,14 @@ public final class Lacks<A> {
         return true;
     }
 
+    /** What was shown, in no order — see {@link ValueHash}. */
     @Override
     public int hashCode() {
-        int out = 0;
+        int summed = 0;
         for (Shown<A> shown : each) {
-            out += shown.hashCode();
+            summed += shown.hashCode();
         }
-        return out;
+        return ValueHash.ofWhatItHolds(Lacks.class, summed, each.size());
     }
 
     /** Written in one order whichever they arrived in — see {@link InOneOrder}. */

@@ -97,6 +97,22 @@ public final class Provenance<A> {
             return block + " lost " + value + " in round " + round + " to "
                     + InOneOrder.of(blockers);
         }
+
+        /**
+         * What was taken, from where, when and by what — each in its own place, see
+         * {@link ValueHash}.
+         *
+         * <p>Said here rather than left to what a record answers, because a route holds several of
+         * these and what several of them come to is their numbers added. The blockers are a set and
+         * a record carries its last component up unchanged, so two removals would come to one
+         * number whenever the same blockers were shared out between them the other way — and what
+         * a removal says is which of them left this value nowhere to go.
+         */
+        @Override
+        public int hashCode() {
+            return ValueHash.ofItsParts(Removal.class, block.hashCode(), value.hashCode(), round,
+                    blockers.hashCode());
+        }
     }
 
     /**
@@ -153,9 +169,10 @@ public final class Provenance<A> {
         return said instanceof Provenance<?> it && removals.equals(it.removals);
     }
 
+    /** The removals it holds, in no order — see {@link ValueHash}. */
     @Override
     public int hashCode() {
-        return removals.hashCode();
+        return ValueHash.ofWhatItHolds(Provenance.class, removals.hashCode(), removals.size());
     }
 
     /** One block, asked of the rounds before {@code before}. */

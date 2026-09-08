@@ -69,6 +69,24 @@ class ADenialIsARelationOverTheBlocksAnAlternativeIsOverTest {
     }
 
     /**
+     * The same four blocks paired two ways are two relations, and two numbers.
+     *
+     * <p>Which is what a pair hashed as its ends added would lose: a set of pairs would come to the
+     * sum over every block any of its pairs names, and both of these name all four. So this needs
+     * no blocks chosen for it — any four distinct ones are one number under that arithmetic — and
+     * what it holds the pair to is that its number is not arranged to be lost that way.
+     */
+    @Test
+    void andTheSameBlocksPairedTwoWaysAreTwoRelations() {
+        Apartness<String> paired = Apartness.of("p", "q").and(Apartness.of("r", "s"));
+        Apartness<String> otherwise = Apartness.of("p", "r").and(Apartness.of("q", "s"));
+
+        assertNotEquals(paired, otherwise);
+        assertNotEquals(paired.hashCode(), otherwise.hashCode(),
+                "the same blocks paired two ways came to one number");
+    }
+
+    /**
      * A conjunction that holds two blocks as one carries a denial onto the block it leaves.
      *
      * <p>{@code q /= r} stated of {@code q} on its own is a denial between {@code r} and whatever
