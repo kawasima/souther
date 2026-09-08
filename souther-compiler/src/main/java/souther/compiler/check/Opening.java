@@ -28,6 +28,10 @@ import java.util.Set;
  *                  Java type once the tag is dropped ({@link ReadingLanguage})
  * @param positions the positions this reading could not show the alternatives preserve
  */
+// Unused in what this holds, which is the whole of what it is for: the tag is here so that the
+// answer cannot be handed to a reading that did not work it out, and a parameter this record read
+// would be one it could answer from.
+@SuppressWarnings("UnusedTypeParameter")
 record Opening<A, L extends ReadingLanguage>(Set<A> positions) {
 
     Opening {
