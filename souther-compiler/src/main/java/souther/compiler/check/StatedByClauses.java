@@ -1122,11 +1122,16 @@ sealed interface StatedByClauses {
          * on the order the alternatives were written in because nothing in it looks at the pair.
          */
         Taken under(Settlement.Sided fate) {
-            return switch (fate.emptiness()) {
-                case EMPTY -> inADeadBranch();
-                case UNDECIDED -> holding(fate);
-                case NONEMPTY -> this;
-            };
+            // Asked of what the fate settles and not taken apart by which of the three answers it
+            // is. A branch is one nobody can be in, or one nobody settled, or neither — and the two
+            // questions are asked in that order because the second is about a branch still standing.
+            if (fate.emptiness() == souther.compiler.values.Emptiness.EMPTY) {
+                return inADeadBranch();
+            }
+            if (fate.emptiness() == souther.compiler.values.Emptiness.UNDECIDED) {
+                return holding(fate);
+            }
+            return this;
         }
 
         /**
