@@ -3786,7 +3786,7 @@ public final class Adequacy {
      * declaration it is shown at, which is not always in the module keeping the account; and a
      * finding about a behavior as a whole is placed by that behavior. A row is the one shown where
      * the reading already had it, for the reason
-     * {@code WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest} records.
+     * {@code WhatStillHoldsAPlaceUnderAFindingIsReadOnTwoAxesTest} records.
      *
      * <p>A switch with nothing to fall through to. Which place a kind of finding is shown at is a
      * decision about that kind, so a kind added to {@link About} arrives here as a compile error
@@ -3872,7 +3872,7 @@ public final class Adequacy {
      *
      * <p>Which is not the same as holding no place at all. Values reached through {@link About}
      * still carry places of their own, and what those are for is being read one family at a time;
-     * {@code WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest} is where they are counted,
+     * {@code WhatStillHoldsAPlaceUnderAFindingIsReadOnTwoAxesTest} is where they are counted,
      * and the module-boundary cut of issue #1472 waits on that count.
      */
     public record Finding(FindingSubject subject, WeakeningSet weakenedBy, About about) {

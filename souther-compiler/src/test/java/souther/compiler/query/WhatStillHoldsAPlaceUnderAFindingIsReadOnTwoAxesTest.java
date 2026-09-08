@@ -30,16 +30,19 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Everything still holding a place under a finding is one of three things, and which one is what a
- * compile shows rather than what somebody wrote down.
+ * Everything still holding a place under a finding is read twice: for what a compile saw of it, and
+ * for whether the module-boundary cut has to wait on it.
  *
- * <p><b>Not a list of what is allowed.</b> Two of the three are things a corpus settles: a place
- * two values were seen to differ only in, and a place nothing reached. The third settles nothing —
- * the models reach it and no such pair turned up, which leaves open what the place is for. Every
- * one of those is a location still reaching a finding, so every one is a carrier the
- * module-boundary cut of issue #1472 would leave pointing at where a helper used to be, whichever
- * way that question comes out. Taking the cut is what this counts down to rather than what it
- * permits.
+ * <p><b>Two questions and two axes.</b> What a corpus saw is one thing — two values differing only
+ * in their place, nothing reaching one at all, or neither seen. Whether a location crosses the
+ * boundary the cut is taken at is another, and no answer to the first is an answer to the second: a
+ * place that tells two values apart is identity the cut has to carry across some other way, and a
+ * place nothing reached is one nobody has looked at. Held on one axis, the gate read the counting
+ * and let two of the three readings through.
+ *
+ * <p><b>Not a list of what is allowed.</b> While nothing has been shown not to cross, every place
+ * under a finding is something the cut waits on. Taking the cut is what this counts down to rather
+ * than what it permits.
  *
  * <p>Asked of the finding and not of the thing last put right. A place is taken out of one value at
  * a time, and a check rooted at whichever one that was cannot see the rest — which is how a place
@@ -52,7 +55,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * held in a collection. So each reading is a thing the models either show or do not, and a carrier
  * that is none of the three fails.
  */
-class WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest {
+class WhatStillHoldsAPlaceUnderAFindingIsReadOnTwoAxesTest {
 
     /** What a report points with, which is what a finding may not hold. */
     private static final Set<String> A_PLACE = Set.of(
@@ -74,9 +77,12 @@ class WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest {
      * that a place is spare and cannot establish it. A word here that said what a carrier <em>is</em>
      * would be this register doing again what it exists to stop, one level up.
      *
-     * <p>Two of them are answers and the third is a question nobody has put yet. Told apart here so
-     * that a reader counting what is left to look into counts
-     * {@link ReachedAndNotObservedToDiscriminate} and nothing else.
+     * <p><b>This axis does not say whether the cut may be taken.</b> Whether a location crosses the
+     * module boundary is a different question from what a corpus saw of it, and neither a place
+     * that tells two values apart nor a place nothing reached is thereby safe: the first is
+     * identity a semantic cut has to carry across some other way, and the second is a carrier
+     * nothing has looked at. What the cut waits on is {@link AcrossTheCut}, and reading it off this
+     * is what this register was written to stop.
      */
     sealed interface Because {
 
@@ -101,56 +107,94 @@ class WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest {
          * place is for here is settled by reading the values rather than by counting them. So this
          * says a question is open, not that it has been answered.
          *
-         * <p>Every one of these is a path by which a location still reaches a finding, so every one
-         * is a carrier the module-boundary cut of issue #1472 would leave pointing at where a
-         * helper used to be — whichever way the question comes out. The cut waits on this being
-         * empty, and what empties it is somebody deciding, per carrier, whether the place is a
-         * handle to be asked for or an identity nothing else supplies.
-         *
-         * @param owed what has to happen before it goes, said so that a reader meets the work
-         *             rather than the excuse
          */
-        record ReachedAndNotObservedToDiscriminate(String owed) implements Because {}
+        record ReachedAndNotObservedToDiscriminate() implements Because {}
     }
 
-    /** Every place still under a finding, and the reading each is here under. */
-    private static final Map<String, Because> WHAT_STILL_HOLDS_A_PLACE = whatStillHoldsAPlace();
+    /**
+     * Whether the module-boundary cut of issue #1472 has to wait on a carrier.
+     *
+     * <p>The other axis, and the one the cut asks. A location under a finding reaches whoever reads
+     * the finding, so the cut leaves it holding where a helper used to be — unless somebody has
+     * shown that this particular location never crosses. That is a claim about where the value
+     * goes, and nothing a corpus counted about the value's places answers it: a place that tells
+     * two values apart is identity the cut has to carry across some other way, and a place nothing
+     * reached is one nobody has looked at.
+     *
+     * <p>Held apart from {@link Because} so that the gate cannot be read off the counting. The two
+     * were one sum once, and what came of that is that the gate quietly let two of the three
+     * readings through.
+     */
+    sealed interface AcrossTheCut {
 
-    private static Map<String, Because> whatStillHoldsAPlace() {
-        Map<String, Because> out = new TreeMap<>();
-        // The one place a place is doing work no identity beside it does: two conditions this
-        // compiler declined to cut are told apart by where they are and by nothing else.
+        /**
+         * It waits.
+         *
+         * @param owed what has to happen before it stops waiting, said so that a reader meets the
+         *             work rather than the excuse
+         */
+        record BlocksIt(String owed) implements AcrossTheCut {}
+
+        /**
+         * Somebody showed this location does not cross the boundary the cut is taken at.
+         *
+         * @param shown what was shown and how, which is what makes this different from having
+         *              counted nothing
+         */
+        record ShownNotToCrossIt(String shown) implements AcrossTheCut {}
+    }
+
+    /** What a place still under a finding was seen to be, and what the cut makes of it. */
+    record Standing(Because observed, AcrossTheCut across) {}
+
+    /** Every place still under a finding, and where each stands on both axes. */
+    private static final Map<String, Standing> WHAT_STILL_HOLDS_A_PLACE = whatStillHoldsAPlace();
+
+    private static Map<String, Standing> whatStillHoldsAPlace() {
+        Map<String, Standing> out = new TreeMap<>();
+        // Two conditions this compiler declined to cut were seen told apart by where they are and
+        // by nothing else. So the place is identity here, which the cut has to carry across some
+        // other way before it can stop carrying the position.
         out.put("souther.compiler.partition.OnTheWay$Declined.at",
-                new Because.TwoOfThemDifferOnlyThere());
+                new Standing(new Because.TwoOfThemDifferOnlyThere(),
+                        new AcrossTheCut.BlocksIt("a condition on the way to a border is given"
+                                + " something to be named by, so that the place is not what tells"
+                                + " one from another (issue #1486)")));
+        // Nothing the models reach is one of these. That is a count of what was looked at and not
+        // a fact about where the value goes, so the cut waits on somebody looking.
+        String lookAtIt = "somebody builds a model that reaches one and reads what its place is"
+                + " doing, or shows that nothing carrying it crosses a module boundary";
         out.put("souther.compiler.observe.Incompleteness$Met.citations",
-                new Because.NothingReachesOne());
+                new Standing(new Because.NothingReachesOne(),
+                        new AcrossTheCut.BlocksIt(lookAtIt)));
         out.put("souther.compiler.partition.PredicateOrigin.writtenAt",
-                new Because.NothingReachesOne());
+                new Standing(new Because.NothingReachesOne(),
+                        new AcrossTheCut.BlocksIt(lookAtIt)));
         out.put("souther.compiler.query.About$AnUnansweredRow.at",
-                new Because.NothingReachesOne());
+                new Standing(new Because.NothingReachesOne(),
+                        new AcrossTheCut.BlocksIt(lookAtIt)));
         // What a document prints for a rule the author gave no name, and the sets folded out of it.
         // A rule is beside the place in each of them, and no two were seen differing only in the
         // place — which leaves open whether the place is spare here, and that is the question.
         String splitTheHandle = "somebody reads what a published handle is, and says whether the"
                 + " place is one to ask for or one nothing else supplies (issue #1485)";
-        out.put("souther.compiler.check.RuleCitation$WrittenAt.at",
-                new Because.ReachedAndNotObservedToDiscriminate(splitTheHandle));
-        out.put("souther.compiler.partition.LineOrigin$ComparisonOrigin$Read.writtenAt",
-                new Because.ReachedAndNotObservedToDiscriminate(splitTheHandle));
-        out.put("souther.compiler.inputs.RuleWithoutALine.reachedAt",
-                new Because.ReachedAndNotObservedToDiscriminate(splitTheHandle));
-        out.put("souther.compiler.inputs.StandingQuestion$BoundaryUndetermined.reachedAt",
-                new Because.ReachedAndNotObservedToDiscriminate(splitTheHandle));
-        out.put("souther.compiler.inputs.StandingQuestion$Exact.reachedAt",
-                new Because.ReachedAndNotObservedToDiscriminate(splitTheHandle));
-        out.put("souther.compiler.inputs.StandingQuestion$NothingClassifiesIt.reachedAt",
-                new Because.ReachedAndNotObservedToDiscriminate(splitTheHandle));
+        for (String carrier : List.of(
+                "souther.compiler.check.RuleCitation$WrittenAt.at",
+                "souther.compiler.partition.LineOrigin$ComparisonOrigin$Read.writtenAt",
+                "souther.compiler.inputs.RuleWithoutALine.reachedAt",
+                "souther.compiler.inputs.StandingQuestion$BoundaryUndetermined.reachedAt",
+                "souther.compiler.inputs.StandingQuestion$Exact.reachedAt",
+                "souther.compiler.inputs.StandingQuestion$NothingClassifiesIt.reachedAt")) {
+            out.put(carrier, new Standing(new Because.ReachedAndNotObservedToDiscriminate(),
+                    new AcrossTheCut.BlocksIt(splitTheHandle)));
+        }
         String splitTheWay = "somebody reads what tells one condition on the way to a border from"
                 + " its neighbours, the way the third arm beside these was read (issue #1486)";
-        out.put("souther.compiler.partition.OnTheWay$Narrowed.at",
-                new Because.ReachedAndNotObservedToDiscriminate(splitTheWay));
-        out.put("souther.compiler.partition.OnTheWay$TakenIn.at",
-                new Because.ReachedAndNotObservedToDiscriminate(splitTheWay));
+        for (String carrier : List.of("souther.compiler.partition.OnTheWay$Narrowed.at",
+                "souther.compiler.partition.OnTheWay$TakenIn.at")) {
+            out.put(carrier, new Standing(new Because.ReachedAndNotObservedToDiscriminate(),
+                    new AcrossTheCut.BlocksIt(splitTheWay)));
+        }
         return out;
     }
 
@@ -163,6 +207,10 @@ class WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest {
     /**
      * What the module-boundary cut is waiting on, named so that whoever takes it can ask.
      *
+     * <p>Read off {@link AcrossTheCut} and off nothing else. A carrier leaves this when somebody
+     * has shown its location does not cross, or when the location is gone; it does not leave by
+     * having been counted, however the counting came out.
+     *
      * <p>Not asserted empty here, because it is not: what it holds is the work this change found
      * and did not do. It is a method rather than a line in a document so that the question "is
      * anything still going to go stale when the cut is taken" has one answer, and the change that
@@ -170,8 +218,8 @@ class WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest {
      */
     static Set<String> stillBlockingTheCut() {
         Set<String> blocking = new TreeSet<>();
-        WHAT_STILL_HOLDS_A_PLACE.forEach((carrier, because) -> {
-            if (because instanceof Because.ReachedAndNotObservedToDiscriminate) {
+        WHAT_STILL_HOLDS_A_PLACE.forEach((carrier, standing) -> {
+            if (standing.across() instanceof AcrossTheCut.BlocksIt) {
                 blocking.add(carrier);
             }
         });
@@ -179,22 +227,50 @@ class WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest {
     }
 
     /**
-     * And what is waiting is waiting on work, not on a decision.
+     * Nothing leaves the gate by having been counted.
      *
-     * <p>Every one of them says what has to happen to it. A carrier here with nothing said is one
-     * whose reason nobody wrote, which is the state this whole register exists to keep out.
+     * <p>The two axes are held apart by the types, and this is what says the register is using
+     * them that way: while nothing has been shown not to cross, every place under a finding is
+     * something the cut waits on — whichever of the three a corpus saw. Written out because the
+     * fault it guards against is invisible otherwise, the gate having once let two of the three
+     * readings through and stayed green.
      */
     @Test
-    void everythingTheCutWaitsOnSaysWhatItIsWaitingFor() {
+    void everyPlaceLeftUnderAFindingIsSomethingTheCutWaitsOn() {
+        Set<String> shownNotToCross = new TreeSet<>();
+        WHAT_STILL_HOLDS_A_PLACE.forEach((carrier, standing) -> {
+            if (standing.across() instanceof AcrossTheCut.ShownNotToCrossIt) {
+                shownNotToCross.add(carrier);
+            }
+        });
+        Set<String> waitedOn = new TreeSet<>(WHAT_STILL_HOLDS_A_PLACE.keySet());
+        waitedOn.removeAll(shownNotToCross);
+        assertEquals(waitedOn, stillBlockingTheCut(),
+                "a carrier leaves the gate by being shown not to cross, and by nothing else");
+    }
+
+    /**
+     * And what either axis says of a carrier is something somebody wrote down.
+     *
+     * <p>A carrier the cut waits on says what it is waiting for; one said not to cross says what
+     * showed that. Either with nothing beside it is a line whose reason nobody gave, which is the
+     * state this whole register exists to keep out.
+     */
+    @Test
+    void everythingOnTheCutAxisSaysWhatItIsSayingItFor() {
         Set<String> saidNothing = new TreeSet<>();
-        WHAT_STILL_HOLDS_A_PLACE.forEach((carrier, because) -> {
-            if (because instanceof Because.ReachedAndNotObservedToDiscriminate(String owed)
-                    && owed.isBlank()) {
+        WHAT_STILL_HOLDS_A_PLACE.forEach((carrier, standing) -> {
+            boolean blank = switch (standing.across()) {
+                case AcrossTheCut.BlocksIt(String owed) -> owed.isBlank();
+                case AcrossTheCut.ShownNotToCrossIt(String shown) -> shown.isBlank();
+            };
+            if (blank) {
                 saidNothing.add(carrier);
             }
         });
         assertEquals(Set.of(), saidNothing,
-                "what the cut waits on is work somebody named");
+                "what the cut waits on is work somebody named, and what it does not wait on is"
+                        + " something somebody showed");
     }
 
     /**
@@ -208,9 +284,9 @@ class WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest {
     void andEachReadingIsWhatACompileShows() {
         Map<String, List<Object>> byCarrier = carriersInTheModels();
         Map<String, String> wrong = new TreeMap<>();
-        WHAT_STILL_HOLDS_A_PLACE.forEach((carrier, because) -> {
+        WHAT_STILL_HOLDS_A_PLACE.forEach((carrier, standing) -> {
             List<Object> held = byCarrier.getOrDefault(carrier, List.of());
-            String said = says(because, held, carrier);
+            String said = says(standing.observed(), held, carrier);
             if (said != null) {
                 wrong.put(carrier, said);
             }

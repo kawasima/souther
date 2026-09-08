@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * report about it — not where that fork is.
  *
  * <p>That it holds no place is
- * {@link WhatStillHoldsAPlaceUnderAFindingIsOneOfThreeThingsTest}'s to say,
+ * {@link WhatStillHoldsAPlaceUnderAFindingIsReadOnTwoAxesTest}'s to say,
  * where the walk that answers it starts at the answer rather than at the value last put right. What
  * is here is the other half, which no walk over places can see: a value holding nothing passes
  * whether it says which of the two questions places it or says nothing at all, and the second is a
