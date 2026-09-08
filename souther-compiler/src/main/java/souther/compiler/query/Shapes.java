@@ -706,7 +706,7 @@ public final class Shapes {
     }
 
     /**
-     * Where a declaration's own clauses are written, in the order it writes them.
+     * Where one clause is written.
      *
      * <p>Beside {@link ClausesExpandedFor} and not inside it, because they are two facts about one
      * declaration and a reader uses one of them. What a clause states is what every reading of the
@@ -715,40 +715,38 @@ public final class Shapes {
      * what the model says, and every reading of every module that imports the declaration is worked
      * out again for it.
      *
+     * <p><b>One clause and not a declaration's.</b> A report is sent to the clause it is about, and
+     * that is the whole of what it reads here. Answered a declaration at a time, a reader that
+     * points at the first clause would depend on where the third is: the list is one answer, an edit
+     * moving any clause in it makes a new one, and what re-reads is everything that read the list.
+     * The clause a reader means is the grain the reader means, so it is the grain of the question.
+     *
      * <p>The ordinal is the one {@link souther.compiler.check.Clause.Id} counts by — which of the
      * declaration's own clauses this is, in written order. Every representation of a declaration
      * writes its clauses in that order, which is what lets a reader holding a judgment about clause
-     * <i>n</i> ask here for where clause <i>n</i> is.
+     * <i>n</i> ask here where clause <i>n</i> is written.
      *
-     * <p>A declaration that writes no clauses answers with none, and so does a kind that has no
-     * {@code invariant} to write: what a reader needs is where the clause it is about is, and a
-     * declaration that wrote none has no such clause to be asked about.
-     *
-     * <p>Nothing declaring one is the other answer and is absent. A declaration that wrote no
-     * clauses and a name nothing in this compilation declares are opposite facts and the same empty
-     * list, and a reader handed the list cannot tell them apart — which is the shape
-     * {@link ClausesExpandedFor} keeps three answers to avoid.
+     * <p>Absent where the declaration writes no such clause — nothing declares the name, its kind
+     * has no {@code invariant} to write, or it writes fewer clauses than this. Those are one answer
+     * because they are one fact for a reader: there is no such clause to be pointed at. Which of
+     * them it was is a question about the declaration, and this is a question about a clause.
      */
-    public record ClauseLocationsFor(TypeKey named) implements Key<List<DiagnosticPlace>> {
+    public record ClauseLocation(souther.compiler.check.Clause.Id clause)
+            implements Key<DiagnosticPlace> {
         @Override
         public String module() {
-            return named.module();
+            return clause.declaredOn().key().module();
         }
 
         @Override
-        public Answer<List<DiagnosticPlace>> compute(Db db) {
-            Hir.Def declared = ClausesExpandedFor.declarationOf(db, named);
-            if (declared == null) {
+        public Answer<DiagnosticPlace> compute(Db db) {
+            Hir.Def declared =
+                    ClausesExpandedFor.declarationOf(db, clause.declaredOn().key());
+            if (!(declared instanceof Hir.Data data)
+                    || clause.ordinal() < 0 || clause.ordinal() >= data.invariants().size()) {
                 return Answer.absent();
             }
-            if (!(declared instanceof Hir.Data data)) {
-                return Answer.of(List.of());
-            }
-            List<DiagnosticPlace> places = new ArrayList<>();
-            for (Hir.InvariantClause clause : data.invariants()) {
-                places.add(placeOf(clause));
-            }
-            return Answer.of(List.copyOf(places));
+            return Answer.of(placeOf(data.invariants().get(clause.ordinal())));
         }
 
         /** Where {@code clause} is written, as the declaration knows it — with no reader's route in
@@ -761,20 +759,18 @@ public final class Shapes {
     }
 
     /**
-     * Where any declaration's clauses are written, for a reader that is about to point at one.
+     * Where any clause is written, for a reader that is about to point at one.
      *
      * <p>One of these for the whole compilation, for the reason {@link #expandedClauses} gives: which
      * clause is being asked about is the only input there is.
      */
     public static ClauseLocations clauseLocations(Db db) {
         return clause -> {
-            Answer<List<DiagnosticPlace>> written =
-                    db.ask(new ClauseLocationsFor(clause.declaredOn().key()));
-            if (!written.present() || clause.ordinal() < 0
-                    || clause.ordinal() >= written.value().size()) {
+            Answer<DiagnosticPlace> written = db.ask(new ClauseLocation(clause));
+            if (!written.present()) {
                 throw new NoSuchClauseIsWritten(clause);
             }
-            return written.value().get(clause.ordinal());
+            return written.value();
         };
     }
 

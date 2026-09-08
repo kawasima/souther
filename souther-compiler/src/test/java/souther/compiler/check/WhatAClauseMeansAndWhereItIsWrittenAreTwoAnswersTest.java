@@ -7,6 +7,7 @@ import souther.compiler.query.Compilation;
 import souther.compiler.query.Key;
 import souther.compiler.query.Shapes;
 import souther.compiler.types.TypeKey;
+import souther.compiler.types.TypeSymbols;
 
 import org.junit.jupiter.api.Test;
 
@@ -67,6 +68,20 @@ class WhatAClauseMeansAndWhereItIsWrittenAreTwoAnswersTest {
 
     private static final TypeKey SMALL = new TypeKey("limits", "Small");
 
+    /** Two clauses, so that an edit can move one of them and leave the other. */
+    private static final String TWO_CLAUSES = """
+            module limits exposing ( Small )
+
+            data Small = String
+                invariant String.length(value) <= 3
+                invariant String.length(value) >= 1
+            """;
+
+    /** The same, with only the second clause moved down. */
+    private static final String SECOND_MOVED = TWO_CLAUSES.replace(
+            "    invariant String.length(value) >= 1",
+            "    // and it is at least this long\n    invariant String.length(value) >= 1");
+
     @Test
     void anEditThatMovesTheClauseLeavesWhatTheConstructionWasJudgedAgainst() {
         InvariantChecker.Judgment before = judgmentOn(DECLARING);
@@ -81,12 +96,26 @@ class WhatAClauseMeansAndWhereItIsWrittenAreTwoAnswersTest {
 
     @Test
     void andTheSameEditMovesWhereAReportIsSentToFindIt() {
-        assertEquals(List.of(4), clauseLines(DECLARING),
-                "the `invariant` line the declaration writes");
-        assertEquals(List.of(5), clauseLines(MOVED),
+        assertEquals(4, clauseLine(DECLARING, 0), "the `invariant` line the declaration writes");
+        assertEquals(5, clauseLine(MOVED, 0),
                 "and the line it writes it on once a line is inserted above it");
+    }
 
-        assertNotEquals(clauseLines(DECLARING), clauseLines(MOVED));
+    /**
+     * A clause is asked about one at a time, so an edit that moves one of them leaves the others
+     * where they were.
+     *
+     * <p>Which is what the question is for. Asked a declaration at a time, the answer would be the
+     * places of every clause it writes, and a reader pointing at the first would be re-read for a
+     * line inserted above the second — an edge answering a question that reader never asked. The
+     * clause a report is about is the grain the report means.
+     */
+    @Test
+    void aClauseThatDidNotMoveIsWhereItWas() {
+        assertEquals(clauseLine(TWO_CLAUSES, 0), clauseLine(SECOND_MOVED, 0),
+                "the first clause is written where it was, and the edit is below it");
+        assertNotEquals(clauseLine(TWO_CLAUSES, 1), clauseLine(SECOND_MOVED, 1),
+                "the control: the edit does move the second");
     }
 
     /**
@@ -104,9 +133,10 @@ class WhatAClauseMeansAndWhereItIsWrittenAreTwoAnswersTest {
         Set<Key<?>> read =
                 compilation.db().dependenciesOf(new Bodies.CheckedBehavior("app", "make"));
 
-        assertTrue(read.contains(new Shapes.ClauseLocationsFor(SMALL)),
+        assertTrue(read.contains(new Shapes.ClauseLocation(firstClauseOf(SMALL))),
                 "checking the body asks where the clause it reports about is written");
-        assertFalse(read.contains(new Shapes.ClauseLocationsFor(new TypeKey("limits", "Large"))),
+        assertFalse(read.contains(new Shapes.ClauseLocation(
+                        new Clause.Id(TypeSymbols.declared(new TypeKey("limits", "Large")), 0))),
                 "and what it read is what it asked for: nothing declares a `Large` to ask about");
     }
 
@@ -130,11 +160,16 @@ class WhatAClauseMeansAndWhereItIsWrittenAreTwoAnswersTest {
                 .judgment();
     }
 
-    /** The lines a reader is sent to for {@code Small}'s clauses, asked of the declaration. */
-    private static List<Integer> clauseLines(String declaring) {
-        return answered(declaring).db().ask(new Shapes.ClauseLocationsFor(SMALL)).value().stream()
-                .map(place -> ((DiagnosticPlace.InSource) place).region().start().line())
-                .toList();
+    private static Clause.Id firstClauseOf(TypeKey declaration) {
+        return new Clause.Id(TypeSymbols.declared(declaration), 0);
+    }
+
+    /** The line a reader is sent to for the {@code nth} clause of {@code Small}. */
+    private static int clauseLine(String declaring, int nth) {
+        DiagnosticPlace place = answered(declaring).db()
+                .ask(new Shapes.ClauseLocation(new Clause.Id(TypeSymbols.declared(SMALL), nth)))
+                .value();
+        return ((DiagnosticPlace.InSource) place).region().start().line();
     }
 
     private static Compilation answered(String declaring) {
