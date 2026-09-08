@@ -174,6 +174,41 @@ public sealed interface BlockReason {
     sealed interface RuleReadingStopped extends StoppedWithoutALine, QuestionStandingReason {
 
         /**
+         * Whether a position holding this rule has values nothing can claim are what the rules
+         * leave.
+         *
+         * <p>What a caller means by "a reading stopped here" and what this type is
+         * ({@link RulesWithNoLine#aReadingThatStopped}). They were one question while every rule
+         * this compiler got partway through was one the reading of values got partway through: a
+         * rule that reaches a position and is not taken in leaves the values there an upper bound,
+         * and a reader deciding whether the position was answered exactly asked which type the
+         * reason had.
+         *
+         * <p>They are not one question. A rule can be read to the end by the reading that says
+         * which values may stand at a position and be one the reading that says where they stop
+         * could not follow — and then the values are exactly what the rules leave, and only the
+         * line is missing. Answered off the type, such a position comes back as one whose cases
+         * are all unsettled because a rule went unread, on the strength of a border.
+         *
+         * <p>One switch, as {@link #runSensitivity} is one, and for the same reason: the answers
+         * are only reviewable together. Every arm that was here before this question was asked
+         * answers as it did — each of them is a stop of the reading that turns clauses into sets of
+         * values — so nothing about what a position admits moves by this being asked.
+         */
+        default boolean widensWhatThePositionAdmits() {
+            return switch (this) {
+                // The reading of ends could not follow an alternative, and every alternative's
+                // values were read. What the position admits is what the rules leave; the line
+                // through them is what nobody worked out.
+                case EndLeftOpenByAChoice _ -> false;
+                case PatternTooCostly _, PatternTooDeeplyNested _, OrderedExtentTooCostly _,
+                     UnreadComparisonForm _, UnreadComparisonDomain _, RuleAboutADerivedValue _,
+                     RuleAboutAnElementOfSeveralSequences _, UnreadValueRule _,
+                     ValueRuleRelatingTwoPositions _, CasePairingNotDetermined _ -> true;
+            };
+        }
+
+        /**
          * One switch over the twelve, and the reason for it being one: a division of these into two
          * is only reviewable where all twelve answers are visible together.
          */

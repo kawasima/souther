@@ -1,6 +1,8 @@
 package souther.compiler.partition;
 
+import souther.compiler.check.RuleRef;
 import souther.compiler.inputs.BlockReason;
+import souther.compiler.inputs.PositionId;
 import souther.compiler.inputs.StandingQuestion;
 import souther.compiler.observe.RunSensitivity;
 
@@ -244,8 +246,7 @@ public sealed interface ClosureGap {
      * position carrying both is carrying two rules' worth of trouble, and lifting the one the
      * question is about leaves this where it was.
      */
-    record LineNotDerived(String behavior, souther.compiler.inputs.PositionId at,
-                          souther.compiler.check.RuleRef rule) implements ClosureGap {
+    record LineNotDerived(String behavior, PositionId at, RuleRef rule) implements ClosureGap {
 
         /**
          * What an author lifts here is a form this compiler does not enter, which a run allowed

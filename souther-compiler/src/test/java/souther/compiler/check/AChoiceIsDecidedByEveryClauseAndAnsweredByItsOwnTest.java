@@ -179,7 +179,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
      */
     @Test
     void whatLeftTheConstraintOpenIsTheChoiceItWasOffered() {
-        RuleShortfall.Site.AtAChoice choice = aChoice();
+        ChoiceSite choice = aChoice();
 
         assertEquals(java.util.Set.of(new RuleShortfall(CONSTRAINED,
                         UnreadReason.ALTERNATIVE_NOT_READ,
@@ -196,7 +196,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
     void aShortfallOnlyTheUnreadBranchHoldsAnswersForThePosition() {
         RuleShortfall inside = new RuleShortfall(CONSTRAINED, UnreadReason.ALTERNATIVE_NOT_READ,
                 aChoice());
-        RuleShortfall.Site.AtAChoice choice = aChoice();
+        ChoiceSite choice = aChoice();
 
         assertEquals(java.util.Set.of(inside),
                 theBranchRead(java.util.Set.of())
@@ -218,7 +218,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
     void andWhichOfTheTwoIsNotAskedOfWhereItWasWritten() {
         RuleShortfall form = new RuleShortfall(CONSTRAINED, UnreadReason.FORM_NOT_READ,
                 new RuleShortfall.Site.AtALeaf(new Core.Bool(true, Type.BOOL, new SourcePos(1, 1))));
-        RuleShortfall.Site.AtAChoice choice = aChoice();
+        ChoiceSite choice = aChoice();
 
         assertEquals(java.util.Set.of(form),
                 theBranchRead(java.util.Set.of())
@@ -308,7 +308,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
      * hold is the other half — which of them a rule is still answerable for.
      */
     private static StatedByClauses.AlternativeOpening opened(
-            RuleShortfall.Site.AtAChoice choice) {
+            ChoiceSite choice) {
         return new StatedByClauses.AlternativeOpening(choice.id(),
                 new Opening<>(java.util.Set.of(CONSTRAINED), java.util.Set.of(),
                         java.util.Set.of(CONSTRAINED)),
@@ -378,8 +378,8 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
     }
 
     /** One choice somebody wrote, told from every other by being this one. */
-    private static RuleShortfall.Site.AtAChoice aChoice() {
-        return new RuleShortfall.Site.AtAChoice(new ChoiceId(), new SourcePos(1, 1));
+    private static ChoiceSite aChoice() {
+        return new ChoiceSite(new ChoiceId(), new SourcePos(1, 1));
     }
 
     /** A branch that was read, constraining one position and settling another. */
@@ -404,8 +404,8 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
     /** And two choices leaving one position open are two things an author can look at. */
     @Test
     void twoChoicesLeavingOnePositionOpenAreTwo() {
-        RuleShortfall.Site.AtAChoice one = aChoice();
-        RuleShortfall.Site.AtAChoice other = aChoice();
+        ChoiceSite one = aChoice();
+        ChoiceSite other = aChoice();
 
         assertEquals(2, java.util.Set.of(
                         new RuleShortfall(CONSTRAINED, UnreadReason.ALTERNATIVE_NOT_READ,

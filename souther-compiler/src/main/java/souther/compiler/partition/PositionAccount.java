@@ -1,5 +1,6 @@
 package souther.compiler.partition;
 
+import souther.compiler.inputs.EndLeftOpen;
 import souther.compiler.inputs.Position;
 import souther.compiler.inputs.StandingQuestion;
 import souther.compiler.inputs.StructuralInspection;
@@ -40,7 +41,7 @@ public record PositionAccount(String behavior, TermPath path, Type type, Reading
                               souther.compiler.values.ValueSet admits,
                               StructuralInspection.Continuation pending,
                               List<StandingQuestion> standing,
-                              List<souther.compiler.check.RuleRef> endsLeftOpenByAChoice) {
+                              List<EndLeftOpen> endsLeftOpen) {
 
     public PositionAccount {
         if (residue == null) {
@@ -48,7 +49,7 @@ public record PositionAccount(String behavior, TermPath path, Type type, Reading
                     "a position with no account of what its reading came to");
         }
         standing = List.copyOf(standing);
-        endsLeftOpenByAChoice = List.copyOf(endsLeftOpenByAChoice);
+        endsLeftOpen = List.copyOf(endsLeftOpen);
     }
 
     /**
@@ -110,7 +111,7 @@ public record PositionAccount(String behavior, TermPath path, Type type, Reading
         // classes out of a body's rules has to be told what there is to divide.
         return new PositionAccount(behavior, position.path(), position.type(),
                 ReadingResidue.of(position), position.admitted().approximation(), pending,
-                position.unansweredQuestions(), position.endsLeftOpenByAChoice());
+                position.unansweredQuestions(), position.endsLeftOpen());
     }
 
     /** A position outside a reading of the declarations, which is where a test writes one. */

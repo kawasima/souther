@@ -1,7 +1,6 @@
 package souther.compiler.inputs;
 
 import souther.compiler.check.ProjectionEvidence;
-import souther.compiler.check.RuleRef;
 import souther.compiler.check.TypeView;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
@@ -238,7 +237,8 @@ public sealed interface Position permits ReadPosition {
     List<RuleWithoutALine> rulesWithoutALine();
 
     /**
-     * The rules whose end here a choice in them left open.
+     * The ends of rules written here that the reading of ends did not work out, each under the
+     * choice an author is sent to for it.
      *
      * <p>Beside {@link #rulesWithoutALine()} and not read out of it. That list is what a report
      * says became of a rule at this position, and what it says is the same sentence about a rule
@@ -246,15 +246,17 @@ public sealed interface Position permits ReadPosition {
      * measure open. This is the other question: whether the reading that draws lines here ran out,
      * which a rule read to the end never leaves it doing.
      *
-     * <p><b>Only where a choice is answerable.</b> An end left open under a conjunction is one the
-     * rule's own questions already say nothing answered, and the measure hears it from there. What
-     * a choice leaves open reaches nothing else, because the walk that classifies a rule stops at
-     * one.
+     * <p><b>Every one of them, and not only the ones a choice is answerable for.</b> Whether the
+     * line here was derived and whether there is a clause to send an author to are two questions,
+     * and an end nobody can be sent anywhere about is as underived as one they can. Kept to the
+     * second, an end left open beside an alternative nobody can be in went out as a model that
+     * draws no line.
      *
-     * <p>The rule and nothing else. Where an author is sent is the rule, and how many choices of it
-     * are behind the answer is what the findings beside this say.
+     * <p>One entry per choice, because two of them leaving one end open are two things to lift and
+     * lifting either leaves the end where it was. What they leave short is the one line, and that
+     * is folded where the measure is ({@code ClosureGap.LineNotDerived}).
      */
-    List<RuleRef> endsLeftOpenByAChoice();
+    List<EndLeftOpen> endsLeftOpen();
 
     /**
      * Whether the values at this position are read from a product this reading cannot show the

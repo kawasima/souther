@@ -220,8 +220,21 @@ sealed interface StatedByClauses {
                     Set.of(), Set.of(), EndsLeftOpen.nothing());
         }
 
+        /**
+         * The same part, written under a choice one alternative of which nobody can be in.
+         *
+         * <p>Only the ends this reading did not work out are about it. Everything else here is what
+         * the clause says, and a clause says what it says wherever it is written; this one is about
+         * what reaches a reader, and the walk that would have reached these ends stopped at the
+         * {@code ||} the author wrote.
+         */
+        Part underACollapsedChoice() {
+            return new Part(byValues, byOrder, aboutStrings, asked, ruleShortfalls,
+                    endsLeftOpen.underACollapsedChoice());
+        }
+
         /** The same part of two branches somebody can be in, under the choice between them. */
-        Part either(RuleShortfall.Site.AtAChoice choice, AlternativeOpening opening, Part other) {
+        Part either(ChoiceSite choice, AlternativeOpening opening, Part other) {
             // What a rule is answerable for is said of the choice, beside it and never out of it.
             // What happened is that this choice offered an alternative nothing could read, so an
             // author is sent to the choice — filed at a leaf under the branch that was read, they
@@ -248,10 +261,10 @@ sealed interface StatedByClauses {
                     byOrder.either(opening.byOrder(), other.byOrder()),
                     StringRestriction.over(aboutStrings, other.aboutStrings(), false),
                     askedIn(asked, other.asked()), held(shortfalls),
-                    // And the ends the choice leaves open, which is the same opening read for the
-                    // other language. Struck down by it and never added to: what a choice can show
-                    // is that its alternatives leave a position where they found it.
-                    endsLeftOpen.either(choice, opening.byOrder(), other.endsLeftOpen()));
+                    // And the ends the choice leaves open, struck down by what each alternative
+                    // says it came to and never added to: what a choice can show is that the branch
+                    // beside an unfollowed one puts every value of a position on the order.
+                    endsLeftOpen.either(choice, byOrder, other.endsLeftOpen(), other.byOrder()));
         }
 
         /**
@@ -291,7 +304,7 @@ sealed interface StatedByClauses {
          * stops, in the vocabulary that can say the ends were the reading that stopped
          * ({@code RuleAccounting.Why.TheEndReadingSays}); this reason is not it.
          */
-        private static void leftOpenByValues(RuleShortfall.Site.AtAChoice choice,
+        private static void leftOpenByValues(ChoiceSite choice,
                                              Set<FactSubject> these,
                                              Set<RuleShortfall> unread, Set<RuleShortfall> out) {
             these.stream()
@@ -1072,10 +1085,16 @@ sealed interface StatedByClauses {
                         // was the dead one is asked here and nowhere below: both sides arrive with
                         // their fate already spent, and a choice nobody can take at all is this
                         // same line with two of them.
-                        yield left.both(right);
+                        //
+                        // And what is accumulated is still written under the choice the author
+                        // wrote, which the walk that raises a rule's questions stopped at. So an
+                        // end left open in the branch that stands is one nothing else reaches, and
+                        // it is marked here — where the written choice is still in hand — rather
+                        // than left to read like an end under a conjunction.
+                        yield left.both(right).mapped(Part::underACollapsedChoice);
                     }
                     yield left.either(
-                            new RuleShortfall.Site.AtAChoice(it.id(), it.writtenAt().pos()),
+                            new ChoiceSite(it.id(), it.writtenAt().pos()),
                             opens(it.id(), fate.width(), left.took(), right.took()),
                             right);
                 }
@@ -1207,7 +1226,7 @@ sealed interface StatedByClauses {
          * parts. Each of them is written under one alternative and is answered by what happened to
          * that alternative, which is nothing — both stand.
          */
-        Taken either(RuleShortfall.Site.AtAChoice choice, AlternativeOpening opening, Taken other) {
+        Taken either(ChoiceSite choice, AlternativeOpening opening, Taken other) {
             return new Taken(took.either(choice, opening, other.took()),
                     joined(parts, other.parts()),
                     opened(opened(opened, other.opened()), opening.byValues().positions()));

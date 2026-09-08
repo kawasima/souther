@@ -147,6 +147,71 @@ class AnEndAChoiceLeftOpenIsNotTheModelDrawingNoLineTest {
     }
 
     /**
+     * And an end no alternative bounded is left open, not settled.
+     *
+     * <p>Neither branch is one this reading follows, so neither of them bounded the position and
+     * what the choice leaves there is unknown — which is what the rule is: it does bound {@code n},
+     * at two. Asked of what the choice was settled to leave open, this position is outside the
+     * question: that answer is worked out over the positions the branches bounded, and none of them
+     * bounded this one. An absence there is nothing asked, and read as a proof it published a
+     * bound this compiler could not follow as a model that draws no line.
+     */
+    @Test
+    void andAnEndNoAlternativeBoundedIsLeftOpen() {
+        assertEquals(List.of("border      not measured (no line was derived at any position)"),
+                borderIn("n >= 1 + 1 || n >= 1 + 3"),
+                "both alternatives are forms this compiler does not follow, so where the values"
+                        + " stop is what following them would answer");
+    }
+
+    /**
+     * And a choice above one that answered does not take the answer back.
+     *
+     * <p>Each choice is asked about what its own alternatives leave, and an outer one whose
+     * alternatives bound nothing has nothing to show about an end an inner one left open. Read as
+     * an answer about that end, an alternative nobody followed silences a choice beside it — and
+     * which of them is written outermost is not a fact about the rule.
+     */
+    @Test
+    void andAChoiceAboveOneThatAnsweredDoesNotTakeItBack() {
+        assertEquals(List.of("border      not measured (no line was derived at any position)"),
+                borderIn("(n >= 1 + 1 || n >= 2) || n >= 1 + 3"),
+                "the inner choice leaves the end at `n` open and the outer one shows nothing about"
+                        + " it");
+    }
+
+    /**
+     * And an end left open beside an alternative nobody can be in is left open.
+     *
+     * <p>The choice is not a choice any more: what is left of the rule is the branch that stands,
+     * and its end is one this reading did not work out. What still happened is that the walk which
+     * raises a rule's questions stopped at the {@code ||} the author wrote, so nothing else at this
+     * position says the line was not derived — and the border said the model draws none.
+     */
+    @Test
+    void andAnEndBesideAnAlternativeNobodyCanBeInIsLeftOpen() {
+        assertEquals(List.of("border      not measured (no line was derived at any position)"),
+                borderIn("s < \"\" || Int.abs(n) >= 2"),
+                "the rule is its right half, and where the values stop under it was not worked"
+                        + " out");
+    }
+
+    /**
+     * And an author is sent nowhere for it, which is what there is to say.
+     *
+     * <p>The clause a reader would be sent to is the alternative beside it, and there is no such
+     * alternative: nobody can be in it. Told the sentence about a choice, an author goes looking
+     * for a branch their own rule does not have.
+     */
+    @Test
+    void andNoChoiceIsNamedWhereNobodyCanBeInTheAlternative() {
+        assertEquals(List.of(),
+                linesOf("s < \"\" || Int.abs(n) >= 2",
+                        each -> each.contains("left open by a choice")),
+                "there is no branch for an author to look at, so nothing says there is");
+    }
+
+    /**
      * And a branch nobody can be in leaves nothing open, whatever is written inside it.
      *
      * <p>No value of this type is in it, so no end of this type rests on what it says. Which is not

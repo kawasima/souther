@@ -1407,24 +1407,47 @@ public final class FieldDomains {
      * what this is for.
      */
     public List<EndLeftOpen> endsLeftOpenAt(RuleKey path) {
-        Set<EndLeftOpen> out = new LinkedHashSet<>();
-        endsLeftOpen.forEach((rule, open) -> open.byPosition().forEach((position, choices) -> {
-            if (!choices.isEmpty() && path.equals(namedBy.get(position))) {
-                out.add(new EndLeftOpen(numberOf(path, position), rule));
+        List<EndLeftOpen> out = new ArrayList<>();
+        endsLeftOpen.forEach((rule, open) -> open.byPosition().forEach((position, behind) -> {
+            // Only the ends nothing else reaches. An end left open with no choice between it and
+            // the walk that raises a rule's questions is one those questions already leave
+            // standing, and a second account of it is one stop said twice.
+            if (!path.equals(namedBy.get(position)) || !behind.underAChoice()) {
+                return;
             }
+            if (behind.named().isEmpty()) {
+                out.add(new EndLeftOpen(numberOf(path, position), rule, null));
+                return;
+            }
+            behind.named().forEach(each ->
+                    out.add(new EndLeftOpen(numberOf(path, position), rule, each)));
         }));
         return List.copyOf(out);
     }
 
     /**
-     * A rule whose end at one of a name's numbers a choice in it left open.
+     * A rule whose end at one of a name's numbers this reading did not work out, and the choice an
+     * author is sent to for it.
      *
      * <p>At the number and not at the name. A {@code String} has its own order and the length of
-     * it, and a choice leaving one of them open says nothing about the other — filed at the name,
-     * a report would say where the values stop was left undecided at whichever number it happened
-     * to ask about.
+     * it, and an end left open at one of them says nothing about the other — filed at the name, a
+     * report would say where the values stop was left undecided at whichever number it happened to
+     * ask about.
+     *
+     * <p><b>One of these per choice, and one where no choice is answerable.</b> Two choices of one
+     * rule leaving one end open are two things to lift, and lifting either leaves the end where it
+     * was; the measure they leave short is the one line, which is what folds them again
+     * ({@code ClosureGap.LineNotDerived}). Filed as one entry per end, the count an author acts on
+     * would be a fact about which choice the walk met first.
+     *
+     * @param byChoice the choice to send an author to, or null where none is answerable — the end
+     *                 was left open under a conjunction, or beside an alternative nobody can be in,
+     *                 and there is no branch for an author to look at. Not a reason to say nothing:
+     *                 the line at the position was still not derived, and that is the measure's
+     *                 business rather than the author's
      */
-    public record EndLeftOpen(NumberAt<RuleKey> at, RuleRef.Invariant rule) {}
+    public record EndLeftOpen(NumberAt<RuleKey> at, RuleRef.Invariant rule,
+                              ChoiceSite byChoice) {}
 
     /** Which of {@code path}'s numbers {@code position} is, as this reading named them. */
     private NumberAt<RuleKey> numberOf(RuleKey path, FactSubject position) {

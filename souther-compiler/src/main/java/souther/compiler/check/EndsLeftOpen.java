@@ -7,8 +7,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The positions whose ends this reading did not derive, and the choice an author is sent to for
- * each of them.
+ * The positions whose ends this reading did not work out, and what stands between each of them and
+ * the walk that raises a rule's questions.
  *
  * <p>One question and one answer: of the ends a part of a clause states, which are the ones this
  * reading did not work out. Whether anybody can be in a branch, which positions a choice leaves as
@@ -16,35 +16,84 @@ import java.util.Set;
  * three other owners, and nothing here decides any of them — what is done with their answers is to
  * strike positions off this one.
  *
- * <p><b>A choice never puts a position in here.</b> {@link #either} intersects, so what comes out of
- * a choice is contained in what its alternatives brought to it: a choice can only show that a
- * position it was handed is one the alternatives leave where they found it. So a position here was
- * put here by a leaf the reading gave up on, and the choices above it are the road, not the source.
+ * <p><b>A choice never puts a position in here.</b> {@link #either} keeps only what its alternatives
+ * brought to it, so a choice can strike a position off and can add none: it may show that the branch
+ * beside an unfollowed one leaves the position at every value, and it has nothing else to say. So a
+ * position here was put here by a leaf the reading gave up on, and the choices above it are the
+ * road, not the source.
  *
- * <p>The road matters all the same, which is why the choices are carried beside the positions. A
- * position reaching a report with none of them is one a conjunction left open, and that is the
- * account the rule's own reading already gives; one reaching it with a choice is what an author has
- * no other sentence about, and the choice is what they can act on.
+ * <p><b>The road is what says whether anything else is telling a reader.</b> The walk that turns a
+ * rule into the questions it raises goes into a conjunction and stops at a choice, so an end left
+ * open with no choice between it and that walk is one the rule's own questions already leave
+ * standing. What is carried here is that a written choice stands between — whether or not one of
+ * them can be named — because that is exactly what nothing else reaches.
  *
- * <p><b>The nearest choice that kept it, and not every choice above.</b> A position surviving a
- * choice that already names one is one the choice below it accounted for, and naming both would
- * make how an author bracketed a chain of choices decide how many things they are sent to —
- * {@code (a || b) || c} and {@code a || (b || c)} are one rule.
+ * <p><b>Named and answerable are not the same.</b> A choice one alternative of which nobody can be
+ * in is not an alternative any more: what is left is the branch that stands, the walk never went
+ * into it, and there is no branch for an author to look at. So such an end is carried with the
+ * choice unnamed rather than dropped — the line at the position was not derived either way, and
+ * which of the two it is decides what a document may say and not whether the measure is short.
  *
- * @param byPosition every position whose end this part left open, each under the choices an author
- *                   is sent to for it. Empty where the part's ends were all derived; a position
- *                   under an empty set is one no choice is answerable for
+ * <p><b>The choice an end reaches with nothing else to name, and not every choice above.</b> An end
+ * arriving at a choice already answerable for it has been named for that one, and naming the choice
+ * above as well would send an author to a bracket rather than to a clause. Where the alternative
+ * beside it leaves the same end open on its own account, both are named and both have to be lifted:
+ * that is a fact about the rule rather than about how it was bracketed, and
+ * {@code (a || b) || c} and {@code a || (b || c)} come to the same choices either way round.
+ *
+ * @param byPosition every position whose end this part left open, each with what stands between it
+ *                   and the walk. Empty where the part's ends were all worked out
  */
-record EndsLeftOpen(Map<FactSubject, Set<RuleShortfall.Site.AtAChoice>> byPosition) {
+record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byPosition) {
 
-    EndsLeftOpen {
-        Map<FactSubject, Set<RuleShortfall.Site.AtAChoice>> held = new LinkedHashMap<>();
-        byPosition.forEach((position, choices) -> held.put(position,
-                Collections.unmodifiableSet(new LinkedHashSet<>(choices))));
-        byPosition = Collections.unmodifiableMap(held);
+    /**
+     * What stands between one end this reading did not work out and the walk that raises a rule's
+     * questions.
+     *
+     * @param named        the choices to send an author to, empty where none can be named
+     * @param underAChoice whether a choice an author wrote stands between. False is what says the
+     *                     walk reached the part that left this end open, so the questions it raises
+     *                     are already telling a reader — and a second sentence about it would be one
+     *                     stop said twice
+     */
+    record Behind(Set<ChoiceSite> named, boolean underAChoice) {
+
+        Behind {
+            named = Collections.unmodifiableSet(new LinkedHashSet<>(named));
+            if (!named.isEmpty() && !underAChoice) {
+                throw new IllegalArgumentException(
+                        "a choice was named for an end nothing stands between");
+            }
+        }
+
+        /** What a leaf leaves: an end nothing has been read past yet. */
+        static Behind aLeaf() {
+            return new Behind(Set.of(), false);
+        }
+
+        /** The same end reached two ways, which is what a conjunction of them comes to. */
+        Behind and(Behind other) {
+            Set<ChoiceSite> both = new LinkedHashSet<>(named);
+            both.addAll(other.named);
+            return new Behind(both, underAChoice || other.underAChoice);
+        }
+
+        /** The same end under {@code choice}, which names itself where nothing else has. */
+        Behind under(ChoiceSite choice) {
+            return named.isEmpty() ? new Behind(Set.of(choice), true) : new Behind(named, true);
+        }
+
+        /** The same end under a choice one alternative of which nobody can be in. */
+        Behind underACollapsedChoice() {
+            return new Behind(named, true);
+        }
     }
 
-    /** A part whose ends this reading derived, and one no reading has a word for at all. */
+    EndsLeftOpen {
+        byPosition = Collections.unmodifiableMap(new LinkedHashMap<>(byPosition));
+    }
+
+    /** A part whose ends this reading worked out, and one no reading has a word for at all. */
     static EndsLeftOpen nothing() {
         return new EndsLeftOpen(Map.of());
     }
@@ -59,8 +108,8 @@ record EndsLeftOpen(Map<FactSubject, Set<RuleShortfall.Site.AtAChoice>> byPositi
      * one this reading answered.
      */
     static EndsLeftOpen at(Set<FactSubject> positions) {
-        Map<FactSubject, Set<RuleShortfall.Site.AtAChoice>> out = new LinkedHashMap<>();
-        positions.forEach(each -> out.put(each, Set.of()));
+        Map<FactSubject, Behind> out = new LinkedHashMap<>();
+        positions.forEach(each -> out.put(each, Behind.aLeaf()));
         return new EndsLeftOpen(out);
     }
 
@@ -78,50 +127,67 @@ record EndsLeftOpen(Map<FactSubject, Set<RuleShortfall.Site.AtAChoice>> byPositi
         if (byPosition.isEmpty()) {
             return other;
         }
-        Map<FactSubject, Set<RuleShortfall.Site.AtAChoice>> out = new LinkedHashMap<>(byPosition);
-        other.byPosition.forEach((position, choices) -> out.merge(position, choices,
-                EndsLeftOpen::joined));
+        Map<FactSubject, Behind> out = new LinkedHashMap<>(byPosition);
+        other.byPosition.forEach((position, behind) -> out.merge(position, behind, Behind::and));
         return new EndsLeftOpen(out);
     }
 
     /**
-     * Either part holding, under what the choice between them was settled to leave open.
+     * Either part holding, with the positions the alternative beside them settles struck off.
      *
-     * <p>{@code opening} is the whole of what the choice does here and it arrives worked out
-     * ({@link Settlement.WidthDependency}). A position left out of it is one this reading showed
-     * the alternatives leave where the choice leaves it, so an end nothing derived in one branch
-     * takes nothing back at it: the branch beside it is reached by every value the unread one is,
-     * and the choice stops where it would without either. A position kept is one nobody settled,
-     * and the end there is as open as the branch that was not read.
+     * <p>An end one branch left open is one the choice leaves open unless the branch beside it puts
+     * every value of the position on the order — a value satisfying that branch stands anywhere, so
+     * the choice does too, whatever the branch nothing followed says. That is the one thing a choice
+     * can show here, and it is shown by the other branch having been followed to the end and placed
+     * no end at the position. Both halves of that are the other branch's own account of itself: what
+     * it bounded, and what it left open.
+     *
+     * <p><b>Asked of the branches and not of what the choice was settled to leave open</b>
+     * ({@link Settlement.Width}). That answer is worked out over the positions the branches bounded,
+     * so a position no branch bounded is outside it — and a position outside it is one nothing
+     * asked, which is not a position it was shown the alternatives preserve. Read as one, a choice
+     * both of whose alternatives are forms nothing follows came back as a rule that draws no line,
+     * which is the sentence this exists to remove.
      *
      * <p>So this is a filter and never a source. What comes out is contained in what the two
      * branches brought, which is what keeps a choice from inventing a rule nobody could read.
-     *
-     * <p>The choice names itself at the positions arriving with nothing to send an author to. Where
-     * a choice below already named one, an author lifting that one is lifting this — and told
-     * twice, they would be sent to a bracket rather than to a clause.
      */
-    EndsLeftOpen either(RuleShortfall.Site.AtAChoice choice, Opening<FactSubject,
-            ReadingLanguage.Order> opening, EndsLeftOpen other) {
-        Map<FactSubject, Set<RuleShortfall.Site.AtAChoice>> out = new LinkedHashMap<>();
-        both(other).byPosition.forEach((position, choices) -> {
-            if (opening.positions().contains(position)) {
-                out.put(position, choices.isEmpty() ? Set.of(choice) : choices);
-            }
-        });
+    EndsLeftOpen either(ChoiceSite choice, Adoption<FactSubject, ReadingLanguage.Order> mine,
+                        EndsLeftOpen other, Adoption<FactSubject, ReadingLanguage.Order> theirs) {
+        Map<FactSubject, Behind> out = new LinkedHashMap<>();
+        byPosition.forEach((position, behind) ->
+                keptUnder(choice, position, behind, other, theirs, out));
+        other.byPosition.forEach((position, behind) ->
+                keptUnder(choice, position, behind, this, mine, out));
         return new EndsLeftOpen(out);
     }
 
-    private static Set<RuleShortfall.Site.AtAChoice> joined(
-            Set<RuleShortfall.Site.AtAChoice> these, Set<RuleShortfall.Site.AtAChoice> those) {
-        if (those.isEmpty()) {
-            return these;
+    /**
+     * The same in a branch of a choice one alternative of which nobody can be in.
+     *
+     * <p>What is left of such a choice is the branch that stands, so nothing here is struck off —
+     * there is no alternative beside these ends to have settled them. What the walk did is still
+     * what it did: it stopped at the {@code ||} the author wrote, so these ends reach nothing else
+     * and are carried with no choice to name.
+     */
+    EndsLeftOpen underACollapsedChoice() {
+        if (byPosition.isEmpty()) {
+            return this;
         }
-        if (these.isEmpty()) {
-            return those;
+        Map<FactSubject, Behind> out = new LinkedHashMap<>();
+        byPosition.forEach((position, behind) ->
+                out.put(position, behind.underACollapsedChoice()));
+        return new EndsLeftOpen(out);
+    }
+
+    /** The same for one position of one branch, against what the branch beside it came to. */
+    private static void keptUnder(ChoiceSite choice, FactSubject position, Behind behind,
+                                  EndsLeftOpen beside,
+                                  Adoption<FactSubject, ReadingLanguage.Order> theirs,
+                                  Map<FactSubject, Behind> out) {
+        if (!theirs.read().contains(position) && !beside.byPosition.containsKey(position)) {
+            return;
         }
-        Set<RuleShortfall.Site.AtAChoice> out = new LinkedHashSet<>(these);
-        out.addAll(those);
-        return out;
+        out.merge(position, behind.under(choice), Behind::and);
     }
 }

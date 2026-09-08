@@ -2,6 +2,7 @@ package souther.compiler.partition;
 
 import souther.compiler.check.CoverageObligation;
 import souther.compiler.inputs.BlockedDescent;
+import souther.compiler.inputs.EndLeftOpen;
 import souther.compiler.inputs.RulesLeftUnread;
 import souther.compiler.inputs.StandingQuestion;
 
@@ -193,10 +194,14 @@ public final class MeasureClosure {
                 partition.add(gap);
                 border.add(gap);
             }
-            // And the ends a choice left open, which is the border's alone: what the alternatives
-            // admit was read, and where they stop was not.
-            for (souther.compiler.check.RuleRef rule : at.endsLeftOpenByAChoice()) {
-                border.add(new ClosureGap.LineNotDerived(at.behavior(), at.id(), rule));
+            // And the ends this reading did not work out, which are the border's alone: what the
+            // alternatives admit was read, and where they stop was not.
+            //
+            // The rule and the position, so two choices leaving one line open are one thing the
+            // measure is short of. Which of them an author is sent to is the findings' answer and
+            // is two; a measure counting those would be short twice of one line.
+            for (EndLeftOpen open : at.endsLeftOpen()) {
+                border.add(new ClosureGap.LineNotDerived(at.behavior(), at.id(), open.rule()));
             }
             for (RulesLeftUnread unread : at.residue().rulesLeftUnread()) {
                 if (derived(unread)) {
