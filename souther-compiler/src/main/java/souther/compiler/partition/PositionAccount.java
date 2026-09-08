@@ -39,7 +39,8 @@ import java.util.List;
 public record PositionAccount(String behavior, TermPath path, Type type, ReadingResidue residue,
                               souther.compiler.values.ValueSet admits,
                               StructuralInspection.Continuation pending,
-                              List<StandingQuestion> standing) {
+                              List<StandingQuestion> standing,
+                              List<souther.compiler.check.RuleRef> endsLeftOpenByAChoice) {
 
     public PositionAccount {
         if (residue == null) {
@@ -47,6 +48,7 @@ public record PositionAccount(String behavior, TermPath path, Type type, Reading
                     "a position with no account of what its reading came to");
         }
         standing = List.copyOf(standing);
+        endsLeftOpenByAChoice = List.copyOf(endsLeftOpenByAChoice);
     }
 
     /**
@@ -108,12 +110,12 @@ public record PositionAccount(String behavior, TermPath path, Type type, Reading
         // classes out of a body's rules has to be told what there is to divide.
         return new PositionAccount(behavior, position.path(), position.type(),
                 ReadingResidue.of(position), position.admitted().approximation(), pending,
-                position.unansweredQuestions());
+                position.unansweredQuestions(), position.endsLeftOpenByAChoice());
     }
 
     /** A position outside a reading of the declarations, which is where a test writes one. */
     static PositionAccount at(String behavior, TermPath path, Type type) {
         return new PositionAccount(behavior, path, type, ReadingResidue.NOTHING,
-                souther.compiler.values.ValueSet.ANY, null, List.of());
+                souther.compiler.values.ValueSet.ANY, null, List.of(), List.of());
     }
 }

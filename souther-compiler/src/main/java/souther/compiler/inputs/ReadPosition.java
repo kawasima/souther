@@ -1,6 +1,7 @@
 package souther.compiler.inputs;
 
 import souther.compiler.check.ProjectionEvidence;
+import souther.compiler.check.RuleRef;
 import souther.compiler.check.TypeView;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
@@ -32,6 +33,7 @@ record ReadPosition(TermPath path, TypeView view, List<PositionBounds> bounds,
                     ProjectionEvidence projection, List<Case> declared, ReadingResult reading,
                     ObligationDomain obligations, AdmissibleSet admitted,
                     List<RuleWithoutALine> rulesWithoutALine,
+                    List<RuleRef> endsLeftOpenByAChoice,
                     List<StandingQuestion> unansweredQuestions,
                     Set<RulesLeftUnread> rulesLeftUnread,
                     StructuralInspection structure) implements Position {
@@ -55,6 +57,7 @@ record ReadPosition(TermPath path, TypeView view, List<PositionBounds> bounds,
         }
         declared = List.copyOf(declared);
         rulesWithoutALine = List.copyOf(rulesWithoutALine);
+        endsLeftOpenByAChoice = List.copyOf(endsLeftOpenByAChoice);
         unansweredQuestions = List.copyOf(unansweredQuestions);
         // Kept in the order the readers found them, so that two runs over one model produce the
         // same value — the reason `MeasureClosure` keeps its gaps that way too.

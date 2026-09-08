@@ -168,6 +168,18 @@ class EveryNotReadReasonIsWrittenBySomeCompilationTest {
                 behavior f : (n: Int) -> Answer
                 let f (n) = if n * n > 4 then Yes else No
                 """.formatted(ANSWER)));
+        // A rule whose end at a position rests on an alternative this compiler does not read. The
+        // clause at the position was read and places its end; what the choice leaves is as far out
+        // as the branch beside it allows, and that branch is a form no reading here enters.
+        out.put(UndividedPosition.Reason.UNREAD_ALTERNATIVE_OF_A_CHOICE, of("""
+                module m
+                %s
+                data N = { n: Int }
+                    invariant r = n >= 2 || Int.abs(n) >= 5
+
+                behavior f : (v: N) -> Answer
+                let f (v) = Yes
+                """.formatted(ANSWER)));
         // A clause nothing could type, which never reaches a reading — so which position it governs
         // is exactly what is unknown about it. The other way to the same hole is a declaration that
         // resolves while nothing expands the clauses of its module

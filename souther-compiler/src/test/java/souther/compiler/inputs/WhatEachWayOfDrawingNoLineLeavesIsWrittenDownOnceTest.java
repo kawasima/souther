@@ -80,6 +80,10 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
         table.put("RuleAboutAnElementOfSeveralSequences",
                 "RULE_ABOUT_AN_ELEMENT_OF_SEVERAL_SEQUENCES/UNAFFECTED");
         table.put("UnreadValueRule", "UNSUPPORTED_SYNTAX/UNAFFECTED");
+        // An end a choice in the rule left open. Its own word and not the one above: the rule at
+        // this position was read, and what an author acts on is the branch written beside it. A run
+        // allowed more meets it again — the reading of ends stopped on a form and not at a figure.
+        table.put("EndLeftOpenByAChoice", "UNREAD_ALTERNATIVE_OF_A_CHOICE/UNAFFECTED");
         // A pattern read to the end and larger than this will make a machine of. Both measures are
         // short because both are read off the set it names: a class is a part of it and an end is
         // where it stops. Its own word and not the one above — that one sends an author after the
@@ -397,6 +401,7 @@ class WhatEachWayOfDrawingNoLineLeavesIsWrittenDownOnceTest {
                 new BlockReason.RuleAboutADerivedValue(),
                 new BlockReason.RuleAboutAnElementOfSeveralSequences(),
                 new BlockReason.UnreadValueRule(),
+                new BlockReason.EndLeftOpenByAChoice(),
                 new BlockReason.PatternTooCostly(),
                 new BlockReason.PatternTooDeeplyNested(),
                 new BlockReason.OrderedExtentTooCostly(

@@ -95,11 +95,16 @@ record ReadByClauses(Confinement.Worked<FactSubject> confinement,
      *                     the reading builds nothing, and a reader handed a plan would be making
      *                     the machine for a rule under an allowance of its own — a second answer to
      *                     what the model admits at a position, made by whoever asked second
+     * @param endsLeftOpen where this part states an end the reading of ends did not work out, and
+     *                     which choice an author is sent to for it ({@link EndsLeftOpen}). Crosses
+     *                     unchanged: what a branch is left open by was settled while the branches
+     *                     were, and nothing decided since bears on it
      */
     record OfAPart(Adoption<FactSubject, ReadingLanguage.Values> byValues,
                    Adoption<FactSubject, ReadingLanguage.Order> byOrder,
                    Set<RuleShortfall> aboutARule,
-                   java.util.Map<FactSubject, AdmittedStrings> aboutStrings) {
+                   java.util.Map<FactSubject, AdmittedStrings> aboutStrings,
+                   EndsLeftOpen endsLeftOpen) {
 
         /** The positions some reading took the whole of this part in at. */
         java.util.Set<FactSubject> adopted() {

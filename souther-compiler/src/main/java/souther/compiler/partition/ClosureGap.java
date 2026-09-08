@@ -65,7 +65,7 @@ public sealed interface ClosureGap {
         return switch (had) {
             case QuestionUnanswered it -> it.mergedWith(it.andAlso(also));
             // Equal under the fact and holding nothing else, so both are the same value.
-            case RulesNotReached _, PositionNotReachedInto _ -> had;
+            case RulesNotReached _, PositionNotReachedInto _, LineNotDerived _ -> had;
         };
     }
 
@@ -218,6 +218,49 @@ public sealed interface ClosureGap {
 
         /** Everything it holds is what a reader is told: whose position, which, and what the walk
          *  met there. */
+        @Override
+        public Object fact() {
+            return this;
+        }
+    }
+
+    /**
+     * A rule saying where the values at a position stop, one end of which a choice in it left open.
+     *
+     * <p><b>The one arm that is the border's alone.</b> Everything else here is a rule or a
+     * position the reading did not get to, which leaves both measures short. This one leaves the
+     * classes either side of the line exactly as they were read: what a choice offering an
+     * alternative nothing reads takes back is where the values stop, and the values themselves are
+     * what each alternative admits — which the reading of values answered.
+     *
+     * <p><b>A rule and a position, and not the choice.</b> One rule may hold two choices that each
+     * leave one position's end open, and lifting one of them leaves the line as underivable as it
+     * was — so what went wrong is that the end at this position was not derived, once, however many
+     * choices are behind it. Which choices those are is what the findings beside this name, and a
+     * reader is sent to the rule.
+     *
+     * <p>Not folded into the question a rule leaves standing. That question is raised where the
+     * walk over the written clause reaches a comparison, and the walk stops at a choice — so a
+     * position carrying both is carrying two rules' worth of trouble, and lifting the one the
+     * question is about leaves this where it was.
+     */
+    record LineNotDerived(String behavior, souther.compiler.inputs.PositionId at,
+                          souther.compiler.check.RuleRef rule) implements ClosureGap {
+
+        /**
+         * What an author lifts here is a form this compiler does not enter, which a run allowed
+         * more of everything meets again.
+         *
+         * <p>The same answer {@link BlockReason.EndLeftOpenByAChoice} gives, and for the same
+         * reason: the reading of ends stops on a shape rather than at a figure, so there is nothing
+         * for a wider run to allow more of.
+         */
+        @Override
+        public RunSensitivity runSensitivity() {
+            return RunSensitivity.UNAFFECTED;
+        }
+
+        /** Everything it holds is what a reader is told: whose position, which, and which rule. */
         @Override
         public Object fact() {
             return this;

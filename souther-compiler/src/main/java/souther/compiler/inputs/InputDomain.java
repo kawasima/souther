@@ -9,6 +9,7 @@ import souther.compiler.check.DeclaredBounds;
 import souther.compiler.check.DeclaredCoordinates;
 import souther.compiler.check.RuleCitation;
 import souther.compiler.check.RuleKey;
+import souther.compiler.check.RuleRef;
 import souther.compiler.check.FieldDomains;
 import souther.compiler.check.NarrowedBounds;
 import souther.compiler.check.NumericMeasures;
@@ -873,7 +874,8 @@ public final class InputDomain {
         return new ReadPosition(read.path(), read.view(), read.bounds(),
                 read.nothingExists(), read.projection(),
                 read.declared(), read.reading(), read.obligations(), read.admitted(),
-                read.rulesWithoutALine(), read.unansweredQuestions(),
+                read.rulesWithoutALine(), read.endsLeftOpenByAChoice(),
+                read.unansweredQuestions(),
                 left, read.structure());
     }
 
@@ -1379,6 +1381,12 @@ public final class InputDomain {
                 placed.projection(path), declared, reading,
                 ObligationDomain.of(reading, declared), admitted,
                 withoutALine,
+                // And which of those rules the reading of ends is still owed an end of. The
+                // finding above says what became of the rule here; this says the reading did not
+                // run out, which nothing else at this position says once the walk that classifies
+                // has stopped at the choice.
+                placed.endsLeftOpenAt(path).stream()
+                        .map(each -> (RuleRef) each.rule()).distinct().toList(),
                 // What the rules of this position leave open. Asked of the accounting rather than
                 // read off the completeness beside it: one reading being short of a position's
                 // rules is that reading's business, and a rule another reading took in is not a
@@ -1753,6 +1761,15 @@ public final class InputDomain {
             out.add(new RuleCitation.Named(each.part().rule()),
                     filedAt(path, each.at(), type, source),
                     each.why());
+        }
+        // And the rules whose end here a choice in them left open. Beside the walk's own findings
+        // and not among them: that walk stops at a choice, so a comparison written under one is a
+        // rule it never had in hand, and what became of it is what the reading of ends said once
+        // the branches were settled.
+        for (FieldDomains.EndLeftOpen each : placed.endsLeftOpenAt(path)) {
+            out.add(new RuleCitation.Named(each.rule()),
+                    filedAt(path, each.at(), type, source),
+                    new BlockReason.EndLeftOpenByAChoice());
         }
     }
 

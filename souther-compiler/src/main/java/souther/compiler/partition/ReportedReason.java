@@ -135,6 +135,11 @@ public final class ReportedReason {
             case BlockReason.UnreadComparisonForm _ ->
                     UndividedPosition.Reason.UNSUPPORTED_SYNTAX;
             case BlockReason.UnreadValueRule _ -> UndividedPosition.Reason.UNSUPPORTED_SYNTAX;
+            // Its own word, and not the one above. That one promises the rule at this position is
+            // written in a form nothing here takes apart, and an author acting on it rewrites a
+            // bound that reads perfectly well. What they can act on is the branch beside it.
+            case BlockReason.EndLeftOpenByAChoice _ ->
+                    UndividedPosition.Reason.UNREAD_ALTERNATIVE_OF_A_CHOICE;
             // Its own word, and not the one above. That one promises a rule is written in a form
             // nothing here takes apart, and what a reader does about it is rewrite the rule. These
             // two say the shape was taken apart and what came of it was more than this compiler

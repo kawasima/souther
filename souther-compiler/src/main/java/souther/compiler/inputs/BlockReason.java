@@ -174,8 +174,8 @@ public sealed interface BlockReason {
     sealed interface RuleReadingStopped extends StoppedWithoutALine, QuestionStandingReason {
 
         /**
-         * One switch over the eleven, and the reason for it being one: a division of these into two
-         * is only reviewable where all eleven answers are visible together.
+         * One switch over the twelve, and the reason for it being one: a division of these into two
+         * is only reviewable where all twelve answers are visible together.
          */
         @Override
         default RunSensitivity runSensitivity() {
@@ -186,14 +186,15 @@ public sealed interface BlockReason {
                 // same rule.
                 case PatternTooCostly _, PatternTooDeeplyNested _,
                      OrderedExtentTooCostly _ -> RunSensitivity.MAY_CHANGE;
-                // And seven where nothing was compared against anything. A form nothing takes
+                // And eight where nothing was compared against anything. A form nothing takes
                 // apart, values no line can be drawn on, a rule about a value made from this one, a
                 // rule about an element of one of several sequences, a relation between two
                 // positions and a pairing nothing worked out are all met again by a run allowed
-                // more of everything.
+                // more of everything. So is an end a choice left open: what the reading of ends
+                // stops on is a form it does not enter, and there is no figure it stopped at.
                 case UnreadComparisonForm _, UnreadComparisonDomain _, RuleAboutADerivedValue _,
                      RuleAboutAnElementOfSeveralSequences _, UnreadValueRule _,
-                     ValueRuleRelatingTwoPositions _,
+                     ValueRuleRelatingTwoPositions _, EndLeftOpenByAChoice _,
                      CasePairingNotDetermined _ -> RunSensitivity.UNAFFECTED;
             };
         }
@@ -481,6 +482,21 @@ public sealed interface BlockReason {
      * values that follows a rule into a shape it does not enter today.
      */
     record UnreadValueRule() implements RuleReadingStopped {}
+
+    /**
+     * A choice in the rule offers an alternative this compiler does not read, and where the values
+     * stop here is what the two alternatives leave together.
+     *
+     * <p>The rule was read. What stopped is the reading of one branch of it, and a value satisfying
+     * that branch owes the branch beside it nothing — so the end at this position is as far out as
+     * whatever the unread alternative allows, which is not known.
+     *
+     * <p>Its own case beside {@link UnreadComparisonForm}, and the difference is what an author can
+     * do about it. That one says the comparison at this position is written in a shape no reader
+     * here takes apart, and an author sent after it would rewrite a bound that reads perfectly
+     * well. What they can act on is the branch written beside it.
+     */
+    record EndLeftOpenByAChoice() implements RuleReadingStopped {}
 
     /**
      * A rule naming a set of strings whose machine is more than this compiler will make.

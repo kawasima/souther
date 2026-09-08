@@ -1,6 +1,7 @@
 package souther.compiler.inputs;
 
 import souther.compiler.check.ProjectionEvidence;
+import souther.compiler.check.RuleRef;
 import souther.compiler.check.TypeView;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
@@ -235,6 +236,25 @@ public sealed interface Position permits ReadPosition {
      * (issue #868).
      */
     List<RuleWithoutALine> rulesWithoutALine();
+
+    /**
+     * The rules whose end here a choice in them left open.
+     *
+     * <p>Beside {@link #rulesWithoutALine()} and not read out of it. That list is what a report
+     * says became of a rule at this position, and what it says is the same sentence about a rule
+     * this compiler read to the end and about one it did not — which is why it holds neither
+     * measure open. This is the other question: whether the reading that draws lines here ran out,
+     * which a rule read to the end never leaves it doing.
+     *
+     * <p><b>Only where a choice is answerable.</b> An end left open under a conjunction is one the
+     * rule's own questions already say nothing answered, and the measure hears it from there. What
+     * a choice leaves open reaches nothing else, because the walk that classifies a rule stops at
+     * one.
+     *
+     * <p>The rule and nothing else. Where an author is sent is the rule, and how many choices of it
+     * are behind the answer is what the findings beside this say.
+     */
+    List<RuleRef> endsLeftOpenByAChoice();
 
     /**
      * Whether the values at this position are read from a product this reading cannot show the

@@ -76,7 +76,8 @@ public final class FieldDomains {
                     NOTHING_NAMED,
                     ConstraintState.<FactSubject>top(), null, null, null, null, Map.of(),
                     Set.of(RuleKey.THE_VALUE),
-                    Map.of(), Map.of(), Map.of(), Map.of(), StringFacts.NONE, KnownExtents.NONE);
+                    Map.of(), Map.of(), Map.of(), Map.of(), StringFacts.NONE, KnownExtents.NONE,
+                    Map.of());
 
     private final Map<RuleKey, NumericDomain.Bounds> byName;
     /** The ends the record's own clauses place, which is a different question from the range they
@@ -110,6 +111,8 @@ public final class FieldDomains {
 
     /** What the reading answered for each boundary question it raised and left standing. */
     private final Map<BoundaryQuestion, BoundaryStanding> standing;
+    /** Where a choice of a rule left an end of it open — see {@link #endsLeftOpenAt}. */
+    private final Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen;
     /** Which readings took each clause in, as each of them said so. */
     private final ReadingEvidence took;
     /** The accounting, worked out once. Every name of a value asks the same question of it. */
@@ -228,7 +231,9 @@ public final class FieldDomains {
                          Map<RuleKey, FactSubject> atomAt, Map<RuleKey, Counted> countAt,
                          Map<RuleRef.Invariant, Map<Core, InvariantChecker.PartRead>> readBy,
                          Map<FactSubject, souther.compiler.numeric.Granularity> spacing,
-                         StringFacts stringMachines, KnownExtents known) {
+                         StringFacts stringMachines, KnownExtents known,
+                         Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen) {
+        this.endsLeftOpen = endsLeftOpen;
         this.stringMachines = stringMachines;
         this.known = known;
         this.byName = byName;
@@ -456,7 +461,8 @@ public final class FieldDomains {
                 seeded.notGathered(), seeded.handedOn(), placeOf,
                 seeded.constraints(), named, data, source, policy, settled,
                 seeded.unreadOfEveryValue(), seeded.atoms(), seeded.held(),
-                seeded.readBy(), seeded.spacing(), seeded.stringMachines(), machines.extents());
+                seeded.readBy(), seeded.spacing(), seeded.stringMachines(), machines.extents(),
+                seeded.endsLeftOpen());
     }
 
     /**
@@ -1384,6 +1390,47 @@ public final class FieldDomains {
      */
     public List<NoLine> noLineAt(RuleKey path) {
         return noLines.stream().filter(each -> each.path().equals(path)).toList();
+    }
+
+    /**
+     * The rules whose end at {@code path} a choice in them left open, in the order they were read.
+     *
+     * <p>Beside {@link #noLineAt} and answering something it cannot. That one is a rule the walk
+     * over the written clause reached and got no end out of, and the walk stops at a choice — so a
+     * comparison written under one is a rule it never had in hand. This is what the reading of ends
+     * says became of the same clause once the branches were settled: an end it did not work out, at
+     * a position a choice was shown to leave as wide as the branch nobody could read.
+     *
+     * <p><b>Only where a choice is answerable.</b> An end left open under a conjunction is one the
+     * rule's own account already says was not reached, and a second sentence about it would be one
+     * finding for one stop said twice. What a choice leaves open has no other sentence, which is
+     * what this is for.
+     */
+    public List<EndLeftOpen> endsLeftOpenAt(RuleKey path) {
+        Set<EndLeftOpen> out = new LinkedHashSet<>();
+        endsLeftOpen.forEach((rule, open) -> open.byPosition().forEach((position, choices) -> {
+            if (!choices.isEmpty() && path.equals(namedBy.get(position))) {
+                out.add(new EndLeftOpen(numberOf(path, position), rule));
+            }
+        }));
+        return List.copyOf(out);
+    }
+
+    /**
+     * A rule whose end at one of a name's numbers a choice in it left open.
+     *
+     * <p>At the number and not at the name. A {@code String} has its own order and the length of
+     * it, and a choice leaving one of them open says nothing about the other — filed at the name,
+     * a report would say where the values stop was left undecided at whichever number it happened
+     * to ask about.
+     */
+    public record EndLeftOpen(NumberAt<RuleKey> at, RuleRef.Invariant rule) {}
+
+    /** Which of {@code path}'s numbers {@code position} is, as this reading named them. */
+    private NumberAt<RuleKey> numberOf(RuleKey path, FactSubject position) {
+        Counted counted = countAt.get(path);
+        return counted != null && counted.atom().equals(position)
+                ? NumberAt.takenOf(path, counted.by()) : NumberAt.valueOf(path);
     }
 
     /**

@@ -193,6 +193,11 @@ public final class MeasureClosure {
                 partition.add(gap);
                 border.add(gap);
             }
+            // And the ends a choice left open, which is the border's alone: what the alternatives
+            // admit was read, and where they stop was not.
+            for (souther.compiler.check.RuleRef rule : at.endsLeftOpenByAChoice()) {
+                border.add(new ClosureGap.LineNotDerived(at.behavior(), at.id(), rule));
+            }
             for (RulesLeftUnread unread : at.residue().rulesLeftUnread()) {
                 if (derived(unread)) {
                     continue;
