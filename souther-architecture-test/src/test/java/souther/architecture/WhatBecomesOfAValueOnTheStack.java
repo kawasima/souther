@@ -28,10 +28,12 @@ import java.lang.classfile.instruction.OperatorInstruction;
 import java.lang.classfile.instruction.ReturnInstruction;
 import java.lang.classfile.instruction.StackInstruction;
 import java.lang.classfile.instruction.StoreInstruction;
+import java.lang.classfile.instruction.SwitchCase;
 import java.lang.classfile.instruction.TableSwitchInstruction;
 import java.lang.classfile.instruction.ThrowInstruction;
 import java.lang.classfile.instruction.TypeCheckInstruction;
 import java.lang.constant.ClassDesc;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -53,9 +55,16 @@ import java.util.Set;
  * What the value's place is is never needed — only how far above it the stack has come — so nothing
  * here has to know the depth a method's code begins at.
  *
- * <p><b>Every instruction is answered for.</b> An instruction this cannot say the effect of ends
- * the walk with a refusal rather than an answer, so a rule written on top of this cannot come to
- * report that nothing compares a constant because the walk stopped understanding the code.
+ * <p><b>What it cannot follow it refuses, and never answers.</b> An instruction whose effect this
+ * cannot say, a way round that comes back to where the walk has already been, the beginning of an
+ * exception handler, and the end of a method with the value still on the stack are each a place the
+ * value was lost rather than taken — and every one of them ends the walk with a refusal. Answered,
+ * each would come out as "nothing compares it", which is the one thing a rule written on top of
+ * this reads as a fact.
+ *
+ * <p>What it does follow is a value carried across the jumps that work something else out, and
+ * across a switch, which takes the number it switched on and leaves the value alone. Each way the
+ * code may go is remembered with the stack it is reached at, and picked up again where it arrives.
  */
 final class WhatBecomesOfAValueOnTheStack {
 
@@ -78,6 +87,12 @@ final class WhatBecomesOfAValueOnTheStack {
                 caught.add(handler.handler());
             }
         });
+        Map<Label, Integer> placed = new HashMap<>();
+        for (int where = 0; where < elements.size(); where++) {
+            if (elements.get(where) instanceof LabelTarget target) {
+                placed.put(target.label(), where);
+            }
+        }
         Map<Label, Integer> above = new HashMap<>();
         // One, because the value has just been pushed and nothing else is on top of it. What is
         // followed is this number and never the depth of the stack, so where the method's code
@@ -112,23 +127,60 @@ final class WhatBecomesOfAValueOnTheStack {
                 // it jumps to. What it does to a stack is not what this value's stack is doing.
                 continue;
             }
-            if (instruction instanceof BranchInstruction branch) {
-                if (isAReferenceComparison(branch.opcode())) {
-                    // Both operands are what the stack holds above the value and the one below
-                    // them, so the value is one of the two exactly where the stack has come no
-                    // further than two above it.
-                    return now <= 2;
+            if (instruction instanceof BranchInstruction branch
+                    && isAReferenceComparison(branch.opcode())) {
+                // Both operands are what the stack holds above the value and the one below them, so
+                // the value is one of the two exactly where the stack has come no further than two
+                // above it.
+                return now <= 2;
+            }
+            for (Label target : whereItMayGo(instruction)) {
+                Integer to = placed.get(target);
+                if (to == null || to <= next) {
+                    // A jump backwards, or to somewhere this walk never reaches. What the value
+                    // meets on that way round is not read here, and a walk that carried on would be
+                    // answering about the way it happened to take.
+                    throw new IllegalStateException("a value was followed into a jump that returns");
                 }
-                above.merge(branch.target(), now + effectOf(instruction),
+                above.merge(target, now + effectOf(instruction),
                         WhatBecomesOfAValueOnTheStack::agreeing);
             }
             now += effectOf(instruction);
             if (now <= 0) {
+                // Something other than a comparison of two references took the value, which is an
+                // answer and not a place the walk gave up at.
                 return false;
             }
             reached = !ends(instruction);
         }
-        return false;
+        // The value is still on the stack and there is no more code, so what took it was on a way
+        // this did not follow. Said as "nothing compares it", that would be the one mistake this
+        // whole reading is written to refuse.
+        throw new IllegalStateException("a value was followed to the end of a method");
+    }
+
+    /**
+     * Everywhere the code may carry on to other than the instruction written after this one.
+     *
+     * <p>A switch is one of them and takes nothing but the number it switched on, so a value under
+     * that number is followed across it the same way it is followed across a jump — each way with
+     * the stack the switch leaves.
+     */
+    private static List<Label> whereItMayGo(Instruction instruction) {
+        return switch (instruction) {
+            case BranchInstruction it -> List.of(it.target());
+            case TableSwitchInstruction it -> targetsOf(it.defaultTarget(),
+                    it.cases().stream().map(SwitchCase::target).toList());
+            case LookupSwitchInstruction it -> targetsOf(it.defaultTarget(),
+                    it.cases().stream().map(SwitchCase::target).toList());
+            default -> List.of();
+        };
+    }
+
+    private static List<Label> targetsOf(Label otherwise, List<Label> cases) {
+        List<Label> out = new ArrayList<>(cases);
+        out.add(otherwise);
+        return out;
     }
 
     private static int agreeing(int one, int other) {
