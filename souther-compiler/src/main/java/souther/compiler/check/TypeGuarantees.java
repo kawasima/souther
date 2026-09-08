@@ -98,7 +98,7 @@ final class TypeGuarantees {
             Clauses.StatedClauses stated =
                     clauses.statedAt(owner.named(), given);
             for (Clauses.Stated one : stated.clauses()) {
-                if (already.add(one.clause().ref())) {
+                if (already.add(one.clause())) {
                     here.add(read(one, denotations, withoutParts));
                 }
             }
@@ -136,7 +136,7 @@ final class TypeGuarantees {
         ValueReading there = ValueReading.of(type, symbols);
         for (ValueReading.Owner owner : there.owners()) {
             for (TypeOps.Declared each : clauses.declared(owner.named())) {
-                if (!stated.contains(Clause.of(each).ref())) {
+                if (!stated.contains(Clause.Ref.of(each))) {
                     return true;
                 }
             }

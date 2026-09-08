@@ -2,6 +2,7 @@ package souther.compiler.query;
 
 import souther.compiler.ast.Hir;
 import souther.compiler.check.ClauseDischarge;
+import souther.compiler.check.ClauseLocations;
 import souther.compiler.check.ExpandedClauseLookup;
 import souther.compiler.check.ExpandedClauseResult;
 import souther.compiler.check.ExpandedClauses;
@@ -19,6 +20,7 @@ import souther.compiler.check.DerivedSymbols;
 import souther.compiler.check.ResolvedSymbols;
 import souther.compiler.core.ValueShape;
 import souther.compiler.diag.CompileException;
+import souther.compiler.diag.DiagnosticPlace;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
@@ -700,6 +702,93 @@ public final class Shapes {
             }
             Answer<souther.compiler.stdlib.Stdlib> library = db.ask(new Front.Library());
             return library.present() ? library.value().languageDeclaration(named) : null;
+        }
+    }
+
+    /**
+     * Where one clause is written.
+     *
+     * <p>Beside {@link ClausesExpandedFor} and not inside it, because they are two facts about one
+     * declaration and a reader uses one of them. What a clause states is what every reading of the
+     * model is built on; where it is written is what one sentence puts a caret under. Answered
+     * together, an edit that moves a clause and changes nothing it states is an edit that changes
+     * what the model says, and every reading of every module that imports the declaration is worked
+     * out again for it.
+     *
+     * <p><b>One clause and not a declaration's.</b> A report is sent to the clause it is about, and
+     * that is the whole of what it reads here. Answered a declaration at a time, a reader that
+     * points at the first clause would depend on where the third is: the list is one answer, an edit
+     * moving any clause in it makes a new one, and what re-reads is everything that read the list.
+     * The clause a reader means is the grain the reader means, so it is the grain of the question.
+     *
+     * <p>The ordinal is the one {@link souther.compiler.check.Clause.Id} counts by — which of the
+     * declaration's own clauses this is, in written order. Every representation of a declaration
+     * writes its clauses in that order, which is what lets a reader holding a judgment about clause
+     * <i>n</i> ask here where clause <i>n</i> is written.
+     *
+     * <p>Absent where the declaration writes no such clause — nothing declares the name, its kind
+     * has no {@code invariant} to write, or it writes fewer clauses than this. Those are one answer
+     * because they are one fact for a reader: there is no such clause to be pointed at. Which of
+     * them it was is a question about the declaration, and this is a question about a clause.
+     */
+    public record ClauseLocation(souther.compiler.check.Clause.Id clause)
+            implements Key<DiagnosticPlace> {
+        @Override
+        public String module() {
+            return clause.declaredOn().key().module();
+        }
+
+        @Override
+        public Answer<DiagnosticPlace> compute(Db db) {
+            Hir.Def declared =
+                    ClausesExpandedFor.declarationOf(db, clause.declaredOn().key());
+            if (!(declared instanceof Hir.Data data)
+                    || clause.ordinal() < 0 || clause.ordinal() >= data.invariants().size()) {
+                return Answer.absent();
+            }
+            return Answer.of(placeOf(data.invariants().get(clause.ordinal())));
+        }
+
+        /** Where {@code clause} is written, as the declaration knows it — with no reader's route in
+         *  it, for the reason {@link souther.compiler.check.Clause} gives. */
+        private static DiagnosticPlace placeOf(Hir.InvariantClause clause) {
+            DiagnosticPlace at = DiagnosticPlace.of(clause.reportedAt());
+            return at instanceof DiagnosticPlace.Unavailable out
+                    ? new DiagnosticPlace.Unavailable(out.provenance().asDeclared()) : at;
+        }
+    }
+
+    /**
+     * Where any clause is written, for a reader that is about to point at one.
+     *
+     * <p>One of these for the whole compilation, for the reason {@link #expandedClauses} gives: which
+     * clause is being asked about is the only input there is.
+     */
+    public static ClauseLocations clauseLocations(Db db) {
+        return clause -> {
+            Answer<DiagnosticPlace> written = db.ask(new ClauseLocation(clause));
+            if (!written.present()) {
+                throw new NoSuchClauseIsWritten(clause);
+            }
+            return written.value();
+        };
+    }
+
+    /**
+     * Raised where a report asks where a clause is and the declaration writes no such clause.
+     *
+     * <p>Two of this compiler's answers disagreeing. A judgment is about a clause a reading of the
+     * declaration reached, and the declaration is the one that wrote it; a clause judged and not
+     * written is a reading and a declaration that are not of one model. Answered with a place that
+     * points nowhere, the report would send a reader to a clause nobody wrote.
+     */
+    public static final class NoSuchClauseIsWritten extends IllegalStateException {
+
+        private static final long serialVersionUID = 1L;
+
+        NoSuchClauseIsWritten(souther.compiler.check.Clause.Id clause) {
+            super("nothing at " + clause.declaredOn().name() + " writes a clause numbered "
+                    + clause.ordinal());
         }
     }
 

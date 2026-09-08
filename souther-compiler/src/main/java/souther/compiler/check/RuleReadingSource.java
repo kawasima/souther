@@ -2,19 +2,20 @@ package souther.compiler.check;
 
 /**
  * What reading a module's declarations as a static analysis takes: the scope the names resolve in,
- * and where the clauses in the representation it reads come from.
+ * where the clauses in the representation it reads come from, and where a clause it reports about
+ * is written.
  *
- * <p>The two together because a reading takes both, and for no reason beyond that. Most of what
- * carries this reads only the scope and hands the pair on; separated, those would thread two
- * arguments where they thread one, which is plumbing rather than a distinction anyone makes.
+ * <p>Together because a reading takes them all, and for no reason beyond that. Most of what carries
+ * this reads only the scope and hands the rest on; separated, those would thread several arguments
+ * where they thread one, which is plumbing rather than a distinction anyone makes.
  *
  * <p><b>It states no relation between them.</b> Not that they are the same module's, not that one
  * answers for the other, not that a declaration reached through the scope is one the lookup has.
  * There is nothing of that kind to state: a scope belongs to the module being read, and a clause
- * belongs to the declaration that wrote it, wherever that was. This pair used to require that the
- * two named one module, which is exactly the claim that made an imported declaration's clauses come
- * back in whatever representation the reader happened to hold, so the requirement is gone and
- * nothing here or in a constructor puts it back.
+ * belongs to the declaration that wrote it, wherever that was. This used to require that the scope
+ * and the lookup named one module, which is exactly the claim that made an imported declaration's
+ * clauses come back in whatever representation the reader happened to hold, so the requirement is
+ * gone and nothing here or in a constructor puts it back.
  *
  * <p>Nothing else about the reading goes in here. What a reading may spend is a bound on the work
  * and not part of what is being read ({@link ReadingPolicy}), and it stays a separate argument:
@@ -30,21 +31,28 @@ package souther.compiler.check;
  *
  * @param symbols    the module's resolved scope
  * @param invariants where a declaration's clauses in the representation this reads are answered from
+ * @param written    where a clause of a declaration is written, for the sentences this reading
+ *                   produces that point at one. Beside {@code invariants} and not inside it: what a
+ *                   clause states is what the reading is built on, and where it is written is what
+ *                   one sentence puts a caret under. Answered together, an edit that moves a clause
+ *                   and changes nothing it states is an edit that changes what the model says
  * @param origin     which source this is, for a reader telling two of them apart
  */
-public record RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants, Origin origin) {
+public record RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants,
+                                ClauseLocations written, Origin origin) {
 
     public RuleReadingSource {
-        if (symbols == null || invariants == null || origin == null) {
+        if (symbols == null || invariants == null || written == null || origin == null) {
             throw new IllegalArgumentException(
                     "reading a declaration's rules takes a scope, somewhere to read clauses from,"
-                            + " and which source that is");
+                            + " somewhere to read where one is written, and which source that is");
         }
     }
 
     /** A source made for a reading of its own, which nobody else can name. */
-    public RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants) {
-        this(symbols, invariants, AReadingOfItsOwn.next());
+    public RuleReadingSource(Symbols symbols, ExpandedClauseLookup invariants,
+                             ClauseLocations written) {
+        this(symbols, invariants, written, AReadingOfItsOwn.next());
     }
 
     /**

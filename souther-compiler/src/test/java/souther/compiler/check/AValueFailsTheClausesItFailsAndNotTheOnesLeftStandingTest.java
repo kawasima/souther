@@ -193,8 +193,8 @@ class AValueFailsTheClausesItFailsAndNotTheOnesLeftStandingTest {
 
     // --- reading the check ----------------------------------------------------------------------
 
-    private static java.util.SequencedMap<Clause.Id, Clause> unknown(Judgment judgment) {
-        java.util.SequencedMap<Clause.Id, Clause> side = new java.util.LinkedHashMap<>();
+    private static java.util.SequencedMap<Clause.Id, Clause.Ref> unknown(Judgment judgment) {
+        java.util.SequencedMap<Clause.Id, Clause.Ref> side = new java.util.LinkedHashMap<>();
         judgment.found().forEach((id, one) -> {
             if (one.status() == ClauseStatus.UNKNOWN) {
                 side.put(id, one.clause());

@@ -81,7 +81,8 @@ public record ContractDischarge(List<RuleDischarge> rules,
         // declaration through the values it names, and the representation those are read in is the
         // one every other reader of this module's rules uses.
         Terms naming = new Terms(source.symbols(), Terms.Of.THE_DISCHARGE_TREE, policy,
-                new Clauses(source.symbols(), source.invariants(), DeclarationReadings.NONE));
+                new Clauses(source.symbols(), source.invariants(), source.written(),
+                        DeclarationReadings.NONE));
         Denotations locations =
                 Denotations.none().locations(named, naming::placeSubject, naming::placeTerm);
 

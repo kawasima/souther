@@ -1965,7 +1965,7 @@ public final class Bodies {
                     discharge.present()
                     ? new InvariantChecker.Source(discharge.value().value().writtenBody(),
                             discharge.value().provenance(),
-                            Shapes.expandedClauses(db), db.readings(),
+                            Shapes.expandedClauses(db), Shapes.clauseLocations(db), db.readings(),
                             contracts.present() ? contracts.value() : Map.of())
                     : null;
             List<Diagnostic> warnings = new ArrayList<>();

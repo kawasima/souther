@@ -230,7 +230,8 @@ class WhatFallsOpenIsWhatSomebodyNamedALimitTest {
         Scope params = heldTo(new Type.Ref(TypeSymbols.declared(new TypeKey("demo", "制限木"))));
 
         assertEquals(InvariantChecker.Status.COMPLETE,
-                InvariantChecker.analyze(body, lookupOf(c), DeclarationReadings.NONE, Map.of(), params,
+                InvariantChecker.analyze(body, lookupOf(c), ClauseLocations.NONE,
+                        DeclarationReadings.NONE, Map.of(), params,
                         symbolsOf(c), POLICY).status(),
                 "the control: read through a lookup that answers, this analysis runs to the end");
 
@@ -238,7 +239,8 @@ class WhatFallsOpenIsWhatSomebodyNamedALimitTest {
             throw new IllegalStateException("this compiler could not read its own answer");
         };
         IllegalStateException why = assertThrows(IllegalStateException.class,
-                () -> InvariantChecker.analyze(body, broken, DeclarationReadings.NONE, Map.of(), params,
+                () -> InvariantChecker.analyze(body, broken, ClauseLocations.NONE,
+                        DeclarationReadings.NONE, Map.of(), params,
                         symbolsOf(c), POLICY),
                 "the analysis has no rule that makes this the program's problem");
 

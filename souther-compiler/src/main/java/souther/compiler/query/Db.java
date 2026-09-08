@@ -173,7 +173,8 @@ public final class Db implements StoreWork {
     RuleReadingSource ruleReadingFor(String module) {
         if (sources == null) {
             sources = new TheCompilationsSources(this::scopeOf,
-                    named -> ask(new Shapes.ClausesExpandedFor(named)).value());
+                    named -> ask(new Shapes.ClausesExpandedFor(named)).value(),
+                    Shapes.clauseLocations(this));
         }
         return sources.of(module);
     }

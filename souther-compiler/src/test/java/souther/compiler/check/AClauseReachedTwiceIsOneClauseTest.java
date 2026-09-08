@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -90,13 +91,13 @@ class AClauseReachedTwiceIsOneClauseTest {
                 "in the order they were written");
     }
 
-    /** Each of them is a place of its own to send a reader to. */
+    /** Each of them is a place of its own to send a reader to. Read off what the report points at,
+     *  which is where a place is asked for — the judgment says which clauses it is about, and the
+     *  declaration says where each of them is written. */
     @Test
     void eachOfTheTwoIsWrittenSomewhereOfItsOwn() {
-        List<Integer> lines = judgmentOn(TWO_UNNAMED).unsettled().values().stream()
-                .map(c -> ((souther.compiler.diag.DiagnosticPlace.InSource) c.at()).region().start().line()).toList();
-
-        assertEquals(List.of(7, 8), lines, "the two `invariant` lines the declaration writes");
+        assertEquals(List.of(7, 8), linesPointedAtIn(TWO_UNNAMED),
+                "the two `invariant` lines the declaration writes");
     }
 
     // --- one clause reached twice is one --------------------------------------------------------
@@ -107,11 +108,25 @@ class AClauseReachedTwiceIsOneClauseTest {
 
         assertEquals(1, judgment.unsettled().size(),
                 "one clause, read once down each branch: " + judgment.unsettled());
-        assertEquals(7, ((souther.compiler.diag.DiagnosticPlace.InSource) judgment.unsettled().firstEntry().getValue().at())
-                .region().start().line(), "and it is still where the declaration writes it");
+        assertEquals(Set.of(7), Set.copyOf(linesPointedAtIn(READ_ON_TWO_BRANCHES)),
+                "and however many constructions are reported, there is one line to send a reader"
+                        + " to, because there is one clause");
     }
 
     // --- reading the check ----------------------------------------------------------------------
+
+    /** The lines the warning about {@code Bound}'s construction sends a reader to, in the order it
+     *  writes them. */
+    private static List<Integer> linesPointedAtIn(String source) {
+        return Compiler.compileWithWarnings(source).warnings().stream()
+                .filter(d -> "E2011".equals(d.code()))
+                .flatMap(d -> d.secondary().stream())
+                .map(label -> label.place())
+                .filter(place -> place instanceof souther.compiler.diag.DiagnosticPlace.InSource)
+                .map(place -> ((souther.compiler.diag.DiagnosticPlace.InSource) place)
+                        .region().start().line())
+                .toList();
+    }
 
     /**
      * The judgment for the construction of {@code Bound}, taken through the seam the check reports

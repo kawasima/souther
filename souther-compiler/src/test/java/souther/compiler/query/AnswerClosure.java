@@ -581,6 +581,15 @@ final class AnswerClosure {
                     part("souther.compiler.partition.MeasuredInput", "written"),
                     part("souther.compiler.partition.BehaviorInputs", "rules"),
                     part("souther.compiler.check.RuleReadingSource", "invariants")),
+            // Where a clause of a declaration is written, beside the clauses above and for the same
+            // reason: a capability, whose only input is which clause is being asked about. Held as
+            // an answer here it would be this reading's copy of where the declaring module wrote
+            // its text, which is the copy that goes on pointing at where the clause used to be.
+            generationReader("souther.compiler.check.ClauseLocations",
+                    Traversal.Why.NOTHING_CLOSES_IT,
+                    part("souther.compiler.partition.MeasuredInput", "written"),
+                    part("souther.compiler.partition.BehaviorInputs", "rules"),
+                    part("souther.compiler.check.RuleReadingSource", "written")),
             generationReader("souther.compiler.inputs.ReadQuantities",
                     part("souther.compiler.partition.MeasuredInput", "quantities"),
                     arm("souther.compiler.inputs.ReadQuantities")),
