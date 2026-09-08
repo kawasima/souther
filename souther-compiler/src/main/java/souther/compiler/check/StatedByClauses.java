@@ -272,13 +272,13 @@ sealed interface StatedByClauses {
          * reasons suppress which would be one more place the vocabulary has to be consulted, and a
          * reason added to it would quietly change what a choice says.
          *
-         * <p><b>Of the reading of values, which is what the name says and not all there is.</b>
-         * Where a position's order stops is taken back by an unread alternative the same way, and
-         * the ends' opening now says where it would send an author
-         * ({@link Opening#byTheLeftGoingUnread}). What stands between that and this call is that
-         * the ends call an alternative unread wherever it placed no end, so a disequality beside a
-         * bound comes here as a choice nothing could read. Routed before that is the ends' own
-         * answer, an author is sent to clauses this compiler read perfectly well.
+         * <p><b>Of the reading of values, and the ends' opening is not joined to it.</b> The
+         * positions each reading reaches in a branch are the branch's mentions either way, so
+         * joining the two adds an entry exactly where the ends could not follow an alternative and
+         * the values read it — and what would be said there is that nothing could read it, which
+         * is false. The ends are owed a sentence about a choice that took back where a position
+         * stops, in the vocabulary that can say the ends were the reading that stopped
+         * ({@code RuleAccounting.Why.TheEndReadingSays}); this reason is not it.
          */
         private static void leftOpenByValues(RuleShortfall.Site.AtAChoice choice,
                                              Set<FactSubject> these,
@@ -530,13 +530,14 @@ sealed interface StatedByClauses {
             PlannedValues<FactSubject> said = values.leaf(e, positive, at);
             OrderedIntervals<FactSubject> range = ordered.leaf(e, positive, at);
             Set<FactSubject> mentions = mentioned(e, at);
-            Set<FactSubject> bounded = range.boundedAt();
             return new Said(new Confinement.Planned<>(said, range, ordered.carriers()), new Part(
-                    // Each language says whether it gave up on the leaf. The reading of values
-                    // carries it; the reading of order has nothing to hand back but its ranges, and
-                    // a leaf it read leaves at least one.
+                    // Each language says for itself whether it could account for the leaf, and each
+                    // is asked. Read off what a language produced instead, a rule it followed to
+                    // the end and found bounds nothing is one it gave up on — which is what every
+                    // disequality is to the ends, and a bound written beside one comes out as a
+                    // choice offering an alternative nothing could read.
                     Adoption.at(mentions, said.adoptedAt(), values.gaveUpAt(e)),
-                    Adoption.at(mentions, bounded, bounded.isEmpty()),
+                    Adoption.at(mentions, range.boundedAt(), ordered.gaveUpAt(e)),
                     // And what the leaf states about the strings at a position, where it is a rule
                     // about them. Asked of the reading that recognises one, so this is where the
                     // answer enters and the connectives below are what compose it.
