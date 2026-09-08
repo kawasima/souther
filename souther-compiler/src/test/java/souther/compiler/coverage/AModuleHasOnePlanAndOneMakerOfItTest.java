@@ -145,9 +145,29 @@ class AModuleHasOnePlanAndOneMakerOfItTest {
         return out;
     }
 
-    /** Which methods of this compiler invoke {@code name} on {@code owner}, and how often. */
+    /**
+     * Which methods of this compiler invoke {@code name} on {@code owner}, and how often.
+     *
+     * <p>Both doors are counted out of one reading of the classes. Every class of this module is
+     * read and every instruction of it decoded, which is not what a run somebody is waiting on
+     * should do twice to answer two questions about the same compiled code.
+     */
     private static Map<String, Integer> calling(String owner, String name) throws IOException {
-        Map<String, Integer> calls = new TreeMap<>();
+        return counted().getOrDefault(owner + "." + name, Map.of());
+    }
+
+    /** What each door is called by, read once. */
+    private static Map<String, Map<String, Integer>> counted() throws IOException {
+        if (COUNTED == null) {
+            COUNTED = count();
+        }
+        return COUNTED;
+    }
+
+    private static Map<String, Map<String, Integer>> COUNTED;
+
+    private static Map<String, Map<String, Integer>> count() throws IOException {
+        Map<String, Map<String, Integer>> calls = new TreeMap<>();
         int read = 0;
         for (Path each : classes()) {
             ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
@@ -155,10 +175,14 @@ class AModuleHasOnePlanAndOneMakerOfItTest {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
                 method.code().ifPresent(code -> code.forEach(element -> {
-                    if (element instanceof InvokeInstruction call
-                            && call.owner().asInternalName().equals(owner)
-                            && call.name().stringValue().equals(name)) {
-                        calls.merge(from + "." + method.methodName().stringValue(), 1, Integer::sum);
+                    if (element instanceof InvokeInstruction call) {
+                        String door = call.owner().asInternalName() + "."
+                                + call.name().stringValue();
+                        if (DOORS.contains(door)) {
+                            calls.computeIfAbsent(door, _ -> new TreeMap<>())
+                                    .merge(from + "." + method.methodName().stringValue(), 1,
+                                            Integer::sum);
+                        }
                     }
                 }));
             }
@@ -166,6 +190,9 @@ class AModuleHasOnePlanAndOneMakerOfItTest {
         assertFalse(read == 0, "no compiled class was read at all, so this says nothing");
         return calls;
     }
+
+    /** The two ways to a plan, as an invocation names them. */
+    private static final Set<String> DOORS = Set.of(SITES + ".of", A_PLAN + ".<init>");
 
     private static List<Path> classes() throws IOException {
         Path root = Path.of("target", "classes").toAbsolutePath();
