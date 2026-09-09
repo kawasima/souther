@@ -266,6 +266,25 @@ class AnEndAChoiceLeftOpenIsNotTheModelDrawingNoLineTest {
     }
 
     /**
+     * And a rule that cancels against a side this reading names a position in does too.
+     *
+     * <p>{@code n + 1 >= n} holds every row, and one whole side of it is a position — so the lookup
+     * that finds which number a rule is about finds one, and the arithmetic is what says the rule
+     * stops it nowhere. Nor is it a rule holding one position to another: what it compares
+     * {@code n} to is a number built from {@code n}, which is not a position, so nothing else here
+     * answers for it.
+     *
+     * <p>Read off the lookup alone, this is a bound on {@code n} whose end nothing worked out, and
+     * the choice comes back as a border this compiler could not measure.
+     */
+    @Test
+    void andSoDoesOneThatCancelsAgainstASideAPositionIsWrittenIn() {
+        assertEquals(theModelDrawsNoLine(), borderIn("Int.abs(n) >= 5 || n + 1 >= n"),
+                "every value is at least one less than itself plus one, so the alternative"
+                        + " stops `n` nowhere");
+    }
+
+    /**
      * And a choice above one that gave a constraint back does not collect it again.
      *
      * <p>The inner choice puts every value of {@code n} on the order: one of its alternatives says

@@ -2199,17 +2199,28 @@ public final class InvariantChecker {
         if (said instanceof ComparisonClaim.Singled singled && !singled.holdsAtTheValue()) {
             return NO_LINE;
         }
+        Coordinate found = byName.get(nameOf(bin.left(), at));
+        Core bound = bin.right();
+        if (found == null) {
+            found = byName.get(nameOf(bin.right(), at));
+            bound = bin.left();
+        }
         // Asked of the rule as written, which is what the residue is a residue of. Under a denial
         // the same form states the opposite of what it reads as, and a rule holding of every row
         // denied is one holding of none — which is not a rule that states no line, so the question
         // is left where it was.
-        if (positive && canonicalFormOf(read, at, byName) instanceof CanonicalForm.CutsNothing form
+        //
+        // And asked only where it can say what the lookup above cannot. A whole side that is a
+        // coordinate stands in the canonical form with a coefficient of one, so a comparison of one
+        // against a side naming no coordinate cuts that coordinate and cannot cancel. Where both
+        // sides reach one they may — {@code n >= n} — and where neither is one the form is the only
+        // thing that tells a rule holding of every row from a rule about a number with no name.
+        // Asked of every comparison, this reads the arithmetic of both sides at every leaf of every
+        // clause, for the shape almost all of them are.
+        if (positive && (found == null || !coordinatesIn(bound, at, byName).isEmpty())
+                && canonicalFormOf(read, at, byName) instanceof CanonicalForm.CutsNothing form
                 && form.holdsOfEveryRow()) {
             return NO_LINE;
-        }
-        Coordinate found = byName.get(nameOf(bin.left(), at));
-        if (found == null) {
-            found = byName.get(nameOf(bin.right(), at));
         }
         return found == null ? ELSEWHERE : new LineStated.On(found);
     }

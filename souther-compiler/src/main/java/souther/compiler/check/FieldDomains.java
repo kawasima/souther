@@ -1892,6 +1892,12 @@ public final class FieldDomains {
             return null;
         }
         NumericDomain.Bounds held = constraints.numbers().boundsOf(atom);
+        // Nothing to meet where no choice settled a number of this value, which is most of them.
+        // Asked all the same, every lookup of every coordinate builds a subject to find nothing
+        // under, and this one is asked once per candidate per counterfactual.
+        if (derived.boundedAt().isEmpty()) {
+            return held;
+        }
         // And what the choices leave it, which the algebra has no way to: it reads a clause as
         // written and never enters an alternative, so a length bounded in both branches of a
         // choice comes back from it unbounded. Met rather than preferred — the two are readings of
