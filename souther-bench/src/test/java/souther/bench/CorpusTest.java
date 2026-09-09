@@ -20,10 +20,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * keep working, and a language change that leaves a corpus behind would otherwise be found the next
  * time someone took a measurement and read a faster number as an improvement.
  *
- * <p>Compiling is the whole claim. Whether the compiler still answers what it did about a model this
- * size is the conformance corpus's, in {@code souther-compiler}, and looking for it here would find
- * nothing: these sources are timed, not read back, and every measure a report carries could move
- * without one of them failing to compile.
+ * <p>Compiling, and what the compiles a figure is taken over reach. The second is here for the same
+ * reason as the first: a figure taken over a compile that never reads a choice sits where it is
+ * however much slower reading one becomes, and nothing about the number says which of the two it
+ * is. The measurements are run to ask it — {@link WholeCompile#timeWarm}, {@link Phases#timeWalks},
+ * {@link Incremental#time} hand back what their runs read beside the figure — so what is asked
+ * about is what is reported and not a compile made here.
+ *
+ * <p>What the compiler still answers about a model this size is the conformance corpus's, in
+ * {@code souther-compiler}, and looking for it here would find nothing: these sources are timed,
+ * not read back, and every measure a report carries could move without one of them failing to
+ * compile.
  */
 @Tag("population")
 class CorpusTest {

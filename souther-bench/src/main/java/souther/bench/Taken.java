@@ -52,7 +52,16 @@ record Taken<F>(F figure, ChoicesRead.Snapshot read) {
      */
     static <F> Taken<F> from(java.util.function.Function<Runnable, F> measurement) {
         ChoicesRead.Snapshot[] before = new ChoicesRead.Snapshot[1];
-        F figure = measurement.apply(() -> before[0] = ChoicesRead.snapshot());
+        F figure = measurement.apply(() -> {
+            // Once, because a measurement that said twice would have this reading start at
+            // whichever of the two came last, and a reader would be told about a run that had
+            // already begun. Refused here rather than left to be noticed in a figure.
+            if (before[0] != null) {
+                throw new IllegalStateException(
+                        "a measurement says once where its warm-up stops");
+            }
+            before[0] = ChoicesRead.snapshot();
+        });
         ChoicesRead.Snapshot started = before[0];
         if (started == null) {
             throw new IllegalStateException("a measurement that warms itself says when it stops");

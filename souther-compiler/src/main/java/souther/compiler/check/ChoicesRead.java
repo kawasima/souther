@@ -131,27 +131,47 @@ public final class ChoicesRead {
             placesMet++;
         }
 
-        /**
-         * What this declaration's choices came to, taken once its settlement is a value.
-         *
-         * <p>Read off the fates and not off the walk that made them. A fate is aggregated over every
-         * place distribution put the branch, so a count taken per place would say a choice stood in
-         * one place and not in another — which is a sentence about the walk and not about the
-         * choice.
-         *
-         * @param offDescriptions how many of them were decided before anything was built
-         */
-        void settled(Settlement settlement, int offDescriptions) {
-            Settlement.HowTheChoicesFell fell = settlement.howTheChoicesFell();
-            stated += settlement.outcomes().size();
-            settledOffDescriptions += offDescriptions;
-            everyAlternativeStood += fell.everyStood();
-            oneAlternativeStood += fell.oneStood();
-            noAlternativeStood += fell.noneStood();
+        /** How many of this declaration's choices the descriptions alone settled. */
+        void settledOffDescriptions(int settled) {
+            settledOffDescriptions += settled;
         }
 
-        /** What this reading did, added to what every reading before it did. */
+        /**
+         * One written choice, and how its alternatives fell.
+         *
+         * <p>Told rather than asking. The reading walks the choices of each rule once, with the
+         * fates applied, and works out how they fell because its own answer turns on it — so a
+         * count taken here is the walk that is happening saying what it found, and a count taken
+         * anywhere else is a second walk over the same choices. That would be an instrument doing
+         * work in proportion to how many choices a declaration has, which is the axis a measurement
+         * of what a choice costs varies.
+         *
+         * <p>Sorted into three where the word has four. Which side fell is the business of whatever
+         * goes on reading the branch that is left; what a compile did with a choice is the same
+         * either way, so a fifth way for two alternatives to fall arrives here as a case with
+         * nowhere to go and says so.
+         */
+        void choiceCame(souther.compiler.values.Emptiness.Alternatives standing) {
+            stated++;
+            switch (standing) {
+                case BOTH_STAND -> everyAlternativeStood++;
+                case ONLY_THE_LEFT, ONLY_THE_RIGHT -> oneAlternativeStood++;
+                case NEITHER_STANDS -> noAlternativeStood++;
+            }
+        }
+
+        /**
+         * What this reading did, added to what every reading before it did.
+         *
+         * <p>Nothing at all where the declaration stated no choice, which is nearly every
+         * declaration anybody writes. A shared counter told that nothing happened is still a shared
+         * counter written to, and a compile of a model with no choice in it would be paying an
+         * instrument for the choices it does not have.
+         */
         void publish() {
+            if (stated == 0 && placesMet == 0) {
+                return;
+            }
             STATED.add(stated);
             SETTLED_OFF_DESCRIPTIONS.add(settledOffDescriptions);
             PLACES_MET.add(placesMet);

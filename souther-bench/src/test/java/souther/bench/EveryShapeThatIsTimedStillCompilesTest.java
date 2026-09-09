@@ -43,6 +43,43 @@ class EveryShapeThatIsTimedStillCompilesTest {
         }
     }
 
+    /**
+     * And every shape the choice measurement times comes to what its point says it comes to.
+     *
+     * <p>At the sizes it is timed at, unlike the shapes above: what a choice shape comes to is what
+     * the sizes vary — one side of the guardrail holds its alternatives apart and the other merges
+     * them — so a smaller one is a different shape rather than the same shape smaller.
+     *
+     * <p>Both answers, because one of them is a shape written to be refused. A fate a reading only
+     * reaches where a declaration admits nothing is a fate that comes with a refusal, and a claim
+     * that every shape compiles would be a claim this measurement could only meet by not reaching
+     * the fate. What is held is that each shape comes to the one its line was written for, so a
+     * shape that started being refused is caught either way round.
+     */
+    @Test
+    void everyChoiceShapeComesToWhatItsPointSays() {
+        for (Choices.Point point : Choices.points()) {
+            String where = point.series() + " " + point.label();
+            switch (point.completion()) {
+                case MAKES_CLASSES -> compiles(where, List.of(point.source()));
+                case IS_REFUSED -> refused(where, List.of(point.source()));
+            }
+        }
+    }
+
+    /** That a shape written to be refused still is, and is refused rather than failing to reach the
+     *  reading its line is about. */
+    private static void refused(String shape, List<String> sources) {
+        Compilation compilation = Compilation.ofSources(sources, ModulePath.EMPTY);
+        boolean said = Located.diagnosticsOf(compilation.diagnostics()).values().stream()
+                .flatMap(List::stream)
+                .anyMatch(diagnostic -> diagnostic.severity() == Severity.ERROR);
+        if (!said) {
+            throw new AssertionError(shape + " is written to be refused and was not, so its line is"
+                    + " a compile of a different kind from the one it says it is");
+        }
+    }
+
     @Test
     void everyModuleShapeCompiles() {
         compiles("chain", List.of(Values.chain(VALUES, false)));

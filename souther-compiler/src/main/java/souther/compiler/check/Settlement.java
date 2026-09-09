@@ -51,41 +51,6 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
         return confinement.made();
     }
 
-    /**
-     * How many alternatives each of these choices was left with, counted over the lot.
-     *
-     * <p>Here because this is what holds the fates, and because the counting is one reading of how
-     * two alternatives fell rather than one per reader. A reader given the fates and left to sort
-     * them is a reader that has to know how the four ways two branches fall divide into the three a
-     * count is kept for, and every such reader would have to be told again the day a fifth way is
-     * written.
-     *
-     * <p>By how many stood and not by which. A choice that lost its left and a choice that lost its
-     * right came to the same thing as far as counting what a compile did with them goes, and a
-     * reader owed something per side is a reader of the branch that is left rather than of this.
-     *
-     * @param everyStood choices held open, both of their alternatives being ones somebody can be in
-     * @param oneStood   choices one alternative of which admits nothing, so the answer is the other
-     * @param noneStood  choices no alternative of which admits anything
-     */
-    record HowTheChoicesFell(int everyStood, int oneStood, int noneStood) {}
-
-    /** What became of the choices of this declaration, sorted by how many alternatives stood. */
-    HowTheChoicesFell howTheChoicesFell() {
-        int every = 0;
-        int one = 0;
-        int none = 0;
-        for (OfAChoice fate : outcomes.values()) {
-            switch (souther.compiler.values.Emptiness.Alternatives.from(
-                    souther.compiler.values.Emptiness.SidesShownEmpty.of(
-                            fate.left().emptiness(), fate.right().emptiness()))) {
-                case BOTH_STAND -> every++;
-                case ONLY_THE_LEFT, ONLY_THE_RIGHT -> one++;
-                case NEITHER_STANDS -> none++;
-            }
-        }
-        return new HowTheChoicesFell(every, one, none);
-    }
 
     /**
      * Both branches of one written choice, each aggregated over its occurrences, beside what the

@@ -29,13 +29,21 @@ import java.util.List;
  * measured two ways rather than one:
  *
  * <pre>
- *   wide   one choice of n alternatives     n alternatives, each branch standing in one place
- *   deep   k choices of two, met together   2^k alternatives, each branch standing in 2^(k-1)
+ *   wide   n alternatives at one position, as n-1 written choices, none met with another
+ *   deep   2^k alternatives, as k written choices of two, each met with all the others
  * </pre>
  *
- * <p>The two are read against each other at the same n. What separates them is how many places one
- * written branch was put in, so the difference between the lines is what distribution costs and
- * nothing else.
+ * <p>The two are read against each other at the same n, where the settlement walks the same number
+ * of places either way: a balanced tree of n alternatives has n-1 nodes, and k choices met together
+ * distribute into 2^k-1. What differs is how often one written choice is the choice at one of those
+ * places — once in the wide shape and 2^(k-1) times in the deep one — so the deep shape aggregates
+ * a fate over occurrences where the wide one has nothing to aggregate.
+ *
+ * <p>What the gap between the lines is evidence of is that, and not of that alone. The two sources
+ * are not the same size: one field and one clause against k of each, so what the front end does with
+ * them differs too. What the pair shows is that the same expansion, settled at the same number of
+ * places, comes to different times — which a series varying the alternatives alone cannot show at
+ * all, and which is what makes the alternatives the wrong thing to read a cost against.
  *
  * <p><b>Written flat, a wide choice is not writable.</b> Its alternatives nest one per alternative
  * and the parser refuses the source past {@code CstParser.MAX_DEPTH} — a limit on the shape a source
@@ -87,7 +95,25 @@ final class Choices {
     }
 
     /**
-     * One thing that is timed: what is compiled, what the line calls it, and what it must reach.
+     * What a point's compile comes to, which is the other half of what its figure is worth.
+     *
+     * <p>Beside the claim and not folded into it. What a run reached is about the run; what a
+     * source comes to is about the source, and a figure taken over a compile that stopped early is
+     * a smaller number for a reason that has nothing to do with what the point varies. Held by
+     * {@code EveryShapeThatIsTimedStillCompilesTest} with the other shapes that are timed.
+     */
+    enum Completion {
+
+        /** Compiles with nothing to say and reaches the back end, as the timed shapes do. */
+        MAKES_CLASSES,
+
+        /** Is refused, and so leaves the back end nothing to do. */
+        IS_REFUSED
+    }
+
+    /**
+     * One thing that is timed: what is compiled, what the line calls it, what it must reach, and
+     * what its compile comes to.
      *
      * @param alternatives what to divide the figure by, or nought where the series has no such
      *                     figure. Reported beside the total rather than instead of it, because past
@@ -95,7 +121,8 @@ final class Choices {
      *                     the source either way, and a reading that merged them did not hold the
      *                     number the figure is divided by
      */
-    record Point(String series, String label, String source, Claim claim, int alternatives) {}
+    record Point(String series, String label, String source, Claim claim, int alternatives,
+                 Completion completion) {}
 
     /** Rounds a point is warmed for, and rounds its figure is the median of. */
     private static final int WARMUP = 3;
@@ -104,13 +131,18 @@ final class Choices {
     static void measure(Report report) {
         for (Point point : points()) {
             Timing timing = time(point, WARMUP, MEASURED).figure();
+            // A refused compile leaves the back end nothing to do, so its figure is smaller for a
+            // reason the point does not vary. Said on the line, because a column of times is read
+            // against itself and nothing else about a line says it.
+            String said = point.completion() == Completion.IS_REFUSED
+                    ? "  (a refused compile: not read against the lines above)" : "";
             if (point.alternatives() > 0) {
-                report.line("CHOICE %-16s %-14s %7.1f ms (%6.3f ms/alternative)",
+                report.line("CHOICE %-16s %-14s %7.1f ms (%6.3f ms/alternative)%s",
                         point.series(), point.label(), timing.medianMillis(),
-                        timing.medianMillis() / point.alternatives());
+                        timing.medianMillis() / point.alternatives(), said);
             } else {
-                report.line("CHOICE %-16s %-14s %7.1f ms",
-                        point.series(), point.label(), timing.medianMillis());
+                report.line("CHOICE %-16s %-14s %7.1f ms%s",
+                        point.series(), point.label(), timing.medianMillis(), said);
             }
         }
     }
@@ -137,24 +169,24 @@ final class Choices {
         List<Point> points = new ArrayList<>();
         for (int alternatives : ALTERNATIVES) {
             points.add(new Point("expansion wide", "n=" + alternatives, wide(alternatives),
-                    claimOfWide(alternatives), alternatives));
+                    claimOfWide(alternatives), alternatives, Completion.MAKES_CLASSES));
         }
         for (int alternatives : ALTERNATIVES) {
             int choices = Integer.numberOfTrailingZeros(alternatives);
             points.add(new Point("expansion deep", "n=" + alternatives, deep(choices),
-                    claimOfDeep(choices, alternatives), alternatives));
+                    claimOfDeep(choices, alternatives), alternatives, Completion.MAKES_CLASSES));
         }
         for (int alternatives : BOUNDARY) {
             points.add(new Point("boundary", "n=" + alternatives, wide(alternatives),
-                    claimOfWide(alternatives), alternatives));
+                    claimOfWide(alternatives), alternatives, Completion.MAKES_CLASSES));
         }
         for (int conjuncts : CONJUNCTS) {
             points.add(new Point("distributed into", "conjuncts=" + conjuncts, conjuncts(conjuncts),
-                    multipliesNothing(), 0));
+                    multipliesNothing(), 0, Completion.MAKES_CLASSES));
         }
         for (Fate fate : Fate.values()) {
             points.add(new Point("fate", fate.written(), fate.source(FATED_CHOICES),
-                    reaches(fate, FATED_CHOICES), 0));
+                    reaches(fate, FATED_CHOICES), 0, fate.completion()));
         }
         return points;
     }
@@ -237,11 +269,27 @@ final class Choices {
         };
     }
 
-    /** Past the limit: the alternatives merged, and nothing left to distribute into. */
+    /**
+     * Past the limit: the alternatives merged, and every choice read all the same.
+     *
+     * <p>Two things and not one. That the guardrail was reached is what {@code merged} says, and it
+     * is said where the policy decides — before a clause has been looked at, so a reading that
+     * stopped anywhere after would say it just the same. That the choices were then read is the
+     * other half, and it is what makes the figure a figure for reading them merged rather than for
+     * whatever a reading that stopped costs.
+     */
     private static Claim merges() {
         return read -> {
             if (read.merged() == 0) {
                 return "held its alternatives apart, so it is not past the limit";
+            }
+            if (read.stated() == 0) {
+                return "reached the guardrail and then read no choice at all";
+            }
+            if (read.settledOffDescriptions() != read.stated()) {
+                return "settled " + read.settledOffDescriptions() + " of its " + read.stated()
+                        + " choices off the descriptions, and a merged reading settles them all"
+                        + " there";
             }
             if (read.placesMet() > 0) {
                 return "distributed into " + read.placesMet() + " places, and a merged reading has"
@@ -407,33 +455,47 @@ final class Choices {
      * fate it is, so what separates them is which values the equalities name and nothing about how
      * much was written or how far it was distributed.
      *
-     * <p>{@link #NONE_STANDS} is a declaration nothing satisfies, and the compile says so. That is
-     * what reaching the fate takes — a choice admits nothing only where every alternative does — so
-     * its line is what the fate costs and not what a model anybody would keep costs.
+     * <p><b>Two of the three are comparable and the third is not.</b> A choice admits nothing only
+     * where every alternative does, so the declaration admits nothing, and a declaration nothing
+     * satisfies is refused — the compile says so and the back end is left with nothing to do. Its
+     * figure is therefore a compile that stopped as well as a fate that was cheap, and the two
+     * cannot be told apart in it. It is kept, because the fate is one a reading reaches and a
+     * measurement that reached two of three would be back where this started, and its line says
+     * what it is. What is read against what is the first two.
      */
     enum Fate {
 
         /** Both alternatives admit something, so the choice is held open and both are distributed
          *  into. */
-        BOTH_STAND("both stand", "(a == 0 && b == 0) || (a == 1 && b == 1)"),
+        BOTH_STAND("both stand", "(a == 0 && b == 0) || (a == 1 && b == 1)",
+                Completion.MAKES_CLASSES),
 
         /** One alternative admits nothing, so the answer is the other and a proof crosses the
          *  join. */
-        ONE_STANDS("one stands", "(a == 0 && b == 0) || (a == 1 && a == 2)"),
+        ONE_STANDS("one stands", "(a == 0 && b == 0) || (a == 1 && a == 2)",
+                Completion.MAKES_CLASSES),
 
-        /** No alternative admits anything, and none of them is at fault for it. */
-        NONE_STANDS("none stands", "(a == 0 && a == 3) || (a == 1 && a == 2)");
+        /** No alternative admits anything, and none of them is at fault for it — which is a
+         *  declaration nothing satisfies, and is refused. */
+        NONE_STANDS("none stands", "(a == 0 && a == 3) || (a == 1 && a == 2)",
+                Completion.IS_REFUSED);
 
         private final String written;
         private final String clause;
+        private final Completion completion;
 
-        Fate(String written, String clause) {
+        Fate(String written, String clause, Completion completion) {
             this.written = written;
             this.clause = clause;
+            this.completion = completion;
         }
 
         String written() {
             return written;
+        }
+
+        Completion completion() {
+            return completion;
         }
 
         /** This fate at the head of {@code choices} choices, the rest of them plain and alike. */
