@@ -33,17 +33,35 @@ final class Phases {
 
     private Phases() {}
 
+    private static final int WARMUP = 10;
+    private static final int MEASURED = 20;
+
     static void measure(Report report, Corpus corpus) {
-        // Warm the JIT first: a phase list taken from a cold walk says the phases that ran first are
-        // the expensive ones, which is the JIT's shape and not the compiler's.
-        for (int i = 0; i < 10; i++) {
+        report(report, corpus, timeWalks(corpus, WARMUP, MEASURED).figure());
+    }
+
+    /**
+     * The phase figures, and what the walks they were taken over read.
+     *
+     * <p>The one way these are run, so that what is held to arriving is what is timed. The warm-up
+     * is outside the reading for the reason it is outside the figures: a walk that only warmed the
+     * JIT is not one anything is reported about.
+     */
+    static Taken<Map<String, Long>> timeWalks(Corpus corpus, int warmup, int measured) {
+        // A phase list taken from a cold walk says the phases that ran first are the expensive
+        // ones, which is the JIT's shape and not the compiler's.
+        for (int i = 0; i < warmup; i++) {
             walk(corpus);
         }
-        // Then a phase at a time, each the median of many walks. One walk puts a collection wherever
-        // it happens to fall and charges whichever phase was running, which moves a line by half its
-        // own size — enough to read a phase as having grown when nothing did.
+        return Taken.of(() -> medians(corpus, measured));
+    }
+
+    /** A phase at a time, each the median of many walks. One walk puts a collection wherever it
+     *  happens to fall and charges whichever phase was running, which moves a line by half its own
+     *  size — enough to read a phase as having grown when nothing did. */
+    private static Map<String, Long> medians(Corpus corpus, int measured) {
         Map<String, List<Long>> runs = new LinkedHashMap<>();
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < measured; i++) {
             walk(corpus).forEach((phase, spent) ->
                     runs.computeIfAbsent(phase, _ -> new ArrayList<>()).add(spent));
         }
@@ -53,9 +71,13 @@ final class Phases {
             Collections.sort(sorted);
             median.put(phase, sorted.get(sorted.size() / 2));
         });
+        return median;
+    }
+
+    private static void report(Report report, Corpus corpus, Map<String, Long> median) {
         long total = median.values().stream().mapToLong(Long::longValue).sum();
         report.line("PHASE %-14s total %7.1f ms (median of %d walks)", corpus.name(),
-                total / 1000.0, 20);
+                total / 1000.0, MEASURED);
         median.forEach((phase, spent) -> report.line("        %-20s %7.2f ms  %5.1f%%",
                 phase, spent / 1000.0, 100.0 * spent / total));
     }

@@ -41,12 +41,17 @@ class CorpusTest {
         return COMPILED.computeIfAbsent(corpus, Corpus::compile);
     }
 
-    /** What one action of a measurement did with the choices the corpora state. */
-    private static ChoicesRead.Snapshot doing(Runnable action) {
-        ChoicesRead.Snapshot before = ChoicesRead.snapshot();
-        action.run();
-        return ChoicesRead.snapshot().since(before);
-    }
+    /**
+     * How many rounds a figure is warmed for and taken over here.
+     *
+     * <p>Fewer than a measurement takes, and the only thing this does not share with one. A figure
+     * wants enough rounds for the JIT to settle; what a run reads is the same after two rounds as
+     * after eighty, since how long a store has been answering does not change which declarations a
+     * source has or which of them an edit invalidates. Taken at the measurement's counts, this
+     * class would spend minutes re-timing what it is not looking at.
+     */
+    private static final int WARMUP = 1;
+    private static final int MEASURED = 2;
 
     /**
      * And given back when the class is done with them.
@@ -101,11 +106,12 @@ class CorpusTest {
     /**
      * That the whole-compile figures are taken over compiles that settle a choice.
      *
-     * <p>Of the actions the figures are the times of, run here untimed
-     * ({@link WholeCompile#warmRound}, {@link Phases#walk}). A compile of a corpus made some other
-     * way is a compile this asks about and nothing reports, and the two would part the first time
-     * one of them changed — which is the same defect as reporting a figure for a path nothing
-     * arrives at, one level up.
+     * <p>Out of running the measurements themselves ({@link WholeCompile#timeWarm},
+     * {@link Phases#timeWalks}), which hand back what the runs a figure was taken over read beside
+     * the figure. A compile made here some other way would be a compile this asks about and nothing
+     * reports, and the two would part the first time one of them changed — which is the same defect
+     * as reporting a figure for a path nothing arrives at, one level up. The warm-up is outside the
+     * reading for the reason it is outside the figures.
      *
      * <p>Of the corpora together and not of each of them. What a carried corpus is for is a model
      * somebody would write, and a rule stating alternatives is one thing such a model has rather
@@ -123,8 +129,8 @@ class CorpusTest {
         long stated = 0;
         long carried = 0;
         for (Corpus corpus : Corpus.all()) {
-            ChoicesRead.Snapshot warm = doing(() -> WholeCompile.warmRound(corpus));
-            ChoicesRead.Snapshot phase = doing(() -> Phases.walk(corpus));
+            ChoicesRead.Snapshot warm = WholeCompile.timeWarm(corpus, WARMUP, MEASURED).read();
+            ChoicesRead.Snapshot phase = Phases.timeWalks(corpus, WARMUP, MEASURED).read();
             stated += Math.min(warm.stated(), phase.stated());
             carried += Math.min(warm.carriedToSettlement(), phase.carriedToSettlement());
         }
@@ -145,16 +151,21 @@ class CorpusTest {
      * then no edit figure would answer for a choice at all, and a change to what an edit costs a
      * declaration stating alternatives would come back as no change.
      *
-     * <p>So the edits are run rather than reasoned about. Which of them reaches a declaration
-     * stating a choice depends on what the store invalidates and on which file the corpus writes
-     * the rule in, and neither is a thing to write down here and have go quietly out of date.
+     * <p>So the edits are run rather than reasoned about, and run as the figures are: the rounds
+     * that warm one are applied to the same store before the rounds the reading is taken over, so
+     * what is asked about is an edit against a store that has already answered — which is what an
+     * edit figure is the time of, and is not what the first application of an edit is.
+     *
+     * <p>Which of them reaches a declaration stating a choice depends on what the store invalidates
+     * and on which file the corpus writes the rule in, and neither is a thing to write down here
+     * and have go quietly out of date.
      */
     @Test
     void settlingAChoiceIsWorkSomeTimedEditDoes() {
         List<String> reaching = new ArrayList<>();
         for (Corpus corpus : Corpus.all()) {
             for (Incremental.Edit edit : Incremental.edits(corpus).edits()) {
-                if (doing(() -> edit.round().accept(0)).carriedToSettlement() > 0) {
+                if (Incremental.time(edit, WARMUP, MEASURED).read().carriedToSettlement() > 0) {
                     reaching.add(corpus + " " + edit.name());
                 }
             }

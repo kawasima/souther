@@ -3,8 +3,6 @@ package souther.bench;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.ChoicesRead;
-import souther.compiler.meta.ModulePath;
-import souther.compiler.query.Compilation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,13 +37,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class EveryChoiceMeasurementReachesTheReadingItIsAboutTest {
 
-    /** What one compile of {@code source} did with the choices in it. */
-    private static ChoicesRead.Snapshot readingOf(String source) {
-        ChoicesRead.Snapshot before = ChoicesRead.snapshot();
-        Compilation compilation = Compilation.ofSources(List.of(source), ModulePath.EMPTY);
-        compilation.answerEverything();
-        compilation.classes();
-        return ChoicesRead.snapshot().since(before);
+    /**
+     * What the runs of one point read, taken out of running that point.
+     *
+     * <p>Through {@link Choices#time} and not through a compile of this test's own. A compile made
+     * here would be this test's compile: the questions it asks of the store could part from the
+     * ones the figure is the time of, and the check would stay green about a compile nothing
+     * reports.
+     *
+     * <p>One round rather than the several a figure is the median of. That is the one thing a
+     * reading does not need what a figure needs — a figure wants the JIT settled and a reading is
+     * the same after one run as after five — and it is the only difference there is.
+     */
+    private static ChoicesRead.Snapshot readingOf(Choices.Point point) {
+        return Choices.time(point, 0, 1).read();
     }
 
     /** Every point, and every one of them arriving where its line says the figure came from. */
@@ -53,7 +58,7 @@ class EveryChoiceMeasurementReachesTheReadingItIsAboutTest {
     void everyPointReachesWhatItsFigureIsAbout() {
         List<String> unmet = new ArrayList<>();
         for (Choices.Point point : Choices.points()) {
-            String why = point.claim().unmetBy(readingOf(point.source()));
+            String why = point.claim().unmetBy(readingOf(point));
             if (why != null) {
                 unmet.add(point.series() + " " + point.label() + " " + why);
             }
@@ -76,7 +81,7 @@ class EveryChoiceMeasurementReachesTheReadingItIsAboutTest {
     void thePointsBetweenThemReachEachWayAChoiceIsRead() {
         ChoicesRead.Snapshot everything = ChoicesRead.snapshot();
         for (Choices.Point point : Choices.points()) {
-            readingOf(point.source());
+            readingOf(point);
         }
         ChoicesRead.Snapshot read = ChoicesRead.snapshot().since(everything);
 

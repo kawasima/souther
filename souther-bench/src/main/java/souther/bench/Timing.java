@@ -17,9 +17,22 @@ public record Timing(List<Long> micros) {
 
     /** Runs {@code work} to warm the JIT, then times it, discarding the warm-up. */
     public static Timing of(int warmup, int measured, Runnable work) {
+        return of(warmup, measured, work, () -> {});
+    }
+
+    /**
+     * The same, telling {@code measuring} when the runs a figure is taken over are about to start.
+     *
+     * <p>Here because this is where the warm-up ends and nowhere else knows. A caller asking what
+     * the measured runs did — rather than what they cost — would otherwise have to count the rounds
+     * again on its own, and would be asking about the runs it happened to count rather than the ones
+     * the figure came from.
+     */
+    public static Timing of(int warmup, int measured, Runnable work, Runnable measuring) {
         for (int i = 0; i < warmup; i++) {
             work.run();
         }
+        measuring.run();
         List<Long> micros = new ArrayList<>();
         for (int i = 0; i < measured; i++) {
             long start = System.nanoTime();
@@ -36,8 +49,17 @@ public record Timing(List<Long> micros) {
      * timed; there is no set-up phase here to leave out.
      */
     public static Timing ofRounds(int warmup, int measured, Consumer<Integer> work) {
+        return ofRounds(warmup, measured, work, () -> {});
+    }
+
+    /** The same, telling {@code measuring} when the rounds a figure is taken over begin. */
+    public static Timing ofRounds(int warmup, int measured, Consumer<Integer> work,
+                                  Runnable measuring) {
         List<Long> micros = new ArrayList<>();
         for (int i = 0; i < warmup + measured; i++) {
+            if (i == warmup) {
+                measuring.run();
+            }
             long start = System.nanoTime();
             work.accept(i);
             long spent = (System.nanoTime() - start) / 1000;

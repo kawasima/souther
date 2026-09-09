@@ -78,13 +78,34 @@ final class Incremental {
      */
     record Edits(Compilation compilation, List<Edit> edits) {}
 
+    /** Rounds an edit figure is warmed for, and rounds it is the median of. An edit reaches less
+     *  code than a compile, so it is slower to reach steady state. */
+    private static final int WARMUP = 40;
+    private static final int MEASURED = 40;
+
     static void measure(Report report, Corpus corpus) {
-        Edits taken = edits(corpus);
-        for (Edit edit : taken.edits()) {
-            Timing timing = Timing.ofRounds(40, 40, edit.round());
+        for (Edit edit : edits(corpus).edits()) {
+            Timing timing = time(edit, WARMUP, MEASURED).figure();
             report.line("EDIT  %-14s %-38s %6.2f ms", corpus.name(), edit.name(),
                     timing.medianMillis());
         }
+    }
+
+    /**
+     * One edit's figure, and what the rounds it was taken over read.
+     *
+     * <p>The one way an edit is run, warm-up and all, so that what is held to arriving is the
+     * rounds the figure came from and not the first application of the edit. The store an edit is
+     * applied to has been running for as many rounds either way, which is what makes the two halves
+     * of a round schedule different things to time and the same thing to read.
+     *
+     * <p>How many rounds is the caller's. A figure wants enough of them for the JIT to settle; a
+     * reading is the same reading after two rounds as after eighty, since how long a store has been
+     * answering does not change which declarations an edit invalidates.
+     */
+    static Taken<Timing> time(Edit edit, int warmup, int measured) {
+        return Taken.from(measuring ->
+                Timing.ofRounds(warmup, measured, edit.round(), measuring));
     }
 
     /** The store warmed to the point an edit is timed from, and every edit that is timed on it. */

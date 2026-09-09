@@ -97,9 +97,13 @@ final class Choices {
      */
     record Point(String series, String label, String source, Claim claim, int alternatives) {}
 
+    /** Rounds a point is warmed for, and rounds its figure is the median of. */
+    private static final int WARMUP = 3;
+    private static final int MEASURED = 5;
+
     static void measure(Report report) {
         for (Point point : points()) {
-            Timing timing = Timing.of(3, 5, () -> compile(point.source()));
+            Timing timing = time(point, WARMUP, MEASURED).figure();
             if (point.alternatives() > 0) {
                 report.line("CHOICE %-16s %-14s %7.1f ms (%6.3f ms/alternative)",
                         point.series(), point.label(), timing.medianMillis(),
@@ -109,6 +113,23 @@ final class Choices {
                         point.series(), point.label(), timing.medianMillis());
             }
         }
+    }
+
+    /**
+     * One point run: its figure, and what the runs the figure was taken over read.
+     *
+     * <p>The one way a point is run. A reader wanting only the figure takes the figure and a reader
+     * wanting only the reading takes the reading, and neither has a compile of its own to make — so
+     * what is held to arriving is what is timed, down to which questions were asked of the store.
+     *
+     * <p>The round counts are the caller's because they are the one thing a reader of the reading
+     * does not need what the figure needs. A figure wants enough rounds for the JIT to settle; a
+     * reading is the same reading after one round as after forty, since how long a store has been
+     * running does not change which declarations a source has.
+     */
+    static Taken<Timing> time(Point point, int warmup, int measured) {
+        return Taken.from(measuring ->
+                Timing.of(warmup, measured, () -> compile(point.source()), measuring));
     }
 
     /** Every point this measurement times, in the order it times them. */
@@ -133,7 +154,7 @@ final class Choices {
         }
         for (Fate fate : Fate.values()) {
             points.add(new Point("fate", fate.written(), fate.source(FATED_CHOICES),
-                    reaches(fate), 0));
+                    reaches(fate, FATED_CHOICES), 0));
         }
         return points;
     }
@@ -244,23 +265,56 @@ final class Choices {
         };
     }
 
-    /** A fated shape: the fate reached, under a distribution rather than on its own. */
-    private static Claim reaches(Fate fate) {
+    /**
+     * A fated shape: the fated choice came to the fate, and the ones met with it did not.
+     *
+     * <p>Of the head choice and not of the shape. The choices written beside it are alike and all
+     * stand, and a claim that some choice of the shape came to a fate is one they answer: the head
+     * could come to any fate at all and a shape written for one of them would go on passing, with
+     * three lines beside each other measuring the same thing.
+     *
+     * <p>So what is claimed is the whole division, and the three are not one formula. A head that
+     * keeps both alternatives leaves every choice of the reading standing. A head that loses one
+     * leaves the other, and the choices met with what is left go on standing. A head that admits
+     * nothing takes them with it: a conjunction with an empty conjunct is empty whatever stands
+     * beside it, so every choice of that reading comes to the same nothing. Each is a ratio against
+     * how many choices the shape states, and holds however many readings were made.
+     */
+    private static Claim reaches(Fate fate, int choices) {
         return read -> {
-            long came = switch (fate) {
-                case BOTH_STAND -> read.everyAlternativeStood();
-                case ONE_STANDS -> read.oneAlternativeStood();
-                case NONE_STANDS -> read.noAlternativeStood();
-            };
-            if (came == 0) {
-                return "no choice of it came to the fate it is written for";
+            if (read.stated() == 0 || read.stated() % choices != 0) {
+                return "states " + choices + " choices in each reading of it, and this reading"
+                        + " stated " + read.stated();
             }
-            if (read.placesMet() == 0) {
+            long readings = read.stated() / choices;
+            long every = switch (fate) {
+                case BOTH_STAND -> read.stated();
+                case ONE_STANDS -> read.stated() - readings;
+                case NONE_STANDS -> 0;
+            };
+            String wrong = wrongCount("every alternative stood", read.everyAlternativeStood(), every);
+            if (wrong == null) {
+                wrong = wrongCount("one alternative stood", read.oneAlternativeStood(),
+                        fate == Fate.ONE_STANDS ? readings : 0);
+            }
+            if (wrong == null) {
+                wrong = wrongCount("no alternative stood", read.noAlternativeStood(),
+                        fate == Fate.NONE_STANDS ? read.stated() : 0);
+            }
+            if (wrong != null) {
+                return "is written so that its head choice comes to " + fate.written()
+                        + ", and " + wrong;
+            }
+            if (fate != Fate.NONE_STANDS && read.placesMet() == 0) {
                 return "distributed into nothing, and what a fate saves is the places it is not met"
                         + " in";
             }
             return null;
         };
+    }
+
+    private static String wrongCount(String what, long came, long owed) {
+        return came == owed ? null : what + " for " + came + " of its choices and not " + owed;
     }
 
     // === The shapes ===
