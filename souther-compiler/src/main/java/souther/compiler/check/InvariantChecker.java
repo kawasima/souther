@@ -1653,8 +1653,13 @@ public final class InvariantChecker {
         stated.forEach(each -> each.parts().stream()
                 .filter(part -> !withoutParts.excludes(part.id()))
                 .forEach(part ->
-                        direct(part.expr(), each.from(), part.id(), at, byName, out, noLines,
-                                withoutAnEnd, aboutOneCoordinate, narrowers,
+                        // The shape of the whole part, read out of the tree once and walked from
+                        // there. Read again at each step, the occurrences under one part would be
+                        // numbered afresh from wherever this reader happened to stop, and an answer
+                        // filed by the reading that seeded it would be asked for under a number
+                        // this walk made up.
+                        direct(ClauseExpr.of(part.expr(), true), each.from(), part.id(), at, byName,
+                                out, noLines, withoutAnEnd, aboutOneCoordinate, narrowers,
                                 raised, took, typeAt, parts, raisedByPart, standing)));
         // Insertion order, kept: `Map.copyOf` iterates in an order salted once per JVM run, and
         // what a report prints for a position is these in the order the declaration writes them.
@@ -1664,30 +1669,6 @@ public final class InvariantChecker {
                 Collections.unmodifiableMap(new LinkedHashMap<>(raised)),
                 Collections.unmodifiableMap(new LinkedHashMap<>(raisedByPart)),
                 Collections.unmodifiableMap(new LinkedHashMap<>(standing)));
-    }
-
-    /**
-     * One rule stated inside a part, read as the part it is a rule of.
-     *
-     * <p>The shape says where the rule stands and the part says whose it is. Which node that is is
-     * the outermost the shape was written as, so a rule under a denial is read as the denial and
-     * not as what it denies — the same node the reading above would have been handed.
-     */
-    private void statedIn(ClauseExpr stated, RuleRef.Invariant from, PartId<RuleRef.Invariant> part,
-                          Denotations at,
-                          Map<FactSubject, Coordinate> byName, List<Direct> out,
-                          List<FieldDomains.NoLine> noLines,
-                          List<FieldDomains.WithoutAnEnd> withoutAnEnd,
-                          List<FieldDomains.AboutOneCoordinate> naming,
-                          Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
-                          Map<RuleRef.Invariant, Required> raised, ReadingEvidence took,
-                          Map<RuleKey, Type> typeAt,
-                          PartsRead parts,
-                          Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
-                          Map<FieldDomains.BoundaryQuestion,
-                                  FieldDomains.BoundaryStanding> standing) {
-        direct(stated.spelled().get(0), from, part, at, byName, out, noLines, withoutAnEnd, naming,
-                narrowers, raised, took, typeAt, parts, raisedByPart, standing);
     }
 
     /** What {@code clause} raises, taken together with whatever its other conjuncts raised. */
@@ -1787,7 +1768,7 @@ public final class InvariantChecker {
      * same rule written out places — and a helper calling a helper is bindings all the way down.
      * What a helper's body joined is still this one part, and this reading has one end for it.
      */
-    private void direct(Core clause, RuleRef.Invariant from, PartId<RuleRef.Invariant> part,
+    private void direct(ClauseExpr saidAs, RuleRef.Invariant from, PartId<RuleRef.Invariant> part,
                         Denotations at,
                         Map<FactSubject, Coordinate> byName, List<Direct> out,
                         List<FieldDomains.NoLine> noLines,
@@ -1800,9 +1781,13 @@ public final class InvariantChecker {
                         Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
                         Map<FieldDomains.BoundaryQuestion,
                                 FieldDomains.BoundaryStanding> standing) {
-        if (clause instanceof Core.LetIn li) {
-            direct(li.body(), from, part, terms.inside(li, at), byName, out, noLines,
-                    withoutAnEnd, naming, narrowers, raised, took, typeAt, parts,
+        // A binding this reading was handed as itself, which is where the environment changes. One
+        // written under a denial is not: what this reader is given there is the denial, and a
+        // denial is a form it has no word for.
+        if (saidAs instanceof ClauseExpr.Scoped scoped
+                && scoped.spelled().get(0) == scoped.binding()) {
+            direct(scoped.body(), from, part, terms.inside(scoped.binding(), at), byName, out,
+                    noLines, withoutAnEnd, naming, narrowers, raised, took, typeAt, parts,
                     raisedByPart, standing);
             return;
         }
@@ -1819,14 +1804,17 @@ public final class InvariantChecker {
         // so a conjunction is what is left when the shape says both and says it is stated. What is
         // under a denial states the opposite of what it reads as, and the reading below has no word
         // for that.
-        if (ClauseExpr.of(clause, true) instanceof ClauseExpr.Joined joined
+        if (saidAs instanceof ClauseExpr.Joined joined
                 && joined.how() == ConditionJoin.BOTH && joined.positive()) {
-            statedIn(joined.left(), from, part, at, byName, out, noLines, withoutAnEnd, naming,
+            direct(joined.left(), from, part, at, byName, out, noLines, withoutAnEnd, naming,
                     narrowers, raised, took, typeAt, parts, raisedByPart, standing);
-            statedIn(joined.right(), from, part, at, byName, out, noLines, withoutAnEnd, naming,
+            direct(joined.right(), from, part, at, byName, out, noLines, withoutAnEnd, naming,
                     narrowers, raised, took, typeAt, parts, raisedByPart, standing);
             return;
         }
+        // The node the author wrote this as, which is the outermost of what the shape is spelled
+        // as: a rule under a denial is read as the denial and not as what it denies.
+        Core clause = saidAs.spelled().get(0);
         // What a rule about the strings at a position says about where they stop, which is a rule
         // of this conjunct as much as an ordering written here is. Beside the reading of
         // comparisons and not inside it: what such a rule states is not a comparison and has no
