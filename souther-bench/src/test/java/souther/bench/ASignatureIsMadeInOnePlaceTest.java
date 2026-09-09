@@ -8,7 +8,6 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +53,12 @@ class ASignatureIsMadeInOnePlaceTest {
     private static final String CHECK = "souther.compiler.check.";
 
     /**
-     * Every method that makes a part of a signature, and how many it makes.
+     * Each part of a signature, and where it is made how often.
+     *
+     * <p>Keyed by the part rather than by the maker, so that the population is what is compared: a
+     * part nothing makes is one this answers an emptiness for, and a part written with no line here
+     * fails whether or not anything makes one yet. Keyed the other way, a case added to the boundary
+     * and left unbuilt would be a row on neither side.
      *
      * <p>One entry per place a walk admits something. {@code SignatureBoundary} is the walk: it
      * takes a written declaration apart and puts back what each position admits, so every closed
@@ -71,63 +75,118 @@ class ASignatureIsMadeInOnePlaceTest {
      * the claim that the name was admitted. So an input contributes its nominal case and an output
      * that case and its union of them.
      */
-    private static final Map<String, Integer> MADE_BY = new LinkedHashMap<>(Map.ofEntries(
-            Map.entry("souther.compiler.check.SignatureBoundary#of", 2),
-            Map.entry("souther.compiler.check.SignatureBoundary#input", 1),
-            Map.entry("souther.compiler.check.SignatureBoundary#output", 2),
-            Map.entry("souther.compiler.check.DeclaredSig#<init>", 1),
-            Map.entry("souther.compiler.check.PipelineSigs#pipeSig", 1),
-            Map.entry("souther.compiler.check.CrossingNominal#admitted", 1),
-            Map.entry("souther.compiler.check.CrossingMapKey#lexical", 1),
-            Map.entry("souther.compiler.check.CrossingMapKey#named", 1)));
+    private static final Map<String, Map<String, Integer>> MADE_BY = Map.of(
+            "souther.compiler.check.Sig",
+            Map.of("souther.compiler.check.DeclaredSig#<init>", 1,
+                    "souther.compiler.check.PipelineSigs#pipeSig", 1),
+            "souther.compiler.check.DeclaredSig",
+            Map.of("souther.compiler.check.SignatureBoundary#of", 1),
+            "souther.compiler.check.DeclaredSig$Input",
+            Map.of("souther.compiler.check.SignatureBoundary#of", 1),
+            "souther.compiler.check.BoundaryInput$Nominal",
+            Map.of("souther.compiler.check.SignatureBoundary#input", 1),
+            "souther.compiler.check.BoundaryOutput$Nominal",
+            Map.of("souther.compiler.check.SignatureBoundary#output", 1),
+            "souther.compiler.check.BoundaryOutput$Cases",
+            Map.of("souther.compiler.check.SignatureBoundary#output", 1),
+            "souther.compiler.check.CrossingNominal",
+            Map.of("souther.compiler.check.CrossingNominal#admitted", 1),
+            "souther.compiler.check.CrossingMapKey",
+            Map.of("souther.compiler.check.CrossingMapKey#lexical", 1,
+                    "souther.compiler.check.CrossingMapKey#named", 1));
 
     /**
-     * Every method that reaches the walk, and what it reaches.
+     * The entry points the query owns rather than the walk, and why each is one.
+     *
+     * <p>The walk's own are asked of {@code SignatureBoundary} — a method of it that is not private
+     * is a way in, whoever wrote it — and these two are not its methods. A declaration is admitted
+     * through one facade, and the map of them is worked out by one query; the signatures a module
+     * can name are worked out by another. Both are a whole module's answer rather than one
+     * declaration's, so a second caller would be a second table and not a second shape, which is the
+     * same fault a rung further up.
+     */
+    private static final Set<String> OWNED_BY_A_QUERY = Set.of(
+            "souther.compiler.check.SignatureDeclarations#of",
+            "souther.compiler.check.PipelineSigs#signatures");
+
+    /**
+     * Every way in, and what reaches it how often.
      *
      * <p>Beside the makers because a caller of the walk is the other way a second answer is built:
-     * the values would each be admitted, and there would be two of them. A declaration is admitted
-     * from the one facade the query calls, a composition's answer where the composition is walked,
-     * and the query that owns the answers is what calls either.
+     * the values would each be admitted, and there would be two of them. Counted rather than
+     * gathered, because a method that reaches one of these twice has admitted the same declaration
+     * twice — which is the second walk, written inside one method instead of two.
      */
-    private static final Map<String, String> REACHED_BY = new LinkedHashMap<>(Map.of(
+    private static final Map<String, Map<String, Integer>> REACHED_BY = Map.of(
             "souther.compiler.check.SignatureBoundary#of",
-            "souther.compiler.check.SignatureDeclarations#of",
+            Map.of("souther.compiler.check.SignatureDeclarations#of", 1),
             "souther.compiler.check.SignatureBoundary#composedOutput",
-            "souther.compiler.check.PipelineSigs#pipeSig",
+            Map.of("souther.compiler.check.PipelineSigs#pipeSig", 1),
             "souther.compiler.check.SignatureDeclarations#of",
-            "souther.compiler.query.Bodies$DeclaredSignatures#compute",
+            Map.of("souther.compiler.query.Bodies$DeclaredSignatures#compute", 1),
             "souther.compiler.check.PipelineSigs#signatures",
-            "souther.compiler.query.Bodies$Reachable#compute"));
+            Map.of("souther.compiler.query.Bodies$Reachable#compute", 1));
 
     @Test
     void everyPartOfASignatureIsMadeWhereSomethingAdmittedIt() throws Exception {
         Set<String> witnesses = witnesses();
         assertFalse(witnesses.isEmpty(), "a signature is made of nothing — the walk of it missed");
 
-        Map<String, Integer> made = new TreeMap<>();
+        Map<String, Map<String, Integer>> made = eachOf(witnesses);
         for (Compiled.Site site : Compiled.sites()) {
             for (String witness : witnesses) {
                 if (site.makesA(witness)) {
-                    made.merge(method(site), 1, Integer::sum);
+                    made.get(witness).merge(method(site), 1, Integer::sum);
                 }
             }
         }
-        assertEquals(new TreeMap<>(MADE_BY), made,
-                () -> "what makes a part of a signature, of " + witnesses + ": " + made);
+        assertEquals(sorted(MADE_BY), made,
+                "what makes each part of a signature — a part with nothing under it is one nothing"
+                        + " makes, which is a part no walk admits");
     }
 
     @Test
     void nothingElseReachesTheWalkThatAdmits() throws Exception {
-        Map<String, Set<String>> reached = new TreeMap<>();
+        Set<String> ways = new TreeSet<>(waysIntoTheWalk());
+        ways.addAll(OWNED_BY_A_QUERY);
+        assertEquals(ways, new TreeSet<>(REACHED_BY.keySet()),
+                "every way into the walk says who may take it");
+
+        Map<String, Map<String, Integer>> reached = eachOf(ways);
         for (Compiled.Site site : Compiled.sites()) {
             String called = site.owner() + "#" + site.member();
-            if (REACHED_BY.containsKey(called)) {
-                reached.computeIfAbsent(called, _ -> new TreeSet<>()).add(method(site));
+            if (reached.containsKey(called)) {
+                reached.get(called).merge(method(site), 1, Integer::sum);
             }
         }
-        Map<String, Set<String>> expected = new TreeMap<>();
-        REACHED_BY.forEach((what, by) -> expected.put(what, new TreeSet<>(Set.of(by))));
-        assertEquals(expected, reached, () -> "what reaches the walk that admits: " + reached);
+        assertEquals(sorted(REACHED_BY), reached, "what reaches the walk that admits, and how often");
+    }
+
+    /** The ways into the walk: a method of it that something outside it could call. */
+    private static Set<String> waysIntoTheWalk() throws ClassNotFoundException {
+        Set<String> ways = new TreeSet<>();
+        Class<?> walk = Class.forName("souther.compiler.check.SignatureBoundary");
+        for (var each : walk.getDeclaredMethods()) {
+            if (!Modifier.isPrivate(each.getModifiers()) && !each.isSynthetic()) {
+                ways.add(walk.getName() + "#" + each.getName());
+            }
+        }
+        return ways;
+    }
+
+    /** Each of {@code subjects} with nothing found for it yet, so that one nothing is found for
+     *  answers with an emptiness rather than by being absent from the comparison. */
+    private static Map<String, Map<String, Integer>> eachOf(Set<String> subjects) {
+        Map<String, Map<String, Integer>> out = new TreeMap<>();
+        subjects.forEach(each -> out.put(each, new TreeMap<>()));
+        return out;
+    }
+
+    /** The written-down answer in the order the found one is read in. */
+    private static Map<String, Map<String, Integer>> sorted(Map<String, Map<String, Integer>> of) {
+        Map<String, Map<String, Integer>> out = new TreeMap<>();
+        of.forEach((subject, sites) -> out.put(subject, new TreeMap<>(sites)));
+        return out;
     }
 
     /** The method a site is in, without the parameters: what a rule here names is the method, and

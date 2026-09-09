@@ -22,9 +22,13 @@ import static org.junit.jupiter.api.Assertions.assertSame;
  *
  * <p>Renaming a parameter changes the declaration and changes nothing about what crosses the
  * boundary. A reader that asked what an input is called — an editor writing a hint, a reading that
- * names a position — has a different answer afterwards; a reader that asked what a stage routes,
- * what a codec is built for or what an emitter writes has the same one, and the question it asked
- * is where that is decided rather than at each of those readers.
+ * names a position — has a different answer afterwards; a reader that asked what a stage routes or
+ * what a codec is built for has the same one, and the question it asked is where that is decided
+ * rather than at each of those readers.
+ *
+ * <p>What a module publishes is not on the second side of that, and the reading below says so
+ * rather than leaving it to be assumed: an artifact carries the declaration as its author wrote it,
+ * so the name is in what an importing compilation reads back and admits for itself.
  */
 class ARenamedParameterDoesNotReachWhatCrossesTheBoundaryTest {
 
