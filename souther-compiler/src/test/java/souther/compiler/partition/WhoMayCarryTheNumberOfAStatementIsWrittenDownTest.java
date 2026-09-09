@@ -134,7 +134,4 @@ class WhoMayCarryTheNumberOfAStatementIsWrittenDownTest {
         }
         return calls;
     }
-
-
-    private static List<ClassModel> COMPILED;
 }

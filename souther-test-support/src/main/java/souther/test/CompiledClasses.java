@@ -1,5 +1,6 @@
 package souther.test;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.classfile.ClassModel;
@@ -19,11 +20,12 @@ import java.util.Optional;
  * question. What each check does with them differs, so what is answered here is the classes and
  * never a verdict about them.
  *
- * <p><b>Three ways of asking, and each pays for what it asks.</b> A rule about a whole module walks
+ * <p><b>Four ways of asking, and each pays for what it asks.</b> A rule about a whole module walks
  * {@link #all}; a rule about one class asks {@link #find}, which reaches that file and no other; a
  * rule about a package asks {@link #inPackage}, which settles which files are in it before any of
- * them is parsed. A rule that could only have the whole module would make the narrow questions pay
- * for the wide one, and the narrowest of them reads eight classes of four thousand.
+ * them is parsed; a rule that wants only what there is asks {@link #names}, which reads none of
+ * them. A rule that could only have the whole module would make the narrow questions pay for the
+ * wide one, and the narrowest of them reads eight classes of four thousand.
  *
  * <p><b>Which output is asked is the caller's to name, and so is what to do with two of them.</b> A
  * rule about what this repository publishes and a rule about what a test compiled beside it are
@@ -106,6 +108,27 @@ public final class CompiledClasses {
      */
     public List<ClassModel> all() {
         List<ClassModel> found = read(readings.listing(root));
+        if (found.isEmpty()) {
+            throw new IllegalStateException(root + " holds no classes, so a rule read from it holds"
+                    + " nothing");
+        }
+        return found;
+    }
+
+    /**
+     * What the output holds, by binary name, without reading any of it.
+     *
+     * <p>Which classes there are is a question the listing answers, and a rule that only wants the
+     * names — to load them, or to say which packages there are — would otherwise pay for parsing
+     * every one of them to be told what the file names already said.
+     */
+    public List<String> names() {
+        List<String> found = new ArrayList<>();
+        for (Path each : readings.listing(root)) {
+            found.add(root.relativize(each).toString()
+                    .replace(File.separatorChar, '.')
+                    .replaceAll("\\.class$", ""));
+        }
         if (found.isEmpty()) {
             throw new IllegalStateException(root + " holds no classes, so a rule read from it holds"
                     + " nothing");

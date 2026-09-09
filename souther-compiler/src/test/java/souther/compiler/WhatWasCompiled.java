@@ -39,6 +39,17 @@ public final class WhatWasCompiled {
     }
 
     /**
+     * The checks compiled beside it, which is the other output this module has.
+     *
+     * <p>Here for the same reason the one above is: a rule about the checks themselves is a rule
+     * about an output of this module, and naming it somewhere else would be a second place saying
+     * where this module's classes are.
+     */
+    public static CompiledClasses checksCompiledBesideIt() {
+        return BESIDE;
+    }
+
+    /**
      * Which output this module compiled to, worked out once.
      *
      * <p>Not the classes, which the fork holds: this is the view of them, and working one out asks
@@ -48,13 +59,11 @@ public final class WhatWasCompiled {
      */
     private static final CompiledClasses COMPILED = CompiledClasses.ofModule(Compiler.class);
 
-    /** Every class this module compiled, by binary name. */
+    private static final CompiledClasses BESIDE = CompiledClasses.ofModule(WhatWasCompiled.class);
+
+    /** Every class this module compiled, by binary name and without reading any of them. */
     public static List<String> classes() {
-        List<String> found = new ArrayList<>();
-        for (ClassModel each : compiled().all()) {
-            found.add(named(each));
-        }
-        return found;
+        return compiled().names();
     }
 
     private static String named(ClassModel of) {

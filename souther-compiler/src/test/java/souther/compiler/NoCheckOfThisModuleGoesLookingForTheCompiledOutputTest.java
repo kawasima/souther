@@ -1,7 +1,7 @@
 package souther.compiler;
 
 import org.junit.jupiter.api.Test;
-import souther.test.CompiledClasses;
+import souther.test.RepositoryLayout;
 
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.CodeModel;
@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
- * A check of this module asks for the compiled output; it does not go and find one.
+ * A check of this module asks {@link WhatWasCompiled} for its classes; it does not go and find them.
  *
  * <p>Where the classes a rule reads are is one question and what they hold is another, and a check
  * that answers the first for itself has taken on a fact about the build. What it takes on is the
@@ -25,81 +25,78 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * build invoked elsewhere — and, having found the files, it opens them: the same files the check
  * beside it opened, for the fork to read again.
  *
- * <p><b>The population is what reaches a class file, and the rule is that none of it says where a
- * build writes.</b> Reaching one is parsing it, or handing the shared reading a path to an output;
- * this module has many tests that do the first, because it compiles Souther models and asks what
- * came out of them, and what came out is a value in the test rather than a file anybody went looking
- * for. Those are what the rule is asked of, and going looking is what it refuses.
+ * <p><b>Two ways in, and both are closed here rather than one being guessed at.</b> A check can
+ * reach an output through the shared reading by naming one of its own, or it can find the files
+ * itself and parse them. A rule that looked for the two halves of the second in one class would be
+ * a rule about where somebody wrote them: pulling the path into a class of its own leaves each half
+ * innocent, and the walk is back with every check still passing. So neither is asked as a
+ * co-occurrence. Naming an output is asked of the call that names one, and finding the files is
+ * asked of the word a build's output goes by, which nothing here has any business writing down.
  *
- * <p>A check that reaches no class file is not in it. A walk over the repository's own sources says
- * where a build writes in order to leave the build's output out, and answers a question about
- * sources either way; this check says the word in order to look for it. Neither reaches a class
- * file, and a rule about naming alone would be a rule about the word rather than about going to
- * look.
+ * <p>What is not refused is reading a class file. This module compiles Souther models and asks what
+ * came out of them, and what came out is a value in the test rather than a file anybody went looking
+ * for; a rule written over parsing would refuse those as well, and there are many of them.
  */
 class NoCheckOfThisModuleGoesLookingForTheCompiledOutputTest {
 
-    /** What a build calls the directory it writes to, as a step of a path. */
-    private static final String WHERE_A_BUILD_WRITES = "target";
-
-    /** Reaching a class file: parsing one, and asking the shared reading for an output by path. */
-    private static final Set<String> READS_A_CLASS_FILE = Set.of(
-            "java/lang/classfile/ClassFile.of",
+    /** Naming an output: the two ways the shared reading is handed one. */
+    private static final Set<String> NAMES_AN_OUTPUT = Set.of(
+            "souther/test/CompiledClasses.ofModule",
             "souther/test/CompiledClasses.at");
 
+    /** The one place this module's outputs are named, which is what the rule is that there is one. */
+    private static final String THE_ONE_PLACE = WhatWasCompiled.class.getName();
+
     @Test
-    void nothingThatReachesAClassFileSaysWhereABuildWrites() {
-        List<ClassModel> reaching = new ArrayList<>();
-        for (ClassModel each : CompiledClasses.ofModule(
-                NoCheckOfThisModuleGoesLookingForTheCompiledOutputTest.class).all()) {
-            if (reachesAClassFile(each)) {
-                reaching.add(each);
-            }
-        }
-        assertFalse(reaching.isEmpty(), "no check of this module reaches a class file at all, so"
-                + " this rule is asked of nothing and passes by having nobody to ask");
-
-        Set<String> looking = new TreeSet<>();
-        for (ClassModel each : reaching) {
-            String said = whereABuildWritesAsSaidBy(each);
-            if (said != null) {
-                looking.add(each.thisClass().asInternalName().replace('/', '.') + " says `" + said
-                        + "`");
-            }
-        }
-
-        assertEquals(Set.of(), looking,
-                "a check works out where this module's compiled output is instead of asking for it,"
-                        + " so it answers about wherever the build was invoked from and reads files"
-                        + " a check beside it has already read");
-    }
-
-    /** What the class says that names the directory a build writes to, where it says one. */
-    private static String whereABuildWritesAsSaidBy(ClassModel model) {
-        for (String said : constantsOf(model)) {
-            for (String step : said.split("[/\\\\]")) {
-                if (step.equals(WHERE_A_BUILD_WRITES)) {
-                    return said;
+    void oneCheckNamesThisModulesOutputsAndTheRestAskIt() {
+        Set<String> naming = new TreeSet<>();
+        for (ClassModel each : checks()) {
+            for (MethodModel method : each.methods()) {
+                CodeModel code = method.code().orElse(null);
+                if (code == null) {
+                    continue;
+                }
+                for (var element : code) {
+                    if (element instanceof InvokeInstruction call && NAMES_AN_OUTPUT.contains(
+                            call.owner().asInternalName() + "." + call.name().stringValue())) {
+                        naming.add(named(each));
+                    }
                 }
             }
         }
-        return null;
+
+        assertEquals(Set.of(THE_ONE_PLACE), naming,
+                "a check of this module works out which output to read instead of asking, so where"
+                        + " this module's classes are is said in more than one place and a module"
+                        + " that moves is as many edits as there are checks");
     }
 
-    private static boolean reachesAClassFile(ClassModel model) {
-        for (MethodModel method : model.methods()) {
-            CodeModel code = method.code().orElse(null);
-            if (code == null) {
-                continue;
-            }
-            for (var element : code) {
-                if (element instanceof InvokeInstruction call && READS_A_CLASS_FILE.contains(
-                        call.owner().asInternalName() + "." + call.name().stringValue())) {
-                    return true;
+    @Test
+    void andNothingWritesDownWhereABuildPutsWhatItMade() {
+        String said = RepositoryLayout.whereABuildWrites();
+        Set<String> writing = new TreeSet<>();
+        List<ClassModel> checks = checks();
+        assertFalse(checks.isEmpty(), "no check of this module was read at all, so this rule is"
+                + " asked of nothing and passes by having nobody to ask");
+
+        for (ClassModel each : checks) {
+            for (String constant : constantsOf(each)) {
+                for (String step : constant.split("[/\\\\]")) {
+                    if (step.equals(said)) {
+                        writing.add(named(each) + " says `" + constant + "`");
+                    }
                 }
             }
         }
-        return false;
+
+        assertEquals(Set.of(), writing,
+                "a check of this module writes down where a build puts what it made, which is the"
+                        + " half of finding the files for itself that nothing else needs: what is"
+                        + " under a build's output is the repository's to say");
+    }
+
+    private static List<ClassModel> checks() {
+        return WhatWasCompiled.checksCompiledBesideIt().all();
     }
 
     private static List<String> constantsOf(ClassModel model) {
@@ -117,5 +114,9 @@ class NoCheckOfThisModuleGoesLookingForTheCompiledOutputTest {
             }
         }
         return said;
+    }
+
+    private static String named(ClassModel of) {
+        return of.thisClass().asInternalName().replace('/', '.');
     }
 }
