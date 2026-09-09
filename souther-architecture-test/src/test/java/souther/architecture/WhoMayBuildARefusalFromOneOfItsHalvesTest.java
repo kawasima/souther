@@ -100,6 +100,32 @@ class WhoMayBuildARefusalFromOneOfItsHalvesTest {
     }
 
     /**
+     * And nothing that may be asked of a relation is given a question about a block.
+     *
+     * <p>What stops the ordering being written rather than merely not written. The entry that
+     * looks for both witnesses takes a question about the relation, and a question handed over as
+     * a lambda is one its author may write over the blocks as well — so what may be asked is a
+     * closed set of makers, and a maker given a question about a block, or an answer to one, is a
+     * way to leave the relation unread wherever the blocks refused something.
+     */
+    @Test
+    void andNothingAskedOfARelationIsGivenAQuestionAboutABlock() {
+        List<String> given = new ArrayList<>();
+        for (MethodModel maker : CompiledClasses.ofWhatThisRepositoryPublishes()
+                .read(WHERE + "WhatARelationShows").methods()) {
+            String takes = maker.methodType().stringValue();
+            if (takes.contains(WHERE + "AskedOfEachBlock")
+                    || takes.contains(WHERE + "Emptiness")) {
+                given.add(maker.methodName().stringValue() + takes);
+            }
+        }
+
+        assertEquals(List.of(), given,
+                "a question about the relation that is handed what the blocks answered is one its"
+                        + " author may leave unasked wherever they answered something");
+    }
+
+    /**
      * And the walk finds a call to a half where one is made.
      *
      * <p>The same finder over something outside the rule, which proves that the rule is kept by

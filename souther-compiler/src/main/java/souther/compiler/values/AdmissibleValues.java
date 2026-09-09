@@ -654,8 +654,8 @@ public final class AdmissibleValues<A> {
              * why is that position's own rules — see {@link Refusal#withoutWhatAPositionAnswers}.
              */
             Held<A> held() {
-                Refusal<A> refused = Refusal.ofAnAlternative(at,
-                        (_, set) -> set.isEmpty(), apart::apartFromThemselves);
+                Refusal<A> refused = Refusal.ofAnAlternative(at, (_, set) -> set.isEmpty(),
+                        WhatARelationShows.statedApart(apart));
                 if (refused.isNowhere()) {
                     return Held.Alternatives.of(new Alternative<>(new Box<>(at), apart));
                 }
@@ -1392,9 +1392,7 @@ public final class AdmissibleValues<A> {
         // proof would say a lack is at a place whose own rules are fine with it.
         return Refusal.ofAnAlternative(box.at(),
                 (block, set) -> asked.of(block, set).isEmpty(),
-                () -> relating.of(box.apart(), box.product())
-                                instanceof Apartness.Reduction.Nothing<A> it
-                        ? it.lacks() : Lacks.none());
+                WhatARelationShows.askedOf(relating, box.apart(), box.product()));
     }
 
     /**

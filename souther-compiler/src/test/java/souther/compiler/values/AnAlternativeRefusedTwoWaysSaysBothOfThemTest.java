@@ -43,6 +43,17 @@ class AnAlternativeRefusedTwoWaysSaysBothOfThemTest {
         return Map.of(block, ValueSet.NONE);
     }
 
+    /** Denials that state {@link #BOTH} to differ from itself, which nothing satisfies. */
+    private static WhatARelationShows<String> denialsApartFromItself() {
+        return WhatARelationShows.statedApart(
+                Apartness.of("p", "q").filedIn(Sameness.of("p", "q")));
+    }
+
+    /** Denials that refuse nothing, which is what an alternative stating none holds. */
+    private static WhatARelationShows<String> noDenials() {
+        return WhatARelationShows.statedApart(Apartness.nothing());
+    }
+
     /**
      * An alternative refused at a block and about blocks together carries both.
      *
@@ -52,7 +63,7 @@ class AnAlternativeRefusedTwoWaysSaysBothOfThemTest {
     @Test
     void anAlternativeRefusedAtABlockAndAboutBlocksTogetherCarriesBoth() {
         Refusal<String> shown = Refusal.ofAnAlternative(over(BOTH),
-                (_, _) -> true, () -> apartFromItself(BOTH));
+                (_, _) -> true, denialsApartFromItself());
 
         assertEquals(Set.of(BOTH), shown.atEachOf(), "the block it was left nothing at");
         assertEquals(apartFromItself(BOTH), shown.together(),
@@ -63,7 +74,7 @@ class AnAlternativeRefusedTwoWaysSaysBothOfThemTest {
     @Test
     void andTheRelationIsReadWhereEveryBlockIsRefused() {
         assertFalse(Refusal.ofAnAlternative(over(BOTH), (_, _) -> true,
-                () -> apartFromItself(BOTH)).together().isEmpty(),
+                denialsApartFromItself()).together().isEmpty(),
                 "a block left nothing is not a reason to leave the denials unread");
     }
 
@@ -71,13 +82,13 @@ class AnAlternativeRefusedTwoWaysSaysBothOfThemTest {
     @Test
     void andTheBlocksAreReadWhereTheRelationRefuses() {
         assertEquals(Set.of(BOTH), Refusal.ofAnAlternative(over(BOTH), (_, _) -> true,
-                () -> apartFromItself(BOTH)).atEachOf());
+                denialsApartFromItself()).atEachOf());
     }
 
     /** Where neither refuses, the alternative is refused by nothing anything can name. */
     @Test
     void andWhereNeitherRefusesTheAlternativeIsRefusedByNothing() {
-        assertTrue(Refusal.ofAnAlternative(over(BOTH), (_, _) -> false, Lacks::none).isNowhere());
+        assertTrue(Refusal.ofAnAlternative(over(BOTH), (_, _) -> false, noDenials()).isNowhere());
     }
 
     /**
@@ -90,7 +101,7 @@ class AnAlternativeRefusedTwoWaysSaysBothOfThemTest {
      */
     @Test
     void aLonePositionLeftNothingIsAWitnessOfTheProofAndNotOfTheReading() {
-        Refusal<String> shown = Refusal.ofAnAlternative(over(P), (_, _) -> true, Lacks::none);
+        Refusal<String> shown = Refusal.ofAnAlternative(over(P), (_, _) -> true, noDenials());
 
         assertEquals(Set.of(P), shown.atEachOf(), "the proof names where it was refused");
         assertFalse(shown.isNowhere(), "so the alternative is refused, and by something");
@@ -103,7 +114,7 @@ class AnAlternativeRefusedTwoWaysSaysBothOfThemTest {
     @Test
     void andWhatTheDenialsShowedSurvivesALonePositionBeingGivenUp() {
         Refusal<String> kept = Refusal.ofAnAlternative(over(P), (_, _) -> true,
-                () -> apartFromItself(BOTH)).withoutWhatAPositionAnswers();
+                denialsApartFromItself()).withoutWhatAPositionAnswers();
 
         assertEquals(Set.of(), kept.atEachOf());
         assertEquals(apartFromItself(BOTH), kept.together(),
@@ -114,7 +125,7 @@ class AnAlternativeRefusedTwoWaysSaysBothOfThemTest {
     /** A block of several positions is kept, since no position answers for it on its own. */
     @Test
     void andABlockOfSeveralPositionsIsKept() {
-        Refusal<String> shown = Refusal.ofAnAlternative(over(BOTH), (_, _) -> true, Lacks::none);
+        Refusal<String> shown = Refusal.ofAnAlternative(over(BOTH), (_, _) -> true, noDenials());
 
         assertSame(shown, shown.withoutWhatAPositionAnswers(),
                 "nothing is given up, so it is the same proof");

@@ -116,8 +116,9 @@ public final class Refusal<A> {
      * set of lacks has already decided which of them to look for, and the thing it had to decide
      * with is the other one — so the refusal it builds names whichever of its witnesses its author
      * asked about first, and an alternative refused both ways comes back saying one. Asked here,
-     * neither question can be put to the other: what walks the blocks is this, and what
-     * {@code relating} is written over is the relation alone.
+     * neither question can be put to the other: what walks the blocks is this, and what may be
+     * asked of the relation is one of the two {@link WhatARelationShows} is closed to — neither of
+     * which is given a question about a block, or an answer to one.
      *
      * <p>Both, whatever either says. A relation is read where a side of the alternative was left
      * nothing, and a side is read where the relation refuses everything — an alternative refused
