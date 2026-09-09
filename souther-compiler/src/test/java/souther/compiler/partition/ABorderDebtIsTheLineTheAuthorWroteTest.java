@@ -1,14 +1,24 @@
 package souther.compiler.partition;
 
-import souther.compiler.coverage.ComparisonOccurrence;
 import souther.compiler.coverage.Numberings;
-import souther.compiler.types.WrittenOwner;
 import souther.compiler.coverage.SiteNumbering;
+import souther.compiler.diag.Citation;
+import souther.compiler.diag.SourcePos;
+import souther.compiler.numeric.Towards;
+import souther.compiler.types.ExpansionLineage;
+import souther.compiler.types.ExpansionSite;
+import souther.compiler.types.ModelOccurrence;
+import souther.compiler.types.SourceConstruct;
+import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.ValueName;
+import souther.compiler.types.WrittenOwner;
 
 import org.junit.jupiter.api.Test;
 
+import souther.compiler.check.ComparisonClaim;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
+import souther.compiler.check.RuleRef;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.BorderAssessment;
 import souther.compiler.query.Compilation;
@@ -227,22 +237,22 @@ class ABorderDebtIsTheLineTheAuthorWroteTest {
      * occurrence the call it was spliced into was numbered.
      */
     private static LineOrigin readAt(int occurrence) {
-        souther.compiler.check.RuleRef.Comparison rule =
-                new souther.compiler.check.RuleRef.Comparison("twice",
-                        new souther.compiler.types.SourceConstructOrigin(
-                                new WrittenOwner.Body("example.banding", "twice"), 2, 0,
-                                souther.compiler.types.SourceConstruct.BINARY));
+        SourceConstructOrigin wrote = new SourceConstructOrigin(
+                new WrittenOwner.Body("example.banding", "twice"), 2, 0, SourceConstruct.BINARY);
         return new LineOrigin.ComparisonOrigin(
                 new LineOrigin.ComparisonOrigin.Read(
-                        rule,
-                        souther.compiler.diag.Citation.of(
-                                new souther.compiler.diag.SourcePos(15, 16)),
-                        List.of(new LineOrigin.ComparisonOrigin.Watched(
-                                new ComparisonOccurrence(
-                                        "example.banding", "twice", occurrence),
-                                WHERE.comparison(occurrence)))),
-                new LineFacts(new souther.compiler.check.ComparisonClaim.Cut(
-                        souther.compiler.numeric.Towards.BELOW, true)));
+                        new RuleRef.Comparison("twice", wrote),
+                        // The construct of the model the reading is of. One comparison written in a
+                        // helper spliced into two calls is one rule and two constructs, which is
+                        // what these two readings are of.
+                        new ModelOccurrence(wrote, ExpansionLineage.ORIGINAL.copiedInto(
+                                new ValueName.Helper("example.banding", "twice"),
+                                new ExpansionSite.Written(SourceConstructOrigin.written(
+                                        new WrittenOwner.Body("example.banding", "caller"),
+                                        occurrence, SourceConstruct.CALL)))),
+                        Citation.of(new SourcePos(15, 16)),
+                        List.of(WHERE.comparison(occurrence))),
+                new LineFacts(new ComparisonClaim.Cut(Towards.BELOW, true)));
     }
 
     /** The clause the bound in these tests names, which is only an identity here. */

@@ -244,14 +244,19 @@ public final class GuardThresholds {
                 // is a row.
                 case EmittedComparisonState.NotInstrumented _ -> { }
                 case EmittedComparisonState.Instrumented at -> {
-                    at.observations().forEach(one -> cuts.reached(one.occurrence(), each.assumed()));
+                    // What a row had to satisfy to get here, filed under the construct of the model
+                    // it is about. What stood on the way is read off this tree once, and what the
+                    // emitted tree made of that construct has nothing to say about it — so a copy
+                    // per materialisation would be one account under several names, and whoever
+                    // asked would have to pick one of them with nothing to pick by.
+                    cuts.reached(stated, each.assumed());
                     switch (each.standing()) {
                         case BoundaryPolicy.Standing.Admitted admitted ->
                                 // The same reading on the narrower domain a run leaves at the line.
                                 // Narrowed by what arrives at every place it is watched: the line
                                 // goes only where all of them prove nothing reaches it, since a run
                                 // through any one of them is a run through the rule.
-                                lineAt(behavior, at, each.occurrence().origin(), each.at(),
+                                lineAt(behavior, stated, at, each.occurrence().origin(), each.at(),
                                         ComparisonAssessment.narrowedByWhatArrives(admitted.read(),
                                                 at.observations().stream()
                                                         .map(one -> one.arrival()).toList(), false),
@@ -530,7 +535,7 @@ public final class GuardThresholds {
      * here, by {@link BoundaryPolicy}, and what the comparison comes to was read where that was
      * settled ({@code read}). Nothing here reads the comparison again.
      */
-    private static void lineAt(String behavior,
+    private static void lineAt(String behavior, ModelOccurrence stated,
                                EmittedComparisonState.Instrumented at,
                                SourceConstructOrigin wrote, Citation where,
                                ComparisonAssessment read,
@@ -541,7 +546,7 @@ public final class GuardThresholds {
         switch (read) {
             case ComparisonAssessment.AtAPosition placed -> {
                 LineOrigin.ComparisonOrigin drawn =
-                        originOf(behavior, at, wrote, where, placed.cutting());
+                        originOf(behavior, stated, at, wrote, where, placed.cutting());
                 // The value a row is owed against this line, which the reading of the comparison
                 // already answered. Taken off the level the rule was written with, a rule that wrote
                 // a multiple of the position named a class at a number the position never holds.
@@ -587,7 +592,7 @@ public final class GuardThresholds {
                 // the two meet, and that arm is a row the branch measure already asks for.
                 if (over.drawsABorder()) {
                     between.add(new LineDrawn(over.cutting(),
-                            originOf(behavior, at, wrote, where, over.cutting())));
+                            originOf(behavior, stated, at, wrote, where, over.cutting())));
                 }
             }
             case ComparisonAssessment.AnswerDependent _, ComparisonAssessment.NoInput _,
@@ -643,7 +648,7 @@ public final class GuardThresholds {
     /** How a row meets a line a body's condition drew, which is a guard's own answer: what it takes
      *  is getting the comparison to answer, because what it is about is a place in a body. */
     private static LineOrigin.ComparisonOrigin originOf(
-            String behavior, EmittedComparisonState.Instrumented at,
+            String behavior, ModelOccurrence stated, EmittedComparisonState.Instrumented at,
             SourceConstructOrigin wrote, Citation where, Cutting cutting) {
         // Every place a run through the rule is written down, off the join rather than looked up
         // again: the join already asked the plan which of the rule's materialisations it numbered,
@@ -653,10 +658,8 @@ public final class GuardThresholds {
         // runs.
         return new LineOrigin.ComparisonOrigin(
                 new LineOrigin.ComparisonOrigin.Read(
-                        new RuleRef.Comparison(behavior, wrote), where,
-                        at.observations().stream()
-                                .map(one -> new LineOrigin.ComparisonOrigin.Watched(
-                                        one.occurrence(), one.site()))
+                        new RuleRef.Comparison(behavior, wrote), stated, where,
+                        at.observations().stream().map(EmittedComparisonState.Observation::site)
                                 .toList()),
                 new LineFacts(cutting.claim()));
     }

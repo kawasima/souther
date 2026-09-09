@@ -113,7 +113,8 @@ final class CoverageNaming implements Naming<Outcome> {
         NumericTerm at = drawn.term();
         return plan.outcomeOf(site, held)
                 .flatMap(ControlClaim::of)
-                .map(claim -> one(new Decision(new Condition.Side(at, site, held), claim)))
+                .map(claim -> one(new Decision(
+                        new Condition.Side(at, comparison.occurrence(), held), claim)))
                 .orElse(null);
     }
 
