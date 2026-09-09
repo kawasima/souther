@@ -144,41 +144,84 @@ final class Compiled {
      * them again per check would leave the reading shared and the work not.
      */
     static List<Invocation> invocations() {
-        if (EVERY_INVOCATION == null) {
-            EVERY_INVOCATION = invocationsIn(Reactor.classes());
-            WORKED_OUT.merge("invocations", 1, Integer::sum);
-        }
-        return EVERY_INVOCATION;
+        return theReactor().invocations();
     }
 
-    private static List<Invocation> EVERY_INVOCATION;
-
-    private static List<Site> EVERY_SITE;
+    /** Everything every compiled class of every module does, beside {@link #invocations} and out of
+     *  the same walk. */
+    static List<Site> sites() {
+        return theReactor().sites();
+    }
 
     /**
-     * How many times each of the two was worked out, for the check that says once.
+     * What one walk over some classes came to.
      *
-     * <p>Counted rather than compared: what these hold is a site for every call the reactor's code
-     * makes, and a check asking whether it was handed the same list twice would say so by printing
-     * both of them.
+     * <p>Both of them, because they are two projections of one decoding and not two readings. What
+     * a call is appears in each — a site saying that a call was made, and the same site with the
+     * text this could read at it — so a reading that answered them separately would walk the code
+     * twice, decode every method twice, and build two of the site for every call there is. Which is
+     * what it did, while the count for each of them said one.
+     *
+     * <p>Handed out as it stands, and so held as what it is: a caller of a reading the whole fork
+     * shares can empty a list everything after it reads. Made per ask, that was the caller's own
+     * copy to spoil; shared, the lifetime is shared and the way to change it has to go.
      */
-    private static final java.util.Map<String, Integer> WORKED_OUT = new java.util.TreeMap<>();
+    record Reading(List<Site> sites, List<Invocation> invocations) {
 
-    /** How many times {@code named} has been worked out in this fork. */
-    static int timesWorkedOut(String named) {
-        return WORKED_OUT.getOrDefault(named, 0);
+        Reading {
+            sites = List.copyOf(sites);
+            invocations = List.copyOf(invocations);
+        }
+    }
+
+    private static Reading EVERY;
+
+    private static Reading theReactor() {
+        if (EVERY == null) {
+            EVERY = read(Reactor.classes());
+            DECODINGS++;
+        }
+        return EVERY;
     }
 
     /**
-     * The same of the classes named, so that what this reads can be asked of code written to be
-     * read.
+     * How many times the reactor's code has been decoded in this fork, for the check that says
+     * once.
+     *
+     * <p>Counted rather than compared. What a reading holds is a site for every call the reactor's
+     * code makes, and a check asking whether it was handed the same lists twice says so by printing
+     * all of them; and a count kept per answer would say one of each while the walk ran twice.
+     */
+    private static int DECODINGS;
+
+    /** How many times the reactor's code has been decoded in this fork. */
+    static int decodings() {
+        return DECODINGS;
+    }
+
+    /** The invocations of the classes named, so that what this reads can be asked of code written
+     *  to be read. */
+    static List<Invocation> invocationsIn(List<ClassModel> classes) {
+        return read(classes).invocations();
+    }
+
+    /** The sites of the same, beside {@link #invocationsIn} and for the same reason. */
+    static List<Site> sitesIn(List<ClassModel> classes) {
+        return read(classes).sites();
+    }
+
+    /**
+     * One walk over {@code classes}, which is where everything this answers comes from.
      *
      * <p>The population is the argument and the reading is not: a check that wanted to know what
      * this does to a particular shape would otherwise write the walk again, and then what it
-     * measured would be its own copy rather than the thing every rule here is built on.
+     * measured would be its own copy rather than the thing every rule here is built on. Which
+     * classes are read and what is read of them are two things, and a rule that fixed both could
+     * only ever be asked about the repository as it stands.
      */
-    static List<Invocation> invocationsIn(List<ClassModel> classes) {
-        List<Invocation> found = new ArrayList<>();
+    static Reading read(List<ClassModel> classes) {
+        List<Site> sites = new ArrayList<>();
+        List<Invocation> invocations = new ArrayList<>();
         for (ClassModel model : classes) {
             String from = named(model.thisClass().asInternalName());
             for (var method : model.methods()) {
@@ -200,11 +243,44 @@ final class Compiled {
                                 loaded = constant.constantValue() instanceof String text
                                         ? text : null;
                         case InvokeInstruction call -> {
-                            found.add(new Invocation(new Site(from, name, descriptor, How.CALLS,
+                            Site site = new Site(from, name, descriptor, How.CALLS,
                                     named(call.owner().asInternalName()),
                                     call.name().stringValue(),
-                                    call.opcode() == Opcode.INVOKESTATIC),
+                                    call.opcode() == Opcode.INVOKESTATIC);
+                            sites.add(site);
+                            invocations.add(new Invocation(site,
                                     loaded == null ? List.of() : List.of(loaded)));
+                            loaded = null;
+                        }
+                        case NewObjectInstruction made -> {
+                            sites.add(new Site(from, name, descriptor, How.MAKES,
+                                    named(made.className().asInternalName()), "<init>", false));
+                            loaded = null;
+                        }
+                        case TypeCheckInstruction asked
+                                when asked.opcode() == Opcode.INSTANCEOF -> {
+                            sites.add(new Site(from, name, descriptor, How.ASKS,
+                                    named(asked.type().asInternalName()), "instanceof", false));
+                            loaded = null;
+                        }
+                        case FieldInstruction field -> {
+                            sites.add(new Site(from, name, descriptor, How.READS,
+                                    named(field.owner().asInternalName()),
+                                    field.name().stringValue(),
+                                    field.opcode() == Opcode.GETSTATIC
+                                            || field.opcode() == Opcode.PUTSTATIC));
+                            loaded = null;
+                        }
+                        case InvokeDynamicInstruction reference -> {
+                            boolean switching = isATypeSwitch(reference);
+                            for (var argument : reference.bootstrapArgs()) {
+                                if (argument instanceof DirectMethodHandleDesc handle) {
+                                    sites.add(referred(from, name, descriptor, handle));
+                                } else if (switching && argument instanceof ClassDesc labelled) {
+                                    sites.add(new Site(from, name, descriptor, How.NAMES,
+                                            describedBy(labelled), "case", false));
+                                }
+                            }
                             loaded = null;
                         }
                         case Instruction _ -> loaded = null;
@@ -213,75 +289,9 @@ final class Compiled {
                 }
             }
         }
-        assertFalse(found.isEmpty(), "no compiled call was read at all");
-        return found;
-    }
-
-    /** Everything every compiled class of every module does, worked out once and beside
-     *  {@link #invocations} for the same reason. */
-    static List<Site> sites() {
-        if (EVERY_SITE == null) {
-            EVERY_SITE = sitesIn(Reactor.classes());
-            WORKED_OUT.merge("sites", 1, Integer::sum);
-        }
-        return EVERY_SITE;
-    }
-
-    /**
-     * The same of the classes named, beside {@link #invocationsIn} and for the same reason.
-     *
-     * <p>Which classes are read and what is read of them are two things, and a rule that fixed both
-     * could only ever be asked about the repository as it stands. A check of what this reading
-     * <em>does</em> — that a call two methods away is still a call, that a switch over a sum names
-     * its cases — has to be able to hand it code written to be read, and a copy of the walk written
-     * for that would be a check of the copy.
-     */
-    static List<Site> sitesIn(List<ClassModel> classes) {
-        List<Site> found = new ArrayList<>();
-        for (ClassModel model : classes) {
-            String from = named(model.thisClass().asInternalName());
-            for (var method : model.methods()) {
-                CodeModel code = method.code().orElse(null);
-                if (code == null) {
-                    continue;
-                }
-                String name = method.methodName().stringValue();
-                String descriptor = method.methodType().stringValue();
-                for (var element : code) {
-                    switch (element) {
-                        case InvokeInstruction call -> found.add(new Site(from, name, descriptor,
-                                How.CALLS, named(call.owner().asInternalName()),
-                                call.name().stringValue(), call.opcode() == Opcode.INVOKESTATIC));
-                        case NewObjectInstruction made -> found.add(new Site(from, name, descriptor,
-                                How.MAKES, named(made.className().asInternalName()), "<init>",
-                                false));
-                        case TypeCheckInstruction asked
-                                when asked.opcode() == Opcode.INSTANCEOF ->
-                                found.add(new Site(from, name, descriptor, How.ASKS,
-                                        named(asked.type().asInternalName()), "instanceof", false));
-                        case FieldInstruction field -> found.add(new Site(from, name, descriptor,
-                                How.READS, named(field.owner().asInternalName()),
-                                field.name().stringValue(),
-                                field.opcode() == Opcode.GETSTATIC
-                                        || field.opcode() == Opcode.PUTSTATIC));
-                        case InvokeDynamicInstruction reference -> {
-                            boolean switching = isATypeSwitch(reference);
-                            for (var argument : reference.bootstrapArgs()) {
-                                if (argument instanceof DirectMethodHandleDesc handle) {
-                                    found.add(referred(from, name, descriptor, handle));
-                                } else if (switching && argument instanceof ClassDesc labelled) {
-                                    found.add(new Site(from, name, descriptor, How.NAMES,
-                                            describedBy(labelled), "case", false));
-                                }
-                            }
-                        }
-                        default -> { }
-                    }
-                }
-            }
-        }
-        assertFalse(found.isEmpty(), "no compiled call was read at all");
-        return found;
+        assertFalse(sites.isEmpty(), "no compiled call was read at all");
+        assertFalse(invocations.isEmpty(), "no compiled call was read at all");
+        return new Reading(sites, invocations);
     }
 
     /** Whether this {@code invokedynamic} is a {@code switch} over what a value is. Asked of the

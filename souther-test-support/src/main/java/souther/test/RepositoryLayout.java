@@ -12,7 +12,9 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -170,7 +172,27 @@ public final class RepositoryLayout {
             default -> throw new IllegalArgumentException(
                     phase + " is not a phase a module compiles: main and test are");
         });
-        return Files.isDirectory(at) ? Optional.of(CompiledClasses.at(at)) : Optional.empty();
+        return isThere(at) ? Optional.of(CompiledClasses.at(at)) : Optional.empty();
+    }
+
+    /**
+     * Whether {@code at} is a directory, where not being able to tell is not the same as no.
+     *
+     * <p>Nothing where a module built none is a fact a caller acts on — a check reads the next
+     * output, or passes over a module with no tests of its own. That this process could not look is
+     * not that fact, and answering both with the same no hands a caller the one it asked for
+     * whichever it met. What is not there is an answer; anything else that stops the look is a
+     * failure and says so.
+     */
+    private static boolean isThere(Path at) {
+        try {
+            return Files.readAttributes(at, BasicFileAttributes.class).isDirectory();
+        } catch (NoSuchFileException e) {
+            return false;
+        } catch (IOException e) {
+            throw new UncheckedIOException(at + " cannot be looked at, so whether a build wrote"
+                    + " anything there is a question this cannot answer", e);
+        }
     }
 
     /**
@@ -236,10 +258,12 @@ public final class RepositoryLayout {
         return treeOf(module, phase, "java");
     }
 
-    /** Where a module keeps one kind of source, or null where it keeps none of that kind. */
+    /** Where a module keeps one kind of source, or null where it keeps none of that kind. Beside
+     *  {@link #isThere} and for its reason: a tree this cannot look at is not a tree that is not
+     *  there. */
     private static Path treeOf(Path module, String phase, String kind) {
         Path tree = module.resolve("src").resolve(phase).resolve(kind);
-        return Files.isDirectory(tree) ? tree : null;
+        return isThere(tree) ? tree : null;
     }
 
     /**
