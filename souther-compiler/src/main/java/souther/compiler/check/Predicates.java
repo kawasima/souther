@@ -605,9 +605,9 @@ final class Predicates {
         return obligations(inv, at, Set.of(), true, decidesFalse, Discharge.AN_ASSUMPTION, per);
     }
 
-    /** Told what one part of a clause owed, keyed by the part it was read from. */
+    /** Told what one part of a clause owed, by the shape of the clause it was read at. */
     interface PerPart {
-        void read(Core part, Owed owed);
+        void read(ClauseExpr of, Core part, Owed owed);
     }
 
     /**
@@ -692,7 +692,7 @@ final class Predicates {
                              PerPart per) {
         return new Owing(this, unnamed, decidesFalse, discharge)
                 .read(rawInv, positive, at, terms::inside,
-                        per == null ? null : (part, owed) -> per.read(part, owed));
+                        per == null ? null : per::read);
     }
 
     /**

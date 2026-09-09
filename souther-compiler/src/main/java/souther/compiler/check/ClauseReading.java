@@ -88,15 +88,25 @@ interface ClauseReading<S, E> {
     }
 
     /**
+     * What one part of a clause came to, told as it is read.
+     *
+     * <p>The shape and the node. The shape says which occurrence of the clause this is
+     * ({@link ClauseExpr#at}) and holds every other question about the part already answered; the
+     * node is what was read, for a reader that has something to do with it.
+     */
+    interface PerPart<S> {
+
+        void read(ClauseExpr of, Core part, S came);
+    }
+
+    /**
      * The same, telling {@code per} what each part of the clause came to as it is read.
      *
-     * <p>Keyed by the part as the tree holds it, so a reader that walks the same clause afterwards
-     * finds what this reading made of the very node it is looking at. Asked again instead, that
-     * reader is a second reading of the part, and two readings of one conjunct agree only for as
-     * long as nobody changes one of them.
+     * <p>Told as the reading makes it, so that whoever keeps the reading keeps what it made of
+     * each part beside it. Asked again afterwards, that reader is a second reading of the part,
+     * and two readings of one conjunct agree only for as long as nobody changes one of them.
      */
-    default S read(Core e, boolean positive, E at, ClauseScope<E> scope,
-                   java.util.function.BiConsumer<Core, S> per) {
+    default S read(Core e, boolean positive, E at, ClauseScope<E> scope, PerPart<S> per) {
         // The clause is named once more here, on the outside of everything its shape was written
         // as, which is where a caller holding the clause and nothing under it looks. What it came
         // to is not told to {@code per} a second time: the walk below has already said it of the
@@ -113,8 +123,7 @@ interface ClauseReading<S, E> {
      * place and every reading agrees about it by having been given the answer. Two readings that
      * each recognised {@code &&} for themselves agreed until one of them learned something.
      */
-    private S over(ClauseExpr shape, E at, ClauseScope<E> scope,
-                   java.util.function.BiConsumer<Core, S> per) {
+    private S over(ClauseExpr shape, E at, ClauseScope<E> scope, PerPart<S> per) {
         S out = switch (shape) {
             case ClauseExpr.Leaf it -> whole(it, at);
             // How far this reading goes is its own answer, and taking the connective whole is
@@ -137,7 +146,7 @@ interface ClauseReading<S, E> {
         for (Core each : shape.spelled()) {
             out = from(each, out);
             if (per != null) {
-                per.accept(each, out);
+                per.read(shape, each, out);
             }
         }
         return out;
