@@ -46,12 +46,16 @@ final class ConditionNumbering {
     /**
      * One condition of this reading: the node a fold arrives at, under the names in force there.
      *
-     * <p><b>The two halves are compared differently, and each for its own reason.</b> A node is the
-     * node and not one shaped like it: {@link Core} is a tree of records, so two comparisons an
-     * author wrote in two places are equal — read as one site, two conditions this compiler tells
-     * apart would take one name. The names in force are what they say and not which object says
-     * them: a {@code let} body reached by two folds is under two environments built the same way,
-     * and read as two sites the condition inside it would be named twice.
+     * <p><b>The two halves are compared differently, and each for its own reason.</b> A site is
+     * which node the reading arrived at, which is an identity question: a node is the same site as
+     * itself and as nothing else, and asking a whole subtree whether it says what another says
+     * would make what it costs to name a condition grow with the tree the condition is in. Today
+     * either comparison would tell the nodes apart — a {@link Core} node carries where it stands —
+     * so what is settled here is which question a site is, not which nodes happen to be told apart.
+     *
+     * <p>The names in force are what they say and not which object says them: a {@code let} body
+     * reached by two folds is under two environments built the same way, and read as two sites the
+     * condition inside it would be named twice.
      *
      * <p>The node the fold arrives at, which is not the node it was handed. Bindings and a name
      * standing for a truth are looked through on the way in, so a condition reached through one is

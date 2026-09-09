@@ -6,6 +6,8 @@ import souther.compiler.diag.Citation;
 import souther.compiler.query.Adequacy;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Sites;
+import souther.compiler.sites.WrittenCondition;
+import souther.compiler.types.SourceConstructOrigin;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -17,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -236,6 +239,38 @@ class AConditionOnTheWayIsNamedHereAndPlacedByWhoeverWroteItTest {
                 () -> "so the two are two values, which the place could not have said: " + declined);
     }
 
+    /**
+     * A value that names one condition and reports another is refused.
+     *
+     * <p>The two halves are one answer said twice where the reading places a condition: the name
+     * says which condition it is and the anchor says which condition of the reading to ask about.
+     * Left to agree, a value could say a condition was declined and send a reader to a different
+     * one — and neither half would look wrong on its own.
+     */
+    @Test
+    void aValueThatNamesOneConditionAndReportsAnotherIsRefused() {
+        ConditionOccurrence declined = new ConditionOccurrence("b", 0);
+        ConditionOccurrence reported = new ConditionOccurrence("b", 1);
+        assertThrows(IllegalArgumentException.class, () -> new OnTheWay.Declined(declined,
+                new ConditionReportAnchor.WhereTheReadingMetIt("m", reported),
+                new OnTheWay.Why.NoWordsForTheShape()));
+    }
+
+    /**
+     * And a condition no source wrote is not one whoever wrote it can be asked about.
+     *
+     * <p>What the writing module files is what its source wrote, so a value naming a construct
+     * nothing wrote is a question with no answer. Refused where the value is made rather than left
+     * to come back absent from a lookup a caller had no reason to doubt.
+     */
+    @Test
+    void aConditionNoSourceWroteIsNotOneToAskItsWriterAbout() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new WrittenCondition.Construct(SourceConstructOrigin.unwritten()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new WrittenCondition.ForkArm(SourceConstructOrigin.unwritten(), 0));
+    }
+
     /** What the reading of {@code behavior} wrote down for the conditions it places itself. */
     private static Map<ConditionOccurrence, Citation> placedByTheReading(Compilation compilation,
                                                                          String behavior) {
@@ -274,25 +309,21 @@ class AConditionOnTheWayIsNamedHereAndPlacedByWhoeverWroteItTest {
      * check holding the model to the order a map came back in.
      */
     private static List<OnTheWay> longestWay(Compilation compilation) {
-        ReachingCuts reaching = reachingIn(compilation);
-        List<OnTheWay> longest = List.of();
-        for (List<OnTheWay> each : reaching.byComparison().values()) {
-            if (each.size() > longest.size()) {
-                longest = each;
-            }
-        }
-        List<OnTheWay> found = longest;
+        List<OnTheWay> found = longestWayIn(compilation, "twoUnread");
         assertEquals(3, found.size(),
                 () -> "two forks and the comparison the inner arm stands under: " + found);
         return found;
     }
 
-    private static ReachingCuts reachingIn(Compilation compilation) {
-        String module = compilation.modules().get(0);
-        Partitions.Partitioning divided =
-                compilation.db().ask(new Adequacy.Divided(module, "twoUnread")).value();
-        assertNotNull(divided, "the model under test is measured");
-        return divided.reaching();
+    /** The longest account the reading of {@code behavior} filed. */
+    private static List<OnTheWay> longestWayIn(Compilation compilation, String behavior) {
+        List<OnTheWay> longest = List.of();
+        for (List<OnTheWay> each : waysIn(compilation, behavior)) {
+            if (each.size() > longest.size()) {
+                longest = each;
+            }
+        }
+        return longest;
     }
 
     private static Compilation compiled(String beforeTheBody) {
