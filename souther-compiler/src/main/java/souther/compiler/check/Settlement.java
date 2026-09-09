@@ -60,14 +60,14 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
      * alternative nothing could read left open needs both about the same two branches, and made in
      * two places they would be two answers to one question.
      *
-     * <p>{@link NarrowedByABranch} is beside the width rather than inside it, and the two are
+     * <p>{@link WhatTheAlternativesLeave} is beside the width rather than inside it, and the two are
      * siblings of one walk. What is asked of both alternatives at once is the width; what is asked
      * of one of them about the values it leaves is the other, and a reader of the second reaching
      * for it through the first would be taking a relation for an attribute. They are worked out
      * together because they read the same two branches once, and that is the whole of what they
      * share.
      */
-    record OfAChoice(Sided left, Sided right, WidthDependency width, NarrowedByABranch narrowed) {
+    record OfAChoice(Sided left, Sided right, WidthDependency width, WhatTheAlternativesLeave narrowed) {
 
         /** This choice with one more occurrence of it taken in, side by side. */
         OfAChoice alsoSeen(OfAChoice occurrence) {

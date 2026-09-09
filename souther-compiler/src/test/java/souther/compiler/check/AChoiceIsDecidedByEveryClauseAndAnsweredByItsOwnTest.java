@@ -366,6 +366,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
                         java.util.Set.of(), false, java.util.Set.of()),
                 new Adoption<>(java.util.Set.of(), java.util.Set.of(),
                         java.util.Set.of(UNREAD), true, java.util.Set.of()),
+                NOTHING_STOPPED,
                 Map.of(), java.util.Set.of(), java.util.Set.of(), EndsLeftOpen.nothing(),
                 BoundaryState.nothing(), java.util.Map.of());
     }
@@ -377,14 +378,18 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
                         java.util.Set.of(), false, java.util.Set.of()),
                 new Adoption<>(java.util.Set.of(CONSTRAINED), java.util.Set.of(),
                         java.util.Set.of(), false, java.util.Set.of()),
+                NOTHING_STOPPED,
                 Map.of(), java.util.Set.of(), java.util.Set.of(), EndsLeftOpen.nothing(),
                 BoundaryState.nothing(), java.util.Map.of());
     }
 
-    /** What each alternative holds down, which nothing here states an end about and which is why
+    /** No part here states an end, so none of them stops a position short of its order. */
+    private static final java.util.Set<FactSubject> NOTHING_STOPPED = java.util.Set.of();
+
+    /** What each alternative leaves, which nothing here states an end about and which is why
      *  these branches leave the position wherever they found it. */
-    private static final NarrowedByABranch NEITHER_HOLDS_A_POSITION_DOWN =
-            NarrowedByABranch.nothing();
+    private static final WhatTheAlternativesLeave NEITHER_HOLDS_A_POSITION_DOWN =
+            WhatTheAlternativesLeave.nothing();
 
     /** One choice somebody wrote, told from every other by being this one. */
     private static ChoiceSite aChoice() {
@@ -396,7 +401,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
         return new StatedByClauses.Part(
                 new Adoption<>(java.util.Set.of(CONSTRAINED), java.util.Set.of(SETTLED),
                         java.util.Set.of(), false, java.util.Set.of()),
-                Adoption.nothing(), Map.of(), java.util.Set.of(), shortfalls,
+                Adoption.nothing(), NOTHING_STOPPED, Map.of(), java.util.Set.of(), shortfalls,
                 EndsLeftOpen.nothing(),
                 BoundaryState.nothing(), java.util.Map.of());
     }
@@ -407,7 +412,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
         return new StatedByClauses.Part(
                 new Adoption<>(java.util.Set.of(), java.util.Set.of(), java.util.Set.of(UNREAD),
                         true, java.util.Set.of()),
-                Adoption.nothing(), Map.of(), java.util.Set.of(), shortfalls,
+                Adoption.nothing(), NOTHING_STOPPED, Map.of(), java.util.Set.of(), shortfalls,
                 EndsLeftOpen.nothing(),
                 BoundaryState.nothing(), java.util.Map.of());
     }

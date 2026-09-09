@@ -158,6 +158,30 @@ public final class OrderedIntervals<A> {
         return stated == null ? extent : extent.meet(stated);
     }
 
+    /**
+     * The positions these rules leave holding less than every value of their own order.
+     *
+     * <p>Where an end becomes a line, which is the one thing a reader of the ends is really asking
+     * and the one thing a set of bounded positions cannot say. A pair of bounds reaching both ends
+     * of a carrier is two rules about the position and stops it nowhere, and a caller that took
+     * {@link #boundedAt} for this would credit such a rule with a line nobody draws.
+     *
+     * <p>Over the positions the rules bounded, since a position they bounded nowhere is left every
+     * value its order has. A position ordered on nothing {@code orders} names is one there is no
+     * order to hold the ends against, and it is here: what its rules leave cannot be shown to be
+     * all of anything.
+     */
+    public Set<A> stoppedShortOfTheirOrders(Map<A, ? extends ValueOrder> orders) {
+        Set<A> out = new LinkedHashSet<>();
+        ranges().forEach((position, range) -> {
+            ValueOrder on = orders.get(position);
+            if (on == null || !on.extent().meet(range).sameValuesAs(on.extent())) {
+                out.add(position);
+            }
+        });
+        return Collections.unmodifiableSet(out);
+    }
+
     /** Whether nothing satisfies these rules, at a position or otherwise. */
     public boolean isBottom() {
         return nothing() || ranges().values().stream().anyMatch(OrderedInterval::holdsNothing);

@@ -161,7 +161,7 @@ record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byNumber) {
      * every value of the position on the order — a value satisfying that branch stands anywhere, so
      * the choice does too, whatever the branch nothing followed says. That is the one thing a choice
      * can show here, and what shows it is what the other branch's ends leave the position
-     * ({@link NarrowedByABranch}).
+     * ({@link WhatTheAlternativesLeave}).
      *
      * <p><b>Asked of the values the branch leaves and not of which positions it bounded.</b> The
      * two are not the same question: {@code n >= 2 || n <= 0} bounds an {@code Int} on both sides
@@ -180,7 +180,7 @@ record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byNumber) {
      * <p>So this is a filter and never a source. What comes out is contained in what the two
      * branches brought, which is what keeps a choice from inventing a rule nobody could read.
      */
-    EndsLeftOpen either(ChoiceSite choice, NarrowedByABranch narrowed, EndsLeftOpen other) {
+    EndsLeftOpen either(ChoiceSite choice, WhatTheAlternativesLeave narrowed, EndsLeftOpen other) {
         if (byNumber.isEmpty() && other.byNumber.isEmpty()) {
             return NOTHING;
         }
@@ -221,7 +221,7 @@ record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byNumber) {
      * second because a range covering the order is every value of it.
      *
      * <p>{@code besideLeavesEveryValue} is that answer, worked out where the two branches are and
-     * over every occurrence of the choice ({@link NarrowedByABranch}). Asked instead of what was
+     * over every occurrence of the choice ({@link WhatTheAlternativesLeave}). Asked instead of what was
      * put there ({@code Adoption#read}), a fact this reading has already taken back comes round
      * again a bracket further out, and a pair of bounds covering the order reads as a branch that
      * holds the position down.
