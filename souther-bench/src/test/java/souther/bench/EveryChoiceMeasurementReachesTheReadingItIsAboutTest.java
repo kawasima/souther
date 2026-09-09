@@ -1,6 +1,5 @@
 package souther.bench;
 
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.check.ChoicesRead;
@@ -28,6 +27,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * <p>Nothing here is timed. What the measurements come to on this machine is not a fact about the
  * compiler, and what they reach is.
  *
+ * <p>And nothing here is a model this repository carries, so this is not among the population the
+ * nightly runs: the shapes are generated, they are small, and what they hold is what a change to the
+ * reading of a choice would break — which is a thing to find out on the change and not the night
+ * after it.
+ *
  * <p><b>And nothing here is a count.</b> A declaration is read as many times as the questions put to
  * it need — its own reading, and one more for each counterfactual somebody asks — so a figure below
  * is that many times what one reading of the shape did, and how many that is belongs to the callers
@@ -35,7 +39,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * each other. A shape stating one choice per reading and a shape stating sixty-three are told apart
  * by what divides the total, which is a fact about the shape either way.
  */
-@Tag("population")
 class EveryChoiceMeasurementReachesTheReadingItIsAboutTest {
 
     /** What one compile of {@code source} did with the choices in it. */
