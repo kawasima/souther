@@ -76,6 +76,19 @@ final class ClauseReadings {
         return new Read(Map.copyOf(stated), List.copyOf(stopped));
     }
 
+    /**
+     * {@code named} as {@code module} publishes it.
+     *
+     * <p>The reading is made the same way {@link #readBy} makes one, so what a test comparing two
+     * meanings is comparing is what a store keyed by the declaration would hold.
+     */
+    static DeclarationMeaning meaningOf(Db db, String module, TypeSymbol.AtModule named) {
+        Symbols symbols = Scopes.derived(db, module).value();
+        return DeclarationMeaning.of(symbols.declaredNode(named),
+                new Clauses(symbols, RuleReadings.declaredBy(db, module),
+                        ClauseLocations.NONE, DeclarationReadings.NONE));
+    }
+
     /** One declaration, the module that wrote it, and a module that reads it without having. */
     record Edge(String asking, String declaring, TypeSymbol.AtModule named) {
 
