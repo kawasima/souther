@@ -1312,14 +1312,14 @@ public final class AdmissibleValues<A> {
                 Emptiness stands = Emptiness.NONEMPTY;
                 for (Map.Entry<Sameness.Block<A>, ValueSet> each : box.at().entrySet()) {
                     stands = stands.met(asked.of(each.getKey(), each.getValue()));
-                    if (stands == Emptiness.EMPTY) {
+                    if (stands.isEmpty()) {
                         break;
                     }
                 }
                 // And what its denials come to, asked after the blocks and not before. An
                 // alternative already refused at a block is one no relation has to be read for,
                 // and reading it first would spend on every alternative what one question settled.
-                if (stands != Emptiness.EMPTY) {
+                if (!stands.isEmpty()) {
                     stands = stands.met(relating.of(box.apart(), box.product()).emptiness());
                 }
                 any = any.joined(stands);
@@ -1383,7 +1383,7 @@ public final class AdmissibleValues<A> {
         // share, and each of them may be left something on its own — taken apart here, the
         // proof would say a lack is at a place whose own rules are fine with it.
         box.at().forEach((block, set) -> {
-            if (asked.of(block, set) == Emptiness.EMPTY) {
+            if (asked.of(block, set).isEmpty()) {
                 here.add(block);
             }
         });

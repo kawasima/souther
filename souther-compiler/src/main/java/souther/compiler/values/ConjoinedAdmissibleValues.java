@@ -156,7 +156,7 @@ public final class ConjoinedAdmissibleValues<A> {
         Emptiness stands = Emptiness.NONEMPTY;
         for (AdmissibleValues<A> each : factors) {
             stands = stands.met(each.anyAlternativeAdmits(asked, relating));
-            if (stands == Emptiness.EMPTY) {
+            if (stands.isEmpty()) {
                 return stands;
             }
         }

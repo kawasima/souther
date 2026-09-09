@@ -173,18 +173,28 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
      * this occurrence leaves is the branch beside the dead one, so nothing here rests on an
      * alternative — and read as an answer about the written choice, it would take back what the
      * occurrence beside it found.
+     *
+     * <p>Which of the two is the dead one is the author's, so both ways round are asked. Written one
+     * way only, this would hold of a reading that took a choice with a dead second alternative for a
+     * choice: the branch beside the dead one is the same branch either way, and nothing else here
+     * tells the two apart.
      */
     @Test
     void anOccurrenceOneBranchOfWhichAdmitsNothingRestsOnNeitherAndDoesNotSpeakForTheRest() {
         Settlement.WidthDependency dead = Settlement.WidthDependency.of(
                 souther.compiler.values.Emptiness.EMPTY, branch(isA()),
                 souther.compiler.values.Emptiness.UNDECIDED, branch(unread(Set.of(OTHER))));
+        Settlement.WidthDependency deadOnTheRight = Settlement.WidthDependency.of(
+                souther.compiler.values.Emptiness.UNDECIDED, branch(isA()),
+                souther.compiler.values.Emptiness.EMPTY, branch(unread(Set.of(OTHER))));
         Settlement.WidthDependency live = Settlement.WidthDependency.of(
                 souther.compiler.values.Emptiness.UNDECIDED, branch(isA()),
                 souther.compiler.values.Emptiness.UNDECIDED, branch(unread(Set.of(OTHER))));
 
         assertEquals(Settlement.WidthDependency.none(), dead,
                 "the choice is the branch beside the dead one, and no alternative widened it");
+        assertEquals(Settlement.WidthDependency.none(), deadOnTheRight,
+                "and the same where the dead one is the alternative written second");
         assertEquals(live, dead.alsoSeen(live),
                 "and what the occurrence beside it found is what the written choice is left with");
     }

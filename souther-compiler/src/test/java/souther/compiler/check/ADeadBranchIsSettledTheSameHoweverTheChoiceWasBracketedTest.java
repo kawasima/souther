@@ -79,30 +79,35 @@ class ADeadBranchIsSettledTheSameHoweverTheChoiceWasBracketedTest {
      *
      * <p>Whether a branch admits anything is settled over the values and the order together, so it
      * is carried beside here rather than asked of either. What is under test is what the four cases
-     * leave, not which of them a clause falls into.
+     * leave, not which of them a clause falls into — which is why the case is not worked out here
+     * either, but asked of the one place that says which alternatives a pair of answers leaves
+     * standing.
      */
     private record Branch(Confinement.Planned<String> reading, boolean dead) {
 
         Branch or(Branch other) {
-            if (dead && other.dead) {
+            return switch (souther.compiler.values.Emptiness.Alternatives.from(
+                    souther.compiler.values.Emptiness.SidesShownEmpty.of(said(), other.said()))) {
                 // What showed the choice dead is what showed both of its branches dead, which is
                 // where the holder of both languages takes it from as well.
-                return new Branch(reading.bothDead(other.reading,
+                case NEITHER_STANDS -> new Branch(reading.bothDead(other.reading,
                         Confinement.Admission.bothShown(reading.admission(),
                                 other.reading.admission())), true);
-            }
-            // Neither language is asked what a choice with one dead branch leaves: what it leaves
-            // is the standing branch, which the holder has in hand. Composed instead, the choice
-            // would keep only what both sides spoke about — and a side nobody can be in spoke
-            // about positions the other did not, so the whole would come back saying nothing at
-            // all about them.
-            if (dead) {
-                return other;
-            }
-            if (other.dead) {
-                return this;
-            }
-            return new Branch(reading.either(other.reading, false), false);
+                // Neither language is asked what a choice with one dead branch leaves: what it
+                // leaves is the standing branch, which the holder has in hand. Composed instead,
+                // the choice would keep only what both sides spoke about — and a side nobody can be
+                // in spoke about positions the other did not, so the whole would come back saying
+                // nothing at all about them.
+                case ONLY_THE_RIGHT -> other;
+                case ONLY_THE_LEFT -> this;
+                case BOTH_STAND -> new Branch(reading.either(other.reading, false), false);
+            };
+        }
+
+        /** This branch's fate, in the words the classification is read in. */
+        private souther.compiler.values.Emptiness said() {
+            return dead ? souther.compiler.values.Emptiness.EMPTY
+                    : souther.compiler.values.Emptiness.NONEMPTY;
         }
     }
 

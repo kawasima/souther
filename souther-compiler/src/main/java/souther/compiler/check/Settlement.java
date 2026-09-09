@@ -3,6 +3,7 @@ package souther.compiler.check;
 import souther.compiler.numeric.OrderedInterval;
 import souther.compiler.numeric.OrderedIntervals;
 import souther.compiler.values.AdmittedPlan;
+import souther.compiler.values.Emptiness.SidesShownEmpty;
 import souther.compiler.values.PlannedValues;
 import souther.compiler.values.Realized;
 import souther.compiler.values.UnreadReason;
@@ -114,8 +115,8 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
                                   Confinement.Planned<FactSubject> one,
                                   souther.compiler.values.Emptiness there,
                                   Confinement.Planned<FactSubject> other) {
-            if (here == souther.compiler.values.Emptiness.EMPTY
-                    || there == souther.compiler.values.Emptiness.EMPTY) {
+            if (!souther.compiler.values.Emptiness.Alternatives
+                    .from(SidesShownEmpty.of(here, there)).bothStand()) {
                 return none();
             }
             return new WidthDependency(Width.ofValues(one.values(), other.values()),
@@ -356,9 +357,14 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
             asked.addAll(other.ruleShortfalls());
             // And what showed the branch empty, where both occurrences of it are. Where they were
             // shown by different things, or refused at different positions, neither speaks for the
-            // branch — which is the same rule a choice of two dead branches is under.
+            // branch.
+            //
+            // Asked of the join and not of the two sides. These are two occurrences of one written
+            // branch rather than two alternatives, so there is no side here to be named: a branch
+            // anybody can be in anywhere it stands is one nothing showed empty, and a proof survives
+            // only where every occurrence was shown empty.
             souther.compiler.values.Emptiness said = emptiness().joined(other.emptiness());
-            Confinement.Admission<FactSubject> both = said == souther.compiler.values.Emptiness.EMPTY
+            Confinement.Admission<FactSubject> both = said.isEmpty()
                     ? Confinement.Admission.bothShown(shown, other.shown)
                     : Confinement.Admission.left(said);
             return new Sided(both, why, java.util.Collections.unmodifiableSet(asked), gaveUp);
