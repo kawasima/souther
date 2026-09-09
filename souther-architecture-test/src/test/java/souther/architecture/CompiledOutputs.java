@@ -7,7 +7,9 @@ import java.lang.classfile.ClassModel;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The compiled outputs a rule here is about, and the order a name is looked for in them.
@@ -175,15 +177,29 @@ final class CompiledOutputs {
      * rule reading every class reads every class there is or says which module it could not.
      */
     private Optional<CompiledClasses> outputOf(Path module, String phase) {
-        if (repository.javaTreeOf(module, phase) == null) {
-            return Optional.empty();
-        }
-        Optional<CompiledClasses> built = repository.compiledOutputOf(module, phase);
-        if (built.isEmpty()) {
-            throw new AssertionError(module.getFileName() + " has " + phase + " sources and no"
-                    + " classes built from them: a rule that passed over it would answer about the"
-                    + " rest of the repository while reading as though it had covered this too");
-        }
-        return built;
+        return found.computeIfAbsent(module + " " + phase, _ -> {
+            if (repository.javaTreeOf(module, phase) == null) {
+                return Optional.empty();
+            }
+            Optional<CompiledClasses> built = repository.compiledOutputOf(module, phase);
+            if (built.isEmpty()) {
+                throw new AssertionError(module.getFileName() + " has " + phase + " sources and no"
+                        + " classes built from them: a rule that passed over it would answer about"
+                        + " the rest of the repository while reading as though it had covered this"
+                        + " too");
+            }
+            return built;
+        });
     }
+
+    /**
+     * Which output each module compiled a phase to, worked out once.
+     *
+     * <p>Where an output is is asked of the file system — whether the module has sources of that
+     * phase, whether anything was built, and what the path it was handed really is — and a rule
+     * that reads the repository a module at a time asks for the same module's output once per rule
+     * it has. None of those answers changes while the run happens, which is the whole reason the
+     * classes behind them are read once.
+     */
+    private final Map<String, Optional<CompiledClasses>> found = new ConcurrentHashMap<>();
 }
