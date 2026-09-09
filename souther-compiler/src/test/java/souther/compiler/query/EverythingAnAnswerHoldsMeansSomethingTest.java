@@ -30,9 +30,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * detector, and no reading of the register could tell which. So the scenarios are the axis and the
  * detectors are applied across all of it.
  *
- * <p>The scenarios are two because an answer is two things. {@code Answer} is what a question came
- * to and what the compile said getting there, and {@code Db} compares both — so a corpus of models
- * nothing is said about exercises one half of every answer in the store.
+ * <p>An answer is two things: what a question came to and what the compile said getting there, and
+ * {@code Db} compares both. So each scenario holds a model with a mistake in it. Over a model
+ * nothing is said about, the reports half of every answer in the store is empty, and a scenario
+ * made of those exercises one half of everything it reaches.
  */
 @Tag("population")
 class EverythingAnAnswerHoldsMeansSomethingTest {
@@ -68,7 +69,7 @@ class EverythingAnAnswerHoldsMeansSomethingTest {
     private static List<Db> storesOf(AnswerClosure.Scenario scenario) {
         List<Db> out = new ArrayList<>();
         switch (scenario) {
-            case VALID_CORPUS -> ConformanceCorpus.all()
+            case THE_CORPORA -> ConformanceCorpus.all()
                     .forEach(corpus -> out.add(corpus.analyse().compilation().db()));
             case A_MODULE_SPOKEN_ABOUT -> {
                 Compilation compilation = Compilation.ofSource(SPOKEN_ABOUT, "Main");
@@ -113,6 +114,16 @@ class EverythingAnAnswerHoldsMeansSomethingTest {
      */
     private record Met(Map<Locus.Place, Set<String>> byPlace, Set<String> fellShort,
                        Map<Locus.Place, Set<String>> differentThings, int opened) {}
+
+    /**
+     * What both walks met, worked out once for the class that asks.
+     *
+     * <p>Every question below is about the same walk of the same models, and the walk is nearly all
+     * of what this costs. Asked per question, the models would be compiled again for each — and
+     * compiled twice over for the detector that compares two stores, which is the point of that
+     * detector and not something a second question adds anything to.
+     */
+    private static final Met MET = met();
 
     private static Met met() {
         // Not a map that sorts. A place is told from a place by what it holds and not by how it
@@ -175,7 +186,7 @@ class EverythingAnAnswerHoldsMeansSomethingTest {
      */
     @Test
     void bothDetectorsGetToTheEndOfBothScenarios() {
-        Met met = met();
+        Met met = MET;
 
         // What an answer was built from is what an edit is absorbed by, so which questions a
         // compile reaches is as much what it did as what it said: two stores over one input
@@ -259,7 +270,7 @@ class EverythingAnAnswerHoldsMeansSomethingTest {
     /** And what they found is the places written down, and no others. */
     @Test
     void theOnlyThingsThatMeanNothingAreTheOnesWrittenDown() {
-        Met met = met();
+        Met met = MET;
         Map<Locus.Place, String> reasons = AnswerClosure.reasons();
 
         assertEquals(new java.util.HashSet<>(AnswerClosure.places()),
@@ -277,7 +288,7 @@ class EverythingAnAnswerHoldsMeansSomethingTest {
      */
     @Test
     void andEachIsMetByWhatIsWrittenDownBesideIt() {
-        Met met = met();
+        Met met = MET;
 
         assertEquals(List.of(),
                 differencesBetween(AnswerClosure.observations(), met.byPlace()),

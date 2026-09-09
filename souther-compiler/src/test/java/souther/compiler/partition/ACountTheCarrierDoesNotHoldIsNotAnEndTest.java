@@ -2,25 +2,22 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.ast.Hir;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.check.Prepared;
 import souther.compiler.check.Carrier;
-import souther.compiler.check.Sig;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.numeric.Count;
 import souther.compiler.numeric.DateTimes;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
-import souther.compiler.query.Shapes;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
@@ -205,16 +202,16 @@ class ACountTheCarrierDoesNotHoldIsNotAnEndTest {
         Compilation compilation = Compilation.ofSource(source, "Main");
         compilation.answerEverything();
         String module = compilation.modules().get(0);
-        Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
-        Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
-        Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().get(0);
-        assertNotNull(sigs.get(spec.name()), "the model under test compiles");
-        InputDomain domain = InputDomain.of(spec, sigs.get(spec.name()), rules,
+        Map<String, DeclaredSig> sigs =
+                compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
+        assertFalse(sigs.isEmpty(), "the model under test compiles");
+        Map.Entry<String, DeclaredSig> declared = sigs.entrySet().iterator().next();
+        InputDomain domain = InputDomain.of(declared.getValue(), rules,
                 souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
         souther.compiler.inputs.Quantities reading = domain.quantities(rules);
-        Partitions.Partitioning p =
-                Partitions.of(spec.name(), domain, rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
+        Partitions.Partitioning p = Partitions.of(declared.getKey(), domain, rules,
+                souther.compiler.query.ReadAs.THE_COMPILATION_DOES);
         return p.axes().stream()
                 .flatMap(axis -> Partitions.bordersOf(axis, reading,
                         reading.runsBetween(axis.term()), new LinesRead()).stream())

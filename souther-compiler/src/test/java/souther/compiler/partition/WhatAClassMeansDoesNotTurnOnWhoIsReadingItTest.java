@@ -2,17 +2,14 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.ast.Hir;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.check.Prepared;
-import souther.compiler.check.Sig;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.meta.ModulePath;
 import souther.compiler.observe.ObservedValue;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
-import souther.compiler.query.Shapes;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbols;
 
@@ -71,12 +68,10 @@ class WhatAClassMeansDoesNotTurnOnWhoIsReadingItTest {
         Compilation compilation = Compilation.ofSources(List.of(LIB, APP), ModulePath.EMPTY);
         compilation.answerEverything();
         String module = compilation.modules().get(nth);
-        Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
-        Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
+        Map<String, DeclaredSig> sigs =
+                compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
-        Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().stream()
-                .filter(b -> b.name().equals(behavior)).findFirst().orElseThrow();
-        return Partitions.of(spec.name(), InputDomain.of(spec, sigs.get(behavior), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES).axes().stream()
+        return Partitions.of(behavior, InputDomain.of(sigs.get(behavior), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES).axes().stream()
                 .filter(each -> each.path().toString().equals(path))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("no axis at " + path))

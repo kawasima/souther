@@ -4,12 +4,10 @@ import org.junit.jupiter.api.Test;
 
 import souther.test.RepositoryLayout;
 
-import souther.compiler.ast.Hir;
 import souther.compiler.check.DeclaredBounds;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.check.Prepared;
-import souther.compiler.check.Sig;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.inputs.Position;
 import souther.compiler.inputs.Refinement;
@@ -18,7 +16,6 @@ import souther.compiler.inputs.TermPath;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.ReadAs;
-import souther.compiler.query.Shapes;
 import souther.compiler.types.CaseSelector;
 import souther.compiler.types.Type;
 import souther.compiler.types.TypeSymbol;
@@ -73,30 +70,34 @@ class AConstructionPositionIsNotAnInputPositionTest {
     /** Read once: what this asks of it does not change between its checks. */
     private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
 
-    private record Read(Hir.SpecBehavior spec, Sig sig, RuleReadingSource rules) {}
+    private record Read(DeclaredSig sig, RuleReadingSource rules) {
+
+        /** The behavior's one parameter. */
+        DeclaredSig.Input only() {
+            return sig.inputs().get(0);
+        }
+    }
 
     private static Read of(String source, String behavior) {
         Compilation compilation =
                 Compilation.ofSources(List.of(source), souther.compiler.meta.ModulePath.EMPTY);
         compilation.answerEverything();
         String module = compilation.modules().get(0);
-        Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
-        Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
+        Map<String, DeclaredSig> sigs =
+                compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
-        Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().stream()
-                .filter(b -> b.name().equals(behavior)).findFirst().orElseThrow();
-        return new Read(spec, sigs.get(behavior), rules);
+        return new Read(sigs.get(behavior), rules);
     }
 
     private static InputDomain reading(Read read) {
-        return InputDomain.of(read.spec(), read.sig(), read.rules(), ReadAs.THE_COMPILATION_DOES);
+        return InputDomain.of(read.sig(), read.rules(), ReadAs.THE_COMPILATION_DOES);
     }
 
     /** The plan for the behavior's one parameter, with nothing decided and the given
      *  requirements. */
     private static ConstructionPlan plan(Read read, Requirements required) {
-        ConstructionPlan.Result planned = ConstructionPlan.of(read.sig().inputTypes().get(0),
-                TermPath.of(read.spec().params().get(0).name()), read.rules().symbols(), Set.of(),
+        ConstructionPlan.Result planned = ConstructionPlan.of(read.only().type(),
+                TermPath.of(read.only().name()), read.rules().symbols(), Set.of(),
                 required,
                 ANY);
         return assertInstanceOf(ConstructionPlan.Result.Planned.class, planned,
@@ -245,7 +246,7 @@ class AConstructionPositionIsNotAnInputPositionTest {
 
     /** The requirement a class of {@code d} states by being the {@code Approved} case of it. */
     private static Requirements throughApproved(Read read) {
-        return Requirements.NONE.and(TermPath.of(read.spec().params().get(0).name()),
+        return Requirements.NONE.and(TermPath.of(read.only().name()),
                 toLeaf(caseNamed(SUM, "probe")));
     }
 
@@ -267,7 +268,7 @@ class AConstructionPositionIsNotAnInputPositionTest {
     @Test
     void theRecipeRefinesWhatIsBuiltAndNotWhatIsDeclared() {
         Read read = of(SUM, "decide");
-        Type declared = read.sig().inputTypes().get(0);
+        Type declared = read.only().type();
         assertEquals(declared, reading(read).at(TermPath.of("d")).view().declared());
 
         ConstructionPlan built = plan(read, throughApproved(read));

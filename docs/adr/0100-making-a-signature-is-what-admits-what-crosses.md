@@ -191,8 +191,12 @@ where signatures are made, so there is nothing for it to add.
 The backend is handed them too, rather than replaying the walk before it emits. `Backend.generate`
 takes the signatures beside the imported ones it already took.
 
-That there is one caller is held by a source tripwire (`ASignatureIsMadeInOnePlaceTest`), for the
-reason above: a second one is invisible to every other kind of test.
+That there is one caller is held by a tripwire (`ASignatureIsMadeInOnePlaceTest`), for the reason
+above: a second one is invisible to every other kind of test. It reads the compiled classes rather
+than the sources, and it asks who *makes* each closed part of a signature as well as who calls the
+walk — a closed constructor stops the package, and inside it a second maker is what a second walk
+would be written as. Making one is three things in bytecode and one in a search of text, so a rule
+written over the text of a `new` is passed by a constructor reference.
 
 Which of a module's phases reports first is decided by neither of these. A phase reports when its
 answer is worked out, and signatures are worked out early, so a module wrong in a way signatures

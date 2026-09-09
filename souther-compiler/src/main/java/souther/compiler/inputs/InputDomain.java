@@ -1,6 +1,6 @@
 package souther.compiler.inputs;
 
-import souther.compiler.ast.Hir;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.NumberAt;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.SpecImplementation;
@@ -16,7 +16,6 @@ import souther.compiler.check.NumericMeasures;
 import souther.compiler.check.ReadableFields;
 import souther.compiler.check.ReadingPolicy;
 import souther.compiler.check.Shape;
-import souther.compiler.check.Sig;
 import souther.compiler.check.TypeView;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.types.BindingId;
@@ -341,27 +340,27 @@ public final class InputDomain {
     }
 
     /**
-     * The same, of a behavior and the implementation that binds its parameters.
+     * The same, of a declaration and the implementation that binds its parameters.
      *
-     * <p>The one place the three are put side by side: the declaration says what the parameters are
-     * called, the signature says what they hold, and the implementation says which binding a body's
-     * reads of one carry. Paired here rather than by every caller that has some of them.
+     * <p>What each parameter is called and what it holds arrive as one thing, from the walk that
+     * admitted them. What is put beside them here is the implementation: which binding a body's
+     * reads of a parameter carry.
      *
      * @param arriving which binder each declared input arrives in, or empty where nothing
      *                 implements this behavior — an injected behavior has positions and no body to
      *                 read them in
      */
-    public static InputDomain of(Hir.SpecBehavior behavior,
-                                 List<SpecImplementation.ParameterBinding.AnInput> arriving, Sig sig,
+    public static InputDomain of(DeclaredSig declared,
+                                 List<SpecImplementation.ParameterBinding.AnInput> arriving,
                                  RuleReadingSource source, ReadingPolicy policy) {
-        return of(behavior, arriving, sig, source, policy, InputDemand.NONE);
+        return of(declared, arriving, source, policy, InputDemand.NONE);
     }
 
     /** The same, closed over the finite paths this behavior's measurement names as well. */
-    public static InputDomain of(Hir.SpecBehavior behavior,
-                                 List<SpecImplementation.ParameterBinding.AnInput> arriving, Sig sig,
+    public static InputDomain of(DeclaredSig declared,
+                                 List<SpecImplementation.ParameterBinding.AnInput> arriving,
                                  RuleReadingSource source, ReadingPolicy policy, InputDemand demand) {
-        return of(behavior, arriving, sig, source, policy, demand, DeclarationReadings.NONE);
+        return of(declared, arriving, source, policy, demand, DeclarationReadings.NONE);
     }
 
     /**
@@ -373,9 +372,13 @@ public final class InputDomain {
      * beside its inputs, so the two lists are not the same length and where one stops is that
      * reading's to say. Empty where nothing implements the behavior, which has the positions all the
      * same and nothing to read them through.
+     *
+     * <p>That reading is a comparison and this one is not. A binder may be missing, or stand where
+     * the declaration asks for nothing, which is why {@code arriving} says at which position each
+     * one landed; the declaration's own parameters and their types were never two things to line up.
      */
-    public static InputDomain of(Hir.SpecBehavior behavior,
-                                 List<SpecImplementation.ParameterBinding.AnInput> arriving, Sig sig,
+    public static InputDomain of(DeclaredSig declared,
+                                 List<SpecImplementation.ParameterBinding.AnInput> arriving,
                                  RuleReadingSource source, ReadingPolicy policy, InputDemand demand,
                                  DeclarationReadings machines) {
         Map<Integer, BindingId> bindings = new LinkedHashMap<>();
@@ -383,9 +386,9 @@ public final class InputDomain {
             bindings.put(input.at(), input.written().binder().binding());
         }
         List<Parameter> parameters = new ArrayList<>();
-        for (int i = 0; i < sig.inputTypes().size() && i < behavior.params().size(); i++) {
-            parameters.add(new Parameter(behavior.params().get(i).name(), bindings.get(i),
-                    sig.inputTypes().get(i)));
+        int at = 0;
+        for (DeclaredSig.Input input : declared.inputs()) {
+            parameters.add(new Parameter(input.name(), bindings.get(at++), input.type()));
         }
         return of(parameters, source, policy, demand, machines);
     }
@@ -398,9 +401,9 @@ public final class InputDomain {
      * same spelling. So this is the reading for a caller with no body in hand, and a caller with one
      * that used it would find every claim and every comparison naming nothing.
      */
-    public static InputDomain of(Hir.SpecBehavior behavior, Sig sig, RuleReadingSource source,
+    public static InputDomain of(DeclaredSig declared, RuleReadingSource source,
                                  ReadingPolicy policy) {
-        return of(behavior, List.of(), sig, source, policy);
+        return of(declared, List.of(), source, policy);
     }
 
     /** The positions, in the order they were read. */

@@ -2,11 +2,9 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.ast.Hir;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
-import souther.compiler.check.Prepared;
-import souther.compiler.check.Sig;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.inputs.NumericTerm;
 import souther.compiler.inputs.TermPath;
@@ -16,7 +14,6 @@ import souther.compiler.query.Bodies;
 import souther.compiler.query.BorderAssessment;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.ReadAs;
-import souther.compiler.query.Shapes;
 
 import java.util.List;
 import java.util.Map;
@@ -120,13 +117,11 @@ class WrappingAValueDoesNotChangeWhatItsRulesAccountForTest {
         Compilation compilation = Compilation.ofSource(sourceOf(declarations), "Main");
         compilation.answerEverything();
         String module = compilation.modules().get(0);
-        Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
-        Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
-        Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().stream()
-                .filter(b -> b.name().equals("take")).findFirst().orElseThrow();
+        Map<String, DeclaredSig> sigs =
+                compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
         TermPath path = TermPath.of("n");
-        return InputDomain.of(spec, sigs.get("take"), rules, ReadAs.THE_COMPILATION_DOES)
+        return InputDomain.of(sigs.get("take"), rules, ReadAs.THE_COMPILATION_DOES)
                 .at(path).boundsFor(new NumericTerm.ValueOf(path)).rangeLeft();
     }
 

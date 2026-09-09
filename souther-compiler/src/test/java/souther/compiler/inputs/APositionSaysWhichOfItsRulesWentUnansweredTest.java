@@ -2,16 +2,13 @@ package souther.compiler.inputs;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.ast.Hir;
+import souther.compiler.check.DeclaredSig;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleRef;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.check.CoverageObligation;
-import souther.compiler.check.Prepared;
-import souther.compiler.check.Sig;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
-import souther.compiler.query.Shapes;
 import souther.compiler.values.AdmissibleSet;
 
 import java.util.List;
@@ -66,14 +63,11 @@ class APositionSaysWhichOfItsRulesWentUnansweredTest {
         Compilation compilation = Compilation.ofSource(source, "Main");
         compilation.answerEverything();
         String module = compilation.modules().get(0);
-        Prepared prepared = compilation.db().ask(new Shapes.Prepared(module)).value();
-        Map<String, Sig> sigs = compilation.db().ask(new Bodies.Signatures(module)).value();
-        assertNotNull(prepared);
+        Map<String, DeclaredSig> sigs =
+                compilation.db().ask(new Bodies.DeclaredSignatures(module)).value();
         assertNotNull(sigs);
-        Hir.SpecBehavior spec = (Hir.SpecBehavior) prepared.behaviors().stream()
-                .filter(b -> b.name().equals("price")).findFirst().orElseThrow();
         RuleReadingSource rules = RuleReadings.of(compilation, module);
-        return InputDomain.of(spec, sigs.get("price"), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES).positions().stream()
+        return InputDomain.of(sigs.get("price"), rules, souther.compiler.query.ReadAs.THE_COMPILATION_DOES).positions().stream()
                 .filter(p -> p.path().toString().equals("length"))
                 .findFirst().orElseThrow();
     }
