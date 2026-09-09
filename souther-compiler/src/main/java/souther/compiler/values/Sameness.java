@@ -3,7 +3,6 @@ package souther.compiler.values;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -115,14 +114,45 @@ public final class Sameness<A> {
     public final void filing(Set<Block<A>>... these) {
         for (Set<Block<A>> filed : these) {
             for (Block<A> block : filed) {
-                Block<A> here = blockOf(block.members().iterator().next());
-                if (!block.equals(here)) {
+                if (!has(block)) {
                     throw new IllegalArgumentException("an answer at " + block
                             + " is filed under a coordinate this reading does not answer in,"
-                            + " which holds those positions as " + here);
+                            + " which holds those positions as " + InOneOrder.of(holding(block)));
                 }
             }
         }
+    }
+
+    /**
+     * Whether this is one of the blocks this relation has.
+     *
+     * <p>Asked of every position rather than of one, because one position of a block says which
+     * block it is on and says nothing about where the rest are. A block some of whose positions
+     * this holds elsewhere is not a block of it, and neither is one holding fewer positions than
+     * this holds together.
+     *
+     * <p>What a question about a block may be asked of. A relation answers about the blocks it
+     * has; asked about any other set of positions it has no answer, and one worked out from a
+     * position taken out of the set would be an answer about that position's block.
+     */
+    boolean has(Block<A> block) {
+        for (A member : block.members()) {
+            if (!block.equals(blockOf(member))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** The blocks this holds {@code block}'s positions in, which is one block where it holds them
+     *  as {@code block} does and several where it cuts them apart. */
+    Set<Block<A>> holding(Block<A> block) {
+        if (block.isOne()) {
+            return Set.of(blockOf(block.members().iterator().next()));
+        }
+        Set<Block<A>> out = new LinkedHashSet<>();
+        block.members().forEach(each -> out.add(blockOf(each)));
+        return out;
     }
 
     /**
@@ -246,9 +276,11 @@ public final class Sameness<A> {
         return ValueHash.ofWhatItHolds(Sameness.class, blocks.hashCode(), blocks.size());
     }
 
+    /** The blocks written in one order whichever order they were made in — see
+     *  {@link InOneOrder}. */
     @Override
     public String toString() {
-        return joined().toString();
+        return InOneOrder.of(joined());
     }
 
     /**
@@ -259,12 +291,13 @@ public final class Sameness<A> {
      * coordinate: {@code p == q && q == r} and {@code q == r && p == q} name one block, hold one
      * set, and spend from one purse.
      *
-     * <p>Its members are read in the order they are spelled in, so that where their spellings tell
-     * them apart, what is written out of a reading — a proof naming the positions that must hold
-     * one value among them — does not read differently for the order the equalities behind it were
-     * written in. Where two of them are spelled alike it says nothing: those two keep the order
-     * they arrived in, which is the order it was there to keep out. Nothing is filed, compared or
-     * hashed under any of it.
+     * <p><b>A set, and no order over it.</b> Its members are held in whatever order they arrived
+     * in, and that order is a fact about how one block was built rather than about which block it
+     * is — two that are equal were built two ways. So nothing is filed, compared, hashed, chosen or
+     * written under it, and a reader wanting positions in an order takes one it has: a proof names
+     * them in the order the value declares them ({@code ProofOfEmptiness}), and a rendering puts
+     * the renderings in order ({@link InOneOrder}).
+     *
      */
     public static final class Block<A> {
 
@@ -295,19 +328,17 @@ public final class Sameness<A> {
             this.hash = ValueHash.ofWhatItHolds(Block.class, members.hashCode(), members.size());
         }
 
-        /**
-         * The block one position is on its own.
-         *
-         * <p>Built without ordering anything. One member is in one order, and the order below is
-         * what several of them are read in.
-         */
+        /** The block one position is on its own. */
         public static <A> Block<A> of(A position) {
             return new Block<>(Set.of(position));
         }
 
         /** The block these positions are held as one in. */
         public static <A> Block<A> of(Set<A> members) {
-            return new Block<>(ordered(members));
+            if (members.isEmpty()) {
+                throw new IllegalArgumentException("an answer is about at least one position");
+            }
+            return new Block<>(Collections.unmodifiableSet(new LinkedHashSet<>(members)));
         }
 
         /** The positions this answer is about. */
@@ -358,28 +389,11 @@ public final class Sameness<A> {
             return hash;
         }
 
+        /** The positions written in one order whichever order they are held in — see
+         *  {@link InOneOrder}. */
         @Override
         public String toString() {
-            return isOne() ? String.valueOf(members.iterator().next()) : members.toString();
-        }
-
-        /**
-         * The members in the order they are spelled in, which is the order a block reads them in.
-         *
-         * <p>How they are spelled is all a position of any kind can be ordered by here, since what
-         * a position is is the caller's. One of them is in one order already, which is what the
-         * block of a single position is built by.
-         */
-        private static <A> Set<A> ordered(Set<A> members) {
-            if (members.isEmpty()) {
-                throw new IllegalArgumentException("an answer is about at least one position");
-            }
-            if (members.size() == 1) {
-                return Set.of(members.iterator().next());
-            }
-            List<A> sorted = new ArrayList<>(members);
-            sorted.sort(Comparator.comparing(String::valueOf));
-            return Collections.unmodifiableSet(new LinkedHashSet<>(sorted));
+            return isOne() ? String.valueOf(members.iterator().next()) : InOneOrder.of(members);
         }
     }
 }

@@ -235,6 +235,19 @@ public final class Allowance<A> {
         return promised(meet(block, one, other));
     }
 
+    /**
+     * The same, of several at once, which is what one reading promises a block a coarser relation
+     * holds as one value.
+     *
+     * <p>{@link #meeting} for a promise, and n-ary for its reason. A block of a coarser relation
+     * covers several of this reading's own, and what it promises there is what it promises at every
+     * one of them — so they are handed over together and cost one number, where a caller folding
+     * them two at a time would pay for the order it happened to walk that block's positions in.
+     */
+    public Composed meetingPromised(Sameness.Block<A> block, List<ValueSet> these) {
+        return promised(meeting(block, these));
+    }
+
     private static Composed promised(Composed made) {
         return made.gaveUp() ? new Composed(ValueSet.NONE, true) : made;
     }
