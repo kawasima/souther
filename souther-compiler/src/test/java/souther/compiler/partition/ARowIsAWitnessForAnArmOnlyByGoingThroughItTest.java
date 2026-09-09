@@ -73,7 +73,7 @@ class ARowIsAWitnessForAnArmOnlyByGoingThroughItTest {
             for (WayIn way : ((PathAccess.Ways) each.getValue()).ways()) {
                 assertTrue(way.claims().stream()
                                 .noneMatch(claim -> claim.at() instanceof
-                                        ControlPointId.ArmOccurrence),
+                                        ControlPointId.ArmPoint),
                         "and nothing on the way names the arm it leads to: " + way.claims());
             }
         }
@@ -149,7 +149,7 @@ class ARowIsAWitnessForAnArmOnlyByGoingThroughItTest {
             for (WayIn way : found.ways()) {
                 for (ControlClaim claim : way.claims()) {
                     switch (claim.at()) {
-                        case ControlPointId.ArmOccurrence arm -> taken.add(arm.probe().get());
+                        case ControlPointId.ArmPoint arm -> taken.add(arm.probe().get());
                         case ControlPointId.ComparisonPoint point ->
                                 ways.add(new SeenComparison(point.at(), point.held()));
                     }

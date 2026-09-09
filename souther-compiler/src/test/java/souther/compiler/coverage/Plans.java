@@ -51,8 +51,8 @@ public final class Plans {
             }
         };
         return new CoverageSites.Plan(plan.sites(), plan.guards(), plan.byNode(),
-                plan.byComparison(), plan.armsByNode(), plan.controlByComparison(),
-                everywhere, plan.forkByNode(), plan.comparisons(), plan.numbering());
+                plan.byComparison(), plan.armsByNode(), everywhere,
+                plan.whereEachArmsForkIsWritten(), plan.comparisons(), plan.numbering());
     }
 
     /**
@@ -63,11 +63,11 @@ public final class Plans {
      * ones.
      */
     public static CoverageSites.Plan withArmRenamed(CoverageSites.Plan plan,
-                                                    ControlPointId.ArmOccurrence was,
-                                                    ControlPointId.ArmOccurrence now) {
-        IdentityHashMap<Core, ControlPointId.ArmOccurrence[]> arms = new IdentityHashMap<>();
+                                                    ControlPointId.ArmPoint was,
+                                                    ControlPointId.ArmPoint now) {
+        IdentityHashMap<Core, ControlPointId.ArmPoint[]> arms = new IdentityHashMap<>();
         plan.armsByNode().forEach((node, held) -> {
-            ControlPointId.ArmOccurrence[] out = held.clone();
+            ControlPointId.ArmPoint[] out = held.clone();
             for (int at = 0; at < out.length; at++) {
                 if (out[at].equals(was)) {
                     out[at] = now;
@@ -76,8 +76,8 @@ public final class Plans {
             arms.put(node, out);
         });
         return new CoverageSites.Plan(plan.sites(), plan.guards(), plan.byNode(),
-                plan.byComparison(), arms, plan.controlByComparison(), plan.mayRepeat(),
-                plan.forkByNode(), plan.comparisons(), plan.numbering());
+                plan.byComparison(), arms, plan.mayRepeat(),
+                plan.whereEachArmsForkIsWritten(), plan.comparisons(), plan.numbering());
     }
 
     /** The nodes this plan numbered arms for, which is what a test counting forks walks. */

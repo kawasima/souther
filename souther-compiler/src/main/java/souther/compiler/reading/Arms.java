@@ -45,7 +45,7 @@ final class Arms {
      * row to.
      */
     void at(Core fork, int part, Reach reach) {
-        ControlPointId.ArmOccurrence[] arms = plan.armsOf(fork);
+        ControlPointId.ArmPoint[] arms = plan.armsOf(fork);
         if (arms == null || part < 0 || part >= arms.length || arms[part] == null) {
             return;
         }

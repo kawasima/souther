@@ -90,7 +90,7 @@ public final class ProducedCases {
      * value a {@code let} binds — is not what the behavior answers with, and counting it would keep a
      * case owed because the body happened to build one on its way past.
      */
-    private static void walk(Core e, List<ControlPointId.ArmOccurrence> under,
+    private static void walk(Core e, List<ControlPointId.ArmPoint> under,
                              CoverageSites.Plan plan,
                              PathReachability.Answers arrives, Set<TypeSymbol> declared, Seen seen) {
         if (seen.anythingUnreadable) {
@@ -100,19 +100,19 @@ public final class ProducedCases {
             case Core.Unreachable _ -> { }   // answers nothing, so it produces nothing
             case Core.LetIn li -> walk(li.body(), under, plan, arrives, declared, seen);
             case Core.If iff -> {
-                ControlPointId.ArmOccurrence[] arms = plan.armsOf(iff);
+                ControlPointId.ArmPoint[] arms = plan.armsOf(iff);
                 walk(iff.then(), beneath(under, arms, 0), plan, arrives, declared, seen);
                 walk(iff.els(), beneath(under, arms, 1), plan, arrives, declared, seen);
             }
             case Core.Match m -> {
-                ControlPointId.ArmOccurrence[] arms = plan.armsOf(m);
+                ControlPointId.ArmPoint[] arms = plan.armsOf(m);
                 for (int i = 0; i < m.cases().size(); i++) {
                     walk(m.cases().get(i).body(), beneath(under, arms, i), plan, arrives, declared,
                             seen);
                 }
             }
             case Core.IfConstructed ic -> {
-                ControlPointId.ArmOccurrence[] arms = plan.armsOf(ic);
+                ControlPointId.ArmPoint[] arms = plan.armsOf(ic);
                 walk(ic.then(), beneath(under, arms, 0), plan, arrives, declared, seen);
                 for (int i = 0; i < ic.els().size(); i++) {
                     walk(ic.els().get(i).body(), beneath(under, arms, i + 1), plan, arrives,
@@ -128,7 +128,7 @@ public final class ProducedCases {
     }
 
     /** Where one producer puts the case it answers with. */
-    private static void produce(TypeSymbol built, List<ControlPointId.ArmOccurrence> under,
+    private static void produce(TypeSymbol built, List<ControlPointId.ArmPoint> under,
                                 PathReachability.Answers arrives,
                                 Set<TypeSymbol> declared, Seen seen) {
         boolean proven = under.stream().anyMatch(arm ->
@@ -153,14 +153,14 @@ public final class ProducedCases {
      * is instrumented for, and what this asks is whether anything arrives — a place with no probe
      * is a place all the same, and the reading answers about it like any other.
      */
-    private static List<ControlPointId.ArmOccurrence> beneath(
-            List<ControlPointId.ArmOccurrence> under,
-            ControlPointId.ArmOccurrence[] arms, int index) {
+    private static List<ControlPointId.ArmPoint> beneath(
+            List<ControlPointId.ArmPoint> under,
+            ControlPointId.ArmPoint[] arms, int index) {
         if (arms == null || index >= arms.length || arms[index] == null
                 || !takesAProducerAway(arms[index])) {
             return under;
         }
-        List<ControlPointId.ArmOccurrence> out = new ArrayList<>(under);
+        List<ControlPointId.ArmPoint> out = new ArrayList<>(under);
         out.add(arms[index]);
         return List.copyOf(out);
     }
@@ -179,7 +179,7 @@ public final class ProducedCases {
      * for, this would hold a place to more than what makes one: an occurrence names an origin where
      * it has one, and a reader wanting a construct is a reader that can be told there is none.
      */
-    private static boolean takesAProducerAway(ControlPointId.ArmOccurrence arm) {
+    private static boolean takesAProducerAway(ControlPointId.ArmPoint arm) {
         SourceConstructOrigin origin = arm.origin();
         if (origin == null) {
             return false;   // nothing here says what wrote it, which is not a construct either

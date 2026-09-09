@@ -26,7 +26,7 @@ import java.util.List;
  *                and it never had one — which is why a claim is judged at the control point
  */
 public record Claim(TermPath at, TypeSymbol named, List<String> reasons, SourcePos said,
-                    ControlPointId.ArmOccurrence where) {
+                    ControlPointId.ArmPoint where) {
 
     public Claim {
         reasons = List.copyOf(reasons);
