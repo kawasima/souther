@@ -97,12 +97,25 @@ interface ClauseReading<S, E> {
      */
     default S read(Core e, boolean positive, E at, ClauseScope<E> scope,
                    java.util.function.BiConsumer<Core, S> per) {
+        return read(e, positive, at, scope, per, ClauseView.whole());
+    }
+
+    /**
+     * The same, read in the world {@code view} describes rather than in the one the author wrote.
+     *
+     * <p>What a reader asking what one conjunct was holding compares against. A part outside that
+     * world is not read, is not composed with what is read, and is told to nothing: the tree walked
+     * here is the tree of the rules that world has, so honouring the omission is not something a
+     * reading is asked to remember to do.
+     */
+    default S read(Core e, boolean positive, E at, ClauseScope<E> scope,
+                   java.util.function.BiConsumer<Core, S> per, ClauseView view) {
         // The clause is named once more here, on the outside of everything its shape was written
         // as, which is where a caller holding the clause and nothing under it looks. What it came
         // to is not told to {@code per} a second time: the walk below has already said it of the
         // very same node, and a reader counting what it was told would count the whole clause
         // twice and every part of it once.
-        return from(e, over(ClauseExpr.of(e, positive), at, scope, per));
+        return from(e, over(ClauseExpr.of(e, positive), at, scope, per, view));
     }
 
     /**
@@ -114,21 +127,39 @@ interface ClauseReading<S, E> {
      * each recognised {@code &&} for themselves agreed until one of them learned something.
      */
     private S over(ClauseExpr shape, E at, ClauseScope<E> scope,
-                   java.util.function.BiConsumer<Core, S> per) {
+                   java.util.function.BiConsumer<Core, S> per, ClauseView view) {
         S out = switch (shape) {
             case ClauseExpr.Leaf it -> whole(it, at);
             // How far this reading goes is its own answer, and taking the connective whole is
             // reading the node an author wrote it at as a part. A reading told to descend and
             // unable to compose what it found had nowhere to say so.
+            //
+            // A reading that takes a conjunction whole reads whatever is under it, this world's
+            // omissions included: what it composes is not the clause's connective, so there is no
+            // side for a part to be left out of. Which is why the omission is answered where the
+            // reading descends and nowhere else.
             case ClauseExpr.Joined it -> switch (at(it)) {
                 case Descent.Whole<S> _ -> whole(it, at);
-                case Descent.Into<S> into -> into.compose().apply(
-                        over(it.left(), at, scope, per), over(it.right(), at, scope, per));
+                // A side holding no rule of this world is not read and not composed with. What a
+                // conjunction of one rule and no rule comes to is that rule, and reading the
+                // missing side as a state saying nothing would be the same answer arrived at by
+                // having read a rule that is not there — which a walk collecting parts, and every
+                // account made of one, can tell apart.
+                case Descent.Into<S> into -> {
+                    if (view.omits(it.left())) {
+                        yield over(it.right(), at, scope, per, view);
+                    }
+                    if (view.omits(it.right())) {
+                        yield over(it.left(), at, scope, per, view);
+                    }
+                    yield into.compose().apply(over(it.left(), at, scope, per, view),
+                            over(it.right(), at, scope, per, view));
+                }
             };
             // The one place the environment changes, and it changes for what is under the binding
             // alone. What the binding means is not worked out here and not by the reading either.
             case ClauseExpr.Scoped it ->
-                    over(it.body(), scope.inside(it.binding(), at), scope, per);
+                    over(it.body(), scope.inside(it.binding(), at), scope, per, view);
         };
         // Every node that was written as this shape, so a reader asking about the node it is
         // holding finds what this made of it — the denial as well as what is under it, since the

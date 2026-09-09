@@ -517,13 +517,25 @@ sealed interface StatedByClauses {
      * of every node an author wrote.
      */
     static boolean mirrors(Core clause, StatedByClauses read) {
+        return mirrors(clause, read, ClauseView.whole());
+    }
+
+    /**
+     * The same of a reading made in the world {@code view} describes.
+     *
+     * <p>The tree that world holds, which is the author's with the parts it leaves out gone and
+     * every other node where the author put it. What a conjunction of one rule and no rule was read
+     * as is that rule, so the node above it stands over what is left rather than over a state
+     * standing in for what is not there.
+     */
+    static boolean mirrors(Core clause, StatedByClauses read, ClauseView view) {
         // The fold names the clause once as it starts and again as the shape of it is finished, so
         // the outermost of these is the one the caller put there.
         return read instanceof CameFrom it && it.node() == clause
-                && mirrors(ClauseExpr.of(clause, true), it.of());
+                && mirrors(ClauseExpr.of(clause, true), it.of(), view);
     }
 
-    private static boolean mirrors(ClauseExpr shape, StatedByClauses read) {
+    private static boolean mirrors(ClauseExpr shape, StatedByClauses read, ClauseView view) {
         StatedByClauses under = read;
         // Every node the shape was spelled as, innermost first: that is the order the fold wrapped
         // them in, and a reading that recorded a part anywhere else is one this does not accept.
@@ -536,14 +548,24 @@ sealed interface StatedByClauses {
         }
         return switch (shape) {
             case ClauseExpr.Leaf _ -> under instanceof Said;
-            case ClauseExpr.Scoped it -> mirrors(it.body(), under);
+            case ClauseExpr.Scoped it -> mirrors(it.body(), under, view);
             case ClauseExpr.Joined it -> switch (it.how()) {
-                case BOTH -> under instanceof Both both
-                        && mirrors(it.left(), both.left())
-                        && mirrors(it.right(), both.right());
+                case BOTH -> {
+                    // A side this world holds no rule of was never read, so what stands here is
+                    // the other side and not a conjunction of it with anything.
+                    if (view.omits(it.left())) {
+                        yield mirrors(it.right(), under, view);
+                    }
+                    if (view.omits(it.right())) {
+                        yield mirrors(it.left(), under, view);
+                    }
+                    yield under instanceof Both both
+                            && mirrors(it.left(), both.left(), view)
+                            && mirrors(it.right(), both.right(), view);
+                }
                 case EITHER -> under instanceof Either choice && choice.writtenAt() == it.of()
-                        && mirrors(it.left(), choice.left())
-                        && mirrors(it.right(), choice.right());
+                        && mirrors(it.left(), choice.left(), view)
+                        && mirrors(it.right(), choice.right(), view);
             };
         };
     }
@@ -1492,12 +1514,22 @@ sealed interface StatedByClauses {
         /** One clause read from {@code at}, with the parts of it noted in the order the reading
          *  reached them. */
         StatedByClauses read(Reading reader, Denotations at, K key, Core clause) {
+            return read(reader, at, key, clause, ClauseView.whole());
+        }
+
+        /** The same, read in the world {@code view} describes — see {@link ClauseView}. */
+        StatedByClauses read(Reading reader, Denotations at, K key, Core clause, ClauseView view) {
             List<Core> parts = new ArrayList<>();
             StatedByClauses one = reader.read(clause, true, at, reader.scope(),
-                    (part, _) -> parts.add(part));
+                    (part, _) -> parts.add(part), view);
             // An assertion because it is about this compiler and not about any model, and here
             // rather than in one test because every clause a corpus holds is read through it.
-            assert mirrors(clause, one)
+            //
+            // Asked of the tree this world holds and not of the one the author wrote. A part left
+            // out of the world is left out of the reading, so the two differ by exactly what the
+            // view says — and an assertion kept against the written tree would have to be weakened
+            // to a shape it no longer states.
+            assert mirrors(clause, one, view)
                     : "the reading of a clause is not the tree its author wrote it as";
             byClause.put(key, clause);
             byPart.put(key, parts);

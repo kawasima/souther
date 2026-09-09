@@ -78,7 +78,8 @@ public final class FieldDomains {
                     ConstraintState.<FactSubject>top(), null, null, null, null, Map.of(),
                     Set.of(RuleKey.THE_VALUE),
                     Map.of(), Map.of(), Map.of(), Map.of(), StringFacts.NONE, KnownExtents.NONE,
-                    Map.of(), Map.of(), BoundaryState.nothing());
+                    Map.of(), Map.of(), BoundaryState.nothing(),
+                    SettledOrderEnvelope.nothing());
 
     private final Map<RuleKey, NumericDomain.Bounds> byName;
     /** The ends the record's own clauses place, which is a different question from the range they
@@ -129,6 +130,16 @@ public final class FieldDomains {
      * rules admit.
      */
     private final BoundaryState derived;
+    /**
+     * And where the same reading left the positions themselves, which the interval algebra cannot
+     * reach for the same reason ({@link SettledOrderEnvelope}).
+     *
+     * <p>The two are one arrangement asked of two kinds of number, and which of them answers is
+     * decided by the number and never by the caller: a position's own order is settled where the
+     * branches have their fate and a count's is settled beside it, so each kind has one reader
+     * holding it and {@link #leftAt} picks between them off the coordinate it was handed.
+     */
+    private final SettledOrderEnvelope settledOrder;
     /** Which choice an author is sent to for a line on one of those numbers that nothing placed —
      *  see {@link #endsLeftOpenAt}. */
     private final Map<RuleRef.Invariant, Map<OpenEnd, EndsLeftOpen.Behind>> boundsLeftOpen;
@@ -254,10 +265,11 @@ public final class FieldDomains {
                          Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen,
                          Map<RuleRef.Invariant, Map<OpenEnd, EndsLeftOpen.Behind>>
                                  boundsLeftOpen,
-                         BoundaryState derived) {
+                         BoundaryState derived, SettledOrderEnvelope settledOrder) {
         this.endsLeftOpen = endsLeftOpen;
         this.boundsLeftOpen = boundsLeftOpen;
         this.derived = derived;
+        this.settledOrder = settledOrder;
         this.stringMachines = stringMachines;
         this.known = known;
         this.byName = byName;
@@ -486,7 +498,8 @@ public final class FieldDomains {
                 seeded.constraints(), named, data, source, policy, settled,
                 seeded.unreadOfEveryValue(), seeded.atoms(), seeded.held(),
                 seeded.readBy(), seeded.spacing(), seeded.stringMachines(), machines.extents(),
-                seeded.endsLeftOpen(), seeded.boundsLeftOpen(), seeded.derived());
+                seeded.endsLeftOpen(), seeded.boundsLeftOpen(), seeded.derived(),
+                seeded.settledOrder());
     }
 
     /**
@@ -1909,28 +1922,55 @@ public final class FieldDomains {
         // `String` is measured two ways — its own order, and the length of it — and answering with
         // the wrong one clamps a line drawn on one axis by the range of the other.
         FactSubject atom = subjectAt(path, kind);
+        OrderedInterval settled = settledAt(path, kind);
+        // A position ordered on something the interval algebra has no words for is at no atom of
+        // its own, and the rules stop it all the same: what a choice of two bounds on a string
+        // leaves is settled by the reading that composes the connectives, and where there is no
+        // algebra to meet with, that answer is the whole of what is known. Null still where
+        // neither reading has anything, which is what a caller reads as a number no range is taken
+        // of here.
         if (atom == null) {
-            return null;
+            return settled == null ? null
+                    : new NumericDomain.Bounds(settled.low(), settled.high());
         }
         NumericDomain.Bounds held = constraints.numbers().boundsOf(atom);
-        // Nothing to meet where no choice settled a number of this value, which is most of them.
-        // Asked all the same, every lookup of every coordinate builds a subject to find nothing
-        // under, and this one is asked once per candidate per counterfactual.
-        if (derived.byNumber().isEmpty()) {
-            return held;
-        }
         // And what the choices leave it, which the algebra has no way to: it reads a clause as
-        // written and never enters an alternative, so a length bounded in both branches of a
+        // written and never enters an alternative, so a number bounded in both branches of a
         // choice comes back from it unbounded. Met rather than preferred — the two are readings of
         // the same rules and each holds what the other cannot.
         //
-        // And nothing where that reading stops the number nowhere a value of it is: what has been
-        // read there is that the rules contradict, which is said by whoever answers whether a
-        // value exists, and a line off those ends would fall where the order does not reach.
-        DerivedNumber number = DerivedNumber.of(new NumberAt<>(path, kind));
-        OrderedInterval settled = number == null ? null : derived.knownAt(number);
+        // Which of the two readings holds that answer is decided by the number and not here. A
+        // position's own order is settled where the branches have their fate and a count's is
+        // settled beside it, so each kind has one reader holding it: asked of one of them for both,
+        // whichever kind that reader has no word for comes back from the algebra alone, which is
+        // what left a bound written under a choice out of every line this compiler draws.
         return settled == null ? held
                 : held.meet(new NumericDomain.Bounds(settled.low(), settled.high()));
+    }
+
+    /**
+     * Where the reading that composed this value's connectives stops one of its numbers, or null
+     * where no line may be drawn on it.
+     *
+     * <p>Null for a number no rule spoke of and for one the rules leave no value at, which are the
+     * two neither reader writes down: the first runs as far as it ever did, and what has been read
+     * in the second is that the rules contradict — which is said by whoever answers whether a value
+     * exists, and a line off those ends would fall where the order does not reach.
+     */
+    private OrderedInterval settledAt(RuleKey path, NumberAt.OfWhatNumber kind) {
+        return switch (kind) {
+            case NumberAt.OfWhatNumber.OfItsOwnValue _ -> settledOrder.knownAt(path);
+            case NumberAt.OfWhatNumber.OfWhatAnOperationAnswers _ -> {
+                // Nothing to look for where no choice settled a number of this value, which is most
+                // of them. Asked all the same, every lookup builds a number to find nothing under,
+                // and this one is asked once per candidate per counterfactual.
+                if (derived.byNumber().isEmpty()) {
+                    yield null;
+                }
+                DerivedNumber number = DerivedNumber.of(new NumberAt<>(path, kind));
+                yield number == null ? null : derived.knownAt(number);
+            }
+        };
     }
 
     /**

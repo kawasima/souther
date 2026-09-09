@@ -496,7 +496,7 @@ public final class InvariantChecker {
                   StringFacts stringMachines,
                   Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen,
                   Map<RuleRef.Invariant, Map<OpenEnd, EndsLeftOpen.Behind>> boundsLeftOpen,
-                  BoundaryState derived) {
+                  BoundaryState derived, SettledOrderEnvelope settledOrder) {
 
         /** The atom each count is recorded against, for a reader that wants the subject and not
          *  which operation it is a count of. Projected rather than kept beside {@link #held()}: two
@@ -950,7 +950,18 @@ public final class InvariantChecker {
         // where its clauses landed in a table.
         StatedByClauses.Asked<Written> asked = new StatedByClauses.Asked<>();
         for (Written each : written) {
-            asked.read(reader, at, each, each.clause());
+            // The rules of this world and not the ones the author wrote. A reader asking what one
+            // conjunct was holding compares two readings of this declaration, and they are two
+            // readings of one world unless the conjunct is out of both — which is what left a
+            // choice composed the same way with the conjunct and without it, so that every end it
+            // was holding came back held by nobody.
+            ClauseView view = ClauseView.of(each.parts(), reach.withoutParts());
+            // And a clause this world holds no part of is no rule of it. Read as one, the reading
+            // would compose a tree of nothing at all, which is not the shape a clause has.
+            if (view.omits(ClauseExpr.of(each.clause(), true))) {
+                continue;
+            }
+            asked.read(reader, at, each, each.clause(), view);
         }
         // And now that every rule about this value has been said, what its positions admit is
         // worked out — and with it what each clause and each part of it took in, since a branch
@@ -1119,7 +1130,12 @@ public final class InvariantChecker {
                 // taken from the reading with the choices settled. The interval algebra never
                 // enters an alternative, so this is the one answer that says where a choice of two
                 // bounds on a length stops it.
-                answered.whole().confinement().derived());
+                answered.whole().confinement().derived(),
+                // And the same of the positions themselves, which the same reading settled and
+                // nothing carried out of it. Both names each position answers to, because a clause
+                // is filed under whichever the reading that read it recognised — asked of one, what
+                // a choice left a position would turn on how the rule was spelled.
+                answered.whole().confinement().envelopeOver(aliasesOf(atoms, keys)));
     }
 
     /**
@@ -1157,6 +1173,21 @@ public final class InvariantChecker {
             names.add(key);
         }
         return names;
+    }
+
+    /**
+     * Every name every position of this value answers to, keyed by the position.
+     *
+     * <p>The names alone, and never a count's. What a count is is a number taken of what stands at
+     * a name, and where it stops is settled by a reading of its own ({@link BoundaryState}) — put
+     * in here, one path would carry two orders and whichever was met last would be the one a line
+     * was drawn from.
+     */
+    private static Map<RuleKey, List<FactSubject>> aliasesOf(Map<RuleKey, FactSubject> atoms,
+                                                             Map<RuleKey, FactSubject> keys) {
+        Map<RuleKey, List<FactSubject>> out = new LinkedHashMap<>();
+        written(atoms, keys).forEach(path -> out.put(path, named(atoms, keys, path)));
+        return out;
     }
 
     /** The atom of a count that may not be there, which every lookup of one wants. */
@@ -2218,10 +2249,19 @@ public final class InvariantChecker {
             return BETWEEN;
         }
         return switch (canonicalFormOf(read, at, byName)) {
-            // The walk stopped inside a side, so which number the rule stops the values on is what
-            // reading further would say — and every number the leaf writes about is one waiting on
-            // that reading, the numbers an operation answers among them.
-            case CanonicalForm.NotRead _ -> ELSEWHERE;
+            // The walk stopped inside a side. Where one whole side is a position and the other
+            // names none, the line is on that position and the arithmetic stopping says nothing
+            // about it: what it could not read is an order it has no words for, and a rule holding
+            // a string or a case of an enumeration against a constant states where those values
+            // stop as plainly as a bound on a number does.
+            //
+            // Anywhere else, which number the rule stops the values on is what reading further
+            // would say — and every number the leaf writes about is one waiting on that reading,
+            // the numbers an operation answers among them.
+            case CanonicalForm.NotRead _ -> {
+                Coordinate against = heldAgainstAConstant(bin, at, byName);
+                yield against == null ? ELSEWHERE : statedOn(against);
+            }
             // The positions cancelled, and what is left is a number against a number. Read as
             // written, which is what the residue is a residue of: under a denial the same form
             // states the opposite of what it reads as, and both answers are here.
@@ -2233,6 +2273,33 @@ public final class InvariantChecker {
             case CanonicalForm.Over over -> over.numbers().size() == 1
                     ? statedOn(over.numbers().iterator().next()) : ELSEWHERE;
         };
+    }
+
+    /**
+     * The position one whole side of {@code bin} is, where the other side names none, or null
+     * where the comparison is not of that shape.
+     *
+     * <p>The one shape the arithmetic answers nothing about and a line still falls on. Asked of the
+     * two sides whole, which is the same question {@link Relates#twoPositions} asks and the answer
+     * it did not have a use for: a comparison naming one position and holding it against something
+     * with no position in it stops that position's values, whatever the order is made of.
+     *
+     * <p>Reached only where the form was not read. A comparison the arithmetic followed is
+     * classified by what it followed to, so this adds no second answer to a question that has one —
+     * it answers where the first reading said it had none, and it says a number rather than a
+     * narrower one.
+     */
+    private Coordinate heldAgainstAConstant(Core.Binary bin, Denotations at,
+                                            Map<FactSubject, Coordinate> byName) {
+        Coordinate left = byName.get(nameOf(bin.left(), at));
+        Coordinate right = byName.get(nameOf(bin.right(), at));
+        if (left != null && right == null && coordinatesIn(bin.right(), at, byName).isEmpty()) {
+            return left;
+        }
+        if (right != null && left == null && coordinatesIn(bin.left(), at, byName).isEmpty()) {
+            return right;
+        }
+        return null;
     }
 
     /** Which of the two a line on {@code number} is, said by the number itself. */
