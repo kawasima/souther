@@ -52,6 +52,50 @@ sealed interface ClauseExpr {
     List<Core> spelled();
 
     /**
+     * Which occurrence of the clause's structure this is, as the one reading of that structure
+     * issued it.
+     *
+     * <p>What a reader files an answer about this shape under. Two shapes of one clause are two of
+     * these and are told apart by being different occurrences, which is what the nodes were doing
+     * before: a reader that keyed an answer by the tree node held an address only for as long as
+     * every reader was handed the very same objects, and what a clause states is the same clause
+     * however many trees were built to say it.
+     *
+     * <p>Issued here because this is where the structure is decided. A reader that numbered the
+     * occurrences for itself would be a second answer to how many there are, and two answers to
+     * that is what reading the connectives twice came to.
+     */
+    Occurrence at();
+
+    /**
+     * One occurrence of a clause's structure, counted from the outside in.
+     *
+     * <p>A position among the occurrences of one clause and not a name, so it means something only
+     * beside the clause it is of — two clauses each have an occurrence numbered nought, and they
+     * are two occurrences. What pairs it with the clause is the reader's, which holds the rule and
+     * the part it is reading.
+     *
+     * <p>Independent of how the clause stands. A denial changes what a connective composes and
+     * changes nothing about which occurrences there are, so a clause read as stated and the same
+     * clause read as denied number their occurrences alike — and an answer filed about one is an
+     * answer about the other.
+     */
+    record Occurrence(int ordinal) {
+
+        public Occurrence {
+            if (ordinal < 0) {
+                throw new IllegalArgumentException(
+                        "an occurrence of a clause is counted from zero: " + ordinal);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return "#" + ordinal;
+        }
+    }
+
+    /**
      * Whether what this stands for is stated, or denied where it is not.
      *
      * <p>On every shape and not on the leaves alone. A denial is carried to the leaves, so a reader
@@ -95,7 +139,7 @@ sealed interface ClauseExpr {
     }
 
     /** One part of no connective, stated where {@code positive} and denied where it is not. */
-    record Leaf(List<Core> spelled, boolean positive) implements Part {
+    record Leaf(List<Core> spelled, boolean positive, Occurrence at) implements Part {
 
         public Leaf {
             spelled = named(spelled);
@@ -117,8 +161,8 @@ sealed interface ClauseExpr {
      *            stands are two answers: a choice denied composes both of its parts denied, so
      *            {@code BOTH} beside {@code positive} being false is a choice and not a conjunction
      */
-    record Joined(List<Core> spelled, boolean positive, ConditionJoin how, ClauseExpr left,
-                  ClauseExpr right) implements Part {
+    record Joined(List<Core> spelled, boolean positive, Occurrence at, ConditionJoin how,
+                  ClauseExpr left, ClauseExpr right) implements Part {
 
         public Joined {
             spelled = named(spelled);
@@ -163,8 +207,8 @@ sealed interface ClauseExpr {
      * @param binding the binding as the tree holds it, which the fold hands to {@link ClauseScope}
      *                — the shape says a binding stands here, and what it means is settled elsewhere
      */
-    record Scoped(List<Core> spelled, boolean positive, Core.LetIn binding, ClauseExpr body)
-            implements ClauseExpr {
+    record Scoped(List<Core> spelled, boolean positive, Occurrence at, Core.LetIn binding,
+                  ClauseExpr body) implements ClauseExpr {
 
         public Scoped {
             spelled = named(spelled);
@@ -186,19 +230,35 @@ sealed interface ClauseExpr {
      * connectives is the language's.
      */
     static ClauseExpr of(Core clause, boolean positive) {
-        return of(clause, positive, List.of());
+        return under(clause, positive, new int[1]);
     }
 
-    private static ClauseExpr of(Core clause, boolean positive, List<Core> above) {
+    /**
+     * One shape and the occurrences under it, taking the next number for itself before its parts
+     * take theirs.
+     *
+     * <p>The outside in, and the left of a connective before its right, which is the order a
+     * clause is written in. What decides the order is the structure alone: which occurrences there
+     * are is settled by the tree and by nothing about how it stands, so the same clause read as
+     * stated and read as denied hands out the same numbers.
+     */
+    private static ClauseExpr under(Core clause, boolean positive, int[] counted) {
+        return of(clause, positive, List.of(), new Occurrence(counted[0]++), counted);
+    }
+
+    private static ClauseExpr of(Core clause, boolean positive, List<Core> above, Occurrence at,
+                                 int[] counted) {
         List<Core> spelled = new ArrayList<>(above);
         spelled.add(clause);
         // The scope first, so that what is read under it is read in the environment its names mean
         // something in. Everything below — a denial, a connective, a leaf — is then the same rule
         // written out, and a helper whose body denies or joins is this one rule and not another.
         if (clause instanceof Core.LetIn let) {
-            return new Scoped(spelled, positive, let, of(let.body(), positive, List.of()));
+            return new Scoped(spelled, positive, at, let, under(let.body(), positive, counted));
         }
-        ClauseExpr restated = restating(clause, positive, spelled);
+        // A restatement is this shape said another way, so it keeps this occurrence rather than
+        // taking one of its own: a reader holding either spelling is holding one thing.
+        ClauseExpr restated = restating(clause, positive, spelled, at, counted);
         if (restated != null) {
             return restated;
         }
@@ -209,11 +269,12 @@ sealed interface ClauseExpr {
             ConditionJoin joined = ConditionJoin.of(bin.op()).map(one -> one.under(positive))
                     .orElse(null);
             if (joined != null) {
-                return new Joined(spelled, positive, joined, of(bin.left(), positive, List.of()),
-                        of(bin.right(), positive, List.of()));
+                return new Joined(spelled, positive, at, joined,
+                        under(bin.left(), positive, counted),
+                        under(bin.right(), positive, counted));
             }
         }
-        return new Leaf(spelled, positive);
+        return new Leaf(spelled, positive, at);
     }
 
     /**
@@ -242,17 +303,18 @@ sealed interface ClauseExpr {
      * polarity, so {@code not (p == false)} and {@code p} arrive as the same pair — and a reader
      * that learned one spelling at a time would answer for the ones somebody had got to.
      */
-    private static ClauseExpr restating(Core clause, boolean positive, List<Core> spelled) {
+    private static ClauseExpr restating(Core clause, boolean positive, List<Core> spelled,
+                                        Occurrence at, int[] counted) {
         if (clause instanceof Core.PreservedCall call && call.operation().equals(DischargeRules.NOT)
                 && call.args().size() == 1) {
-            return of(call.args().get(0), !positive, spelled);
+            return of(call.args().get(0), !positive, spelled, at, counted);
         }
         if (clause instanceof Core.If iff
                 && iff.then() instanceof Core.Bool t && !t.value()
                 && iff.els() instanceof Core.Bool f && f.value()) {
-            return of(iff.cond(), !positive, spelled);
+            return of(iff.cond(), !positive, spelled, at, counted);
         }
-        return againstATruthValue(clause, positive, spelled);
+        return againstATruthValue(clause, positive, spelled, at, counted);
     }
 
     /**
@@ -265,16 +327,16 @@ sealed interface ClauseExpr {
      * added.
      */
     private static ClauseExpr againstATruthValue(Core clause, boolean positive,
-                                                 List<Core> spelled) {
+                                                 List<Core> spelled, Occurrence at, int[] counted) {
         if (!(clause instanceof Core.Binary bin)
                 || (bin.op() != BinOp.EQ && bin.op() != BinOp.NE)) {
             return null;
         }
         boolean holds = bin.op() == BinOp.EQ;
         if (bin.right() instanceof Core.Bool truth) {
-            return of(bin.left(), (truth.value() != holds) != positive, spelled);
+            return of(bin.left(), (truth.value() != holds) != positive, spelled, at, counted);
         }
         return bin.left() instanceof Core.Bool truth
-                ? of(bin.right(), (truth.value() != holds) != positive, spelled) : null;
+                ? of(bin.right(), (truth.value() != holds) != positive, spelled, at, counted) : null;
     }
 }
