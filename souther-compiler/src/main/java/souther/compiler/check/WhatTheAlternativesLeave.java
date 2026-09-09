@@ -21,23 +21,30 @@ import java.util.Set;
  * choice beside such a branch was told that the branch holds the position down, and a rule with two
  * bounds covering the order was credited with a line nobody draws.
  *
- * <p><b>A may in every set, and the fact a reader spends is that it is not a member.</b> The same
- * written choice stands wherever a conjunction beside it was distributed in, and one copy can hold
- * a position down where another leaves it alone. Each reader here acts on a negative — that the
- * branch leaves the position at every value, or that the choice stops it — and a negative has to
- * hold of every copy, so the copies are taken in by union ({@link #alsoSeen}). Kept the other way
- * round, as what every copy did, a position one copy left alone would be published as one the
- * branch leaves alone everywhere.
+ * <p><b>Two facts of two strengths, and each is taken in the way its own reader spends it.</b> The
+ * same written choice stands wherever a conjunction beside it was distributed in, and one copy can
+ * hold a position down where another leaves it alone — so what the copies come to is a quantifier,
+ * and it is not the same quantifier for both facts.
  *
- * <p>Union is associative, commutative and idempotent, which is what keeps the order the copies
+ * <p>What a branch holds down is a may. Its reader spends the absence — that the branch leaves the
+ * position at every value — and an absence has to hold of every copy, so a position any copy held
+ * down is kept and the copies are joined. What the choice stops is a must. That reader spends the
+ * presence, so a position is kept only where every copy stopped it, and the copies are met: a copy
+ * that leaves the position whole is a copy where the choice does not stop it. Either rule used for
+ * the other fact publishes what no copy showed.
+ *
+ * <p>A copy that was no choice is the identity of both, which is what {@link #fromAChoice} carries.
+ * It is not a copy that held nothing down and stopped nothing: nothing there was looked at, and met
+ * as though it had been it would take back what every copy beside it showed.
+ *
+ * <p>Both are associative, commutative and idempotent, which is what keeps the order the copies
  * were met in out of the answer.
  *
- * <p><b>No reader's answer turns on that yet.</b> Copies that disagree are reached — compiling this
- * repository's own corpus meets them — and keeping either copy alone rather than both leaves every
- * other test there is passing. So the rule is pinned on this type
+ * <p><b>Which copy disagrees with which is reached, and no model turns on it yet.</b> Compiling
+ * this repository's own corpus meets copies that differ over what the choice stops, and no reader's
+ * published answer changes with them. So the two quantifiers are pinned on this type
  * ({@code WhatOneCopyOfAChoiceLeavesIsNotWhatTheChoiceLeavesTest}) rather than through a model, and
- * what settles the direction is which way a reader can be wrong: publishing a copy's own answer for
- * the choice says a position is stopped where a copy beside it draws no line.
+ * what settles each direction is which way its reader can be wrong.
  *
  * <p><b>Of where the orders stop and of nothing else.</b> What a set of values leaves a position is
  * a different question with a different word for "every value", and the reading that asks it

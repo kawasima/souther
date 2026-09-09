@@ -21,15 +21,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>The same written choice stands wherever a conjunction beside it was distributed in, and the
  * copies do not agree: a conjunct met with one copy can hold a position down where the copy beside
- * it leaves all of it. Every reader here acts on a negative — that a branch leaves the position at
- * every value, or that the choice stops it — so what is published has to be what any copy found,
- * and a reader takes the absence of it.
+ * it leaves all of it. So what the copies come to is a quantifier — and the two facts here are held
+ * to different ones, because their readers spend opposite sides of a set.
  *
- * <p><b>Which the readers do not distinguish today, and that is why the rule is pinned here.</b>
- * The state is reached: compiling this repository's own corpus meets copies that differ over what
- * the choice leaves whole. What no model reaches yet is a reader whose answer turns on it, so
- * keeping either copy alone passes every other test there is — and the direction is not a
- * preference, since keeping the copies apart is what publishes a line nobody draws.
+ * <p>What a branch holds down is spent as an absence, so it has to hold of every copy and the
+ * copies are joined. What the choice stops is spent as a presence, so it has to have been shown by
+ * every copy and the copies are met. And a copy that was no choice is the identity of both: nothing
+ * there was looked at, which is not the same as a copy that was looked at and found nothing.
+ *
+ * <p><b>Which no model distinguishes today, and that is why the rules are pinned here.</b> The
+ * state is reached: compiling this repository's own corpus meets copies that differ over what the
+ * choice stops. What no model reaches yet is a reader whose published answer turns on it, so
+ * keeping either copy alone passes every other test there is — and neither direction is a
+ * preference, since each is the one its own reader cannot be wrong in.
  */
 class WhatOneCopyOfAChoiceLeavesIsNotWhatTheChoiceLeavesTest {
 
