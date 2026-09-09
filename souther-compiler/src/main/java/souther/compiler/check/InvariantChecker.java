@@ -488,7 +488,7 @@ public final class InvariantChecker {
                   Map<RuleKey, FieldDomains.Counted> held, Reading reading, ReadingEvidence took,
                   boolean everyClauseRead, Map<RuleKey, Set<RulesMissed>> notGathered,
                   Set<RuleKey> unreadOfEveryValue, Set<RuleKey> handedOn,
-                  Map<RuleRef.Invariant, Map<Core, PartRead>> readBy,
+                  List<Written> readings,
                   Map<FactSubject, souther.compiler.numeric.Granularity> spacing,
                   Map<RuleKey, ValueSet> admitted,
                   Map<RuleKey, List<UnreadReason>> unreadAt,
@@ -525,19 +525,17 @@ public final class InvariantChecker {
         }
 
         public Seeded {
-            // Insertion order, for the reason `readBy` keeps it: what is read off this is a list of
-            // causes a report prints, and the causes at one position are printed in the order the
-            // reading met them.
+            // Insertion order: what is read off this is a list of causes a report prints, and the
+            // causes at one position are printed in the order the reading met them.
             Map<RuleKey, Set<RulesMissed>> missed = new LinkedHashMap<>();
             notGathered.forEach((path, why) -> missed.put(path,
                     Collections.unmodifiableSet(new LinkedHashSet<>(why))));
             notGathered = Collections.unmodifiableMap(missed);
             unreadOfEveryValue = Set.copyOf(unreadOfEveryValue);
             handedOn = Set.copyOf(handedOn);
-            // Insertion order, which is the order the declarations write their clauses. `Map.copyOf`
-            // iterates in an order salted once per JVM run, and what is read off these is a list of
-            // causes a report prints.
-            readBy = Collections.unmodifiableMap(new LinkedHashMap<>(readBy));
+            // In the order the readings were made, which is the order the declarations write their
+            // clauses: what is read off these is a list of causes a report prints.
+            readings = List.copyOf(readings);
             // In the order the declaration writes its names, for the reason above: what is read off
             // these is what a report says about each place, and a walk over a salted order would
             // list them by a rule of this JVM run's.
@@ -779,14 +777,15 @@ public final class InvariantChecker {
         // Per part, because a rule is represented where every part of it is: a conjunct the bounds
         // hold nothing of leaves the range wider than the rule however well the conjunct beside it
         // went, and a set unioned over the whole clause says the opposite.
-        Map<RuleRef.Invariant, Map<Core, PartRead>> readBy = new LinkedHashMap<>();
-
         Gathering gathering = new Gathering() {
 
             @Override
             public void gathered(RuleRef.Invariant from, Core clause,
-                                 List<Clauses.StatedPart> parts, Set<FactSubject> spokenFor) {
-                written.add(Written.of(clause, parts, reach.withoutParts()));
+                                 List<Clauses.StatedPart> parts,
+                                 Map<PartId<RuleRef.Invariant>,
+                                         Map<ClauseExpr.Occurrence, PartAsRead>> constrained,
+                                 Set<FactSubject> spokenFor) {
+                written.add(Written.of(clause, parts, reach.withoutParts(), constrained));
                 spokenFor.forEach(spoken -> took.record(from, spoken));
             }
 
@@ -803,11 +802,6 @@ public final class InvariantChecker {
                 handedOn.add(path);
             }
 
-            @Override
-            public void constrained(RuleRef.Invariant rule, Core part, PartRead read) {
-                readBy.computeIfAbsent(rule, _ -> new java.util.IdentityHashMap<>())
-                        .put(part, read);
-            }
         };
         // Not read at all, which is a question about this position and is asked once.
         boolean opened = !reach.stopAt().test(named);
@@ -848,18 +842,27 @@ public final class InvariantChecker {
             }
             // The clause as one reading, and the parts its author wrote as subtrees of it. Which
             // parts there are was settled where the clause was split; nothing here decides it.
-            Written wrote = Written.of(stated, declared.shape().onto(stated, origin),
-                    reach.withoutParts());
-            written.add(wrote);
+            ClauseView view =
+                    reach.withoutParts().viewOf(declared.shape().onto(stated, origin));
             // A part at a time, and the ones this world holds. Which parts a clause has was settled
             // where it was split, so a part left out is one left out of the list — never a node a
             // walk was told to step over.
+            //
+            // What this reading makes of each occurrence is kept beside the reading rather than
+            // written into a table every reading shares: a clause is read once per place the walk
+            // opens a value at, and a table holding all of them together has nothing to say which
+            // reading an entry came from.
+            Map<PartId<RuleRef.Invariant>, Map<ClauseExpr.Occurrence, PartAsRead>> constrained =
+                    new LinkedHashMap<>();
             Predicates.Owed owed = null;
-            for (Clauses.StatedPart part : wrote.parts()) {
+            for (Clauses.StatedPart part : view.present()) {
                 Predicates.Owed said = c.predicates.assumed(part.expr(), at, false,
-                        (of, came) -> gathering.constrained(origin, of, partRead(came)));
+                        (of, _, came) -> constrained
+                                .computeIfAbsent(part.id(), _ -> new LinkedHashMap<>())
+                                .put(of.at(), new PartAsRead(of, partRead(came))));
                 owed = owed == null ? said : owed.and(said);
             }
+            written.add(new Written(stated, view, constrained));
             if (owed == null) {
                 owed = Predicates.Owed.unread();
             }
@@ -1030,7 +1033,7 @@ public final class InvariantChecker {
         // And which of the clauses place an edge, asked once the positions have names to be
         // recognised by.
         Reading reading = c.directsIn(written, at, numbers, typeAt, took,
-                new PartsRead(readBy, adoptedBy, narrowedBy));
+                new PartsRead(adoptedBy, narrowedBy));
         ConstraintState<FactSubject> constraints = k.constraints()
                 .takingRead(answered.whole().confinement(), allowed, c.answers);
         // How each atom's values are spaced, kept so that settling one afterwards states the
@@ -1123,7 +1126,7 @@ public final class InvariantChecker {
         }
         return new Seeded(constraints, atoms, keys, held, reading, took, read,
                 notGathered, unreadOfEveryValue, Set.copyOf(handedOn),
-                readBy, Map.copyOf(spacing), admitted, unreadAt, notSeparated,
+                written, Map.copyOf(spacing), admitted, unreadAt, notSeparated,
                 c.answers.facts(),
                 Collections.unmodifiableMap(new LinkedHashMap<>(endsLeftOpen)),
                 Collections.unmodifiableMap(new LinkedHashMap<>(boundsLeftOpen)),
@@ -1355,14 +1358,39 @@ public final class InvariantChecker {
      * a line drawn on a position is attributed to, and each of them is a subtree of that same
      * reading — carrying which part of the clause it is, settled where the clause was split.
      */
-    private record Written(Core clause, ClauseView view) {
+    record Written(Core clause, ClauseView view,
+                   Map<PartId<RuleRef.Invariant>, Map<ClauseExpr.Occurrence, PartAsRead>>
+                           constrained) {
 
-        /** The clause {@code authored} was written in, as {@code world} holds it. */
-        static Written of(Core clause, List<Clauses.StatedPart> authored, PartsLeftOut world) {
+        Written {
+            constrained = Map.copyOf(constrained);
+        }
+
+        /** The clause {@code authored} was written in, as {@code world} holds it, with what the
+         *  reading that built it made of each occurrence of each part it holds. */
+        static Written of(Core clause, List<Clauses.StatedPart> authored, PartsLeftOut world,
+                          Map<PartId<RuleRef.Invariant>,
+                                  Map<ClauseExpr.Occurrence, PartAsRead>> constrained) {
             if (authored.isEmpty()) {
                 throw new IllegalArgumentException("a clause reaching a value is written in parts");
             }
-            return new Written(clause, world.viewOf(authored));
+            return new Written(clause, world.viewOf(authored), constrained);
+        }
+
+        /**
+         * What the reading that built this made of one occurrence of one of its parts, or null
+         * where it read no such occurrence — which is not the same as having read it and made
+         * nothing of it.
+         *
+         * <p>Held by the reading that made it rather than looked up in a table every reading
+         * writes into. A clause is read once per place the walk opens a value at, so a table
+         * holding all of them together has to say which reading each entry came from — and the
+         * only thing that said so was which objects a substitution happened to allocate.
+         */
+        PartRead read(PartId<RuleRef.Invariant> part, ClauseExpr.Occurrence at) {
+            Map<ClauseExpr.Occurrence, PartAsRead> said = constrained.get(part);
+            PartAsRead one = said == null ? null : said.get(at);
+            return one == null ? null : one.said();
         }
 
         /** Which rule of the model this is — see {@link ClauseView#rule}. */
@@ -1461,6 +1489,8 @@ public final class InvariantChecker {
          *                  semantics
          */
         void gathered(RuleRef.Invariant from, Core clause, List<Clauses.StatedPart> parts,
+                      Map<PartId<RuleRef.Invariant>, Map<ClauseExpr.Occurrence, PartAsRead>>
+                              constrained,
                       Set<FactSubject> spokenFor);
 
         /**
@@ -1496,15 +1526,6 @@ public final class InvariantChecker {
          */
         void handedOn(RuleKey path);
 
-        /**
-         * What the reading that builds the bounds made of one part of {@code rule}, as it read it.
-         *
-         * <p>Per part, because a conjunction is one rule read a conjunct at a time and evidence
-         * gathered for the whole answers a clause half of which nothing read on the strength of the
-         * half that was. Recorded here so that nothing downstream reads the part a second time: two
-         * readings of one conjunct agree only for as long as nobody changes one of them.
-         */
-        void constrained(RuleRef.Invariant rule, Core part, PartRead read);
     }
 
     /**
@@ -1515,7 +1536,6 @@ public final class InvariantChecker {
      * was. Keyed by the part as the tree holds it, so the walk that reads the clause afterwards
      * finds this reading's own answer about the very node it holds rather than reading it again.
      *
-     * @param read    what the reading that builds the numeric constraints made of each part
      * @param account what each reading made of each part, as each of them wrote it down. The
      *                account itself and not one projection of it: what a part adopted and what it
      *                put a constraint on are two questions, and a walk handed the first alone
@@ -1525,17 +1545,8 @@ public final class InvariantChecker {
      *                reaching the position, so a reader taking it for one rule's would lend a rule
      *                that narrows nothing whatever its neighbours narrowed
      */
-    record PartsRead(Map<RuleRef.Invariant, Map<Core, PartRead>> read,
-                     Map<RuleRef.Invariant, Map<Core, ReadByClauses.OfAPart>> account,
+    record PartsRead(Map<RuleRef.Invariant, Map<Core, ReadByClauses.OfAPart>> account,
                      Map<RuleRef.Invariant, ReadByClauses.OfARule> byRule) {
-
-        /** What the reading that builds the bounds made of {@code part} of {@code rule}, or null
-         *  where it read no such part — which is not the same as having read it and made nothing of
-         *  it. */
-        PartRead readIn(RuleRef rule, Core part) {
-            Map<Core, PartRead> said = read.get(rule);
-            return said == null ? null : said.get(part);
-        }
 
         /** What every reading made of {@code part} of {@code rule}, or null where none read it. */
         ReadByClauses.OfAPart accountIn(RuleRef rule, Core part) {
@@ -1617,6 +1628,16 @@ public final class InvariantChecker {
             stated = List.copyOf(stated);
         }
     }
+
+    /**
+     * One occurrence of a part as that reading read it: the shape it is, and what the reading made
+     * of it.
+     *
+     * <p>The shape and not the node alone. A reader of this asks what the occurrence is written as
+     * and which nodes it was spelled as, and the shape is where that is already answered; read off
+     * the node, it would be the connectives recognised a second time.
+     */
+    record PartAsRead(ClauseExpr of, PartRead said) {}
 
     /**
      * A coordinate a clause reaching this value could be about.
@@ -1723,7 +1744,11 @@ public final class InvariantChecker {
         // not gathered ({@link APartNoReadingSaw}). One list and not one rule each of them
         // consults, so the agreement is not something a walk has to be written to keep.
         stated.forEach(each -> each.parts().forEach(part ->
-                direct(part.expr(), each.from(), part.id(), at, byName, out, noLines,
+                // The shape of the whole part, read out of the tree once and walked from there.
+                // Read again at each step, the occurrences under one part would be numbered afresh
+                // from wherever this reader happened to stop, and an answer filed by the reading
+                // that seeded it would be asked for under a number this walk made up.
+                direct(ClauseExpr.of(part.expr(), true), each, part.id(), at, byName, out, noLines,
                         withoutAnEnd, aboutOneCoordinate, narrowers,
                         raised, took, typeAt, parts, raisedByPart, standing)));
         // Insertion order, kept: `Map.copyOf` iterates in an order salted once per JVM run, and
@@ -1734,30 +1759,6 @@ public final class InvariantChecker {
                 Collections.unmodifiableMap(new LinkedHashMap<>(raised)),
                 Collections.unmodifiableMap(new LinkedHashMap<>(raisedByPart)),
                 Collections.unmodifiableMap(new LinkedHashMap<>(standing)));
-    }
-
-    /**
-     * One rule stated inside a part, read as the part it is a rule of.
-     *
-     * <p>The shape says where the rule stands and the part says whose it is. Which node that is is
-     * the outermost the shape was written as, so a rule under a denial is read as the denial and
-     * not as what it denies — the same node the reading above would have been handed.
-     */
-    private void statedIn(ClauseExpr stated, RuleRef.Invariant from, PartId<RuleRef.Invariant> part,
-                          Denotations at,
-                          Map<FactSubject, Coordinate> byName, List<Direct> out,
-                          List<FieldDomains.NoLine> noLines,
-                          List<FieldDomains.WithoutAnEnd> withoutAnEnd,
-                          List<FieldDomains.AboutOneCoordinate> naming,
-                          Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
-                          Map<RuleRef.Invariant, Required> raised, ReadingEvidence took,
-                          Map<RuleKey, Type> typeAt,
-                          PartsRead parts,
-                          Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
-                          Map<FieldDomains.BoundaryQuestion,
-                                  FieldDomains.BoundaryStanding> standing) {
-        direct(stated.spelled().get(0), from, part, at, byName, out, noLines, withoutAnEnd, naming,
-                narrowers, raised, took, typeAt, parts, raisedByPart, standing);
     }
 
     /** What {@code clause} raises, taken together with whatever its other conjuncts raised. */
@@ -1775,8 +1776,9 @@ public final class InvariantChecker {
      * nothing read on the strength of the half that was, which is how `value >= 1 && value * value
      * >= 4` came back with nothing to say while the same two rules written apart were reported.
      */
-    private void settle(Core part, RuleRef.Invariant rule, ClauseStates states,
-                        InvariantBound.Read placed,
+    private void settle(Core part, RuleRef.Invariant rule, Written of,
+                        PartId<RuleRef.Invariant> its, ClauseExpr.Occurrence at,
+                        ClauseStates states, InvariantBound.Read placed,
                         Map<FactSubject, Coordinate> byName, Map<RuleRef.Invariant, Required> raised,
                         ReadingEvidence took,
                         PartsRead parts,
@@ -1823,7 +1825,7 @@ public final class InvariantChecker {
         // the position it names. The seeding hands the whole clause to the same reader this walks,
         // so there is no such part — and if the two ever come apart, this value reads as one whose
         // rules were not gathered rather than as one whose rules were read and said nothing.
-        PartRead read = parts.readIn(rule, part);
+        PartRead read = of.read(its, at);
         Set<FactSubject> constrained = read == null ? null : read.constrained();
         if (here == null || constrained == null) {
             throw new APartNoReadingSaw(part);
@@ -1857,7 +1859,7 @@ public final class InvariantChecker {
      * same rule written out places — and a helper calling a helper is bindings all the way down.
      * What a helper's body joined is still this one part, and this reading has one end for it.
      */
-    private void direct(Core clause, RuleRef.Invariant from, PartId<RuleRef.Invariant> part,
+    private void direct(ClauseExpr saidAs, Written of, PartId<RuleRef.Invariant> part,
                         Denotations at,
                         Map<FactSubject, Coordinate> byName, List<Direct> out,
                         List<FieldDomains.NoLine> noLines,
@@ -1870,9 +1872,16 @@ public final class InvariantChecker {
                         Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart,
                         Map<FieldDomains.BoundaryQuestion,
                                 FieldDomains.BoundaryStanding> standing) {
-        if (clause instanceof Core.LetIn li) {
-            direct(li.body(), from, part, terms.inside(li, at), byName, out, noLines,
-                    withoutAnEnd, naming, narrowers, raised, took, typeAt, parts,
+        // Which rule this is a part of, asked of the part. Carried beside it, a reading could be
+        // given a part of one rule and told it was reading another.
+        RuleRef.Invariant from = part.rule();
+        // A binding this reading was handed as itself, which is where the environment changes. One
+        // written under a denial is not: what this reader is given there is the denial, and a
+        // denial is a form it has no word for.
+        if (saidAs instanceof ClauseExpr.Scoped scoped
+                && scoped.spelled().get(0) == scoped.binding()) {
+            direct(scoped.body(), of, part, terms.inside(scoped.binding(), at), byName, out,
+                    noLines, withoutAnEnd, naming, narrowers, raised, took, typeAt, parts,
                     raisedByPart, standing);
             return;
         }
@@ -1889,14 +1898,17 @@ public final class InvariantChecker {
         // so a conjunction is what is left when the shape says both and says it is stated. What is
         // under a denial states the opposite of what it reads as, and the reading below has no word
         // for that.
-        if (ClauseExpr.of(clause, true) instanceof ClauseExpr.Joined joined
+        if (saidAs instanceof ClauseExpr.Joined joined
                 && joined.how() == ConditionJoin.BOTH && joined.positive()) {
-            statedIn(joined.left(), from, part, at, byName, out, noLines, withoutAnEnd, naming,
+            direct(joined.left(), of, part, at, byName, out, noLines, withoutAnEnd, naming,
                     narrowers, raised, took, typeAt, parts, raisedByPart, standing);
-            statedIn(joined.right(), from, part, at, byName, out, noLines, withoutAnEnd, naming,
+            direct(joined.right(), of, part, at, byName, out, noLines, withoutAnEnd, naming,
                     narrowers, raised, took, typeAt, parts, raisedByPart, standing);
             return;
         }
+        // The node the author wrote this as, which is the outermost of what the shape is spelled
+        // as: a rule under a denial is read as the denial and not as what it denies.
+        Core clause = saidAs.spelled().get(0);
         // What a rule about the strings at a position says about where they stop, which is a rule
         // of this conjunct as much as an ordering written here is. Beside the reading of
         // comparisons and not inside it: what such a rule states is not a comparison and has no
@@ -1910,7 +1922,7 @@ public final class InvariantChecker {
         if (!(clause instanceof Core.Binary bin)) {
             // Nothing but a binary is written as a comparison, so there is no reading of one for
             // the classification to be handed.
-            settle(clause, from, states(clause, at, byName, null, runs),
+            settle(clause, from, of, part, saidAs.at(), states(clause, at, byName, null, runs),
                     new InvariantBound.Read.NoEnd(),
                     byName, raised, took, parts, raisedByPart);
             return;
@@ -1933,7 +1945,7 @@ public final class InvariantChecker {
         // value states.
         ComparisonClaim asWritten = comparison == null ? null : comparison.claim();
         if (asWritten == null) {
-            settle(bin, from, states(bin, at, byName, read, runs),
+            settle(bin, from, of, part, saidAs.at(), states(bin, at, byName, read, runs),
                     new InvariantBound.Read.NoEnd(),
                     byName, raised, took, parts, raisedByPart);
             return;
@@ -1959,7 +1971,7 @@ public final class InvariantChecker {
             said = said.turned();
         }
         if (asWritten instanceof ComparisonClaim.Singled named && !named.holdsAtTheValue()) {
-            settle(bin, from, states(bin, at, byName, read, runs),
+            settle(bin, from, of, part, saidAs.at(), states(bin, at, byName, read, runs),
                     new InvariantBound.Read.NoEnd(),
                     byName, raised, took, parts, raisedByPart);
             // And handed on, which is not the same as being reported. A rule that rules one value
@@ -2024,7 +2036,8 @@ public final class InvariantChecker {
                                             List.of(part))
                                     : had.and(part)));
         }
-        settle(bin, from, shape, end, byName, raised, took, parts, raisedByPart);
+        settle(bin, from, of, part, saidAs.at(), shape, end, byName, raised, took, parts,
+                raisedByPart);
         if (end instanceof InvariantBound.Read.NoEnd) {
             // A rule saying where the values stop that no end came out of, said as that. Here,
             // where the reading gave up, because this is the reading a report's line would have

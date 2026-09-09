@@ -13,6 +13,7 @@ import souther.compiler.types.ValueName;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -668,12 +669,18 @@ final class PathEngine {
      */
     private Known taking(TypeGuarantee guarantee, Known k, InvariantChecker.Gathering gathering) {
         if (gathering != null) {
+            // What this reading made of each occurrence of each part, handed over with the reading
+            // it belongs to. Written into a table every reading shares instead, an entry would be
+            // told from the next reading's only by which objects a substitution allocated.
+            Map<PartId<RuleRef.Invariant>, Map<ClauseExpr.Occurrence, InvariantChecker.PartAsRead>>
+                    constrained = new LinkedHashMap<>();
             for (TypeGuarantee.Part part : guarantee.parts()) {
-                gathering.constrained(guarantee.rule(), part.part(),
-                        InvariantChecker.partRead(part.owed()));
+                constrained.computeIfAbsent(part.of(), _ -> new LinkedHashMap<>())
+                        .put(part.shape().at(), new InvariantChecker.PartAsRead(part.shape(),
+                                InvariantChecker.partRead(part.owed())));
             }
             gathering.gathered(guarantee.rule(), guarantee.clause(), guarantee.written(),
-                    Predicates.subjectsIn(guarantee.owed()));
+                    constrained, Predicates.subjectsIn(guarantee.owed()));
         }
         return predicates.assume(guarantee.owed(), k, Known.Held.OF_THE_VALUE)
                 .and(guarantee.quantified());

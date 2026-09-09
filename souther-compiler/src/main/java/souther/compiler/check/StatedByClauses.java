@@ -1512,7 +1512,7 @@ sealed interface StatedByClauses {
         StatedByClauses read(Reading reader, Denotations at, K key, Core clause, ClauseView view) {
             List<Core> parts = new ArrayList<>();
             StatedByClauses one = reader.read(clause, true, at, reader.scope(),
-                    (part, _) -> parts.add(part), view);
+                    (_, part, _) -> parts.add(part), view);
             // An assertion because it is about this compiler and not about any model, and here
             // rather than in one test because every clause a corpus holds is read through it.
             //

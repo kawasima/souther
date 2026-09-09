@@ -54,6 +54,15 @@ record TypeGuarantee(Core clause, List<Clauses.StatedPart> written,
         return written.get(0).id().rule();
     }
 
-    /** What one part of a clause came to, beside the part it was read from. */
-    record Part(Core part, Predicates.Owed owed) {}
+    /**
+     * What one part of a clause came to, beside the part it was read from.
+     *
+     * @param of    which of the clause's authored parts this was read below
+     * @param shape the shape of the clause this was read at, which says which occurrence it is and
+     *              which nodes it was spelled as, so that whoever keeps this reading keeps what it
+     *              made of each occurrence without having to read the tree again
+     * @param part  the node itself, for a reader that has something to do with it
+     */
+    record Part(PartId<RuleRef.Invariant> of, ClauseExpr shape, Core part,
+                Predicates.Owed owed) {}
 }

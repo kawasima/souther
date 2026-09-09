@@ -19,7 +19,9 @@ import souther.compiler.values.ValueSet;
 
 import souther.compiler.numeric.Count;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import souther.compiler.types.ValueName;
@@ -77,7 +79,7 @@ public final class FieldDomains {
                     NOTHING_NAMED,
                     ConstraintState.<FactSubject>top(), null, null, null, null, Map.of(),
                     Set.of(RuleKey.THE_VALUE),
-                    Map.of(), Map.of(), Map.of(), Map.of(), StringFacts.NONE, KnownExtents.NONE,
+                    Map.of(), Map.of(), List.of(), Map.of(), StringFacts.NONE, KnownExtents.NONE,
                     Map.of(), Map.of(), BoundaryState.nothing(),
                     SettledOrderEnvelope.nothing());
 
@@ -202,7 +204,7 @@ public final class FieldDomains {
     private final Map<RuleKey, Counted> countAt;
     /** What the reading that builds the bounds made of each part of each rule. Per part, because a
      *  rule is represented where every part of it is. */
-    private final Map<RuleRef.Invariant, Map<Core, InvariantChecker.PartRead>> readBy;
+    private final List<InvariantChecker.Written> readings;
     /** How each atom's values are spaced, so that settling one afterwards states the same equality
      *  the reading would have stated for it. */
     private final Map<FactSubject, souther.compiler.numeric.Granularity> spacing;
@@ -259,7 +261,7 @@ public final class FieldDomains {
                          Map<NumberAt<RuleKey>, Count> settled,
                          Set<RuleKey> unreadOfEveryValue,
                          Map<RuleKey, FactSubject> atomAt, Map<RuleKey, Counted> countAt,
-                         Map<RuleRef.Invariant, Map<Core, InvariantChecker.PartRead>> readBy,
+                         List<InvariantChecker.Written> readings,
                          Map<FactSubject, souther.compiler.numeric.Granularity> spacing,
                          StringFacts stringMachines, KnownExtents known,
                          Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen,
@@ -299,7 +301,7 @@ public final class FieldDomains {
         this.unreadOfEveryValue = unreadOfEveryValue;
         this.atomAt = atomAt;
         this.countAt = countAt;
-        this.readBy = readBy;
+        this.readings = readings;
         this.spacing = spacing;
     }
 
@@ -497,7 +499,7 @@ public final class FieldDomains {
                 seeded.notGathered(), seeded.handedOn(), placeOf,
                 seeded.constraints(), named, data, source, policy, settled,
                 seeded.unreadOfEveryValue(), seeded.atoms(), seeded.held(),
-                seeded.readBy(), seeded.spacing(), seeded.stringMachines(), machines.extents(),
+                seeded.readings(), seeded.spacing(), seeded.stringMachines(), machines.extents(),
                 seeded.endsLeftOpen(), seeded.boundsLeftOpen(), seeded.derived(),
                 seeded.settledOrder());
     }
@@ -2098,20 +2100,34 @@ public final class FieldDomains {
         // pattern raises none — which values may stand somewhere and where a line falls are not what
         // it is about — and it is still a way the value can be refused at an edge of the number
         // beside it.
-        readBy.forEach((rule, byPart) -> {
+        // What each rule leaves unrepresented, met from every reading of it and held by the rule.
+        // A clause is read once per place the walk opens a value at, so a set held by the reading
+        // would say a rule left a position without a representation once per reading that met it —
+        // and what a rule left a position without is one fact about the rule however many readings
+        // there were.
+        Map<RuleRef.Invariant, Set<RuleKey>> unrepresented = new LinkedHashMap<>();
+        readings.forEach(reading -> {
+            RuleRef.Invariant rule = reading.from();
+            // Every node the shapes this reading recorded were written as, which is what a
+            // conjunction below asks about its two halves.
+            Set<Core> recorded = Collections.newSetFromMap(new IdentityHashMap<>());
+            reading.constrained().values().forEach(byOccurrence ->
+                    byOccurrence.values().forEach(one -> recorded.addAll(one.of().spelled())));
             // A part at a time, and any one of them is enough. A conjunct the bounds hold nothing of
             // leaves the range wider than the rule however well the conjunct written beside it went,
             // and a set unioned over the whole clause answers for the failing half with the other
             // one — which is the same shape as reading a clause's evidence for one of its parts.
-            Set<RuleKey> said = new LinkedHashSet<>();
-            byPart.forEach((part, read) -> {
+            Set<RuleKey> said = unrepresented.computeIfAbsent(rule, _ -> new LinkedHashSet<>());
+            reading.constrained().values().forEach(byOccurrence ->
+                    byOccurrence.values().forEach(one -> one.of().spelled().forEach(part -> {
+                InvariantChecker.PartRead read = one.said();
                 // A conjunction says what its conjuncts say, and they are here beside it. Asked of
                 // the conjunction as well, a rule whose halves are each held in a language of their
                 // own — a date bounded at both ends, read by the comparison rather than by the
                 // interval algebra — answers for neither half and fails on the node above them.
                 if (part instanceof Core.Binary b
                         && ConditionJoin.of(b.op()).orElse(null) == ConditionJoin.BOTH
-                        && byPart.containsKey(b.left()) && byPart.containsKey(b.right())) {
+                        && recorded.contains(b.left()) && recorded.contains(b.right())) {
                     return;
                 }
                 if (read.narrowable().stream().anyMatch(ranged::contains)) {
@@ -2145,10 +2161,11 @@ public final class FieldDomains {
                 if (required == null || required.obligations().isEmpty()) {
                     said.add(RuleKey.THE_VALUE);
                 }
-            });
-            said.forEach(path ->
-                    causes.add(new ProjectionEvidence.Cause.Unrepresented(rule, path.toString())));
+            })));
         });
+        // And said once per rule, after every reading of it has been met.
+        unrepresented.forEach((rule, said) -> said.forEach(path ->
+                causes.add(new ProjectionEvidence.Cause.Unrepresented(rule, path.toString()))));
         // And what the algebra was given and what it projects does not hold.
         //
         // Asked of what was derived and of nothing else. Asking the whole state whether it holds a
@@ -2164,8 +2181,10 @@ public final class FieldDomains {
         // not. What could not be stated is a property of the rule and of what the rules were found
         // to leave, and it is worked out from those.
         Set<ProjectionEvidence.Cause.Lossy> lossy = new LinkedHashSet<>();
-        readBy.forEach((rule, byPart) -> byPart.values().forEach(read -> {
-            for (NumericConstraint each : read.stated()) {
+        readings.forEach(reading -> reading.constrained().values().forEach(byOccurrence ->
+                byOccurrence.values().forEach(one -> {
+            RuleRef.Invariant rule = reading.from();
+            for (NumericConstraint each : one.said().stated()) {
                 if (constraints.numbers()
                         .provenByTheBoxAndItsDifferences(each.form(), each.rel())) {
                     continue;
@@ -2177,7 +2196,7 @@ public final class FieldDomains {
                                     : ProjectionEvidence.Cause.Unstated.A_RELATION)));
                 }
             }
-        }));
+        })));
         causes.addAll(lossy);
         // And whether the ends handed over are the ends the rules drew. Asked of every subject the
         // algebra speaks of, because this is not about any one rule: the reasoning reached the edge

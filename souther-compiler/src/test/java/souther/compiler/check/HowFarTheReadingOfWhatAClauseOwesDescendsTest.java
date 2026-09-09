@@ -81,7 +81,7 @@ class HowFarTheReadingOfWhatAClauseOwesDescendsTest {
     /** The parts the reading says it read, in the order it read them. */
     private static List<Core> read(Core clause) {
         List<Core> parts = new ArrayList<>();
-        new Predicates(terms()).assumed(clause, rootAt(), false, (part, _) -> parts.add(part));
+        new Predicates(terms()).assumed(clause, rootAt(), false, (_, part, _) -> parts.add(part));
         return parts;
     }
 
