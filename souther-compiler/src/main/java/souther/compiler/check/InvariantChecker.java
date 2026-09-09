@@ -786,7 +786,7 @@ public final class InvariantChecker {
             @Override
             public void gathered(RuleRef.Invariant from, Core clause,
                                  List<Clauses.StatedPart> parts, Set<FactSubject> spokenFor) {
-                written.add(new Written(clause, parts));
+                written.add(new Written(clause, reach.withoutParts().viewOf(parts)));
                 spokenFor.forEach(spoken -> took.record(from, spoken));
             }
 
@@ -848,16 +848,14 @@ public final class InvariantChecker {
             }
             // The clause as one reading, and the parts its author wrote as subtrees of it. Which
             // parts there are was settled where the clause was split; nothing here decides it.
-            Written wrote = new Written(stated, declared.shape().onto(stated, origin));
+            Written wrote = new Written(stated,
+                    reach.withoutParts().viewOf(declared.shape().onto(stated, origin)));
             written.add(wrote);
-            // A part at a time, and the ones this reading was asked for. Which parts a clause has
-            // was settled where it was split, so a part left out is one left out of the list —
-            // never a node a walk was told to step over.
+            // A part at a time, and the ones this world holds. Which parts a clause has was settled
+            // where it was split, so a part left out is one left out of the list — never a node a
+            // walk was told to step over.
             Predicates.Owed owed = null;
             for (Clauses.StatedPart part : wrote.parts()) {
-                if (reach.withoutParts().excludes(part.id())) {
-                    continue;
-                }
                 Predicates.Owed said = c.predicates.assumed(part.expr(), at, false,
                         (of, came) -> gathering.constrained(origin, of, partRead(came)));
                 owed = owed == null ? said : owed.and(said);
@@ -950,23 +948,21 @@ public final class InvariantChecker {
         // where its clauses landed in a table.
         StatedByClauses.Asked<Written> asked = new StatedByClauses.Asked<>();
         for (Written each : written) {
-            // The rules of this world and not the ones the author wrote. A reader asking what one
-            // conjunct was holding compares two readings of this declaration, and they are two
-            // readings of one world unless the conjunct is out of both — which is what left a
-            // choice composed the same way with the conjunct and without it, so that every end it
-            // was holding came back held by nobody.
-            ClauseView view = ClauseView.of(each.parts(), reach.withoutParts());
-            // And a clause this world holds no part of is no rule of it. Read as one, the reading
-            // would compose a tree of nothing at all, which is not the shape a clause has.
+            // A clause this world holds no part of is no rule of it. Read as one, the reading would
+            // compose a tree of nothing at all, which is not the shape a clause has.
             //
-            // Asked of the view before the shape is worked out. Working one out walks the clause
-            // and builds a node for every part of it, and this runs for every clause of every value
-            // — so a reading that leaves nothing out, which is almost all of them, does not pay to
-            // be told that it leaves nothing out.
-            if (!view.omitsNothing() && view.omits(ClauseExpr.of(each.clause(), true))) {
+            // Read off what the world holds rather than worked out from the tree: which parts are
+            // here was settled when the clause was viewed, and a walk of the shape to find out
+            // would be the same answer at the cost of building one.
+            if (each.parts().isEmpty()) {
                 continue;
             }
-            asked.read(reader, at, each, each.clause(), view);
+            // And the clause read in this world. A reader asking what one conjunct was holding
+            // compares two readings of this declaration, and they are two readings of one world
+            // only where the conjunct is out of both — which is what left a choice composed the
+            // same way with the conjunct and without it, so that every end it was holding came back
+            // held by nobody.
+            asked.read(reader, at, each, each.clause(), each.view());
         }
         // And now that every rule about this value has been said, what its positions admit is
         // worked out — and with it what each clause and each part of it took in, since a branch
@@ -1359,13 +1355,26 @@ public final class InvariantChecker {
      * a line drawn on a position is attributed to, and each of them is a subtree of that same
      * reading — carrying which part of the clause it is, settled where the clause was split.
      */
-    private record Written(Core clause, List<Clauses.StatedPart> parts) {
+    private record Written(Core clause, ClauseView view) {
 
         Written {
-            if (parts.isEmpty()) {
+            if (view.authored().isEmpty()) {
                 throw new IllegalArgumentException("a clause reaching a value is written in parts");
             }
-            parts = List.copyOf(parts);
+        }
+
+        /**
+         * The parts of it this reading's world holds, which is what every walk over this clause
+         * reads.
+         *
+         * <p>The parts as the author wrote them are reachable through the view and are wanted by
+         * nothing that walks: a walk of a world reads that world's rules, and a walk given the
+         * whole clause beside them is a walk that has to remember which of the two it is about —
+         * which is what left the connectives composed over conjuncts every walk beside them had
+         * left out.
+         */
+        List<Clauses.StatedPart> parts() {
+            return view.present();
         }
 
         /**
@@ -1374,9 +1383,13 @@ public final class InvariantChecker {
          * <p>Every part of a clause is a part of that clause, so the rule is the parts' answer and
          * not a second thing to carry: held beside them, a value about one rule could be built
          * about two.
+         *
+         * <p>Off what the author wrote and not off what this world holds. Which rule a clause is is
+         * the model's and does not turn on what a counterfactual left out, and a world holding none
+         * of the clause would have no part to answer from.
          */
         RuleRef.Invariant from() {
-            return parts.get(0).id().rule();
+            return view.authored().get(0).id().rule();
         }
     }
 
@@ -1715,15 +1728,14 @@ public final class InvariantChecker {
         Map<RuleRef.Invariant, Map<Core, Required>> raisedByPart = new LinkedHashMap<>();
         Map<FieldDomains.BoundaryQuestion, FieldDomains.BoundaryStanding> standing =
                 new LinkedHashMap<>();
-        // A part this reading was not asked for is not read, which is the same list of parts the
-        // reader of predicates was given: a part one of them reached that the other never read is a
-        // value whose rules were not gathered ({@link APartNoReadingSaw}).
-        stated.forEach(each -> each.parts().stream()
-                .filter(part -> !withoutParts.excludes(part.id()))
-                .forEach(part ->
-                        direct(part.expr(), each.from(), part.id(), at, byName, out, noLines,
-                                withoutAnEnd, aboutOneCoordinate, narrowers,
-                                raised, took, typeAt, parts, raisedByPart, standing)));
+        // The parts this world holds, which is the same list every other walk over these clauses
+        // was given: a part one of them reached that another never read is a value whose rules were
+        // not gathered ({@link APartNoReadingSaw}). One list and not one rule each of them
+        // consults, so the agreement is not something a walk has to be written to keep.
+        stated.forEach(each -> each.parts().forEach(part ->
+                direct(part.expr(), each.from(), part.id(), at, byName, out, noLines,
+                        withoutAnEnd, aboutOneCoordinate, narrowers,
+                        raised, took, typeAt, parts, raisedByPart, standing)));
         // Insertion order, kept: `Map.copyOf` iterates in an order salted once per JVM run, and
         // what a report prints for a position is these in the order the declaration writes them.
         return new Reading(List.copyOf(out), List.copyOf(noLines), List.copyOf(withoutAnEnd),

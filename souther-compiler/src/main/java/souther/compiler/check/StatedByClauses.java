@@ -515,18 +515,11 @@ sealed interface StatedByClauses {
      * number of choices where it was — {@code (a || b) && c} and {@code (a && c) || (b && c)} are
      * one {@code ||} each — so what is held is which node stands under which, down to the identity
      * of every node an author wrote.
-     */
-    static boolean mirrors(Core clause, StatedByClauses read) {
-        return mirrors(clause, read, ClauseView.whole());
-    }
-
-    /**
-     * The same of a reading made in the world {@code view} describes.
      *
-     * <p>The tree that world holds, which is the author's with the parts it leaves out gone and
-     * every other node where the author put it. What a conjunction of one rule and no rule was read
-     * as is that rule, so the node above it stands over what is left rather than over a state
-     * standing in for what is not there.
+     * <p><b>The tree the world {@code view} describes holds</b>, which is the author's with the
+     * parts that world leaves out gone and every other node where the author put it. What a
+     * conjunction of one rule and no rule was read as is that rule, so the node above it stands
+     * over what is left rather than over a state standing in for what is not there.
      */
     static boolean mirrors(Core clause, StatedByClauses read, ClauseView view) {
         // The fold names the clause once as it starts and again as the shape of it is finished, so
@@ -1511,13 +1504,9 @@ sealed interface StatedByClauses {
         private final Map<K, List<Core>> byPart = new LinkedHashMap<>();
         private final Map<K, StatedByClauses> trees = new LinkedHashMap<>();
 
-        /** One clause read from {@code at}, with the parts of it noted in the order the reading
-         *  reached them. */
-        StatedByClauses read(Reading reader, Denotations at, K key, Core clause) {
-            return read(reader, at, key, clause, ClauseView.whole());
-        }
-
-        /** The same, read in the world {@code view} describes — see {@link ClauseView}. */
+        /** One clause read from {@code at} in the world {@code view} describes
+         *  ({@link ClauseView}), with the parts of it noted in the order the reading reached
+         *  them. */
         StatedByClauses read(Reading reader, Denotations at, K key, Core clause, ClauseView view) {
             List<Core> parts = new ArrayList<>();
             StatedByClauses one = reader.read(clause, true, at, reader.scope(),

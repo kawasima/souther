@@ -167,16 +167,13 @@ final class TypeGuarantees {
         // so that no reader of the reading has to decide which of the rules of the model it holds.
         List<TypeGuarantee.Part> parts = new ArrayList<>();
         List<Quantified> quantified = new ArrayList<>();
-        // A part at a time, and the ones the caller asked for. Which parts a clause has was settled
+        // A part at a time, and the ones this world holds. Which parts a clause has was settled
         // where it was split, so leaving one out is leaving a part out of the list and never a node
         // out of a walk — and the same list answers for what the clause owes and for what it
         // quantifies, since a part left out of the one and left in the other is a clause taken half
-        // away.
+        // away. Which of them are here is the world's answer and not a rule this consults.
         Predicates.Owed owed = null;
-        for (Clauses.StatedPart part : one.parts()) {
-            if (withoutParts.excludes(part.id())) {
-                continue;
-            }
+        for (Clauses.StatedPart part : withoutParts.viewOf(one.parts()).present()) {
             Predicates.Owed said = predicates.assumed(part.expr(), denotations, false,
                     (of, came) -> parts.add(new TypeGuarantee.Part(of, came)));
             owed = owed == null ? said : owed.and(said);

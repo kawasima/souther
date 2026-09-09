@@ -3,19 +3,26 @@ package souther.compiler.check;
 import souther.compiler.core.Core;
 import souther.compiler.semantics.ConditionJoin;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
 
 /**
- * Which of the parts an author wrote are rules of the world a clause is being read in.
+ * One clause the author wrote, as the world a reading is made in holds it.
  *
  * <p>A reading asked what one conjunct was holding is a reading of the declaration under a rule set
  * the author did not write ({@link InvariantChecker.Reach#withoutParts}), and every question about
- * that world has to be answered out of that rule set. Made once from the reach and handed to each
- * reading, so that whether a reader honours it is not a question anybody has to ask of the reader:
- * what is left out is left out of the tree it walks.
+ * that world has to be answered out of that rule set. This is the one answer to what that rule set
+ * is for one clause: which of its parts are rules here, and where under the tree they are.
+ *
+ * <p><b>Handed out and never asked for.</b> Which parts a world holds is decided where the world is
+ * ({@link PartsLeftOut#viewOf}), and nothing anywhere is given a way to ask about one part on its
+ * own. A reading holds this and reads {@link #present} or walks past what {@link #omits} says is not
+ * here; a reading that only had a rule to consult is a reading that can be written without
+ * consulting it, which is what left the connectives composed over conjuncts their world had taken
+ * away while every walk beside them left the same conjuncts out.
  *
  * <p><b>A part outside this world is not a part nothing could read.</b> The two arrive at the same
  * place in every state — nothing is said about the positions it names — and they are different
@@ -31,46 +38,86 @@ import java.util.Set;
  */
 final class ClauseView {
 
-    /** The part roots this world does not hold, by identity: two conjuncts spelled alike are two
+    /** Every part the author wrote, whether or not this world holds it. */
+    private final List<Clauses.StatedPart> authored;
+    /** The ones it holds, in the order they were written. */
+    private final List<Clauses.StatedPart> present;
+    /** And the roots of the ones it does not, by identity: two conjuncts spelled alike are two
      *  parts, and a set comparing them by what they say would leave out both. */
     private final Set<Core> omitted;
 
-    private ClauseView(Set<Core> omitted) {
+    private ClauseView(List<Clauses.StatedPart> authored, List<Clauses.StatedPart> present,
+                       Set<Core> omitted) {
+        this.authored = authored;
+        this.present = present;
         this.omitted = omitted;
     }
 
-    /** The world the author wrote, where every part of every clause is a rule. */
-    private static final ClauseView WHOLE = new ClauseView(Collections.emptySet());
-
-    /** The same, for a reading of the declaration as it stands. */
-    static ClauseView whole() {
-        return WHOLE;
+    /**
+     * The clause whole, which is what the author wrote and what almost every reading is made in.
+     *
+     * <p>Nothing is worked out: a world holding every part omits no root, and the parts it holds are
+     * the parts there are. A clause is viewed for every clause of every value, so what a reading of
+     * the declaration as it stands pays to be told that is nothing.
+     */
+    static ClauseView whole(List<Clauses.StatedPart> authored) {
+        return new ClauseView(authored, authored, Set.of());
     }
+
+    /** The world the author wrote, told without the parts of any clause — see {@link #asWritten}. */
+    private static final ClauseView AS_WRITTEN = new ClauseView(null, null, Set.of());
 
     /**
-     * The world {@code without} leaves of a clause whose parts are {@code parts}.
+     * The world the author wrote, for a reading with no clause's parts in hand.
      *
-     * <p>{@link #whole()} where it leaves none of them out, so that a reading under a reach that
-     * omits nothing is the reading of the clause as written and is that by being it.
+     * <p>A form nobody split into parts is read through this, and so is a question about a tree
+     * asked of the shape alone. Nothing is left out, so nothing is walked past — and there are no
+     * parts here to present, which {@link #present} says by refusing rather than by answering that
+     * a world holding everything holds nothing.
      */
-    static ClauseView of(List<Clauses.StatedPart> parts, PartsLeftOut without) {
-        // Asked before the parts are walked, because almost every reading there is asks for the
-        // declaration whole: a clause is viewed for every clause of every value, and a reading that
-        // leaves nothing out would otherwise build a set to find nothing in.
-        if (!without.leavesAnythingOut()) {
-            return WHOLE;
-        }
-        Set<Core> out = Collections.newSetFromMap(new IdentityHashMap<>());
-        for (Clauses.StatedPart each : parts) {
-            if (without.excludes(each.id())) {
-                out.add(each.expr());
-            }
-        }
-        return out.isEmpty() ? WHOLE : new ClauseView(out);
+    static ClauseView asWritten() {
+        return AS_WRITTEN;
     }
 
-    /** Whether every part of every clause is a rule of this world, which almost every reading is
-     *  made in. Asked where working out the shape of a clause would be the cost of finding out. */
+    /** The same clause with {@code omitted} left out, which is how a counterfactual holds it. */
+    static ClauseView without(List<Clauses.StatedPart> authored, Set<Core> omitted) {
+        List<Clauses.StatedPart> here = new ArrayList<>(authored.size());
+        for (Clauses.StatedPart each : authored) {
+            if (!omitted.contains(each.expr())) {
+                here.add(each);
+            }
+        }
+        return new ClauseView(authored, Collections.unmodifiableList(here),
+                Collections.unmodifiableSet(omitted));
+    }
+
+    /** An identity set for {@link #without}, which is what a world's omissions are told apart by. */
+    static Set<Core> roots() {
+        return Collections.newSetFromMap(new IdentityHashMap<>());
+    }
+
+    /** Every part the author wrote, for the readers that are about the clause rather than about
+     *  what any world holds of it. */
+    List<Clauses.StatedPart> authored() {
+        if (authored == null) {
+            throw new IllegalStateException(
+                    "this world was not made from a clause's parts and has none to name");
+        }
+        return authored;
+    }
+
+    /** The parts this world holds, which is what a reading of it reads. Empty where the world holds
+     *  none of the clause, which is a clause that is no rule of it. */
+    List<Clauses.StatedPart> present() {
+        if (present == null) {
+            throw new IllegalStateException(
+                    "this world was not made from a clause's parts and has none to present");
+        }
+        return present;
+    }
+
+    /** Whether every part of the clause is a rule of this world, which almost every reading is made
+     *  in. Asked where working out the shape of a clause would be the cost of finding out. */
     boolean omitsNothing() {
         return omitted.isEmpty();
     }
@@ -102,6 +149,6 @@ final class ClauseView {
 
     @Override
     public String toString() {
-        return omitted.isEmpty() ? "the whole clause" : "without " + omitted.size() + " part(s)";
+        return omitted.isEmpty() ? "the whole clause" : "without " + omitted.size() + " of it";
     }
 }

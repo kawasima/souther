@@ -1,5 +1,8 @@
 package souther.compiler.check;
 
+import souther.compiler.core.Core;
+
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -32,13 +35,19 @@ sealed interface PartsLeftOut permits PartsLeftOut.Nothing, PartsLeftOut.Some {
     boolean leavesAnythingOut();
 
     /**
-     * Whether this reading was asked to leave {@code part} out.
+     * The clause written in {@code parts}, as this world holds it.
      *
-     * <p>Asked once, by everything that walks the clause. Two walks over one clause skip the part
-     * together — a part one reached that the other never read is a value whose rules were not
-     * gathered — so asking in two ways is two answers that have to agree, and there is one.
+     * <p><b>Handed out and never asked about.</b> Two walks over one clause have to leave the same
+     * parts out — a part one reached that the other never read is a value whose rules were not
+     * gathered — and a rule saying which one to leave out is a rule a walk can be written without
+     * consulting. So what a reading is given is the clause this world has ({@link ClauseView}), and
+     * there is nothing here to ask about a part on its own.
+     *
+     * <p>What such a reading is for is not here. A reader comparing what a value's rules leave with
+     * and without one part is asking what that part was holding; nothing about the comparison
+     * belongs to the world that answers it.
      */
-    boolean excludes(PartId<RuleRef.Invariant> part);
+    ClauseView viewOf(List<Clauses.StatedPart> parts);
 
     /** Nothing is left out. */
     record Nothing() implements PartsLeftOut {
@@ -49,8 +58,8 @@ sealed interface PartsLeftOut permits PartsLeftOut.Nothing, PartsLeftOut.Some {
         }
 
         @Override
-        public boolean excludes(PartId<RuleRef.Invariant> part) {
-            return false;
+        public ClauseView viewOf(List<Clauses.StatedPart> parts) {
+            return ClauseView.whole(parts);
         }
     }
 
@@ -77,8 +86,14 @@ sealed interface PartsLeftOut permits PartsLeftOut.Nothing, PartsLeftOut.Some {
         }
 
         @Override
-        public boolean excludes(PartId<RuleRef.Invariant> part) {
-            return parts.contains(part);
+        public ClauseView viewOf(List<Clauses.StatedPart> written) {
+            Set<Core> out = ClauseView.roots();
+            for (Clauses.StatedPart each : written) {
+                if (parts.contains(each.id())) {
+                    out.add(each.expr());
+                }
+            }
+            return out.isEmpty() ? ClauseView.whole(written) : ClauseView.without(written, out);
         }
     }
 
