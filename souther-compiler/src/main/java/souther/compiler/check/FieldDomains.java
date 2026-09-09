@@ -109,7 +109,7 @@ public final class FieldDomains {
     private final Map<RuleRef.Invariant, Required> raised;
     /** The same per part of each clause. A reader that found one conjunct wanting names what that
      *  conjunct is about, and not what the conjunct written beside it raised. */
-    private final Map<RuleRef.Invariant, Map<ClauseExpr.Occurrence, Required>> raisedByPart;
+    private final Map<InvariantChecker.ReadingPlace, Required> raisedByPart;
 
     /** What the reading answered for each boundary question it raised and left standing. */
     private final Map<BoundaryQuestion, BoundaryStanding> standing;
@@ -249,7 +249,7 @@ public final class FieldDomains {
                          List<WithoutAnEnd> withoutAnEnd, List<AboutOneCoordinate> aboutOneCoordinate,
                          PartsLeftOut withoutParts,
                          Map<RuleRef.Invariant, Required> raised,
-                         Map<RuleRef.Invariant, Map<ClauseExpr.Occurrence, Required>> raisedByPart,
+                         Map<InvariantChecker.ReadingPlace, Required> raisedByPart,
                          Map<BoundaryQuestion, BoundaryStanding> standing, ReadingEvidence took,
                          Map<RuleKey, List<TypeSymbol.AtModule>> narrowers,
                          Map<RuleKey, Set<RulesMissed>> notGathered, Set<RuleKey> handedOn,
@@ -2143,13 +2143,13 @@ public final class FieldDomains {
                 // the comparison rather than from the interval algebra, and counting only the
                 // algebra calls a bounded `Date` a rule the bounds do not hold — and takes every
                 // boundary beside it down with it.
-                // The rule as well as the place: a place is a coordinate of one clause and every
-                // clause has a first one, so an end another rule placed at its own opening would
-                // answer here for a conjunct that placed nothing. The place first, because it is
-                // a number and a rule is a declaration, a clause of it and a number of that.
-                ClauseExpr.Occurrence stands = shape.at();
-                if (directs.stream().anyMatch(d -> d.stands().equals(stands)
-                        && d.part().rule().equals(rule))) {
+                // The place in this reading, which is what an end was filed under. A coordinate on
+                // its own would answer here with an end another reading of the same rule placed at
+                // the same conjunct — a rule held at two of a value's fields is read twice, and
+                // what each reading placed is about the field it was read at.
+                InvariantChecker.ReadingPlace stands =
+                        new InvariantChecker.ReadingPlace(reading.opened(), shape.at());
+                if (directs.stream().anyMatch(d -> d.stands().equals(stands))) {
                     return;
                 }
                 // What this part is about, and not what the rule is. A conjunction is one rule the
@@ -2157,8 +2157,7 @@ public final class FieldDomains {
                 // reaching for the rule's questions here would name the places of the conjunct
                 // written beside this one — the half the bounds do hold — among the ones they do
                 // not.
-                Map<ClauseExpr.Occurrence, Required> byPartRaised = raisedByPart.get(rule);
-                Required required = byPartRaised == null ? null : byPartRaised.get(shape.at());
+                Required required = raisedByPart.get(stands);
                 if (required != null) {
                     required.obligations().forEach(owed -> {
                         switch (owed) {
