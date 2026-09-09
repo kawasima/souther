@@ -21,6 +21,8 @@ import souther.compiler.coverage.CoverageSites;
 import souther.compiler.examples.FixtureReader;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.AtomSpace;
+import souther.compiler.check.DeclarationCitations;
+import souther.compiler.check.PublishedDeclarations;
 import souther.compiler.check.RuleRef;
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.CheckSurface;
@@ -1789,7 +1791,8 @@ public final class Adequacy {
             }
             resolved.put(debt.point(), new BorderAccount.Answer(debt,
                     debt.id().owedToTheDeclaration().isPresent()
-                            ? axisOf(debt.id(), declarations, ruleReading, policy) : null,
+                            ? axisOf(debt.id(), declarations, Shapes.publishedDeclarations(db),
+                                    Shapes.declarationCitations(db), ruleReading, policy) : null,
                     PointResolver.resolveAt(debt.owed(), List.copyOf(debt.met().keySet()),
                             reading -> readingOf(db, module, scope, debt, debt.at(), reading))));
         }
@@ -4315,7 +4318,8 @@ public final class Adequacy {
                     continue;
                 }
                 out.add(new DeclaredDebt(debt,
-                        axisOf(debt.id(), declarations, reading, policy), owners));
+                        axisOf(debt.id(), declarations, Shapes.publishedDeclarations(db),
+                                Shapes.declarationCitations(db), reading, policy), owners));
             }
             return Answer.of(new DeclaredBoundaries(out, went));
         }
@@ -4337,12 +4341,13 @@ public final class Adequacy {
      */
     private static String axisOf(souther.compiler.partition.BorderObligationId id,
                                  Map<TypeSymbol, souther.compiler.check.DeclaredBorders> read,
+                                 PublishedDeclarations published, DeclarationCitations citations,
                                  RuleReadingSource reading,
                                  souther.compiler.check.ReadingPolicy policy) {
         TypeSymbol declaredOn = id.owedToTheDeclaration().orElseThrow(
                 () -> new IllegalStateException("what a line with no declaration is on is not"
                         + " something anybody wrote: " + id));
-        String named = declarationRead(read, declaredOn, reading, policy)
+        String named = declarationRead(read, declaredOn, published, citations, reading, policy)
                 // Which line of the declaration this is, asked of the rule. Taken apart
                 // here, a reader would be deciding which rules have a clause and a
                 // conjunct, which is the rule's own answer.
@@ -4356,9 +4361,10 @@ public final class Adequacy {
      *  clauses have ends, and each of them would otherwise read the declaration again. */
     private static souther.compiler.check.DeclaredBorders declarationRead(
             Map<TypeSymbol, souther.compiler.check.DeclaredBorders> kept, TypeSymbol declaredOn,
+            PublishedDeclarations published, DeclarationCitations citations,
             RuleReadingSource reading, souther.compiler.check.ReadingPolicy policy) {
-        return kept.computeIfAbsent(declaredOn,
-                each -> souther.compiler.check.DeclaredBorders.of(each, reading, policy));
+        return kept.computeIfAbsent(declaredOn, each -> souther.compiler.check.DeclaredBorders
+                .of(each, published, citations, reading, policy));
     }
 
 

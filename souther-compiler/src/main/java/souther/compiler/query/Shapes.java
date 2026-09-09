@@ -3,6 +3,12 @@ package souther.compiler.query;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.ClauseDischarge;
 import souther.compiler.check.ClauseLocations;
+import souther.compiler.check.DeclarationCitations;
+import souther.compiler.check.DeclarationLocations;
+import souther.compiler.check.DeclarationMeaning;
+import souther.compiler.check.Normalized;
+import souther.compiler.check.PublishedDeclarations;
+import souther.compiler.stdlib.Stdlib;
 import souther.compiler.check.ExpandedClauseLookup;
 import souther.compiler.check.ExpandedClauseResult;
 import souther.compiler.check.ExpandedClauses;
@@ -19,8 +25,10 @@ import souther.compiler.check.InvariantChecker;
 import souther.compiler.check.DerivedSymbols;
 import souther.compiler.check.ResolvedSymbols;
 import souther.compiler.core.ValueShape;
+import souther.compiler.diag.Citation;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.DiagnosticPlace;
+import souther.compiler.diag.Region;
 import souther.compiler.types.BindingOwner;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
@@ -243,6 +251,48 @@ public final class Shapes {
             }
             souther.compiler.check.Normalized.Def def = defs.value().get(named.name());
             return def == null ? Answer.absent() : Answer.of(def);
+        }
+    }
+
+    /**
+     * What one declaration says, for a reader in another module.
+     *
+     * <p>The cut the module boundary is made at. {@link NormalizedDef} is the declaration as the
+     * passes below the settling walk it, positions and all, because those passes report from it;
+     * this is what the declaration says, and a reader that means only that stops here. An edit that
+     * moves a declaration without changing what it states remakes this and comes out equal, so
+     * nothing that read it is looked at again.
+     *
+     * <p><b>Answered by the module that wrote the declaration.</b> The reading is made over that
+     * module's scope rather than the asking module's, so two modules asking about one declaration
+     * are asking one question — which is what an answer keyed by a declaration has to be, and what
+     * {@code WhatADeclarationsClausesStateIsOneAnswerWhicheverModuleAsksTest} holds the reading to.
+     *
+     * <p>Absent where nothing declares it. A declaration the language declares is answered for like
+     * any other: it is normal as it stands, having no construction in its clauses left to write out.
+     */
+    public record MeaningOf(TypeKey named) implements Key<DeclarationMeaning> {
+        @Override
+        public String module() {
+            return named.module();
+        }
+
+        @Override
+        public Answer<DeclarationMeaning> compute(Db db) {
+            // Which of the two answered decides how the meaning is read, and not only which
+            // declaration came back. A module's own is read in that module's reading of its
+            // declarations; what the language declares is written in no module a compilation holds,
+            // so there is no such reading to make and nothing it would answer.
+            Answer<Normalized.Def> mine = db.ask(new NormalizedDef(named));
+            if (mine.present()) {
+                return Answer.of(DeclarationMeaning.of(mine.value().node(),
+                        db.ruleReadingFor(named.module()), db.readings()));
+            }
+            Answer<Stdlib> library = db.ask(new Front.Library());
+            Hir.Def declared =
+                    library.present() ? library.value().languageDeclaration(named) : null;
+            return declared == null ? Answer.absent()
+                    : Answer.of(DeclarationMeaning.ofLanguage(declared));
         }
     }
 
@@ -756,6 +806,108 @@ public final class Shapes {
             return at instanceof DiagnosticPlace.Unavailable out
                     ? new DiagnosticPlace.Unavailable(out.provenance().asDeclared()) : at;
         }
+    }
+
+    /**
+     * Where one declaration is written.
+     *
+     * <p>Beside {@link MeaningOf} and not inside it, the way {@link ClauseLocation} is beside the
+     * clauses. What a declaration says is what every reading of a module that imports it is built
+     * on; where it is written is what one sentence puts a caret under. Answered together, an edit
+     * that moves a declaration and changes nothing it says is an edit that changes what the model
+     * says, and every module that imports it is worked out again for it.
+     *
+     * <p>Read off the declaration as resolution left it, which is the answer that carries positions
+     * and moves when they do. Asked of the normalized one instead, this would keep the place the
+     * declaration used to be at for as long as what it says stayed the same — which is the stale
+     * report the cut beside it would otherwise have caused.
+     *
+     * <p>The place and not the position: whether a reader can be sent here is settled once, here,
+     * rather than by every reader that holds a position and works it out again.
+     */
+    public record DeclarationLocation(TypeKey named) implements Key<DiagnosticPlace> {
+        @Override
+        public String module() {
+            return named.module();
+        }
+
+        @Override
+        public Answer<DiagnosticPlace> compute(Db db) {
+            Hir.Def declared = ClausesExpandedFor.declarationOf(db, named);
+            return declared == null ? Answer.absent()
+                    : Answer.of(DiagnosticPlace.of(Region.point(declared.pos())));
+        }
+    }
+
+    /**
+     * Where one declaration's code is written, as a citation.
+     *
+     * <p>Beside {@link DeclarationLocation} rather than under it. That one says whether a report may
+     * send a reader here; this says which of the ways a place comes to be this one is, and two of
+     * those — a place nobody settled, and one settled in a text this compilation does not hold —
+     * have no place to point at and so cannot be said there at all. A reader carrying a place into
+     * an account means this one.
+     *
+     * <p>Read off the declaration as resolution left it, for the reason {@link DeclarationLocation}
+     * gives: it is the answer that carries positions and moves when they do.
+     */
+    public record DeclarationCitation(TypeKey named) implements Key<Citation> {
+        @Override
+        public String module() {
+            return named.module();
+        }
+
+        @Override
+        public Answer<Citation> compute(Db db) {
+            Hir.Def declared = ClausesExpandedFor.declarationOf(db, named);
+            return declared == null ? Answer.absent() : Answer.of(Citation.of(declared.pos()));
+        }
+    }
+
+    /**
+     * Where any declaration's code is, for a reader carrying a place into an account.
+     *
+     * <p>One of these for the whole compilation, for the reason {@link #expandedClauses} gives.
+     */
+    public static DeclarationCitations declarationCitations(Db db) {
+        return declaration -> {
+            Answer<Citation> cited = db.ask(new DeclarationCitation(declaration));
+            if (!cited.present()) {
+                throw new DeclarationCitations.NoSuchDeclarationIsCited(declaration);
+            }
+            return cited.value();
+        };
+    }
+
+    /**
+     * Where any declaration is written, for a reader that is about to point at one.
+     *
+     * <p>One of these for the whole compilation, for the reason {@link #expandedClauses} gives:
+     * which declaration is being asked about is the only input there is.
+     */
+    public static DeclarationLocations declarationLocations(Db db) {
+        return declaration -> {
+            Answer<DiagnosticPlace> written = db.ask(new DeclarationLocation(declaration));
+            if (!written.present()) {
+                throw new DeclarationLocations.NoSuchDeclarationIsWritten(declaration);
+            }
+            return written.value();
+        };
+    }
+
+    /**
+     * What any declaration says, for a reader in another module.
+     *
+     * <p>One of these for the whole compilation, for the reason {@link #expandedClauses} gives:
+     * which declaration is being asked about is the only input there is. What a reader that takes
+     * one depends on is the declarations it asks about, so a reader asking about none depends on
+     * nothing.
+     */
+    public static PublishedDeclarations publishedDeclarations(Db db) {
+        return declaration -> {
+            Answer<DeclarationMeaning> said = db.ask(new MeaningOf(declaration));
+            return said.present() ? said.value() : null;
+        };
     }
 
     /**

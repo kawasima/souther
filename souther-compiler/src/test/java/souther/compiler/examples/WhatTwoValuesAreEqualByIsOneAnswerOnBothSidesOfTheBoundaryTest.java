@@ -155,15 +155,14 @@ class WhatTwoValuesAreEqualByIsOneAnswerOnBothSidesOfTheBoundaryTest {
 
     /** No module is being read, so nothing here declares a data whose fields could be asked for. */
     private static ValueTypes declarations() {
-        Symbols symbols = Symbols.none(DefaultStdlib.get());
-        return ValueTypes.over(FieldTypes.over(new CheckedDeclarations(symbols, _ -> null)));
+        return ValueTypes.over(FieldTypes.over(new CheckedDeclarations(_ -> null, _ -> null)));
     }
 
     private static ObservedValue observe(Object live) {
         Symbols symbols = Symbols.none(DefaultStdlib.get());
         return ObservedValues.of(live, symbols,
                 new NeutralForm(symbols,
-                        FieldTypes.over(new CheckedDeclarations(symbols, _ -> null))),
+                        FieldTypes.over(new CheckedDeclarations(_ -> null, _ -> null))),
                 Limits.DEFAULT);
     }
 }

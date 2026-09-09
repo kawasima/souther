@@ -77,6 +77,7 @@ public final class TypeChecker {
      */
     public static Reported checkModule(Hir.Module module, DerivedSymbols symbols,
                                        UninhabitableTypes.WithNoValue withNoValue,
+                                       DeclarationLocations declaredAt,
                                        ReadingPolicy policy,
                                        Map<String, Sig> sigs,
                                        Set<ValueName.Behavior> importedInjected,
@@ -91,7 +92,7 @@ public final class TypeChecker {
         List<CompileException> errors = new ArrayList<>();
         boolean stopped = false;
         try {
-            checkRecovering(module, symbols, withNoValue, policy, sigs, importedInjected,
+            checkRecovering(module, symbols, withNoValue, declaredAt, policy, sigs, importedInjected,
                     importedUnwritten,
                     lowered, calleeSigs, errors,
                     elaborated, abandoned, reqSigs, recursiveHelperFns, imported, settled, shapes);
@@ -206,6 +207,7 @@ public final class TypeChecker {
      */
     static void checkRecovering(Hir.Module module, DerivedSymbols symbols,
                                         UninhabitableTypes.WithNoValue withNoValue,
+                                        DeclarationLocations declaredAt,
                                        ReadingPolicy policy,
                                         Map<String, Sig> sigs,
                                        Set<ValueName.Behavior> importedInjected,
@@ -340,7 +342,7 @@ public final class TypeChecker {
         if (errors.isEmpty() && everyClauseWasRead(module, settled, shapes)) {
             List<CompileException> said = new ArrayList<>();
             collect(errors, abandoned,
-                    () -> said.addAll(DataChecker.typesWithNoValue(withNoValue, symbols)));
+                    () -> said.addAll(DataChecker.typesWithNoValue(withNoValue, declaredAt)));
             errors.addAll(said);
         }
         Map<String, Hir.FnDef> fns = new HashMap<>();

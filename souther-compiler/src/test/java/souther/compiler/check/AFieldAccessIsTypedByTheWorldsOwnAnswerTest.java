@@ -94,7 +94,8 @@ class AFieldAccessIsTypedByTheWorldsOwnAnswerTest {
     @Test
     void andAProductWithNoSettledShapeIsRefusedRatherThanAnsweredEmpty() {
         FieldTypes nothingSettled =
-                FieldTypes.over(new CheckedDeclarations(symbols, _ -> null));
+                FieldTypes.over(new CheckedDeclarations(
+                        Shapes.publishedDeclarations(compilation.db()), _ -> null));
         IllegalStateException refused = assertThrows(IllegalStateException.class,
                 () -> nothingSettled.of(orderOf()));
         assertTrue(refused.getMessage().contains("Order"),

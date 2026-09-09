@@ -146,7 +146,7 @@ class WhatALimitAdmitsIsWhatAWalkUnderItKeptTest {
         // No module is being read, so nothing here declares a data whose fields could be asked for.
         return ObservedValues.of(live, symbols,
                 new NeutralForm(symbols,
-                        FieldTypes.over(new CheckedDeclarations(symbols, _ -> null))), limits);
+                        FieldTypes.over(new CheckedDeclarations(_ -> null, _ -> null))), limits);
     }
 
     private static String shown(Object live) {
