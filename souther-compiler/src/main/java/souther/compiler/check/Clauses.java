@@ -299,15 +299,17 @@ final class Clauses {
     }
 
     /**
-     * Which of {@code named}'s own fields {@code clause} reads, remembered: a clause is read at
-     * every construction of its type, and what it reads does not change between them.
+     * Which of {@code named}'s fields {@code clause} reads, remembered: a clause is read at every
+     * construction of its type, and what it reads does not change between them.
      *
-     * <p>By the name a field is written under and not by the binding it is read through. What this
-     * answers is about the declaration — which of the fields it writes a clause of it depends on —
-     * and a binding is one reading's way of reaching one of them, so two readings of one
-     * declaration name the same fields through two bindings. Said as bindings, the answer could
-     * only be used by the reading that produced it, which is the reading that already had the
-     * tree.
+     * <p>Every field a value of {@code named} has, which is the fields it writes together with the
+     * ones its spreads bring in ({@link #bindingsOf}). What a construction has to have filled is
+     * the question, and a field brought in is filled like any other.
+     *
+     * <p>By the name a field is reached under and not by the binding it is read through. A binding
+     * is one reading's way of reaching a field, so two readings of one declaration name the same
+     * fields through two bindings. Said as bindings, the answer could only be used by the reading
+     * that produced it, which is the reading that already had the tree.
      */
     Set<String> fieldsRead(Core clause, TypeSymbol.AtModule named) {
         return readsFields.computeIfAbsent(clause, read -> {

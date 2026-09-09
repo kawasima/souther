@@ -27,33 +27,37 @@ public sealed interface ClauseMeaning permits ClauseMeaning.Stated, ClauseMeanin
     Clause.Ref ref();
 
     /**
-     * It has a form, this is what it states, and these are the fields of its own declaration it
-     * reads.
+     * It has a form, this is what it states, and these are the fields of the declaration it reads.
      *
      * <p><b>Which fields, said here rather than worked out from the form.</b> What a construction
-     * has to have filled for the clause to be read at all is a fact about the declaration: the
-     * clause is written on it, and the fields it names are the ones that declaration writes. A
+     * has to have filled for the clause to be read at all is a fact about the declaration, and a
      * reader that works it out walks a tree of its own to answer a question the declaring module
-     * had already answered, and answers it against whichever bindings its own reading made.
+     * had already answered — against whichever bindings its own reading made.
      *
-     * <p>Named as the declaration writes them, which is why this can be published. A binding is one
-     * reading's way of reaching a field, so two readings of one declaration reach the same field
-     * through two of them and a set of bindings would mean something only to the reading that
-     * built it. The names are the same names in every reading there will ever be.
+     * <p><b>Every field the declaration's value has, and not only the ones it writes.</b> A clause
+     * may name a field a spread brought in, and a construction of the declaration fills that field
+     * like any other; the question this answers is which of them have to be filled, so where a
+     * field was written is not part of it. That is a different question, and the fields a
+     * declaration writes are held apart from the ones it reaches for the sake of it
+     * ({@link DeclarationMeaning.Product#fields}).
+     *
+     * <p>Named as the field is reached through the declaration, which is why this can be published.
+     * A binding is one reading's way of reaching a field, so two readings of one declaration reach
+     * the same field through two of them and a set of bindings would mean something only to the
+     * reading that built it. The names are the same names in every reading there will ever be.
      *
      * @param ref which clause of which declaration this is
      * @param states what its form says
-     * @param ownFieldsRead the fields of this clause's own declaration that its form reads — not
-     *     the fields it reaches through what that declaration spreads, which are that
-     *     declaration's to publish
+     * @param fieldsRead the fields of the declaration's value that its form reads, including the
+     *     ones reached through what the declaration spreads
      */
-    record Stated(Clause.Ref ref, TermMeaning states, Set<String> ownFieldsRead)
+    record Stated(Clause.Ref ref, TermMeaning states, Set<String> fieldsRead)
             implements ClauseMeaning {
 
         public Stated {
             Objects.requireNonNull(ref, "a clause that states something is some clause");
             Objects.requireNonNull(states, "a clause that has a form states what the form says");
-            ownFieldsRead = Set.copyOf(ownFieldsRead);
+            fieldsRead = Set.copyOf(fieldsRead);
         }
     }
 
