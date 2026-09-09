@@ -369,10 +369,18 @@ sealed interface Confinement<A> {
         // rules would then be decided differently depending on what the readings before them had
         // already built.
         Meter meter = PatternPlan.Budget.OF_WHAT_A_SET_AND_A_RANGE_SHARE.meter();
-        // What the ends leave each position, read as values of that position's own order. The ends
-        // alone would answer for every order at once, and what a position holds is decided here.
-        Function<A, OrderedInterval> byTheOrders =
-                position -> ordered.valuesAt(position, carriers);
+        // What the ends bring to each position of a block, met with everything else placing it. Read
+        // as values of that position's own order where it has one, since the ends alone would answer
+        // for every order at once and what an `Int` holds is not what a decimal does.
+        //
+        // And nothing where the position is on no order at all. A block is the positions some rule
+        // holds as one value and they need not be ordered — a `Bool` is not — so what the ends
+        // contribute there is the identity of the meet below and never an answer about which values
+        // the position has. Asked for that answer, a position with no order has none to give
+        // ({@link OrderedIntervals#valuesAt}).
+        Function<A, OrderedInterval> byTheOrders = position -> carriers.get(position) == null
+                ? OrderedInterval.OPEN
+                : ordered.valuesAt(position, carriers);
         AskedOfEachBlock<A> byTheReadings = asking(carriers, byTheOrders, meter, machines);
         AskedOfEachBlock<A> narrowed = asking(carriers, position ->
                 byTheOrders.apply(position).meet(outside.at(position).interval()), meter, machines);

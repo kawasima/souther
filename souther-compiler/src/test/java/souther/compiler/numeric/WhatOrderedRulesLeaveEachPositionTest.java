@@ -101,14 +101,21 @@ class WhatOrderedRulesLeaveEachPositionTest {
      * wrong about an order nobody named.
      */
     @Test
-    void aBoundedPositionWithNoOrderIsAMistakeInThisCompiler() {
+    void aPositionWithNoOrderIsAMistakeInThisCompiler() {
         OrderedIntervals<String> bounded = OrderedIntervals.at(A, above(5));
 
         assertThrows(IllegalStateException.class,
                 () -> bounded.valuesAt(A, java.util.Map.of()),
-                "the rules stopped it and nothing here says what they stopped");
-        assertEquals(OrderedInterval.OPEN, bounded.valuesAt(B, java.util.Map.of()),
-                "and a position nothing was said about has no range to be read against one");
+                "the rules stopped it and nothing here says what they stopped it on");
+        assertThrows(IllegalStateException.class,
+                () -> bounded.valuesAt(B, java.util.Map.of()),
+                "and the position nothing was written about is the one whose answer is its order"
+                        + " and nothing else");
+        assertThrows(IllegalStateException.class,
+                () -> OrderedIntervals.<String>top().valuesAt(A, java.util.Map.of()),
+                "including where nothing was written about any of them");
+        assertNull(bounded.statedAt(B),
+                "whether a rule wrote anything is the other question, and it needs no order");
     }
 
     /** Both rules holding is the tighter of each end. */

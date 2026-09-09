@@ -158,25 +158,25 @@ public final class OrderedIntervals<A> {
      * one beside it — the type would have ruled out a bare pair of ends and nothing else — and the
      * answer would be about a position nobody asked about.
      *
-     * <p><b>And there is no way to ask this without one.</b> A range says which values it leaves
-     * only against the order it is a range of, so an answer for a position whose order is not here
-     * would be the pair of absent ends this exists to stop being read as a value. Where the rules
-     * bounded such a position, that is this compiler holding a range on an order it cannot name,
-     * and it is said as the mistake it is rather than answered around.
+     * <p><b>And there is no way to ask this without one, least of all about a position nothing was
+     * written about.</b> That position is exactly the one whose answer is its order and nothing
+     * else: what a reading that took nothing in leaves an {@code Int} is every whole number, which
+     * is a pair of ends, and answering the pair of absent ends instead is the reading with no order
+     * in it that this whole distinction exists to remove. A caller that dropped the vocabulary on
+     * the way would have that handed back as a value, which is where this began.
+     *
+     * <p>So a position no order here names is this compiler asking what a range leaves on an order
+     * it cannot name, and it is said as the mistake it is. Whether a rule wrote anything there is
+     * {@link #statedAt}'s question and is answered without an order.
      */
     public OrderedInterval valuesAt(A position, Map<A, ? extends ValueOrder> orders) {
-        OrderedInterval stated = ranges().get(position);
         ValueOrder onItsOrder = orders.get(position);
         if (onItsOrder == null) {
-            if (stated != null) {
-                throw new IllegalStateException("the rules stopped " + position
-                        + " on an order this vocabulary does not name");
-            }
-            // Nothing was read about it and nothing orders it, so there is no range here to be read
-            // as values and nothing for a caller to be wrong about.
-            return OrderedInterval.OPEN;
+            throw new IllegalStateException(
+                    "what " + position + " is left was asked on an order nothing here names");
         }
         OrderedInterval extent = onItsOrder.extent();
+        OrderedInterval stated = ranges().get(position);
         return stated == null ? extent : extent.meet(stated);
     }
 

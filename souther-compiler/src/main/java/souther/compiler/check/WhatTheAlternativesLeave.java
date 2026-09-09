@@ -47,25 +47,35 @@ import java.util.Set;
  *
  * @param mayHoldDownOnLeft  the positions some occurrence of the left alternative holds down
  * @param mayHoldDownOnRight the same for the right
- * @param mayLeaveWhole      the positions some occurrence of the choice leaves at every value of
- *                           their order, which is not what either alternative alone leaves them:
- *                           two bounds reaching opposite ends of a carrier hold the position down
- *                           on each side and leave all of it between them
+ * @param definitelyStops    the positions every occurrence of the choice stops short of their
+ *                           order, which is not what either alternative alone stops: two bounds
+ *                           reaching opposite ends of a carrier stop the position on each side and
+ *                           leave all of it between them
+ * @param fromAChoice        whether any copy this was taken from was a choice at all. A set says
+ *                           which positions it holds and never which were looked at, so without
+ *                           this an empty one means both "every copy was asked and none of them
+ *                           did" and "no copy was ever a choice" — and the readers below spend the
+ *                           first as a proof
  */
 record WhatTheAlternativesLeave(Set<FactSubject> mayHoldDownOnLeft,
                                 Set<FactSubject> mayHoldDownOnRight,
-                                Set<FactSubject> mayLeaveWhole) {
+                                Set<FactSubject> definitelyStops,
+                                boolean fromAChoice) {
 
     WhatTheAlternativesLeave {
         mayHoldDownOnLeft = Set.copyOf(mayHoldDownOnLeft);
         mayHoldDownOnRight = Set.copyOf(mayHoldDownOnRight);
-        mayLeaveWhole = Set.copyOf(mayLeaveWhole);
+        definitelyStops = Set.copyOf(definitelyStops);
+        if (!fromAChoice && !(mayHoldDownOnLeft.isEmpty() && mayHoldDownOnRight.isEmpty()
+                && definitelyStops.isEmpty())) {
+            throw new IllegalArgumentException(
+                    "a copy that was no choice was read for what its alternatives leave");
+        }
     }
 
-    /** A choice whose alternatives hold nothing down and leave nothing whole, for a caller with no
-     *  branches to read. */
+    /** No copy of this was a choice, so nothing here was looked at. */
     static WhatTheAlternativesLeave nothing() {
-        return new WhatTheAlternativesLeave(Set.of(), Set.of(), Set.of());
+        return new WhatTheAlternativesLeave(Set.of(), Set.of(), Set.of(), false);
     }
 
     /**
@@ -97,26 +107,29 @@ record WhatTheAlternativesLeave(Set<FactSubject> mayHoldDownOnLeft,
         }
         Set<FactSubject> onLeft = null;
         Set<FactSubject> onRight = null;
-        Set<FactSubject> whole = null;
+        Set<FactSubject> stops = null;
         for (FactSubject position : bounded) {
             // Asked of each side once, and of its own order once. A position outside a side's own
             // ranges is one that side leaves every value of, which is the answer its order gives
             // here without a case of its own.
-            OrderedInterval extent = carriers.get(position).extent();
+            //
+            // Each side first, so that a position bounded on an order nothing names is refused as
+            // the one question that says so, and not as a lookup that happened to find nothing.
             OrderedInterval here = one.ordered().valuesAt(position, carriers);
             OrderedInterval there = other.ordered().valuesAt(position, carriers);
+            OrderedInterval extent = carriers.get(position).extent();
             if (!here.sameValuesAs(extent)) {
                 onLeft = alsoAt(onLeft, position);
             }
             if (!there.sameValuesAs(extent)) {
                 onRight = alsoAt(onRight, position);
             }
-            if (here.join(there).sameValuesAs(extent)) {
-                whole = alsoAt(whole, position);
+            if (!here.join(there).sameValuesAs(extent)) {
+                stops = alsoAt(stops, position);
             }
         }
         return new WhatTheAlternativesLeave(orNothing(onLeft), orNothing(onRight),
-                orNothing(whole));
+                orNothing(stops), true);
     }
 
     /** The same set with one more position in it, made where the first one arrives. */
@@ -131,49 +144,73 @@ record WhatTheAlternativesLeave(Set<FactSubject> mayHoldDownOnLeft,
         return these == null ? Set.of() : these;
     }
 
-    /** Whether the left alternative leaves {@code position} at every value of its order, wherever
-     *  the choice stands. */
+    /**
+     * Whether the left alternative leaves {@code position} at every value of its order, wherever
+     * the choice stands.
+     *
+     * <p>Nothing where no copy of this was a choice. Non-membership is what a reader spends, so it
+     * has to mean that some copy was read and none of them held the position down — read off an
+     * empty set that nobody wrote into, it means that nothing was looked at, which is the answer
+     * this type exists to stop being read as a proof.
+     */
     boolean leavesEveryValueOnLeft(FactSubject position) {
-        return !mayHoldDownOnLeft.contains(position);
+        return fromAChoice && !mayHoldDownOnLeft.contains(position);
     }
 
     /** The same asked of the right. */
     boolean leavesEveryValueOnRight(FactSubject position) {
-        return !mayHoldDownOnRight.contains(position);
+        return fromAChoice && !mayHoldDownOnRight.contains(position);
+    }
+
+    /** Whether the choice itself stops {@code position} short of its order, wherever it stands. */
+    boolean stops(FactSubject position) {
+        return definitelyStops.contains(position);
+    }
+
+    /** Whether there is any position at all this stops, which is what a caller with nothing to keep
+     *  asks before walking its own. */
+    boolean stopsNothing() {
+        return definitelyStops.isEmpty();
     }
 
     /**
-     * Whether the choice itself stops {@code position} short of its order, wherever it stands.
+     * What one more occurrence of the same choice leaves, taken in beside this.
      *
-     * <p>Both halves, because the positions there is anything to answer about are the positions an
-     * alternative held down. A choice stops nothing its alternatives did not — what it leaves is
-     * what one of them leaves or wider — so a position neither of them holds down is one the choice
-     * leaves whole, and it is outside {@link #mayLeaveWhole} for the same reason it is outside
-     * these: nothing here was asked about it.
+     * <p>Each set by the quantifier its own reader spends. What a branch holds down is joined,
+     * because a reader takes the absence and the absence has to hold of every copy; what the choice
+     * stops is met, because a reader takes the presence and a copy that leaves the position whole
+     * is a copy where the choice does not stop it.
      *
-     * <p>Read off {@code mayLeaveWhole} alone, an absence stands for two things — a position the
-     * choice was shown to stop, and a position nobody put the question about — and the second is
-     * every position of every declaration this choice says nothing about. What kept that from
-     * showing is the caller happening to ask only about positions its branches stopped, which is a
-     * condition on the caller that nothing here stated.
+     * <p>A copy that was no choice is the identity of both, and that is what {@code fromAChoice} is
+     * for. Met as an ordinary value, it stops nothing — which would be read as a copy that leaves
+     * every position whole and would take back what every copy beside it showed.
      */
-    boolean stops(FactSubject position) {
-        return (mayHoldDownOnLeft.contains(position) || mayHoldDownOnRight.contains(position))
-                && !mayLeaveWhole.contains(position);
-    }
-
-    /** Whether there is any position at all a copy of this choice left whole, which is what a
-     *  caller with nothing to strike off asks. */
-    boolean leavesNothingWhole() {
-        return mayLeaveWhole.isEmpty();
-    }
-
-    /** What one more occurrence of the same choice leaves, taken in beside this. */
     WhatTheAlternativesLeave alsoSeen(WhatTheAlternativesLeave occurrence) {
+        if (!occurrence.fromAChoice) {
+            return this;
+        }
+        if (!fromAChoice) {
+            return occurrence;
+        }
         return new WhatTheAlternativesLeave(
                 union(mayHoldDownOnLeft, occurrence.mayHoldDownOnLeft()),
                 union(mayHoldDownOnRight, occurrence.mayHoldDownOnRight()),
-                union(mayLeaveWhole, occurrence.mayLeaveWhole()));
+                met(definitelyStops, occurrence.definitelyStops()), true);
+    }
+
+    /** The positions both copies stopped, which is what the written choice stops wherever it
+     *  stands. */
+    private static Set<FactSubject> met(Set<FactSubject> these, Set<FactSubject> those) {
+        if (these.isEmpty() || those.isEmpty()) {
+            return Set.of();
+        }
+        Set<FactSubject> out = new LinkedHashSet<>();
+        these.forEach(each -> {
+            if (those.contains(each)) {
+                out.add(each);
+            }
+        });
+        return out;
     }
 
     private static Set<FactSubject> union(Set<FactSubject> these, Set<FactSubject> those) {

@@ -96,11 +96,16 @@ final class SettledOrderEnvelope {
      * the writing rather than a second reader's copy of one.
      */
     private static OrderedInterval stated(OrderedInterval reach, Carrier on) {
-        // And nothing where the position is ordered on nothing this reading names. Such a position
-        // is one no rule of the order reached either, so what is here is already every value there
-        // is — and the answer that costs nothing to be wrong about is the one that states no end,
-        // rather than one that keeps an end nothing could tell from where the order stops anyway.
         if (on == null) {
+            // A position ordered on nothing this reading names is one no rule of the order reached
+            // either, so there are no ends here to be held against anything. Where some rule did
+            // reach it, this compiler is holding a range on an order it cannot name, which is what
+            // asking the same question of the ranges says
+            // ({@link OrderedIntervals#valuesAt}) and is said the same way here.
+            if (!reach.equals(OrderedInterval.OPEN)) {
+                throw new IllegalStateException(
+                        "the rules stopped a position on an order nothing here names: " + reach);
+            }
             return OrderedInterval.OPEN;
         }
         return reach.endsStatedWithin(on.extent());

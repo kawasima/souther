@@ -248,11 +248,20 @@ sealed interface StatedByClauses {
             return out;
         }
 
-        /** The same, with the positions the choice between the two leaves whole struck off. */
+        /**
+         * The positions a choice between the two stops, out of those its alternatives stop.
+         *
+         * <p>Both, and this is not the union being filtered. What the choice stops is worked out
+         * where the branches are and holds of every copy of the written choice
+         * ({@link WhatTheAlternativesLeave}); what the parts stop is what these two clauses state.
+         * A position is kept where both say so — the second because a choice stops nothing its
+         * alternatives did not, and the first because two bounds reaching opposite ends of a
+         * carrier stop the position on each side and leave all of it between them.
+         */
         private static Set<FactSubject> left(Set<FactSubject> stopped,
                                              WhatTheAlternativesLeave narrowed) {
-            if (stopped.isEmpty() || narrowed.leavesNothingWhole()) {
-                return stopped;
+            if (stopped.isEmpty() || narrowed.stopsNothing()) {
+                return Set.of();
             }
             Set<FactSubject> out = new LinkedHashSet<>();
             stopped.forEach(position -> {

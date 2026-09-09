@@ -13,6 +13,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -40,24 +41,55 @@ class WhatOneCopyOfAChoiceLeavesIsNotWhatTheChoiceLeavesTest {
             Map.of(VALUE, Carrier.WHOLE, OTHER, Carrier.WHOLE);
 
     /**
-     * A position one copy leaves whole is one the choice may leave whole.
+     * A position one copy leaves whole is one the choice does not stop.
      *
-     * <p>Read as what every copy left whole, a position one copy stops would be published as one
-     * the choice stops everywhere — and the finding about a rule that draws no line there would be
-     * suppressed by a copy that is not the one being asked about.
+     * <p>What a reader spends here is the presence — that the choice stops the position wherever
+     * it stands — so the copies are met. Joined instead, a position one copy stops would be
+     * published as one the choice stops everywhere, and the finding about a rule that draws no line
+     * there would be suppressed by a copy that is not the one being asked about.
      */
     @Test
-    void aPositionOneCopyLeavesWholeIsOneTheChoiceMayLeaveWhole() {
-        WhatTheAlternativesLeave stopping = new WhatTheAlternativesLeave(
-                Set.of(VALUE), Set.of(VALUE), Set.of());
-        WhatTheAlternativesLeave leavingItWhole = new WhatTheAlternativesLeave(
-                Set.of(VALUE), Set.of(VALUE), Set.of(VALUE));
+    void aPositionOneCopyLeavesWholeIsOneTheChoiceDoesNotStop() {
+        WhatTheAlternativesLeave stopping = WhatTheAlternativesLeave.of(
+                branch(OrderedIntervals.at(VALUE, atLeast(2))),
+                branch(OrderedIntervals.at(VALUE, atLeast(0))));
+        WhatTheAlternativesLeave leavingItWhole = WhatTheAlternativesLeave.of(
+                branch(OrderedIntervals.at(VALUE, atLeast(2))),
+                branch(OrderedIntervals.at(VALUE, atMost(0))));
 
-        assertTrue(stopping.stops(VALUE), "the copy on its own stops it");
+        assertTrue(stopping.stops(VALUE), "the copy on its own stops it at nought");
         assertFalse(stopping.alsoSeen(leavingItWhole).stops(VALUE),
                 "and the copy beside it leaves all of it, so the choice is not one that stops it");
         assertFalse(leavingItWhole.alsoSeen(stopping).stops(VALUE),
                 "either way round");
+    }
+
+    /**
+     * And a copy that is a choice and says nothing is not a copy that was never a choice.
+     *
+     * <p>The two hold the same three sets. What tells them apart is that one of them was looked at:
+     * a live copy whose branches bound nothing leaves every position whole, and a copy that was
+     * never a choice leaves nothing at all — so met with a copy that stops something, the first
+     * takes it back and the second must not.
+     *
+     * <p>Which a set cannot say by itself. A set says which positions it holds and never which were
+     * put to it, so an empty one means both "asked and nothing" and "never asked", and every reader
+     * here spends one of those as a proof.
+     */
+    @Test
+    void aCopyThatSaysNothingIsNotACopyThatWasNeverAChoice() {
+        WhatTheAlternativesLeave stopping = WhatTheAlternativesLeave.of(
+                branch(OrderedIntervals.at(VALUE, atLeast(2))),
+                branch(OrderedIntervals.at(VALUE, atLeast(0))));
+        WhatTheAlternativesLeave saidNothing = WhatTheAlternativesLeave.of(
+                branch(OrderedIntervals.top()), branch(OrderedIntervals.top()));
+
+        assertNotEquals(WhatTheAlternativesLeave.nothing(), saidNothing,
+                "a choice whose branches bound nothing was still asked");
+        assertFalse(stopping.alsoSeen(saidNothing).stops(VALUE),
+                "so it leaves the position whole and the choice does not stop it");
+        assertTrue(stopping.alsoSeen(WhatTheAlternativesLeave.nothing()).stops(VALUE),
+                "where the copy beside it was no choice, nothing was taken back");
     }
 
     /**
@@ -69,9 +101,11 @@ class WhatOneCopyOfAChoiceLeavesIsNotWhatTheChoiceLeavesTest {
      */
     @Test
     void aPositionOneCopyHoldsDownIsOneTheBranchMayHoldDown() {
-        WhatTheAlternativesLeave holding = new WhatTheAlternativesLeave(
-                Set.of(VALUE), Set.of(OTHER), Set.of());
-        WhatTheAlternativesLeave leavingThemAlone = WhatTheAlternativesLeave.nothing();
+        WhatTheAlternativesLeave holding = WhatTheAlternativesLeave.of(
+                branch(OrderedIntervals.at(VALUE, atLeast(2))),
+                branch(OrderedIntervals.at(OTHER, atLeast(2))));
+        WhatTheAlternativesLeave leavingThemAlone = WhatTheAlternativesLeave.of(
+                branch(OrderedIntervals.top()), branch(OrderedIntervals.top()));
 
         assertTrue(leavingThemAlone.leavesEveryValueOnLeft(VALUE), "this copy holds nothing down");
         assertFalse(holding.alsoSeen(leavingThemAlone).leavesEveryValueOnLeft(VALUE),
@@ -83,8 +117,9 @@ class WhatOneCopyOfAChoiceLeavesIsNotWhatTheChoiceLeavesTest {
     /** And a copy met twice says what it said once, so the answer cannot count the copies. */
     @Test
     void aCopyMetTwiceSaysWhatItSaidOnce() {
-        WhatTheAlternativesLeave one = new WhatTheAlternativesLeave(
-                Set.of(VALUE), Set.of(OTHER), Set.of(VALUE));
+        WhatTheAlternativesLeave one = WhatTheAlternativesLeave.of(
+                branch(OrderedIntervals.at(VALUE, atLeast(2))),
+                branch(OrderedIntervals.at(OTHER, atLeast(2))));
 
         assertEquals(one, one.alsoSeen(one));
     }
@@ -142,8 +177,8 @@ class WhatOneCopyOfAChoiceLeavesIsNotWhatTheChoiceLeavesTest {
                 live(), said(OrderedIntervals.top()),
                 live(), said(OrderedIntervals.top()));
 
-        assertTrue(notAChoice.narrowed().leavesEveryValueOnLeft(VALUE),
-                "there is no choice at that copy, so its left branch holds nothing down here");
+        assertFalse(notAChoice.narrowed().leavesEveryValueOnLeft(VALUE),
+                "there is no choice at that copy, so nothing there was looked at either way");
         assertTrue(notAChoice.alsoSeen(aChoice).narrowed().leavesEveryValueOnLeft(VALUE),
                 "and the copy that is a choice keeps what it showed");
         assertTrue(aChoice.alsoSeen(notAChoice).narrowed().leavesEveryValueOnLeft(VALUE),
