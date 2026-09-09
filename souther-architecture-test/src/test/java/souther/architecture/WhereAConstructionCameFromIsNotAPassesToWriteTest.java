@@ -13,18 +13,15 @@ import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassModel;
 import java.lang.classfile.constantpool.MemberRefEntry;
 import java.lang.classfile.constantpool.PoolEntry;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -66,16 +63,18 @@ class WhereAConstructionCameFromIsNotAPassesToWriteTest {
     /** Where an origin may be made, asked about and handed over. */
     private static final String THEIRS = "souther/compiler/ast/";
 
+    private static final CompiledOutputs EVERYTHING = CompiledOutputs.ofEverythingCompiledHere();
+
     private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
 
     @Test
     void nothingOutsideTheTreeHandsAnOriginToIt() {
         List<String> handing = new ArrayList<>();
-        for (Path each : everyCompiledClass()) {
-            if (internalName(each).startsWith(THEIRS) || !handsAnOriginIn(each)) {
+        for (ClassModel each : EVERYTHING.all()) {
+            if (each.thisClass().asInternalName().startsWith(THEIRS) || !handsAnOriginIn(each)) {
                 continue;
             }
-            handing.add(internalName(each));
+            handing.add(each.thisClass().asInternalName());
         }
 
         assertEquals(List.of(), handing.stream().sorted().toList(),
@@ -114,8 +113,8 @@ class WhereAConstructionCameFromIsNotAPassesToWriteTest {
     @Test
     void andTheCheckSeesWhatItIsLookingForWhereThatIsAllowed() {
         assertFalse(anOrigin().isEmpty(), "what an origin is, is read off the type");
-        assertTrue(everyCompiledClass().stream()
-                        .filter(each -> internalName(each).startsWith(THEIRS))
+        assertTrue(EVERYTHING.all().stream()
+                        .filter(each -> each.thisClass().asInternalName().startsWith(THEIRS))
                         .anyMatch(WhereAConstructionCameFromIsNotAPassesToWriteTest
                                 ::handsAnOriginIn),
                 "a form hands an origin to its own constructor, which is what this reads");
@@ -137,18 +136,13 @@ class WhereAConstructionCameFromIsNotAPassesToWriteTest {
     }
 
     /** Whether {@code compiled} names anything of the tree's package that takes an origin. */
-    private static boolean handsAnOriginIn(Path compiled) {
-        try {
-            for (PoolEntry entry : ClassFile.of().parse(Files.readAllBytes(compiled))
-                    .constantPool()) {
-                if (entry instanceof MemberRefEntry member
-                        && member.owner().name().stringValue().startsWith(THEIRS)
-                        && takesAnOrigin(member.type().stringValue())) {
-                    return true;
-                }
+    private static boolean handsAnOriginIn(ClassModel compiled) {
+        for (PoolEntry entry : compiled.constantPool()) {
+            if (entry instanceof MemberRefEntry member
+                    && member.owner().name().stringValue().startsWith(THEIRS)
+                    && takesAnOrigin(member.type().stringValue())) {
+                return true;
             }
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
         }
         return false;
     }
@@ -164,33 +158,9 @@ class WhereAConstructionCameFromIsNotAPassesToWriteTest {
         return anOrigin().stream().anyMatch(parameters::contains);
     }
 
-    /** The class's own binary name, read off the file's place under its module's build directory. */
-    private static String internalName(Path compiled) {
-        String path = compiled.toString().replace('\\', '/');
-        int at = path.indexOf("/classes/");
-        int from = at < 0 ? path.indexOf("/test-classes/") + "/test-classes/".length()
-                : at + "/classes/".length();
-        return path.substring(from, path.length() - ".class".length());
-    }
 
-    /** Every class of every module of this build, main and test alike. */
-    private static List<Path> everyCompiledClass() {
-        List<Path> out = new ArrayList<>();
-        for (Path module : REPOSITORY.modules()) {
-            for (String built : List.of("classes", "test-classes")) {
-                Path where = module.resolve("target").resolve(built);
-                if (!Files.isDirectory(where)) {
-                    continue;
-                }
-                try (Stream<Path> found = Files.walk(where)) {
-                    out.addAll(found.filter(p -> p.toString().endsWith(".class")).toList());
-                } catch (IOException e) {
-                    throw new UncheckedIOException(e);
-                }
-            }
-        }
-        return out;
-    }
+
+
 
     /** What the repository's modules are called, which is {@link RepositoryLayout}'s answer and not
      *  a second reading of the root pom. */

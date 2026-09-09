@@ -1,20 +1,16 @@
 package souther.compiler;
 
 import org.junit.jupiter.api.Test;
-import souther.test.RepositoryLayout;
 
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.CodeModel;
 import java.lang.classfile.MethodModel;
-import java.lang.classfile.instruction.ConstantInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * A check of this module asks {@link WhatWasCompiled} for its classes; it does not go and find them.
@@ -25,20 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * build invoked elsewhere — and, having found the files, it opens them: the same files the check
  * beside it opened, for the fork to read again.
  *
- * <p><b>Two ways in, and both are closed here rather than one being guessed at.</b> A check can
- * reach an output through the shared reading by naming one of its own, or it can find the files
- * itself and parse them. A rule that looked for the two halves of the second in one class would be
- * a rule about where somebody wrote them: pulling the path into a class of its own leaves each half
- * innocent, and the walk is back with every check still passing. So neither is asked as a
- * co-occurrence. Naming an output is asked of the call that names one, and finding the files is
- * asked of the word a build's output goes by, which nothing here has any business writing down.
- *
- * <p><b>Which leaves what hands the location out, and nothing does.</b> A rule against writing the
- * word is worth nothing while something answers with it, and two things did: a reading said which
- * output it was, and the repository said what a build calls its directory. Both are kept where they
- * are worked out, so what is left of the second way in is writing the word — which is what this
- * asks. Reaching an output any other way needs the repository root and then the word, and that is
- * the same question again.
+ * <p>What is asked here is which class names an output. Writing down where a build puts what it
+ * made is the other way in, and it is refused for every module that reads compiled classes rather
+ * than for this one — see {@code NoCheckGoesLookingForACompiledOutputTest} in the architecture
+ * tests. What hands the location out is nothing, so those two are the whole of it.
  *
  * <p>What is not refused is reading a class file. This module compiles Souther models and asks what
  * came out of them, and what came out is a value in the test rather than a file anybody went looking
@@ -78,47 +64,11 @@ class NoCheckOfThisModuleGoesLookingForTheCompiledOutputTest {
                         + " that moves is as many edits as there are checks");
     }
 
-    @Test
-    void andNothingWritesDownWhereABuildPutsWhatItMade() {
-        Set<String> writing = new TreeSet<>();
-        List<ClassModel> checks = checks();
-        assertFalse(checks.isEmpty(), "no check of this module was read at all, so this rule is"
-                + " asked of nothing and passes by having nobody to ask");
-
-        for (ClassModel each : checks) {
-            for (String constant : constantsOf(each)) {
-                if (RepositoryLayout.namesBuildOutput(constant)) {
-                    writing.add(named(each) + " says `" + constant + "`");
-                }
-            }
-        }
-
-        assertEquals(Set.of(), writing,
-                "a check of this module writes down where a build puts what it made, which is the"
-                        + " half of finding the files for itself that nothing else needs: what is"
-                        + " under a build's output is the repository's to say");
-    }
-
     private static List<ClassModel> checks() {
         return WhatWasCompiled.checksCompiledBesideIt().all();
     }
 
-    private static List<String> constantsOf(ClassModel model) {
-        List<String> said = new ArrayList<>();
-        for (MethodModel method : model.methods()) {
-            CodeModel code = method.code().orElse(null);
-            if (code == null) {
-                continue;
-            }
-            for (var element : code) {
-                if (element instanceof ConstantInstruction loaded
-                        && loaded.constantValue() instanceof String text) {
-                    said.add(text);
-                }
-            }
-        }
-        return said;
-    }
+
 
     private static String named(ClassModel of) {
         return of.thisClass().asInternalName().replace('/', '.');

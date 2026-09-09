@@ -1,19 +1,14 @@
 package souther.architecture;
 
-import souther.test.RepositoryLayout;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.CodeElement;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.constantpool.MemberRefEntry;
 import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +16,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -60,7 +54,7 @@ class WhoMayBuildALanguageAboutAPositionTest {
 
     private static final String ALLOWANCE = "souther/compiler/values/Allowance";
 
-    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+    private static final CompiledOutputs COMPILED = CompiledOutputs.ofWhatThisRepositoryPublishes();
 
     /**
      * What a position may build to answer what its rules leave it, named where a compilation
@@ -263,27 +257,7 @@ class WhoMayBuildALanguageAboutAPositionTest {
                         + " time under an allowance of its own");
     }
 
-    /**
-     * The walk reads every module's classes.
-     *
-     * <p>Asked of the modules the repository has and not of what a build happened to leave: a
-     * module whose classes are missing is one whose names this cannot see, and the rows from the
-     * rest would match while this answered about fewer modules than it names.
-     */
-    @Test
-    void andEveryModuleTheRepositoryHoldsWasRead() {
-        List<String> unbuilt = new ArrayList<>();
-        for (Path module : REPOSITORY.modules()) {
-            if (!Files.isDirectory(classesOf(module)) && hasMainSources(module)) {
-                unbuilt.add(module.getFileName().toString());
-            }
-        }
 
-        assertEquals(List.of(), unbuilt,
-                "a module whose classes are not built is one this walk passes over, and a walk that"
-                        + " passes over a module answers about the rest while saying it answers"
-                        + " about all of them");
-    }
 
     /**
      * And the walk finds a namer that is there.
@@ -308,10 +282,10 @@ class WhoMayBuildALanguageAboutAPositionTest {
     /** Every asking of the policy for an allowance, counted where it is written. */
     private static List<String> askingForAnAllowance() {
         Map<String, Integer> counted = new TreeMap<>();
-        for (Path module : REPOSITORY.modules()) {
-            for (Path each : classesUnder(module)) {
-                String asker = internalName(module, each);
-                for (MethodModel method : classOf(each).methods()) {
+        for (Path module : COMPILED.modules()) {
+            for (ClassModel each : COMPILED.classesOf(module)) {
+                String asker = each.thisClass().asInternalName();
+                for (MethodModel method : each.methods()) {
                     method.code().ifPresent(code -> {
                         for (CodeElement element : code) {
                             if (element instanceof InvokeInstruction call
@@ -359,16 +333,16 @@ class WhoMayBuildALanguageAboutAPositionTest {
     private static List<String> found(java.util.function.Predicate<PoolEntry> reaching,
                                       boolean butNotTheOwner) {
         Set<String> out = new TreeSet<>();
-        for (Path module : REPOSITORY.modules()) {
-            for (Path each : classesUnder(module)) {
-                String reader = internalName(module, each);
+        for (Path module : COMPILED.modules()) {
+            for (ClassModel each : COMPILED.classesOf(module)) {
+                String reader = each.thisClass().asInternalName();
                 // What a class names of itself is not a reader of anything. The plan declares the
                 // budgets and the meter they make, so a row for it would be this walk reporting the
                 // owner as its own caller.
                 if (butNotTheOwner && (reader.equals(PLAN) || reader.startsWith(PLAN + "$"))) {
                     continue;
                 }
-                for (PoolEntry entry : constantPoolOf(each)) {
+                for (PoolEntry entry : each.constantPool()) {
                     if (reaching.test(entry)) {
                         out.add(reader);
                     }
@@ -378,44 +352,15 @@ class WhoMayBuildALanguageAboutAPositionTest {
         return new ArrayList<>(out);
     }
 
-    private static Iterable<PoolEntry> constantPoolOf(Path compiled) {
-        return classOf(compiled).constantPool();
-    }
 
-    private static ClassModel classOf(Path compiled) {
-        try {
-            return ClassFile.of().parse(Files.readAllBytes(compiled));
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
 
-    /** The class's own binary name, taken against the directory it was found under rather than off
-     *  the first {@code classes} in the path, which a checkout under one would be. */
-    private static String internalName(Path module, Path compiled) {
-        String name = classesOf(module).relativize(compiled).toString().replace('\\', '/');
-        return name.substring(0, name.length() - ".class".length());
-    }
 
-    private static Path classesOf(Path module) {
-        return module.resolve("target").resolve("classes");
-    }
 
-    /** Whether the module has main sources to have been built from. A module holding only tests or
-     *  only a pom leaves no classes and is not one this walk is missing. */
-    private static boolean hasMainSources(Path module) {
-        return Files.isDirectory(module.resolve("src").resolve("main").resolve("java"));
-    }
 
-    private static List<Path> classesUnder(Path module) {
-        Path where = classesOf(module);
-        if (!Files.isDirectory(where)) {
-            return List.of();
-        }
-        try (Stream<Path> found = Files.walk(where)) {
-            return found.filter(p -> p.toString().endsWith(".class")).toList();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
+
+
+
+
+
+
 }

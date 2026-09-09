@@ -192,6 +192,17 @@ class WhatIsReadOfACompiledOutputIsReadOnceTest {
     }
 
     @Test
+    void reads_a_packages_own_classes_without_the_packages_under_it(@TempDir Path root)
+            throws IOException {
+        List<ClassModel> its = at(anOutputOfSeveralPackages(root)).inTheClassesOf("asked");
+
+        assertEquals(1, its.size());
+        assertEquals(1, counting.reads.get(),
+                "reading a package's own classes opened the ones under it as well, or the ones"
+                        + " beside it");
+    }
+
+    @Test
     void reads_a_package_together_with_the_packages_under_it(@TempDir Path root) throws IOException {
         CompiledClasses output = at(anOutputOfSeveralPackages(root));
 

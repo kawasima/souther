@@ -1,21 +1,15 @@
 package souther.architecture;
 
 import souther.compiler.ast.Hir;
-import souther.test.RepositoryLayout;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassModel;
 import java.lang.classfile.constantpool.MemberRefEntry;
 import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.reflect.Constructor;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -45,16 +39,17 @@ class WhichOfItsFieldsAConstructionHadToWriteIsNotAPassesToSayTest {
 
     private static final String THE_ANSWER = "L" + Hir.Fields.class.getName().replace('.', '/') + ";";
 
-    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+    private static final CompiledOutputs EVERYTHING = CompiledOutputs.ofEverythingCompiledHere();
+
 
     @Test
     void nothingOutsideTheTreeNamesTheAnswerAtAll() {
         List<String> naming = new ArrayList<>();
-        for (Path each : everyCompiledClass()) {
-            if (internalName(each).startsWith(THEIRS) || !namesTheAnswerIn(each)) {
+        for (ClassModel each : EVERYTHING.all()) {
+            if (each.thisClass().asInternalName().startsWith(THEIRS) || !namesTheAnswerIn(each)) {
                 continue;
             }
-            naming.add(internalName(each));
+            naming.add(each.thisClass().asInternalName());
         }
 
         assertEquals(List.of(), naming.stream().sorted().toList(),
@@ -94,8 +89,8 @@ class WhichOfItsFieldsAConstructionHadToWriteIsNotAPassesToSayTest {
      *  is not forbidden at all — inside the package, where the answer is made and read. */
     @Test
     void andTheCheckSeesWhatItIsLookingForWhereThatIsAllowed() {
-        assertTrue(everyCompiledClass().stream()
-                        .filter(each -> internalName(each).startsWith(THEIRS))
+        assertTrue(EVERYTHING.all().stream()
+                        .filter(each -> each.thisClass().asInternalName().startsWith(THEIRS))
                         .anyMatch(WhichOfItsFieldsAConstructionHadToWriteIsNotAPassesToSayTest
                                 ::namesTheAnswerIn),
                 "the package that owns the answer names it, which is what this reads");
@@ -103,46 +98,17 @@ class WhichOfItsFieldsAConstructionHadToWriteIsNotAPassesToSayTest {
 
     /** Whether {@code compiled} names anything that takes or answers with the answer — which
      *  includes naming one of its constants, whose descriptor is the type. */
-    private static boolean namesTheAnswerIn(Path compiled) {
-        try {
-            for (PoolEntry entry : ClassFile.of().parse(Files.readAllBytes(compiled))
-                    .constantPool()) {
-                if (entry instanceof MemberRefEntry member
-                        && member.type().stringValue().contains(THE_ANSWER)) {
-                    return true;
-                }
+    private static boolean namesTheAnswerIn(ClassModel compiled) {
+        for (PoolEntry entry : compiled.constantPool()) {
+            if (entry instanceof MemberRefEntry member
+                    && member.type().stringValue().contains(THE_ANSWER)) {
+                return true;
             }
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
         }
         return false;
     }
 
-    /** The class's own binary name, read off the file's place under its module's build directory. */
-    private static String internalName(Path compiled) {
-        String path = compiled.toString().replace('\\', '/');
-        int at = path.indexOf("/classes/");
-        int from = at < 0 ? path.indexOf("/test-classes/") + "/test-classes/".length()
-                : at + "/classes/".length();
-        return path.substring(from, path.length() - ".class".length());
-    }
 
-    /** Every class of every module of this build, main and test alike. */
-    private static List<Path> everyCompiledClass() {
-        List<Path> out = new ArrayList<>();
-        for (Path module : REPOSITORY.modules()) {
-            for (String built : List.of("classes", "test-classes")) {
-                Path where = module.resolve("target").resolve(built);
-                if (!Files.isDirectory(where)) {
-                    continue;
-                }
-                try (Stream<Path> found = Files.walk(where)) {
-                    out.addAll(found.filter(p -> p.toString().endsWith(".class")).toList());
-                } catch (IOException e) {
-                    throw new UncheckedIOException(e);
-                }
-            }
-        }
-        return out;
-    }
+
+
 }

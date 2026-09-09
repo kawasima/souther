@@ -1,24 +1,18 @@
 package souther.architecture;
 
-import souther.test.RepositoryLayout;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.CodeModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.FieldInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -55,7 +49,7 @@ class WhoMayAskWhetherAClauseWentUnreadTest {
 
     private static final String FLAG = "hasUnreadPart";
 
-    private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
+    private static final CompiledOutputs COMPILED = CompiledOutputs.ofWhatThisRepositoryPublishes();
 
     /**
      * Where an unread alternative is turned into what it left open, and where an author is sent for
@@ -82,27 +76,7 @@ class WhoMayAskWhetherAClauseWentUnreadTest {
                         + " question being answered again out of the account of the rules");
     }
 
-    /**
-     * The walk reads every module's classes.
-     *
-     * <p>Asked of the modules the repository has and not of what a build happened to leave: a
-     * module whose classes are missing is one whose reads this cannot see, and the rows from the
-     * rest would match and this would pass while answering about fewer modules than it names.
-     */
-    @Test
-    void andEveryModuleTheRepositoryHoldsWasRead() {
-        List<String> unbuilt = new ArrayList<>();
-        for (Path module : REPOSITORY.modules()) {
-            if (!Files.isDirectory(classesOf(module)) && hasMainSources(module)) {
-                unbuilt.add(module.getFileName().toString());
-            }
-        }
 
-        assertEquals(List.of(), unbuilt,
-                "a module whose classes are not built is one this walk passes over, and a walk that"
-                        + " passes over a module answers about the rest while saying it answers"
-                        + " about all of them");
-    }
 
     /**
      * And the walk finds the flag being read where it is read.
@@ -121,13 +95,13 @@ class WhoMayAskWhetherAClauseWentUnreadTest {
     /** Every method outside the account that asks one whether a clause of it went unread. */
     private static Set<String> asking() {
         Set<String> found = new TreeSet<>();
-        for (Path module : REPOSITORY.modules()) {
-            for (Path each : classesUnder(module)) {
-                String reader = internalName(module, each);
+        for (Path module : COMPILED.modules()) {
+            for (ClassModel each : COMPILED.classesOf(module)) {
+                String reader = each.thisClass().asInternalName();
                 if (reader.equals(ACCOUNT)) {
                     continue;
                 }
-                for (MethodModel method : parse(each).methods()) {
+                for (MethodModel method : each.methods()) {
                     if (reads(method)) {
                         found.add(reader + "#" + method.methodName().stringValue());
                     }
@@ -140,12 +114,12 @@ class WhoMayAskWhetherAClauseWentUnreadTest {
     /** How many of the account's own methods read it, which is what says the walk can see one. */
     private static int within(String owner) {
         int reads = 0;
-        for (Path module : REPOSITORY.modules()) {
-            for (Path each : classesUnder(module)) {
-                if (!internalName(module, each).equals(owner)) {
+        for (Path module : COMPILED.modules()) {
+            for (ClassModel each : COMPILED.classesOf(module)) {
+                if (!each.thisClass().asInternalName().equals(owner)) {
                     continue;
                 }
-                for (MethodModel method : parse(each).methods()) {
+                for (MethodModel method : each.methods()) {
                     if (reads(method)) {
                         reads++;
                     }
@@ -170,40 +144,13 @@ class WhoMayAskWhetherAClauseWentUnreadTest {
         });
     }
 
-    private static ClassModel parse(Path compiled) {
-        try {
-            return ClassFile.of().parse(Files.readAllBytes(compiled));
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
 
-    /** The class's own binary name, taken against the directory it was found under rather than off
-     *  the first {@code classes} in the path, which a checkout under one would be. */
-    private static String internalName(Path module, Path compiled) {
-        String name = classesOf(module).relativize(compiled).toString().replace('\\', '/');
-        return name.substring(0, name.length() - ".class".length());
-    }
 
-    private static Path classesOf(Path module) {
-        return module.resolve("target").resolve("classes");
-    }
 
-    /** Whether the module has main sources to have been built from. A module holding only tests or
-     *  only a pom leaves no classes and is not one this walk is missing. */
-    private static boolean hasMainSources(Path module) {
-        return Files.isDirectory(module.resolve("src").resolve("main").resolve("java"));
-    }
 
-    private static List<Path> classesUnder(Path module) {
-        Path where = classesOf(module);
-        if (!Files.isDirectory(where)) {
-            return List.of();
-        }
-        try (Stream<Path> found = Files.walk(where)) {
-            return found.filter(p -> p.toString().endsWith(".class")).toList();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
+
+
+
+
+
 }
