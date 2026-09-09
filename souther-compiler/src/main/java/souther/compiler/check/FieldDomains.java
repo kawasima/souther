@@ -1916,25 +1916,21 @@ public final class FieldDomains {
         // Nothing to meet where no choice settled a number of this value, which is most of them.
         // Asked all the same, every lookup of every coordinate builds a subject to find nothing
         // under, and this one is asked once per candidate per counterfactual.
-        if (derived.known().isEmpty()) {
+        if (derived.byNumber().isEmpty()) {
             return held;
         }
         // And what the choices leave it, which the algebra has no way to: it reads a clause as
         // written and never enters an alternative, so a length bounded in both branches of a
         // choice comes back from it unbounded. Met rather than preferred — the two are readings of
         // the same rules and each holds what the other cannot.
+        //
+        // And nothing where that reading stops the number nowhere a value of it is: what has been
+        // read there is that the rules contradict, which is said by whoever answers whether a
+        // value exists, and a line off those ends would fall where the order does not reach.
         DerivedNumber number = DerivedNumber.of(new NumberAt<>(path, kind));
-        if (number == null) {
-            return held;
-        }
-        OrderedInterval settled = derived.at(number);
-        // And no line where the rules leave the number no value. What has been read then is that
-        // they contradict at it, which is what a reader of that is told by whoever answers it —
-        // here it is an envelope with no line in it, and a line drawn from its ends would fall
-        // where the order does not reach.
-        return Endpoint.someValueLiesBetween(settled.low(), settled.high())
-                ? held.meet(new NumericDomain.Bounds(settled.low(), settled.high()))
-                : held;
+        OrderedInterval settled = number == null ? null : derived.knownAt(number);
+        return settled == null ? held
+                : held.meet(new NumericDomain.Bounds(settled.low(), settled.high()));
     }
 
     /**
