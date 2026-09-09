@@ -67,15 +67,15 @@ public final class AuthoredSites {
      * What one walk of a module's source found: its occurrences, and where each construct it wrote
      * stands.
      *
-     * <p>Two answers and one walk, which is the whole of why they are made together. A module wrote
-     * what it wrote once, and two walks of it would be two answers to that — agreeing until the day
-     * one of them was taught something the other was not.
+     * <p>Three answers and one walk, which is the whole of why they are made together. A module
+     * wrote what it wrote once, and three walks of it would be three answers to that — agreeing
+     * until the day one of them was taught something the others were not.
      *
-     * <p>The forks are answered whether or not the occurrences could be told apart. Two expressions
-     * written over one stretch of source is a fact about extents; which fork is which is settled by
-     * an identity the extents play no part in.
+     * <p>The forks and the conditions are answered whether or not the occurrences could be told
+     * apart. Two expressions written over one stretch of source is a fact about extents; which fork
+     * and which condition is which is settled by an identity the extents play no part in.
      */
-    public record Walked(Census census, WrittenForks forks) {}
+    public record Walked(Census census, WrittenForks forks, WrittenConditions conditions) {}
 
     /** {@code module} walked, once. */
     public static Walked walk(Hir.Module module) {
@@ -83,7 +83,8 @@ public final class AuthoredSites {
         walk.module(module);
         return new Walked(walk.refusal != null ? walk.refusal
                 : new Census.Identified(new AuthoredSites(walk.byExtent)),
-                new WrittenForks(walk.byOrigin));
+                new WrittenForks(walk.byOrigin),
+                new WrittenConditions(walk.byCondition));
     }
 
     /** The occurrences of {@code module}, or why they could not be told apart. */
@@ -188,6 +189,10 @@ public final class AuthoredSites {
          *  Filled beside {@link #byExtent} and never instead of it: they answer two questions about
          *  one walk, and a second walk would be a second answer to the first. */
         private final Map<SourceConstructOrigin, SourcePos> byOrigin = new LinkedHashMap<>();
+        /** Where each condition this module wrote stands, under an identity a copy cannot change.
+         *  Beside {@link #byOrigin} rather than inside it: what a body takes an arm of and what a
+         *  row had to satisfy are two questions, and a reader holds one of them. */
+        private final Map<WrittenCondition, SourcePos> byCondition = new LinkedHashMap<>();
         private Census refusal;
 
         /**
@@ -202,6 +207,36 @@ public final class AuthoredSites {
         private void wrote(SourceConstructOrigin origin, SourcePos at) {
             if (origin != null && origin.isWritten() && at != null) {
                 byOrigin.putIfAbsent(origin, at);
+            }
+        }
+
+        /**
+         * Files where a condition the source wrote is.
+         *
+         * <p>Where the condition itself is and never where the construct its identity is borrowed
+         * from is. An arm takes its name from the fork because the source wrote no construct at the
+         * arm; a report about it is still about the arm, and a reader sent to the fork would be
+         * sent past the thing the sentence is about.
+         */
+        private void wroteCondition(WrittenCondition which, SourcePos at) {
+            if (which.construct().isWritten() && at != null) {
+                byCondition.putIfAbsent(which, at);
+            }
+        }
+
+        /**
+         * Files where {@code binary} stands.
+         *
+         * <p>Every one of them, and the operator is not read here. Which binaries a reading takes
+         * for conditions is that reading's answer — a comparison and a connective are conditions
+         * and arithmetic is not — and asking the operator here would be that recognition made a
+         * second time, in a walk that has none of what the reading knows. So what this files is
+         * where each stands, and a reading that recognised one has somewhere to point; the surplus
+         * is places nobody asks for.
+         */
+        private void wroteCondition(Hir.Binary binary) {
+            if (binary.origin() != null) {
+                wroteCondition(new WrittenCondition.Construct(binary.origin()), binary.pos());
             }
         }
 
@@ -328,6 +363,7 @@ public final class AuthoredSites {
                 }
                 case Hir.Binary binary -> {
                     take(e);
+                    wroteCondition(binary);
                     expr(binary.left());
                     expr(binary.right());
                 }
@@ -344,7 +380,16 @@ public final class AuthoredSites {
                     take(e);
                     wrote(match.origin(), match.pos());
                     expr(match.scrutinee());
-                    for (Hir.Case one : match.cases()) {
+                    for (int part = 0; part < match.cases().size(); part++) {
+                        Hir.Case one = match.cases().get(part);
+                        // Reaching the arm is the condition that the value turned out to be the
+                        // case the arm selects, and where that is written is the arm. The fork's
+                        // origin is what names it, since the source wrote no construct here of its
+                        // own; its place is the fork's and is not what a reader is shown.
+                        if (match.origin() != null) {
+                            wroteCondition(new WrittenCondition.ForkArm(match.origin(), part),
+                                    one.pos());
+                        }
                         expr(one.body());
                     }
                 }

@@ -270,14 +270,16 @@ final class AReportOfOneBorder {
                                 .filter(point -> point.belongsToBehaviorAccount("weigh"))
                                 .toList()),
                         null),
-                souther.compiler.query.ClaimAnnotations.NONE, List.of(), java.util.Map.of());
+                souther.compiler.query.ClaimAnnotations.NONE, List.of(), java.util.Map.of(),
+                java.util.Map.of());
         return new AdequacyReport(AdequacyReport.SCHEMA_VERSION, "test",
                 held, WeakeningSet.none(),
                 List.of(new AdequacyReport.ModuleReport("example.wide",
                         new SourceId("wide.sou"), List.of(behavior), List.of(),
                         // Nothing this module's declarations are owed, and nothing that finding
                         // them went without: the fixture is about one behavior's own lines.
-                        new Adequacy.DeclaredBoundaries(List.of(), java.util.Map.of()))))
+                        new Adequacy.DeclaredBoundaries(List.of(), java.util.Map.of()),
+                        java.util.Map.of())))
                 .adequacy();
     }
 }

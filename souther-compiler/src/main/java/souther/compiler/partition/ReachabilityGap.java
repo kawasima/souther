@@ -22,15 +22,16 @@ import java.util.Collection;
  */
 public sealed interface ReachabilityGap {
 
-    /** Where the condition is, as a report is entitled to say it. */
-    souther.compiler.diag.Citation at();
+    /** Which question a report about the condition asks for its place, which is the condition's own
+     *  answer and not a second one worked out here. */
+    ConditionReportAnchor anchor();
 
     /** The walk had no words for it, so nothing downstream ever saw it. */
     record Unstated(OnTheWay.Declined condition) implements ReachabilityGap {
 
         @Override
-        public souther.compiler.diag.Citation at() {
-            return condition.at();
+        public ConditionReportAnchor anchor() {
+            return condition.anchor();
         }
     }
 
@@ -45,8 +46,8 @@ public sealed interface ReachabilityGap {
     record Uncomposed(OnTheWay.TakenIn condition, Why why) implements ReachabilityGap {
 
         @Override
-        public souther.compiler.diag.Citation at() {
-            return condition.at();
+        public ConditionReportAnchor anchor() {
+            return condition.anchor();
         }
     }
 

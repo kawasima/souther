@@ -2,7 +2,6 @@ package souther.compiler.partition;
 
 import souther.compiler.check.RuleReadingSource;
 import souther.compiler.core.Core;
-import souther.compiler.diag.Citation;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.inputs.InputReads;
 import souther.compiler.inputs.NumericTerm;
@@ -112,11 +111,11 @@ public record ReachingCuts(Map<ModelOccurrence, List<OnTheWay>> byComparison) {
             case Condition.Joined joined -> joined.how().under(holding) == ConditionJoin.BOTH
                     ? and(stating(joined.left(), inputs, holding, ruleSource),
                             stating(joined.right(), inputs, holding, ruleSource))
-                    : List.of(new OnTheWay.Declined(joined.at(),
+                    : List.of(new OnTheWay.Declined(joined.occurrence(), joined.anchor(),
                             new OnTheWay.Why.OneOfTwoThings()));
             case Condition.Compares one -> List.of(of(one, inputs, holding, ruleSource));
             case Condition.NotRead not -> List.of(new OnTheWay.Declined(
-                    not.at(), new OnTheWay.Why.NoWordsForTheShape()));
+                    not.occurrence(), not.anchor(), new OnTheWay.Why.NoWordsForTheShape()));
         };
     }
 
@@ -144,12 +143,16 @@ public record ReachingCuts(Map<ModelOccurrence, List<OnTheWay>> byComparison) {
      * nothing and an arm nothing could be read of are the two answers a walk has to tell apart, and
      * a silence is both of them.
      */
-    static OnTheWay entering(Core.Match match, Core.Case arm, InputDomain inputs, InputReads reads,
-                             RuleReadingSource ruleSource) {
-        Citation at = Citation.of(arm.pos());
+    static OnTheWay entering(Core.Match match, Core.Case arm, int part, InputDomain inputs,
+                             InputReads reads, RuleReadingSource ruleSource,
+                             ConditionNumbering numbering) {
+        ConditionOccurrence met = numbering.met();
+        ConditionReportAnchor at =
+                numbering.anchorOfArm(match.origin(), part, arm.pos(), met);
         Refinement narrowing = arm.selectedCase().map(Refinement::of).orElse(null);
         if (narrowing == null) {
-            return new OnTheWay.Declined(at, new OnTheWay.Why.ForkArmNotReadAsANarrowing());
+            return new OnTheWay.Declined(met, at,
+                    new OnTheWay.Why.ForkArmNotReadAsANarrowing());
         }
         // The arm is declined for either answer: a search composes against a position read as one
         // of its cases, and there is no position to narrow whether the scrutinee stands at none or
@@ -171,7 +174,8 @@ public record ReachingCuts(Map<ModelOccurrence, List<OnTheWay>> byComparison) {
         // Two values and not one: where the name stands is what the environment answers, and
         // whether the input's rules hold a position there is the reading's.
         if (scrutinee == null || inputs.at(scrutinee) == null) {
-            return new OnTheWay.Declined(at, new OnTheWay.Why.ForkArmNotReadAsANarrowing());
+            return new OnTheWay.Declined(met, at,
+                    new OnTheWay.Why.ForkArmNotReadAsANarrowing());
         }
         return new OnTheWay.Narrowed(at, scrutinee.refine(narrowing));
     }
@@ -194,11 +198,12 @@ public record ReachingCuts(Map<ModelOccurrence, List<OnTheWay>> byComparison) {
      */
     private static OnTheWay of(Condition.Compares comparison, InputDomain inputs, boolean holding,
                                RuleReadingSource ruleSource) {
-        Citation at = comparison.at();
+        ConditionReportAnchor at = comparison.anchor();
         AffineReading read = AffineReading.of(
                 comparison.comparison(), inputs, comparison.reads(), ruleSource);
         if (read == null) {
-            return new OnTheWay.Declined(at, new OnTheWay.Why.ComparisonNotRepresentedAsACut());
+            return new OnTheWay.Declined(comparison.occurrence(), at,
+                    new OnTheWay.Why.ComparisonNotRepresentedAsACut());
         }
         // What the comparison states, in the words a domain is told things in. Taken the way the
         // path met it: an arm reached by the condition failing has what holds exactly where the

@@ -69,7 +69,9 @@ final class Coverages {
      * twice would read them twice.
      */
     record Partitioned(Partitions.Partitioning geometry,
-                       souther.compiler.inputs.Quantities reading) {}
+                       souther.compiler.inputs.Quantities reading,
+                       java.util.Map<souther.compiler.partition.ConditionOccurrence,
+                               souther.compiler.diag.Citation> conditionsMet) {}
 
     /**
      * The positions one behavior is measured at, with what its own comparisons divide them into.
@@ -152,7 +154,11 @@ final class Coverages {
                 // What a row had to satisfy to arrive at each comparison, from the walk that
                 // assumed it. A clause of a declaration is not written at a place in a body and has
                 // nothing on the way to it, so only the guards have any of this.
-                guards.reaching()), quantities);
+                guards.reaching()), quantities,
+                // Where this reading met each condition it places itself, beside the geometry and
+                // not inside it. A report points at a condition and an answer says which condition
+                // it is, and the two are kept apart so that moving one leaves the other alone.
+                guards.conditionsMet());
     }
 
     /**

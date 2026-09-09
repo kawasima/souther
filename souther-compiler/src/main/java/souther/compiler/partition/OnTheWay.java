@@ -1,6 +1,5 @@
 package souther.compiler.partition;
 
-import souther.compiler.diag.Citation;
 import souther.compiler.inputs.TermPath;
 
 /**
@@ -26,17 +25,22 @@ import souther.compiler.inputs.TermPath;
 public sealed interface OnTheWay {
 
     /**
-     * Where the condition is, as a report is entitled to say it.
+     * Which question a report about it asks for its place.
      *
-     * <p>A {@link Citation} and not a {@link souther.compiler.diag.SourcePos}, because what this is
-     * for is being said. Whether a reader can be sent to the text and whether the condition is
-     * written at the place are the two questions that type answers, and a helper's condition
-     * reached from a call is exactly where a raw position sends a reader somewhere the code is not.
+     * <p>An anchor and not a place. A location held here reaches whoever reads a finding, so a
+     * helper whose conditions move — saying the same thing — would move every answer about them;
+     * what is held is which question to put, and the place is worked out where a sentence is
+     * written.
      */
-    Citation at();
+    ConditionReportAnchor anchor();
 
-    /** A condition the arithmetic took in, and the cut it came to. */
-    record TakenIn(Citation at, ReachingCuts.Cut cut) implements OnTheWay {}
+    /**
+     * A condition the arithmetic took in, and the cut it came to.
+     *
+     * <p>The cut is what says which condition this is. Two of them stating one inequality over one
+     * form are one thing to compose against, and nothing here needs to tell them apart.
+     */
+    record TakenIn(ConditionReportAnchor anchor, ReachingCuts.Cut cut) implements OnTheWay {}
 
     /**
      * A condition that says which values a position is one of, as the position it narrows.
@@ -50,9 +54,11 @@ public sealed interface OnTheWay {
      * other reader of a narrowing asks; carried as a position and a refinement side by side, this
      * would be the one place that splits them its own way.
      *
+     * <p>The position is what says which condition this is, the way a cut does for the one above.
+     *
      * @param position the scrutinee's position with the arm's case narrowed onto it
      */
-    record Narrowed(Citation at, TermPath position) implements OnTheWay {
+    record Narrowed(ConditionReportAnchor anchor, TermPath position) implements OnTheWay {
 
         public Narrowed {
             if (position == null || !position.narrowsWhatItReaches()) {
@@ -62,8 +68,30 @@ public sealed interface OnTheWay {
         }
     }
 
-    /** A condition nothing here could turn into a cut, and what stopped it. */
-    record Declined(Citation at, Why why) implements OnTheWay {}
+    /**
+     * A condition nothing here could turn into a cut, and what stopped it.
+     *
+     * <p><b>The one of the three that has to say which condition it is.</b> What the other two
+     * carry beside the anchor already tells one from its neighbours: a cut is an inequality over a
+     * form, a narrowing is a position. What this carries beside the anchor is only why it was
+     * declined, and two conditions declined for one reason are one reason — so without a name for
+     * the condition, two conditions this compiler does tell apart would be one value.
+     *
+     * <p>Named and not placed. Where two of them are written is what used to tell them apart, which
+     * is a location doing identity's work because nothing else was doing it.
+     *
+     * @param condition which condition of the reading was declined
+     */
+    record Declined(ConditionOccurrence condition, ConditionReportAnchor anchor, Why why)
+            implements OnTheWay {
+
+        public Declined {
+            if (condition == null) {
+                throw new IllegalArgumentException(
+                        "a condition this reading declined is some condition it met");
+            }
+        }
+    }
 
     /**
      * What stopped a condition from being stated in either vocabulary.

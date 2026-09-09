@@ -5,7 +5,11 @@ import souther.compiler.check.Prepared;
 import souther.compiler.coverage.ArmReportAnchor;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourcePos;
+import souther.compiler.partition.ConditionOccurrence;
+import souther.compiler.partition.ConditionReportAnchor;
 import souther.compiler.sites.AuthoredSites;
+import souther.compiler.sites.WrittenCondition;
+import souther.compiler.sites.WrittenConditions;
 import souther.compiler.sites.WrittenForks;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.TypeSymbol;
@@ -272,6 +276,97 @@ public final class Sites {
             }
             return Answer.absent();
         }
+    }
+
+    /**
+     * Where one condition of a module's source is written.
+     *
+     * <p>The sibling of {@link WhereAForkIsWritten}, and asked by the same kind of reader: one that
+     * holds a condition it met somewhere else and no place at all. A condition inside a helper
+     * expanded into three callers is one condition written once, so where it is is not a question
+     * any of the three can answer for itself.
+     *
+     * <p>Absent where nothing this compilation holds wrote it. What the language itself ships is
+     * the case that matters: its conditions stand in every module that calls into it, and no source
+     * of this compilation is where they are written.
+     */
+    public record WhereAConditionIsWritten(WrittenCondition condition) implements Key<Citation> {
+
+        @Override
+        public String module() {
+            return condition.construct().module();
+        }
+
+        @Override
+        public Answer<Citation> compute(Db db) {
+            if (condition.construct().module() == null) {
+                return Answer.absent();
+            }
+            Answer<WrittenConditions> written =
+                    db.ask(new ConditionsWrittenIn(condition.construct().module()));
+            if (!written.present()) {
+                return Answer.absent();
+            }
+            SourcePos at = written.value().at(condition);
+            return at == null ? Answer.absent() : Answer.of(Citation.of(at));
+        }
+    }
+
+    /**
+     * Where each condition one module's source wrote stands.
+     *
+     * <p>Under {@link WhereAConditionIsWritten} for the reason {@link ForksWrittenIn} is under
+     * {@link WhereAForkIsWritten}: what a report means is one place, and one walk answers for every
+     * place at once. Asked condition by condition, the answer would be built again for each
+     * sentence written about one.
+     */
+    record ConditionsWrittenIn(String name) implements Key<WrittenConditions> {
+
+        @Override
+        public String module() {
+            return name;
+        }
+
+        @Override
+        public Answer<WrittenConditions> compute(Db db) {
+            Answer<AuthoredSites.Walked> walked = db.ask(new Walk(name));
+            return walked.present() ? Answer.of(walked.value().conditions()) : Answer.absent();
+        }
+    }
+
+    /**
+     * Where a report about {@code anchor}'s condition points.
+     *
+     * <p>The one place the two questions come back together, and a switch rather than a fallback,
+     * for the reason {@link #placeOf(Db, ArmReportAnchor)} is one. Asked the other way round, a
+     * condition written in a file this compilation has stopped holding would quietly be reported
+     * wherever a reading met a copy of it.
+     *
+     * @throws NothingPlacesIt where the question the anchor names has no answer
+     */
+    public static Citation placeOf(Db db, ConditionReportAnchor anchor) {
+        Answer<Citation> at = switch (anchor) {
+            case ConditionReportAnchor.WhereItIsWritten(WrittenCondition condition) ->
+                    db.ask(new WhereAConditionIsWritten(condition));
+            case ConditionReportAnchor.WhereTheReadingMetIt(String module,
+                    ConditionOccurrence condition) ->
+                    metIn(db, module, condition);
+        };
+        if (!at.present()) {
+            throw new NothingPlacesIt("a condition reported at " + anchor);
+        }
+        return at.value();
+    }
+
+    /** Where the reading of {@code condition}'s body met it, as an answer that may be missing. */
+    private static Answer<Citation> metIn(Db db, String module, ConditionOccurrence condition) {
+        Answer<Map<ConditionOccurrence, Citation>> met =
+                db.ask(new Adequacy.ConditionsMet(module, condition.behavior()));
+        if (!met.present()) {
+            return Answer.absent();
+        }
+        Citation at = met.value().get(condition);
+        return at == null ? Answer.absent() : Answer.of(at);
     }
 
     /**

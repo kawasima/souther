@@ -1439,6 +1439,72 @@ public final class Adequacy {
 
         @Override
         public Answer<souther.compiler.partition.Partitions.Partitioning> compute(Db db) {
+            Answer<BodyDivided> read = db.ask(new Dividing(name, behavior));
+            return read.present() ? Answer.of(read.value().geometry()) : Answer.absent();
+        }
+    }
+
+    /**
+     * What one reading of a body leaves, of the parts an answer may hold.
+     *
+     * <p>The reading of the input itself is not here. It holds a way of asking the declarations a
+     * further question, so it compares by which of them built it — held in an answer, it would make
+     * the answer a thing two compilations of one source could not find equal.
+     */
+    record BodyDivided(souther.compiler.partition.Partitions.Partitioning geometry,
+                       java.util.Map<souther.compiler.partition.ConditionOccurrence,
+                               souther.compiler.diag.Citation> conditionsMet) {}
+
+    /**
+     * Where the reading that divided one behavior met each condition it places itself.
+     *
+     * <p>Beside {@link Divided} and read off the same reading. Told apart by what a reader holds:
+     * one holds a row to compose and asks what the model divides, and this is asked by a reader
+     * writing a sentence about a condition and holding no place at all.
+     *
+     * <p>Its own question so that what each of the two says stops where its own meaning stops. Both
+     * are worked out again whenever the reading comes out different; what a report is told about a
+     * place then comes back the same where nothing about the places moved, and goes no further.
+     *
+     * <p>Of the reading that met the conditions and not of the module that wrote them. A condition
+     * a reader can go and open is placed by whoever wrote it
+     * ({@link Sites.WhereAConditionIsWritten}); what is here is the rest — a construct this
+     * compiler composed, a condition of a shape the reading has no words for, code in a file this
+     * compilation does not hold.
+     */
+    public record ConditionsMet(String name, String behavior)
+            implements Key<java.util.Map<souther.compiler.partition.ConditionOccurrence,
+                    souther.compiler.diag.Citation>> {
+
+        @Override
+        public String module() {
+            return name;
+        }
+
+        @Override
+        public Answer<java.util.Map<souther.compiler.partition.ConditionOccurrence,
+                souther.compiler.diag.Citation>> compute(Db db) {
+            Answer<BodyDivided> read = db.ask(new Dividing(name, behavior));
+            return read.present() ? Answer.of(read.value().conditionsMet()) : Answer.absent();
+        }
+    }
+
+    /**
+     * One reading of one behavior's body, which both questions about it are projections of.
+     *
+     * <p>Here rather than at each of them, because a body is read once: answered apart, the two
+     * would be two readings of one body, agreeing until the day one of them was taught something
+     * the other was not.
+     */
+    record Dividing(String name, String behavior) implements Key<BodyDivided> {
+
+        @Override
+        public String module() {
+            return name;
+        }
+
+        @Override
+        public Answer<BodyDivided> compute(Db db) {
             // The assembly. What says whether there is anything to divide is the behavior's own
             // signature: a module one of whose declarations did not come out still has behaviors
             // whose boundary was built, and those are divided like any other.
@@ -1479,7 +1545,7 @@ public final class Adequacy {
             souther.compiler.coverage.CoverageSites.Plan plan =
                     checked == null
                             ? souther.compiler.coverage.CoverageSites.Plan.NONE : checked.plan();
-            return Answer.of(Coverages.partitioningOf(spec,
+            Coverages.Partitioned read = Coverages.partitioningOf(spec,
                     domain.reading(reading.value()), bodies.get(behavior),
                     plan,
                     arrivalsOf(db.ask(new PathReached(name)).value(), spec),
@@ -1491,7 +1557,8 @@ public final class Adequacy {
                     // further in, a position would be allowed its machines once per caller and what
                     // the two came to would be bought by nobody.
                     db.ask(new Front.Adequacy()).value().measures()
-                            .allowanceForBehaviorDistinctions()).geometry());
+                            .allowanceForBehaviorDistinctions());
+            return Answer.of(new BodyDivided(read.geometry(), read.conditionsMet()));
         }
     }
 

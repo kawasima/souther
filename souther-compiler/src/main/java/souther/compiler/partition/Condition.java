@@ -3,7 +3,6 @@ package souther.compiler.partition;
 import souther.compiler.check.Comparison;
 import souther.compiler.check.Symbols;
 import souther.compiler.core.Core;
-import souther.compiler.diag.Citation;
 import souther.compiler.inputs.InputReads;
 import souther.compiler.inputs.ReadMeaning;
 import souther.compiler.semantics.ConditionJoin;
@@ -52,18 +51,29 @@ import souther.compiler.semantics.ConditionJoin;
 sealed interface Condition {
 
     /**
-     * Where this is written, as a report may say it.
+     * Which condition of this reading it is.
      *
-     * <p>Kept by every shape, because a reader that could not take one in owes the place it is
-     * written. Recovered afterwards from what is under a node, the place would be a child's — a
-     * conjunction nothing could turn into a region would be reported at whichever operand happened
-     * to be first, which is a second account of where a condition stands and is the kind of thing
+     * <p>Kept by every shape, because a reader that could not take one in owes something to name it
+     * by. Recovered afterwards from what is under a node, the name would be a child's — a
+     * conjunction nothing could turn into a region would be named after whichever operand happened
+     * to be first, which is a second account of which condition this is and is the kind of thing
      * this vocabulary exists to have one of.
      *
-     * <p>The place and not the node it was read from. Every reader of this wants somewhere to point
-     * at, and the node would let one ask the tree what the reading has already answered.
+     * <p>Which condition and not where it is written. Every reader of this wants something to tell
+     * one condition from its neighbours, and a place answers that only for as long as no two of
+     * them are written alike; where a report about one points is {@link #anchor}'s question, asked
+     * of whoever can answer it.
      */
-    Citation at();
+    ConditionOccurrence occurrence();
+
+    /**
+     * Which question a report about it asks for its place.
+     *
+     * <p>Settled here, where what the source wrote is still in hand. Below this a reader holds a
+     * condition and no node, and working out which question to put would mean going back to the
+     * tree for something the recognition has already answered.
+     */
+    ConditionReportAnchor anchor();
 
     /**
      * Two conditions put together, and what the connective makes of them.
@@ -73,8 +83,8 @@ sealed interface Condition {
      *            reads it again for the same answer, and the two readings can be taught different
      *            ones
      */
-    record Joined(Citation at, ConditionJoin how, Condition left, Condition right)
-            implements Condition {}
+    record Joined(ConditionOccurrence occurrence, ConditionReportAnchor anchor, ConditionJoin how,
+                  Condition left, Condition right) implements Condition {}
 
     /**
      * One comparison, and where the names in it point.
@@ -87,21 +97,26 @@ sealed interface Condition {
      *                   an expanded helper is about the argument the call handed it, and read
      *                   against the outer names it is about nothing
      */
-    record Compares(Comparison comparison, Citation at, InputReads reads)
-            implements Condition {}
+    record Compares(Comparison comparison, ConditionOccurrence occurrence,
+                    ConditionReportAnchor anchor, InputReads reads) implements Condition {}
 
     /** Where this reading stops: a condition of a shape it has no words for. */
-    record NotRead(Citation at) implements Condition {}
+    record NotRead(ConditionOccurrence occurrence, ConditionReportAnchor anchor)
+            implements Condition {}
 
     /**
-     * {@code e} read as a condition, under {@code reads}.
+     * {@code e} read as a condition, under {@code reads}, taking its names from {@code numbering}.
      *
      * <p>Bindings are looked through and their names taken in; the two operators are taken apart;
      * everything else is either one comparison or nowhere this reading goes.
+     *
+     * <p>Called once for the condition it is about, however many outcomes of it a reader goes on to
+     * ask about. Reaching one arm of a fork and reaching the other are two things this one
+     * condition says, and a second fold for the second arm would name the same condition twice.
      */
-    static Condition of(Core e, InputReads reads, Symbols symbols) {
+    static Condition of(Core e, InputReads reads, Symbols symbols, ConditionNumbering numbering) {
         if (e instanceof Core.LetIn let) {
-            return of(let.body(), reads.and(let.binder(), let.value()), symbols);
+            return of(let.body(), reads.and(let.binder(), let.value()), symbols, numbering);
         }
         // A name standing for a truth is that truth. What a `let` binds is already carried for the
         // sake of which position a term names, and stopping at the name here left a fork on one
@@ -117,20 +132,31 @@ sealed interface Condition {
         // each step of this goes strictly outwards.
         if (e instanceof Core.Read name
                 && reads.meaningOf(name, symbols) instanceof ReadMeaning.Through through) {
-            return of(through.denotes().value(), through.denotes().at(), symbols);
+            return of(through.denotes().value(), through.denotes().at(), symbols, numbering);
         }
         if (e instanceof Core.Binary binary) {
             ConditionJoin joined = ConditionJoin.of(binary.op()).orElse(null);
             if (joined != null) {
-                return new Joined(Citation.of(binary.pos()), joined,
-                        of(binary.left(), reads, symbols), of(binary.right(), reads, symbols));
+                // The whole node is named before its operands are, so that the order the names come
+                // in is the order a reader meets the conditions in.
+                ConditionOccurrence met = numbering.met();
+                return new Joined(met,
+                        numbering.anchorOf(binary.origin(), binary.pos(), met), joined,
+                        of(binary.left(), reads, symbols, numbering),
+                        of(binary.right(), reads, symbols, numbering));
             }
             Comparison comparison = Comparison.of(binary).orElse(null);
             if (comparison != null) {
-                return new Compares(comparison, Citation.of(binary.pos()), reads);
+                ConditionOccurrence met = numbering.met();
+                return new Compares(comparison, met,
+                        numbering.anchorOf(binary.origin(), binary.pos(), met), reads);
             }
         }
-        return new NotRead(Citation.of(e.pos()));
+        // Where this stops. A condition may be anything a `Bool` is, and the source wrote no
+        // construct here to name one by — so this is placed by the reading that met it, which is
+        // what handing no origin over says.
+        ConditionOccurrence met = numbering.met();
+        return new NotRead(met, numbering.anchorOf(null, e.pos(), met));
     }
 
     // Which binaries are comparisons is `Comparison#of`'s answer and is asked rather than spelled
