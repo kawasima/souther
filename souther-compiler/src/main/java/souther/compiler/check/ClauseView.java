@@ -54,6 +54,12 @@ final class ClauseView {
      * omits nothing is the reading of the clause as written and is that by being it.
      */
     static ClauseView of(List<Clauses.StatedPart> parts, PartsLeftOut without) {
+        // Asked before the parts are walked, because almost every reading there is asks for the
+        // declaration whole: a clause is viewed for every clause of every value, and a reading that
+        // leaves nothing out would otherwise build a set to find nothing in.
+        if (!without.leavesAnythingOut()) {
+            return WHOLE;
+        }
         Set<Core> out = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Clauses.StatedPart each : parts) {
             if (without.excludes(each.id())) {
@@ -61,6 +67,12 @@ final class ClauseView {
             }
         }
         return out.isEmpty() ? WHOLE : new ClauseView(out);
+    }
+
+    /** Whether every part of every clause is a rule of this world, which almost every reading is
+     *  made in. Asked where working out the shape of a clause would be the cost of finding out. */
+    boolean omitsNothing() {
+        return omitted.isEmpty();
     }
 
     /**

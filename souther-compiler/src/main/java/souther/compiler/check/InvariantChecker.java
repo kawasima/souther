@@ -958,7 +958,12 @@ public final class InvariantChecker {
             ClauseView view = ClauseView.of(each.parts(), reach.withoutParts());
             // And a clause this world holds no part of is no rule of it. Read as one, the reading
             // would compose a tree of nothing at all, which is not the shape a clause has.
-            if (view.omits(ClauseExpr.of(each.clause(), true))) {
+            //
+            // Asked of the view before the shape is worked out. Working one out walks the clause
+            // and builds a node for every part of it, and this runs for every clause of every value
+            // — so a reading that leaves nothing out, which is almost all of them, does not pay to
+            // be told that it leaves nothing out.
+            if (!view.omitsNothing() && view.omits(ClauseExpr.of(each.clause(), true))) {
                 continue;
             }
             asked.read(reader, at, each, each.clause(), view);
