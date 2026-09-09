@@ -12,6 +12,7 @@ import java.lang.classfile.Instruction;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.Opcode;
 import java.lang.classfile.instruction.InvokeInstruction;
+import java.lang.reflect.AccessFlag;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -100,29 +101,46 @@ class WhoMayBuildARefusalFromOneOfItsHalvesTest {
     }
 
     /**
-     * And nothing that may be asked of a relation is given a question about a block.
+     * And what may be asked of a relation is these two questions and no others.
      *
      * <p>What stops the ordering being written rather than merely not written. The entry that
      * looks for both witnesses takes a question about the relation, and a question handed over as
-     * a lambda is one its author may write over the blocks as well — so what may be asked is a
-     * closed set of makers, and a maker given a question about a block, or an answer to one, is a
-     * way to leave the relation unread wherever the blocks refused something.
+     * a lambda is one its author may write over the blocks as well — so a type that only promised
+     * to ask it would be promising about what its callers happened to contain.
+     *
+     * <p><b>The makers themselves and not the shapes one of them would have.</b> A rule that
+     * reported a maker taking a question about a block is a rule an escape hatch walks past: a
+     * maker taking anything a caller may write over what it likes — a supplier of the lacks, a
+     * predicate, a relation and a second chance to answer — hands the same power over without
+     * naming a block anywhere. So what is pinned is the way in, and a new one is a finding whatever
+     * it takes.
      */
     @Test
-    void andNothingAskedOfARelationIsGivenAQuestionAboutABlock() {
-        List<String> given = new ArrayList<>();
-        for (MethodModel maker : CompiledClasses.ofWhatThisRepositoryPublishes()
-                .read(WHERE + "WhatARelationShows").methods()) {
-            String takes = maker.methodType().stringValue();
-            if (takes.contains(WHERE + "AskedOfEachBlock")
-                    || takes.contains(WHERE + "Emptiness")) {
-                given.add(maker.methodName().stringValue() + takes);
+    void andWhatMayBeAskedOfARelationIsTheseTwoQuestions() {
+        ClassModel asked = CompiledClasses.ofWhatThisRepositoryPublishes()
+                .read(WHERE + "WhatARelationShows");
+        List<String> waysIn = new ArrayList<>();
+        for (MethodModel maker : asked.methods()) {
+            String named = maker.methodName().stringValue();
+            boolean makesOne = maker.methodType().stringValue()
+                    .endsWith(")L" + WHERE + "WhatARelationShows;");
+            if (makesOne || named.equals("<init>")) {
+                waysIn.add(named + maker.methodType().stringValue()
+                        + (maker.flags().has(AccessFlag.PRIVATE) ? " private" : ""));
             }
         }
 
-        assertEquals(List.of(), given,
-                "a question about the relation that is handed what the blocks answered is one its"
-                        + " author may leave unasked wherever they answered something");
+        assertEquals(List.of(
+                        "<init>(L" + WHERE + "Apartness;L" + WHERE + "AskedOfARelation;L"
+                                + WHERE + "AdmissibleValues$Box;)V private",
+                        "askedOf(L" + WHERE + "AskedOfARelation;L" + WHERE + "Apartness;L"
+                                + WHERE + "AdmissibleValues$Box;)L"
+                                + WHERE + "WhatARelationShows;",
+                        "statedApart(L" + WHERE + "Apartness;)L" + WHERE + "WhatARelationShows;"),
+                waysIn.stream().sorted().toList(),
+                "a question about the relation that a caller writes is one they may leave unasked"
+                        + " wherever the blocks answered something, so what may be asked is what a"
+                        + " relation answers and nothing a caller hands over");
     }
 
     /**
