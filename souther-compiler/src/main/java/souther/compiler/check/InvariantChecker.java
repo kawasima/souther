@@ -865,7 +865,7 @@ public final class InvariantChecker {
                                 .put(of.at(), new PartAsRead(of, partRead(came))));
                 owed = owed == null ? said : owed.and(said);
             }
-            written.add(new Written(stated, view, constrained));
+            written.add(new Written(stated, view, constrained, Map.of()));
             if (owed == null) {
                 owed = Predicates.Owed.unread();
             }
@@ -931,7 +931,6 @@ public final class InvariantChecker {
         // the two went unanswered would turn on the order they were written in.
         Allowance<FactSubject> allowed =
                 policy.allowanceForAdmittedValues(c.answers.lending());
-        Map<RuleRef.Invariant, Map<Core, ReadByClauses.OfAPart>> adoptedBy = new LinkedHashMap<>();
         Map<RuleRef.Invariant, ReadByClauses.OfARule> narrowedBy = new LinkedHashMap<>();
         // The numbers this value's clauses can be about, read before any of them is. Both the fold
         // below and the walk that classifies a comparison are given this one table.
@@ -1002,11 +1001,15 @@ public final class InvariantChecker {
                     boundsLeftOpen.computeIfAbsent(each.from(), _ -> new LinkedHashMap<>())
                             .merge(number, behind, EndsLeftOpen.Behind::and));
         });
-        answered.perPart().forEach((each, parts) -> {
-            Map<Core, ReadByClauses.OfAPart> out = adoptedBy
-                    .computeIfAbsent(each.from(), _ -> new java.util.IdentityHashMap<>());
-            parts.forEach(part -> out.put(part.getKey(), part.getValue()));
-        });
+        // And each reading with the account of its own parts, which is what the walk below reads
+        // them off. One rule is read once per place the walk opens a value at, and each of those
+        // readings walks the tree a substitution built for it — so an account of every reading
+        // together is one whose entries are told apart by which objects those substitutions
+        // allocated, and a reader walking one reading finds another reading's answer as readily.
+        List<Written> accounted = new ArrayList<>(written.size());
+        for (Written each : written) {
+            accounted.add(each.alsoAdopting(answered.perPart().getOrDefault(each, List.of())));
+        }
         // And the same after it. Reading the account is reading an answer: the whole was worked
         // out once above, and what each clause and each part of it took in is looked up in
         // that. Worked out again per clause instead, asking what a rule adopted bought machines
@@ -1035,8 +1038,8 @@ public final class InvariantChecker {
                         + " alternatives past a counted " + expansion;
         // And which of the clauses place an edge, asked once the positions have names to be
         // recognised by.
-        Reading reading = c.directsIn(written, at, numbers, typeAt, took,
-                new PartsRead(adoptedBy, narrowedBy));
+        Reading reading = c.directsIn(accounted, at, numbers, typeAt, took,
+                new PartsRead(narrowedBy));
         ConstraintState<FactSubject> constraints = k.constraints()
                 .takingRead(answered.whole().confinement(), allowed, c.answers);
         // How each atom's values are spaced, kept so that settling one afterwards states the
@@ -1363,7 +1366,8 @@ public final class InvariantChecker {
      */
     record Written(Core clause, ClauseView view,
                    Map<PartId<RuleRef.Invariant>, Map<ClauseExpr.Occurrence, PartAsRead>>
-                           constrained) {
+                           constrained,
+                   Map<Core, ReadByClauses.OfAPart> adopted) {
 
         Written {
             constrained = Map.copyOf(constrained);
@@ -1377,7 +1381,27 @@ public final class InvariantChecker {
             if (authored.isEmpty()) {
                 throw new IllegalArgumentException("a clause reaching a value is written in parts");
             }
-            return new Written(clause, world.viewOf(authored), constrained);
+            return new Written(clause, world.viewOf(authored), constrained, Map.of());
+        }
+
+        /**
+         * The same reading, with the account it came to once every branch of the value was decided.
+         *
+         * <p>Held by the reading it is an account of. A clause is read once per place the walk
+         * opens a value at, and the readings of one rule walk trees a substitution built for each
+         * of them — so an account of all of them together is told apart by nothing but which
+         * objects those substitutions happened to allocate.
+         */
+        Written alsoAdopting(List<Map.Entry<Core, ReadByClauses.OfAPart>> account) {
+            Map<Core, ReadByClauses.OfAPart> out = new IdentityHashMap<>();
+            account.forEach(each -> out.put(each.getKey(), each.getValue()));
+            return new Written(clause, view, constrained, Collections.unmodifiableMap(out));
+        }
+
+        /** What this reading made of {@code part} of the clause, or null where it read no such
+         *  part — which is not the same as having read it and made nothing of it. */
+        ReadByClauses.OfAPart adoptedAt(Core part) {
+            return adopted.get(part);
         }
 
         /**
@@ -1539,28 +1563,12 @@ public final class InvariantChecker {
      * was. Keyed by the part as the tree holds it, so the walk that reads the clause afterwards
      * finds this reading's own answer about the very node it holds rather than reading it again.
      *
-     * @param account what each reading made of each part, as each of them wrote it down. The
-     *                account itself and not one projection of it: what a part adopted and what it
-     *                put a constraint on are two questions, and a walk handed the first alone
-     *                answers the second by reading a set that holds more than it
      * @param byRule  what each rule's own tree came to, which is the only thing that answers what
      *                that rule did to a position. The declaration's answer is met from every rule
      *                reaching the position, so a reader taking it for one rule's would lend a rule
      *                that narrows nothing whatever its neighbours narrowed
      */
-    record PartsRead(Map<RuleRef.Invariant, Map<Core, ReadByClauses.OfAPart>> account,
-                     Map<RuleRef.Invariant, ReadByClauses.OfARule> byRule) {
-
-        /** What every reading made of {@code part} of {@code rule}, or null where none read it. */
-        ReadByClauses.OfAPart accountIn(RuleRef rule, Core part) {
-            Map<Core, ReadByClauses.OfAPart> said = account.get(rule);
-            return said == null ? null : said.get(part);
-        }
-
-        Set<FactSubject> adoptedIn(RuleRef rule, Core part) {
-            ReadByClauses.OfAPart said = accountIn(rule, part);
-            return said == null ? null : said.adopted();
-        }
+    record PartsRead(Map<RuleRef.Invariant, ReadByClauses.OfARule> byRule) {
 
         /** What {@code rule}'s own tree left, or null where no reading answered over it. */
         ReadByClauses.OfARule ruleIn(RuleRef rule) {
@@ -1818,7 +1826,8 @@ public final class InvariantChecker {
         if (about.isEmpty()) {
             return;
         }
-        Set<FactSubject> here = parts.adoptedIn(rule, part);
+        ReadByClauses.OfAPart adopted = of.adoptedAt(part);
+        Set<FactSubject> here = adopted == null ? null : adopted.adopted();
         // What this very reading made of this very part, as it said so when it read it. Asked
         // again here, the part was read a second time, and two readings of one conjunct agree only
         // for as long as nobody changes one of them.
@@ -1919,8 +1928,8 @@ public final class InvariantChecker {
         //
         // Before the reading below, which needs to know: a conjunct that stated where the values
         // stop has a line, and is not one an author is owed a sentence about for having drawn none.
-        RunsRead runs = runsOf(clause, from, part, byName, parts, out);
-        restricting(clause, from, part, byName, parts, noLines, runs);
+        RunsRead runs = runsOf(clause, from, of, part, byName, parts, out);
+        restricting(clause, from, of, part, byName, parts, noLines, runs);
         aChoiceAboutOneCoordinate(clause, part, at, byName, naming);
         if (!(clause instanceof Core.Binary bin)) {
             // Nothing but a binary is written as a comparison, so there is no reading of one for
@@ -2666,10 +2675,11 @@ public final class InvariantChecker {
      * beside a rule that says nothing lends the second its narrowing — and the reason goes out
      * against the one rule that holds the position to nothing.
      */
-    private void restricting(Core clause, RuleRef.Invariant from, PartId<RuleRef.Invariant> part,
+    private void restricting(Core clause, RuleRef.Invariant from, Written of,
+                             PartId<RuleRef.Invariant> part,
                              Map<FactSubject, Coordinate> byName, PartsRead parts,
                              List<FieldDomains.NoLine> noLines, RunsRead runs) {
-        ReadByClauses.OfAPart account = parts.accountIn(from, clause);
+        ReadByClauses.OfAPart account = of.adoptedAt(clause);
         ReadByClauses.OfARule rule = parts.ruleIn(from);
         if (account == null || rule == null) {
             return;
@@ -2765,9 +2775,10 @@ public final class InvariantChecker {
      * characters they hold; a rule about the length is a rule about a whole number and is read
      * where whole numbers are.
      */
-    private RunsRead runsOf(Core clause, RuleRef.Invariant from, PartId<RuleRef.Invariant> part,
+    private RunsRead runsOf(Core clause, RuleRef.Invariant from, Written of,
+                        PartId<RuleRef.Invariant> part,
                         Map<FactSubject, Coordinate> byName, PartsRead parts, List<Direct> out) {
-        ReadByClauses.OfAPart account = parts.accountIn(from, clause);
+        ReadByClauses.OfAPart account = of.adoptedAt(clause);
         if (account == null) {
             return RunsRead.NOTHING;
         }
