@@ -26,6 +26,13 @@ package souther.compiler.values;
  * {@link SidesShownEmpty} where the question is about two answers at once: which of the two were
  * shown empty is the observation, and what a connective does about that is the connective's
  * ({@link Alternatives} for a choice).
+ *
+ * <p><b>And what an operation over many of them starts from and can no longer be moved from is the
+ * operation's.</b> A walk that seeded itself with a constant, or stopped on reaching one, would be
+ * saying where {@link #met} or {@link #joined} begins and ends in its own words — true of the three
+ * by arithmetic nobody wrote down, and left standing by an answer added to them. So each operation
+ * is asked ({@link #identityForMeet} and {@link #endsAMeet}, {@link #identityForJoin} and
+ * {@link #endsAJoin}), and a walk is told nothing about which answers those come to.
  */
 public enum Emptiness {
 
@@ -38,7 +45,15 @@ public enum Emptiness {
     /** Neither, until what the position admits has been worked out. */
     UNDECIDED;
 
-    /** Whether this is the settled answer that nothing is admitted. */
+    /**
+     * Whether this is the settled answer that nothing is admitted.
+     *
+     * <p>A fact about the answer, and not about whether an operation can still be moved from it. A
+     * walk holding what it has taken in so far asks {@link #endsAMeet} or {@link #endsAJoin}, which
+     * are about the arithmetic it is walking under: that those two and this agree on any of the
+     * three is the arithmetic's doing, and a walk reading it here would be deciding the shape of an
+     * operation from one of its answers.
+     */
     public boolean isEmpty() {
         return switch (this) {
             case EMPTY -> true;
@@ -68,10 +83,20 @@ public enum Emptiness {
      * Where one is settled that something is admitted and the other is not known, the two together
      * are what the second one is — which is not known either, since what each of them says is about
      * a different part of the same value.
+     *
+     * <p><b>Every pair is answered, and none of them from the answer on one side alone.</b> An
+     * answer that settles this whatever stands beside it settles it because of what the other
+     * answers are, and an arm written to say so would go on saying it about an answer added to the
+     * three — which is the one thing nobody would have decided. So each answer is asked about each
+     * of them, and an answer added here is a row and a column and not a row.
      */
     public Emptiness met(Emptiness other) {
         return switch (this) {
-            case EMPTY -> EMPTY;
+            case EMPTY -> switch (other) {
+                case EMPTY -> EMPTY;
+                case NONEMPTY -> EMPTY;
+                case UNDECIDED -> EMPTY;
+            };
             case NONEMPTY -> switch (other) {
                 case EMPTY -> EMPTY;
                 case NONEMPTY -> NONEMPTY;
@@ -79,8 +104,40 @@ public enum Emptiness {
             };
             case UNDECIDED -> switch (other) {
                 case EMPTY -> EMPTY;
-                case NONEMPTY, UNDECIDED -> UNDECIDED;
+                case NONEMPTY -> UNDECIDED;
+                case UNDECIDED -> UNDECIDED;
             };
+        };
+    }
+
+    /**
+     * What nothing at all held together comes to, which is where a walk over such a pairing starts.
+     *
+     * <p>The answer {@link #met} leaves whatever it is put beside, so a walk that has taken nothing
+     * in yet stands where this does. Asked of the operation and not written at the walk: which
+     * answer that is follows from what holding things together means, and a walk naming it would be
+     * saying the arithmetic's own fact in the walk's words.
+     *
+     * <p>Which is not the same fact as what an empty conjunction admits. That nothing was read
+     * leaves every value at every position, and the reading saying so is the reading's — this says
+     * only that such a reading is what the arithmetic starts from.
+     */
+    public static Emptiness identityForMeet() {
+        return NONEMPTY;
+    }
+
+    /**
+     * Whether anything held together with this could come to anything else.
+     *
+     * <p>What a walk asks to stop early: an answer this cannot be moved from is the answer, and the
+     * conjuncts after it are conjuncts nobody has to look at. A fact about {@link #met} and not
+     * about which of the three this is — said the second way it would claim the same answer settles
+     * every operation, which {@link #joined} is the counterexample to.
+     */
+    public boolean endsAMeet() {
+        return switch (this) {
+            case EMPTY -> true;
+            case NONEMPTY, UNDECIDED -> false;
         };
     }
 
@@ -90,19 +147,50 @@ public enum Emptiness {
      * <p>Something is admitted where either side admits something, and nothing where both admit
      * nothing. Where one is settled empty and the other is not known, the choice is what the other
      * one is — which is not known either.
+     *
+     * <p>Every pair is answered here too, and for the reason {@link #met} says.
      */
     public Emptiness joined(Emptiness other) {
         return switch (this) {
-            case NONEMPTY -> NONEMPTY;
             case EMPTY -> switch (other) {
                 case EMPTY -> EMPTY;
                 case NONEMPTY -> NONEMPTY;
                 case UNDECIDED -> UNDECIDED;
             };
-            case UNDECIDED -> switch (other) {
+            case NONEMPTY -> switch (other) {
+                case EMPTY -> NONEMPTY;
                 case NONEMPTY -> NONEMPTY;
-                case EMPTY, UNDECIDED -> UNDECIDED;
+                case UNDECIDED -> NONEMPTY;
             };
+            case UNDECIDED -> switch (other) {
+                case EMPTY -> UNDECIDED;
+                case NONEMPTY -> NONEMPTY;
+                case UNDECIDED -> UNDECIDED;
+            };
+        };
+    }
+
+    /**
+     * What a choice between nothing at all comes to, which is where a walk over one starts.
+     *
+     * <p>{@link #identityForMeet}'s counterpart, and owned here for the same reason: the answer
+     * {@link #joined} leaves whatever it is put beside is the arithmetic's fact about itself.
+     */
+    public static Emptiness identityForJoin() {
+        return EMPTY;
+    }
+
+    /**
+     * Whether a further alternative could reach anything a choice ending in this has not.
+     *
+     * <p>{@link #endsAMeet}'s counterpart, and a different answer: what a choice cannot be moved
+     * from is not what a conjunction cannot be moved from, and a walk that asked one question for
+     * both would be reading the alternatives under the conjunction's arithmetic.
+     */
+    public boolean endsAJoin() {
+        return switch (this) {
+            case NONEMPTY -> true;
+            case EMPTY, UNDECIDED -> false;
         };
     }
 
