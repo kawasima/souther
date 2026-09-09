@@ -1,6 +1,5 @@
 package souther.compiler.check;
 
-import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.values.UnreadReason;
 
@@ -61,33 +60,43 @@ record RuleShortfall(FactSubject position, UnreadReason why, RuleShortfall.Site 
         /** Where an author wrote it, which is what an order among them is taken over. */
         SourcePos writtenAt();
 
-        /** One clause the reading had no word for, as the node it was written as. */
-        record AtALeaf(Core node) implements Site {
+        /**
+         * One clause the reading had no word for, as where in its clause the author wrote it.
+         *
+         * <p>The identity and the place beside each other, as a choice holds them
+         * ({@link ChoiceSite}). Which part of the clause this is, is what
+         * {@link ClauseExpr.Occurrence} says and a node cannot: a clause is read once for every
+         * place the walk opens a value at, over whatever tree the substitution built there, so two
+         * readings of one rule meet the same written part as two objects. Told apart by the tree
+         * they landed in, one thing an author wrote came back as two things to look at.
+         *
+         * <p>Which rule's clause it is an occurrence of is the carrier's — what a rule is
+         * answerable for is filed under that rule ({@link ReadingEvidence}) and never met with
+         * another's — and this says the rest.
+         *
+         * @param at which part of the clause it is, in the clause's own numbering
+         * @param writtenAt where that part stands, which is settled by {@code at} and carried
+         *                  because the reader that puts these in the author's order has no clause
+         *                  left to ask
+         */
+        record AtALeaf(ClauseExpr.Occurrence at, SourcePos writtenAt) implements Site {
 
             public AtALeaf {
-                if (node == null) {
-                    throw new IllegalArgumentException("a leaf is some node of a clause");
+                if (at == null || writtenAt == null) {
+                    throw new IllegalArgumentException(
+                            "a leaf is some part of a clause, written somewhere");
                 }
             }
 
+            /** This part of the clause and no other, whichever reading met it. */
             @Override
             public boolean equals(Object other) {
-                return other instanceof AtALeaf it && node == it.node;
+                return other instanceof AtALeaf it && at.equals(it.at);
             }
 
             @Override
             public int hashCode() {
-                return System.identityHashCode(node);
-            }
-
-            @Override
-            public SourcePos writtenAt() {
-                return node.pos();
-            }
-
-            @Override
-            public String toString() {
-                return "leaf@" + Integer.toHexString(System.identityHashCode(node));
+                return at.hashCode();
             }
         }
 

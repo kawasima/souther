@@ -2,11 +2,9 @@ package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Scopes;
-import souther.compiler.types.Type;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.TypeSymbols;
@@ -218,7 +216,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
     @Test
     void andWhichOfTheTwoIsNotAskedOfWhereItWasWritten() {
         RuleShortfall form = new RuleShortfall(CONSTRAINED, UnreadReason.FORM_NOT_READ,
-                new RuleShortfall.Site.AtALeaf(new Core.Bool(true, Type.BOOL, new SourcePos(1, 1))));
+                new RuleShortfall.Site.AtALeaf(new ClauseExpr.Occurrence(0), new SourcePos(1, 1)));
         ChoiceSite choice = aChoice();
 
         assertEquals(java.util.Set.of(form),

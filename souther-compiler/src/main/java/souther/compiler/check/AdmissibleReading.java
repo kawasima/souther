@@ -127,20 +127,22 @@ final class AdmissibleReading {
      * already turned {@code p == false} and {@code p /= true} into this leaf denied
      * ({@link ClauseExpr}), so nothing here asks how the author spelled it.
      */
-    PlannedValues<FactSubject> leaf(Core e, boolean positive, Denotations at) {
+    PlannedValues<FactSubject> leaf(ClauseExpr.Part part, Denotations at) {
+        Core e = part.of();
+        boolean positive = part.positive();
         if (e instanceof Core.Binary b
                 && Comparison.of(b).map(Comparison::claim).orElse(null)
                         instanceof ComparisonClaim.Singled singled) {
             // Which of the two it states, once the denials above have been counted: what the
             // comparison holds at the value it names, turned over by each denial it stands under.
-            return comparison(b, singled.holdsAtTheValue() == positive, at);
+            return comparison(part, b, singled.holdsAtTheValue() == positive, at);
         }
         PlannedValues<FactSubject> truth = truthValued(e, positive, at);
         if (truth != null) {
             return truth;
         }
-        PlannedValues<FactSubject> matched = pattern(e, positive, at);
-        return matched != null ? matched : unreadable(e, at);
+        PlannedValues<FactSubject> matched = pattern(part, at);
+        return matched != null ? matched : unreadable(part, at);
     }
 
     /** What naming a position of two values says about it, or null where {@code e} is not one. */
@@ -171,8 +173,9 @@ final class AdmissibleReading {
      * of the same thing. That is every leaf that is not one of these, and every one of these whose
      * reading stopped at something other than this reading's own limit.
      */
-    private PlannedValues<FactSubject> pattern(Core e, boolean states, Denotations at) {
-        StringPredicates.Stated stated = statedIn(e, at);
+    private PlannedValues<FactSubject> pattern(ClauseExpr.Part part, Denotations at) {
+        boolean states = part.positive();
+        StringPredicates.Stated stated = statedIn(part.of(), at);
         FactSubject position = stated == null ? null : positionIn(stated.subject(), at);
         if (position == null) {
             return null;
@@ -184,10 +187,10 @@ final class AdmissibleReading {
             // that much less for the meet it does need. So what is said is which machine would
             // answer this rule, and whether one is ever made of it is settled where the position's
             // plan is worked out under its allowance.
-            case StringPredicates.Reading.Accepting it -> asking(e, position,
+            case StringPredicates.Reading.Accepting it -> asking(part, position,
                     new AdmittedPlan.Pattern(states ? PatternPlan.of(it.accepts())
                             : PatternPlan.notMatching(it.accepts())));
-            case StringPredicates.Reading.PatternNotRead it -> stoppedBy(e, it.why(), position);
+            case StringPredicates.Reading.PatternNotRead it -> stoppedBy(part, it.why(), position);
             // A rule whose text this could not work out is a rule this did not read, and what that
             // costs is the leaf's to say — over every position the clause names, which is more than
             // this one wherever the text is written out of another.
@@ -209,13 +212,13 @@ final class AdmissibleReading {
      * <p>No {@code default}: a construct the subset learns to stop at is one somebody decides about
      * here, rather than one that quietly takes the answer its neighbours were given.
      */
-    private PlannedValues<FactSubject> stoppedBy(Core e, PatternRead.Unsupported why,
+    private PlannedValues<FactSubject> stoppedBy(ClauseExpr.Part part, PatternRead.Unsupported why,
                                                  FactSubject position) {
         return switch (why) {
             // The clause as well as the position. What a rule is answerable for is about the
             // pattern somebody wrote, and the position is where the reading was left short — read
             // back off the second, this would be every rule that named the place.
-            case NESTED_TOO_DEEPLY -> shortOf(e, Set.of(position),
+            case NESTED_TOO_DEEPLY -> shortOf(part, Set.of(position),
                     UnreadReason.PATTERN_TOO_DEEPLY_NESTED);
             case A_GROUP_ABOUT_THE_MATCH,
                  A_BACK_REFERENCE,
@@ -241,7 +244,8 @@ final class AdmissibleReading {
      * Given up on instead, the two stayed two answers with a rule between them that reached
      * neither, and a declaration whose positions cannot hold one value together was admitted.
      */
-    private PlannedValues<FactSubject> comparison(Core.Binary b, boolean states, Denotations at) {
+    private PlannedValues<FactSubject> comparison(ClauseExpr.Part part, Core.Binary b,
+                                                  boolean states, Denotations at) {
         PlannedValues<FactSubject> read = sided(b.left(), b.right(), states, at);
         if (read == null) {
             // `"A" == value` says what `value == "A"` says.
@@ -250,7 +254,7 @@ final class AdmissibleReading {
         if (read == null) {
             read = relating(b, states, at);
         }
-        return read != null ? read : unreadable(b, at);
+        return read != null ? read : unreadable(part, at);
     }
 
     /**
@@ -296,8 +300,9 @@ final class AdmissibleReading {
      * ordering comparison and an equality answer alike — written per shape, {@code <} fell through
      * one path and {@code ==} another, and a relation came out as a form nobody could read.
      */
-    private PlannedValues<FactSubject> unreadable(Core e, Denotations at) {
-        return shortOf(e, names(e, at), relatesTwoPositions(e, at)
+    private PlannedValues<FactSubject> unreadable(ClauseExpr.Part part, Denotations at) {
+        Core e = part.of();
+        return shortOf(part, names(e, at), relatesTwoPositions(e, at)
                 ? UnreadReason.RELATES_TWO_POSITIONS : UnreadReason.FORM_NOT_READ);
     }
 
@@ -306,23 +311,30 @@ final class AdmissibleReading {
      *
      * <p>Both from the one decision and neither from the other. What a place is left holding is the
      * reading's answer about the place; what a rule is answerable for is about the thing somebody
-     * wrote, which is the node in hand here and is nowhere in what the places come back with. Read
+     * wrote, which is the part in hand here and is nowhere in what the places come back with. Read
      * off the places afterwards, the second is a list of reasons and no clause — every rule reaching
      * a position pays into its answer, so the place has as many claimants as it has rules.
+     *
+     * <p>Which written part it was is taken from the shape and not from the node. The two say the
+     * same thing about one reading and part company across two: a rule is read once for every place
+     * a value is opened at, over the tree the substitution built there, and the shape numbers the
+     * clause the author wrote whichever tree it was read over.
      *
      * <p>Written down against the node rather than returned beside the values, because the fold
      * carries one answer upward and this is not part of it. What is recorded here is asked for at
      * the leaf that was read ({@link #shortfallsAt}), which is a handing over and not a second
      * reading: nothing looks at what the clause came to in order to work out what was decided.
      */
-    private PlannedValues<FactSubject> shortOf(Core e, Set<FactSubject> named, UnreadReason why) {
+    private PlannedValues<FactSubject> shortOf(ClauseExpr.Part part, Set<FactSubject> named,
+                                               UnreadReason why) {
+        Core e = part.of();
         // That this reading gave up here, which is not the same as what it gave up on. A clause
         // about no position of this value is one nothing read all the same, and a choice needs to
         // know: had it been read, the alternative holding it might have turned out one nobody can
         // be in, and then the choice would have been the other branch.
         gaveUp.add(e);
         List<RuleShortfall> mine = shortfalls.computeIfAbsent(e, _ -> new ArrayList<>());
-        RuleShortfall.Site site = new RuleShortfall.Site.AtALeaf(e);
+        RuleShortfall.Site site = siteOf(part);
         named.forEach(each -> {
             RuleShortfall one = new RuleShortfall(each, why, site);
             if (!mine.contains(one)) {
@@ -340,11 +352,22 @@ final class AdmissibleReading {
      * position pays into that allowance, so the place cannot say which of them asked, and the
      * pattern alone is the same pattern wherever somebody wrote it.
      */
-    private PlannedValues<FactSubject> asking(Core e, FactSubject position,
+    private PlannedValues<FactSubject> asking(ClauseExpr.Part part, FactSubject position,
                                               AdmittedPlan.Pattern plan) {
-        asked.computeIfAbsent(e, _ -> new LinkedHashSet<>())
-                .add(new AskedAt(position, plan.plan(), new RuleShortfall.Site.AtALeaf(e)));
+        asked.computeIfAbsent(part.of(), _ -> new LinkedHashSet<>())
+                .add(new AskedAt(position, plan.plan(), siteOf(part)));
         return PlannedValues.at(position, plan);
+    }
+
+    /**
+     * Where in its clause {@code part} stands, and where an author wrote it.
+     *
+     * <p>Made where the leaf is read and nowhere after. What is decided later about this clause is
+     * filed at the site it was handed, so a copy a conjunction distributed over a choice carries
+     * the one an author wrote rather than a second of the same shape.
+     */
+    private static RuleShortfall.Site siteOf(ClauseExpr.Part part) {
+        return new RuleShortfall.Site.AtALeaf(part.at(), part.of().pos());
     }
 
     /**
