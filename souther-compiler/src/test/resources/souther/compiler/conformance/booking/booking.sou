@@ -1,0 +1,35 @@
+// A model in the middle of being written, and what this compiler says about one.
+//
+// The corpora beside this one hold up: nothing this compiler says about either is a refusal, and
+// both their diagnostics files are empty. What a run says about a model on the way there is
+// answered nowhere else, and it is what three of this compiler's questions are put by — where a
+// clause is written, where a declaration is written, and where the declaration a line is owed at is
+// written. Each of them is asked by something about to send a reader somewhere, and what it is
+// about to say is a sentence about a place the model falls short at.
+//
+// Three modules and not one, because a module this compiler refuses is one it stops measuring.
+// Written together, the first refusal would be the only thing said about any of it.
+//
+// This one is the module that holds up. What it is short of is rows: a band is declared and one
+// row stands in the middle of it, so the points its edges draw are lines the declarations owe.
+module conformance.booking exposing
+    ( Seat, Party, Booking, book )
+
+data Seat = Int
+    invariant value >= 1 && value <= 300
+
+data Party = Int
+    invariant value >= 1 && value <= 8
+
+data Booking = { seat: Seat, party: Party }
+
+behavior book : (seat: Seat, party: Party) -> Booking
+    constructs Booking
+
+let book (seat, party) = Booking { seat = seat, party = party }
+
+// One row, in the middle of both bands. The points the invariants on `Seat` and `Party` draw are
+// left standing, and each is a line the declarations owe an answer at.
+example book
+    | "a party of two takes a seat in the middle of the house" :
+        (Seat(150), Party(2)) -> Booking { seat = Seat(150), party = Party(2) }

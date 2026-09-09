@@ -138,12 +138,13 @@ final class AnswerClosure {
 
     /** What was compiled for it to be met in. */
     enum Scenario {
-        /** The conformance corpus, analysed with everything measured. */
-        VALID_CORPUS,
-        /** A module the compiler has something to say about, so the reports half of an answer is not
-         *  empty. Its own scenario because a corpus of valid models cannot reach it: an answer is
-         *  what it holds and what was said getting there, and only one of those is exercised by a
-         *  model nothing is said about. */
+        /** The conformance corpora, analysed with everything measured. Not all of them hold up:
+         *  one is a model on the way there, so what a compile says on the way to an answer is
+         *  reached here as well as in the scenario beside it. */
+        THE_CORPORA,
+        /** A module the compiler has something to say about, held to one mistake. What it is for is
+         *  a stimulus of its own: a difference between the two walks over one input is a difference
+         *  of walk, and over one input alone there is nothing to say it is not the input's. */
         A_MODULE_SPOKEN_ABOUT
     }
 
@@ -349,11 +350,11 @@ final class AnswerClosure {
                     + "meets it under whichever question declares reports of its own");
 
     private static final Set<Observation> BOTH_EVERYWHERE = Set.of(
-            walked(Scenario.VALID_CORPUS), compared(Scenario.VALID_CORPUS),
+            walked(Scenario.THE_CORPORA), compared(Scenario.THE_CORPORA),
             walked(Scenario.A_MODULE_SPOKEN_ABOUT), compared(Scenario.A_MODULE_SPOKEN_ABOUT));
 
     private static final Set<Observation> ONLY_WALKED = Set.of(
-            walked(Scenario.VALID_CORPUS), walked(Scenario.A_MODULE_SPOKEN_ABOUT));
+            walked(Scenario.THE_CORPORA), walked(Scenario.A_MODULE_SPOKEN_ABOUT));
 
     /** A place, written the way a walk writes one. */
     private static Locus.Place at(String question, String offender, Locus.Step... steps) {
@@ -411,13 +412,13 @@ final class AnswerClosure {
             new Known(at(Q + "Bodies$Expanding", "souther.compiler.stdlib.Stdlib",
                     m(ANSWER, "value"), m("souther.compiler.query.Bodies$Expanding$Of", "table"), m("souther.compiler.check.HelperTable", "stdlib")),
                     STDLIB, ONLY_WALKED),
-            narrowedEnd(Q + "Adequacy$Inputs", walked(Scenario.VALID_CORPUS),
+            narrowedEnd(Q + "Adequacy$Inputs", walked(Scenario.THE_CORPORA),
                     m(ANSWER, "value"), VALUE,
                     m("souther.compiler.inputs.InputDomain", "byPath"), VALUE,
                     m("souther.compiler.inputs.ReadPosition", "bounds"), ELEMENT,
                     m("souther.compiler.inputs.PositionBounds", "narrowedEnds"),
                     m("souther.compiler.check.NarrowedBounds$Reading", "lower")),
-            narrowedEnd(Q + "Adequacy$Inputs", walked(Scenario.VALID_CORPUS),
+            narrowedEnd(Q + "Adequacy$Inputs", walked(Scenario.THE_CORPORA),
                     m(ANSWER, "value"), VALUE,
                     m("souther.compiler.inputs.InputDomain", "positions"), ELEMENT,
                     m("souther.compiler.inputs.ReadPosition", "bounds"), ELEMENT,
@@ -426,7 +427,7 @@ final class AnswerClosure {
             // The partition's own copy. An axis carries what the reading left the position rather
             // than the names it came to, so that a border can ask whether they are about the end it
             // has — and the walk that asks each object what it is meets the end on the way.
-            narrowedEnd(Q + "Adequacy$Divided", walked(Scenario.VALID_CORPUS),
+            narrowedEnd(Q + "Adequacy$Divided", walked(Scenario.THE_CORPORA),
                     m(ANSWER, "value"),
                     m("souther.compiler.partition.Partitions$Partitioning", "measurements"),
                     ELEMENT, m("souther.compiler.partition.PositionMeasurements", "axes"), ELEMENT,
@@ -434,9 +435,7 @@ final class AnswerClosure {
                     m("souther.compiler.check.NarrowedBounds$Reading", "lower")),
             new Known(at(EVERY_ANSWER, "souther.compiler.diag.Diagnostic",
                     m(ANSWER, "reports"), ELEMENT, m("souther.compiler.query.Report", "diagnostic")),
-                    A_REPORT,
-                    Set.of(walked(Scenario.A_MODULE_SPOKEN_ABOUT),
-                            compared(Scenario.A_MODULE_SPOKEN_ABOUT))));
+                    A_REPORT, BOTH_EVERYWHERE));
 
     /**
      * One place, what is wrong with what is there, and what the walk of the declarations stopped on.
@@ -764,17 +763,17 @@ final class AnswerClosure {
                 "WHOSE_DENIAL_THIS_IS_CANNOT_BE_TOLD .Answer#value.Scoped#values"
                         + " in A_MODULE_SPOKEN_ABOUT",
                 "WHOSE_DENIAL_THIS_IS_CANNOT_BE_TOLD .Answer#value.Scoped#values"
-                        + " in VALID_CORPUS",
+                        + " in THE_CORPORA",
                 // What a lookup with an answer for a name it has no entry for keeps from extending
                 // what the JDK ships: two caches the language fills in and opens to nobody. The
                 // walk asks, is refused, and says so — reading it as one of the JDK's own maps
                 // instead would read it for its entries and never meet what it answers with.
                 fieldOfAJdkParent(Adequacy.RowReadings.class, "", "keySet",
-                        Scenario.VALID_CORPUS),
+                        Scenario.THE_CORPORA),
                 fieldOfAJdkParent(Adequacy.RowReadings.class, "", "keySet",
                         Scenario.A_MODULE_SPOKEN_ABOUT),
                 fieldOfAJdkParent(Adequacy.RowReadings.class, "", "values",
-                        Scenario.VALID_CORPUS),
+                        Scenario.THE_CORPORA),
                 fieldOfAJdkParent(Adequacy.RowReadings.class, "", "values",
                         Scenario.A_MODULE_SPOKEN_ABOUT),
                 // The correspondence between a row's operand and the method it runs as, keyed on
@@ -782,22 +781,22 @@ final class AnswerClosure {
                 // answer that holds it, and what the answer says it is leaves it out on purpose.
                 // Which is why it is read as a thing of its own: a map that compares by which
                 // objects were put in it keeps none of what makes reading a map its entries enough.
-                operandMethodsOf("AbstractMap#keySet", Scenario.VALID_CORPUS),
+                operandMethodsOf("AbstractMap#keySet", Scenario.THE_CORPORA),
                 operandMethodsOf("AbstractMap#keySet", Scenario.A_MODULE_SPOKEN_ABOUT),
-                operandMethodsOf("AbstractMap#values", Scenario.VALID_CORPUS),
+                operandMethodsOf("AbstractMap#values", Scenario.THE_CORPORA),
                 operandMethodsOf("AbstractMap#values", Scenario.A_MODULE_SPOKEN_ABOUT),
-                operandMethodsOf("IdentityHashMap#entrySet", Scenario.VALID_CORPUS),
+                operandMethodsOf("IdentityHashMap#entrySet", Scenario.THE_CORPORA),
                 operandMethodsOf("IdentityHashMap#entrySet", Scenario.A_MODULE_SPOKEN_ABOUT),
-                operandMethodsOf("IdentityHashMap#table", Scenario.VALID_CORPUS),
+                operandMethodsOf("IdentityHashMap#table", Scenario.THE_CORPORA),
                 operandMethodsOf("IdentityHashMap#table", Scenario.A_MODULE_SPOKEN_ABOUT),
-                operandMethodsUnderPrepared("AbstractMap#keySet", Scenario.VALID_CORPUS),
+                operandMethodsUnderPrepared("AbstractMap#keySet", Scenario.THE_CORPORA),
                 operandMethodsUnderPrepared("AbstractMap#keySet", Scenario.A_MODULE_SPOKEN_ABOUT),
-                operandMethodsUnderPrepared("AbstractMap#values", Scenario.VALID_CORPUS),
+                operandMethodsUnderPrepared("AbstractMap#values", Scenario.THE_CORPORA),
                 operandMethodsUnderPrepared("AbstractMap#values", Scenario.A_MODULE_SPOKEN_ABOUT),
-                operandMethodsUnderPrepared("IdentityHashMap#entrySet", Scenario.VALID_CORPUS),
+                operandMethodsUnderPrepared("IdentityHashMap#entrySet", Scenario.THE_CORPORA),
                 operandMethodsUnderPrepared("IdentityHashMap#entrySet",
                         Scenario.A_MODULE_SPOKEN_ABOUT),
-                operandMethodsUnderPrepared("IdentityHashMap#table", Scenario.VALID_CORPUS),
+                operandMethodsUnderPrepared("IdentityHashMap#table", Scenario.THE_CORPORA),
                 operandMethodsUnderPrepared("IdentityHashMap#table",
                         Scenario.A_MODULE_SPOKEN_ABOUT));
     }
