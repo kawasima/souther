@@ -1,5 +1,6 @@
 package souther.compiler.check;
 
+import souther.compiler.diag.Citation;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.LinkedHashMap;
@@ -21,10 +22,13 @@ import java.util.Map;
  * so a coordinate that travelled here with a measurement would be one frame of several and nothing
  * would say which. Read from the declaration, there is one frame and it is the author's.
  *
- * <p>Where the declaration is written is read here too, because a report sends a reader to it and
- * a caller that looked it up separately would have a second way of finding one declaration — and a
- * policy of its own for the one that came back empty, which is a null place reaching a reader as a
- * switch over the arms a citation has.
+ * <p>Where the declaration's code is, is read here too, because a report carries it and a caller
+ * that found the declaration a second time to get it would have two ways of finding one — and a
+ * policy of its own for the one that came back empty. That is a rule about how a declaration is
+ * found, and not about what may be asked of it once it has been: the address is settled first, and
+ * what the declaration says and where its code is are two questions put to that one address. What
+ * comes back for a name nothing declares is then one answer and not two, because there was one
+ * lookup.
  *
  * <p>Nothing here is an identity. What tells one authored line from another is the clause and which
  * of its conjuncts drew the end ({@link souther.compiler.partition.AuthoredLine}), and that is what
@@ -59,17 +63,22 @@ public record DeclaredBorders(souther.compiler.diag.Citation at,
      * author's. One of these serves every debt of one declaration, so a caller printing a report
      * asks once per declaration rather than once per line.
      */
-    public static DeclaredBorders of(TypeSymbol declaredOn, RuleReadingSource source,
+    public static DeclaredBorders of(TypeSymbol declaredOn, PublishedDeclarations declarations,
+                                     DeclarationCitations citations, RuleReadingSource source,
                                      ReadingPolicy policy) {
-        // Where the declaration is, read here with what it draws. A caller that asked one thing for
-        // the name and another for the place would have two ways of finding one declaration, and a
-        // policy of its own for the one that came back empty.
-        if (!(source.symbols().declaredNode(declaredOn) instanceof souther.compiler.ast.Hir.Data
-                data)) {
+        // One address, and two questions put to it. What kind of declaration this is decides whether
+        // there are lines to read at all; where its code is decides what a report calls the place.
+        // Neither is looked up by the name a second time, which is what would give one declaration
+        // two ways of being found and each of them a policy for coming back empty.
+        if (!(declaredOn instanceof TypeSymbol.AtModule named)) {
             throw new IllegalArgumentException(
                     "there is no declaration of " + declaredOn.name() + " to read");
         }
-        souther.compiler.diag.Citation at = souther.compiler.diag.Citation.of(data.pos());
+        if (!(declarations.of(named.key()) instanceof DeclarationMeaning.Product)) {
+            throw new IllegalArgumentException(
+                    "there is no declaration of " + declaredOn.name() + " to read");
+        }
+        Citation at = citations.of(named.key());
         Map<Key, NumberAt<RuleKey>> forms = new LinkedHashMap<>();
         for (FieldDomains.Placed placed : Rules.of(declaredOn, source, policy).bounds().placed()) {
             // A clause reaching this declaration through a spread is written on another one and is

@@ -3,6 +3,7 @@ package souther.compiler.query;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.ClauseDischarge;
 import souther.compiler.check.ClauseLocations;
+import souther.compiler.check.DeclarationCitations;
 import souther.compiler.check.DeclarationLocations;
 import souther.compiler.check.DeclarationMeaning;
 import souther.compiler.check.PublishedDeclarations;
@@ -22,6 +23,7 @@ import souther.compiler.check.InvariantChecker;
 import souther.compiler.check.DerivedSymbols;
 import souther.compiler.check.ResolvedSymbols;
 import souther.compiler.core.ValueShape;
+import souther.compiler.diag.Citation;
 import souther.compiler.diag.CompileException;
 import souther.compiler.diag.DiagnosticPlace;
 import souther.compiler.diag.Region;
@@ -834,6 +836,46 @@ public final class Shapes {
             return declared == null ? Answer.absent()
                     : Answer.of(DiagnosticPlace.of(Region.point(declared.pos())));
         }
+    }
+
+    /**
+     * Where one declaration's code is written, as a citation.
+     *
+     * <p>Beside {@link DeclarationLocation} rather than under it. That one says whether a report may
+     * send a reader here; this says which of the ways a place comes to be this one is, and two of
+     * those — a place nobody settled, and one settled in a text this compilation does not hold —
+     * have no place to point at and so cannot be said there at all. A reader carrying a place into
+     * an account means this one.
+     *
+     * <p>Read off the declaration as resolution left it, for the reason {@link DeclarationLocation}
+     * gives: it is the answer that carries positions and moves when they do.
+     */
+    public record DeclarationCitation(TypeKey named) implements Key<Citation> {
+        @Override
+        public String module() {
+            return named.module();
+        }
+
+        @Override
+        public Answer<Citation> compute(Db db) {
+            Hir.Def declared = ClausesExpandedFor.declarationOf(db, named);
+            return declared == null ? Answer.absent() : Answer.of(Citation.of(declared.pos()));
+        }
+    }
+
+    /**
+     * Where any declaration's code is, for a reader carrying a place into an account.
+     *
+     * <p>One of these for the whole compilation, for the reason {@link #expandedClauses} gives.
+     */
+    public static DeclarationCitations declarationCitations(Db db) {
+        return declaration -> {
+            Answer<Citation> cited = db.ask(new DeclarationCitation(declaration));
+            if (!cited.present()) {
+                throw new DeclarationCitations.NoSuchDeclarationIsCited(declaration);
+            }
+            return cited.value();
+        };
     }
 
     /**

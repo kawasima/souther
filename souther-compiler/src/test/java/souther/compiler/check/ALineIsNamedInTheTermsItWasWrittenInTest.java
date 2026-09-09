@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Front;
+import souther.compiler.query.Shapes;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
 import souther.compiler.types.TypeSymbols;
@@ -169,6 +170,8 @@ class ALineIsNamedInTheTermsItWasWrittenInTest {
         String module = compilation.modules().get(0);
         ReadingPolicy policy = compilation.db().ask(new Front.Reading()).value();
         TypeSymbol named = TypeSymbols.declared(new TypeKey("example.forms", name));
-        return DeclaredBorders.of(named, RuleReadings.of(compilation, module), policy);
+        return DeclaredBorders.of(named, Shapes.publishedDeclarations(compilation.db()),
+                Shapes.declarationCitations(compilation.db()),
+                RuleReadings.of(compilation, module), policy);
     }
 }
