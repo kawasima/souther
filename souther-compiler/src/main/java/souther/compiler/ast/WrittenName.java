@@ -156,6 +156,19 @@ public record WrittenName(String canonical, String spelling, List<Region> segmen
     }
 
     /**
+     * Where the parts before the last are written — the {@code up} of {@code up.Amount} — or null
+     * where the name has no qualifier or nobody wrote it.
+     *
+     * <p>One stretch, dots and all, because a qualifier of several parts is one answer to one
+     * question: which module. Whatever separates its parts is under it for the same reason
+     * {@link #region()} is continuous.
+     */
+    public Region qualifier() {
+        return segments.size() < 2 ? null
+                : new Region(segments.get(0).start(), segments.get(segments.size() - 2).end());
+    }
+
+    /**
      * Whether a cursor at {@code at} is on this name.
      *
      * <p>Inside a part, plainly. And at the end of the last part, because that is where a caret

@@ -655,7 +655,8 @@ class AnalyzerTest {
         // `valuee` in the body is a typo of the param `value`; the compiler carries a did-you-mean
         String text = "module demo\nbehavior f : (value: Int) -> Int\nlet f (value) = valuee\n";
         Range onTheTypo = new Range(new Position(2, 16), new Position(2, 22));
-        List<CodeAction> actions = analyzer.codeActions("file:///m.sou", text, onTheTypo);
+        List<CodeAction> actions = analyzer.codeActions("file:///m.sou", text, onTheTypo,
+                ModuleGraph.of(java.util.Map.of("file:///m.sou", text)));
 
         assertEquals(1, actions.size(), actions.toString());
         assertEquals("Replace with 'value'", actions.get(0).title());
@@ -666,8 +667,14 @@ class AnalyzerTest {
     @Test
     void codeActionIsEmptyWhenTheRangeIsAwayFromTheError() {
         String text = "module demo\nbehavior f : (value: Int) -> Int\nlet f (value) = valuee\n";
+        ModuleGraph graph = ModuleGraph.of(java.util.Map.of("file:///m.sou", text));
+        // Beside the range that does offer one: an emptiness on its own is the same answer a
+        // request that failed altogether gives.
+        Range onTheTypo = new Range(new Position(2, 16), new Position(2, 22));
+        assertEquals(1, analyzer.codeActions("file:///m.sou", text, onTheTypo, graph).size(),
+                "there is an offer in this document to go missing");
         Range onTheHeader = new Range(new Position(0, 0), new Position(0, 5));
-        assertEquals(List.of(), analyzer.codeActions("file:///m.sou", text, onTheHeader));
+        assertEquals(List.of(), analyzer.codeActions("file:///m.sou", text, onTheHeader, graph));
     }
 
     private static java.util.Set<String> keys(List<Location> refs) {

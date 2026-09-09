@@ -138,8 +138,19 @@ public final class JsonRenderer implements DiagnosticRenderer {
         if (!hints.isEmpty()) {
             obj.put("hints", hints);
         }
-        if (d.suggestion() != null) {
-            obj.put("suggestion", d.suggestion());
+        if (d.repair() != null) {
+            // The word, which is what a person is shown, and — where there is one — the edit as an
+            // edit. A tool handed the word alone has one region in front of it and it is the wrong
+            // one: `region` is what the report is about, and a qualified name nothing denotes is
+            // about the whole name while the edit is one part of it. So the stretch to rewrite is
+            // written out, and its absence is the answer that there is nothing to apply.
+            obj.put("suggestion", d.repair().with());
+            if (d.repair() instanceof Repair.AnEdit edit) {
+                Map<String, Object> repair = new LinkedHashMap<>();
+                repair.put("region", region(edit.target()));
+                repair.put("with", edit.with());
+                obj.put("repair", repair);
+            }
         }
         return JSON.writeValueAsString(obj);
     }

@@ -14,6 +14,9 @@ import souther.compiler.diag.msg.ModuleMessage;
 import souther.compiler.diag.Located;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.diag.Primary;
+import souther.compiler.diag.DiagnosticView;
+import souther.compiler.diag.Region;
+import souther.compiler.diag.Repair;
 import souther.compiler.diag.ReportContext;
 import souther.compiler.diag.SourceProvenance;
 import souther.compiler.diag.WhereCodeIsWritten;
@@ -26,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -581,6 +585,76 @@ public final class Compilation {
         Map<SourceId, List<Located>> published = new LinkedHashMap<>();
         byId.forEach((id, found) -> published.put(id, List.copyOf(found)));
         return published;
+    }
+
+    /**
+     * A repair as a reader of {@code source} meets it: the stretch of that file the problem is
+     * marked over, and the edit that answers it.
+     *
+     * <p>Three questions and not two. Where the problem is marked is where a reader looks and so
+     * where an offer has to stand; where the edit writes is the characters that make the problem go
+     * away; what it writes is the third. The first two are the same stretch often enough to be
+     * mistaken for one, and a qualified name nothing denotes is where they part — marked over the
+     * whole of {@code up.Amuont}, because which of its parts is wrong is what the message settles,
+     * and answered by rewriting one part. An offer that compared a caret against the part would not
+     * be there where the reader is looking.
+     *
+     * <p>Which file the edit is applied to is not said here. The edit's own place answers it, and it
+     * may be another of this compilation's files: an offer is made where a reader meets the problem
+     * and applied where the characters are.
+     *
+     * @param offeredAt where this file marks the problem — {@link #diagnostics()} draws its marker
+     *        over the same stretch, both being what {@link DiagnosticView} says this file anchors
+     * @param repair the edit itself
+     */
+    public record RepairOffer(Region offeredAt, Repair.AnEdit repair) {}
+
+    /**
+     * Every repair a reader of {@code source} is in a position to be offered.
+     *
+     * <p>Every report in the workspace is walked, and most of them are about other files. Whether
+     * this one is a report {@code source} reads at all is asked before it is read
+     * ({@link #asReadIn}), because reading it is refused for a file it says nothing about rather
+     * than answered emptily — and a walk that asked anyway lost the whole request, this file's own
+     * offers with it.
+     *
+     * <p>A report this file reads and anchors nothing of is left out too. It has no marker here, so
+     * there is nowhere for an offer to stand: {@link #diagnostics()} falls back to the head of the
+     * document for such a report, which is a place to put a marker and not a place to offer an edit.
+     *
+     * <p>So is a finding that knows the word and no place to write it ({@link Repair.AWord}). What
+     * it has to say is said in the message; there is no edit to offer, and one made up from where
+     * the report points would rewrite whatever happens to be there.
+     */
+    public List<RepairOffer> repairs(SourceId source) {
+        answerEverything();
+        List<RepairOffer> offers = new ArrayList<>();
+        for (Db.Found found : reports()) {
+            if (!(found.report().diagnostic().repair() instanceof Repair.AnEdit edit)) {
+                continue;
+            }
+            asReadIn(found, source).flatMap(DiagnosticView::anchor).ifPresent(
+                    shown -> offers.add(new RepairOffer(shown.spot().region(), edit)));
+        }
+        return List.copyOf(offers);
+    }
+
+    /**
+     * How {@code source} reads {@code found}, or empty where it is not one of the files that report
+     * is said in.
+     *
+     * <p>The two together because the second is only a question inside the first.
+     * {@link DiagnosticView} answers where a marker goes for a file the report reaches, and refuses
+     * a file it does not — being asked about an unrelated file is a caller that did not look, not a
+     * file with nothing to show. So the looking is here, where the view is made, and no caller holds
+     * a view it had to earn separately.
+     */
+    private Optional<DiagnosticView> asReadIn(Db.Found found, SourceId source) {
+        if (!publishSourceIdsOf(found).contains(source)) {
+            return Optional.empty();
+        }
+        return Optional.of(DiagnosticView.of(found.report().diagnostic(),
+                ReportContext.of(filedUnderOf(found), source)));
     }
 
     /**

@@ -42,13 +42,13 @@ import souther.compiler.diag.CompileException;
 import souther.compiler.editor.EditorSymbols;
 import souther.compiler.diag.Diagnostic;
 import souther.compiler.diag.DiagnosticRenderer;
-import souther.compiler.diag.DiagnosticPlace;
 import souther.compiler.diag.DiagnosticView;
 import souther.compiler.diag.Messages;
 import souther.compiler.diag.Located;
 import souther.compiler.diag.Spot;
 import souther.compiler.diag.Region;
-import souther.compiler.diag.Primary;
+import souther.compiler.diag.QuotedFrom;
+import souther.compiler.diag.Repair;
 import souther.compiler.diag.UnnamedRegion;
 import souther.compiler.diag.ReportContext;
 import souther.compiler.diag.SourceContext;
@@ -725,54 +725,61 @@ public final class Analyzer {
     }
 
     /**
-     * Quick-fix code actions overlapping {@code requested}: currently, replacing a misspelled name
-     * with the compiler's did-you-mean suggestion. The suggestion lives on the structured compiler
-     * diagnostic — which the published {@link LspDiagnostic} drops — so this recomputes the first
-     * semantic error to recover it. The type checker reports only that first error, so at most one
-     * fix is offered per compile.
-     */
-    public List<CodeAction> codeActions(String uri, String text, Range requested) {
-        return codeActions(uri, text, requested, null);
-    }
-
-    /**
-     * The same, with the workspace in reach: what a behavior's rows do not cover can be filled in
-     * from here.
+     * The code actions overlapping {@code requested}: the compiler's repairs for what it found here,
+     * and the rows the behavior under the cursor does not cover.
      *
-     * <p>{@code graph} may be null, and is where the request arrived without one. The generated rows
-     * need the whole workspace — the values a row writes are built through the module's derived
-     * decoders, and its imports are part of that — so with one document there is nothing to offer.
+     * <p>Both read one compilation, taken once. They are two questions about one document at one
+     * moment, and asking them of two compiles is how an offer to fix a name and an offer to write
+     * rows came to be about two different readings of the same text. It also settles what the two
+     * cost together: the workspace's compile is the one a diagnose keeps up to date, so a request
+     * arriving between edits pays for what has already been worked out.
      */
     public List<CodeAction> codeActions(String uri, String text, Range requested,
                                         ModuleGraph graph) {
         List<CodeAction> out = new ArrayList<>();
         CstParser.Result parsed = CstParser.parse(text);
         if (!parsed.errors().isEmpty()) {
-            return out;   // a semantic suggestion needs a clean parse
+            return out;   // a semantic answer needs a clean parse
         }
-        if (graph != null) {
-            out.addAll(rowsToWrite(uri, text, parsed.root(), requested, graph));
+        try {
+            Compilation compilation = compileOf(graph);
+            out.addAll(rowsToWrite(uri, text, parsed.root(), requested, graph, compilation));
+            out.addAll(repairs(uri, requested, compilation));
+        } catch (RuntimeException | StackOverflowError _) {
+            return List.of();   // nothing to offer, which is an answer; the diagnose says what broke
         }
-        Diagnostic d = firstSemanticDiagnostic(text);
-        if (d == null || d.suggestion() == null) {
-            return out;
-        }
-        // The compile behind this read the document's own text and could not name it, so what it
-        // points at is a stretch of the text in front of the author. A report with nothing to point
-        // at has no edit to offer: an action needs a range, and a sentence about a module is not
-        // one.
-        Region diagnosed = switch (d.primary()) {
-            case Primary.InSource(DiagnosticPlace.InSource place) -> place.region();
-            case Primary.InAnUnnamedText(UnnamedRegion where) -> where.region();
-            case Primary.Unavailable _, Primary.Nowhere _ -> null;
-        };
-        if (diagnosed == null) {
-            return out;
-        }
-        Range diagRange = rangeOfRegion(diagnosed);
-        if (overlaps(diagRange, requested)) {
-            out.add(new CodeAction.Applied("Replace with '" + d.suggestion() + "'",
-                    new CodeAction.Edit(uri, diagRange, d.suggestion())));
+        return out;
+    }
+
+    /**
+     * The compiler's repairs for {@code uri}, as actions, for the ones the request's range reaches.
+     *
+     * <p>Reached is compared against where the problem is marked, and never against where the edit
+     * writes. The two are the same stretch for a plain misspelled name and are not for a qualified
+     * one: {@code up.Amuont} is marked over the whole name and repaired after the dot, and a caret
+     * on the {@code up} is on the squiggle its author is asking about. Compared against the edit,
+     * the offer is missing from most of what is underlined.
+     *
+     * <p>The edit goes to the file the repair's own characters are in, read off the place they are
+     * at. That is this file for every repair the compiler makes today, and reading it rather than
+     * assuming it is what makes the offer and the edit two answers.
+     */
+    private List<CodeAction> repairs(String uri, Range requested, Compilation compilation) {
+        List<CodeAction> out = new ArrayList<>();
+        for (Compilation.RepairOffer offer : compilation.repairs(new SourceId(uri))) {
+            if (!overlaps(rangeOfRegion(offer.offeredAt()), requested)) {
+                continue;
+            }
+            Repair.AnEdit edit = offer.repair();
+            // A workspace names its sources by document URI, so a source id is already the name an
+            // editor opens. A place in a text this workspace has no file for is nothing an editor
+            // could apply an edit to, so there is no offer to make.
+            if (!(edit.target().start().quotedFrom()
+                    instanceof QuotedFrom.ASourceThisCompileHolds(SourceId written))) {
+                continue;
+            }
+            out.add(new CodeAction.Applied("Replace with '" + edit.with() + "'",
+                    new CodeAction.Edit(written.value(), rangeOfRegion(edit.target()), edit.with())));
         }
         return out;
     }
@@ -793,7 +800,7 @@ public final class Analyzer {
      * landed somewhere surprising.
      */
     private List<CodeAction> rowsToWrite(String uri, String text, SyntaxNode root, Range requested,
-                                         ModuleGraph graph) {
+                                         ModuleGraph graph, Compilation compilation) {
         if (!measure.level().readsRows()) {
             return List.of();
         }
@@ -814,7 +821,6 @@ public final class Analyzer {
             return List.of();
         }
         int declaredAt = writtenFrom(declaration);
-        Compilation compilation = compileOf(graph);
         String module = moduleOf(compilation, graph, uri);
         if (module == null) {
             return List.of();
@@ -1004,24 +1010,6 @@ public final class Analyzer {
         Position end = new Position((int) text.lines().count(), 0);
         return new CodeAction.Edit(offer.uri(), new Range(end, end),
                 System.lineSeparator() + block.text());
-    }
-
-    /** The first semantic error a self-contained compile turns up, as the structured compiler
-     * {@link Diagnostic} (carrying its suggestion and region), or {@code null} when there is none —
-     * mirrors the semantic path of {@link #diagnostics(String)}. */
-    private Diagnostic firstSemanticDiagnostic(String text) {
-        try {
-            Ast.Module module = CstFrontend.parse(text, "Main");
-            if (!module.imports().isEmpty() || module.exampleFileTarget() != null) {
-                return null;   // a multi-module or examples file cannot be resolved from one file
-            }
-            Compiler.compile(text, "Main");
-            return null;
-        } catch (CompileException e) {
-            return e.diagnostic();
-        } catch (RuntimeException | StackOverflowError _) {
-            return null;   // no suggestion to recover; the diagnostics pass reports the failure
-        }
     }
 
     private static boolean overlaps(Range a, Range b) {

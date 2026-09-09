@@ -730,7 +730,7 @@ public final class Resolve {
     private Hir.Var required(Ast.Var ref, String by) {
         return behaviorNamed(ref, (name, candidates) -> CompileException.of(Diagnostic
                 .at(name.written().reportedAt())
-                .suggestion(Suggest.candidate(name.name(), candidates))
+                .repair(name.written().reportedAt(), Suggest.candidate(name.name(), candidates))
                 .hint(new DeclarationMessage.DeclareItHereOrImportIt(name.name()))
                 .say(new DeclarationMessage.DependsOnNamesNoSuchBehavior(by, name.name())).build()));
     }
@@ -746,7 +746,7 @@ public final class Resolve {
     private Hir.Var standsInFor(Ast.Var ref) {
         return behaviorNamed(ref, (name, candidates) -> CompileException.of(Diagnostic
                 .at(name.written().reportedAt())
-                .suggestion(Suggest.candidate(name.name(), candidates))
+                .repair(name.written().reportedAt(), Suggest.candidate(name.name(), candidates))
                 .hint(new DeclarationMessage.DeclareItHereOrImportIt(name.name()))
                 .say(new ExampleMessage.AFakeNamesNoBehavior(name.written().quoted())).build()));
     }
@@ -840,7 +840,7 @@ public final class Resolve {
         String name = written.canonical();
         return CompileException.of(Diagnostic
                 .at(written.reportedAt())
-                .suggestion(Suggest.candidate(name, candidates))
+                .repair(written.reportedAt(), Suggest.candidate(name, candidates))
                 .say(new NameMessage.NoBehaviorOfThatNameInThisPipeline(written.quoted())).build());
     }
 
@@ -1662,7 +1662,7 @@ public final class Resolve {
         List<String> candidates = reachable(bound);
         Diagnostic.Builder report = Diagnostic
                 .at(written.reportedAt())
-                .suggestion(Suggest.candidate(name, candidates));
+                .repair(written.reportedAt(), Suggest.candidate(name, candidates));
         // A name another module of this compilation exposes is the one kind of unresolved name that
         // has somewhere to go, and it is what a name left off an import list looks like from here.
         // Said as what is known — that module has it — rather than as an instruction, since reaching
