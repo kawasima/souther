@@ -6,8 +6,6 @@ import souther.compiler.check.RuleReadingSource;
 import souther.compiler.check.RuleReadings;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.Prepared;
-import souther.compiler.diag.Citation;
-import souther.compiler.diag.SourcePos;
 import souther.compiler.inputs.InputDomain;
 import souther.compiler.inputs.NumericTerm;
 import souther.compiler.inputs.Requirements;
@@ -17,7 +15,6 @@ import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.Rel;
 import souther.compiler.query.Compilation;
 import souther.compiler.query.Shapes;
-import souther.compiler.source.SourceId;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -99,9 +96,10 @@ class AConditionOverASharedNameIsOneTheComposerCanPlaceTest {
                 "and no value is written at a sum's own name, which is the construction's answer");
     }
 
-    /** Where the condition under test is written. */
-    private static final Citation WHERE =
-            Citation.of(new SourcePos(1, 1, new SourceId("m.sou")));
+    /** Which question a report about the condition under test would put. */
+    private static final ConditionReportAnchor WHERE =
+            new ConditionReportAnchor.WhereTheReadingMetIt("m",
+                    new ConditionOccurrence("b", 0));
 
     /** A row composed with the plain position fixed at {@code at}, and a condition over the shared
      *  name on the way to it. */

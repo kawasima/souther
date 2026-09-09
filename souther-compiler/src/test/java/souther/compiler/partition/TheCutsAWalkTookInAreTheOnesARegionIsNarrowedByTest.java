@@ -2,8 +2,6 @@ package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
 
-import souther.compiler.diag.Citation;
-import souther.compiler.diag.SourcePos;
 import souther.compiler.inputs.EmptyInput;
 import souther.compiler.inputs.NumericTerm;
 import souther.compiler.inputs.SearchRegion;
@@ -12,7 +10,6 @@ import souther.compiler.numeric.Count;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.Rel;
-import souther.compiler.source.SourceId;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -77,8 +74,14 @@ class TheCutsAWalkTookInAreTheOnesARegionIsNarrowedByTest {
                 LinearForm.atom(new NumericTerm.ValueOf(TermPath.of(position))), rel);
     }
 
-    private static Citation somewhere(int line) {
-        return Citation.of(new SourcePos(line, 1, new SourceId("m.sou")));
+    /** A condition this reading met, named by nothing but which of them it is. */
+    private static ConditionOccurrence met(int which) {
+        return new ConditionOccurrence("b", which);
+    }
+
+    /** Where a report about it would point, which nothing here reads. */
+    private static ConditionReportAnchor somewhere(int which) {
+        return new ConditionReportAnchor.WhereTheReadingMetIt("m", met(which));
     }
 
     /** Every cut the account carries, in the order it carries them, and nothing else. */
@@ -110,9 +113,9 @@ class TheCutsAWalkTookInAreTheOnesARegionIsNarrowedByTest {
         Recording region = new Recording();
 
         WayToTheBorder way = new WayToTheBorder(List.of(
-                new OnTheWay.Declined(somewhere(1), new OnTheWay.Why.NoWordsForTheShape()),
+                new OnTheWay.Declined(met(1), somewhere(1), new OnTheWay.Why.NoWordsForTheShape()),
                 new OnTheWay.TakenIn(somewhere(2), only),
-                new OnTheWay.Declined(somewhere(3), new OnTheWay.Why.OneOfTwoThings())));
+                new OnTheWay.Declined(met(3), somewhere(3), new OnTheWay.Why.OneOfTwoThings())));
         way.narrowing(region);
 
         assertEquals(List.of(only), region.told, "a decline is a record and not a cut");

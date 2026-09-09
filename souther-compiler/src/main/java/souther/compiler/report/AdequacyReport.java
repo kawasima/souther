@@ -15,6 +15,7 @@ import souther.compiler.numeric.Towards;
 import souther.compiler.partition.AuthoredLine;
 import souther.compiler.partition.BorderObligationPoint;
 import souther.compiler.partition.ClosureGap;
+import souther.compiler.partition.ConditionReportAnchor;
 import souther.compiler.partition.CompositionBudget;
 import souther.compiler.partition.CompositionRepertoire;
 import souther.compiler.partition.DomainPoint;
@@ -193,18 +194,42 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     }
 
     /**
+     * What a module's declarations are owed, with where this report shows the conditions on the way
+     * to their lines.
+     *
+     * <p>The places are here, beside the account they are about, and not on the module. A module
+     * says which of this compilation's sources it is written in, and these say where each condition
+     * a sentence names is — including the ones another module wrote. Held side by side, the two
+     * would be a value that answers "which file" twice, and the second answer would be about
+     * whichever condition a reader happened to be looking at.
+     *
+     * @param owed what the declarations are owed, or null where the compile did not get far enough
+     *             to be asked
+     */
+    public record DeclarationsShown(Adequacy.DeclaredBoundaries owed,
+                                    Map<ConditionReportAnchor, Citation> conditionPlaces) {
+
+        public DeclarationsShown {
+            conditionPlaces = Map.copyOf(conditionPlaces);
+        }
+
+        /** Nothing owed and nothing to point at, for a module nobody could ask. */
+        public static final DeclarationsShown NONE = new DeclarationsShown(null, Map.of());
+    }
+
+    /**
      * What one module's compile came to, as this report says it.
      *
      * @param owedByDeclarations what this module's declarations are owed and how far the reading it
      *                           was made from got. An account and not a list of debts: a module
      *                           whose lines nobody could read holds no debts anybody found, and read
      *                           as a list that is the same answer as a module whose declarations owe
-     *                           nothing. Null where the compile did not get far enough to be asked
+     *                           nothing
      */
     public record ModuleReport(String module, SourceId declaredIn,
                                List<BehaviorReport> behaviors,
                                List<ReportedFinding> declarations,
-                               Adequacy.DeclaredBoundaries owedByDeclarations) {
+                               DeclarationsShown owedByDeclarations) {
 
         /**
          * What the module is short of that is not any behavior's.
@@ -225,7 +250,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         /** The debts themselves, for a reader walking them. Empty where nobody could be asked,
          *  which {@link #declarationsWeakenedBy()} is what says. */
         public List<Adequacy.DeclaredDebt> debts() {
-            return owedByDeclarations == null ? List.of() : owedByDeclarations.owed();
+            return owedByDeclarations.owed() == null
+                    ? List.of() : owedByDeclarations.owed().owed();
         }
 
         /**
@@ -294,8 +320,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
          * entries.
          */
         public WeakeningSet declarationsWeakenedBy() {
-            return owedByDeclarations == null
-                    ? WeakeningSet.none() : owedByDeclarations.weakening();
+            return owedByDeclarations.owed() == null
+                    ? WeakeningSet.none() : owedByDeclarations.owed().weakening();
         }
 
         /** How far this module's measurement got. Derived, for the reason
@@ -346,15 +372,21 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      *                  build is warned about
      * @param armPlaces where each arm of this behavior is shown, for the lines that name one no
      *                  finding is about
+     * @param conditionPlaces where each condition on the way to one of this behavior's lines is
+     *                  shown. Beside the searches rather than in them: what a search holds is which
+     *                  condition it could not compose against, and where a reader is sent for one
+     *                  is asked here, once per condition the page may name
      */
     public record BehaviorReport(String name, BehaviorImplementation implementation,
                                  BehaviorEvidence evidence,
                                  ClaimAnnotations claimed,
                                  List<ReportedFinding> reported,
-                                 Map<ArmReportAnchor, Citation> armPlaces) {
+                                 Map<ArmReportAnchor, Citation> armPlaces,
+                                 Map<ConditionReportAnchor, Citation> conditionPlaces) {
         public BehaviorReport {
             reported = List.copyOf(reported);
             armPlaces = Map.copyOf(armPlaces);
+            conditionPlaces = Map.copyOf(conditionPlaces);
         }
 
         /**
@@ -576,8 +608,11 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                     claims == null ? ClaimAnnotations.NONE
                             : claims.getOrDefault(behavior.name(), ClaimAnnotations.NONE),
                     ofBehavior(compilation, name, findings, behavior.name()),
-                    armPlaces(compilation, branch)));
+                    armPlaces(compilation, branch),
+                    conditionPlaces(compilation, linesOf(read))));
         }
+        Adequacy.DeclaredBoundaries declared =
+                compilation.db().ask(new Adequacy.DeclaredBorders(name)).value();
         return new ModuleReport(name, compilation.sourceIdOf(name), behaviors,
                 findings == null ? List.of()
                         : findings.stream()
@@ -585,7 +620,21 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                                         instanceof FindingSubject.OfABehavior))
                                 .map(each -> reported(compilation, name, each))
                                 .toList(),
-                compilation.db().ask(new Adequacy.DeclaredBorders(name)).value());
+                // The declarations' own block names conditions too, and the lines it names them
+                // under are the debts' rather than any behavior's.
+                new DeclarationsShown(declared,
+                        conditionPlaces(compilation, declaredLines(declared))));
+    }
+
+    /** The lines a module's declarations were read at, which is where the block about them looks
+     *  for what a search came to. */
+    private static List<BorderAssessment> declaredLines(Adequacy.DeclaredBoundaries owed) {
+        if (owed == null) {
+            return List.of();
+        }
+        List<BorderAssessment> lines = new ArrayList<>();
+        owed.owed().forEach(each -> lines.addAll(each.debt().met().values()));
+        return lines;
     }
 
     /**
@@ -647,6 +696,44 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
         return places;
     }
 
+    /**
+     * Where this report shows each condition on the way to one of these lines.
+     *
+     * <p>Built from the searches themselves, so that every condition the page may name has an entry
+     * and nothing else does. Asked once per condition and not once per mention: a condition is
+     * named under whichever searches met it, and the place is the same answer each time.
+     *
+     * <p>Every attempt of every point, and not the ones a page happens to print. Which searches are
+     * worth a sentence is the outcomes' answer and is asked where the sentence is written; a
+     * gathering that asked it here would be that decision made twice, and the day the two disagreed
+     * a sentence would be written about a condition with nowhere to point.
+     */
+    private static Map<ConditionReportAnchor, Citation> conditionPlaces(
+            Compilation compilation, List<BorderAssessment> lines) {
+        Map<ConditionReportAnchor, Citation> places = new LinkedHashMap<>();
+        for (BorderAssessment line : lines) {
+            for (BorderAssessment.Point point : line.points()) {
+                // A point nobody is owed a row at ran no search, so there is nothing under it to
+                // point at. Asked all the same, this would be reading an absence as an empty list.
+                if (point.owed() == null) {
+                    continue;
+                }
+                for (ItemAssessment.Attempt attempt : point.owed().searches().each()) {
+                    for (ReachabilityGap gap : attempt.unaccountedFor()) {
+                        places.computeIfAbsent(gap.anchor(),
+                                anchor -> Sites.placeOf(compilation.db(), anchor));
+                    }
+                }
+            }
+        }
+        return places;
+    }
+
+    /** The lines one behavior met, or none where the measure could not be made. */
+    private static List<BorderAssessment> linesOf(Measure<List<BorderAssessment>> read) {
+        return read == null ? List.of() : read.made().orElse(List.of());
+    }
+
     /** One finding with where this report shows it. */
     private static ReportedFinding reported(Compilation compilation, String module,
                                             Adequacy.Finding finding) {
@@ -697,7 +784,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 out.append(String.format("      ? %s%n", said));
             }
             readings(out, each.debt(), _ -> true, at -> whatWasTried(
-                    at.owedAt(each.debt().at()).searches(), names, null));
+                    at.owedAt(each.debt().at()).searches(),
+                    module.owedByDeclarations().conditionPlaces(), names, null));
         }
         Map<String, List<Adequacy.Finding>> byDeclaration = new LinkedHashMap<>();
         for (ReportedFinding each : module.declarations()) {
@@ -766,8 +854,13 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             // and deciding that here would be this view working out what an account means.
             ModuleReport one = new ModuleReport(m.module(), m.declaredIn(), behaviors,
                     carriedBy(m.declarations(), behaviors),
-                    m.owedByDeclarations() == null ? null
-                            : m.owedByDeclarations().keptFor(names));
+                    // The debts narrow with the behaviors shown; the places do not. A filtered view
+                    // shows fewer debts and the conditions under the ones it does show are the same
+                    // conditions, so narrowing the places would be one going missing from a
+                    // sentence the view still writes.
+                    new DeclarationsShown(m.owedByDeclarations().owed() == null ? null
+                            : m.owedByDeclarations().owed().keptFor(names),
+                            m.owedByDeclarations().conditionPlaces()));
             kept.add(one);
             overall = overall.union(one.weakenedBy());
         }
@@ -1643,7 +1736,8 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                 out.append(String.format("      ? %s%n", said));
             }
             readings(out, point, _ -> true, at -> whatWasTried(
-                    at.owedAt(point.at()).searches(), names, declaredIn));
+                    at.owedAt(point.at()).searches(), behavior.conditionPlaces(), names,
+                    declaredIn));
         }
         // A border the model drew that nothing here answered for, said whether or not one came of
         // it. It is exactly where none did that the question stands, so this cannot be written by
@@ -2281,14 +2375,15 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     }
 
     /** What the search for a value at an edge came to, where it ran and found none. */
-    private static String whatWasTried(SearchOutcomes outcomes, SourceNameResolver names,
-                                       SourceId declaredIn) {
+    private static String whatWasTried(SearchOutcomes outcomes,
+                                       Map<ConditionReportAnchor, Citation> shown,
+                                       SourceNameResolver names, SourceId declaredIn) {
         // Which searches are worth a sentence is the outcomes' answer, not this one's. Told apart
         // here, two of them would be one piece of news whenever the words for them happened to
         // match — a report deciding what happened from what it was about to write.
         List<String> said = new ArrayList<>();
         for (ItemAssessment.Attempt each : outcomes.worthSaying()) {
-            said.add(whatWasTried(each, names, declaredIn));
+            said.add(whatWasTried(each, shown, names, declaredIn));
         }
         // One sentence per search, with the readings' own separator between them. Run together,
         // two searches of one reading read as one clause that says two things.
@@ -2296,8 +2391,9 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
     }
 
     /** The same, of one search of the point. */
-    private static String whatWasTried(ItemAssessment.Attempt attempt, SourceNameResolver names,
-                                       SourceId declaredIn) {
+    private static String whatWasTried(ItemAssessment.Attempt attempt,
+                                       Map<ConditionReportAnchor, Citation> shown,
+                                       SourceNameResolver names, SourceId declaredIn) {
         // One opening per outcome, and not one for everything that came back without a row. A
         // search this compiler stopped and a search that had everything and reached nothing are
         // different news, and a proof is not a failure at all — read under one opening, an author
@@ -2316,7 +2412,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                     " — this compiler stopped at " + said(it.stoppedBy())
                             + andWritesSomeOf(it.notAllOf()) + ": "
                             + it.why().said().orElseGet(() -> whyUnresolved(it.why()))
-                            + whatTheRegionLeftOut(it.unaccountedFor(), names, declaredIn);
+                            + whatTheRegionLeftOut(it.unaccountedFor(), shown, names, declaredIn);
             // Said as what this compiler writes rather than as a number it stopped at, because
             // there is no number: an author told to raise one would raise it and get the same
             // offer. What would change this is somebody writing the rest of what it walks, and the
@@ -2325,7 +2421,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                     " — this compiler writes some of " + writes(it.notAllOf())
                             + " rather than all of them: "
                             + it.why().said().orElseGet(() -> whyUnresolved(it.why()))
-                            + whatTheRegionLeftOut(it.unaccountedFor(), names, declaredIn);
+                            + whatTheRegionLeftOut(it.unaccountedFor(), shown, names, declaredIn);
             // Both halves, because neither says what the other does. The word is what the search
             // itself came to; the figure is why that word is not about the whole of the point. Said
             // as the word alone, an author reads a proof about a value this compiler never planned
@@ -2334,17 +2430,17 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
                     " — as far as this compiler plans, which stops at "
                             + said(it.limitedBy()) + ": "
                             + it.why().said().orElseGet(() -> whyUnresolved(it.why()))
-                            + whatTheRegionLeftOut(it.unaccountedFor(), names, declaredIn);
+                            + whatTheRegionLeftOut(it.unaccountedFor(), shown, names, declaredIn);
             // No search to report on, which is what this says instead of saying what one found. The
             // figure is what an author would raise to get one made at all.
             case ItemAssessment.Attempt.Unplanned it ->
                     " — nothing was planned for it, because this compiler stops at "
                             + said(it.limitedBy())
-                            + whatTheRegionLeftOut(it.unaccountedFor(), names, declaredIn);
+                            + whatTheRegionLeftOut(it.unaccountedFor(), shown, names, declaredIn);
             case ItemAssessment.Attempt.Unresolved it ->
                     (it.why().reason().provesInfeasible() ? " — " : " — nothing composed one: ")
                             + it.why().said().orElseGet(() -> whyUnresolved(it.why()))
-                            + whatTheRegionLeftOut(it.unaccountedFor(), names, declaredIn);
+                            + whatTheRegionLeftOut(it.unaccountedFor(), shown, names, declaredIn);
         };
     }
 
@@ -2362,7 +2458,7 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
      * the wider box would be this report deciding something it has not been shown.
      */
     private static String whatTheRegionLeftOut(
-            List<ReachabilityGap> left,
+            List<ReachabilityGap> left, Map<ConditionReportAnchor, Citation> shown,
             SourceNameResolver names, SourceId declaredIn) {
         if (left.isEmpty()) {
             return "";
@@ -2373,9 +2469,10 @@ public record AdequacyReport(int schemaVersion, String compilerVersion, Adequacy
             out.append(i == 0 ? "" : ", ")
                     .append(whyLeftOut(left.get(i)))
                     // The place last and in brackets, as every other line of this report writes
-                    // one. Written into the sentence, it lands after a verb and reads as part of
-                    // what the sentence says rather than as where to look.
-                    .append(" (").append(left.get(i).at().said(names, declaredIn)).append(")");
+                    // one, and looked up rather than held: what the condition carries is which
+                    // question places it, and this is where that question was put.
+                    .append(" (").append(shown.get(left.get(i).anchor()).said(names, declaredIn))
+                    .append(")");
         }
         return out.toString();
     }

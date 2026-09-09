@@ -98,8 +98,8 @@ class WhatAWalkTakesInHoldsOfEveryRowItLetsThroughTest {
                 compilation.db().ask(new Adequacy.Inputs(module)).value().get(behavior);
         InputReads reads = InputReads.ofParameters(inputs.parameterReads(),
                 checked.elementBindings().get(behavior));
-        return ReachingCuts.stating(Condition.of(body, reads, rules.symbols()), inputs, holding,
-                rules);
+        return ReachingCuts.stating(Condition.of(body, reads, rules.symbols(),
+                new ConditionNumbering(module, behavior)), inputs, holding, rules);
     }
 
     /** Whether {@code cut} holds where {@code x} and {@code y} stand at these values. */

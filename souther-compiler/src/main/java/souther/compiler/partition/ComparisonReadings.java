@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -63,11 +64,13 @@ import java.util.Set;
  * out its way established — which is the whole of what makes this per comparison rather than per
  * fork. Everything else evaluates its parts under what stood at it.
  */
-record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
+record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks,
+                          Map<ConditionOccurrence, Citation> conditionsMet) {
 
     ComparisonReadings {
         comparisons = List.copyOf(comparisons);
         forks = List.copyOf(forks);
+        conditionsMet = Map.copyOf(conditionsMet);
     }
 
     /**
@@ -188,9 +191,16 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
     static ComparisonReadings of(String behavior, Core body, InputReading read, InputReads reads) {
         List<Reading> readings = new ArrayList<>();
         List<ForkMet> forks = new ArrayList<>();
+        // The names the conditions of this body take, handed out as the walk meets them. One of
+        // these per body, because what a name is counted within is the body: counted over the
+        // module, an edit to one behavior would rename the conditions of every one after it. Whose
+        // reading it is comes off the names it is made against, which is the module being compiled
+        // — a condition inside a helper spliced in from elsewhere is still one this reading met.
+        ConditionNumbering numbering =
+                new ConditionNumbering(read.symbols().module(), behavior);
         walk(body, new Body(behavior, read), reads,
-                LiveFlow.of(body), List.of(), true, readings, forks);
-        return new ComparisonReadings(readings, forks);
+                LiveFlow.of(body), List.of(), true, readings, forks, numbering);
+        return new ComparisonReadings(readings, forks, numbering.metAt());
     }
 
     /**
@@ -201,7 +211,7 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
      */
     private static void walk(Core e, Body in, InputReads reads, LiveFlow flow,
                              List<OnTheWay> assumed, boolean live, List<Reading> out,
-                             List<ForkMet> forks) {
+                             List<ForkMet> forks, ConditionNumbering numbering) {
         Symbols symbols = in.symbols();
         RuleReadingSource ruleSource = in.rules();
         // A comparison the source wrote, recognised by the one thing that says what one is
@@ -230,21 +240,27 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
             // any fork above it: there need not be one, and where there is, this is what the fork
             // would have been reading anyway.
             case Core.Binary both when both.op() == BinOp.AND -> {
-                walk(both.left(), in, reads, flow, assumed, live, out, forks);
+                walk(both.left(), in, reads, flow, assumed, live, out, forks, numbering);
                 walk(both.right(), in, reads, flow,
-                        taking(both.left(), true, in.read().domain(), reads, assumed, ruleSource),
-                        live, out, forks);
+                        taking(Condition.of(both.left(), reads, symbols, numbering), true,
+                                in.read().domain(), assumed, ruleSource),
+                        live, out, forks, numbering);
             }
             case Core.Binary either when either.op() == BinOp.OR -> {
-                walk(either.left(), in, reads, flow, assumed, live, out, forks);
+                walk(either.left(), in, reads, flow, assumed, live, out, forks, numbering);
                 walk(either.right(), in, reads, flow,
-                        taking(either.left(), false, in.read().domain(), reads, assumed, ruleSource),
-                        live, out, forks);
+                        taking(Condition.of(either.left(), reads, symbols, numbering), false,
+                                in.read().domain(), assumed, ruleSource),
+                        live, out, forks, numbering);
             }
             // The condition under what stood above the fork, and each arm under what that arm proves
             // of it. A comparison inside a condition is not below the fork: it runs to decide it.
             case Core.If iff -> {
-                walk(iff.cond(), in, reads, flow, assumed, live, out, forks);
+                walk(iff.cond(), in, reads, flow, assumed, live, out, forks, numbering);
+                // Read once, whichever arm is being entered. Reaching the `then` and reaching the
+                // `els` are two things one condition says, and a second reading for the second arm
+                // would name that one condition twice.
+                Condition condition = Condition.of(iff.cond(), reads, symbols, numbering);
                 // What this walk found in the condition, for the reader that decides whether the
                 // fork states a rule of its own. Said of every fork an author wrote, and of none
                 // this compiler composed — a `guard`'s supplied arm and a lowering's test state
@@ -275,19 +291,20 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
                             reads, atoms, owned));
                 }
                 walk(iff.then(), in, reads, flow,
-                        taking(iff.cond(), true, in.read().domain(), reads, assumed, ruleSource),
-                        live, out, forks);
+                        taking(condition, true, in.read().domain(), assumed, ruleSource),
+                        live, out, forks, numbering);
                 walk(iff.els(), in, reads, flow,
-                        taking(iff.cond(), false, in.read().domain(), reads, assumed, ruleSource),
-                        live, out, forks);
+                        taking(condition, false, in.read().domain(), assumed, ruleSource),
+                        live, out, forks, numbering);
             }
             // What a `let` computes is read on the way to the answer only where the name is read;
             // everywhere else a value stands in a body it is consumed by what it stands in. And its
             // body is where the name stands for what was bound to it.
             case Core.LetIn let -> {
-                walk(let.value(), in, reads, flow, assumed, live && flow.reads(let), out, forks);
+                walk(let.value(), in, reads, flow, assumed, live && flow.reads(let), out, forks,
+                        numbering);
                 walk(let.body(), in, reads.and(let.binder(), let.value()), flow, assumed, live,
-                        out, forks);
+                        out, forks, numbering);
             }
             // And each arm under what the arm says the value it matched turned out to be. A name
             // the arm binds is the scrutinee's position narrowed to that case, so a comparison
@@ -299,15 +316,17 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
             // inside an arm was owed a row by a walk that had been told nothing stood on the way to
             // it, and the row composed for it was written in whichever arm the values fell in.
             case Core.Match match -> {
-                walk(match.scrutinee(), in, reads, flow, assumed, live, out, forks);
-                for (Core.Case arm : match.cases()) {
+                walk(match.scrutinee(), in, reads, flow, assumed, live, out, forks, numbering);
+                for (int part = 0; part < match.cases().size(); part++) {
+                    Core.Case arm = match.cases().get(part);
                     walk(arm.body(), in, reads.insideArm(match, arm, symbols), flow,
-                            entering(match, arm, in.read().domain(), reads, assumed, ruleSource),
-                            live, out, forks);
+                            entering(match, arm, part, in.read().domain(), reads, assumed,
+                                    ruleSource, numbering),
+                            live, out, forks, numbering);
                 }
             }
             default -> Core.forEachChild(e, child ->
-                    walk(child, in, reads, flow, assumed, live, out, forks));
+                    walk(child, in, reads, flow, assumed, live, out, forks, numbering));
         }
     }
 
@@ -320,24 +339,24 @@ record ComparisonReadings(List<Reading> comparisons, List<ForkMet> forks) {
      * written apart they would agree by having been derived alike — until one of them learned to
      * read a shape of condition the other did not.
      */
-    private static List<OnTheWay> taking(Core node, boolean holding,
+    private static List<OnTheWay> taking(Condition condition, boolean holding,
                                          souther.compiler.inputs.InputDomain inputs,
-                                         InputReads reads, List<OnTheWay> assumed,
+                                         List<OnTheWay> assumed,
                                          RuleReadingSource ruleSource) {
         List<OnTheWay> out = new ArrayList<>(assumed);
-        out.addAll(ReachingCuts.stating(Condition.of(node, reads, ruleSource.symbols()), inputs,
-                holding, ruleSource));
+        out.addAll(ReachingCuts.stating(condition, inputs, holding, ruleSource));
         return List.copyOf(out);
     }
 
     /** The same, for what standing inside one arm of a fork establishes ({@link
      *  ReachingCuts#entering}). */
-    private static List<OnTheWay> entering(Core.Match match, Core.Case arm,
+    private static List<OnTheWay> entering(Core.Match match, Core.Case arm, int part,
                                            souther.compiler.inputs.InputDomain inputs,
                                            InputReads reads, List<OnTheWay> assumed,
-                                           RuleReadingSource ruleSource) {
+                                           RuleReadingSource ruleSource,
+                                           ConditionNumbering numbering) {
         List<OnTheWay> out = new ArrayList<>(assumed);
-        out.add(ReachingCuts.entering(match, arm, inputs, reads, ruleSource));
+        out.add(ReachingCuts.entering(match, arm, part, inputs, reads, ruleSource, numbering));
         return List.copyOf(out);
     }
 

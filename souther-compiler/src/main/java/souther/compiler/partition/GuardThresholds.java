@@ -37,6 +37,7 @@ import souther.compiler.types.Type;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.SequencedMap;
 
 /**
@@ -82,16 +83,18 @@ public final class GuardThresholds {
                          RulesWithNoLine noLine,
                          List<LineDrawn> between,
                          ReachingCuts reaching,
-                         List<ComparisonReadings.ForkMet> forks) {
+                         List<ComparisonReadings.ForkMet> forks,
+                         Map<ConditionOccurrence, Citation> conditionsMet) {
 
         public static final Guards NONE =
                 new Guards(List.of(), RulesWithNoLine.NONE, List.of(), ReachingCuts.NONE,
-                        List.of());
+                        List.of(), Map.of());
 
         public Guards {
             evidence = List.copyOf(evidence);
             between = List.copyOf(between);
             forks = List.copyOf(forks);
+            conditionsMet = Map.copyOf(conditionsMet);
         }
 
         /** The lines, read off what the walk said. Not a list of their own: the walk met these and
@@ -270,7 +273,7 @@ public final class GuardThresholds {
             }
         }
         return new Guards(found, withoutALine.found(), between, cuts.made(),
-                comparisons.forks());
+                comparisons.forks(), comparisons.conditionsMet());
     }
 
     /**

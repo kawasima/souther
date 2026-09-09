@@ -156,14 +156,6 @@ class WhatStillHoldsAPlaceUnderAFindingIsReadOnTwoAxesTest {
 
     private static Map<String, Standing> whatStillHoldsAPlace() {
         Map<String, Standing> out = new TreeMap<>();
-        // Two conditions this compiler declined to cut were seen told apart by where they are and
-        // by nothing else. So the place is identity here, which the cut has to carry across some
-        // other way before it can stop carrying the position.
-        out.put("souther.compiler.partition.OnTheWay$Declined.at",
-                new Standing(new Because.TwoOfThemDifferOnlyThere(),
-                        new AcrossTheCut.BlocksIt("a condition on the way to a border is given"
-                                + " something to be named by, so that the place is not what tells"
-                                + " one from another (issue #1486)")));
         // Nothing the models reach is one of these. That is a count of what was looked at and not
         // a fact about where the value goes, so the cut waits on somebody looking.
         String lookAtIt = "somebody builds a model that reaches one and reads what its place is"
@@ -198,13 +190,6 @@ class WhatStillHoldsAPlaceUnderAFindingIsReadOnTwoAxesTest {
                 "souther.compiler.inputs.StandingQuestion$NothingClassifiesIt.reachedAt")) {
             out.put(carrier, new Standing(new Because.ReachedAndNotObservedToDiscriminate(),
                     new AcrossTheCut.BlocksIt(splitTheHandle)));
-        }
-        String splitTheWay = "somebody reads what tells one condition on the way to a border from"
-                + " its neighbours, the way the third arm beside these was read (issue #1486)";
-        for (String carrier : List.of("souther.compiler.partition.OnTheWay$Narrowed.at",
-                "souther.compiler.partition.OnTheWay$TakenIn.at")) {
-            out.put(carrier, new Standing(new Because.ReachedAndNotObservedToDiscriminate(),
-                    new AcrossTheCut.BlocksIt(splitTheWay)));
         }
         return out;
     }
