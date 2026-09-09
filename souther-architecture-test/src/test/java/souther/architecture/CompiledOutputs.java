@@ -146,13 +146,11 @@ final class CompiledOutputs {
      * @param packageName as a class file spells it, with {@code /} between the steps
      */
     List<ClassModel> inTheClassesOf(String packageName) {
-        String under = packageName.endsWith("/") ? packageName : packageName + "/";
+        String named = packageName.endsWith("/")
+                ? packageName.substring(0, packageName.length() - 1) : packageName;
         List<ClassModel> found = new ArrayList<>();
-        for (ClassModel each : all()) {
-            String named = each.thisClass().asInternalName();
-            if (named.startsWith(under) && !named.substring(under.length()).contains("/")) {
-                found.add(each);
-            }
+        for (CompiledClasses output : outputs()) {
+            found.addAll(output.inTheClassesOf(named.replace('/', '.')));
         }
         return found;
     }

@@ -76,16 +76,7 @@ class WhoMayAskWhetherAClauseWentUnreadTest {
                         + " question being answered again out of the account of the rules");
     }
 
-    /**
-     * The walk reads every module's classes.
-     *
-     * <p>Asked of the modules the repository has and not of what a build happened to leave: a
-     * module whose classes are missing is one whose reads this cannot see, and the rows from the
-     * rest would match and this would pass while answering about fewer modules than it names.
-     */
-    @Test
-    void andEveryModuleTheRepositoryHoldsWasRead() {
-    }
+
 
     /**
      * And the walk finds the flag being read where it is read.

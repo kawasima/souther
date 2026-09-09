@@ -257,16 +257,7 @@ class WhoMayBuildALanguageAboutAPositionTest {
                         + " time under an allowance of its own");
     }
 
-    /**
-     * The walk reads every module's classes.
-     *
-     * <p>Asked of the modules the repository has and not of what a build happened to leave: a
-     * module whose classes are missing is one whose names this cannot see, and the rows from the
-     * rest would match while this answered about fewer modules than it names.
-     */
-    @Test
-    void andEveryModuleTheRepositoryHoldsWasRead() {
-    }
+
 
     /**
      * And the walk finds a namer that is there.

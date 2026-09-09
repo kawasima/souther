@@ -16,8 +16,10 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -150,6 +152,34 @@ public final class RepositoryLayout {
         }
         return false;
     }
+
+    /**
+     * Whether {@code said}, taken together, names a directory a build compiles into.
+     *
+     * <p>For a rule about a check that works out where the compiled classes are. What such a check
+     * says is the directory a build writes to and the one it compiles into, and it says them as
+     * whatever a path is built out of — one text with both steps, or a step at a time. So they are
+     * asked of everything one method says rather than of one text: written a step at a time, no
+     * single text names an output.
+     *
+     * <p>Narrower than {@link #namesBuildOutput}, and narrower on purpose. A build writes more than
+     * classes — a jar, a launcher — and a check that runs what was shipped names where it was put
+     * without going looking for anybody's classes.
+     */
+    public static boolean namesCompiledOutput(Collection<String> said) {
+        boolean writes = false;
+        boolean compiled = false;
+        for (String each : said) {
+            for (String step : each.split("[/\\\\]")) {
+                writes |= step.equals(whereABuildWrites());
+                compiled |= COMPILED_INTO.contains(step);
+            }
+        }
+        return writes && compiled;
+    }
+
+    /** What a build calls the directories it compiles into, under the one it writes to. */
+    private static final Set<String> COMPILED_INTO = Set.of("classes", "test-classes");
 
     /**
      * What {@code module} compiled its {@code phase} sources to, or nothing where it built none.

@@ -164,6 +164,28 @@ public final class CompiledClasses {
     }
 
     /**
+     * The classes written directly in {@code packageName}, and none of the packages under it.
+     *
+     * <p>Beside {@link #inPackage} rather than instead of it: which of the two a rule wants is the
+     * rule's to say. A rule about what one package holds would otherwise grow a package written
+     * under it later, which is a package nobody has said anything about; a rule about a package and
+     * what is beneath it would otherwise stop at a directory.
+     *
+     * <p>Which files are in it is settled from the listing, so what is parsed is what the question
+     * is about — the same as its neighbour and for the same reason.
+     */
+    public List<ClassModel> inTheClassesOf(String packageName) {
+        Path directory = root.resolve(packageName.replace('.', '/'));
+        List<Path> under = new ArrayList<>();
+        for (Path each : readings.listing(root)) {
+            if (directory.equals(each.getParent())) {
+                under.add(each);
+            }
+        }
+        return read(under);
+    }
+
+    /**
      * Every class of {@code packageName} and of the packages under it.
      *
      * <p>Under it as well, because a package's classes are not all written directly in it, and a

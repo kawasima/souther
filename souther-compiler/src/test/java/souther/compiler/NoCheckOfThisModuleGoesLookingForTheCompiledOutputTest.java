@@ -5,9 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.CodeModel;
 import java.lang.classfile.MethodModel;
-import java.lang.classfile.instruction.ConstantInstruction;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -70,22 +68,7 @@ class NoCheckOfThisModuleGoesLookingForTheCompiledOutputTest {
         return WhatWasCompiled.checksCompiledBesideIt().all();
     }
 
-    private static List<String> constantsOf(ClassModel model) {
-        List<String> said = new ArrayList<>();
-        for (MethodModel method : model.methods()) {
-            CodeModel code = method.code().orElse(null);
-            if (code == null) {
-                continue;
-            }
-            for (var element : code) {
-                if (element instanceof ConstantInstruction loaded
-                        && loaded.constantValue() instanceof String text) {
-                    said.add(text);
-                }
-            }
-        }
-        return said;
-    }
+
 
     private static String named(ClassModel of) {
         return of.thisClass().asInternalName().replace('/', '.');
