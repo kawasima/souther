@@ -588,7 +588,7 @@ public final class Analyzer {
             }
             String title = lensTitle(compilation, module, behavior.name(), adequacy);
             if (title != null) {
-                out.add(new CodeLens(pointRange(behavior.pos()), title));
+                out.add(new CodeLens(lensAnchorRange(behavior.pos()), title));
             }
         }
         return out;
@@ -712,8 +712,14 @@ public final class Analyzer {
         return owed.coverage().settled();
     }
 
-    /** The caret at one position, as a range of no width. */
-    private static Range pointRange(SourcePos pos) {
+    /**
+     * Where a lens is drawn: the declaration's position, as a range of no width.
+     *
+     * <p>An editor reads the line a lens's range starts on and nothing else of it, so a point says
+     * everything a lens needs. It says nothing about what a caret is in, which is a different
+     * question and is answered from the declaration a caret is written inside of.
+     */
+    private static Range lensAnchorRange(SourcePos pos) {
         Position at = new Position(pos.line() - 1, pos.column() - 1);
         return new Range(at, at);
     }
@@ -740,11 +746,12 @@ public final class Analyzer {
     public List<CodeAction> codeActions(String uri, String text, Range requested,
                                         ModuleGraph graph) {
         List<CodeAction> out = new ArrayList<>();
-        if (!CstParser.parse(text).errors().isEmpty()) {
+        CstParser.Result parsed = CstParser.parse(text);
+        if (!parsed.errors().isEmpty()) {
             return out;   // a semantic suggestion needs a clean parse
         }
         if (graph != null) {
-            out.addAll(rowsToWrite(uri, text, requested, graph));
+            out.addAll(rowsToWrite(uri, text, parsed.root(), requested, graph));
         }
         Diagnostic d = firstSemanticDiagnostic(text);
         if (d == null || d.suggestion() == null) {
@@ -785,11 +792,28 @@ public final class Analyzer {
      * module's own source or an attached file — and moving a block is easier than finding out why one
      * landed somewhere surprising.
      */
-    private List<CodeAction> rowsToWrite(String uri, String text, Range requested,
+    private List<CodeAction> rowsToWrite(String uri, String text, SyntaxNode root, Range requested,
                                          ModuleGraph graph) {
         if (!measure.level().readsRows()) {
             return List.of();
         }
+        // Which declaration is being asked about, asked of the document the request arrived with.
+        // Ahead of the compile because it is what the rest is about: everything below answers about
+        // a behavior, and there is no behavior to answer about until this says so.
+        LineIndex lines = new LineIndex(text);
+        // The first behavior it reaches, and not the first definition. A selection is drawn over as
+        // many declarations as somebody drags it over, and a `data` above the behavior is not an
+        // answer about the behavior. Over more than one behavior it is the one written first: an
+        // offer writes the rows of one declaration, so one of them is what it can be about.
+        SyntaxNode declaration = defsReaching(root,
+                lines.offsetOf(requested.start().line(), requested.start().character()),
+                lines.offsetOf(requested.end().line(), requested.end().character())).stream()
+                .filter(def -> def.kind() == SyntaxKind.BEHAVIOR_DEF)
+                .findFirst().orElse(null);
+        if (declaration == null) {
+            return List.of();
+        }
+        int declaredAt = writtenFrom(declaration);
         Compilation compilation = compileOf(graph);
         String module = moduleOf(compilation, graph, uri);
         if (module == null) {
@@ -801,8 +825,7 @@ public final class Analyzer {
             return List.of();
         }
         for (Hir.BehaviorDef behavior : written.behaviors()) {
-            if (!isWrittenIn(behavior, uri, graph)
-                    || !overlaps(pointRange(behavior.pos()), requested)) {
+            if (!isWrittenIn(behavior, uri, graph) || !declaredBy(lines, behavior, declaredAt)) {
                 continue;
             }
             // Whether the model owes this behavior anything a row could answer. Asked of the
@@ -839,6 +862,20 @@ public final class Analyzer {
      */
     private boolean isWrittenIn(Hir.BehaviorDef behavior, String uri, ModuleGraph graph) {
         return uri.equals(documentOf(behavior.pos(), null, graph));
+    }
+
+    /**
+     * Whether {@code behavior} is what the declaration written at {@code declaredAt} declares.
+     *
+     * <p>The two are the same declaration read by the two halves of this server, and each says where
+     * it begins: a syntax node's first code token is the {@code behavior} keyword, and so is a
+     * {@link Hir.BehaviorDef}'s own position. So they are joined on that and not on the name — a name
+     * is canonical on one side and as spelled on the other, and a declaration written in a
+     * decomposed spelling would be joined to nothing.
+     */
+    private static boolean declaredBy(LineIndex lines, Hir.BehaviorDef behavior, int declaredAt) {
+        SourcePos pos = behavior.pos();
+        return lines.offsetOf(pos.line() - 1, pos.column() - 1) == declaredAt;
     }
 
     /** Whether anything this behavior is short of is a thing writing a row could answer. */
@@ -2298,16 +2335,43 @@ public final class Analyzer {
      * it.
      */
     private SyntaxNode enclosingDef(SyntaxNode root, int offset) {
+        List<SyntaxNode> reached = defsReaching(root, offset, offset);
+        return reached.isEmpty() ? null : reached.get(0);
+    }
+
+    /**
+     * The top-level definitions the stretch from {@code from} to {@code to} reaches, in the order
+     * they are written.
+     *
+     * <p>Every one of them, because a stretch reaches as many as it is drawn over and a caller has
+     * to say which of those it wanted. A position is the case where there is at most one, and
+     * {@link #enclosingDef} is that case — asked for one, a stretch would answer with whichever
+     * definition is written first, which is an answer about the order of the file rather than about
+     * what was asked for.
+     *
+     * <p>A position and a stretch are also bounded differently. A position at either end of a
+     * definition is on it, which is what a caret at the end of a line is. A stretch meets a
+     * definition where the two share a character — bounded as a position is, a selection of the
+     * blank line above would reach the definition below by ending where its first character begins.
+     */
+    private List<SyntaxNode> defsReaching(SyntaxNode root, int from, int to) {
+        List<SyntaxNode> reached = new ArrayList<>();
         for (SyntaxNode def : root.childNodes()) {
             if (!DEFINITIONS.contains(def.kind())) {
                 continue;
             }
             int written = writtenFrom(def);
-            if (written >= 0 && offset >= written && offset <= def.end()) {
-                return def;
+            if (written < 0) {
+                continue;
+            }
+            boolean reaches = from == to
+                    ? from >= written && from <= def.end()
+                    : from < def.end() && written < to;
+            if (reaches) {
+                reached.add(def);
             }
         }
-        return null;
+        return reached;
     }
 
     /** Where {@code node}'s own text begins: its first code token, past the trivia in front of it. */
