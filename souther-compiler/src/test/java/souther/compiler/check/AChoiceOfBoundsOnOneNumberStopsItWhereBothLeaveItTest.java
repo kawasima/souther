@@ -186,6 +186,28 @@ class AChoiceOfBoundsOnOneNumberStopsItWhereBothLeaveItTest {
                 "the ends are at three and five, and no set has a size between them");
     }
 
+    /**
+     * And a branch whose rules leave the number no value is one this says nothing about.
+     *
+     * <p>That two of its rules stop the length past each other is a sound proof that nobody is in
+     * that branch — and this reading is no part of deciding a branch's fate, so it declines rather
+     * than acts on it. Which is what it may always do: a number it says nothing about is one no
+     * line is drawn on.
+     *
+     * <p>Handed to the join the ranges are composed by, the branch arrives as one this reading was
+     * told somebody can be in, which is a promise nothing here made.
+     */
+    @Test
+    void andABranchWhoseRulesLeaveTheNumberNoValueIsOneThisSaysNothingAbout() {
+        assertEquals(List.of(NO_LINE, NO_LINE),
+                List.of(borderIn("(String.length(s) >= 5 && String.length(s) <= 3)"
+                                + " || String.length(s) >= 2"),
+                        borderIn("(String.length(s) == 3 && String.length(s) == 5)"
+                                + " || String.length(s) >= 2")),
+                "the rules of one alternative stop the length past each other, and where a choice"
+                        + " of that leaves it is not this reading's to say");
+    }
+
     /** What the document says the line was read as. */
     private static List<String> lineAt(String number, String value) {
         return List.of("· read as check/" + number + ": = " + value,

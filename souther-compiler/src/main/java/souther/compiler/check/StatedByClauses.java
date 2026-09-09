@@ -163,12 +163,15 @@ sealed interface StatedByClauses {
      *                     ends' own, and not the other half of {@code ruleShortfalls}: that one is
      *                     about which values may stand at a position, and a reading that has a word
      *                     for a range where the other has none is short of nothing here
-     * @param boundedNumbers the numbers an operation answers that this part stopped somewhere. For
-     *                       the one question a choice asks of the branch beside an end it left open
-     *                       — whether that branch holds the number down at all — which is the ends'
-     *                       own answer for a position and this reading's for a number of one. A
-     *                       count is never in what the ends bounded and a position is never here,
-     *                       so which reader answers is settled by the number and not by a caller
+     * @param boundsLeftOpen which choice an author is sent to for a line this part states on a
+     *                       number an operation answers and nothing placed.
+     *
+     *                       <p><b>The provenance and nothing else.</b> Whether such an end is still
+     *                       open once the branches are settled is a fact about what the
+     *                       alternatives leave the number, which is the reading's own and is
+     *                       composed once where it is ({@link BoundaryState}). Gated here as well,
+     *                       a choice would be settled twice — the shape the reading of ends is
+     *                       under, one language at a time, is the shape this would take
      */
     record Part(Adoption<FactSubject, ReadingLanguage.Values> byValues,
                 Adoption<FactSubject, ReadingLanguage.Order> byOrder,
@@ -176,12 +179,12 @@ sealed interface StatedByClauses {
                 Set<AdmissibleReading.AskedAt> asked,
                 Set<RuleShortfall> ruleShortfalls,
                 EndsLeftOpen endsLeftOpen,
-                Set<FactSubject> boundedNumbers) {
+                Map<DerivedNumber, EndsLeftOpen.Behind> boundsLeftOpen) {
 
         /** What a clause of no connective, that no reading has a word for, took in. */
         static Part nothing() {
             return new Part(Adoption.nothing(), Adoption.nothing(), Map.of(), Set.of(), Set.of(),
-                    EndsLeftOpen.nothing(), Set.of());
+                    EndsLeftOpen.nothing(), Map.of());
         }
 
         /**
@@ -204,21 +207,23 @@ sealed interface StatedByClauses {
                     askedIn(asked, other.asked()),
                     shortOf(ruleShortfalls, other.ruleShortfalls()),
                     endsLeftOpen.both(other.endsLeftOpen()),
-                    // A number either conjunct stopped is one the pair stops, and a dead
-                    // alternative brings none — which is what a branch nobody can be in bounds.
-                    union(boundedNumbers, other.boundedNumbers()));
+                    reached(boundsLeftOpen, other.boundsLeftOpen()));
         }
 
-        private static Set<FactSubject> union(Set<FactSubject> these, Set<FactSubject> those) {
+        /** The same end reached two ways, which is what a conjunction of two parts comes to. */
+        private static Map<DerivedNumber, EndsLeftOpen.Behind> reached(
+                Map<DerivedNumber, EndsLeftOpen.Behind> these,
+                Map<DerivedNumber, EndsLeftOpen.Behind> those) {
             if (those.isEmpty()) {
                 return these;
             }
             if (these.isEmpty()) {
                 return those;
             }
-            Set<FactSubject> out = new LinkedHashSet<>(these);
-            out.addAll(those);
-            return Collections.unmodifiableSet(out);
+            Map<DerivedNumber, EndsLeftOpen.Behind> out = new LinkedHashMap<>(these);
+            those.forEach((number, behind) ->
+                    out.merge(number, behind, EndsLeftOpen.Behind::and));
+            return Collections.unmodifiableMap(out);
         }
 
         /**
@@ -240,7 +245,7 @@ sealed interface StatedByClauses {
             // And no end of it is left open. An end nothing derived is what a value of this type
             // may still be at, and no value of this type is in this branch.
             return new Part(byValues.inADeadBranch(), byOrder.inADeadBranch(), Map.of(),
-                    Set.of(), Set.of(), EndsLeftOpen.nothing(), Set.of());
+                    Set.of(), Set.of(), EndsLeftOpen.nothing(), Map.of());
         }
 
         /**
@@ -253,7 +258,17 @@ sealed interface StatedByClauses {
          */
         Part underACollapsedChoice() {
             return new Part(byValues, byOrder, aboutStrings, asked, ruleShortfalls,
-                    endsLeftOpen.underACollapsedChoice(), boundedNumbers);
+                    endsLeftOpen.underACollapsedChoice(), underACollapsedChoice(boundsLeftOpen));
+        }
+
+        private static Map<DerivedNumber, EndsLeftOpen.Behind> underACollapsedChoice(
+                Map<DerivedNumber, EndsLeftOpen.Behind> these) {
+            if (these.isEmpty()) {
+                return these;
+            }
+            Map<DerivedNumber, EndsLeftOpen.Behind> out = new LinkedHashMap<>();
+            these.forEach((number, behind) -> out.put(number, behind.underACollapsedChoice()));
+            return Collections.unmodifiableMap(out);
         }
 
         /** The same part of two branches somebody can be in, under the choice between them. */
@@ -287,19 +302,23 @@ sealed interface StatedByClauses {
                     // And the ends the choice leaves open, struck down by what each alternative
                     // says it came to and never added to: what a choice can show is that the branch
                     // beside an unfollowed one puts every value of a position on the order.
-                    endsLeftOpen.either(choice, byOrder, boundedNumbers,
-                            other.endsLeftOpen(), other.byOrder(), other.boundedNumbers()),
-                    // And the numbers the choice stops, which are the ones both alternatives stop:
-                    // a value taking one of them owes the other nothing, so a number only one of
-                    // them holds down is one the choice holds nowhere.
-                    both(boundedNumbers, other.boundedNumbers()));
+                    endsLeftOpen.either(choice, byOrder, other.endsLeftOpen(), other.byOrder()),
+                    // And the choice an author is sent to for a line on a derived number nothing
+                    // placed. Nothing is struck off here: which of them the choice still leaves
+                    // open is what the alternatives leave that number, and that is settled once,
+                    // where they are ({@link BoundaryState#either}).
+                    under(choice, reached(boundsLeftOpen, other.boundsLeftOpen())));
         }
 
-        /** The numbers both of these stop. */
-        private static Set<FactSubject> both(Set<FactSubject> these, Set<FactSubject> those) {
-            Set<FactSubject> out = new LinkedHashSet<>(these);
-            out.retainAll(those);
-            return Collections.unmodifiableSet(out);
+        /** The same ends, with {@code choice} standing between them and the walk. */
+        private static Map<DerivedNumber, EndsLeftOpen.Behind> under(
+                ChoiceSite choice, Map<DerivedNumber, EndsLeftOpen.Behind> these) {
+            if (these.isEmpty()) {
+                return these;
+            }
+            Map<DerivedNumber, EndsLeftOpen.Behind> out = new LinkedHashMap<>();
+            these.forEach((number, behind) -> out.put(number, behind.under(choice)));
+            return Collections.unmodifiableMap(out);
         }
 
         /**
@@ -596,13 +615,10 @@ sealed interface StatedByClauses {
             StatedLines.Statement stated = lines.of(e, positive, at);
             BoundaryReading.Read bounds = boundaries.leaf(stated, e, positive, at);
             return new Said(new Confinement.Planned<>(said, range,
-                    // And where the leaf leaves the numbers this value's operations answer, which
-                    // is a third order with a reading of its own. Held beside the other two so that
-                    // the connectives compose it once, under the fate the other two decide.
-                    bounds instanceof BoundaryReading.Read.Bounded it
-                            ? OrderedIntervals.at(it.number(), it.range())
-                            : OrderedIntervals.top(),
-                    ordered.carriers()), new Part(
+                    // And what the leaf leaves the numbers this value's operations answer, which
+                    // is a third reading with a state of its own. Held beside the other two so
+                    // that the connectives compose it once, under the fate the other two decide.
+                    stateOf(bounds), ordered.carriers()), new Part(
                     // Each language says for itself whether it could account for the leaf, and each
                     // is asked. Read off what a language produced instead, a rule it followed to
                     // the end and found bounds nothing is one it gave up on — which is what every
@@ -631,16 +647,25 @@ sealed interface StatedByClauses {
                     // Read off what the ends managed alone, a rule stating no line and a rule
                     // stating one nobody worked out are one answer, and every leaf of the first
                     // kind left an end open under a choice.
-                    // The positions whose own end this reading did not work out, and beside them
-                    // the numbers an operation answers whose line nothing placed. One question
-                    // asked of two readings, each about the numbers it holds.
                     EndsLeftOpen.at(ordered.endsLeftUnknownAt(e,
-                                    lines.waitingOnAReader(stated, mentions)))
-                            .both(EndsLeftOpen.at(
-                                    bounds instanceof BoundaryReading.Read.LeftOpen open
-                                            ? Set.of(open.subject()) : Set.of())),
-                    bounds instanceof BoundaryReading.Read.Bounded placed
-                            ? Set.of(placed.subject()) : Set.of()));
+                            lines.waitingOnAReader(stated, mentions))),
+                    // And where a line on a number an operation answers was left open, which
+                    // choice an author is sent to for it. The provenance and nothing else:
+                    // whether such an end is still open once the branches are settled is the
+                    // reading's own answer and is met with this where both are in hand.
+                    bounds instanceof BoundaryReading.Read.LeftOpen open
+                            ? Map.of(open.number(), EndsLeftOpen.Behind.aLeaf())
+                            : Map.of()));
+        }
+
+        /** What one leaf's reading of the derived numbers comes to, as the state that composes. */
+        private static BoundaryState stateOf(BoundaryReading.Read read) {
+            return switch (read) {
+                case BoundaryReading.Read.NoLineStated _ -> BoundaryState.nothing();
+                case BoundaryReading.Read.Bounded it ->
+                        BoundaryState.bounded(it.number(), it.range());
+                case BoundaryReading.Read.LeftOpen it -> BoundaryState.leftOpen(it.number());
+            };
         }
 
         /**
@@ -1008,8 +1033,13 @@ sealed interface StatedByClauses {
         Account accountOf(StatedByClauses rule, StatedTogether projected, Settlement made,
                           Allowance<FactSubject> by) {
             Taken took = accounted(rule, made.outcomes());
-            return new Account(narrowedBy(alone(projected, by).confinement().values(), by),
-                    partsOf(took, made), took.opened());
+            // This rule's own settled reading, which is what an account of it rests on. The
+            // derived numbers it still leaves open are read off the same one: which of them a
+            // choice settled is that reading's answer, worked out where the branches were, and
+            // met here with the choices an author is sent to.
+            Confinement.Planned<FactSubject> alone = alone(projected, by).confinement();
+            return new Account(narrowedBy(alone.values(), by),
+                    partsOf(took, made, alone.derived().open()), took.opened());
         }
 
         /**
@@ -1107,7 +1137,23 @@ sealed interface StatedByClauses {
             return out;
         }
 
-        private Map<Core, PartAccount> partsOf(Taken took, Settlement made) {
+        /** The choices written for the ends of {@code stillOpen}, and none for the rest. */
+        private static Map<DerivedNumber, EndsLeftOpen.Behind> stillOpenOf(
+                Map<DerivedNumber, EndsLeftOpen.Behind> written, Set<DerivedNumber> stillOpen) {
+            if (written.isEmpty()) {
+                return written;
+            }
+            Map<DerivedNumber, EndsLeftOpen.Behind> out = new LinkedHashMap<>();
+            written.forEach((number, behind) -> {
+                if (stillOpen.contains(number)) {
+                    out.put(number, behind);
+                }
+            });
+            return out;
+        }
+
+        private Map<Core, PartAccount> partsOf(Taken took, Settlement made,
+                                               Set<DerivedNumber> stillOpen) {
             Set<FactSubject> unbuilt = made.made().unbuilt();
             // And what could not be built is given up on here too. What a leaf said it adopted was
             // said before any machine was made, so a position whose answer the whole reading did
@@ -1123,7 +1169,11 @@ sealed interface StatedByClauses {
                     // clause that asked for it, and reaches no clause that asked for something else.
                     shortOf(part.ruleShortfalls(),
                             askedFor(made.made().aboutARule(), part.asked())),
-                    part.aboutStrings(), part.endsLeftOpen())));
+                    part.aboutStrings(), part.endsLeftOpen(),
+                    // The choices this part wrote, kept only for the ends its own rule still
+                    // leaves open. The gate is the reading's and ran once; this is where its
+                    // answer and the provenance meet.
+                    stillOpenOf(part.boundsLeftOpen(), stillOpen))));
             return parts;
         }
 
@@ -1298,7 +1348,7 @@ sealed interface StatedByClauses {
                     // build says nothing about which ends this reading worked out, and a position
                     // struck off here would be one the border is told nothing about because a
                     // pattern beside it was unaffordable.
-                    part.endsLeftOpen(), part.boundedNumbers()));
+                    part.endsLeftOpen(), part.boundsLeftOpen()));
         }
 
         /**
@@ -1601,7 +1651,8 @@ sealed interface StatedByClauses {
             Map<Core, ReadByClauses.OfAPart> out = new IdentityHashMap<>();
             said.forEach((each, part) -> out.put(each, new ReadByClauses.OfAPart(
                     part.byValues(), part.byOrder(), part.aboutARule(),
-                    admitted(part.aboutStrings(), answers), part.endsLeftOpen())));
+                    admitted(part.aboutStrings(), answers), part.endsLeftOpen(),
+                    part.boundsLeftOpen())));
             return out;
         }
 
@@ -1672,7 +1723,8 @@ sealed interface StatedByClauses {
                        Adoption<FactSubject, ReadingLanguage.Order> byOrder,
                        Set<RuleShortfall> aboutARule,
                        Map<FactSubject, StringRestriction> aboutStrings,
-                       EndsLeftOpen endsLeftOpen) {}
+                       EndsLeftOpen endsLeftOpen,
+                       Map<DerivedNumber, EndsLeftOpen.Behind> boundsLeftOpen) {}
 
     /** How much the allowance has spent in all, for holding an account to spending nothing — see
      *  {@code InvariantChecker.spentBy}. */

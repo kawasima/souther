@@ -99,12 +99,16 @@ record ReadByClauses(Confinement.Worked<FactSubject> confinement,
      *                     which choice an author is sent to for it ({@link EndsLeftOpen}). Crosses
      *                     unchanged: what a branch is left open by was settled while the branches
      *                     were, and nothing decided since bears on it
+     * @param boundsLeftOpen the same for a line this part states on a number an operation answers
+     *                       that nothing placed, kept only where the rule's own settled reading
+     *                       still leaves it open ({@link BoundaryState})
      */
     record OfAPart(Adoption<FactSubject, ReadingLanguage.Values> byValues,
                    Adoption<FactSubject, ReadingLanguage.Order> byOrder,
                    Set<RuleShortfall> aboutARule,
                    java.util.Map<FactSubject, AdmittedStrings> aboutStrings,
-                   EndsLeftOpen endsLeftOpen) {
+                   EndsLeftOpen endsLeftOpen,
+                   java.util.Map<DerivedNumber, EndsLeftOpen.Behind> boundsLeftOpen) {
 
         /** The positions some reading took the whole of this part in at. */
         java.util.Set<FactSubject> adopted() {

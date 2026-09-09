@@ -7,7 +7,6 @@ import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.NumericDomain;
 import souther.compiler.numeric.OrderedInterval;
-import souther.compiler.numeric.OrderedIntervals;
 import souther.compiler.numeric.Rel;
 import souther.compiler.types.TypeKey;
 import souther.compiler.types.TypeSymbol;
@@ -79,7 +78,7 @@ public final class FieldDomains {
                     ConstraintState.<FactSubject>top(), null, null, null, null, Map.of(),
                     Set.of(RuleKey.THE_VALUE),
                     Map.of(), Map.of(), Map.of(), Map.of(), StringFacts.NONE, KnownExtents.NONE,
-                    Map.of(), OrderedIntervals.top());
+                    Map.of(), Map.of(), BoundaryState.nothing());
 
     private final Map<RuleKey, NumericDomain.Bounds> byName;
     /** The ends the record's own clauses place, which is a different question from the range they
@@ -129,7 +128,10 @@ public final class FieldDomains {
      * {@link #projection} does not, because being inside the envelope is not being a value the
      * rules admit.
      */
-    private final OrderedIntervals<DerivedNumber> derived;
+    private final BoundaryState derived;
+    /** Which choice an author is sent to for a line on one of those numbers that nothing placed —
+     *  see {@link #endsLeftOpenAt}. */
+    private final Map<RuleRef.Invariant, Map<DerivedNumber, EndsLeftOpen.Behind>> boundsLeftOpen;
     /** Which readings took each clause in, as each of them said so. */
     private final ReadingEvidence took;
     /** The accounting, worked out once. Every name of a value asks the same question of it. */
@@ -250,8 +252,11 @@ public final class FieldDomains {
                          Map<FactSubject, souther.compiler.numeric.Granularity> spacing,
                          StringFacts stringMachines, KnownExtents known,
                          Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen,
-                         OrderedIntervals<DerivedNumber> derived) {
+                         Map<RuleRef.Invariant, Map<DerivedNumber, EndsLeftOpen.Behind>>
+                                 boundsLeftOpen,
+                         BoundaryState derived) {
         this.endsLeftOpen = endsLeftOpen;
+        this.boundsLeftOpen = boundsLeftOpen;
         this.derived = derived;
         this.stringMachines = stringMachines;
         this.known = known;
@@ -481,7 +486,7 @@ public final class FieldDomains {
                 seeded.constraints(), named, data, source, policy, settled,
                 seeded.unreadOfEveryValue(), seeded.atoms(), seeded.held(),
                 seeded.readBy(), seeded.spacing(), seeded.stringMachines(), machines.extents(),
-                seeded.endsLeftOpen(), seeded.derived());
+                seeded.endsLeftOpen(), seeded.boundsLeftOpen(), seeded.derived());
     }
 
     /**
@@ -1431,17 +1436,33 @@ public final class FieldDomains {
             // Only the ends nothing else reaches. An end left open with no choice between it and
             // the walk that raises a rule's questions is one those questions already leave
             // standing, and a second account of it is one stop said twice.
-            if (!path.equals(placeOf(position)) || !behind.underAChoice()) {
+            if (!path.equals(namedBy.get(position)) || !behind.underAChoice()) {
                 return;
             }
-            if (behind.named().isEmpty()) {
-                out.add(new EndLeftOpen(numberOf(path, position), rule, null));
+            said(numberOf(path, position), rule, behind, out);
+        }));
+        // And the lines on the numbers this value's operations answer that nothing placed, which
+        // is the other reading's answer arriving by the same road. Where the choice left one open
+        // is that reading's ({@link BoundaryState}); which choice to send an author to is what the
+        // account of the rule kept, and the two are met before either reaches here.
+        boundsLeftOpen.forEach((rule, open) -> open.forEach((number, behind) -> {
+            if (!path.equals(number.position()) || !behind.underAChoice()) {
                 return;
             }
-            behind.named().forEach(each ->
-                    out.add(new EndLeftOpen(numberOf(path, position), rule, each)));
+            said(number.asNumber(), rule, behind, out);
         }));
         return List.copyOf(out);
+    }
+
+    /** One end left open, said once per choice an author can be sent to and once where none can
+     *  be named. */
+    private static void said(NumberAt<RuleKey> at, RuleRef.Invariant rule,
+                             EndsLeftOpen.Behind behind, List<EndLeftOpen> out) {
+        if (behind.named().isEmpty()) {
+            out.add(new EndLeftOpen(at, rule, null));
+            return;
+        }
+        behind.named().forEach(each -> out.add(new EndLeftOpen(at, rule, each)));
     }
 
     /**
@@ -1467,31 +1488,6 @@ public final class FieldDomains {
      */
     public record EndLeftOpen(NumberAt<RuleKey> at, RuleRef.Invariant rule,
                               ChoiceSite byChoice) {}
-
-    /**
-     * Where the number called {@code subject} sits, whichever of a place's numbers it is.
-     *
-     * <p><b>{@link #subjectAt} run backwards</b>, and over the same two kinds it goes forwards
-     * over: what stands at a place, and what an operation answers of it. A rule can state a line on
-     * either, so a lookup that knew only the first finds nothing for a rule about how long a string
-     * is — and {@link #namedBy} is the first alone, because what it is for elsewhere is the subject
-     * a place's own values are filed under.
-     *
-     * <p>Which place, and never which number: those are the same place for both, and
-     * {@link #numberOf} is what tells them apart once it is found.
-     */
-    private RuleKey placeOf(FactSubject subject) {
-        RuleKey named = namedBy.get(subject);
-        if (named != null) {
-            return named;
-        }
-        for (Map.Entry<RuleKey, Counted> each : countAt.entrySet()) {
-            if (each.getValue().atom().equals(subject)) {
-                return each.getKey();
-            }
-        }
-        return null;
-    }
 
     /** Which of {@code path}'s numbers {@code position} is, as this reading named them. */
     private NumberAt<RuleKey> numberOf(RuleKey path, FactSubject position) {
@@ -1920,7 +1916,7 @@ public final class FieldDomains {
         // Nothing to meet where no choice settled a number of this value, which is most of them.
         // Asked all the same, every lookup of every coordinate builds a subject to find nothing
         // under, and this one is asked once per candidate per counterfactual.
-        if (derived.boundedAt().isEmpty()) {
+        if (derived.known().isEmpty()) {
             return held;
         }
         // And what the choices leave it, which the algebra has no way to: it reads a clause as

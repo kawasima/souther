@@ -16,13 +16,12 @@ import java.util.Set;
  * owners, and nothing here decides any of them — what is done with their answers is to strike
  * numbers off this one.
  *
- * <p><b>The numbers, and not the positions alone.</b> A place carries what stands at it and
- * whatever its operations answer of that, and a rule can state a line on either — so which of them
- * is here is whichever the rule was about, and which reader answered for it is settled by the
- * number ({@link OrderedReading} for the first, {@link BoundaryReading} for the second). Kept as
- * positions, a rule stopping a length somewhere nobody worked out had to be filed at the position,
- * where the branch beside it was rightly found to leave the position's own order alone — and the
- * end went unreported.
+ * <p><b>What stands at a place, and never a number an operation answers of it.</b> Both are numbers
+ * a rule can state a line on, and they are two orders with two readings — so the second is left
+ * open where its own reading settles what the alternatives leave it
+ * ({@link BoundaryState}), and reaches a document by the road this one takes. Carried here as well,
+ * the rule below would be asked whether the branch beside it bounds a length, which is a question
+ * the reading of ends has no word for and would answer no to.
  *
  * <p><b>A choice never puts a number in here.</b> {@link #either} keeps only what its alternatives
  * brought to it, so a choice can strike a number off and can add none: it may show that the branch
@@ -176,17 +175,15 @@ record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byNumber) {
      * branches brought, which is what keeps a choice from inventing a rule nobody could read.
      */
     EndsLeftOpen either(ChoiceSite choice, Adoption<FactSubject, ReadingLanguage.Order> mine,
-                        Set<FactSubject> myBounds,
-                        EndsLeftOpen other, Adoption<FactSubject, ReadingLanguage.Order> theirs,
-                        Set<FactSubject> theirBounds) {
+                        EndsLeftOpen other, Adoption<FactSubject, ReadingLanguage.Order> theirs) {
         if (byNumber.isEmpty() && other.byNumber.isEmpty()) {
             return NOTHING;
         }
         Map<FactSubject, Behind> out = new LinkedHashMap<>();
         byNumber.forEach((position, behind) ->
-                keptUnder(choice, position, behind, other, theirs, theirBounds, out));
+                keptUnder(choice, position, behind, other, theirs, out));
         other.byNumber.forEach((position, behind) ->
-                keptUnder(choice, position, behind, this, mine, myBounds, out));
+                keptUnder(choice, position, behind, this, mine, out));
         return new EndsLeftOpen(out);
     }
 
@@ -222,15 +219,8 @@ record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byNumber) {
     private static void keptUnder(ChoiceSite choice, FactSubject position, Behind behind,
                                   EndsLeftOpen beside,
                                   Adoption<FactSubject, ReadingLanguage.Order> theirs,
-                                  Set<FactSubject> theirBounds,
                                   Map<FactSubject, Behind> out) {
-        // Whether the branch beside this one holds the number down, asked of whoever answers for
-        // that number. Where the values at a position stop is the reading of ends', and where a
-        // number an operation answers of one stops is the reading that holds those — a count is
-        // never among what the ends bounded and a position is never among these, so which of them
-        // is asked is settled by the number rather than by a caller picking one.
-        if (!theirs.constrains(position) && !theirBounds.contains(position)
-                && !beside.byNumber.containsKey(position)) {
+        if (!theirs.constrains(position) && !beside.byNumber.containsKey(position)) {
             return;
         }
         out.merge(position, behind.under(choice), Behind::and);

@@ -531,24 +531,23 @@ sealed interface Confinement<A> {
         private final PlannedValues<A> values;
         private final OrderedIntervals<A> ordered;
         /**
-         * Where the numbers this value's operations answer stop ({@link BoundaryReading}).
+         * What the rules leave the numbers this value's operations answer ({@link BoundaryState}).
          *
          * <p>Here because a choice is composed once and here is where it is composed: what the
-         * alternatives leave a length is joined under the same branch decision as what they leave
-         * the values and the orders, and a third place composing it would be a third answer about
-         * one written choice.
+         * alternatives leave a length is put together under the same branch decision as what they
+         * leave the values and the orders, and a third place composing any of it would be a third
+         * answer about one written choice.
+         *
+         * <p>Whole, and not the ranges alone. Which numbers a rule stopped somewhere nothing
+         * worked out is the other half of what this reading came to, and it composes by the same
+         * connectives: kept somewhere else, the two halves would be put together twice.
          *
          * <p><b>And it is not asked whether anybody can be in a branch.</b> That question is the
          * values' and the orders' ({@link #admission}), and this holds no half of it: a length is
          * bounded by rules about a number the position's own reading has no word for, so a branch
          * refused by one of these would be refused by a reading the other two cannot check.
-         *
-         * <p><b>An envelope and never a claim that the rules are said by it.</b> Two branches
-         * naming one size each join to the run between them, and nothing in that run is a size any
-         * value has — so what this holds is where the outermost ends are, which is what a line is
-         * read off, and it is no evidence that the number is exactly represented.
          */
-        private final OrderedIntervals<DerivedNumber> derived;
+        private final BoundaryState derived;
         private final Map<A, Carrier> carriers;
         /**
          * What already showed this holds nothing, or null where nothing has.
@@ -562,18 +561,18 @@ sealed interface Confinement<A> {
         private final Admission<A> shown;
 
         Planned(PlannedValues<A> values, OrderedIntervals<A> ordered, Map<A, Carrier> carriers) {
-            this(values, ordered, OrderedIntervals.top(), carriers, null);
+            this(values, ordered, BoundaryState.nothing(), carriers, null);
         }
 
         /** The same, for a leaf that also says where a number one of this value's operations
          *  answers stops. */
         Planned(PlannedValues<A> values, OrderedIntervals<A> ordered,
-                OrderedIntervals<DerivedNumber> derived, Map<A, Carrier> carriers) {
+                BoundaryState derived, Map<A, Carrier> carriers) {
             this(values, ordered, derived, carriers, null);
         }
 
         private Planned(PlannedValues<A> values, OrderedIntervals<A> ordered,
-                        OrderedIntervals<DerivedNumber> derived,
+                        BoundaryState derived,
                         Map<A, Carrier> carriers, Admission<A> shown) {
             this.values = values;
             this.ordered = ordered;
@@ -646,7 +645,7 @@ sealed interface Confinement<A> {
          */
         Planned<A> meet(Planned<A> other) {
             return new Planned<>(values.meet(other.values), ordered.meet(other.ordered),
-                    derived.meet(other.derived),
+                    derived.both(other.derived),
                     Confinement.both(carriers, other.carriers),
                     eitherShown(admission(), other.admission()));
         }
@@ -657,10 +656,12 @@ sealed interface Confinement<A> {
             return new Planned<>(
                     apart ? values.joinLiveApart(other.values) : values.joinLive(other.values),
                     ordered.joinLive(other.ordered),
-                    // A number one branch bounds and the other says nothing about is left where it
-                    // was: a value taking the second owes the first nothing, and the join of a
-                    // range with every value is every value.
-                    derived.joinLive(other.derived),
+                    // Which is not the ranges' own join. That one is written for two alternatives
+                    // this reading has been told somebody can be in, and nothing tells this one:
+                    // whether anybody can be in a branch is settled without it, so a branch whose
+                    // lengths have crossed reaches here alive. What such a branch leaves is
+                    // {@link BoundaryState#either}'s to say.
+                    derived.either(other.derived),
                     Confinement.both(carriers, other.carriers), null);
         }
 
@@ -697,13 +698,13 @@ sealed interface Confinement<A> {
         }
 
         /**
-         * Where the rules leave the numbers this value's operations answer.
+         * What the rules leave the numbers this value's operations answer.
          *
          * <p>Handed out for a reader looking for where a line falls, and for nothing else. What it
          * says is where the outermost ends are; that a number takes every value between them is
          * not something it was ever asked.
          */
-        OrderedIntervals<DerivedNumber> derived() {
+        BoundaryState derived() {
             return derived;
         }
 
@@ -729,13 +730,13 @@ sealed interface Confinement<A> {
         private final Realized<A> made;
         private final OrderedIntervals<A> ordered;
         /** Where the numbers this value's operations answer stop — see {@link Planned#derived}. */
-        private final OrderedIntervals<DerivedNumber> derived;
+        private final BoundaryState derived;
         private final Map<A, Carrier> carriers;
         /** What already showed this holds nothing — see {@link Planned#shown}. */
         private final Admission<A> shown;
 
         Worked(Realized<A> made, OrderedIntervals<A> ordered,
-               OrderedIntervals<DerivedNumber> derived, Map<A, Carrier> carriers,
+               BoundaryState derived, Map<A, Carrier> carriers,
                Admission<A> shown) {
             this.derived = derived;
             this.made = made;
@@ -752,9 +753,9 @@ sealed interface Confinement<A> {
             return made.values();
         }
 
-        /** Where the rules leave the numbers this value's operations answer — see
+        /** What the rules leave the numbers this value's operations answer — see
          *  {@link Planned#derived()}. */
-        OrderedIntervals<DerivedNumber> derived() {
+        BoundaryState derived() {
             return derived;
         }
 

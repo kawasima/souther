@@ -34,7 +34,7 @@ import java.util.Map;
  *
  * <p>So this answers one question: whether a range can be read for the number the leaf states a
  * line on. A line it could not place leaves that number where it was and says so
- * ({@link Read#leftUnplaced}), because the two are not the same fact — a number no rule spoke of
+ * ({@link Read.LeftOpen}), because the two are not the same fact — a number no rule spoke of
  * runs as far as it ever did, and one a rule stopped somewhere nobody worked out is a line this
  * compiler owes an answer for.
  */

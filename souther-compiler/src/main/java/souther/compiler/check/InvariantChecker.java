@@ -13,7 +13,6 @@ import souther.compiler.numeric.Count;
 import souther.compiler.numeric.Endpoint;
 import souther.compiler.numeric.LinearForm;
 import souther.compiler.numeric.NumericDomain;
-import souther.compiler.numeric.OrderedIntervals;
 import souther.compiler.core.Core;
 import souther.compiler.semantics.ConditionJoin;
 import souther.compiler.core.Evaluated;
@@ -496,7 +495,8 @@ public final class InvariantChecker {
                   Set<RuleKey> notSeparated,
                   StringFacts stringMachines,
                   Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen,
-                  OrderedIntervals<DerivedNumber> derived) {
+                  Map<RuleRef.Invariant, Map<DerivedNumber, EndsLeftOpen.Behind>> boundsLeftOpen,
+                  BoundaryState derived) {
 
         /** The atom each count is recorded against, for a reader that wants the subject and not
          *  which operation it is a count of. Projected rather than kept beside {@link #held()}: two
@@ -969,6 +969,8 @@ public final class InvariantChecker {
         // dropped, and a walk here would be asking a second time about a shape the settlement has
         // finished with.
         Map<RuleRef.Invariant, EndsLeftOpen> endsLeftOpen = new LinkedHashMap<>();
+        Map<RuleRef.Invariant, Map<DerivedNumber, EndsLeftOpen.Behind>> boundsLeftOpen =
+                new LinkedHashMap<>();
         answered.perClause().forEach((each, one) -> {
             narrowedBy.put(each.from(), one);
             one.account().adopted().forEach(position -> took.record(each.from(), position));
@@ -978,6 +980,9 @@ public final class InvariantChecker {
             if (!one.account().endsLeftOpen().byNumber().isEmpty()) {
                 endsLeftOpen.merge(each.from(), one.account().endsLeftOpen(), EndsLeftOpen::both);
             }
+            one.account().boundsLeftOpen().forEach((number, behind) ->
+                    boundsLeftOpen.computeIfAbsent(each.from(), _ -> new LinkedHashMap<>())
+                            .merge(number, behind, EndsLeftOpen.Behind::and));
         });
         answered.perPart().forEach((each, parts) -> {
             Map<Core, ReadByClauses.OfAPart> out = adoptedBy
@@ -1109,6 +1114,7 @@ public final class InvariantChecker {
                 readBy, Map.copyOf(spacing), admitted, unreadAt, notSeparated,
                 c.answers.facts(),
                 Collections.unmodifiableMap(new LinkedHashMap<>(endsLeftOpen)),
+                Collections.unmodifiableMap(new LinkedHashMap<>(boundsLeftOpen)),
                 // Where every rule reaching this value leaves the numbers its operations answer,
                 // taken from the reading with the choices settled. The interval algebra never
                 // enters an alternative, so this is the one answer that says where a choice of two
