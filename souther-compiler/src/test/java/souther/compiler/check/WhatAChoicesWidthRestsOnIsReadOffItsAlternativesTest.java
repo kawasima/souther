@@ -67,6 +67,31 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
         return Settlement.Width.ofValues(one, other);
     }
 
+    /** A position ordered on a decimal, whose order stops nowhere. */
+    private static final Map<FactSubject, Carrier> ON_A_DECIMAL = Map.of(VALUE, Carrier.DENSE);
+
+    /** And one ordered on a whole number, whose order stops at both ends. */
+    private static final Map<FactSubject, Carrier> ON_A_WHOLE_NUMBER = Map.of(VALUE, Carrier.WHOLE);
+
+    /** What the choice between two branches of these fates came to, which is where whether there
+     *  is a choice at that copy is decided. */
+    private static Settlement.WidthDependency widthOf(Settlement.Sided here,
+                                                      PlannedValues<FactSubject> one,
+                                                      Settlement.Sided there,
+                                                      PlannedValues<FactSubject> other) {
+        return Settlement.OfAChoice.of(here, new StatedTogether.Said(branch(one)),
+                there, new StatedTogether.Said(branch(other))).width();
+    }
+
+    /** A branch nobody can be in, or one nothing showed empty. */
+    private static Settlement.Sided emptiness(boolean empty) {
+        return Settlement.Sided.settledAs(empty
+                ? Confinement.Admission.at(souther.compiler.values.Emptiness.EMPTY,
+                        Confinement.EmptyBy.ORDER, Set.of(VALUE),
+                        Confinement.Shown.BY_THE_READINGS)
+                : Confinement.Admission.left(souther.compiler.values.Emptiness.UNDECIDED));
+    }
+
     /** One branch, with nothing said about where its orders stop. */
     private static Confinement.Planned<FactSubject> branch(PlannedValues<FactSubject> values) {
         return new Confinement.Planned<>(values, OrderedIntervals.top(), Map.of());
@@ -181,15 +206,12 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
      */
     @Test
     void anOccurrenceOneBranchOfWhichAdmitsNothingRestsOnNeitherAndDoesNotSpeakForTheRest() {
-        Settlement.WidthDependency dead = Settlement.WidthDependency.of(
-                souther.compiler.values.Emptiness.EMPTY, branch(isA()),
-                souther.compiler.values.Emptiness.UNDECIDED, branch(unread(Set.of(OTHER))));
-        Settlement.WidthDependency deadOnTheRight = Settlement.WidthDependency.of(
-                souther.compiler.values.Emptiness.UNDECIDED, branch(isA()),
-                souther.compiler.values.Emptiness.EMPTY, branch(unread(Set.of(OTHER))));
-        Settlement.WidthDependency live = Settlement.WidthDependency.of(
-                souther.compiler.values.Emptiness.UNDECIDED, branch(isA()),
-                souther.compiler.values.Emptiness.UNDECIDED, branch(unread(Set.of(OTHER))));
+        Settlement.WidthDependency dead = widthOf(emptiness(true), isA(),
+                emptiness(false), unread(Set.of(OTHER)));
+        Settlement.WidthDependency deadOnTheRight = widthOf(emptiness(false), isA(),
+                emptiness(true), unread(Set.of(OTHER)));
+        Settlement.WidthDependency live = widthOf(emptiness(false), isA(),
+                emptiness(false), unread(Set.of(OTHER)));
 
         assertEquals(Settlement.WidthDependency.none(), dead,
                 "the choice is the branch beside the dead one, and no alternative widened it");
@@ -211,7 +233,7 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
     @Test
     void theOrderIsAskedTheSameQuestionAboutWhereItsPositionsStop() {
         Settlement.Width<ReadingLanguage.Order> width = Settlement.Width.ofOrder(
-                OrderedIntervals.at(VALUE, from(5)), OrderedIntervals.top());
+                OrderedIntervals.at(VALUE, from(5)), OrderedIntervals.top(), ON_A_DECIMAL);
 
         assertEquals(Set.of(), width.mayRestOnLeft(),
                 "without the left the choice stops the position nowhere, as it does with it");
@@ -224,8 +246,52 @@ class WhatAChoicesWidthRestsOnIsReadOffItsAlternativesTest {
     void twoAlternativesStoppingAPositionAlikeLeaveTheWidthOnNeither() {
         assertEquals(Settlement.Width.<ReadingLanguage.Order>none(),
                 Settlement.Width.ofOrder(OrderedIntervals.at(VALUE, from(5)),
-                        OrderedIntervals.at(VALUE, from(5))),
-                "an interval is written one way, so alike is the same description");
+                        OrderedIntervals.at(VALUE, from(5)), ON_A_DECIMAL),
+                "the two leave the position the same values, so dropping either changes nothing");
+    }
+
+    /**
+     * And alike is the same values and not the same spelling.
+     *
+     * <p>{@code 5} and {@code 5.00} are one place on the order and two numbers as they are written
+     * down, which is what {@link souther.compiler.numeric.Place#key} exists to say. Compared as
+     * written, two alternatives stopping a position at one place are two answers and the choice is
+     * as wide as it is because of each of them — a border said to rest on a branch that states
+     * exactly what its neighbour states.
+     */
+    @Test
+    void andAlikeIsTheSameValuesAndNotTheSameSpelling() {
+        assertEquals(Settlement.Width.<ReadingLanguage.Order>none(),
+                Settlement.Width.ofOrder(OrderedIntervals.at(VALUE, from(5)),
+                        OrderedIntervals.at(VALUE, fromSpelled("5.00")), ON_A_DECIMAL),
+                "one place written two ways is one place");
+    }
+
+    /**
+     * And a choice whose alternatives cover the order leaves the position where nothing said
+     * anything would.
+     *
+     * <p>{@code n >= 2 || n <= 0} on a whole number. What the branches leave between them is every
+     * {@code Int}, written as that carrier's own two ends; what a branch saying nothing about the
+     * position leaves is every {@code Int} with no end written at all. Told apart, the choice above
+     * such a branch is as wide as it is because of the branch beside it, and the border comes back
+     * as one this compiler could not measure.
+     */
+    @Test
+    void andACoveredOrderIsWhatSayingNothingLeaves() {
+        Settlement.Width<ReadingLanguage.Order> width = Settlement.Width.ofOrder(
+                OrderedIntervals.top(),
+                OrderedIntervals.at(VALUE, Carrier.WHOLE.extent()), ON_A_WHOLE_NUMBER);
+
+        assertEquals(Settlement.Width.<ReadingLanguage.Order>none(), width,
+                "each alternative holds every value of the order, so the choice does with or"
+                        + " without either");
+    }
+
+    /** {@code value >= low}, written as {@code spelling}. */
+    private static OrderedInterval fromSpelled(String spelling) {
+        return new OrderedInterval(
+                Endpoint.inclusive(Count.of(new java.math.BigDecimal(spelling))), null);
     }
 
     /** {@code value >= low}. */

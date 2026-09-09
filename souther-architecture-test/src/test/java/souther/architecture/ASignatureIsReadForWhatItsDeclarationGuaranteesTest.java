@@ -44,7 +44,7 @@ class ASignatureIsReadForWhatItsDeclarationGuaranteesTest {
     private static final String THE_DERIVED_WORLD = internal(DerivedSymbols.class);
     private static final String THE_RESOLVED_WORLD = internal(ResolvedSymbols.class);
 
-    private static final CompiledClasses COMPILED = CompiledClasses.ofEverythingCompiledHere();
+    private static final CompiledOutputs COMPILED = CompiledOutputs.ofEverythingCompiledHere();
 
     private static final WhatASignatureReaches READING = new WhatASignatureReaches(COMPILED);
 
@@ -241,10 +241,10 @@ class ASignatureIsReadForWhatItsDeclarationGuaranteesTest {
 
     @Test
     void whatIsPublishedIsNotWhatWasCompiledBesideIt() {
-        assertTrue(CompiledClasses.ofEverythingCompiledHere().find(DECLARATIONS).isPresent(),
+        assertTrue(CompiledOutputs.ofEverythingCompiledHere().find(DECLARATIONS).isPresent(),
                 "the subjects declared here are compiled where test output goes, which is the"
                         + " population this test's readings are about");
-        assertTrue(CompiledClasses.ofWhatThisRepositoryPublishes().find(DECLARATIONS).isEmpty(),
+        assertTrue(CompiledOutputs.ofWhatThisRepositoryPublishes().find(DECLARATIONS).isEmpty(),
                 "and are not in the one a rule about a compiled surface is about, which is why the"
                         + " two are named apart rather than searched together");
     }

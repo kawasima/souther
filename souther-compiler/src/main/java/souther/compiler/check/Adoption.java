@@ -224,7 +224,19 @@ record Adoption<A, L extends ReadingLanguage>(Set<A> read, Set<A> settled, Set<A
     }
 
     /**
-     * Whether this reading put a constraint on {@code position} that binds.
+     * Whether this reading read something at {@code position} that no alternative gave back.
+     *
+     * <p><b>What that comes to is each language's, and the two do not come to the same thing.</b>
+     * The values put a position in {@link #read} where the plan they arrived at is narrower than
+     * every value, so this is a fact about what they leave. The ends put one there where some rule
+     * bounded it, and two bounds reaching opposite ends of a carrier leave the position every value
+     * it had — so for that language this says a rule was written about the position and does not
+     * say the position is held down.
+     *
+     * <p>Which is why the readers that wanted the second are not here any more. What a branch
+     * leaves is read off the ends themselves, where an order is in hand to hold them against
+     * ({@link WhatTheAlternativesLeave}), and a reader given this instead was told that a choice of
+     * two bounds covering an order holds its position down.
      *
      * <p>{@link #read} and not {@link #settled}: a position a dead alternative settled is one this
      * imposes nothing on, which is an answer and not a constraint.
@@ -244,7 +256,7 @@ record Adoption<A, L extends ReadingLanguage>(Set<A> read, Set<A> settled, Set<A
      * {@code value /= 5 || f(value)} with {@code f} unread answers that the clause holds the
      * position away from five.
      */
-    boolean constrains(A position) {
+    boolean readAt(A position) {
         return read.contains(position) && !opened.contains(position);
     }
 

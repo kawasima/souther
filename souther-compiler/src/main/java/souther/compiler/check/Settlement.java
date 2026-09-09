@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.function.BiPredicate;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
 
@@ -51,20 +52,56 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
     }
 
     /**
-     * Both branches of one written choice, each aggregated over its occurrences, and what the
-     * width of the choice depends on.
+     * Both branches of one written choice, each aggregated over its occurrences, beside what the
+     * width of the choice depends on and what each alternative holds down.
      *
      * <p>Made together and never apart. A fate says whether anybody can be in a branch; the
      * dependency says which positions would be narrower without one. A reader deciding what an
      * alternative nothing could read left open needs both about the same two branches, and made in
      * two places they would be two answers to one question.
+     *
+     * <p>{@link WhatTheAlternativesLeave} is beside the width rather than inside it, and the two are
+     * siblings of one walk. What is asked of both alternatives at once is the width; what is asked
+     * of one of them about the values it leaves is the other, and a reader of the second reaching
+     * for it through the first would be taking a relation for an attribute. They are worked out
+     * together because they read the same two branches once, and that is the whole of what they
+     * share.
      */
-    record OfAChoice(Sided left, Sided right, WidthDependency width) {
+    record OfAChoice(Sided left, Sided right, WidthDependency width,
+                     WhatTheAlternativesLeave narrowed) {
+
+        /**
+         * What one occurrence of a choice between two branches came to, fates and all.
+         *
+         * <p><b>Where whether there is a choice at this copy is decided, and the one place it
+         * is.</b> An occurrence one alternative of which nobody can be in is not a choice there:
+         * what is left of it is the branch beside the dead one, and a rule written inside a branch
+         * nobody can be in constrains nobody. Every fact held here about the alternatives turns on
+         * that one question, so all of them are answered the same way at such a copy — said once
+         * here rather than once per fact, since two statements of one rule are free to disagree and
+         * a reader of either cannot tell which it was given.
+         *
+         * <p>Which matters because a branch is dead only where nobody can be in it anywhere. A copy
+         * that is not a choice would otherwise put a position into what the branch holds down, and
+         * the aggregate over the copies would take back what a copy that is a choice had shown.
+         */
+        static OfAChoice of(Sided left, StatedTogether.Said one,
+                            Sided right, StatedTogether.Said other) {
+            if (!souther.compiler.values.Emptiness.Alternatives
+                    .from(SidesShownEmpty.of(left.emptiness(), right.emptiness())).bothStand()) {
+                return new OfAChoice(left, right, WidthDependency.none(),
+                        WhatTheAlternativesLeave.nothing());
+            }
+            return new OfAChoice(left, right,
+                    WidthDependency.of(one.confinement(), other.confinement()),
+                    WhatTheAlternativesLeave.of(one.confinement(), other.confinement()));
+        }
 
         /** This choice with one more occurrence of it taken in, side by side. */
         OfAChoice alsoSeen(OfAChoice occurrence) {
             return new OfAChoice(left.alsoSeen(occurrence.left()),
-                    right.alsoSeen(occurrence.right()), width.alsoSeen(occurrence.width()));
+                    right.alsoSeen(occurrence.right()), width.alsoSeen(occurrence.width()),
+                    narrowed.alsoSeen(occurrence.narrowed()));
         }
     }
 
@@ -107,20 +144,20 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
          * because of, read off the descriptions and building nothing.
          *
          * <p>Each reading is asked about its own and neither is asked about the other's. Handed the
-         * whole branch rather than one half of it because the question that decides whether there
-         * is a choice here at all — whether anybody can be in each branch — is about the two of
-         * them together and is already answered.
+         * whole branch rather than one half of it, since what a reading leaves is the branch's and
+         * a caller picking a half out is the place the two would come apart.
+         *
+         * <p>Whether there is a choice at this occurrence at all is not asked here. That is one
+         * question about the two branches which every fact about them turns on, so it is decided
+         * once, where the fates are ({@link OfAChoice#of}).
          */
-        static WidthDependency of(souther.compiler.values.Emptiness here,
-                                  Confinement.Planned<FactSubject> one,
-                                  souther.compiler.values.Emptiness there,
+        static WidthDependency of(Confinement.Planned<FactSubject> one,
                                   Confinement.Planned<FactSubject> other) {
-            if (!souther.compiler.values.Emptiness.Alternatives
-                    .from(SidesShownEmpty.of(here, there)).bothStand()) {
-                return none();
-            }
+            // The carriers of one side, which are the declaration's and so are both sides'. What a
+            // position is ordered on is a fact about the vocabulary and not about the branch, and a
+            // choice whose alternatives disagreed about it would be one this compiler built.
             return new WidthDependency(Width.ofValues(one.values(), other.values()),
-                    Width.ofOrder(one.ordered(), other.ordered()));
+                    Width.ofOrder(one.ordered(), other.ordered(), one.carriers()));
         }
 
         /** The width of one more occurrence of the same choice, taken in beside this. */
@@ -195,18 +232,30 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
                                                       PlannedValues<FactSubject> other) {
             Set<FactSubject> narrowed = new LinkedHashSet<>(one.adoptedAt());
             narrowed.addAll(other.adoptedAt());
+            // Compared as the descriptions they are, which is what this language has: two plans
+            // naming one set of values are told apart, and the contract says so — a position kept
+            // is one nobody settled and never one shown to differ.
             return comparing(narrowed, one::at, other::at,
-                    (here, there) -> AdmittedPlan.joining(List.of(here, there)));
+                    (here, there) -> AdmittedPlan.joining(List.of(here, there)),
+                    Object::equals);
         }
 
         /**
          * The same asked of where the orders stop.
          *
-         * <p>Complete as well as sound, which the reading of values is not: what this language
-         * leaves a position is a pair of ends and is written one way, so the positions left out are
-         * exactly the positions the choice stops where it would without the branch. The contract
-         * this is published under ({@link Opening}) is still the weaker one, since what a reader may
-         * act on has to hold of every language that answers.
+         * <p>Complete as well as sound, which the reading of values is not. What each side is
+         * compared as is the values it leaves the position on that position's own order
+         * ({@link OrderedIntervals#valuesAt}), and two ranges leaving one set of values come back
+         * as one ({@link OrderedInterval#sameValuesAs}) — so a position left out is exactly a
+         * position the choice stops where it would without the branch. The contract this is
+         * published under ({@link Opening}) is still the weaker one, since what a reader may act on
+         * has to hold of every language that answers.
+         *
+         * <p><b>Which is a claim about the interpretation and not about the writing.</b> Compared
+         * as the pairs of ends they are written as, a choice whose alternatives reach both ends of
+         * a carrier leaves an {@code Int} at {@code [MIN..MAX]} while the branch beside it leaves
+         * it at no ends at all, and the two say the same thing — so the completeness above holds of
+         * {@code γ} of each side and of nothing this could read off the ends alone.
          *
          * <p>A position at a time, as the values are. What a choice comes to over a whole reading
          * is more than the ranges and is composed where both languages are held
@@ -214,10 +263,14 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
          * fates are settled and handed in.
          */
         static Width<ReadingLanguage.Order> ofOrder(OrderedIntervals<FactSubject> one,
-                                                    OrderedIntervals<FactSubject> other) {
+                                                    OrderedIntervals<FactSubject> other,
+                                                    Map<FactSubject, Carrier> carriers) {
             Set<FactSubject> bounded = new LinkedHashSet<>(one.boundedAt());
             bounded.addAll(other.boundedAt());
-            return comparing(bounded, one::at, other::at, OrderedInterval::join);
+            return comparing(bounded,
+                    position -> one.valuesAt(position, carriers),
+                    position -> other.valuesAt(position, carriers),
+                    OrderedInterval::join, OrderedInterval::sameValuesAs);
         }
 
         /**
@@ -226,10 +279,17 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
          * <p>Private, and the reading it is a width of is settled by whichever of the two above
          * called it — each of them takes the descriptions of one language and nothing else, so
          * there is no call here at which the two could be swapped for one another.
+         *
+         * <p>Handed how to tell two of them apart as well as how to join them, because that is the
+         * half the two languages differ over. The ends have an equality of the values they leave
+         * and the plans have only the one they are written with, and a comparison that reached for
+         * {@code equals} would give the ends the plans' answer and quietly weaken the stronger of
+         * the two contracts.
          */
         private static <L extends ReadingLanguage, T> Width<L> comparing(
                 Set<FactSubject> narrowed, Function<FactSubject, T> left,
-                Function<FactSubject, T> right, BinaryOperator<T> joining) {
+                Function<FactSubject, T> right, BinaryOperator<T> joining,
+                BiPredicate<T, T> saying) {
             Set<FactSubject> mayRestOnLeft = new LinkedHashSet<>();
             Set<FactSubject> mayRestOnRight = new LinkedHashSet<>();
             for (FactSubject position : narrowed) {
@@ -240,13 +300,13 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
                 T here = left.apply(position);
                 T there = right.apply(position);
                 T both = joining.apply(here, there);
-                // Equal descriptions say one thing, so this side of each is a proof that dropping
-                // the branch leaves the position where it was. Unequal ones are not a proof of
-                // anything, and the position is kept as one nobody settled.
-                if (!there.equals(both)) {
+                // Saying one thing is a proof that dropping the branch leaves the position where it
+                // was. Not saying it is not a proof of anything, and the position is kept as one
+                // nobody settled.
+                if (!saying.test(there, both)) {
                     mayRestOnLeft.add(position);
                 }
-                if (!here.equals(both)) {
+                if (!saying.test(here, both)) {
                     mayRestOnRight.add(position);
                 }
             }

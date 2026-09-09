@@ -73,7 +73,7 @@ final class SettledOrderEnvelope {
             if (reach.holdsNothing()) {
                 return;
             }
-            OrderedInterval stated = stated(reach, extentOf(carriers, subjects));
+            OrderedInterval stated = stated(reach, orderOf(carriers, subjects));
             if (stated.equals(OrderedInterval.OPEN)) {
                 return;
             }
@@ -83,36 +83,41 @@ final class SettledOrderEnvelope {
     }
 
     /**
-     * The ends of {@code reach} some rule put there, which are the ones it does not share with
-     * {@code extent}.
+     * The ends of {@code reach} some rule put there, which are the ones it does not share with the
+     * order the position runs on.
      *
      * <p>Every whole number stops at the largest one whether or not a rule was written, and this is
      * read for the line an author drew. Taken whole, every choice of two bounds on a number would
      * put an end where the order already was — and a reader downstream cannot tell that end from one
      * a rule states, so it would draw a line at it and send somebody to a rule that says nothing
-     * about it. The same answer {@link OrderedLeaf.Left.Leaves#stated} gives a leaf, given a choice
-     * of them.
+     * about it.
+     *
+     * <p>The rule itself is {@link OrderedInterval#endsStatedWithin}, where it is one operation on
+     * the writing rather than a second reader's copy of one.
      */
-    private static OrderedInterval stated(OrderedInterval reach, OrderedInterval extent) {
-        // And nothing where the position is ordered on nothing this reading names. Such a position
-        // is one no rule of the order reached either, so what is here is already every value there
-        // is — and the answer that costs nothing to be wrong about is the one that states no end,
-        // rather than one that keeps an end nothing could tell from where the order stops anyway.
-        if (extent == null) {
+    private static OrderedInterval stated(OrderedInterval reach, Carrier on) {
+        if (on == null) {
+            // A position ordered on nothing this reading names is one no rule of the order reached
+            // either, so there are no ends here to be held against anything. Where some rule did
+            // reach it, this compiler is holding a range on an order it cannot name, which is what
+            // asking the same question of the ranges says
+            // ({@link OrderedIntervals#valuesAt}) and is said the same way here.
+            if (!reach.equals(OrderedInterval.OPEN)) {
+                throw new IllegalStateException(
+                        "the rules stopped a position on an order nothing here names: " + reach);
+            }
             return OrderedInterval.OPEN;
         }
-        return new OrderedInterval(
-                reach.low() == null || reach.low().equals(extent.low()) ? null : reach.low(),
-                reach.high() == null || reach.high().equals(extent.high()) ? null : reach.high());
+        return reach.endsStatedWithin(on.extent());
     }
 
     /** What the position is ordered on, or null where nothing here says. Every name of one answers
      *  the same, as they are names of one position. */
-    private static <A> OrderedInterval extentOf(Map<A, Carrier> carriers, Collection<A> subjects) {
+    private static <A> Carrier orderOf(Map<A, Carrier> carriers, Collection<A> subjects) {
         for (A each : subjects) {
             Carrier carrier = carriers.get(each);
             if (carrier != null) {
-                return carrier.extent();
+                return carrier;
             }
         }
         return null;
@@ -130,7 +135,14 @@ final class SettledOrderEnvelope {
                                                      Collection<A> subjects) {
         OrderedInterval reach = OrderedInterval.OPEN;
         for (A each : subjects) {
-            reach = reach.meet(ordered.at(each));
+            // The ends as written, since what is read off this is which of them a rule put there
+            // and the answer is held against the order a line further on. Read as values, every
+            // position of a carrier that stops would arrive carrying that carrier's own ends and
+            // the question below would have nothing left to strike off.
+            OrderedInterval stated = ordered.statedAt(each);
+            if (stated != null) {
+                reach = reach.meet(stated);
+            }
         }
         return reach;
     }

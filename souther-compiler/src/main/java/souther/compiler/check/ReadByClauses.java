@@ -101,13 +101,23 @@ record ReadByClauses(Confinement.Worked<FactSubject> confinement,
      * @param boundsLeftOpen the same for a line this part states on a number an operation answers
      *                       that nothing placed, kept only where the rule's own settled reading
      *                       still leaves it open ({@link BoundaryState})
+     * @param stopped        the positions this part's own ends leave holding less than every value
+     *                       of their order. A set and not the ranges: what a reader here asks is
+     *                       whether the part has a line at a position, the answer is worked out
+     *                       once where the carriers are, and a reader handed the ranges would be
+     *                       deciding for itself what an end means against an order
      */
     record OfAPart(Adoption<FactSubject, ReadingLanguage.Values> byValues,
                    Adoption<FactSubject, ReadingLanguage.Order> byOrder,
+                   Set<FactSubject> stopped,
                    Set<RuleShortfall> aboutARule,
                    java.util.Map<FactSubject, AdmittedStrings> aboutStrings,
                    EndsLeftOpen endsLeftOpen,
                    java.util.Map<OpenEnd, EndsLeftOpen.Behind> boundsLeftOpen) {
+
+        public OfAPart {
+            stopped = Set.copyOf(stopped);
+        }
 
         /** The positions some reading took the whole of this part in at. */
         java.util.Set<FactSubject> adopted() {
@@ -125,18 +135,30 @@ record ReadByClauses(Confinement.Worked<FactSubject> confinement,
          * exactly as wide as it was.
          */
         boolean restricts(FactSubject position) {
-            return byValues.constrains(position);
+            return byValues.readAt(position);
         }
 
         /**
-         * Whether this part put one on where those values stop.
+         * Whether this part stops those values anywhere short of the position's own order.
+         *
+         * <p>Named for what it answers. Called {@code bounds}, it read as the question the ordered
+         * reading's own account answers — which positions some rule of the part was about — and
+         * that is the reading a caller acted on while the two were one method
+         * ({@link Adoption#readAt}).
          *
          * <p>Asked of the ordered reading, because that is what an end is read by. A part that
-         * placed one has a line at the position and is accounted for by whoever draws lines, so it
-         * is not a part a reader is owed a second sentence about.
+         * stopped them has a line at the position and is accounted for by whoever draws lines, so
+         * it is not a part a reader is owed a second sentence about.
+         *
+         * <p><b>Of the values its ends leave and not of which positions it was about.</b>
+         * {@code (n >= 2 && n /= 5) || (n <= 0 && n /= 5)} is a rule about {@code n} on both sides
+         * of the choice and stops it nowhere: what the two alternatives leave between them is every
+         * {@code Int}. Asked which positions some rule of the part bounded, this comes back saying
+         * the part has a line at {@code n} — and the line it is credited with is one nobody draws,
+         * so the restriction the rule does state goes out unsaid.
          */
-        boolean bounds(FactSubject position) {
-            return byOrder.constrains(position);
+        boolean stops(FactSubject position) {
+            return stopped.contains(position);
         }
     }
 
