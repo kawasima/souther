@@ -24,10 +24,11 @@ record Reached<A>(PlannedValues.Settled<A> of,
 
     /** {@code of} read against {@code finer}, whose blocks the asks below are in. */
     static <A> Reached<A> of(PlannedValues.Settled<A> of, Sameness<A> finer) {
-        Map<PlannedHeld.Alternative<A>, Refinement<A>> out = new LinkedHashMap<>();
-        if (of.held() instanceof PlannedHeld.Alternatives<A> boxes) {
-            boxes.boxes().forEach(box -> out.put(box, Refinement.of(finer, box.sameness())));
+        if (!(of.held() instanceof PlannedHeld.Alternatives<A> boxes)) {
+            return new Reached<>(of, Map.of());
         }
+        Map<PlannedHeld.Alternative<A>, Refinement<A>> out = new LinkedHashMap<>();
+        boxes.boxes().forEach(box -> out.put(box, Refinement.of(finer, box.sameness())));
         return new Reached<>(of, out);
     }
 

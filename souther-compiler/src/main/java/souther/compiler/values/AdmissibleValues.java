@@ -1767,10 +1767,15 @@ public final class AdmissibleValues<A> {
      * order this reading's positions were walked in ({@link Allowance#meetingPromised}).
      */
     private ValueSet promisedFor(Sameness.Block<A> block, Refinement<A> into, Allowance<A> sets) {
+        Set<Sameness.Block<A>> own = into.fineBlocksWithin(block);
+        // Where the coarser relation states no equality this one does not, the block is one of
+        // this reading's own and what it promises there is the whole answer.
+        if (own.size() == 1) {
+            return guaranteed().getOrDefault(own.iterator().next(), defaultGuaranteed());
+        }
         List<ValueSet> mine = new ArrayList<>();
-        into.fineBlocksWithin(block)
-                .forEach(each -> mine.add(guaranteed().getOrDefault(each, defaultGuaranteed())));
-        return mine.size() == 1 ? mine.getFirst() : sets.meetingPromised(block, mine).set();
+        own.forEach(each -> mine.add(guaranteed().getOrDefault(each, defaultGuaranteed())));
+        return sets.meetingPromised(block, mine).set();
     }
 
 }

@@ -40,7 +40,7 @@ public final class Refinement<A> {
                        Map<Sameness.Block<A>, Sameness.Block<A>> up) {
         this.finer = finer;
         this.coarser = coarser;
-        this.up = Collections.unmodifiableMap(up);
+        this.up = up;
     }
 
     /**
@@ -53,6 +53,12 @@ public final class Refinement<A> {
      * holding them the other way round is asking {@link #fineBlocksWithin}.
      */
     public static <A> Refinement<A> of(Sameness<A> finer, Sameness<A> coarser) {
+        // A relation holding no two positions as one has no block to walk and none to write down:
+        // every position is its own block, and one position is inside one block of anything. Which
+        // is what almost every step taken is between, so it is answered before anything is built.
+        if (finer.isDiscrete()) {
+            return new Refinement<>(finer, coarser, Map.of());
+        }
         Map<Sameness.Block<A>, Sameness.Block<A>> up = new LinkedHashMap<>();
         for (Sameness.Block<A> block : finer.joined()) {
             Set<Sameness.Block<A>> there = coarser.holding(block);
@@ -67,7 +73,7 @@ public final class Refinement<A> {
             }
             up.put(block, there.iterator().next());
         }
-        return new Refinement<>(finer, coarser, up);
+        return new Refinement<>(finer, coarser, Collections.unmodifiableMap(up));
     }
 
     /** The relation the blocks below are read against. */

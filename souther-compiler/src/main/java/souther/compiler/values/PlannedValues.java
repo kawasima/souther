@@ -630,6 +630,11 @@ public sealed interface PlannedValues<A> {
      *  nothing to say. Handed over together rather than folded, so what it comes to does not
      *  follow the order the blocks were walked in. */
     private static <A> AdmittedPlan promisedAcross(Settled<A> of, Set<Sameness.Block<A>> own) {
+        // Where the coarser relation states no equality this one does not, the block is one of
+        // this reading's own and what it promises there is the whole answer.
+        if (own.size() == 1) {
+            return promisedAt(of, own.iterator().next());
+        }
         List<AdmittedPlan> these = new ArrayList<>();
         own.forEach(each -> these.add(promisedAt(of, each)));
         return AdmittedPlan.meeting(these);

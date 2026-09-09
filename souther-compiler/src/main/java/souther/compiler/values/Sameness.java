@@ -114,11 +114,16 @@ public final class Sameness<A> {
     public final void filing(Set<Block<A>>... these) {
         for (Set<Block<A>> filed : these) {
             for (Block<A> block : filed) {
-                Set<Block<A>> here = holding(block);
-                if (here.size() != 1 || !here.contains(block)) {
-                    throw new IllegalArgumentException("an answer at " + block
-                            + " is filed under a coordinate this reading does not answer in,"
-                            + " which holds those positions as " + InOneOrder.of(here));
+                // Asked of each position rather than of the blocks they land in. The two say the
+                // same thing — a block every position of it lands on is the block they are all in
+                // — and this one reads nothing but the map, where gathering the blocks first is a
+                // set built for every answer a reading files.
+                for (A member : block.members()) {
+                    if (!block.equals(blockOf(member))) {
+                        throw new IllegalArgumentException("an answer at " + block
+                                + " is filed under a coordinate this reading does not answer in,"
+                                + " which holds those positions as " + InOneOrder.of(holding(block)));
+                    }
                 }
             }
         }
@@ -127,6 +132,11 @@ public final class Sameness<A> {
     /** The blocks this holds {@code block}'s positions in, which is one block where it holds them
      *  as {@code block} does and several where it cuts them apart. */
     Set<Block<A>> holding(Block<A> block) {
+        // One position is in one block, so there is nothing to gather and nothing two of them
+        // could disagree about. Which is what nearly every block asked about is.
+        if (block.isOne()) {
+            return Set.of(blockOf(block.members().iterator().next()));
+        }
         Set<Block<A>> out = new LinkedHashSet<>();
         block.members().forEach(each -> out.add(blockOf(each)));
         return out;
