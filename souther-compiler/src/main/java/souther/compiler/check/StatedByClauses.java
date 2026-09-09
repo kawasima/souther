@@ -706,7 +706,7 @@ sealed interface StatedByClauses {
         public StatedByClauses whole(ClauseExpr.Part part, Denotations at) {
             Core e = part.of();
             boolean positive = part.positive();
-            PlannedValues<FactSubject> said = values.leaf(e, positive, at);
+            PlannedValues<FactSubject> said = values.leaf(part, at);
             OrderedIntervals<FactSubject> range = ordered.leaf(e, positive, at);
             Set<FactSubject> mentions = mentioned(e, at);
             // What the leaf states, asked once and read by both of the questions below: which

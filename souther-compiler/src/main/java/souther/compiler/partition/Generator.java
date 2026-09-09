@@ -1497,7 +1497,7 @@ public final class Generator {
             List<ControlClaim> claims) {
         List<ArmProbe> out = new ArrayList<>();
         for (ControlClaim claim : claims) {
-            if (claim.at() instanceof ControlPointId.ArmOccurrence arm
+            if (claim.at() instanceof ControlPointId.ArmPoint arm
                     && arm.probe().isPresent()) {
                 out.add(arm.probe().get());
             }

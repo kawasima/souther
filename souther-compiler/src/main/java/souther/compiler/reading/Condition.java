@@ -1,7 +1,7 @@
 package souther.compiler.reading;
 
 import souther.compiler.types.ConstructOccurrence;
-import souther.compiler.coverage.ForkOccurrence;
+import souther.compiler.coverage.ArmOccurrence;
 import souther.compiler.inputs.NumericTerm;
 import souther.compiler.inputs.TermPath;
 
@@ -67,14 +67,16 @@ public sealed interface Condition {
      * could not name, and a reading that left it out instead would offer the group with one of the
      * ways it can be settled quietly missing.
      *
-     * @param fork which fork, as the plan named it
-     * @param part which arm of it
+     * @param arm which arm of which fork. The fork as the tree that runs has it and not the number
+     *            a plan handed its arms: an operation that applies the block it was handed twice
+     *            settles the fork inside it twice, on values of its own, so the two are two
+     *            decisions — and the number that told them apart was the walk's and not theirs
      */
-    record Arm(ForkOccurrence fork, int part) implements Condition {
+    record Arm(ArmOccurrence arm) implements Condition {
 
         @Override
         public String toString() {
-            return fork + "/" + part;
+            return String.valueOf(arm);
         }
     }
 }

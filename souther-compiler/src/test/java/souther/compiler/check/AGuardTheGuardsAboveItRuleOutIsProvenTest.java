@@ -102,7 +102,7 @@ class AGuardTheGuardsAboveItRuleOutIsProvenTest {
         assertTrue(byBehavior != null && byBehavior.containsKey(behavior),
                 "the module answers nothing about `" + behavior + "`");
         return byBehavior.get(behavior).found().entrySet().stream()
-                .filter(each -> each.getKey() instanceof ControlPointId.ArmOccurrence)
+                .filter(each -> each.getKey() instanceof ControlPointId.ArmPoint)
                 .map(Map.Entry::getValue)
                 .toList();
     }
@@ -237,11 +237,11 @@ class AGuardTheGuardsAboveItRuleOutIsProvenTest {
         Compilation c = Compilation.ofSource(A_LIBRARY_FORK, "d");
         Map<String, PathReachability.Answers> byBehavior =
                 c.db().ask(new Adequacy.PathReached("d")).value();
-        List<ControlPointId.ArmOccurrence> proven = byBehavior.get("mk").found().entrySet().stream()
+        List<ControlPointId.ArmPoint> proven = byBehavior.get("mk").found().entrySet().stream()
                 .filter(each -> each.getValue() instanceof Reachability.Unreachable)
                 .map(each -> each.getKey())
-                .filter(ControlPointId.ArmOccurrence.class::isInstance)
-                .map(ControlPointId.ArmOccurrence.class::cast)
+                .filter(ControlPointId.ArmPoint.class::isInstance)
+                .map(ControlPointId.ArmPoint.class::cast)
                 .toList();
         assertTrue(!proven.isEmpty(),
                 "the argument makes one side of the library's fork unreachable, and that is proven");

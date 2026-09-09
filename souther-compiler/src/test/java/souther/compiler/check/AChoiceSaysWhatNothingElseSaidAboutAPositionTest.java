@@ -243,7 +243,7 @@ class AChoiceSaysWhatNothingElseSaidAboutAPositionTest {
         List<Integer> columns = new java.util.ArrayList<>();
         shortfallsAt(EIGHT_FORMS_NOTHING_READS, "a").forEach(each -> {
             if (each.site() instanceof RuleShortfall.Site.AtALeaf leaf) {
-                columns.add(leaf.node().pos().column());
+                columns.add(leaf.writtenAt().column());
             }
         });
 

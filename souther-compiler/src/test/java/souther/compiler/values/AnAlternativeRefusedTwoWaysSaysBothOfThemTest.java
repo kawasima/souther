@@ -46,7 +46,8 @@ class AnAlternativeRefusedTwoWaysSaysBothOfThemTest {
     /** Denials that state {@link #BOTH} to differ from itself, which nothing satisfies. */
     private static WhatARelationShows<String> denialsApartFromItself() {
         return WhatARelationShows.statedApart(
-                Apartness.of("p", "q").filedIn(Sameness.of("p", "q")));
+                Apartness.of("p", "q")
+                        .filedIn(Refinement.of(Sameness.discrete(), Sameness.of("p", "q"))));
     }
 
     /** Denials that refuse nothing, which is what an alternative stating none holds. */

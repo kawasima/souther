@@ -15,6 +15,7 @@ import souther.compiler.values.Value;
 import souther.compiler.values.ValueSet;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -142,6 +143,41 @@ class AProofNamesOneBlockAndNotAllOfThemTest {
         assertEquals(2, at.where().size(), "one block, not the four positions of both");
         assertEquals(new Emptiness.AtAField.Where.In("p"), at.where().getFirst(),
                 "and the one whose places the value declares first, whichever was shown first");
+    }
+
+    /**
+     * And the sentence is the same whichever order the blocks and their positions were reached in.
+     *
+     * <p>Which is what the naming being the declaration's own comes to. A block is a set and holds
+     * its positions in no order; a refusal holds its blocks in the order the readings were met. So
+     * the same proof arrives written several ways, and every one of them names the same places in
+     * the same order — the value's.
+     *
+     * <p>Asked over the arrangements rather than at one of them. The line above says "whichever was
+     * shown first" and one arrangement cannot say it, since either of them passes a naming that
+     * reads whatever it was handed.
+     */
+    @Test
+    void andOneProofIsOneSentenceHoweverItWasReached() {
+        List<Emptiness> said = List.of(
+                named(emptyAt(ordered(List.of(block(P, Q), block(R, S)))), declared()),
+                named(emptyAt(ordered(List.of(block(R, S), block(P, Q)))), declared()),
+                named(emptyAt(ordered(List.of(block(Q, P), block(S, R)))), declared()),
+                named(emptyAt(ordered(List.of(block(S, R), block(Q, P)))), declared()));
+
+        said.forEach(each -> assertEquals(said.getFirst(), each,
+                "one proof of one model is one sentence"));
+        assertEquals(List.of(new Emptiness.AtAField.Where.In("p"),
+                        new Emptiness.AtAField.Where.In("q")),
+                assertInstanceOf(Emptiness.AtEqualPositions.class, said.getFirst()).where(),
+                "and it names the places where the value declares them");
+    }
+
+    /** These blocks, in the order they are given, which is what a refusal met the other way round
+     *  would not have. */
+    private static Set<Sameness.Block<FactSubject>> ordered(
+            List<Sameness.Block<FactSubject>> these) {
+        return new LinkedHashSet<>(these);
     }
 
     /**

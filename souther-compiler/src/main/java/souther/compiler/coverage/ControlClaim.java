@@ -34,7 +34,7 @@ public record ControlClaim(ControlPointId at) {
      */
     public static Optional<ControlClaim> of(ControlPointId at) {
         return switch (at) {
-            case ControlPointId.ArmOccurrence arm ->
+            case ControlPointId.ArmPoint arm ->
                     arm.isMeasured() ? Optional.of(new ControlClaim(arm)) : Optional.empty();
             // A comparison is numbered only where the fork it belongs to has an arm a run can be
             // recorded in, so one that exists is one a run can be recorded at.
@@ -51,7 +51,7 @@ public record ControlClaim(ControlPointId at) {
      */
     public boolean satisfiedBy(AlignedObservation seen) {
         return switch (at) {
-            case ControlPointId.ArmOccurrence arm ->
+            case ControlPointId.ArmPoint arm ->
                     arm.probe().isPresent() && seen.lit(arm.probe().get());
             case ControlPointId.ComparisonPoint point -> seen.saw(point.at(), point.held());
         };
@@ -60,7 +60,7 @@ public record ControlClaim(ControlPointId at) {
     @Override
     public String toString() {
         return switch (at) {
-            case ControlPointId.ArmOccurrence arm -> "arm " + arm.controlId();
+            case ControlPointId.ArmPoint arm -> "arm " + arm.arm();
             case ControlPointId.ComparisonPoint point ->
                     point.at() + (point.held() ? " held" : " failed");
         };

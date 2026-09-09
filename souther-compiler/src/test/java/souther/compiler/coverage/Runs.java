@@ -28,7 +28,7 @@ public final class Runs {
         Set<SeenComparison> ways = new LinkedHashSet<>();
         for (ControlClaim claim : claims) {
             switch (claim.at()) {
-                case ControlPointId.ArmOccurrence arm -> arm.probe().ifPresent(arms::add);
+                case ControlPointId.ArmPoint arm -> arm.probe().ifPresent(arms::add);
                 case ControlPointId.ComparisonPoint point ->
                         ways.add(new SeenComparison(point.at(), point.held()));
             }

@@ -139,10 +139,9 @@ class AModuleHasOnePlanAndOneMakerOfItTest {
             // Asked about a node the caller is already holding, which is the emitter's question.
             "method mayRepeat(souther.compiler.core.Core) : boolean",
             "method armsOf(souther.compiler.core.Core) :"
-                    + " souther.compiler.coverage.ControlPointId$ArmOccurrence[]",
-            "method forkAt(souther.compiler.core.Core) : souther.compiler.coverage.ForkOccurrence",
+                    + " souther.compiler.coverage.ControlPointId$ArmPoint[]",
             "method probesOf(souther.compiler.core.Core) : int[]",
-            // Where the fork each numbered arm stands in is written.
+            // Where the fork of each place this plan reached is written.
             "method whereEachArmsForkIsWritten() :"
                     + " java.util.Map<java.lang.Integer, souther.compiler.diag.Citation>");
 

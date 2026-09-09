@@ -408,7 +408,7 @@ class AGroupTooWideToWalkSaysSoTest {
     private static List<ArmProbe> armsIn(InteractionCells.NotOffered held) {
         List<ArmProbe> out = new java.util.ArrayList<>();
         for (souther.compiler.coverage.ControlClaim claim : held.claims()) {
-            if (claim.at() instanceof souther.compiler.coverage.ControlPointId.ArmOccurrence arm
+            if (claim.at() instanceof souther.compiler.coverage.ControlPointId.ArmPoint arm
                     && arm.probe().isPresent()) {
                 out.add(arm.probe().get());
             }
