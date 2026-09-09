@@ -2,8 +2,6 @@ package souther.compiler;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.CodeElement;
 import java.lang.classfile.CodeModel;
@@ -18,8 +16,6 @@ import java.lang.classfile.instruction.LookupSwitchInstruction;
 import java.lang.classfile.instruction.ReturnInstruction;
 import java.lang.classfile.instruction.SwitchCase;
 import java.lang.classfile.instruction.TableSwitchInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.lang.reflect.AccessFlag;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -31,10 +27,8 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -304,7 +298,7 @@ class NoBroadFailureBecomesAnAnswerInTheAnalysisCoreTest {
                             + " combination rather than reporting them impossible"));
 
     @Test
-    void everyWideHandlerThatReturnsWasGivenLeaveToOnePlaceAtATime() throws IOException {
+    void everyWideHandlerThatReturnsWasGivenLeaveToOnePlaceAtATime() {
         Map<Site, Integer> allowed = new TreeMap<>();
         PLATFORM_QUESTIONS.forEach(each -> allowed.merge(each.site(), 1, Integer::sum));
 
@@ -333,7 +327,7 @@ class NoBroadFailureBecomesAnAnswerInTheAnalysisCoreTest {
      * the walk reached the code rather than only its desugaring.
      */
     @Test
-    void theHandlersSomebodyWroteAreAmongThem() throws IOException {
+    void theHandlersSomebodyWroteAreAmongThem() {
         assertTrue(scan().examined().stream()
                         .anyMatch(site -> !site.caught().equals("java.lang.Throwable")),
                 "every wide handler found names Throwable, which is what a pattern switch compiles"
@@ -341,14 +335,13 @@ class NoBroadFailureBecomesAnAnswerInTheAnalysisCoreTest {
                         + " check above passed over nothing anybody wrote");
     }
 
-    private static Scan scan() throws IOException {
+    private static Scan scan() {
         Set<Site> examined = new TreeSet<>();
         // Where each site's returning handlers begin. A set of the places rather than a count of
         // the table rows: one `catch` can be entered from several stretches of a method and is one
         // place a person wrote, while two written beside each other are two.
         Map<Site, Set<Integer>> beginningAt = new TreeMap<>();
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String owner = model.thisClass().asInternalName();
             if (READ_A_PROGRAM.stream().noneMatch(owner::startsWith)) {
                 continue;
@@ -488,13 +481,4 @@ class NoBroadFailureBecomesAnAnswerInTheAnalysisCoreTest {
         }
     }
 
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            List<Path> found = new ArrayList<>(
-                    walk.filter(p -> p.toString().endsWith(".class")).toList());
-            assertFalse(found.isEmpty(), "no compiled class was read at all, so this says nothing");
-            return found;
-        }
-    }
 }

@@ -1,24 +1,18 @@
 package souther.compiler.coverage;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * A place is asked for its number where a number is what has to be written, and nowhere else.
@@ -72,7 +66,7 @@ class OnlyWhatWritesTheCallAsksAPlaceForItsNumberTest {
                             + " asked in the same words"));
 
     @Test
-    void onlyTheEmitterTakesTheNumberOutOfAPlace() throws IOException {
+    void onlyTheEmitterTakesTheNumberOutOfAPlace() {
         assertEquals(declared(), asked(),
                 "a number taken out anywhere else is a number a caller can pair with a place it"
                         + " was not issued for, and nothing downstream can tell that from a right"
@@ -92,12 +86,9 @@ class OnlyWhatWritesTheCallAsksAPlaceForItsNumberTest {
     }
 
     /** How many times each method of the compiler asks a place for its number. */
-    private static Map<String, Integer> asked() throws IOException {
+    private static Map<String, Integer> asked() {
         Map<String, Integer> calls = new TreeMap<>();
-        int read = 0;
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
-            read++;
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
                 method.code().ifPresent(code -> code.forEach(element -> {
@@ -109,14 +100,6 @@ class OnlyWhatWritesTheCallAsksAPlaceForItsNumberTest {
                 }));
             }
         }
-        assertFalse(read == 0, "no compiled class was read at all, so this says nothing");
         return calls;
-    }
-
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(walk.filter(p -> p.toString().endsWith(".class")).toList());
-        }
     }
 }

@@ -1,22 +1,18 @@
 package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
 import souther.compiler.ast.Hir;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.constantpool.MethodRefEntry;
 import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.reflect.Method;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -89,10 +85,9 @@ class TheBoundaryRepresentationIsHeldWhereItWasDerivedTest {
      * would go on passing after a second holder appeared.
      */
     @Test
-    void theOnlyWayToMakeOneIsToDeriveADeclaration() throws IOException {
+    void theOnlyWayToMakeOneIsToDeriveADeclaration() {
         Set<String> making = new LinkedHashSet<>();
-        for (Path each : classesOfTheCheck()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String owner = model.thisClass().asInternalName();
             for (PoolEntry entry : model.constantPool()) {
                 if (entry instanceof MethodRefEntry ref
@@ -136,10 +131,4 @@ class TheBoundaryRepresentationIsHeldWhereItWasDerivedTest {
         return false;
     }
 
-    private static List<Path> classesOfTheCheck() throws IOException {
-        Path root = Path.of("target", "classes", "souther", "compiler").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return walk.filter(p -> p.toString().endsWith(".class")).toList();
-        }
-    }
 }

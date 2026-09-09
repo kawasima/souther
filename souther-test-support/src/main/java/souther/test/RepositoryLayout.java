@@ -116,6 +116,56 @@ public final class RepositoryLayout {
     }
 
     /**
+     * What a build calls the directory it writes into.
+     *
+     * <p>Where a build puts what it made is a fact about how this repository is laid out, and it
+     * belongs beside the rest of them. Written out wherever it is wanted, it is a fact each writer
+     * has taken on: a check that says it is one that would go on looking in the old place, and a
+     * walk that says it in order to leave it out is one more copy to find when it moves.
+     *
+     * <p>Kept here rather than answered. A caller handed this can build the path to a build's
+     * output, which is the thing not writing it down was for, so what is answered is whether
+     * something is under one ({@link #isUnderBuildOutput}) or names one
+     * ({@link #namesBuildOutput}), and never the name itself.
+     */
+    private static String whereABuildWrites() {
+        return "target";
+    }
+
+    /**
+     * Whether {@code said} names the directory a build writes into, at any step of a path.
+     *
+     * <p>For a rule about what is written down rather than about what is on disk: a check that
+     * works out where compiled output is has said this somewhere, and saying it is what such a
+     * check has in common however it then goes looking.
+     */
+    public static boolean namesBuildOutput(String said) {
+        for (String step : said.split("[/\\\\]")) {
+            if (step.equals(whereABuildWrites())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Whether {@code file} is something a build wrote rather than something somebody did.
+     *
+     * <p>Asked of a walk that means to read what the repository holds: what a build wrote is a copy
+     * of something already counted, or output derived from it, and a walk that took both would
+     * report the same source twice and call the second one somebody's work.
+     */
+    public boolean isUnderBuildOutput(Path file) {
+        Path absolute = file.toAbsolutePath().normalize();
+        for (Path module : modules) {
+            if (absolute.startsWith(module.resolve(whereABuildWrites()))) {
+                return true;
+            }
+        }
+        return absolute.startsWith(root.resolve(whereABuildWrites()));
+    }
+
+    /**
      * The {@code src} of every module that has one.
      *
      * <p>A source tree and not a source root: {@code src/main/java} and {@code src/test/resources}

@@ -1,24 +1,18 @@
 package souther.compiler.coverage;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Who takes a plan's numbering, written down with what makes it safe where it stands.
@@ -72,7 +66,7 @@ class WhoTakesAPlansNumberingHasItsBodiesTest {
                             + " beside the one the probes were written from"));
 
     @Test
-    void everyReaderOfAPlansNumberingIsWrittenDownWithWhatMakesItSafe() throws IOException {
+    void everyReaderOfAPlansNumberingIsWrittenDownWithWhatMakesItSafe() {
         assertEquals(declared(), taken(),
                 "a numbering taken off a plan that stands in for absent bodies is nobody's, and a"
                         + " reader aligning a recording against it is told the run was of somewhere"
@@ -94,12 +88,9 @@ class WhoTakesAPlansNumberingHasItsBodiesTest {
     }
 
     /** How many times each method of the compiler takes a plan's numbering. */
-    private static Map<String, Integer> taken() throws IOException {
+    private static Map<String, Integer> taken() {
         Map<String, Integer> calls = new TreeMap<>();
-        int read = 0;
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
-            read++;
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
                 method.code().ifPresent(code -> code.forEach(element -> {
@@ -112,14 +103,6 @@ class WhoTakesAPlansNumberingHasItsBodiesTest {
                 }));
             }
         }
-        assertFalse(read == 0, "no compiled class was read at all, so this says nothing");
         return calls;
-    }
-
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(walk.filter(p -> p.toString().endsWith(".class")).toList());
-        }
     }
 }

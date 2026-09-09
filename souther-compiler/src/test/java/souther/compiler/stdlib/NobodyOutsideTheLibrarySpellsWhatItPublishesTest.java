@@ -1,20 +1,16 @@
 package souther.compiler.stdlib;
 
 import souther.compiler.DefaultStdlib;
+import souther.compiler.WhatWasCompiled;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassModel;
 import java.lang.classfile.constantpool.PoolEntry;
 import java.lang.classfile.constantpool.Utf8Entry;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -39,8 +35,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class NobodyOutsideTheLibrarySpellsWhatItPublishesTest {
 
-    private static final Path COMPILED = Path.of("target", "classes", "souther", "compiler");
-
     /** Where a published name may be written: the library itself, which is what publishes them.
      *  Nothing else does, so nothing else is named here. */
     private static final Set<String> MAY_SPELL_THEM = Set.of(
@@ -52,15 +46,15 @@ class NobodyOutsideTheLibrarySpellsWhatItPublishesTest {
         assertTrue(published.size() > 20, () -> "read only " + published.size() + " published names");
 
         List<String> spelling = new ArrayList<>();
-        List<Path> classes = compiledClasses();
+        List<ClassModel> classes = WhatWasCompiled.compiled().all();
         assertTrue(classes.size() > 100, () -> "read only " + classes.size() + " compiled classes");
 
-        for (Path each : classes) {
+        for (ClassModel each : classes) {
             String owner = ownerOf(each);
             if (MAY_SPELL_THEM.stream().anyMatch(owner::startsWith)) {
                 continue;
             }
-            for (PoolEntry entry : constantPoolOf(each)) {
+            for (PoolEntry entry : each.constantPool()) {
                 if (entry instanceof Utf8Entry utf8 && published.contains(utf8.stringValue())) {
                     spelling.add(owner + " writes `" + utf8.stringValue() + "`");
                 }
@@ -72,26 +66,8 @@ class NobodyOutsideTheLibrarySpellsWhatItPublishesTest {
                         + " mean, or ask the call which kernel it reaches");
     }
 
-    private static String ownerOf(Path each) {
-        return COMPILED.getParent().getParent().relativize(each).toString()
-                .replace(java.io.File.separatorChar, '.')
-                .replaceFirst("\\.class$", "")
-                .replaceFirst("\\$.*$", "");
-    }
-
-    private static List<Path> compiledClasses() {
-        try (Stream<Path> found = Files.walk(COMPILED)) {
-            return found.filter(p -> p.toString().endsWith(".class")).sorted().toList();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-    }
-
-    private static Iterable<PoolEntry> constantPoolOf(Path each) {
-        try {
-            return ClassFile.of().parse(each).constantPool();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+    /** The class a name is written in, which for a nested one is the class it is nested in. */
+    private static String ownerOf(ClassModel each) {
+        return each.thisClass().asInternalName().replace('/', '.').replaceFirst("\\$.*$", "");
     }
 }

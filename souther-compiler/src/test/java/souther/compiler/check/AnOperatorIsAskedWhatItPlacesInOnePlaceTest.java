@@ -1,23 +1,17 @@
 package souther.compiler.check;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.MethodModel;
 import java.lang.classfile.instruction.InvokeInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Who reads an operator for what it places, and how often.
@@ -68,7 +62,7 @@ class AnOperatorIsAskedWhatItPlacesInOnePlaceTest {
                             + " the fold answers and is handed to nobody"));
 
     @Test
-    void onlyARecognitionReadsAnOperatorForWhatItPlaces() throws IOException {
+    void onlyARecognitionReadsAnOperatorForWhatItPlaces() {
         assertEquals(declared(MAY_ASK), callsTo(PLACEMENT, "of"),
                 "a reader below a recognised comparison that asks the operator again holds the"
                         + " wide answer, and has a case to invent an answer for; a second call in a"
@@ -89,12 +83,9 @@ class AnOperatorIsAskedWhatItPlacesInOnePlaceTest {
     }
 
     /** How many times each method of the compiler calls {@code owner.name}. */
-    private static Map<String, Integer> callsTo(String owner, String name) throws IOException {
+    private static Map<String, Integer> callsTo(String owner, String name) {
         Map<String, Integer> calls = new TreeMap<>();
-        int read = 0;
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
-            read++;
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.').replace('$', '.');
             for (MethodModel method : model.methods()) {
                 method.code().ifPresent(code -> code.forEach(element -> {
@@ -106,14 +97,6 @@ class AnOperatorIsAskedWhatItPlacesInOnePlaceTest {
                 }));
             }
         }
-        assertFalse(read == 0, "no compiled class was read at all, so this says nothing");
         return calls;
-    }
-
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return new ArrayList<>(walk.filter(p -> p.toString().endsWith(".class")).toList());
-        }
     }
 }

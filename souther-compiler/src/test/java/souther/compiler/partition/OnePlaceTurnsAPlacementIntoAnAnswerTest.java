@@ -1,19 +1,14 @@
 package souther.compiler.partition;
 
 import org.junit.jupiter.api.Test;
+import souther.compiler.WhatWasCompiled;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.CodeModel;
 import java.lang.classfile.instruction.NewObjectInstruction;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -62,10 +57,9 @@ class OnePlaceTurnsAPlacementIntoAnAnswerTest {
                     "souther.compiler.partition.CandidateDomain.filling"));
 
     @Test
-    void nothingElseTurnsAPlacementIntoAnAnswer() throws IOException {
+    void nothingElseTurnsAPlacementIntoAnAnswer() {
         Map<String, Set<String>> made = new java.util.TreeMap<>();
-        for (Path each : classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : WhatWasCompiled.compiled().all()) {
             String from = model.thisClass().asInternalName().replace('/', '.');
             for (var method : model.methods()) {
                 CodeModel code = method.code().orElse(null);
@@ -90,10 +84,4 @@ class OnePlaceTurnsAPlacementIntoAnAnswerTest {
                 "who hands back a " + what));
     }
 
-    private static List<Path> classes() throws IOException {
-        Path root = Path.of("target", "classes").toAbsolutePath();
-        try (Stream<Path> walk = Files.walk(root)) {
-            return walk.filter(each -> each.toString().endsWith(".class")).toList();
-        }
-    }
 }
