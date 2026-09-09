@@ -91,11 +91,11 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
 
     /** Which of two alternatives still stand, which is one reading of the classification below and
      *  is published beside the word. */
-    private static final String STANDING = EMPTINESS + "$Alternatives";
+    private static final String STANDING = Word.STANDING.internalName();
 
     /** Which of two answers were shown empty, which is the observation every reader of two of them
      *  at once shares and no connective's reading of it. */
-    private static final String SIDES_SHOWN_EMPTY = EMPTINESS + "$SidesShownEmpty";
+    private static final String SIDES_SHOWN_EMPTY = Word.SIDES_SHOWN_EMPTY.internalName();
 
     /** The two answers that settle something, which is what these rules are about.
      *  {@code UNDECIDED} settles nothing and is named freely. */
@@ -110,23 +110,98 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
     /** What javac writes for a switch over this word: a synthetic table of its constants, read by
      *  whoever switched. Taking the answer apart by which of the three it is, under a spelling that
      *  names no constant in the code that does it. */
-    private static final String TAKEN_APART = "$SwitchMap$souther$compiler$values$Emptiness";
+    private static final String TAKEN_APART = Word.ANSWERS.switchTable();
 
     /** The same for a switch over which alternatives stand, which is the other thing a reader may
      *  take apart and is a different question from which of the three an answer is. */
-    private static final String TAKEN_APART_BY_STANDING = TAKEN_APART + "$Alternatives";
+    private static final String TAKEN_APART_BY_STANDING = Word.STANDING.switchTable();
 
     /** And for a switch over which of two answers were shown empty, which is the observation the
      *  connectives share rather than any of their readings of it. */
     private static final String TAKEN_APART_BY_SIDES_SHOWN_EMPTY =
-            TAKEN_APART + "$SidesShownEmpty";
+            Word.SIDES_SHOWN_EMPTY.switchTable();
 
     /** A comparison of one of these against one of its constants, which is a reading of the word
      *  that no owned operation answered and that an answer added to the three would fall through
      *  without anybody deciding. Found by following what the constant becomes
      *  ({@link WhatBecomesOfAValueOnTheStack}), because what compares a value is whatever takes it
      *  off the stack and not whatever is written near it. */
-    private static final String COMPARED = "compared";
+    private static final String COMPARED = Word.ANSWERS.compared();
+
+    /**
+     * The words these rules are about: the answers, and each reading of two of them published beside
+     * them.
+     *
+     * <p><b>One list, because every rule here asks the same three things.</b> Who names a word's
+     * constants, who takes it apart by switching, and who compares one against a constant are asked
+     * of each of these, and each answer is derived from the name rather than written beside the
+     * question. Named at the questions instead, a word added here arrives covered by whichever of
+     * them its author happened to make compile — which is how a reading of two answers came to be
+     * counted where it switched and invisible where it compared.
+     *
+     * <p>What is not a word here is an operation over one. {@code isEmpty} and {@code bothStand} are
+     * readings this vocabulary owns and answer for themselves; a word is something whose constants a
+     * reader could name.
+     */
+    private enum Word {
+
+        /** Whether a position admits anything. */
+        ANSWERS(EMPTINESS),
+
+        /** Which alternatives of a choice anybody can still be in. */
+        STANDING(EMPTINESS + "$Alternatives"),
+
+        /** Which of two answers were shown empty. */
+        SIDES_SHOWN_EMPTY(EMPTINESS + "$SidesShownEmpty");
+
+        private final String internalName;
+
+        Word(String internalName) {
+            this.internalName = internalName;
+        }
+
+        /** The word, as a class is named in a class file. */
+        String internalName() {
+            return internalName;
+        }
+
+        /** What javac calls the synthetic table a switch over this word reads. */
+        String switchTable() {
+            return "$SwitchMap$" + internalName.replace('/', '$');
+        }
+
+        /** What a comparison of one of this word's constants is said as. */
+        String compared() {
+            return "compared:" + internalName;
+        }
+
+        /** Which of these a class file names, where it names one. */
+        static Word of(String internalName) {
+            for (Word word : values()) {
+                if (word.internalName.equals(internalName)) {
+                    return word;
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Which readings of {@code word} may compare one of its constants, and where that is being
+     * decided.
+     *
+     * <p>A switch over every word, so that a word added to the vocabulary cannot compile until
+     * somebody has said whether anything may read it that way. The answers carry the readings this
+     * compiler has not decided yet; the two readings of two answers carry none, and that is the whole
+     * of why the classification exists — a connective that compared instead of switching would be
+     * spending a meaning no exhaustive reading had to give it.
+     */
+    private static List<Open> mayCompare(Word word) {
+        return switch (word) {
+            case ANSWERS -> COMPARED_IN_PRODUCTION;
+            case STANDING, SIDES_SHOWN_EMPTY -> List.of();
+        };
+    }
 
     private static final RepositoryLayout REPOSITORY = RepositoryLayout.ofWorkingDirectory();
 
@@ -529,11 +604,18 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                 "which the walk sees it naming, so its absence above is the detector telling a"
                         + " comparison from the making of an answer and not the walk missing it");
 
-        assertEquals(COMPARED_IN_PRODUCTION.stream().map(Open::place).sorted().toList(),
-                placesSaying(saidInProduction(), use -> use.said().equals(COMPARED)),
-                () -> "a reading that compares is one no owned meaning answered, so what is written"
-                        + " here is the readings whose meaning nobody has decided yet, each with"
-                        + " where it is being decided:\n" + questionsBeingDecided());
+        for (Word word : Word.values()) {
+            assertTrue(saidHere().stream().anyMatch(use -> use.said().equals(word.compared())),
+                    () -> "the bodies beside this test compare a constant of " + word + ", so a"
+                            + " detector that cannot find one there is one that would report none of"
+                            + " them anywhere");
+            assertEquals(mayCompare(word).stream().map(Open::place).sorted().toList(),
+                    placesSaying(saidInProduction(), use -> use.said().equals(word.compared())),
+                    () -> "a reading that compares is one no owned meaning answered, so what is"
+                            + " written here is the readings of " + word + " whose meaning nobody has"
+                            + " decided yet, each with where it is being decided:\n"
+                            + questionsBeingDecided());
+        }
     }
 
     /**
@@ -683,6 +765,17 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
 
         static boolean itIsEmpty(Emptiness said) {
             return said == Emptiness.EMPTY;
+        }
+
+        /** And a constant of each reading of two answers, which the rule refuses production any of:
+         *  a connective owes something to all four cases and says so by switching, so a comparison
+         *  there is a case left whatever the comparison happened to leave it. */
+        static boolean onlyTheLeftStands(Emptiness.Alternatives standing) {
+            return standing == Emptiness.Alternatives.ONLY_THE_LEFT;
+        }
+
+        static boolean theLeftWasShownEmpty(Emptiness.SidesShownEmpty shown) {
+            return shown == Emptiness.SidesShownEmpty.THE_LEFT;
         }
 
         static boolean emptyIsIt(Emptiness said) {
@@ -905,8 +998,9 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
                                 found.add(new Use(nest, holds, where, spelt, what));
                             }
                         }
-                        if (comparesAConstant(elements, at)) {
-                            found.add(new Use(nest, holds, where, spelt, COMPARED));
+                        String compared = comparesAConstant(elements, at);
+                        if (compared != null) {
+                            found.add(new Use(nest, holds, where, spelt, compared));
                         }
                     }
                 }
@@ -930,18 +1024,17 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
     private static List<String> saidBy(CodeElement element, String holds) {
         if (element instanceof FieldInstruction field) {
             String named = field.name().stringValue();
-            if (named.equals(TAKEN_APART) || named.equals(TAKEN_APART_BY_STANDING)
-                    || named.equals(TAKEN_APART_BY_SIDES_SHOWN_EMPTY)) {
+            if (isASwitchTable(named)) {
                 return field.owner().asInternalName().equals(holds) ? List.of() : List.of(named);
             }
-            return field.owner().asInternalName().equals(EMPTINESS)
-                    ? List.of(named) : List.of();
+            // And a constant of any of the words, named. Asked of the words rather than of the
+            // answers alone: a reading of two answers holds constants too, and a walk that knew only
+            // the answers read a nest that names one as a nest that names nothing.
+            return Word.of(field.owner().asInternalName()) != null ? List.of(named) : List.of();
         }
         if (element instanceof InvokeInstruction call) {
             String owner = call.owner().asInternalName();
-            return owner.equals(EMPTINESS) || owner.equals(STANDING)
-                    || owner.equals(SIDES_SHOWN_EMPTY)
-                    ? List.of(call.name().stringValue()) : List.of();
+            return Word.of(owner) != null ? List.of(call.name().stringValue()) : List.of();
         }
         if (element instanceof InvokeDynamicInstruction lambda) {
             List<String> out = new ArrayList<>();
@@ -969,13 +1062,27 @@ class WhoMaySayThatAPositionAdmitsSomethingIsWrittenDownTest {
      * comparison the constant was written on does not matter: the other operand is worked out
      * between them either way, and what is looked for is the comparison this constant reaches.
      */
-    private static boolean comparesAConstant(List<CodeElement> elements, int at) {
+    private static String comparesAConstant(List<CodeElement> elements, int at) {
         if (!(elements.get(at) instanceof FieldInstruction field)
-                || field.opcode() != Opcode.GETSTATIC
-                || !field.owner().asInternalName().equals(EMPTINESS)) {
-            return false;
+                || field.opcode() != Opcode.GETSTATIC) {
+            return null;
         }
-        return WhatBecomesOfAValueOnTheStack.isTakenByAReferenceComparison(elements, at);
+        Word word = Word.of(field.owner().asInternalName());
+        if (word == null) {
+            return null;
+        }
+        return WhatBecomesOfAValueOnTheStack.isTakenByAReferenceComparison(elements, at)
+                ? word.compared() : null;
+    }
+
+    /** Whether {@code named} is the table a switch over one of the words reads. */
+    private static boolean isASwitchTable(String named) {
+        for (Word word : Word.values()) {
+            if (named.equals(word.switchTable())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** What a descriptor names, as a class is named in a class file. */

@@ -357,12 +357,12 @@ record Settlement(Confinement.Worked<FactSubject> confinement,
             asked.addAll(other.ruleShortfalls());
             // And what showed the branch empty, where both occurrences of it are. Where they were
             // shown by different things, or refused at different positions, neither speaks for the
-            // branch — which is the same rule a choice of two dead branches is under.
+            // branch.
             //
             // Asked of the join and not of the two sides. These are two occurrences of one written
             // branch rather than two alternatives, so there is no side here to be named: a branch
             // anybody can be in anywhere it stands is one nothing showed empty, and a proof survives
-            // only where every occurrence was shown.
+            // only where every occurrence was shown empty.
             souther.compiler.values.Emptiness said = emptiness().joined(other.emptiness());
             Confinement.Admission<FactSubject> both = said.isEmpty()
                     ? Confinement.Admission.bothShown(shown, other.shown)

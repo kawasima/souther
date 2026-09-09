@@ -115,15 +115,16 @@ public enum Emptiness {
      * valuing of them is not: named for which side survives, this would be the choice's reading
      * under a word a conjunction takes backwards, and the four cases are the same four either way.
      *
-     * <p><b>{@link #UNDECIDED} was not shown empty.</b> Nobody has shown that nothing satisfies
-     * such an answer, and a reader that sorted it with {@link #EMPTY} would be acting on not having
-     * looked. That rule is written here and nowhere else — every reader of two answers at once needs
-     * it, and read off the constants at each of them it would be as many rules as there are
-     * readers.
+     * <p><b>Whether one answer was shown empty is {@link #isEmpty()}'s, and this holds which of the
+     * two gave that answer.</b> So {@link #UNDECIDED} is not on the shown-empty side because
+     * {@link #isEmpty()} says it is not — nobody has shown that nothing satisfies such an answer, and
+     * a reader that sorted it with {@link #EMPTY} would be acting on not having looked. Nothing here
+     * decides that a second time, and an answer added to the three is told which side it falls on
+     * there, before anything compiles.
      *
-     * <p>Which side an answer falls on is {@link #isEmpty()}, the answers' own word for the settled
-     * negative, so nothing here decides it a second time and an answer added to the three is told
-     * what it means there before anything compiles.
+     * <p>What this owns is the lifting of that decision to two answers: the sides, kept in the order
+     * they were written. Read off the constants at each reader of a pair, the sides would be as many
+     * rules as there are readers.
      *
      * <p><b>And falling on one side of this is not being one answer.</b> {@link #NONEMPTY} and
      * {@link #UNDECIDED} were both not shown empty, which is the whole of what this says about
