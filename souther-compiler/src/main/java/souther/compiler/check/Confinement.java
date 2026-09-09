@@ -125,6 +125,29 @@ sealed interface Confinement<A> {
      */
     record Admission<A>(souther.compiler.values.Emptiness emptiness, EmptyBy by, Refusal<A> site, Shown how) {
 
+        /**
+         * A verdict short of the settled answer that nothing is admitted carries no proof.
+         *
+         * <p>The three words beside the verdict say a lack was shown by something, somewhere, out
+         * of something. With any other verdict they describe a lack nothing was shown, and a
+         * reader that carried one onwards would answer for a refusal no walk reached.
+         *
+         * <p><b>One direction and not both.</b> A verdict that is the settled answer that nothing
+         * is admitted may still name no place: a walk shown a lack about no block in particular
+         * has nothing to name, and {@link #left} is refused for that verdict rather than this. So
+         * what is closed here is that a proof implies the verdict, and not that the verdict
+         * implies a proof.
+         */
+        public Admission {
+            if (!emptiness.isEmpty()
+                    && (by != EmptyBy.NOTHING_SHOWN || !site.isNowhere()
+                            || how != Shown.BY_THE_READINGS)) {
+                throw new IllegalArgumentException(
+                        "a verdict of " + emptiness + " is not one anything showed, and this one"
+                                + " was shown by " + by + " at " + site + " " + how);
+            }
+        }
+
         /** The same, where what was refused is places rather than values several of them share. */
         static <A> Admission<A> at(souther.compiler.values.Emptiness emptiness, EmptyBy by, Set<A> positions, Shown how) {
             Set<Sameness.Block<A>> blocks = new LinkedHashSet<>();
