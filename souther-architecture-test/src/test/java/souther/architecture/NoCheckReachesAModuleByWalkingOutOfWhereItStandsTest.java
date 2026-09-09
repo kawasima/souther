@@ -1,12 +1,10 @@
 package souther.architecture;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.provider.ValueSource;
 import souther.test.RepositoryLayout;
 
 import java.lang.classfile.ClassModel;
-import java.lang.classfile.CodeModel;
-import java.lang.classfile.MethodModel;
-import java.lang.classfile.instruction.ConstantInstruction;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -30,8 +28,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * <p>What is asked is whether a check works out which way another module is. Saying so takes two
  * words — a step out of where it stands and the name of the module it means to reach — and they are
- * asked of everything one method says rather than of one text, because a path is as often built a
- * step at a time as written whole.
+ * asked of everything one place says rather than of one text, because a path is as often built a
+ * step at a time as written whole. A parameterized case says where its subjects are in an
+ * annotation, so that is one of the places: {@link WhatACheckSays} is what they are.
  *
  * <p>The module's name is not what this refuses, and a rule that refused it would be a rule against
  * naming a subject. What it refuses is the {@code ..} beside the name:
@@ -60,13 +59,11 @@ class NoCheckReachesAModuleByWalkingOutOfWhereItStandsTest {
 
         Map<String, List<String>> walking = new LinkedHashMap<>();
         for (ClassModel each : checks) {
-            for (MethodModel method : each.methods()) {
-                List<String> said = constantsOf(method);
+            WhatACheckSays.of(each).forEach((where, said) -> {
                 if (REPOSITORY.reachesAModuleThroughAParent(said)) {
-                    walking.computeIfAbsent(named(each) + "#"
-                            + method.methodName().stringValue(), _ -> new ArrayList<>()).addAll(said);
+                    walking.put(where, said);
                 }
-            }
+            });
         }
 
         assertEquals(Map.of(), walking,
@@ -76,7 +73,7 @@ class NoCheckReachesAModuleByWalkingOutOfWhereItStandsTest {
     }
 
     /**
-     * And the rule sees the shape it is about.
+     * And the words the rule looks for are words it would recognise.
      *
      * <p>A rule reading a repository that no longer writes what it refuses passes because there is
      * nothing to find, and so does one whose reading has stopped answering. The module's name is
@@ -84,7 +81,7 @@ class NoCheckReachesAModuleByWalkingOutOfWhereItStandsTest {
      * would have to leave itself out of.
      */
     @Test
-    void andTheRuleSeesTheShapeItIsAbout() {
+    void andTheWordsItLooksForAreWordsItWouldRecognise() {
         String module = REPOSITORY.modules().getFirst().getFileName().toString();
         String out = "..";
         assertTrue(REPOSITORY.reachesAModuleThroughAParent(List.of(out, module, "src", "main")),
@@ -98,24 +95,40 @@ class NoCheckReachesAModuleByWalkingOutOfWhereItStandsTest {
                 "and naming a module is naming a subject");
     }
 
-    /** Everything one method says, which is where a path built a step at a time is put back
-     *  together. */
-    private static List<String> constantsOf(MethodModel method) {
-        List<String> said = new ArrayList<>();
-        CodeModel code = method.code().orElse(null);
-        if (code == null) {
-            return said;
-        }
-        for (var element : code) {
-            if (element instanceof ConstantInstruction loaded
-                    && loaded.constantValue() instanceof String text) {
-                said.add(text);
-            }
-        }
-        return said;
+    /**
+     * And what a check writes in an annotation is something it said.
+     *
+     * <p>The half the rule above cannot show. A parameterized case takes its subjects from an
+     * annotation, so a corpus named there is named as plainly as one named in the body — and it is
+     * an element value, which never reaches the code the class holds. Read through the class file,
+     * the way the rule reads it, because a reading that answered nothing would leave the rule
+     * passing over every check in the repository with nothing to say why.
+     */
+    @Test
+    void andWhatACheckWritesInAnAnnotationIsSomethingItSaid() {
+        Map<String, List<String>> said = WhatACheckSays.of(EVERYTHING.read(
+                "souther/architecture/NoCheckReachesAModuleByWalkingOutOfWhereItStandsTest"
+                        + "$SaidOnlyInAnAnnotation"));
+        assertEquals(List.of(SENTINEL, SENTINEL + "/and-another"),
+                said.get("souther.architecture.NoCheckReachesAModuleByWalkingOutOfWhereItStands"
+                        + "Test$SaidOnlyInAnAnnotation#takesItsSubjectsFromAnAnnotation"),
+                "what the annotation says, in the order it says it: " + said);
     }
 
-    private static String named(ClassModel of) {
-        return of.thisClass().asInternalName().replace('/', '.');
+    /** A word nothing else writes, so that finding it is finding this one. */
+    private static final String SENTINEL = "a-corpus-named-where-only-an-annotation-can-see-it";
+
+    /**
+     * A check whose subjects are written in an annotation and nowhere else.
+     *
+     * <p>Here to be read as a class file rather than to be run, so it carries the source of the
+     * subjects without the annotation that would ask for them. What it names is a sentinel rather
+     * than a real corpus: a class here naming one would be a check reaching another module, which is
+     * what the rule above refuses, and an exemption for this one would be the hole it is for.
+     */
+    static final class SaidOnlyInAnAnnotation {
+        @ValueSource(strings = {SENTINEL, SENTINEL + "/and-another"})
+        void takesItsSubjectsFromAnAnnotation(String corpus) {
+        }
     }
 }

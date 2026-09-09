@@ -4,9 +4,6 @@ import org.junit.jupiter.api.Test;
 import souther.test.RepositoryLayout;
 
 import java.lang.classfile.ClassModel;
-import java.lang.classfile.CodeModel;
-import java.lang.classfile.MethodModel;
-import java.lang.classfile.instruction.ConstantInstruction;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -27,8 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  *
  * <p>What is asked is whether a check works out where the compiled classes are. Saying so takes two
  * words — the directory a build writes to and the one it compiles into — and they are asked of
- * everything one method says rather than of one text, because a path is as often built a step at a
- * time as written whole. What hands the location out is nothing, so saying it is the whole of what
+ * everything one place says rather than of one text, because a path is as often built a step at a
+ * time as written whole. {@link WhatACheckSays} is what a place is and what one says. What hands the location out is nothing, so saying it is the whole of what
  * is left: a reading answers what an output holds and never where it is, and the repository answers
  * whether something is under a build's output rather than what a build calls its directories.
  *
@@ -64,13 +61,11 @@ class NoCheckGoesLookingForACompiledOutputTest {
 
         Map<String, List<String>> working = new LinkedHashMap<>();
         for (ClassModel each : checks) {
-            for (MethodModel method : each.methods()) {
-                List<String> said = constantsOf(method);
+            WhatACheckSays.of(each).forEach((where, said) -> {
                 if (RepositoryLayout.namesCompiledOutput(said)) {
-                    working.computeIfAbsent(named(each) + "#"
-                            + method.methodName().stringValue(), _ -> new ArrayList<>()).addAll(said);
+                    working.put(where, said);
                 }
-            }
+            });
         }
 
         assertEquals(Map.of(), working,
@@ -80,24 +75,4 @@ class NoCheckGoesLookingForACompiledOutputTest {
     }
 
 
-    /** Everything one method says, which is where a path built a step at a time is put back
-     *  together. */
-    private static List<String> constantsOf(MethodModel method) {
-        List<String> said = new ArrayList<>();
-        CodeModel code = method.code().orElse(null);
-        if (code == null) {
-            return said;
-        }
-        for (var element : code) {
-            if (element instanceof ConstantInstruction loaded
-                    && loaded.constantValue() instanceof String text) {
-                said.add(text);
-            }
-        }
-        return said;
-    }
-
-    private static String named(ClassModel of) {
-        return of.thisClass().asInternalName().replace('/', '.');
-    }
 }
