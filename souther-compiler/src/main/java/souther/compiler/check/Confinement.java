@@ -619,6 +619,24 @@ sealed interface Confinement<A> {
 
         private final PlannedValues<A> values;
         private final OrderedIntervals<A> ordered;
+        /**
+         * What the rules leave the numbers this value's operations answer ({@link BoundaryState}).
+         *
+         * <p>Here because a choice is composed once and here is where it is composed: what the
+         * alternatives leave a length is put together under the same branch decision as what they
+         * leave the values and the orders, and a third place composing any of it would be a third
+         * answer about one written choice.
+         *
+         * <p>Whole, and not the ranges alone. Which numbers a rule stopped somewhere nothing
+         * worked out is the other half of what this reading came to, and it composes by the same
+         * connectives: kept somewhere else, the two halves would be put together twice.
+         *
+         * <p><b>And it is not asked whether anybody can be in a branch.</b> That question is the
+         * values' and the orders' ({@link #admission}), and this holds no half of it: a length is
+         * bounded by rules about a number the position's own reading has no word for, so a branch
+         * refused by one of these would be refused by a reading the other two cannot check.
+         */
+        private final BoundaryState derived;
         private final Map<A, Carrier> carriers;
         /**
          * What already showed this holds nothing, or null where nothing has.
@@ -632,13 +650,22 @@ sealed interface Confinement<A> {
         private final Admission<A> shown;
 
         Planned(PlannedValues<A> values, OrderedIntervals<A> ordered, Map<A, Carrier> carriers) {
-            this(values, ordered, carriers, null);
+            this(values, ordered, BoundaryState.nothing(), carriers, null);
+        }
+
+        /** The same, for a leaf that also says where a number one of this value's operations
+         *  answers stops. */
+        Planned(PlannedValues<A> values, OrderedIntervals<A> ordered,
+                BoundaryState derived, Map<A, Carrier> carriers) {
+            this(values, ordered, derived, carriers, null);
         }
 
         private Planned(PlannedValues<A> values, OrderedIntervals<A> ordered,
+                        BoundaryState derived,
                         Map<A, Carrier> carriers, Admission<A> shown) {
             this.values = values;
             this.ordered = ordered;
+            this.derived = derived;
             this.carriers = Collections.unmodifiableMap(new LinkedHashMap<>(carriers));
             this.shown = shown;
         }
@@ -712,6 +739,7 @@ sealed interface Confinement<A> {
          */
         Planned<A> meet(Planned<A> other) {
             return new Planned<>(values.meet(other.values), ordered.meet(other.ordered),
+                    derived.both(other.derived),
                     Confinement.both(carriers, other.carriers),
                     eitherShown(admission(), other.admission()));
         }
@@ -722,7 +750,13 @@ sealed interface Confinement<A> {
             return new Planned<>(
                     apart ? values.joinLiveApart(other.values) : values.joinLive(other.values),
                     ordered.joinLive(other.ordered),
-                    Confinement.both(carriers, other.carriers));
+                    // Which is not the ranges' own join. That one is written for two alternatives
+                    // this reading has been told somebody can be in, and nothing tells this one:
+                    // whether anybody can be in a branch is settled without it, so a branch whose
+                    // lengths have crossed reaches here alive. What such a branch leaves is
+                    // {@link BoundaryState#either}'s to say.
+                    derived.either(other.derived),
+                    Confinement.both(carriers, other.carriers), null);
         }
 
         /**
@@ -743,17 +777,29 @@ sealed interface Confinement<A> {
         Planned<A> bothDead(Planned<A> other, Admission<A> shown) {
             return new Planned<>(values.bothDead(other.values),
                     ordered.bothDead(other.ordered),
+                    derived.bothDead(other.derived),
                     Confinement.both(carriers, other.carriers), shown);
         }
 
         /** This, holding what working it out could not build. */
         Planned<A> alsoStanding(souther.compiler.values.Standing<A> standing) {
-            return new Planned<>(values.alsoStanding(standing), ordered, carriers, shown);
+            return new Planned<>(values.alsoStanding(standing), ordered, derived, carriers, shown);
         }
 
         /** The values worked out, under {@code by}, and the same ranges beside them. */
         Worked<A> resolve(Allowance<A> by) {
-            return new Worked<>(values.resolve(by), ordered, carriers, shown);
+            return new Worked<>(values.resolve(by), ordered, derived, carriers, shown);
+        }
+
+        /**
+         * What the rules leave the numbers this value's operations answer.
+         *
+         * <p>Handed out for a reader looking for where a line falls, and for nothing else. What it
+         * says is where the outermost ends are; that a number takes every value between them is
+         * not something it was ever asked.
+         */
+        BoundaryState derived() {
+            return derived;
         }
 
         @Override
@@ -777,12 +823,16 @@ sealed interface Confinement<A> {
 
         private final Realized<A> made;
         private final OrderedIntervals<A> ordered;
+        /** Where the numbers this value's operations answer stop — see {@link Planned#derived}. */
+        private final BoundaryState derived;
         private final Map<A, Carrier> carriers;
         /** What already showed this holds nothing — see {@link Planned#shown}. */
         private final Admission<A> shown;
 
-        Worked(Realized<A> made, OrderedIntervals<A> ordered, Map<A, Carrier> carriers,
+        Worked(Realized<A> made, OrderedIntervals<A> ordered,
+               BoundaryState derived, Map<A, Carrier> carriers,
                Admission<A> shown) {
+            this.derived = derived;
             this.made = made;
             this.ordered = ordered;
             this.carriers = Collections.unmodifiableMap(new LinkedHashMap<>(carriers));
@@ -797,6 +847,12 @@ sealed interface Confinement<A> {
             return made.values();
         }
 
+        /** What the rules leave the numbers this value's operations answer — see
+         *  {@link Planned#derived()}. */
+        BoundaryState derived() {
+            return derived;
+        }
+
         /**
          * The same answer, unable to speak for {@code these} because a choice offered an
          * alternative nothing could read.
@@ -807,7 +863,7 @@ sealed interface Confinement<A> {
          */
         Worked<A> alsoOpenedAt(Set<A> these) {
             return these.isEmpty() ? this
-                    : new Worked<>(made.alsoOpenedAt(these), ordered, carriers, shown);
+                    : new Worked<>(made.alsoOpenedAt(these), ordered, derived, carriers, shown);
         }
 
         @Override
