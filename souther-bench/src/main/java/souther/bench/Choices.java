@@ -53,9 +53,9 @@ import java.util.List;
  *
  * <p>The boundary series is where the reading stops holding alternatives apart and merges them into
  * the one product containing them. Measured on the wide shape and one alternative either side,
- * because that is the only place two lines differ by the policy alone: taken on the deep shape, the
- * step to the next size doubles the alternatives as well, and what the pair showed would be two
- * changes at once.
+ * which is the smallest change to a source that crosses the policy's boundary: an alternative more,
+ * and the reading answers the other way. Taken on the deep shape, the step to the next size doubles
+ * the alternatives as well, and the pair would be showing two changes at once.
  */
 final class Choices {
 
@@ -451,9 +451,12 @@ final class Choices {
      * be in is one the clauses written beside it are never met with. Measured on a declaration whose
      * one choice is the whole of it, the three come to the same figure and the series says nothing.
      *
-     * <p>Held still across the three. Each alternative is a conjunction of two equalities whichever
-     * fate it is, so what separates them is which values the equalities name and nothing about how
-     * much was written or how far it was distributed.
+     * <p>Held still across the three, and held still in what a reading is sensitive to rather than
+     * in how much was written. Every alternative of every one of them is a pair of bounds on the
+     * same one position, so the three name the same position, the same operators and the same
+     * number of comparisons, and what separates them is which numbers the bounds are drawn at.
+     * Written as equalities on two positions, a dead alternative also read one position fewer than
+     * a live one, and what the pair showed would have been the fate and that together.
      *
      * <p><b>Two of the three are comparable and the third is not.</b> A choice admits nothing only
      * where every alternative does, so the declaration admits nothing, and a declaration nothing
@@ -467,17 +470,17 @@ final class Choices {
 
         /** Both alternatives admit something, so the choice is held open and both are distributed
          *  into. */
-        BOTH_STAND("both stand", "(a == 0 && b == 0) || (a == 1 && b == 1)",
+        BOTH_STAND("both stand", "(a >= 0 && a <= 1) || (a >= 2 && a <= 3)",
                 Completion.MAKES_CLASSES),
 
         /** One alternative admits nothing, so the answer is the other and a proof crosses the
          *  join. */
-        ONE_STANDS("one stands", "(a == 0 && b == 0) || (a == 1 && a == 2)",
+        ONE_STANDS("one stands", "(a >= 0 && a <= 1) || (a >= 3 && a <= 2)",
                 Completion.MAKES_CLASSES),
 
         /** No alternative admits anything, and none of them is at fault for it — which is a
          *  declaration nothing satisfies, and is refused. */
-        NONE_STANDS("none stands", "(a == 0 && a == 3) || (a == 1 && a == 2)",
+        NONE_STANDS("none stands", "(a >= 1 && a <= 0) || (a >= 3 && a <= 2)",
                 Completion.IS_REFUSED);
 
         private final String written;
@@ -500,7 +503,7 @@ final class Choices {
 
         /** This fate at the head of {@code choices} choices, the rest of them plain and alike. */
         private String source(int choices) {
-            StringBuilder fields = new StringBuilder("a: Int, b: Int");
+            StringBuilder fields = new StringBuilder("a: Int");
             StringBuilder clauses = new StringBuilder("    invariant chosen = %s%n"
                     .formatted(clause));
             for (int i = 1; i < choices; i++) {

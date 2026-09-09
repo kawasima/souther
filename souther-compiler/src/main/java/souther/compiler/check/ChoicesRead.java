@@ -103,11 +103,6 @@ public final class ChoicesRead {
                 NO_ALTERNATIVE_STOOD.sum(), MERGED.sum());
     }
 
-    /** A declaration whose alternatives were merged rather than held apart. Once per declaration,
-     *  which is where the decision is taken. */
-    static void merged() {
-        MERGED.increment();
-    }
 
     /**
      * What one reading of one declaration did, gathered as it goes and published when it is done.
@@ -125,6 +120,7 @@ public final class ChoicesRead {
         private long everyAlternativeStood;
         private long oneAlternativeStood;
         private long noAlternativeStood;
+        private boolean merged;
 
         /** One more place a branch stood, which is one node of the tree the settlement walks. */
         void placeMet() {
@@ -134,6 +130,20 @@ public final class ChoicesRead {
         /** How many of this declaration's choices the descriptions alone settled. */
         void settledOffDescriptions(int settled) {
             settledOffDescriptions += settled;
+        }
+
+        /**
+         * That this reading held its alternatives merged rather than apart.
+         *
+         * <p>Recorded here with everything else rather than where the policy decides, and for two
+         * reasons. A write to a shared counter at the decision is a write on one side of the
+         * guardrail and not the other, which is a step the instrument puts into the very place a
+         * measurement of the guardrail looks for one. And a reading that stopped after the decision
+         * would have said it: what is wanted is a declaration read with its alternatives merged,
+         * which is known when the reading is done and not when it is chosen.
+         */
+        void mergedAlternatives() {
+            merged = true;
         }
 
         /**
@@ -169,7 +179,7 @@ public final class ChoicesRead {
          * instrument for the choices it does not have.
          */
         void publish() {
-            if (stated == 0 && placesMet == 0) {
+            if (stated == 0 && placesMet == 0 && !merged) {
                 return;
             }
             STATED.add(stated);
@@ -178,6 +188,9 @@ public final class ChoicesRead {
             EVERY_ALTERNATIVE_STOOD.add(everyAlternativeStood);
             ONE_ALTERNATIVE_STOOD.add(oneAlternativeStood);
             NO_ALTERNATIVE_STOOD.add(noAlternativeStood);
+            if (merged) {
+                MERGED.increment();
+            }
         }
     }
 }

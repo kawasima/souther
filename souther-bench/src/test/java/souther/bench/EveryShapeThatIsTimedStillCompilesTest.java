@@ -34,6 +34,10 @@ class EveryShapeThatIsTimedStillCompilesTest {
     /** Enough values that a fan-out fans and a chain has links that are not its ends. */
     private static final int VALUES = 8;
 
+    /** What the compiler says about a declaration no value satisfies, which is what the shape
+     *  written to reach that fate is refused for. */
+    private static final String REFUSING_A_DECLARATION_NOTHING_SATISFIES = "E1013";
+
     @Test
     void everyWorkspaceShapeCompiles() {
         compiles("independent", Scale.independent(MODULES));
@@ -67,16 +71,32 @@ class EveryShapeThatIsTimedStillCompilesTest {
         }
     }
 
-    /** That a shape written to be refused still is, and is refused rather than failing to reach the
-     *  reading its line is about. */
+    /**
+     * That a shape written to be refused is refused for the reason it was written for, and leaves
+     * the back end nothing.
+     *
+     * <p>The reason as well as the refusal, because a shape refused for anything else is a shape
+     * that stopped somewhere the line is not about — a source with a typo in it is refused too, and
+     * would be timed as a parse. And the classes, because that is what the point promises about it
+     * and what makes its figure not comparable with the ones beside it.
+     */
     private static void refused(String shape, List<String> sources) {
         Compilation compilation = Compilation.ofSources(sources, ModulePath.EMPTY);
-        boolean said = Located.diagnosticsOf(compilation.diagnostics()).values().stream()
-                .flatMap(List::stream)
-                .anyMatch(diagnostic -> diagnostic.severity() == Severity.ERROR);
-        if (!said) {
-            throw new AssertionError(shape + " is written to be refused and was not, so its line is"
-                    + " a compile of a different kind from the one it says it is");
+        List<String> said = new ArrayList<>();
+        for (List<Diagnostic> found : Located.diagnosticsOf(compilation.diagnostics()).values()) {
+            for (Diagnostic diagnostic : found) {
+                if (diagnostic.severity() == Severity.ERROR) {
+                    said.add(diagnostic.code());
+                }
+            }
+        }
+        if (!said.contains(REFUSING_A_DECLARATION_NOTHING_SATISFIES)) {
+            throw new AssertionError(shape + " is written to be refused because nothing satisfies"
+                    + " it, and what was said about it was " + said);
+        }
+        if (!compilation.classes().isEmpty()) {
+            throw new AssertionError(shape + " was refused and made classes all the same, so its"
+                    + " figure is a compile that reached the back end after all");
         }
     }
 
