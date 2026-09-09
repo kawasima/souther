@@ -60,9 +60,10 @@ class ATermEntersAReadingAndDoesNotComeBackOutTest {
                     + " the state the discharge is made of. The asymmetry above is about what a"
                     + " reader handed an answer can observe, and this is inside one reading:"
                     + " what that reading publishes carries no term, and where a clause is"
-                    + " written is asked of ClauseLocations rather than read off this. Who may"
-                    + " call it is what holds that, and it is written down in"
-                    + " WhoMayReadTheTermOfAReadingTest"));
+                    + " written is asked of ClauseLocations rather than read off this. Which"
+                    + " class this door is, is written down in WhoMayReadTheTermOfAReadingTest;"
+                    + " that the readings under it come out the same is asked of the answers, in"
+                    + " AClauseReadsTheSameWhicheverCompileBuiltTheTermTest"));
 
     @Test
     void theOperationsOnAReadingAreTheOnesWrittenDown() {

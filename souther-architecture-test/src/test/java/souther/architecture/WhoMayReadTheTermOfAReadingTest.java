@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Who may take the term out of a reading of one.
+ * Where the term of a reading enters a reading of the model.
  *
  * <p>{@code TermMeaning} is what a reader in another module depends on, and two of them are equal
  * where the terms they hold say the same thing whatever the places on those terms are. So two
@@ -23,14 +23,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * at different places, and anything read off the term and published would be a fact about which of
  * two equal answers the store happened to keep.
  *
- * <p>One reader takes the term out all the same, and what makes that sound is where it goes rather
- * than what it is: the reading of a declaration's clauses builds its own tree out of it, publishes
- * what the clauses state and never a tree, and asks where a clause is written of the thing that
- * says where a clause is written. That is a fact about the caller, so the caller is what is written
- * down here.
+ * <p>One reader takes the term out all the same, and this is where it does.
  *
- * <p>Being package-private is not what holds it. Every class beside it in the package may call it,
- * and one written tomorrow would compile; the row below is what says which of them does.
+ * <p><b>What this holds, said exactly.</b> It holds that there is one door and which class it is.
+ * It does not hold that the term stops there: what comes back is a {@code Core}, and the reading
+ * that takes it passes trees down to everything under it, so a reader below could read a place off
+ * one. Reading this row as "only this class can see an authored tree" is reading it for more than
+ * it says.
+ *
+ * <p>What holds the rest is a fact about answers rather than about calls, and is asked of the
+ * answers: a reading of one source is the same reading whichever compile built the terms it was
+ * told about, and what a module publishes about a declaration does not move when the declaration
+ * only moves. A row added here is a second door, which is worth knowing about on its own.
+ *
+ * <p>Being package-private is not what holds even that much. Every class beside it in the package
+ * may call it, and one written tomorrow would compile; the row below is what says which of them
+ * does.
  *
  * <p>Read off the compiled classes, so a reader that reaches it through a method reference is one
  * of these: a method handed to something that will call it reads the term as surely as calling it.
@@ -57,9 +65,9 @@ class WhoMayReadTheTermOfAReadingTest {
     @Test
     void everyClassThatTakesATermOutOfAReadingIsWrittenDown() {
         assertEquals(READING_IT, new ArrayList<>(reading()),
-                "a row added here is a reader that can tell two equal answers apart, so it is a"
-                        + " reader that has to be able to say why what it does with the term never"
-                        + " reaches an answer");
+                "a row added here is a second place a term enters a reading of the model, which is"
+                        + " a place that has to say why what it does with the term never reaches an"
+                        + " answer");
     }
 
     /**

@@ -20,6 +20,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 
 /**
  * A clause reads the same whichever compile built the term it states.
@@ -29,17 +30,23 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
  * handed either of them has to come to the same answer, or "equal" is a word about two things a
  * reader can tell apart.
  *
- * <p><b>What this is about is silent.</b> A reader that works out which fields a clause reads by
- * walking the term it was handed looks for the declaring module's bindings in a tree another
- * reading built, finds none of them, and concludes that the clause reads no fields — from which
- * follows that every field it needs is filled, and the clause is read against values that were
- * never put in. Nothing is thrown and nothing is reported; the reading is simply about a clause
- * nobody wrote. So the two readings are put side by side here rather than either being checked
- * against a value written down.
- *
  * <p>Compared as readings and not as terms. Two compiles write the same clause at two places, so
  * the terms differ where the reading does not — which is the whole of what {@link TermMeaning} is
  * for, and using it here is using the thing the boundary is built on.
+ *
+ * <p><b>Nothing known makes this red, and that is worth writing down.</b> It was written expecting
+ * to catch a reader that works out which fields a clause reads by walking the term it was handed:
+ * looking for the declaring module's bindings in a tree another reading built, finding none, and
+ * concluding the clause reads no fields — from which follows that every field it needs is filled.
+ * Made to do exactly that, this still passes. A binding is named by the declaration that wrote the
+ * field and by a number among that declaration's fields, so two compiles of one source name it
+ * alike and the walk finds what it is looking for. The discontinuity that reasoning turns on is
+ * not there.
+ *
+ * <p>So this holds a property rather than guarding a defect: what a reader comes to is a function
+ * of what it was told and not of which compile built it. That is what the boundary means, it is
+ * what nothing else asks of the readings themselves, and the day something below starts reading a
+ * place off the tree it was handed, this is where it shows.
  */
 class AClauseReadsTheSameWhicheverCompileBuiltTheTermTest {
 
@@ -69,6 +76,10 @@ class AClauseReadsTheSameWhicheverCompileBuiltTheTermTest {
         Clauses.StatedClauses crossed = readOf(mine, Shapes.clauseMeanings(other.db()));
 
         assertFalse(own.clauses().isEmpty(), "the reading under test reads the clause at all");
+        // The control. Two compiles build two trees, so the crossing is a crossing: were the terms
+        // one object, everything below would be one answer compared with itself.
+        assertNotSame(own.clauses().getFirst().expr(), crossed.clauses().getFirst().expr(),
+                "the two compiles built two terms, which is what makes this a crossing");
         assertEquals(said(own), said(crossed),
                 "what the clause states is what it states, whichever compile built the term it was"
                         + " published as");

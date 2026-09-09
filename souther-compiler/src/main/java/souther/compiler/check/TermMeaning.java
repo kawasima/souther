@@ -99,12 +99,22 @@ public final class TermMeaning {
      * and published would be a fact about which of two equal answers a store happened to keep.
      * Nothing about holding the term inside one reading is that.
      *
-     * <p>So the term comes out here and reaches no answer. The reading it goes into publishes what
-     * the clauses state and never a tree, and where a clause is written is asked of the thing that
-     * says where a clause is written ({@link ClauseLocations}) rather than read off what comes out
-     * of here. Being package-private is not what holds that: the compiler lets any neighbour call
-     * this, and what says who may is the ledger that names the callers
-     * ({@code WhoMayReadTheTermOfAReadingTest}).
+     * <p><b>What is held here, and what is not.</b> One ledger says who may call this
+     * ({@code WhoMayReadTheTermOfAReadingTest}), and that is all it says: the term this hands back
+     * is a {@link Core}, and the reading it goes into passes trees of its own down to everything
+     * below it. So the caller written down there is where the term <em>enters</em> the reading and
+     * not the last place it can be seen — a reader below that one holds a tree like any other and
+     * could read a place off it.
+     *
+     * <p>What holds the rest is not a ledger. It is that nothing the reading publishes carries a
+     * tree or a place: what a body is checked against comes back as what the clauses state, and
+     * where a clause is written is asked of the thing that says where a clause is written
+     * ({@link ClauseLocations}). That is a fact about answers rather than about calls, so it is
+     * held by asking the answers — a reading of one source is the same reading whichever compile
+     * built the terms it was told about
+     * ({@code AClauseReadsTheSameWhicheverCompileBuiltTheTermTest}), and what a module publishes
+     * about a declaration does not move when the declaration only moves
+     * ({@code AnInputsReadingDoesNotDependOnWhichCompileBuiltItTest}).
      */
     Core termForClauseReading() {
         return term;
