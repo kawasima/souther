@@ -3,6 +3,7 @@ package souther.compiler.query;
 import souther.compiler.ast.Hir;
 import souther.compiler.check.ClauseDischarge;
 import souther.compiler.check.ClauseLocations;
+import souther.compiler.check.DeclarationMeaning;
 import souther.compiler.check.ExpandedClauseLookup;
 import souther.compiler.check.ExpandedClauseResult;
 import souther.compiler.check.ExpandedClauses;
@@ -243,6 +244,49 @@ public final class Shapes {
             }
             souther.compiler.check.Normalized.Def def = defs.value().get(named.name());
             return def == null ? Answer.absent() : Answer.of(def);
+        }
+    }
+
+    /**
+     * What one declaration says, for a reader in another module.
+     *
+     * <p>The cut the module boundary is made at. {@link NormalizedDef} is the declaration as the
+     * passes below the settling walk it, positions and all, because those passes report from it;
+     * this is what the declaration says, and a reader that means only that stops here. An edit that
+     * moves a declaration without changing what it states remakes this and comes out equal, so
+     * nothing that read it is looked at again.
+     *
+     * <p><b>Answered by the module that wrote the declaration.</b> The reading is made over that
+     * module's scope rather than the asking module's, so two modules asking about one declaration
+     * are asking one question — which is what an answer keyed by a declaration has to be, and what
+     * {@code WhatADeclarationsClausesStateIsOneAnswerWhicheverModuleAsksTest} holds the reading to.
+     *
+     * <p>Absent where nothing declares it. A declaration the language declares is answered for like
+     * any other: it is normal as it stands, having no construction in its clauses left to write out.
+     */
+    public record MeaningOf(TypeKey named) implements Key<DeclarationMeaning> {
+        @Override
+        public String module() {
+            return named.module();
+        }
+
+        @Override
+        public Answer<DeclarationMeaning> compute(Db db) {
+            Hir.Def declared = normalizedDeclarationOf(db, named);
+            return declared == null ? Answer.absent()
+                    : Answer.of(DeclarationMeaning.of(declared,
+                            db.ruleReadingFor(named.module()), db.readings()));
+        }
+
+        /** The declaration {@code named} is, as the settling left it, or null where nothing
+         *  declares it. */
+        private static Hir.Def normalizedDeclarationOf(Db db, TypeKey named) {
+            Answer<souther.compiler.check.Normalized.Def> mine = db.ask(new NormalizedDef(named));
+            if (mine.present()) {
+                return mine.value().node();
+            }
+            Answer<souther.compiler.stdlib.Stdlib> library = db.ask(new Front.Library());
+            return library.present() ? library.value().languageDeclaration(named) : null;
         }
     }
 

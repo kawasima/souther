@@ -42,16 +42,26 @@ public sealed interface DeclarationMeaning {
     TypeKey declares();
 
     /**
-     * What {@code declared} says, read through {@code reading}.
+     * What {@code declared} says, read as {@code source} reads a module's declarations.
+     *
+     * <p>The way in for a caller outside this package, which is every caller that has a compilation
+     * rather than a reading of one. What a reading is made of stays here: a caller that assembled
+     * one would be choosing which representation a declaration is published in, and that is settled
+     * by which module wrote it and not by who is asking.
+     */
+    public static DeclarationMeaning of(Hir.Def declared, RuleReadingSource source,
+                                        DeclarationReadings machines) {
+        return of(declared, new Clauses(source.symbols(), source.invariants(), source.written(),
+                machines));
+    }
+
+    /**
+     * The same, over a reading already made.
      *
      * <p>Exhaustive over the kinds a declaration can be, so a kind added to the language arrives
      * here as a compile error rather than as one silently published under whichever arm happened to
      * be last. What each arm leaves out is what says where the declaration stands, and an
      * architecture test walks the components to hold this to it.
-     *
-     * <p>The reading is handed in rather than made here, because which representation a declaration
-     * is read in is the caller's question and not this one's. What this decides is what a reader
-     * elsewhere is told.
      */
     static DeclarationMeaning of(Hir.Def declared, Clauses reading) {
         // The identity the declaration carries, and not one worked out from what it is called. What
