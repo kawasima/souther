@@ -187,7 +187,7 @@ final class TypeGuarantees {
         List<Quantified> quantified = new ArrayList<>();
         Predicates.Owed owed = null;
         for (Clauses.StatedPart part : view.present()) {
-            Predicates.Owed said = predicates.assumed(part.expr(), denotations, false,
+            Predicates.Owed said = predicates.assumed(part.of(), denotations, false,
                     (shape, of, came) ->
                             parts.add(new TypeGuarantee.Part(part.id(), shape, of, came)));
             owed = owed == null ? said : owed.and(said);

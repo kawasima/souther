@@ -842,8 +842,11 @@ public final class InvariantChecker {
             }
             // The clause as one reading, and the parts its author wrote as subtrees of it. Which
             // parts there are was settled where the clause was split; nothing here decides it.
-            ClauseView view =
-                    reach.withoutParts().viewOf(declared.shape().onto(stated, origin));
+            // The shape of the whole clause, read out of the tree once. The parts are subtrees of
+            // it, so what a reader says about an occurrence of one is said in the numbering the
+            // clause hands out rather than in a numbering that starts wherever a part does.
+            ClauseView view = reach.withoutParts()
+                    .viewOf(declared.shape().onto(ClauseExpr.of(stated, true), origin));
             // A part at a time, and the ones this world holds. Which parts a clause has was settled
             // where it was split, so a part left out is one left out of the list — never a node a
             // walk was told to step over.
@@ -856,7 +859,7 @@ public final class InvariantChecker {
                     new LinkedHashMap<>();
             Predicates.Owed owed = null;
             for (Clauses.StatedPart part : view.present()) {
-                Predicates.Owed said = c.predicates.assumed(part.expr(), at, false,
+                Predicates.Owed said = c.predicates.assumed(part.of(), at, false,
                         (of, _, came) -> constrained
                                 .computeIfAbsent(part.id(), _ -> new LinkedHashMap<>())
                                 .put(of.at(), new PartAsRead(of, partRead(came))));
@@ -1744,11 +1747,11 @@ public final class InvariantChecker {
         // not gathered ({@link APartNoReadingSaw}). One list and not one rule each of them
         // consults, so the agreement is not something a walk has to be written to keep.
         stated.forEach(each -> each.parts().forEach(part ->
-                // The shape of the whole part, read out of the tree once and walked from there.
-                // Read again at each step, the occurrences under one part would be numbered afresh
-                // from wherever this reader happened to stop, and an answer filed by the reading
-                // that seeded it would be asked for under a number this walk made up.
-                direct(ClauseExpr.of(part.expr(), true), each, part.id(), at, byName, out, noLines,
+                // The part as the clause was read into, walked from there. Read out of the tree
+                // again, the occurrences under one part would be numbered afresh from wherever the
+                // part begins, and an answer filed by the reading that seeded it would be asked
+                // for under a number this walk made up.
+                direct(part.of(), each, part.id(), at, byName, out, noLines,
                         withoutAnEnd, aboutOneCoordinate, narrowers,
                         raised, took, typeAt, parts, raisedByPart, standing)));
         // Insertion order, kept: `Map.copyOf` iterates in an order salted once per JVM run, and

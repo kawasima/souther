@@ -100,6 +100,21 @@ interface ClauseReading<S, E> {
     }
 
     /**
+     * The same over a shape a caller already read the clause into.
+     *
+     * <p>For a reader whose part of a clause is a subtree of a shape somebody else read out of the
+     * tree. Read again from the part, the occurrences under it would be numbered afresh from the
+     * part rather than from the clause, and what two readers said about one of them would be said
+     * in two numberings.
+     *
+     * <p>The shape as written: which parts a world holds was settled where the caller chose the
+     * shapes it reads, so there is nothing under one of them for a view to leave out.
+     */
+    default S read(ClauseExpr shape, E at, ClauseScope<E> scope, PerPart<S> per) {
+        return from(shape.written(), over(shape, at, scope, per, ClauseView.asWritten()));
+    }
+
+    /**
      * The same, telling {@code per} what each part of the clause came to as it is read.
      *
      * <p>Told as the reading makes it, so that whoever keeps the reading keeps what it made of

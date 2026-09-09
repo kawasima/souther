@@ -94,8 +94,8 @@ class AWorldSaysWhichRulesThereAreBeforeAReadingSaysHowFarItGoesTest {
         PartId<RuleRef.Invariant> left = new PartId<>(rule, 0);
         PartId<RuleRef.Invariant> right = new PartId<>(rule, 1);
         return PartsLeftOut.without(Set.of(left)).viewOf(
-                List.of(new Clauses.StatedPart(left, LEFT),
-                        new Clauses.StatedPart(right, RIGHT)));
+                List.of(new Clauses.StatedPart(left, ClauseExpr.of(LEFT, true)),
+                        new Clauses.StatedPart(right, ClauseExpr.of(RIGHT, true))));
     }
 
     /** What a node reads as here, which is enough to tell the two conjuncts and the whole apart. */
