@@ -160,30 +160,35 @@ record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byNumber) {
      * <p>An end one branch left open is one the choice leaves open unless the branch beside it puts
      * every value of the position on the order — a value satisfying that branch stands anywhere, so
      * the choice does too, whatever the branch nothing followed says. That is the one thing a choice
-     * can show here, and it is shown by the other branch having been followed to the end and placed
-     * no end at the position. Both halves of that are the other branch's own account of itself: what
-     * it bounded, and what it left open.
+     * can show here, and what shows it is what the other branch's ends leave the position
+     * ({@link NarrowedByABranch}).
      *
-     * <p><b>Asked of the branches and not of what the choice was settled to leave open</b>
-     * ({@link Settlement.Width}). That answer is worked out over the positions the branches bounded,
-     * so a position no branch bounded is outside it — and a position outside it is one nothing
-     * asked, which is not a position it was shown the alternatives preserve. Read as one, a choice
-     * both of whose alternatives are forms nothing follows came back as a rule that draws no line,
-     * which is the sentence this exists to remove.
+     * <p><b>Asked of the values the branch leaves and not of which positions it bounded.</b> The
+     * two are not the same question: {@code n >= 2 || n <= 0} bounds an {@code Int} on both sides
+     * and leaves it every value it had, so a choice above it is as wide as it would be without
+     * either alternative. Read off what was bounded, that branch was taken for one that holds the
+     * position down, and an end the branch beside it left open stayed open at a position the model
+     * draws no line at.
+     *
+     * <p><b>And not off what the choice was settled to leave open</b> ({@link Settlement.Width}).
+     * That answer is worked out over the positions the branches bounded, so a position no branch
+     * bounded is outside it — and a position outside it is one nothing asked, which is not a
+     * position it was shown the alternatives preserve. Read as one, a choice both of whose
+     * alternatives are forms nothing follows came back as a rule that draws no line, which is the
+     * sentence this exists to remove.
      *
      * <p>So this is a filter and never a source. What comes out is contained in what the two
      * branches brought, which is what keeps a choice from inventing a rule nobody could read.
      */
-    EndsLeftOpen either(ChoiceSite choice, Adoption<FactSubject, ReadingLanguage.Order> mine,
-                        EndsLeftOpen other, Adoption<FactSubject, ReadingLanguage.Order> theirs) {
+    EndsLeftOpen either(ChoiceSite choice, NarrowedByABranch narrowed, EndsLeftOpen other) {
         if (byNumber.isEmpty() && other.byNumber.isEmpty()) {
             return NOTHING;
         }
         Map<FactSubject, Behind> out = new LinkedHashMap<>();
-        byNumber.forEach((position, behind) ->
-                keptUnder(choice, position, behind, other, theirs, out));
-        other.byNumber.forEach((position, behind) ->
-                keptUnder(choice, position, behind, this, mine, out));
+        byNumber.forEach((position, behind) -> keptUnder(choice, position, behind, other,
+                narrowed.leavesEveryValueOnRight(position), out));
+        other.byNumber.forEach((position, behind) -> keptUnder(choice, position, behind, this,
+                narrowed.leavesEveryValueOnLeft(position), out));
         return new EndsLeftOpen(out);
     }
 
@@ -208,19 +213,23 @@ record EndsLeftOpen(Map<FactSubject, EndsLeftOpen.Behind> byNumber) {
     /**
      * The same for one position of one branch, against what the branch beside it came to.
      *
-     * <p><b>What that branch still holds down, and not what some part of it once said.</b> A
-     * constraint is open to being taken back by an alternative beside it, and a choice inside this
-     * branch may have taken this one back already — so a branch that put a constraint on the
-     * position and then lost it holds the position at every value, and the choice above stops where
-     * it would without either alternative. Asked of what was put there ({@link Adoption#read}), a
-     * fact this reading has already taken back comes round again a bracket further out, and an end
-     * an inner choice settled is left open by an outer one.
+     * <p><b>What that branch leaves the position, and not what some part of it once said about
+     * it.</b> A constraint is open to being taken back by an alternative beside it, and a choice
+     * inside this branch may have taken this one back already — and two constraints between them
+     * may cover the order and hold nothing down at all. What the ends leave says both without being
+     * asked: the first because a reading that gave a constraint back has no range left to show, the
+     * second because a range covering the order is every value of it.
+     *
+     * <p>{@code besideLeavesEveryValue} is that answer, worked out where the two branches are and
+     * over every occurrence of the choice ({@link NarrowedByABranch}). Asked instead of what was
+     * put there ({@code Adoption#read}), a fact this reading has already taken back comes round
+     * again a bracket further out, and a pair of bounds covering the order reads as a branch that
+     * holds the position down.
      */
     private static void keptUnder(ChoiceSite choice, FactSubject position, Behind behind,
-                                  EndsLeftOpen beside,
-                                  Adoption<FactSubject, ReadingLanguage.Order> theirs,
+                                  EndsLeftOpen beside, boolean besideLeavesEveryValue,
                                   Map<FactSubject, Behind> out) {
-        if (!theirs.constrains(position) && !beside.byNumber.containsKey(position)) {
+        if (besideLeavesEveryValue && !beside.byNumber.containsKey(position)) {
             return;
         }
         out.merge(position, behind.under(choice), Behind::and);

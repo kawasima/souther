@@ -185,7 +185,8 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
                         UnreadReason.ALTERNATIVE_NOT_READ,
                         choice)),
                 theBranchRead(java.util.Set.of())
-                        .either(choice, opened(choice), theBranchNothingRead(java.util.Set.of()))
+                        .either(choice, opened(choice), NEITHER_HOLDS_A_POSITION_DOWN,
+                                theBranchNothingRead(java.util.Set.of()))
                         .ruleShortfalls(),
                 "an author is sent to the choice that offered the alternative, and to nothing"
                         + " about the position the branch settled");
@@ -200,7 +201,7 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
 
         assertEquals(java.util.Set.of(inside),
                 theBranchRead(java.util.Set.of())
-                        .either(choice, opened(choice),
+                        .either(choice, opened(choice), NEITHER_HOLDS_A_POSITION_DOWN,
                                 theBranchNothingRead(java.util.Set.of(inside)))
                         .ruleShortfalls(),
                 "answering it settles the position through this branch, which takes the choice's"
@@ -222,7 +223,8 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
 
         assertEquals(java.util.Set.of(form),
                 theBranchRead(java.util.Set.of())
-                        .either(choice, opened(choice), theBranchNothingRead(java.util.Set.of(form)))
+                        .either(choice, opened(choice), NEITHER_HOLDS_A_POSITION_DOWN,
+                                theBranchNothingRead(java.util.Set.of(form)))
                         .ruleShortfalls(),
                 "a form the unread branch holds accounts for the position, exactly as a choice"
                         + " under it would");
@@ -378,6 +380,11 @@ class AChoiceIsDecidedByEveryClauseAndAnsweredByItsOwnTest {
                 Map.of(), java.util.Set.of(), java.util.Set.of(), EndsLeftOpen.nothing(),
                 BoundaryState.nothing(), java.util.Map.of());
     }
+
+    /** What each alternative holds down, which nothing here states an end about and which is why
+     *  these branches leave the position wherever they found it. */
+    private static final NarrowedByABranch NEITHER_HOLDS_A_POSITION_DOWN =
+            NarrowedByABranch.nothing();
 
     /** One choice somebody wrote, told from every other by being this one. */
     private static ChoiceSite aChoice() {

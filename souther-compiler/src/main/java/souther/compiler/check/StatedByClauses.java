@@ -275,8 +275,17 @@ sealed interface StatedByClauses {
             return Collections.unmodifiableMap(out);
         }
 
-        /** The same part of two branches somebody can be in, under the choice between them. */
-        Part either(ChoiceSite choice, AlternativeOpening opening, Part other) {
+        /**
+         * The same part of two branches somebody can be in, under the choice between them.
+         *
+         * <p>{@code narrowed} beside {@code opening} and not inside it. An opening is what a
+         * reading says the choice left open, made out of the width and the account; what each
+         * alternative holds down is a fact about one branch's values that the ends have their own
+         * reader for. Folded into the opening, a reader wanting the second would have to go through
+         * a value about both.
+         */
+        Part either(ChoiceSite choice, AlternativeOpening opening, NarrowedByABranch narrowed,
+                    Part other) {
             // What a rule is answerable for is said of the choice, beside it and never out of it.
             // What happened is that this choice offered an alternative nothing could read, so an
             // author is sent to the choice — filed at a leaf under the branch that was read, they
@@ -306,7 +315,7 @@ sealed interface StatedByClauses {
                     // And the ends the choice leaves open, struck down by what each alternative
                     // says it came to and never added to: what a choice can show is that the branch
                     // beside an unfollowed one puts every value of a position on the order.
-                    endsLeftOpen.either(choice, byOrder, other.endsLeftOpen(), other.byOrder()),
+                    endsLeftOpen.either(choice, narrowed, other.endsLeftOpen()),
                     boundary.either(other.boundary()),
                     // And the choice an author is sent to for a line on a derived number nothing
                     // placed. Nothing is struck off here: which of them the choice still leaves
@@ -914,6 +923,10 @@ sealed interface StatedByClauses {
          * <p>What the fates come to is the width's to read: an occurrence one branch of which
          * admits nothing is no choice there, and what that leaves the width resting on is stated
          * where the width is ({@link Settlement.WidthDependency#of}).
+         *
+         * <p>And what each alternative holds down beside it ({@link NarrowedByABranch}), which is
+         * the same two branches read once more and is nobody's component: made where a reader of it
+         * happened to be, it would be a second answer about a choice this one has already read.
          */
         private static Settlement.OfAChoice outcome(StatedTogether.Said one,
                                                     Settlement.Sided here,
@@ -921,7 +934,8 @@ sealed interface StatedByClauses {
                                                     Settlement.Sided there) {
             return new Settlement.OfAChoice(here, there,
                     Settlement.WidthDependency.of(here.emptiness(), one.confinement(),
-                            there.emptiness(), other.confinement()));
+                            there.emptiness(), other.confinement()),
+                    NarrowedByABranch.of(one.confinement(), other.confinement()));
         }
 
         /**
@@ -1264,7 +1278,7 @@ sealed interface StatedByClauses {
                     yield left.either(
                             new ChoiceSite(it.id(), it.writtenAt().pos()),
                             opens(it.id(), fate.width(), left.took(), right.took()),
-                            right);
+                            fate.narrowed(), right);
                 }
             };
         }
@@ -1398,8 +1412,9 @@ sealed interface StatedByClauses {
          * parts. Each of them is written under one alternative and is answered by what happened to
          * that alternative, which is nothing — both stand.
          */
-        Taken either(ChoiceSite choice, AlternativeOpening opening, Taken other) {
-            return new Taken(took.either(choice, opening, other.took()),
+        Taken either(ChoiceSite choice, AlternativeOpening opening, NarrowedByABranch narrowed,
+                     Taken other) {
+            return new Taken(took.either(choice, opening, narrowed, other.took()),
                     joined(parts, other.parts()),
                     opened(opened(opened, other.opened()), opening.byValues().positions()));
         }
