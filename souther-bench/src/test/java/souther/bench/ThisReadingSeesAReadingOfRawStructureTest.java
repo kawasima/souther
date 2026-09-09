@@ -4,14 +4,13 @@ import org.junit.jupiter.api.Test;
 
 import souther.bench.PositionReadings.Authority;
 import souther.bench.PositionReadings.Traversal;
+import souther.test.CompiledClasses;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.lang.classfile.ClassModel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -56,20 +55,14 @@ class ThisReadingSeesAReadingOfRawStructureTest {
     /**
      * The compiled model, which is what this is a reading of.
      *
-     * <p>Found from the repository, the way everything else here finds what a build produced. Read
-     * from wherever this happens to have been started instead, the model would be missing whenever
-     * that was somewhere else — and a walk over no classes finds no reading and says nothing.
+     * <p>Found through the output this test was compiled into, the way everything else here finds
+     * what a build produced. Read from wherever this happens to have been started instead, the
+     * model would be missing whenever that was somewhere else — and a walk over no classes finds no
+     * reading and says nothing, which is why a package holding none is refused where it is read.
      */
-    private static List<Path> written() throws IOException {
-        Path built = Reactor.root().resolve("souther-bench/target/test-classes/souther/bench/readings");
-        assertTrue(Files.isDirectory(built),
-                "the model was not compiled, so this would assert nothing: " + built);
-        try (Stream<Path> walk = Files.walk(built)) {
-            List<Path> out = new ArrayList<>(
-                    walk.filter(each -> each.toString().endsWith(".class")).toList());
-            assertFalse(out.isEmpty(), "the model compiled to no classes");
-            return out;
-        }
+    private static List<ClassModel> written() {
+        return CompiledClasses.ofModule(ThisReadingSeesAReadingOfRawStructureTest.class)
+                .inPackage("souther.bench.readings");
     }
 
     private static List<String> bypassing() throws IOException {

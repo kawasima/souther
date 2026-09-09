@@ -1,6 +1,7 @@
 package souther.bench;
 
 import org.junit.jupiter.api.Test;
+import souther.test.CompiledClasses;
 
 import java.util.List;
 
@@ -61,15 +62,10 @@ class TheTextReadAtACallIsTheOneWrittenThereTest {
 
     /** This class as it was compiled, which is where the two calls above are. */
     private static List<Compiled.Invocation> read() {
-        try {
-            java.nio.file.Path root = java.nio.file.Path.of(
-                    TheTextReadAtACallIsTheOneWrittenThereTest.class.getProtectionDomain()
-                            .getCodeSource().getLocation().toURI());
-            return Compiled.invocationsIn(List.of(root.resolve(
-                    TheTextReadAtACallIsTheOneWrittenThereTest.class.getName()
-                            .replace('.', '/') + ".class")));
-        } catch (Exception opaque) {
-            throw new AssertionError("this class could not be read", opaque);
-        }
+        String named = TheTextReadAtACallIsTheOneWrittenThereTest.class.getName();
+        return Compiled.invocationsIn(List.of(CompiledClasses
+                .ofModule(TheTextReadAtACallIsTheOneWrittenThereTest.class)
+                .find(named)
+                .orElseThrow(() -> new AssertionError(named + " was not read back"))));
     }
 }

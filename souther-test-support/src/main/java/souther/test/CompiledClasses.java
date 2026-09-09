@@ -49,8 +49,15 @@ public final class CompiledClasses {
         this.readings = readings;
     }
 
-    /** The output at {@code root}, read by the fork this runs in. */
-    public static CompiledClasses at(Path root) {
+    /**
+     * The output at {@code root}, read by the fork this runs in.
+     *
+     * <p>Not handed out either. Where a module's output is is worked out by
+     * {@link RepositoryLayout}, which knows how this repository is laid out; a caller that could
+     * make one of these from a path of its own would be working that out for itself, and would have
+     * had to say where a build writes to do it.
+     */
+    static CompiledClasses at(Path root) {
         return at(root, CompiledClassReadings.forThisFork());
     }
 

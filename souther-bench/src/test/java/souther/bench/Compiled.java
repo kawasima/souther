@@ -1,7 +1,5 @@
 package souther.bench;
 
-import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
 import java.lang.classfile.CodeModel;
 import java.lang.classfile.Instruction;
@@ -14,8 +12,6 @@ import java.lang.classfile.instruction.NewObjectInstruction;
 import java.lang.classfile.instruction.TypeCheckInstruction;
 import java.lang.constant.ClassDesc;
 import java.lang.constant.DirectMethodHandleDesc;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -139,9 +135,38 @@ final class Compiled {
      */
     record Invocation(Site site, List<String> said) {}
 
-    /** Every call of every compiled class, with the text read at it. */
-    static List<Invocation> invocations() throws IOException {
-        return invocationsIn(Reactor.classes());
+    /**
+     * Every call of every compiled class, with the text read at it, worked out once.
+     *
+     * <p>Beside the parsed classes, which the fork shares, and not the same thing: this is what
+     * <em>this</em> module makes of them. Every check here walks the whole reactor's code, and the
+     * walk allocates one of these for every call there is, so sharing the files and then decoding
+     * them again per check would leave the reading shared and the work not.
+     */
+    static List<Invocation> invocations() {
+        if (EVERY_INVOCATION == null) {
+            EVERY_INVOCATION = invocationsIn(Reactor.classes());
+            WORKED_OUT.merge("invocations", 1, Integer::sum);
+        }
+        return EVERY_INVOCATION;
+    }
+
+    private static List<Invocation> EVERY_INVOCATION;
+
+    private static List<Site> EVERY_SITE;
+
+    /**
+     * How many times each of the two was worked out, for the check that says once.
+     *
+     * <p>Counted rather than compared: what these hold is a site for every call the reactor's code
+     * makes, and a check asking whether it was handed the same list twice would say so by printing
+     * both of them.
+     */
+    private static final java.util.Map<String, Integer> WORKED_OUT = new java.util.TreeMap<>();
+
+    /** How many times {@code named} has been worked out in this fork. */
+    static int timesWorkedOut(String named) {
+        return WORKED_OUT.getOrDefault(named, 0);
     }
 
     /**
@@ -152,10 +177,9 @@ final class Compiled {
      * this does to a particular shape would otherwise write the walk again, and then what it
      * measured would be its own copy rather than the thing every rule here is built on.
      */
-    static List<Invocation> invocationsIn(List<Path> classes) throws IOException {
+    static List<Invocation> invocationsIn(List<ClassModel> classes) {
         List<Invocation> found = new ArrayList<>();
-        for (Path each : classes) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : classes) {
             String from = named(model.thisClass().asInternalName());
             for (var method : model.methods()) {
                 CodeModel code = method.code().orElse(null);
@@ -193,9 +217,14 @@ final class Compiled {
         return found;
     }
 
-    /** Everything every compiled class of every module does. */
-    static List<Site> sites() throws IOException {
-        return sitesIn(Reactor.classes());
+    /** Everything every compiled class of every module does, worked out once and beside
+     *  {@link #invocations} for the same reason. */
+    static List<Site> sites() {
+        if (EVERY_SITE == null) {
+            EVERY_SITE = sitesIn(Reactor.classes());
+            WORKED_OUT.merge("sites", 1, Integer::sum);
+        }
+        return EVERY_SITE;
     }
 
     /**
@@ -207,10 +236,9 @@ final class Compiled {
      * its cases — has to be able to hand it code written to be read, and a copy of the walk written
      * for that would be a check of the copy.
      */
-    static List<Site> sitesIn(List<Path> classes) throws IOException {
+    static List<Site> sitesIn(List<ClassModel> classes) {
         List<Site> found = new ArrayList<>();
-        for (Path each : classes) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : classes) {
             String from = named(model.thisClass().asInternalName());
             for (var method : model.methods()) {
                 CodeModel code = method.code().orElse(null);

@@ -1,15 +1,14 @@
 package souther.bench;
 
+import souther.test.CompiledClasses;
 import souther.test.RepositoryLayout;
 
-import java.io.IOException;
+import java.lang.classfile.ClassModel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
-
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.util.Optional;
 
 /**
  * What the reactor builds, asked once.
@@ -61,22 +60,36 @@ final class Reactor {
         return REPOSITORY.mainJavaSources();
     }
 
-    /** Every compiled class of every one of them. */
-    static List<Path> classes() throws IOException {
-        List<Path> found = new ArrayList<>();
+    /** Every compiled class of every one of them, read once for the fork rather than per check. */
+    static List<ClassModel> classes() {
+        List<ClassModel> found = new ArrayList<>();
         for (Path module : modules()) {
             if (!hasMainSources(module)) {
                 continue;
             }
-            Path built = module.resolve("target/classes");
-            assertTrue(Files.isDirectory(built),
-                    name(module) + " has no built classes: this check covers what has been built, so a"
-                            + " module that has not been is a hole rather than a pass");
-            try (Stream<Path> walk = Files.walk(built)) {
-                walk.filter(each -> each.toString().endsWith(".class")).forEach(found::add);
-            }
+            found.addAll(mainOutputOf(module).all());
         }
         return found;
+    }
+
+    /**
+     * What {@code module} compiled its main sources to.
+     *
+     * <p>A module that has sources and no output is a hole and not a pass, so this refuses rather
+     * than passing over it — which is what a check covering every module needs, and is also what
+     * makes naming every module a dependency of this one the thing that keeps such a check honest
+     * under {@code -am}.
+     */
+    static CompiledClasses mainOutputOf(Path module) {
+        return REPOSITORY.compiledOutputOf(module, "main").orElseGet(() -> {
+            throw new AssertionError(name(module) + " has no built classes: this check covers what"
+                    + " has been built, so a module that has not been is a hole rather than a pass");
+        });
+    }
+
+    /** The same of what its tests compiled to, or nothing where it has none. */
+    static Optional<CompiledClasses> testOutputOf(Path module) {
+        return REPOSITORY.compiledOutputOf(module, "test");
     }
 
     /** The repository, from the module this runs in. */

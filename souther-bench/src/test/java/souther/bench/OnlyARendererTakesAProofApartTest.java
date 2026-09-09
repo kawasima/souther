@@ -3,10 +3,7 @@ package souther.bench;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.lang.classfile.ClassFile;
 import java.lang.classfile.ClassModel;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -89,8 +86,7 @@ class OnlyARendererTakesAProofApartTest {
     @Test
     void andOnlyThoseWordsAreWritten() throws IOException {
         Map<String, List<String>> implementors = new LinkedHashMap<>();
-        for (Path each : Reactor.classes()) {
-            ClassModel model = ClassFile.of().parse(Files.readAllBytes(each));
+        for (ClassModel model : Reactor.classes()) {
             for (var face : model.interfaces()) {
                 String name = face.asInternalName().replace('/', '.');
                 WRITES_THE_WORDS_OF.forEach((payload, words) -> {

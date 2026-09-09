@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
@@ -146,6 +147,30 @@ public final class RepositoryLayout {
             }
         }
         return false;
+    }
+
+    /**
+     * What {@code module} compiled its {@code phase} sources to, or nothing where it built none.
+     *
+     * <p>A reading and not a place. What a caller does with a compiled output is ask what it holds,
+     * and what it would do with the path is walk it — which reads once more the files the reading
+     * exists to read once. So where a module's output is stays worked out here, beside the rest of
+     * what this knows about how the repository is laid out.
+     *
+     * <p>Nothing where the module built none, because that is two different things to two callers.
+     * A check about every module is entitled to treat a module that has sources and no output as a
+     * hole; a check about whichever module holds a name is entitled to look in the next one.
+     *
+     * @param phase {@code main} or {@code test}, as {@link #javaTreeOf} takes it
+     */
+    public Optional<CompiledClasses> compiledOutputOf(Path module, String phase) {
+        Path at = module.resolve(whereABuildWrites()).resolve(switch (phase) {
+            case "main" -> "classes";
+            case "test" -> "test-classes";
+            default -> throw new IllegalArgumentException(
+                    phase + " is not a phase a module compiles: main and test are");
+        });
+        return Files.isDirectory(at) ? Optional.of(CompiledClasses.at(at)) : Optional.empty();
     }
 
     /**

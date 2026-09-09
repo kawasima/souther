@@ -2,7 +2,6 @@ package souther.bench;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -100,17 +99,13 @@ class WhoseARowIsIsDecidedInOnePlaceTest {
      */
     private static java.util.SortedMap<String, List<String>> reachesFromOutside() {
         java.util.SortedMap<String, java.util.SortedSet<String>> found = new java.util.TreeMap<>();
-        try {
-            for (Compiled.Site site : Compiled.sites()) {
-                if (!site.owner().startsWith(ATTRIBUTION) || site.from().startsWith(ATTRIBUTION)) {
-                    continue;
-                }
-                found.computeIfAbsent(site.owner() + "#" + site.member() + " " + site.how(),
-                                _ -> new java.util.TreeSet<>())
-                        .add(site.from() + "#" + written(site.method()));
+        for (Compiled.Site site : Compiled.sites()) {
+            if (!site.owner().startsWith(ATTRIBUTION) || site.from().startsWith(ATTRIBUTION)) {
+                continue;
             }
-        } catch (IOException e) {
-            throw new AssertionError("the compiled classes were not readable", e);
+            found.computeIfAbsent(site.owner() + "#" + site.member() + " " + site.how(),
+                            _ -> new java.util.TreeSet<>())
+                    .add(site.from() + "#" + written(site.method()));
         }
         java.util.SortedMap<String, List<String>> out = new java.util.TreeMap<>();
         found.forEach((what, where) -> out.put(what, List.copyOf(where)));
