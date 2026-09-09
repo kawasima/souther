@@ -1966,7 +1966,7 @@ public final class InvariantChecker {
         //
         // Before the reading below, which needs to know: a conjunct that stated where the values
         // stop has a line, and is not one an author is owed a sentence about for having drawn none.
-        RunsRead runs = runsOf(clause, saidAs.at(), of, part, byName, out);
+        RunsRead runs = runsOf(saidAs.at(), of, part, byName, out);
         restricting(clause, saidAs.at(), from, of, part, byName, rules, noLines, runs);
         aChoiceAboutOneCoordinate(clause, part, at, byName, naming);
         if (!(clause instanceof Core.Binary bin)) {
@@ -2813,7 +2813,7 @@ public final class InvariantChecker {
      * characters they hold; a rule about the length is a rule about a whole number and is read
      * where whole numbers are.
      */
-    private RunsRead runsOf(Core clause, ClauseExpr.Occurrence at,
+    private RunsRead runsOf(ClauseExpr.Occurrence at,
                         Written of, PartId<RuleRef.Invariant> part,
                         Map<FactSubject, Coordinate> byName, List<Direct> out) {
         ReadByClauses.OfAPart account = of.adoptedAt(at);
