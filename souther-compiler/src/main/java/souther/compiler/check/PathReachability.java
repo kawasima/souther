@@ -3,7 +3,6 @@ package souther.compiler.check;
 import souther.compiler.coverage.ArmProbe;
 import souther.compiler.core.Core;
 import souther.compiler.diag.SourcePos;
-import souther.compiler.coverage.ComparisonOccurrence;
 import souther.compiler.coverage.ControlPointId;
 import souther.compiler.inputs.Admits;
 import souther.compiler.inputs.InputDomain;
@@ -21,6 +20,7 @@ import souther.compiler.reach.Reachability;
 import souther.compiler.reach.Witness;
 import souther.compiler.reach.WhyUnsettled;
 import souther.compiler.types.BindingId;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.TypeSymbol;
 
 import java.util.ArrayList;
@@ -55,7 +55,7 @@ public final class PathReachability {
 
     /** What was found, and what a place nothing was found about comes to. */
     public record Answers(Map<ControlPointId, Reachability> found,
-                          Map<souther.compiler.coverage.ComparisonOccurrence,
+                          Map<ConstructOccurrence,
                                   souther.compiler.reach.ComparisonArrival> arriving) {
 
         public static final Answers NONE = new Answers(Map.of(), Map.of());
@@ -104,7 +104,7 @@ public final class PathReachability {
          * disagreeing, dressed as a fact about the model.
          */
         public souther.compiler.reach.ComparisonArrival arrivalAt(
-                souther.compiler.coverage.ComparisonOccurrence at) {
+                ConstructOccurrence at) {
             souther.compiler.reach.ComparisonArrival answer = arriving.get(at);
             return answer != null ? answer
                     : new souther.compiler.reach.ComparisonArrival.NoProjection();
@@ -212,7 +212,7 @@ public final class PathReachability {
                         DeclarationReadings.NONE,
                         Terms.Of.THE_TREE_THAT_RUNS, policy);
         Map<ControlPointId, Reachability> out = new LinkedHashMap<>();
-        Map<souther.compiler.coverage.ComparisonOccurrence,
+        Map<ConstructOccurrence,
                 souther.compiler.reach.ComparisonArrival> arriving = new LinkedHashMap<>();
         PathEngine.Entered in = PathEngine.Entered.nothing();
         for (Map.Entry<BindingId, Scope.Binding> p : params.bindings().entrySet()) {
@@ -244,7 +244,7 @@ public final class PathReachability {
      * down anywhere, the plan says, for the ones it numbered. What is filed under one of these is
      * about a place a run can be observed at, so both have to answer.
      */
-    private static ComparisonOccurrence numbered(Core.Binary node, CoverageSites.Plan plan) {
+    private static ConstructOccurrence numbered(Core.Binary node, CoverageSites.Plan plan) {
         return plan.comparisons().occurrenceAt(node).filter(plan::instruments).orElse(null);
     }
 
@@ -268,7 +268,7 @@ public final class PathReachability {
      */
     private static java.util.Optional<String> unanswered(
             Core body, CoverageSites.Plan plan, Map<ControlPointId, Reachability> out,
-            Map<souther.compiler.coverage.ComparisonOccurrence,
+            Map<ConstructOccurrence,
                     souther.compiler.reach.ComparisonArrival> arriving) {
         // Which comparison this is, and only where the plan numbers one there: what is owed is
         // owed for the places a run could be recorded at, and a node that is no comparison of this
@@ -295,9 +295,9 @@ public final class PathReachability {
     private static java.util.Optional<String> unansweredAt(
             Core.Binary comparison, CoverageSites.Plan plan,
             Map<ControlPointId, Reachability> out,
-            Map<souther.compiler.coverage.ComparisonOccurrence,
+            Map<ConstructOccurrence,
                     souther.compiler.reach.ComparisonArrival> arriving) {
-        ComparisonOccurrence which = numbered(comparison, plan);
+        ConstructOccurrence which = numbered(comparison, plan);
         if (which == null) {
             return java.util.Optional.empty();
         }
@@ -331,7 +331,7 @@ public final class PathReachability {
     private final InputDomain read;
     private final Symbols symbols;
     private final Map<ControlPointId, Reachability> out;
-    private final Map<souther.compiler.coverage.ComparisonOccurrence,
+    private final Map<ConstructOccurrence,
             souther.compiler.reach.ComparisonArrival> arriving;
     /**
      * What holds where the body begins: the inputs entered and seeded, and no condition taken.
@@ -346,7 +346,7 @@ public final class PathReachability {
 
     private PathReachability(PathEngine engine, CoverageSites.Plan plan, InputDomain read,
                              Symbols symbols, Map<ControlPointId, Reachability> out,
-                             Map<souther.compiler.coverage.ComparisonOccurrence,
+                             Map<ConstructOccurrence,
                                      souther.compiler.reach.ComparisonArrival> arriving) {
         this.engine = engine;
         this.plan = plan;
@@ -504,7 +504,7 @@ public final class PathReachability {
                             List<PathDecision> decided) {
         // What arrives is about the comparison and not about either way out of it, so it is filed
         // under the comparison the plan names and asked of the plan directly.
-        ComparisonOccurrence which = numbered(comparison, plan);
+        ConstructOccurrence which = numbered(comparison, plan);
         if (which == null) {
             return;
         }

@@ -131,12 +131,12 @@ class AModuleHasOnePlanAndOneMakerOfItTest {
             "method hasNoProbes() : boolean",
             // Which comparisons the bodies hold, and what this plan did about each.
             "method comparisons() : souther.compiler.coverage.ComparisonCatalog",
-            "method instruments(souther.compiler.coverage.ComparisonOccurrence) : boolean",
-            "method emissionSiteOf(souther.compiler.coverage.ComparisonOccurrence) :"
+            "method instruments(souther.compiler.types.ConstructOccurrence) : boolean",
+            "method emissionSiteOf(souther.compiler.types.ConstructOccurrence) :"
                     + " java.util.Optional<souther.compiler.coverage.ComparisonEmissionSite>",
-            "method requireEmissionSiteOf(souther.compiler.coverage.ComparisonOccurrence) :"
+            "method requireEmissionSiteOf(souther.compiler.types.ConstructOccurrence) :"
                     + " souther.compiler.coverage.ComparisonEmissionSite",
-            "method outcomeOf(souther.compiler.coverage.ComparisonOccurrence,boolean) :"
+            "method outcomeOf(souther.compiler.types.ConstructOccurrence,boolean) :"
                     + " java.util.Optional<"
                     + "souther.compiler.coverage.ControlPointId$ComparisonPoint>",
             // What a number means, which is the half of a plan that outlives the graph.

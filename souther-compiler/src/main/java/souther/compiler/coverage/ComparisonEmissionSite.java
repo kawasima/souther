@@ -6,9 +6,9 @@ package souther.compiler.coverage;
  * <p>An address and not an identity. What a probed class calls is {@code Probe.compared} with an
  * {@code int}, and what comes back from a recording is that {@code int} — so the number is the
  * vocabulary a run is written and read in, and it reaches no further. Which comparison a reading is
- * talking about is {@link ComparisonOccurrence}, and the two are held apart because they are
- * answered by different things: the plan hands out an address for the comparisons it instruments,
- * and the catalog names every comparison the bodies hold whether anything instruments it or not.
+ * talking about is {@link souther.compiler.types.ConstructOccurrence}, and the two are held apart
+ * because they are answered by different things: the plan hands out an address for the comparisons
+ * it instruments, and a construct stands where it stands whether anything instruments it or not.
  *
  * <p>Kept as one value rather than as the {@code int} it wraps, so that an address cannot be handed
  * where an identity is wanted. Under one type the two were the same number, and a reading that

@@ -1,6 +1,7 @@
 package souther.compiler.coverage;
 
 import souther.compiler.core.Core;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.ModelOccurrence;
 
 import java.util.LinkedHashMap;
@@ -45,7 +46,7 @@ public final class ComparisonEmissionIndex {
      * reader is told which of them a run is recorded at rather than being handed one answer for
      * both.
      */
-    public record EmittedComparison(ComparisonOccurrence occurrence,
+    public record EmittedComparison(ConstructOccurrence occurrence,
                                     Optional<ComparisonEmissionSite> site) {
 
         public EmittedComparison {
@@ -73,7 +74,7 @@ public final class ComparisonEmissionIndex {
      *
      */
     public static ComparisonEmissionIndex of(ModuleBodies of, CoverageSites.Plan plan) {
-        Map<ModelOccurrence, Map<ComparisonOccurrence, EmittedComparison>> emitted =
+        Map<ModelOccurrence, Map<ConstructOccurrence, EmittedComparison>> emitted =
                 new LinkedHashMap<>();
         for (Map.Entry<String, Core> body : of.bodies().entrySet()) {
             walk(body.getValue(), plan, emitted);
@@ -83,14 +84,14 @@ public final class ComparisonEmissionIndex {
 
     /** The same over one body, for a reader that holds one rather than the module's. */
     public static ComparisonEmissionIndex ofBody(Core body, CoverageSites.Plan plan) {
-        Map<ModelOccurrence, Map<ComparisonOccurrence, EmittedComparison>> emitted =
+        Map<ModelOccurrence, Map<ConstructOccurrence, EmittedComparison>> emitted =
                 new LinkedHashMap<>();
         walk(body, plan, emitted);
         return new ComparisonEmissionIndex(copy(emitted));
     }
 
     private static Map<ModelOccurrence, List<EmittedComparison>> copy(
-            Map<ModelOccurrence, Map<ComparisonOccurrence, EmittedComparison>> of) {
+            Map<ModelOccurrence, Map<ConstructOccurrence, EmittedComparison>> of) {
         Map<ModelOccurrence, List<EmittedComparison>> out = new LinkedHashMap<>();
         of.forEach((states, made) -> out.put(states, List.copyOf(made.values())));
         return Map.copyOf(out);
@@ -98,11 +99,11 @@ public final class ComparisonEmissionIndex {
 
     private static void walk(
             Core e, CoverageSites.Plan plan,
-            Map<ModelOccurrence, Map<ComparisonOccurrence, EmittedComparison>> emitted) {
+            Map<ModelOccurrence, Map<ConstructOccurrence, EmittedComparison>> emitted) {
         // Which comparison of the emitted tree this is, asked of the catalog, which is what the
         // numbering was taken over. A node it does not hold is one no site was planned for and one
         // no rule is read off — a comparison this compiler composed, or one of another module.
-        ComparisonOccurrence which = e instanceof Core.Binary binary
+        ConstructOccurrence which = e instanceof Core.Binary binary
                 ? plan.comparisons().occurrenceAt(binary).orElse(null) : null;
         if (which != null) {
             // Only where the model states something. A comparison inside one of the language's own

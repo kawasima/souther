@@ -4,6 +4,7 @@ import souther.compiler.core.Core;
 import souther.compiler.diag.Citation;
 import souther.compiler.diag.SourcePos;
 import souther.compiler.types.BindingOwner;
+import souther.compiler.types.ConstructOccurrence;
 import souther.compiler.types.SourceConstruct;
 import souther.compiler.types.SourceConstructOrigin;
 import souther.compiler.types.WrittenOwner;
@@ -306,9 +307,9 @@ public final class CoverageSites {
         private final List<Site> sites;
         private final List<GuardRef> guards;
         private final IdentityHashMap<Core, int[]> byNode;
-        private final Map<ComparisonOccurrence, ComparisonEmissionSite> byComparison;
+        private final Map<ConstructOccurrence, ComparisonEmissionSite> byComparison;
         private final IdentityHashMap<Core, ControlPointId.ArmOccurrence[]> armsByNode;
-        private final Map<ComparisonOccurrence, Integer> controlByComparison;
+        private final Map<ConstructOccurrence, Integer> controlByComparison;
         private final java.util.Set<Core> mayRepeat;
         private final IdentityHashMap<Core, ForkOccurrence> forkByNode;
         private final ComparisonCatalog comparisons;
@@ -329,9 +330,9 @@ public final class CoverageSites {
          * bodies that no source produces, which is the only other caller the package allows.
          */
         Plan(List<Site> sites, List<GuardRef> guards, IdentityHashMap<Core, int[]> byNode,
-             Map<ComparisonOccurrence, ComparisonEmissionSite> byComparison,
+             Map<ConstructOccurrence, ComparisonEmissionSite> byComparison,
              IdentityHashMap<Core, ControlPointId.ArmOccurrence[]> armsByNode,
-             Map<ComparisonOccurrence, Integer> controlByComparison,
+             Map<ConstructOccurrence, Integer> controlByComparison,
              java.util.Set<Core> mayRepeat,
              IdentityHashMap<Core, ForkOccurrence> forkByNode,
              ComparisonCatalog comparisons,
@@ -347,10 +348,10 @@ public final class CoverageSites {
             // Every reader below joins on the catalog to tell a comparison this plan does not
             // instrument from one that was never this plan's, and that only answers while the
             // numbering is of the catalog beside it.
-            for (ComparisonOccurrence numbered : byComparison.keySet()) {
+            for (ConstructOccurrence numbered : byComparison.keySet()) {
                 requireHeld(numbered, comparisons, "numbered");
             }
-            for (ComparisonOccurrence numbered : controlByComparison.keySet()) {
+            for (ConstructOccurrence numbered : controlByComparison.keySet()) {
                 requireHeld(numbered, comparisons, "given a control point");
             }
             // And the numbering says what each number it handed out addresses, so there is one
@@ -424,7 +425,7 @@ public final class CoverageSites {
             return written;
         }
 
-        Map<ComparisonOccurrence, ComparisonEmissionSite> byComparison() {
+        Map<ConstructOccurrence, ComparisonEmissionSite> byComparison() {
             return byComparison;
         }
 
@@ -432,7 +433,7 @@ public final class CoverageSites {
             return armsByNode;
         }
 
-        Map<ComparisonOccurrence, Integer> controlByComparison() {
+        Map<ConstructOccurrence, Integer> controlByComparison() {
             return controlByComparison;
         }
 
@@ -449,7 +450,7 @@ public final class CoverageSites {
             return numbering.identity();
         }
 
-        private static void requireHeld(ComparisonOccurrence which, ComparisonCatalog comparisons,
+        private static void requireHeld(ConstructOccurrence which, ComparisonCatalog comparisons,
                                         String what) {
             if (!comparisons.holds(which)) {
                 throw new IllegalArgumentException("a comparison this plan's catalog does not hold "
@@ -500,7 +501,7 @@ public final class CoverageSites {
         /** Which way {@code comparison} coming out {@code result} is, or empty where this plan
          *  numbered no comparison there. */
         public java.util.Optional<ControlPointId.ComparisonPoint> outcomeOf(
-                ComparisonOccurrence which, boolean result) {
+                ConstructOccurrence which, boolean result) {
             Integer control = controlByComparison.get(ofThisPlan(which));
             return control == null ? java.util.Optional.empty()
                     : emissionSiteOf(which).map(site ->
@@ -538,7 +539,7 @@ public final class CoverageSites {
          * asks about it. The emitter walks comparisons in both cases and asks this of each.
          */
         public java.util.Optional<ComparisonEmissionSite> emissionSiteOf(
-                ComparisonOccurrence which) {
+                ConstructOccurrence which) {
             return java.util.Optional.ofNullable(byComparison.get(ofThisPlan(which)));
         }
 
@@ -552,7 +553,7 @@ public final class CoverageSites {
          * about it. Answered alike, a reading of one module joins to another module's comparison
          * and says nothing about either — which is what naming an occurrence was for.
          */
-        private ComparisonOccurrence ofThisPlan(ComparisonOccurrence which) {
+        private ConstructOccurrence ofThisPlan(ConstructOccurrence which) {
             if (!comparisons.holds(which)) {
                 throw new IllegalArgumentException(
                         "this plan is not about " + which + "; it holds "
@@ -570,7 +571,7 @@ public final class CoverageSites {
          * them working it out from the site each time are four places that can come to ask it
          * differently — which is the shape this whole reading was written against.
          */
-        public boolean instruments(ComparisonOccurrence which) {
+        public boolean instruments(ConstructOccurrence which) {
             return byComparison.containsKey(ofThisPlan(which));
         }
 
@@ -582,7 +583,7 @@ public final class CoverageSites {
          * the reader that found the comparison disagreeing about which comparisons are instrumented,
          * which no measurement should paper over.
          */
-        public ComparisonEmissionSite requireEmissionSiteOf(ComparisonOccurrence which) {
+        public ComparisonEmissionSite requireEmissionSiteOf(ConstructOccurrence which) {
             return emissionSiteOf(which).orElseThrow(() -> new IllegalStateException(
                     "no comparison site was planned for " + which
                             + "; a line is read off a comparison this plan does not instrument"));
@@ -678,7 +679,7 @@ public final class CoverageSites {
                     armAt(numbering, draft.whereThen()), armAt(numbering, draft.whereElse()),
                     draft.at()));
         }
-        Map<ComparisonOccurrence, ComparisonEmissionSite> byComparison = new LinkedHashMap<>();
+        Map<ConstructOccurrence, ComparisonEmissionSite> byComparison = new LinkedHashMap<>();
         walk.byComparison.forEach((which, raw) ->
                 byComparison.put(which, numbering.comparison(raw)));
         IdentityHashMap<Core, ControlPointId.ArmOccurrence[]> armsByNode = new IdentityHashMap<>();
@@ -774,10 +775,10 @@ public final class CoverageSites {
         private NodeAddresses places;
         private final List<DraftGuard> guards = new ArrayList<>();
         private final IdentityHashMap<Core, int[]> byNode = new IdentityHashMap<>();
-        private final Map<ComparisonOccurrence, Integer> byComparison = new LinkedHashMap<>();
+        private final Map<ConstructOccurrence, Integer> byComparison = new LinkedHashMap<>();
         private final IdentityHashMap<Core, DraftArm[]> armsByNode = new IdentityHashMap<>();
         private final IdentityHashMap<Core, ForkOccurrence> forkByNode = new IdentityHashMap<>();
-        private final Map<ComparisonOccurrence, Integer> controlByComparison =
+        private final Map<ConstructOccurrence, Integer> controlByComparison =
                 new LinkedHashMap<>();
         /** The reading of the body being walked, which every question about a node in it is asked
          *  of. Rooted at the body because what a name reads is settled by what bound it. */
@@ -1157,7 +1158,7 @@ public final class CoverageSites {
             // Numbered once. A node reached twice is one comparison written once, and a second number
             // for it would be a site the emitter never lights — which is the shape of a real omission
             // and would be reported as one.
-            ComparisonOccurrence which = comparisons.occurrenceAt(comparison).orElse(null);
+            ConstructOccurrence which = comparisons.occurrenceAt(comparison).orElse(null);
             if (!inside || which == null || byComparison.containsKey(which)) {
                 return;
             }

@@ -3,6 +3,10 @@ package souther.compiler.coverage;
 import org.junit.jupiter.api.Test;
 
 import souther.compiler.core.Core;
+import souther.compiler.types.ConstructOccurrence;
+import souther.compiler.types.SourceConstruct;
+import souther.compiler.types.SourceConstructOrigin;
+import souther.compiler.types.WrittenOwner;
 import souther.compiler.query.Bodies;
 import souther.compiler.query.Compilation;
 
@@ -179,7 +183,7 @@ class AComparisonIsHeldWhereverItIsWrittenTest {
         ComparisonCatalog catalog = catalogOf(checked);
         CoverageSites.Plan plan = planOf(checked);
 
-        List<ComparisonOccurrence> held = catalog.all().stream()
+        List<ConstructOccurrence> held = catalog.all().stream()
                 .map(ComparisonCatalog.Catalogued::which).toList();
         assertEquals(2, held.size(), "the body holds two comparisons");
         assertEquals(1, held.stream().filter(plan::instruments).count(),
@@ -310,7 +314,7 @@ class AComparisonIsHeldWhereverItIsWrittenTest {
         CoverageSites.Plan here = CoverageSites.of(
                 new ModuleBodies("one", new LinkedHashMap<>(bodiesOf(body.formatted("one")).bodies())),
                 DecisionSources.NONE, SuppliedRules.NONE);
-        ComparisonOccurrence there = ComparisonCatalog.of(new ModuleBodies(
+        ConstructOccurrence there = ComparisonCatalog.of(new ModuleBodies(
                 "two", new LinkedHashMap<>(bodiesOf(body.formatted("two")).bodies()))).all().get(0).which();
 
         IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
@@ -324,16 +328,18 @@ class AComparisonIsHeldWhereverItIsWrittenTest {
      * <p>Beside the reading above and a different contract. That one is a plan built properly and
      * asked about somewhere else's comparison; this is a plan assembled out of parts, which is what
      * a caller holding the maps and a catalog can do. The key closes half of what a numbering can
-     * get wrong — an occurrence names a comparison and nothing else, so there is no number to put
+     * get wrong — an occurrence names a construct and nothing else, so there is no number to put
      * on an {@code &&} — and it closes nothing about whose comparison it is, because an occurrence
-     * is a module, a behavior and a number, which anyone can write down.
+     * is a written thing and a copy, which anyone can write down.
      */
     @Test
     void aPlanCannotNumberAComparisonItsCatalogNeverHeld() {
         Checked checked = bodiesOf(NAMED_BEFORE_THE_FORK);
-        ComparisonOccurrence elsewhere = new ComparisonOccurrence("nowhere", "fee", 0);
+        ConstructOccurrence elsewhere = ConstructOccurrence.asWritten(
+                SourceConstructOrigin.written(new WrittenOwner.Body("nowhere", "fee"), 0,
+                        SourceConstruct.BINARY));
         SiteNumbering numbering = Numberings.ofComparisons(1);
-        Map<ComparisonOccurrence, ComparisonEmissionSite> numbered = new LinkedHashMap<>();
+        Map<ConstructOccurrence, ComparisonEmissionSite> numbered = new LinkedHashMap<>();
         numbered.put(elsewhere, numbering.comparison(0));
 
         IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
